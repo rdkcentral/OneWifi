@@ -24,71 +24,25 @@
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(*(a)))
 #endif // ARRAYSIZE
 
-/**
- * @brief Is this IE a Wi-Fi Alliance CCE IE?
- *
- * @param ie The information element in question
- * @param ie_len Length of the information element in bytes.
- * @return true if this IE is a WFA CCE IE, otherwise false
- */
-static bool is_cce_ie(const uint8_t *const ie, size_t ie_len)
-{
-    static const uint8_t OUI_WFA[3] = { 0x50, 0x6F, 0x9A };
-    static const uint8_t CCE_CONSTANT = 0x1E;
-    if (ie_len < 4)
-        return false;
-    return memcmp(ie, OUI_WFA, sizeof(OUI_WFA)) == 0 && *(ie + 3) == CCE_CONSTANT;
-}
+#define SCAN_DWELL_MS 50
 
-static void publish_cce_ie_info(const wifi_bss_info_t *bss_info, unsigned radio_idx)
+static void publish_bss_info(const uint8_t *bss_buffer, int count, unsigned radio_idx)
 {
-    if (bss_info == NULL) {
-        wifi_util_error_print(WIFI_EC, "%s:%d: NULL BSS info!\n", __func__, __LINE__);
-        return;
+    if (count == 0) {
+        wifi_util_dbg_print(WIFI_EC, "%s:%d publishing 0 length buffer since no bsses match\n",
+            __func__, __LINE__);
     }
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
     raw_data_t rdata = { 0 };
-    rdata.raw_data.bytes = malloc(sizeof(wifi_bss_info_t));
-    if (rdata.raw_data.bytes == NULL) {
-        wifi_util_error_print(WIFI_EC, "%s:%d: Failed to malloc for wifi_bss_info_t!\n", __func__,
-            __LINE__);
-        return;
-    }
+    rdata.raw_data.bytes = (uint8_t *)bss_buffer;
     rdata.data_type = bus_data_type_bytes;
-    memcpy(rdata.raw_data.bytes, bss_info, sizeof(*bss_info));
-    rdata.raw_data_len = sizeof(*bss_info);
-    char path[256] = { 0 };
-    snprintf(path, sizeof(path), "Device.WiFi.Radio.%d.CCEInd", radio_idx + 1);
-    get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, path, &rdata);
-    free(rdata.raw_data.bytes);
-}
+    rdata.raw_data_len = count * sizeof(wifi_bss_info_t);
 
-static void publish_bss_info(const wifi_bss_info_t *bss_info)
-{
-    if (bss_info == NULL) {
-        wifi_util_error_print(WIFI_EC, "%s:%d: NULL BSS info!\n", __func__, __LINE__);
-        return;
-    }
-    wifi_ctrl_t *ctrl = get_wifictrl_obj();
-    raw_data_t rdata = { 0 };
-    rdata.raw_data.bytes = malloc(sizeof(wifi_bss_info_t));
-    if (rdata.raw_data.bytes == NULL) {
-        wifi_util_error_print(WIFI_EC, "%s:%d: Failed to malloc for wifi_bss_info_t!\n", __func__,
-            __LINE__);
-        return;
-    }
-    rdata.data_type = bus_data_type_bytes;
-    memcpy(rdata.raw_data.bytes, bss_info, sizeof(*bss_info));
-    rdata.raw_data_len = sizeof(*bss_info);
-    char path[256] = { 0 };
     get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_EASYCONNECT_BSS_INFO, &rdata);
-    free(rdata.raw_data.bytes);
 }
 
 static void handle_wifi_event_scan_results(wifi_app_t *app, void *data)
 {
-    int i;
-    int n = 0;
     scan_results_t *scan_results = (scan_results_t *)data;
     if (!scan_results) {
         wifi_util_error_print(WIFI_EC, "%s:%d: NULL scan data!\n", __func__, __LINE__);
@@ -96,53 +50,29 @@ static void handle_wifi_event_scan_results(wifi_app_t *app, void *data)
     }
     wifi_util_dbg_print(WIFI_EC, "%s:%d: Got scan results on radio %d\n", __func__, __LINE__,
         scan_results->radio_index);
-    if (app->data.u.ec.subscriptions[scan_results->radio_index] == false) {
-        wifi_util_dbg_print(WIFI_EC,
-            "%s:%d: Got a scan result on radio %d but there are no subscribers, skipping...\n",
-            __func__, __LINE__, scan_results->radio_index);
+
+    uint8_t *bss_info_buffer = calloc(scan_results->num, sizeof(wifi_bss_info_t));
+    
+    if (bss_info_buffer == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d: BSS Info failed to allocate!\n", 
+                            __func__, __LINE__);
         return;
     }
-    for (i = 0; i < scan_results->num; i++) {
-        wifi_bss_info_t *bss_info = &scan_results->bss[i];
-        if (!bss_info || !bss_info->ie || bss_info->ie_len == 0) {
-            wifi_util_dbg_print(WIFI_EC, "%s:%d: Invalid BSS info! #%d\n", __func__, __LINE__, i);
-            continue;
-        }
-        uint8_t *ie_pos = bss_info->ie;
-        size_t ie_len_remaining = bss_info->ie_len;
-        while (ie_len_remaining > 2) {
-            uint8_t id = ie_pos[0];
-            uint8_t ie_len = ie_pos[1];
-            if (ie_len + 2 > ie_len_remaining)
-                break;
-            // 0xdd == Vendor IE
-            if (id == 0xdd && is_cce_ie(ie_pos + 2, ie_len)) {
-                wifi_util_dbg_print(WIFI_EC,
-                    "%s:%d: BSS %s Beacon and/or Probe Response from BSSID " MACSTRFMT
-                    " contains WFA CCE IE!\n",
-                    __func__, __LINE__, bss_info->ssid, MAC2STR(bss_info->bssid));
-                publish_cce_ie_info(bss_info, scan_results->radio_index);
-                n++;
-            }
-            // next IE
-            ie_len_remaining -= (ie_len + 2);
-            ie_pos += (ie_len + 2);
-        }
-    }
-    wifi_util_dbg_print(WIFI_EC, "%s:%d parsed and published %d frames containing CCE IE\n",
-        __func__, __LINE__, n);
 
+    for (int i = 0; i < scan_results->num; i++) {
+        wifi_bss_info_t *bss_info = &scan_results->bss[i];
+        memcpy(bss_info_buffer + (i * sizeof(wifi_bss_info_t)), bss_info, sizeof(wifi_bss_info_t));
+    }
     // According to EasyConnect 6.5.2, for Reconfiguration,
     // an Enrollee must broadcast a Reconfiguration Annoncement
     // on each channel where the Configuration Response's SSID is heard.
     // So, publish the whole BSS info to a different path for
     // subscribers to work with.
-    for (i = 0; i < scan_results->num; i++) {
-        wifi_bss_info_t *bss_info = &scan_results->bss[i];
-        if (!bss_info) continue;
-        publish_bss_info(bss_info);
-    }
-
+    publish_bss_info(bss_info_buffer, scan_results->num, scan_results->radio_index);
+    free(bss_info_buffer);
+    
+    wifi_util_dbg_print(WIFI_EC, "%s:%d parsed and published %d frames\n",
+        __func__, __LINE__, scan_results->num);
 }
 
 static void handle_hal_event(wifi_app_t *app, wifi_event_subtype_t event_subtype, void *data)
@@ -182,49 +112,147 @@ static bus_error_t event_sub_handler(char *eventName, bus_event_sub_action_t act
     }
 
     *autoPublish = false;
-    if (sscanf(eventName, "Device.WiFi.Radio.%d.CCEInd", &radio_idx) != 1) {
-        wifi_util_error_print(WIFI_EC,
-            "%s:%d: sscanf failed for event %s, searching on bus path %s\n", __func__, __LINE__,
-            eventName, WIFI_EASYCONNECT_RADIO_CCE_IND);
-        return bus_error_general;
+    return bus_error_success;
+}
+
+static void start_sta_channel_scan(void *data, unsigned int len)
+{
+    mac_address_t radio_mac;
+    wifi_platform_property_t *wifi_prop;
+    wifi_radio_capabilities_t *wifi_cap = NULL;
+    wifi_radio_operationParam_t *radioOperation = NULL;
+    int num_channels = 0;
+    int channels[64] = { 0 };
+    unsigned int global_op_class = 0;
+    char country[8] = { 0 };
+
+    radio_interface_mapping_t *radio_iface_map = NULL;
+    channel_scan_request_t *scan_req = (channel_scan_request_t *)data;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    bool found_radio = false;
+
+    if (scan_req == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d NUll data Pointer\n", __func__, __LINE__);
+        return;
     }
-    // ensure radio index is valid
-    if (radio_idx < 0 || radio_idx > MAX_NUM_RADIOS) {
-        wifi_util_error_print(WIFI_EC, "%s:%d: invalid radio index: %d\n", __func__, __LINE__,
-            radio_idx);
-        return bus_error_general;
+
+    if (len < sizeof(channel_scan_request_t)) {
+        wifi_util_error_print(WIFI_EC, "%s:%d Invalid parameter size \n", __func__, __LINE__);
+        return;
     }
-    if (action == bus_event_action_subscribe) {
-        wifi_util_info_print(WIFI_EC, "%s:%d: Adding subscrption for radio %d\n", __func__,
-            __LINE__, radio_idx);
-        wifi_app->data.u.ec.subscriptions[radio_idx - 1] = true;
-    } else if (action == bus_event_action_unsubscribe) {
-        wifi_app->data.u.ec.subscriptions[radio_idx - 1] = false;
-        wifi_util_info_print(WIFI_EC, "%s:%d: Removing subscription for radio %d\n", __func__,
-            __LINE__, radio_idx);
+
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d Mgr object is NULL \n", __func__, __LINE__);
+        return;
+    }
+
+    wifi_prop = &mgr->hal_cap.wifi_prop;
+
+    for (unsigned int k = 0;
+         k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
+        radio_iface_map = &(wifi_prop->radio_interface_map[k]);
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_EC, "%s:%d: Unable to find the radio interface map entry \n",
+                __func__, __LINE__);
+            return;
+        }
+        mac_address_from_name(radio_iface_map->interface_name, radio_mac);
+        if (memcmp(scan_req->ruid, radio_mac, sizeof(mac_addr_t)) == 0) {
+            wifi_util_dbg_print(WIFI_EC,
+                "%s:%d Processing channel scan for Radio : " MACSTRFMT "\n", __func__, __LINE__,
+                MAC2STR(radio_mac));
+            found_radio = true;
+            break;
+        }
+    }
+
+    if (!found_radio) {
+        wifi_util_dbg_print(WIFI_EC, "%s:%d Failed to find radio for MAC : " MACSTRFMT "\n",
+            __func__, __LINE__, MAC2STR(radio_mac));
+        return;
+    }
+
+    radioOperation = getRadioOperationParam(radio_iface_map->radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d NULL radioOperation pointer for radio : %d\n",
+            __func__, __LINE__, radio_iface_map->radio_index);
+        return;
+    }
+
+    wifi_cap = getRadioCapability(radio_iface_map->radio_index);
+
+    if (scan_req->num_operating_classes == 0) {
+        if (get_allowed_channels(radioOperation->band, wifi_cap, channels, &num_channels,
+                radioOperation->DfsEnabled) != RETURN_OK) {
+            wifi_util_error_print(WIFI_EC, "%s:%d get allowed channels failed for the radio : %d\n",
+                __func__, __LINE__, radio_iface_map->radio_index);
+            return;
+        }
     } else {
-        wifi_util_dbg_print(WIFI_EC, "%s:%d: unhandled action %d for radio %d\n", __func__,
-            __LINE__, action, radio_idx);
-        return bus_error_invalid_event;
+        get_coutry_str_from_code(mgr->radio_config[radio_iface_map->radio_index].oper.countryCode,
+            country);
+        global_op_class = country_to_global_op_class(country,
+            mgr->radio_config[radio_iface_map->radio_index].oper.operatingClass);
+
+        for (int i = 0; i < scan_req->num_operating_classes; i++) {
+            if (scan_req->operating_classes[i].operating_class == global_op_class) {
+                for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
+                    channels[num_channels] = scan_req->operating_classes[i].channels[j];
+                    wifi_util_dbg_print(WIFI_EC, "%s:%d channel number:%u\n", __func__, __LINE__,
+                        scan_req->operating_classes[i].channels[j]);
+                    num_channels++;
+                }
+                break;
+            }
+        }
     }
+
+    if (wifi_hal_startScan(radio_iface_map->radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, SCAN_DWELL_MS,
+            num_channels, channels) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EC, "%s:%d Failed to start station scan on radio: %d\n",
+            __func__, __LINE__, radio_iface_map->radio_index);
+        return;
+    }
+    wifi_util_dbg_print(WIFI_EC, "%s:%d Successfully started scan on radio: %d\n", __func__,
+        __LINE__, radio_iface_map->radio_index);
+}
+
+static bus_error_t start_sta_channel_scan_cmd(char *name, raw_data_t *p_data,
+    bus_user_data_t *user_data)
+{
+    unsigned int len = 0;
+    char *tmp = NULL;
+    (void)user_data;
+
+    if (name == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_element_name_missing;
+    }
+
+    tmp = (char *)p_data->raw_data.bytes;
+    if ((p_data->data_type != bus_data_type_bytes) || (tmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
+            p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    len = p_data->raw_data_len;
+    push_event_to_ctrl_queue((char *)tmp, len, wifi_event_type_command,
+        wifi_event_type_start_sta_channel_scan, NULL);
+
     return bus_error_success;
 }
 
-bus_error_t easyconnect_radio_addrowhandler(const char *tableName, const char *aliasName,
-    uint32_t *instNum)
+static void handle_ec_command_event(wifi_app_t *app, wifi_event_t *event)
 {
-    static unsigned int instanceCounter = 1;
-    *instNum = instanceCounter;
-    wifi_util_dbg_print(WIFI_EC, "%s:%d: tableName=%s aliasName=%s instNum=%d\n", __func__,
-        __LINE__, tableName, aliasName, *instNum);
-    instanceCounter = (instanceCounter % MAX_NUM_RADIOS) + 1;
-    return bus_error_success;
-}
-
-bus_error_t easyconnect_radio_removerowhandler(const char *rowName)
-{
-    wifi_util_dbg_print(WIFI_EC, "%s(): %s\n", __func__, rowName);
-    return bus_error_success;
+    switch (event->sub_type) {
+    case wifi_event_type_start_sta_channel_scan:
+        start_sta_channel_scan(event->u.core_data.msg, event->u.core_data.len);
+        break;
+    default:
+        break;
+    }
 }
 
 int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
@@ -232,6 +260,9 @@ int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
     switch (event->event_type) {
     case wifi_event_type_hal_ind:
         handle_hal_event(app, event->sub_type, event->u.core_data.msg);
+        break;
+    case wifi_event_type_command:
+        handle_ec_command_event(app, event);
         break;
     default:
         wifi_util_dbg_print(WIFI_EC, "%s:%d: unhandled event_type=%d\n", __func__, __LINE__,
@@ -244,20 +275,15 @@ int easyconnect_init(wifi_app_t *app, unsigned int create_flags)
 {
     wifi_util_dbg_print(WIFI_EC, "%s called.", __func__);
     char *app_name = "WifiAppsEasyConnect";
-    for (int i = 0; i < ARRAYSIZE(app->data.u.ec.subscriptions); i++) {
-        app->data.u.ec.subscriptions[i] = false;
-    }
+
     // clang-format off
     bus_data_element_t data_elements[] = {
-        { WIFI_EASYCONNECT_RADIO_TABLE,   bus_element_type_table,
-         { NULL, NULL, easyconnect_radio_addrowhandler, easyconnect_radio_removerowhandler, NULL,
-          NULL }, slow_speed, MAX_NUM_RADIOS, { bus_data_type_object, false, 0, 0, 0, NULL } },
-        { WIFI_EASYCONNECT_RADIO_CCE_IND, bus_element_type_event,
-         { NULL, NULL, NULL, NULL, event_sub_handler, NULL }, slow_speed, ZERO_TABLE,
-         { bus_data_type_bytes, false, 0, 0, 0, NULL } },
         { WIFI_EASYCONNECT_BSS_INFO, bus_element_type_method,
-         { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-         { bus_data_type_bytes, false, 0, 0, 0, NULL } } ,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, false, 0, 0, 0, NULL } } ,
+        { WIFI_TRIGGER_STA_SCAN_REQ, bus_element_type_method,
+            { NULL, start_sta_channel_scan_cmd, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_none, true, 0, 0, 0, NULL } },
     };
     // clang-format on
 
@@ -280,9 +306,6 @@ int easyconnect_init(wifi_app_t *app, unsigned int create_flags)
 int easyconnect_deinit(wifi_app_t *app)
 {
     wifi_util_info_print(WIFI_EC, "%s:%d: %s called.", __func__, __LINE__, __func__);
-    for (int i = 0; i < ARRAYSIZE(app->data.u.ec.subscriptions); i++) {
-        app->data.u.ec.subscriptions[i] = false;
-    }
     app_deinit(app, app->desc.create_flag);
     return 0;
 }

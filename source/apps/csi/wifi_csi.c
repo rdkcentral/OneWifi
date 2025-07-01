@@ -242,7 +242,7 @@ int init_bus_registration(wifi_app_t *app)
 
     rc = get_bus_descriptor()->bus_reg_data_element_fn(&app->handle, dataElements, num_elements);
     if (rc != bus_error_success) {
-        wifi_util_dbg_print(WIFI_APPS,"%s:%d bus_reg_data_element_fn failed, rc:%d\n", __func__, __LINE__, rc);
+        wifi_util_error_print(WIFI_APPS,"%s:%d bus_reg_data_element_fn failed, rc:%d\n", __func__, __LINE__, rc);
     } else {
         wifi_util_info_print(WIFI_APPS,"%s:%d Apps bus_regDataElement success\n", __func__, __LINE__);
     }
