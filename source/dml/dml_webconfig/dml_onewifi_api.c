@@ -208,6 +208,20 @@ void mac_filter_dml_vap_cache_update(int radio_index, int vap_array_index)
     }
 }
 
+void update_dml_macfilter_list(webconfig_subdoc_data_t *data)
+{
+    unsigned int radio_idx = 0, vap_idx = 0;
+
+    for (radio_idx = 0; radio_idx < get_num_radio_dml(); radio_idx++) {
+        for (vap_idx = 0; vap_idx < MAX_NUM_VAP_PER_RADIO; vap_idx++) {
+            hash_map_t **acl_dev_map = get_dml_acl_hash_map(radio_idx, vap_idx);
+
+            mac_filter_dml_vap_cache_update(radio_idx, vap_idx);
+            *acl_dev_map = data->u.decoded.radios[radio_idx].vaps.rdk_vap_array[vap_idx].acl_map;
+        }
+    }
+}
+
 void update_dml_subdoc_vap_data(webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
@@ -435,6 +449,7 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
         case webconfig_subdoc_type_mac_filter:
             wifi_util_info_print(WIFI_DMCLI,"%s:%d subdoc parse and update macfilter entries:%d\n", __func__,
                 __LINE__, data->type);
+            update_dml_macfilter_list(data);
 #ifndef ONEWIFI_DML_SUPPORT
             sync_dml_macfilter_table_entries();
 #endif

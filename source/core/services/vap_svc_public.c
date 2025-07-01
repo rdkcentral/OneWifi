@@ -134,6 +134,8 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             wifi_util_dbg_print(WIFI_CTRL,"add %s mac to %s\n",new_mac_str,rdk_vap_info->vap_name);
         }
     }
+
+    get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
 }
 
 int update_managementFramePower(void *arg) {

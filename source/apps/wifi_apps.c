@@ -120,6 +120,28 @@ int harvester_deinit(wifi_app_t *app)
 }
 #endif
 
+#ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+extern int memwraptool_init(wifi_app_t *app, unsigned int create_flag);
+extern int memwraptool_deinit(wifi_app_t *app);
+extern int memwraptool_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int memwraptool_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int memwraptool_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int memwraptool_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+#endif // ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+
 #ifdef ONEWIFI_LEVL_APP_SUPPORT
 extern int levl_init(wifi_app_t *app, unsigned int create_flag);
 extern int levl_deinit(wifi_app_t *app);
@@ -356,6 +378,16 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
+#ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    {
+        wifi_app_inst_memwraptool, 0,
+        wifi_event_type_webconfig | wifi_event_type_command,
+        true, true,
+        "Memwraptool",
+        memwraptool_init, memwraptool_event, memwraptool_deinit,
+        NULL, NULL
+    },
+#endif // ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
     {
         wifi_app_inst_sta_mgr, 0,
