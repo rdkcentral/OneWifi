@@ -227,6 +227,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
     -I$(ONE_WIFI_HOME)/source/apps/harvester \
     -I$(ONE_WIFI_HOME)/source/apps/levl \
+    -I$(ONE_WIFI_HOME)/source/apps/memwraptool \
     -I$(ONE_WIFI_HOME)/source/apps/sta_mgr \
     -I$(ONE_WIFI_HOME)/source/apps/motion \
     -I$(ONE_WIFI_HOME)/source/apps/ocs \
@@ -392,6 +393,11 @@ endif
 
 ifdef ONEWIFI_STA_MGR_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_mgr/*.c)
+endif
+
+ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)    \
+    WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_memwraptool.c
 endif
 
 ifdef EM_APP
