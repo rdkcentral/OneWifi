@@ -193,6 +193,9 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
             }
        }
     }
+
+    get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+
     return RETURN_OK;
 }
 void process_unknown_frame_event(frame_data_t *msg, uint32_t msg_length)
@@ -1538,6 +1541,9 @@ void process_greylist_mac_filter(void *data)
             greylist_client_added = true;
         }
     }
+
+    get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+
     //Add time and Mac address to wifihealth.txt
     if (greylist_client_added) {
         time(&now);
@@ -2258,6 +2264,15 @@ void process_prefer_private_rfc(bool type)
     }
 }
 
+static void process_memwraptool_app_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "WIFI Enter RFC Func %s: %d : bool %d\n", __FUNCTION__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->memwraptool_app_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
 void process_wifi_offchannelscan_app_rfc(bool type) // ocs scan for 5g radio in gateway
 {
     wifi_util_dbg_print(WIFI_DB, "WIFI Enter RFC Func %s: %d : bool %d\n", __FUNCTION__, __LINE__,
@@ -2715,6 +2730,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
+    wifi_monitor_data_t *data = NULL;
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
@@ -2947,6 +2963,20 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
+    }
+    data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__, __LINE__);
+    } else {
+        data->u.channel_status_map.radio_index = ch_chg->radioIndex;
+        memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
+            sizeof(data->u.channel_status_map.channel_map));
+        if (push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL) !=
+            RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Failed to push channel status map to monitor queue\n", __func__, __LINE__);
+            free(data);
+        }
     }
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
@@ -3335,6 +3365,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_wifi_passpoint_rfc:
         process_wifi_passpoint_rfc(*(bool *)data);
         break;
+    case wifi_event_type_memwraptool_app_rfc:
+        process_memwraptool_app_rfc(*(bool *)data);
+        break;
     case wifi_event_type_wifi_offchannelscan_app_rfc:
         process_wifi_offchannelscan_app_rfc(*(bool *)data);
         break;
@@ -3585,6 +3618,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     webconfig_subdoc_type_t subdoc_type;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     unsigned int num_ssid = 0;
+    cJSON *json = NULL;
 
     switch (subtype) {
     case wifi_event_webconfig_set_data:
@@ -3600,7 +3634,9 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             return;
         }
 
-        subdoc_type = find_subdoc_type(config, cJSON_Parse(raw));
+        json = cJSON_Parse(raw);
+        subdoc_type = find_subdoc_type(config, json);
+        cJSON_Delete(json);
         switch (subdoc_type) {
         case webconfig_subdoc_type_private:
             num_ssid += get_list_of_private_ssid(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,

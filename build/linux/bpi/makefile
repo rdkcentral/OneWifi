@@ -256,6 +256,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
     -I$(ONE_WIFI_HOME)/source/apps/harvester \
     -I$(ONE_WIFI_HOME)/source/apps/levl \
+    -I$(ONE_WIFI_HOME)/source/apps/memwraptool \
     -I$(ONE_WIFI_HOME)/source/apps/motion \
     -I$(ONE_WIFI_HOME)/source/apps/ocs \
     -I$(ONE_WIFI_HOME)/source/apps/sm \
@@ -363,6 +364,7 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_stats.c		\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_neighbor_stats.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_assocdevice_stats.c	\
+        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_memwraptool.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_temperature.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
@@ -417,6 +419,9 @@ ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/easyconnect/*.c)
 endif
 
+ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)
+endif
 
 ifdef EM_APP
     #INCLUDEDIRS +=  -I$(ONE_WIFI_HOME)/source/apps/em

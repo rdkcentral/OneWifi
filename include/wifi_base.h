@@ -100,6 +100,12 @@ extern "C" {
 #define MIN_DIAG_INTERVAL   5000
 #define CSI_PING_INTERVAL   100
 
+#define DEFAULT_RSS_CHECK_INTERVAL 5 //minutes
+#define DEFAULT_RSS_THRESHOLD 1000 //kbytes
+#define DEFAULT_RSS_MAXLIMIT 70000 //kbytes
+#define DEFAULT_HEAPWALK_DURATION 60 //minutes
+#define DEFAULT_HEAPWALK_INTERVAL 15 //minutes
+
 #define RSS_MEM_THRESHOLD1_DEFAULT 81920 /*Threshold1 is 80MB*/
 #define RSS_MEM_THRESHOLD2_DEFAULT 112640 /*Threshold2 is 110MB*/
 
@@ -144,7 +150,8 @@ typedef enum {
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
-    wifi_app_inst_max = wifi_app_inst_base << 18
+    wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
+    wifi_app_inst_max = wifi_app_inst_base << 19
 } wifi_app_inst_t;
 
 typedef struct {
@@ -345,6 +352,11 @@ typedef struct {
 } __attribute__((packed)) wifi_mon_stats_config_t;
 
 typedef struct {
+    wifi_channelMap_t channel_map[MAX_CHANNELS];
+    wifi_radio_index_t radio_index;
+} wifi_channel_status_event_t;
+
+typedef struct {
     wifi_frame_t    frame;
     unsigned char data[MAX_FRAME_SZ];
 } __attribute__((__packed__)) frame_data_t;
@@ -382,12 +394,12 @@ typedef struct {
         instant_msmt_t      imsmt;
         active_msmt_t       amsmt;
         associated_devs_t   devs;
-        wifi_csi_dev_t      csi;
         csi_mon_t           csi_mon;
         wifi_mon_stats_config_t mon_stats_config;
         frame_data_t msg;
         ocs_params_t        ocs_params;
         collect_stats_t     collect_stats;
+        wifi_channel_status_event_t channel_status_map;
     } u;
 } wifi_monitor_data_t;
 
@@ -424,6 +436,15 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
+    unsigned int rss_check_interval; //minutes
+    unsigned int rss_threshold; //kbytes
+    unsigned int rss_maxlimit; //kbytes
+    unsigned int heapwalk_duration; //minutes
+    unsigned int heapwalk_interval; //minutes
+    bool enable;
+} __attribute__((packed)) memwraptool_config_t;
+
+typedef struct {
     bool wifi_offchannelscan_app_rfc;
     bool wifi_offchannelscan_sm_rfc;
     bool wifipasspoint_rfc;
@@ -451,6 +472,7 @@ typedef struct {
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
     bool wpa3_compatibility_enable;
+    bool memwraptool_app_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -492,6 +514,7 @@ typedef struct {
     char cli_stat_list[MAX_BUF_LENGTH];
     char snr_list[MAX_BUF_LENGTH];
     char txrx_rate_list[MAX_BUF_LENGTH];
+    memwraptool_config_t memwraptool;
     bool mgt_frame_rate_limit_enable;
     int mgt_frame_rate_limit;
     int mgt_frame_rate_limit_window_size;
