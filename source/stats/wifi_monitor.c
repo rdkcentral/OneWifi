@@ -4001,7 +4001,6 @@ int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_el
 
     scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &id, collector_execute_task,
             (void *)collector_elem, collector_elem->collector_task_interval_ms, 0, collector_elem->start_immediately);
-
     collector_elem->collector_task_sched_id = id;
     return RETURN_OK;
 }

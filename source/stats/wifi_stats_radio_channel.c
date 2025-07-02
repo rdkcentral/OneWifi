@@ -572,6 +572,7 @@ int retrigger_neighbor_scan(void *arg)
             mon_data->scan_trigger_retries[args->radio_index]++;
             scheduler_add_timer_task(mon_data->sched, FALSE, &id, retrigger_neighbor_scan, c_elem,
                 NEIGHBOR_SCAN_RETRY_INTERVAL, 1, FALSE);
+            c_elem->u.radio_channel_neighbor_data.scan_trigger_task_id = id;
             wifi_util_dbg_print(WIFI_MON,
                 "%s:%d  Retry (%d) to trigger scan for scan mode %d radio index %d\n", __func__,
                 __LINE__, mon_data->scan_trigger_retries[args->radio_index], args->scan_mode,
@@ -823,7 +824,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int updated_channels[MAX_CHANNELS] = {0};
     wifi_mon_stats_args_t *args = NULL;
 
-    wifi_util_error_print(WIFI_MON, "DFS_DEBUG %s:%d interval:%lu \n", __func__, __LINE__, task_interval_ms);
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
             __LINE__, args);
@@ -1057,6 +1057,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         mon_data->scan_trigger_retries[args->radio_index]++;
         scheduler_add_timer_task(mon_data->sched, FALSE, &id, retrigger_neighbor_scan, c_elem,
             NEIGHBOR_SCAN_RETRY_INTERVAL, 1, TRUE);
+        c_elem->u.radio_channel_neighbor_data.scan_trigger_task_id = id;
         wifi_util_dbg_print(WIFI_MON,
             "%s:%d  Retry (%d) to trigger scan for scan mode %d radio index %d\n", __func__,
             __LINE__, mon_data->scan_trigger_retries[args->radio_index], args->scan_mode,
