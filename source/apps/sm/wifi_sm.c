@@ -336,6 +336,7 @@ int sm_common_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t 
     }
     data->u.mon_stats_config.args.radio_index = index;
     data->u.mon_stats_config.interval_ms =  stat_config_entry->sampling_interval*1000; //converting seconds to ms
+    wifi_util_error_print(WIFI_SM,"%s:%d: DFS_DEBUG interval_ms:%lu \r\n",__func__, __LINE__, data->u.mon_stats_config.interval_ms);
 
     return RETURN_OK;
 }
@@ -384,6 +385,8 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
     }
 
     data->u.mon_stats_config.args.app_info = sm_app_event_type_neighbor;
+    wifi_util_error_print(WIFI_SM, "DFS_DEBUG %s:%d wifi_event_monitor_data_collection_config interval:%lu dwell_time:%d \n",
+            __func__,__LINE__, data->u.mon_stats_config.interval_ms, data->u.mon_stats_config.args.dwell_time);
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
     return RETURN_OK;
@@ -426,6 +429,8 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
     }
 
+    wifi_util_error_print(WIFI_SM, "DFS_DEBUG %s:%d wifi_event_monitor_data_collection_config interval:%lu dwell_time:%d \n",
+            __func__,__LINE__, data->u.mon_stats_config.interval_ms, data->u.mon_stats_config.args.dwell_time);
     data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
     // data->u.mon_stats_config.start_immediately = true;
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
@@ -459,6 +464,8 @@ int client_diag_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_
     for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(data->u.mon_stats_config.args.radio_index); vapArrayIndex++) {
         data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[data->u.mon_stats_config.args.radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
         if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
+            wifi_util_error_print(WIFI_SM, "DFS_DEBUG %s:%d wifi_event_monitor_data_collection_config interval:%lu dwell_time:%d \n",
+                    __func__,__LINE__, data->u.mon_stats_config.interval_ms, data->u.mon_stats_config.args.dwell_time);
             push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
         }
     }
@@ -481,6 +488,9 @@ int capacity_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
     data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
 
     data->u.mon_stats_config.args.app_info = sm_app_event_type_capacity;
+
+    wifi_util_error_print(WIFI_SM, "DFS_DEBUG %s:%d wifi_event_monitor_data_collection_config interval:%lu dwell_time:%d \n",
+            __func__,__LINE__, data->u.mon_stats_config.interval_ms, data->u.mon_stats_config.args.dwell_time);
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
     return RETURN_OK;
@@ -506,6 +516,9 @@ int push_sm_config_event_to_monitor_queue(wifi_app_t *app, wifi_mon_stats_reques
 
     data->u.mon_stats_config.req_state = state;
     sm_report_start_task(stat_config_entry->stats_type, app, state, stat_config_entry);
+
+    wifi_util_error_print(WIFI_SM, "DFS_DEBUG %s:%d state:%d stats_type:%d \n",
+         __func__,__LINE__, data->u.mon_stats_config.req_state, stat_config_entry->stats_type);
 
     switch (stat_config_entry->stats_type) {
         case stats_type_neighbor:

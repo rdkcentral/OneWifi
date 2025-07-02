@@ -25,6 +25,7 @@
 #include <limits.h>
 #include "scheduler.h"
 #include "timespec_macro.h"
+#include "wifi_util.h"
 
 struct timer_task {
     int id;                             /* identifier - used to delete */
@@ -447,6 +448,32 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
     return 0;
 }
 
+int scheduler_update_timeout(struct scheduler *sched, int id, struct timespec new_time) {
+    unsigned int i;
+    struct timer_task *tt;
+
+    if (sched == NULL) {
+        return -1;
+    }
+    for (i = 0; i < sched->num_tasks; i++) {
+        tt = queue_peek(sched->timer_list, i);
+        if (tt != NULL && tt->id == id) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d new_time:%lu interval_sec:%lu timeout_sec:%lu \n", __func__, __LINE__,
+                    new_time.tv_sec, tt->interval.tv_sec, tt->timeout.tv_sec);
+            timespecadd(&new_time, &(tt->interval), &(tt->timeout));
+        }
+    }
+    for (i = 0; i < sched->num_hp_tasks; i++) {
+        tt = queue_peek(sched->high_priority_timer_list, i);
+        if (tt != NULL && tt->id == id) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d new_time:%lu interval_sec:%lu timeout_sec:%lu \n", __func__, __LINE__,
+                    new_time.tv_sec, tt->interval.tv_sec, tt->timeout.tv_sec);
+            timespecadd(&new_time, &(tt->interval), &(tt->timeout));
+        }
+    }
+    return 0;
+}
+
 static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec t_now)
 {
     unsigned int i;
@@ -588,5 +615,3 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
     }
     return 0;
 }
-
-
