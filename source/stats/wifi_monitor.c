@@ -185,7 +185,7 @@ ULONG lastupdatedtime = 0;
 ULONG chutil_last_updated_time = 0;
 time_t lastpolledtime = 0;
 
-int device_deauthenticated(int apIndex, char *mac, int reason);
+int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type, int reason);
 int device_associated(int apIndex, wifi_associated_dev_t *associated_dev);
 int vapstatus_callback(int apIndex, wifi_vapstatus_t status);
 unsigned int get_upload_period  (int);
@@ -211,13 +211,14 @@ int get_chan_util_upload_period(void);
 static int refresh_task_period(void *arg);
 int associated_device_diagnostics_send_event(void *arg);
 static void scheduler_telemetry_tasks(void);
+static void update_interop_interval(void);
 int csi_sendPingData(void * arg);
 static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinger);
 static int clientdiag_sheduler_enable(int ap_index);
 void telemetry_event_akm_count(telemetry_data_t *sta1,int vapindex, char *mac);
 void deinit_wifi_monitor(void);
 void SetBlasterMqttTopic(char *mqtt_topic);
-
+int update_interop_sta_data(unsigned int vap_index);
 static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key) 
 {
     snprintf(key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -235,7 +236,6 @@ telemetry_data_t *create_wpa3_enhanced_sta_data_hash_map(hash_map_t *sta_map, ma
     pthread_mutex_lock(&g_monitor_module.data_lock);
     mac_addr_str_t mac_str = { 0 };
     telemetry_data_t *sta = NULL;
-
     sta = (telemetry_data_t *)malloc(sizeof(telemetry_data_t));
     if (sta == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d malloc allocation failure\r\n", __func__, __LINE__);
@@ -351,6 +351,179 @@ static int reset_wpa3_enhanced_sta_data(void *arg) {
     update_wpa3_enhanced_sta_all_vap_data_entry();
     return TIMER_TASK_COMPLETE;
 }
+
+interop_data_t *create_interop_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac, mac_addr_t l_ap_mac) {
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    mac_addr_str_t mac_str = { 0 };
+    interop_data_t *sta = NULL;
+    sta = (interop_data_t *)malloc(sizeof(interop_data_t));
+    if (sta == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d malloc allocation failure\r\n", __func__, __LINE__);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    memset(sta, 0, sizeof(interop_data_t));
+    memmove(sta->sta_mac, l_sta_mac, sizeof(mac_addr_t));
+    memmove(sta->ap_mac, l_ap_mac, sizeof(mac_addr_t));
+    char *mac_str_dup = strdup(to_mac_str(l_sta_mac, mac_str));
+    if (mac_str_dup == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d strdup allocation failure\r\n", __func__, __LINE__);
+        free(sta);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    hash_map_put(sta_map, mac_str_dup, sta);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Created STA entry for MAC: %s\r\n", __func__, __LINE__, mac_str_dup);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+    return sta;
+}
+
+hash_map_t *get_interop_sta_data_map(unsigned int vap_index) {
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    unsigned int vap_array_index;
+    char vap_name[32] = {0};
+    convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_index, vap_name);
+    if (strlen(vap_name) <= 0) {
+        wifi_util_error_print(WIFI_MON, "%s:%d wrong vap_index:%d\r\n", __func__, __LINE__, vap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    getVAPArrayIndexFromVAPIndex(vap_index, &vap_array_index);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Retrieved STA data map for VAP index: %d vap name:%s \r\n", __func__, __LINE__,vap_index, vap_name);
+    return g_monitor_module.bssid_data[vap_array_index].interop_sta_map;
+}
+
+int set_auth_req_frame_data(frame_data_t *msg) {
+
+    hash_map_t *sta_map;
+    interop_data_t *sta;
+    struct ieee80211_mgmt *frame;
+    mac_addr_str_t mac_str = { 0 };
+    char *str;
+    int ipstat,sta_map_count;
+    bool ipenable;
+    frame = (struct ieee80211_mgmt *)msg->data;
+    if (frame == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d frame details are null \r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    str = to_mac_str(frame->sa, mac_str);
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d mac str convert failure\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
+    wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(msg->frame.ap_index);
+    if (vap_bss_info == NULL) {
+	  wifi_util_dbg_print(WIFI_MON, "%s:%d vap_bss_info is null for vap_idex:%d \r\n", __func__, __LINE__, msg->frame.ap_index);
+          return RETURN_ERR;
+    }
+    ipstat = vap_bss_info->inum_sta;
+    ipenable = vap_bss_info->interop_ctrl;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Ipstat:%d ipenable:%d ipstat:%d,ipenable:%d \r\n", __func__, __LINE__,vap_bss_info->inum_sta,vap_bss_info->interop_ctrl,ipstat,ipenable);
+    if (ipenable == 0) {
+       // wifi_util_dbg_print(WIFI_MON, "%s:%d interopctrl is disabled, ipstat:%d ipenable:%d \r\n", __func__, __LINE__,ipstat,ipenable);
+        return RETURN_OK;
+    }
+    if (!isVapPrivate(msg->frame.ap_index) && !(isVapHotspotSecure5g(msg->frame.ap_index) || isVapHotspotSecure6g(msg->frame.ap_index) || isVapHotspotOpen5g(msg->frame.ap_index) || isVapHotspotOpen6g(msg->frame.ap_index))){
+        //wifi_util_dbg_print(WIFI_MON, "%s:%d It's not a private vap or hotspot vap \r\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+    sta_map = get_interop_sta_data_map(msg->frame.ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, msg->frame.ap_index);
+        return RETURN_ERR;
+    }
+    sta_map_count = (int)hash_map_count(sta_map);
+    if (ipstat <= sta_map_count) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d ipstat:%d less than or equal to stamap count:%d are  \r\n", __func__, __LINE__,ipstat,sta_map_count);
+        return RETURN_OK;
+    }
+    sta = (interop_data_t *)hash_map_get(sta_map, mac_str);
+    if (sta == NULL) {
+        sta = create_interop_sta_data_hash_map(sta_map, frame->sa, frame->da);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d created STA MAC:%s count:%d \n", __func__, __LINE__, str,sta_map_count);
+        if (sta == NULL) {
+	     wifi_util_error_print(WIFI_MON, "%s:%d sta is null as creation of station is failed and returning null \r\n", __func__, __LINE__); 
+            return RETURN_ERR;
+        }
+    }
+    return RETURN_OK;
+}
+
+void telemetry_event_code_count(interop_data_t *sta1,int vapindex, char *mac, char *ap) {
+    char telemetry_buff[128] = {0};
+    char telemetry_val[512] = {0};
+    char telemetry_buff_grep[128] = {0};
+    char buff[1024];
+    char tmp[128];
+    if (!mac) {
+        wifi_util_info_print(WIFI_MON, "Error: MAC address is NULL\n");
+        return;
+    }
+
+    memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+    memset(telemetry_buff_grep, 0, sizeof(telemetry_buff_grep));
+    snprintf(telemetry_buff, sizeof(telemetry_buff), "REASON_STATUS_COUNT");
+    snprintf(telemetry_val, sizeof(telemetry_val),
+             "%d:Client:%s,AP:%s,Status_codes:1:%d,16:%d,30:%d,31:%d,43:%d,53:%d,Reason_codes:1:%d,2:%d,3:%d,9:%d,14:%d,15:%d,20:%d,23:%d,49:%d\nREASON_STATUS_COUNT:%d:AP:%s,Client:%s,Status_codes:1:%d,16:%d,30:%d,31:%d,43:%d,53:%d,Reason_codes:1:%d,2:%d,3:%d,9:%d,14:%d,15:%d,20:%d,23:%d,49:%d ", vapindex+1, mac, ap, sta1->sta_status_counts[0], sta1->sta_status_counts[1], sta1->sta_status_counts[2], sta1->sta_status_counts[3],sta1->sta_status_counts[4], sta1->sta_status_counts[5],sta1->sta_reason_counts[0],sta1->sta_reason_counts[1],sta1->sta_reason_counts[2],sta1->sta_reason_counts[3],sta1->sta_reason_counts[4],sta1->sta_reason_counts[5],sta1->sta_reason_counts[6],sta1->sta_reason_counts[7],sta1->sta_reason_counts[8],vapindex+1, ap, mac, sta1->ap_status_counts[0], sta1->ap_status_counts[1], sta1->ap_status_counts[2], sta1->ap_status_counts[3],sta1->ap_status_counts[4], sta1->ap_status_counts[5],sta1->ap_reason_counts[0],sta1->ap_reason_counts[1],sta1->ap_reason_counts[2],sta1->ap_reason_counts[3],sta1->ap_reason_counts[4],sta1->ap_reason_counts[5],sta1->ap_reason_counts[6],sta1->ap_reason_counts[7],sta1->ap_reason_counts[8]);
+    strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
+    telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
+    wifi_util_dbg_print(WIFI_MON, "%s:%s\n", telemetry_buff_grep, telemetry_val);
+    get_formatted_time(tmp);
+    snprintf(buff, 1024, "%s:%s:%s\n", tmp, telemetry_buff_grep, telemetry_val);
+    write_to_file(wifi_health_log, buff);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
+int update_interop_sta_data(unsigned int vap_index) {
+
+    hash_map_t *sta_map;
+    interop_data_t *sta,*tmpsta;
+    mac_addr_str_t mac_str = { 0 };
+    mac_addr_str_t mac_ap_str = { 0 };
+    sta_map = get_interop_sta_data_map(vap_index);
+    int vapindex = (int)vap_index;
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, vapindex);
+        return RETURN_ERR;
+    }
+    sta = hash_map_get_first(sta_map);
+    while (sta != NULL) {
+        char *sta_mac_str = to_mac_str(sta->sta_mac, mac_str);
+        char *ap_mac_str = to_mac_str(sta->ap_mac, mac_ap_str);
+        telemetry_event_code_count(sta, vapindex, sta_mac_str, ap_mac_str);
+	sta = hash_map_get_next(sta_map, sta);
+	tmpsta=hash_map_remove(sta_map,mac_str);
+	if(tmpsta!= NULL) {
+	    free(tmpsta);
+	}
+    }
+    return RETURN_OK;
+}
+
+void update_interop_sta_all_vap_data_entry(void) {
+
+    unsigned int index, vap_index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    for (index = 0; index < getTotalNumberVAPs(); index++) {
+        vap_index = VAP_INDEX(mgr->hal_cap, index);
+	if (isVapPrivate(vap_index) || isVapHotspotSecure5g(vap_index) || isVapHotspotSecure6g(vap_index) || isVapHotspotOpen5g(vap_index) || isVapHotspotOpen6g(vap_index)) {
+            update_interop_sta_data(vap_index);
+	}
+    }
+}
+
+static int reset_interop_sta_data(void *arg) {
+
+    update_interop_sta_all_vap_data_entry();
+    return TIMER_TASK_COMPLETE;
+}
+
 
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
 {
@@ -1070,7 +1243,6 @@ void telemetry_event_wpa3_enhanced(int vapindex, char *mac, int rsnvariant, fram
     char telemetry_buff[64] = {0};
     char telemetry_val[128] = {0};
     char telemetry_buff_str[64] = {0};
-
     if (!mac) {
         wifi_util_info_print(WIFI_MON, "Error: MAC address is NULL\n");
         return;
@@ -1151,29 +1323,8 @@ int set_sta_client_mode(int ap_index, char *mac, int key_mgmt, frame_type_t fram
 
 void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
-    char buff[2048];
-    char tmp[128];
     sta_key_t sta_key;
-
     wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
-
-    /*Wrong password on private, Xfinity Home and LNF SSIDs*/
-    if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
-        get_formatted_time(tmp);
-
-        snprintf(buff, 2048, "%s WIFI_PASSWORD_FAIL:%d,%s\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key));
-        /* send telemetry of password failure */
-        write_to_file(wifi_health_log, buff);
-    }
-    /*ARRISXB6-11979 Possible Wrong WPS key on private SSIDs*/
-    if ((dev->reason == 2 || dev->reason == 14 || dev->reason == 19) && ( isVapPrivate(ap_index) ))  {
-        get_formatted_time(tmp);
-
-        snprintf(buff, 2048, "%s WIFI_POSSIBLE_WPS_PSK_FAIL:%d,%s,%d\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key), dev->reason);
-        /* send telemetry of WPS failure */
-        write_to_file(wifi_health_log, buff);
-    }
-    /*Calling process_disconnect as station is disconncetd from vAP*/
     process_disconnect(ap_index, dev);
 }
 
@@ -1549,6 +1700,9 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_clientdiag_update_config:
                         clientdiag_sheduler_enable(event_data->ap_index);
                     break;
+                    case wifi_event_monitor_auth_req:
+                         set_auth_req_frame_data(&event_data->u.msg);
+                    break;
                     case wifi_event_monitor_assoc_req:
                         set_assoc_req_frame_data(&event_data->u.msg);
                     break;
@@ -1559,6 +1713,9 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_stop_inst_msmt:
                         g_monitor_module.inst_msmt_id = 0;
                         scheduler_telemetry_tasks();
+                    break;
+                    case wifi_event_monitor_update_interop_interval:
+                        update_interop_interval();
                     break;
                     case wifi_event_monitor_data_collection_config:
                         coordinator_check_stats_config(&event_data->u.mon_stats_config);
@@ -2313,7 +2470,6 @@ int associated_device_diagnostics_send_event(void* arg)
 int get_chan_util_upload_period()
 {
     int logInterval = DEFAULT_CHANUTIL_LOG_INTERVAL;//Default Value 15mins.
-
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
 
     if (global_param == NULL) {
@@ -2423,7 +2579,151 @@ bool active_sta_connection_status(int ap_index, char *mac)
     return true;
 }
 
-int device_disassociated(int ap_index, char *mac, int reason)
+int increment_reason_count(interop_data_t *telemetry, wifi_reason_code_t code, int ap) {
+    if (ap == 0) {
+        switch (code) {
+            case WIFI_REASON_UNSPECIFIED: telemetry->sta_reason_counts[0]++; break;
+            case WIFI_REASON_PREV_AUTH_NOT_VALID: telemetry->sta_reason_counts[1]++; break;
+            case WIFI_REASON_DEAUTH_LEAVING: telemetry->sta_reason_counts[2]++; break;
+            case WIFI_REASON_STA_REQ_ASSOC_WITHOUT_AUTH: telemetry->sta_reason_counts[3]++; break;
+            case WIFI_REASON_MICHAEL_MIC_FAILURE: telemetry->sta_reason_counts[4]++; break;
+            case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT: telemetry->sta_reason_counts[5]++; break;
+            case WIFI_REASON_AKMP_NOT_VALID: telemetry->sta_reason_counts[6]++; break;
+            case WIFI_REASON_IEEE_802_1X_AUTH_FAILED: telemetry->sta_reason_counts[7]++; break;
+            case WIFI_REASON_INVALID_PMKID: telemetry->sta_reason_counts[8]++; break;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown reason code for station \n",__FUNCTION__,__LINE__);
+                  return -1;
+        }
+    }
+    else if (ap == 1) {
+        switch (code) {
+            case WIFI_REASON_UNSPECIFIED: telemetry->ap_reason_counts[0]++; break;
+            case WIFI_REASON_PREV_AUTH_NOT_VALID: telemetry->ap_reason_counts[1]++; break;
+            case WIFI_REASON_DEAUTH_LEAVING: telemetry->ap_reason_counts[2]++; break;
+            case WIFI_REASON_STA_REQ_ASSOC_WITHOUT_AUTH: telemetry->ap_reason_counts[3]++; break;
+            case WIFI_REASON_MICHAEL_MIC_FAILURE: telemetry->ap_reason_counts[4]++; break;
+            case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT: telemetry->ap_reason_counts[5]++; break;
+            case WIFI_REASON_AKMP_NOT_VALID: telemetry->ap_reason_counts[6]++; break;
+            case WIFI_REASON_IEEE_802_1X_AUTH_FAILED: telemetry->ap_reason_counts[7]++; break;
+            case WIFI_REASON_INVALID_PMKID: telemetry->ap_reason_counts[8]++; break;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown reason code for ap \n",__FUNCTION__,__LINE__); 
+                 return -1;
+        }
+    }
+    else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d it's not an ap or station mac \n",__FUNCTION__,__LINE__);
+        return -1;
+    }
+    return 0;
+}
+
+int increment_status_count(interop_data_t *telemetry, wifi_status_code_t code, int ap) {
+    if (ap == 0) {
+        switch (code) {
+            case WIFI_STATUS_UNSPECIFIED_FAILURE: telemetry->sta_status_counts[0]++; break;
+            case WIFI_STATUS_AUTH_TIMEOUT: telemetry->sta_status_counts[1]++; break;
+            case WIFI_STATUS_ASSOC_REJECTED_TEMPORARILY: telemetry->sta_status_counts[2]++; break;
+            case WIFI_STATUS_ROBUST_MGMT_FRAME_POLICY_VIOLATION: telemetry->sta_status_counts[3]++; break;
+            case WIFI_STATUS_AKMP_NOT_VALID: telemetry->sta_status_counts[4]++; break;
+            case WIFI_STATUS_INVALID_PMKID: telemetry->sta_status_counts[5]++; break;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown status code for station \n",__FUNCTION__,__LINE__);
+                 return -1;
+        }
+    }
+    else if (ap == 1) {
+        switch (code) { 
+            case WIFI_STATUS_UNSPECIFIED_FAILURE: telemetry->ap_status_counts[0]++; break;
+            case WIFI_STATUS_AUTH_TIMEOUT: telemetry->ap_status_counts[1]++; break;
+            case WIFI_STATUS_ASSOC_REJECTED_TEMPORARILY: telemetry->ap_status_counts[2]++; break;
+            case WIFI_STATUS_ROBUST_MGMT_FRAME_POLICY_VIOLATION: telemetry->ap_status_counts[3]++; break;
+            case WIFI_STATUS_AKMP_NOT_VALID: telemetry->ap_status_counts[4]++; break;
+            case WIFI_STATUS_INVALID_PMKID: telemetry->ap_status_counts[5]++; break;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown status code for ap \n",__FUNCTION__,__LINE__); 
+                 return -1;
+        }
+    }
+    else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d it's not an ap or station mac \n",__FUNCTION__,__LINE__);
+        return -1;
+    }
+    return 0;
+}
+
+
+int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int status)
+{
+    int is_ap = -1;
+    hash_map_t *sta_map;
+    interop_data_t *sta;
+    if (src_mac == NULL || dest_mac == NULL) {
+        wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d status:%d\n", __func__, __LINE__, ap_index, status);
+        return -1;
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s status:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac,status,type);
+    sta_map = get_interop_sta_data_map(ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
+        return RETURN_ERR;
+    }
+    sta = (interop_data_t *)hash_map_get(sta_map, src_mac);
+    if (NULL == sta) {
+        is_ap = 1;
+        wifi_util_dbg_print(WIFI_MON, "%s:%d is_ap is 1 as station is not found for vap_index:%d src_mac :%s \r\n", __func__, __LINE__, ap_index, src_mac);
+        sta = (interop_data_t *)hash_map_get(sta_map, dest_mac);
+        if (NULL == sta) {
+            wifi_util_dbg_print(WIFI_MON, "%s:%d station is not found for vap_index:%d dest_mac :%s \r\n", __func__, __LINE__, ap_index, dest_mac);
+            return RETURN_ERR;
+	}
+    }
+    else {
+        is_ap = 0;
+    }
+    wifi_status_code_t status_code = (wifi_status_code_t)status;
+    if (increment_status_count(sta, status_code, is_ap) == -1) {
+        wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular status is not there\n", __func__, __LINE__);
+        return 0;
+    }
+    return 0;
+}
+
+int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int reason_code)
+{
+    int is_ap = -1;
+    hash_map_t *sta_map;
+    interop_data_t *sta;
+    if (src_mac == NULL || dest_mac == NULL) {
+        wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason_code);
+        return -1;
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s reason:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac, reason_code, type);
+    sta_map = get_interop_sta_data_map(ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
+        return RETURN_ERR;
+    }
+
+    sta = (interop_data_t *)hash_map_get(sta_map, src_mac);
+    if (NULL == sta) {
+        is_ap = 1;
+        wifi_util_dbg_print(WIFI_MON, "%s:%d is_ap is 1 as station is not found for vap_index:%d src_mac :%s \r\n", __func__, __LINE__, ap_index, src_mac);
+        sta = (interop_data_t *)hash_map_get(sta_map, dest_mac);
+        if (NULL == sta) {
+            wifi_util_dbg_print(WIFI_MON, "%s:%d station is not found for vap_index:%d dest_mac :%s \r\n", __func__, __LINE__, ap_index, dest_mac);
+            return RETURN_ERR;
+	}
+    }
+    else {
+        is_ap = 0;
+    }
+    wifi_reason_code_t reason = (wifi_reason_code_t)reason_code;
+    if (increment_reason_count(sta, reason, is_ap) == -1) {
+        wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular reason is not there\n", __func__, __LINE__);
+        return 0;
+    }
+    return 0;
+}
+
+int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, int reason)
 {
     wifi_monitor_data_t data;
     assoc_dev_data_t assoc_data;
@@ -2432,39 +2732,40 @@ int device_disassociated(int ap_index, char *mac, int reason)
     mac_address_t grey_list_mac;
     bool is_sta_active;
 
-    if (mac == NULL) {
+    if (src_mac == NULL || dest_mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
         return -1;
     }
-
+    if ((ap_reason_code(ap_index, src_mac, dest_mac, type, reason)) != 0) {
+       wifi_util_dbg_print(WIFI_MON,"%s:%d failed in getting the reason code details as mac is null \n", __func__, __LINE__);
+    }
     if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
         wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
         greylist_data.reason = reason;
 
-        str_to_mac_bytes(mac, grey_list_mac);
+        str_to_mac_bytes(src_mac, grey_list_mac);
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
-        wifi_util_dbg_print(WIFI_MON," sending Greylist mac to  ctrl queue %s\n",mac);
+        wifi_util_dbg_print(WIFI_MON," sending Greylist mac to  ctrl queue %s\n",src_mac);
         push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
 
     }
 
-    is_sta_active = active_sta_connection_status(ap_index, mac);
+    is_sta_active = active_sta_connection_status(ap_index, src_mac);
 
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;
 
     data.ap_index = ap_index;
-    sscanf(mac, "%02x:%02x:%02x:%02x:%02x:%02x",
+    sscanf(src_mac, "%02x:%02x:%02x:%02x:%02x:%02x",
             &mac_addr[0], &mac_addr[1], &mac_addr[2],
             &mac_addr[3], &mac_addr[4], &mac_addr[5]);
     data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
     data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
     data.u.dev.reason = reason;
-
     push_event_to_monitor_queue(&data, wifi_event_monitor_disconnect, NULL);
 
     if (is_sta_active == false) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
+        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
         return 0;
     }
 
@@ -2598,7 +2899,7 @@ int device_max_client_rejection(int ap_index, char *mac, int reason)
     return 0;
 }
 
-int device_deauthenticated(int ap_index, char *mac, int reason)
+int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type, int reason)
 {
     wifi_monitor_data_t data;
     unsigned int mac_addr[MAC_ADDR_LEN];
@@ -2607,38 +2908,42 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     mac_address_t grey_list_mac;
     bool is_sta_active;
 
-    if (mac == NULL) {
+    if (src_mac == NULL || dest_mac == NULL ) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
         return -1;
     }
 
+    if ((ap_reason_code(ap_index, src_mac, dest_mac, type, reason)) != 0) {
+       wifi_util_dbg_print(WIFI_MON,"%s:%d failed in getting the reason code details as mac is null \n", __func__, __LINE__);
+       return -1;
+    }
+
     if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
-        str_to_mac_bytes(mac, grey_list_mac);
+        str_to_mac_bytes(src_mac, grey_list_mac);
         wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
         greylist_data.reason = reason;
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
-        wifi_util_dbg_print(WIFI_MON,"Sending Greylist mac to ctrl queue %s\n",mac);
+        wifi_util_dbg_print(WIFI_MON,"Sending Greylist mac to ctrl queue %s\n",src_mac);
         push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
 
     }
 
-    is_sta_active = active_sta_connection_status(ap_index, mac);
+    is_sta_active = active_sta_connection_status(ap_index, src_mac);
 
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;
 
     data.ap_index = ap_index;
-    sscanf(mac, "%02x:%02x:%02x:%02x:%02x:%02x",
+    sscanf(src_mac, "%02x:%02x:%02x:%02x:%02x:%02x",
             &mac_addr[0], &mac_addr[1], &mac_addr[2],
             &mac_addr[3], &mac_addr[4], &mac_addr[5]);
     data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
     data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
     data.u.dev.reason = reason;
-
     push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate, NULL);
 
     if (is_sta_active == false) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
+        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
         return 0;
     }
 
@@ -2925,6 +3230,31 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 
     return 0;
 }
+static int new_chan_util_period = 0;
+static void update_interop_interval(void)
+{
+    new_chan_util_period = get_chan_util_upload_period();
+    if (!g_monitor_module.inst_msmt_id) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+	if((g_monitor_module.curr_chan_util_period != new_chan_util_period) && (new_chan_util_period != 0)) {
+	    if (g_monitor_module.interop_id != 0) {
+	        scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.interop_id, new_chan_util_period*1000);
+	        g_monitor_module.curr_chan_util_period = new_chan_util_period;
+		wifi_util_dbg_print(WIFI_MON, "%s:%d updating new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+	    }
+	wifi_util_dbg_print(WIFI_MON, "%s:%d updated new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+	}
+    } else {
+        if (g_monitor_module.interop_id != 0) {
+            scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.interop_id);
+            g_monitor_module.interop_id = 0;
+	    wifi_util_dbg_print(WIFI_MON, "%s:%d setting interop id to zero new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+        }
+        wifi_util_dbg_print(WIFI_MON, "%s:%d interop id is zero new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+    }
+}
+
+
 
 static void scheduler_telemetry_tasks(void)
 {
@@ -3060,6 +3390,21 @@ int init_wifi_monitor()
         }
     }
 
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        wifi_util_dbg_print(WIFI_MON, "%s: incoming vapIndex:%d \n", __FUNCTION__, vap_index);
+        if (!(isVapPrivate(vap_index) || isVapHotspotSecure5g(vap_index) || isVapHotspotSecure6g(vap_index) || isVapHotspotOpen5g(vap_index) || isVapHotspotOpen6g(vap_index))) {
+            continue;
+        }
+        wifi_util_dbg_print(WIFI_MON, "%s: creating hashmap for vapIndex:%d \n", __FUNCTION__, vap_index);
+        g_monitor_module.bssid_data[i].interop_sta_map = hash_map_create();
+        if (g_monitor_module.bssid_data[i].interop_sta_map == NULL) {
+            deinit_wifi_monitor();
+            wifi_util_error_print(WIFI_MON, "interop_sta_map create error\n");
+            return -1;
+        }
+    }
+
     g_monitor_module.queue = queue_create();
     if (g_monitor_module.queue == NULL) {
         deinit_wifi_monitor();
@@ -3086,6 +3431,7 @@ int init_wifi_monitor()
 
     g_monitor_module.csi_sched_id = 0;
     g_monitor_module.csi_sched_interval = 0;
+    g_monitor_module.interop_id = 0;
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         vap_index = VAP_INDEX(mgr->hal_cap, i);
         radio = RADIO_INDEX(mgr->hal_cap, i);
@@ -3126,7 +3472,9 @@ int init_wifi_monitor()
     wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
     wifi_hal_stamode_callback_register(set_sta_client_mode);
+    wifi_hal_apStatusCode_callback_register(ap_status_code);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
+    scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.interop_id, reset_interop_sta_data, NULL, (get_chan_util_upload_period() * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, reset_wpa3_enhanced_sta_data, NULL, (MAX_AKM_REPORT_REFRESH_PERIOD * 1000), 0, FALSE);
     wifi_util_dbg_print(WIFI_MON, "%s:%d Wi-Fi monitor is initialized successfully\n", __func__, __LINE__);
 
@@ -3182,12 +3530,6 @@ int start_wifi_monitor ()
     if(attrp != NULL)
         pthread_attr_destroy( attrp );
 
-    g_monitor_module.sysevent_fd = get_misc_descriptor()->sysevent_open_fn("127.0.0.1", 0, 0, "wifiMonitor", &g_monitor_module.sysevent_token);
-    if (g_monitor_module.sysevent_fd < 0) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Failed to open sysevent\n", __func__, __LINE__);
-    } else {
-        wifi_util_info_print(WIFI_MON, "%s:%d: Opened sysevent\n", __func__, __LINE__);
-    }
     if (get_misc_descriptor()->initparodusTask_fn() == -1) {
         //wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to initialize paroduc task\n", __func__, __LINE__);
 
@@ -3201,8 +3543,10 @@ void deinit_wifi_monitor()
     unsigned int i;
     sta_data_t *sta, *temp_sta;
     telemetry_data_t *stat,*temp_stat;
+    interop_data_t *istat,*itemp_stat;
     mac_addr_str_t mac_stri = { 0 };
     char key[64] = {0};
+    wifi_mgr_t *mgr = get_wifimgr_obj();
     hash_map_t *collector_list = NULL;
 #ifdef MQTTCM
     if (mqttcm_enabled) {
@@ -3211,7 +3555,6 @@ void deinit_wifi_monitor()
 #endif
     csi_pinger_data_t *pinger_data = NULL, *tmp_pinger_data = NULL;
     mac_addr_str_t mac_str = { 0 };
-    get_misc_descriptor()->sysevent_close_fn(g_monitor_module.sysevent_fd, g_monitor_module.sysevent_token);
     if(g_monitor_module.queue != NULL)
         queue_destroy(g_monitor_module.queue);
 
@@ -3253,6 +3596,27 @@ void deinit_wifi_monitor()
         }
     }
 
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        if (!(isVapPrivate(vap_index) || isVapHotspotSecure5g(vap_index) || isVapHotspotSecure6g(vap_index) || isVapHotspotOpen5g(vap_index) || isVapHotspotOpen6g(vap_index))) {
+            continue;
+        }
+        if(g_monitor_module.bssid_data[i].interop_sta_map != NULL) {
+            istat = hash_map_get_first(g_monitor_module.bssid_data[i].interop_sta_map);
+            while (istat != NULL) {
+                memset(key, 0, sizeof(key));
+                to_sta_key(istat->sta_mac, key);
+                wifi_util_info_print(WIFI_MON, "Processing STA with MAC: %s\r\n", to_mac_str(istat->sta_mac, mac_stri));
+                istat = hash_map_get_next(g_monitor_module.bssid_data[i].interop_sta_map, istat);
+                itemp_stat = hash_map_remove(g_monitor_module.bssid_data[i].interop_sta_map, key);
+                if (itemp_stat != NULL) {
+                    free(itemp_stat);
+                }
+            }
+            hash_map_destroy(g_monitor_module.bssid_data[i].interop_sta_map);
+        }
+    }
+	
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         if(g_monitor_module.bssid_data[i].wpa3_sta_map != NULL) {
             stat = hash_map_get_first(g_monitor_module.bssid_data[i].wpa3_sta_map);

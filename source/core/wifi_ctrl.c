@@ -1485,6 +1485,7 @@ int wifi_hal_platform_post_init()
     unsigned int index = 0;
     wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
     wifi_vap_info_map_t *p_vap_map = NULL;
+    wifi_global_param_t *global_param;
 
     memset(vap_map, 0, sizeof(vap_map));
 
@@ -1503,6 +1504,13 @@ int wifi_hal_platform_post_init()
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s start wifi apps failed, ret:%d\n",__FUNCTION__, ret);
         return RETURN_ERR;
+    }
+
+    global_param = get_wifidb_wifi_global_param();
+    if (global_param != NULL) {
+        wifi_hal_set_mgt_frame_rate_limit(global_param->mgt_frame_rate_limit_enable,
+            global_param->mgt_frame_rate_limit, global_param->mgt_frame_rate_limit_window_size,
+            global_param->mgt_frame_rate_limit_cooldown_time);
     }
 
     return RETURN_OK;
@@ -2878,6 +2886,25 @@ UINT getPrivateApFromRadioIndex(UINT radioIndex)
         }
     }
     wifi_util_dbg_print(WIFI_CTRL,"getPrivateApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    return 0;
+}
+
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+{
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (vap_prefix == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
+        return 0;
+    }
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
+        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
+               getRadioIndexFromAp(apIndex) == radioIndex ) {
+            return apIndex;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"getApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
     return 0;
 }
 

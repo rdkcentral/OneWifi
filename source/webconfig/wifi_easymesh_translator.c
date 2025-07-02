@@ -308,6 +308,15 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         }
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
         em_radio_info->enabled = oper_param->enable;
+
+        if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
+            em_radio_info->band = 0;
+        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
+            em_radio_info->band = 1;
+        } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
+            em_radio_info->band = 2;
+        }
+        
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
@@ -858,10 +867,8 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                 em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
             // Update the consolidated map
             // Link metrics and Extended Link metrics
-            if (ap_metrics->is_sta_link_metrics_enabled == true) {
-                em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
-                    em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
-                if (em_sta_dev_info != NULL) {
+            if (em_sta_dev_info != NULL) {
+                if (ap_metrics->is_sta_link_metrics_enabled == true) {
                     strncpy(em_sta_dev_info->sta_client_type, sta_stats->client_type, sizeof(em_sta_dev_info->sta_client_type));
                     em_sta_dev_info->sta_client_type[strlen(sta_stats->client_type)] = '\0';
                     em_sta_dev_info->last_ul_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
@@ -871,15 +878,9 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                     em_sta_dev_info->rcpi                     = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
                     em_sta_dev_info->util_tx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit;
                     em_sta_dev_info->util_rx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive;
-                    //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: LM updated %d\n", __func__, __LINE__);
                 }
-            }
 
-            if (ap_metrics->is_sta_traffic_stats_enabled == true) {
-                em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
-                    em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
-
-                if (em_sta_dev_info != NULL) {
+                if (ap_metrics->is_sta_traffic_stats_enabled == true) {
                     //Traffic stats
                     em_sta_dev_info->pkts_tx                  = ap_metrics->sta_traffic_stats[count].packets_sent;
                     em_sta_dev_info->pkts_rx                  = ap_metrics->sta_traffic_stats[count].packets_rcvd;
@@ -888,7 +889,6 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                     em_sta_dev_info->errors_tx                = ap_metrics->sta_traffic_stats[count].tx_packtes_errs;
                     em_sta_dev_info->errors_rx                = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
                     em_sta_dev_info->retrans_count            = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
-                    //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Traffic stats  updated\n", __func__, __LINE__);
                 }
             }
         }
@@ -1460,6 +1460,10 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     int vap_index = 0, radio_index = 0;
     wifi_platform_property_t *wifi_prop;
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+    rdk_wifi_radio_t *radio = NULL;
+    wifi_vap_info_t *vap = NULL;
+    wifi_vap_info_map_t *vap_map = NULL;
+    int i = 0;
 
     if (params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
@@ -1477,12 +1481,31 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
         return webconfig_error_translate_to_easymesh;
     }
 
-    radio_info = proto->get_radio_info(proto->data_model, radio_index);
-    bss_info = proto->get_bss_info(proto->data_model, vap_index);
+    radio = &params->radios[radio_index];
+    vap_map = &radio->vaps.vap_map;
+
+    for (i = 0; i < radio->vaps.num_vaps; i++) {
+        vap = &vap_map->vap_array[i];
+        if (vap->vap_index == vap_index) {
+            break;
+        }
+    }
+
+    if (vap == NULL){
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap is NULL\n", __func__,
+            __LINE__);
+    }
+
+    bss_info = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
+
+    if (bss_info == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bss_info is NULL\n", __func__,
+            __LINE__);
+    }
 
     memcpy(em_sta_dev_info.id, params->sta_beacon_report.mac_addr, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.bssid, bss_info->bssid.mac, sizeof(mac_address_t));
-    memcpy(em_sta_dev_info.radiomac, radio_info->intf.mac, sizeof(mac_address_t));
+    memcpy(em_sta_dev_info.radiomac, bss_info->ruid.mac, sizeof(mac_address_t));
     em_sta_dev_info.beacon_report_len = params->sta_beacon_report.data_len;
     em_sta_dev_info.num_beacon_meas_report = params->sta_beacon_report.num_br_data;
 

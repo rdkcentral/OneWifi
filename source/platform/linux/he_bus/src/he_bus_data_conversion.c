@@ -417,12 +417,14 @@ uint32_t set_bus_object_payload_data(he_bus_raw_data_t *src_data, he_bus_raw_dat
 {
     uint32_t total_payload_data = 0;
 
-    src_data->data_type = dest_data->data_type;
-    total_payload_data += sizeof(dest_data->data_type);
-    src_data->raw_data = dest_data->raw_data;
-    total_payload_data += dest_data->raw_data_len;
-    src_data->raw_data_len = dest_data->raw_data_len;
-    total_payload_data += sizeof(dest_data->raw_data_len);
+    if (dest_data != NULL) {
+        src_data->data_type = dest_data->data_type;
+        total_payload_data += sizeof(dest_data->data_type);
+        src_data->raw_data = dest_data->raw_data;
+        total_payload_data += dest_data->raw_data_len;
+        src_data->raw_data_len = dest_data->raw_data_len;
+        total_payload_data += sizeof(dest_data->raw_data_len);
+    }
     return total_payload_data;
 }
 
@@ -569,6 +571,42 @@ he_bus_error_t process_bus_sub_event(he_bus_handle_t handle, int socket_fd, char
     return he_bus_error_success;
 }
 
+he_bus_error_t process_bus_method_event(he_bus_handle_t handle, char *comp_name,
+    he_bus_data_object_t *p_obj_data, he_bus_raw_data_t *p_res_raw_data)
+{
+    VERIFY_NULL_WITH_RC(handle);
+    VERIFY_NULL_WITH_RC(comp_name);
+    VERIFY_NULL_WITH_RC(p_obj_data);
+    VERIFY_NULL_WITH_RC(p_res_raw_data);
+
+    he_bus_error_t status = he_bus_error_success;
+    if (handle->root_element == NULL || p_obj_data->name_len == 0) {
+        he_bus_core_error_print("%s:%d Node root element or object name is NULL - msg from:%s\r\n",
+            __func__, __LINE__, comp_name);
+        return he_bus_error_invalid_input;
+    }
+
+    element_node_t *node = retrieve_instance_element(handle, handle->root_element,
+        p_obj_data->name);
+    if (node == NULL) {
+        he_bus_core_error_print("%s:%d Node is not found for :%s namespace\r\n", __func__, __LINE__,
+            p_obj_data->name);
+        return he_bus_error_destination_not_found;
+    } else {
+        if (node->cb_table.method_handler != NULL) {
+            ELM_LOCK(node->element_mutex);
+            status = node->cb_table.method_handler(p_obj_data->name, &p_obj_data->data,
+                p_res_raw_data, NULL);
+            ELM_UNLOCK(node->element_mutex);
+        } else {
+            he_bus_core_error_print("%s:%d Node method handler is not found for :%s namespace\r\n",
+                __func__, __LINE__, p_obj_data->name);
+            return he_bus_error_invalid_handle;
+        }
+    }
+    return status;
+}
+
 he_bus_error_t process_bus_get_event(he_bus_handle_t handle, char *comp_name,
     he_bus_data_object_t *p_obj_data, he_bus_raw_data_t *p_res_raw_data)
 {
@@ -689,6 +727,11 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
             prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
                 &payload_data, ret);
             break;
+        case he_bus_msg_method_event:
+            ret = process_bus_method_event(handle, p_msg_data->component_name, p_obj_data,
+                &payload_data);
+            prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
+                &payload_data, ret);
         default:
             he_bus_core_error_print("%s:%d unsupported msg sub type:%d from:%s\r\n", __func__,
                 __LINE__, p_obj_data->msg_sub_type, p_obj_data->name);

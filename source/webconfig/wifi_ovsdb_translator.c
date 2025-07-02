@@ -868,7 +868,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             memset(default_vap_info->u.sta_info.mac, 0, sizeof(default_vap_info->u.sta_info.mac));
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
-                default_vap_info->u.sta_info.security.wpa3_transition_disable = true;
+                default_vap_info->u.sta_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.sta_info.security.encr = wifi_encryption_aes;
                 default_vap_info->u.sta_info.security.mfp = wifi_mfp_cfg_required;
             }
@@ -895,11 +895,13 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         default_vap_info->vap_mode = wifi_vap_mode_ap;
         default_vap_info->u.bss_info.enabled = false;
         default_vap_info->u.bss_info.bssMaxSta = 75;
+        default_vap_info->u.bss_info.inum_sta = 0;
         snprintf(default_vap_info->u.bss_info.interworking.interworking.hessid,
             sizeof(default_vap_info->u.bss_info.interworking.interworking.hessid),
             "11:22:33:44:55:66");
         convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
         default_vap_info->u.bss_info.mbo_enabled = true;
+        default_vap_info->u.bss_info.interop_ctrl = false;
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         default_vap_info->u.bss_info.hostap_mgt_frame_ctrl = true;
@@ -914,7 +916,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             default_vap_info->u.bss_info.rapidReconnectEnable = true;
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                default_vap_info->u.bss_info.security.wpa3_transition_disable = true;
+                default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             } else {
@@ -947,7 +949,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             strcpy(default_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                default_vap_info->u.bss_info.security.wpa3_transition_disable = true;
+                default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
@@ -980,7 +982,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             default_vap_info->u.bss_info.showSsid = false;
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                default_vap_info->u.bss_info.security.wpa3_transition_disable = true;
+                default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
