@@ -153,7 +153,7 @@ int scheduler_free_timer_task_arg(struct scheduler *sched, int id);
   * Arguments:
   *      sched - Pointer to the scheduler struct
   *      id - unique identifier to denote the timer task
-  *      new_time - Time to which interval will be added
+  *      new_time - Time at which previous event was executed
   * Returns:
   *       Returns 0 on Success, -1 on Failure
   */

@@ -3898,19 +3898,19 @@ int collector_postpone_execute_task(void *arg)
     int id = elem->collector_postpone_task_sched_id;
 
     if ((mon_data->scan_status[elem->args->radio_index] == 1) && (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
-        wifi_util_info_print(WIFI_MON, "DFS_DEBUG %s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
+        wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
         scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
         elem->collector_postpone_task_sched_id = id;
         elem->postpone_cnt++;
     } else {
         elem->collector_postpone_task_sched_id = 0;
         elem->postpone_cnt = 0;
-        wifi_util_info_print(WIFI_MON, "%s : %d DFS_DEBUG Executing collector task key : %s interval:%lu \n",__func__,__LINE__, elem->key, elem->collector_task_interval_ms);
+        wifi_util_dbg_print(WIFI_MON, "%s : %d Executing collector task key : %s\n",__func__,__LINE__, elem->key);
         if (elem->stat_desc->execute_stats_api == NULL || elem->stat_desc->execute_stats_api(elem, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
             return RETURN_ERR;
         }
-        wifi_util_info_print(WIFI_MON, "%s : %d DFS_DEBUG Execution completed for collector task key : %s\n",__func__,__LINE__, elem->key);
+        wifi_util_dbg_print(WIFI_MON, "%s : %d Execution completed for collector task key : %s\n",__func__,__LINE__, elem->key);
     }
 
     return RETURN_OK;
@@ -3926,6 +3926,7 @@ int collector_execute_task(void *arg)
             elem->stat_desc->stats_type == mon_stats_type_neighbor_stats) {
         if (mon_data->scan_status[elem->args->radio_index] == 1) {
             if (elem->collector_postpone_task_sched_id == 0) {
+                wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
                 scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
                 elem->collector_postpone_task_sched_id = id;
                 elem->postpone_cnt++;
@@ -3934,16 +3935,12 @@ int collector_execute_task(void *arg)
         }
     }
     elem->postpone_cnt = 0;
-    wifi_util_info_print(WIFI_MON, "%s : %d DFS_DEBUG Executing collector task key : %s\n",__func__,__LINE__, elem->key);
-    if( elem->args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN ) {
-        wifi_util_info_print(WIFI_MON, "%s : %d DFS_DEBUG sched_id:%d interval:%lu \n",__func__,__LINE__,
-            elem->collector_task_sched_id, elem->collector_task_interval_ms);
-    }
-
+    wifi_util_dbg_print(WIFI_MON, "%s : %d Executing collector task key : %s\n",__func__,__LINE__, elem->key);
     if (elem->stat_desc->execute_stats_api == NULL || elem->stat_desc->execute_stats_api(elem, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "DFS_DEBUG %s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
+        wifi_util_error_print(WIFI_MON, "%s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
         return RETURN_ERR;
     }
+    wifi_util_dbg_print(WIFI_MON, "%s : %d Execution completed for collector task key : %s\n",__func__,__LINE__, elem->key);
 
     return RETURN_OK;
 }
@@ -4004,8 +4001,6 @@ int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_el
 
     scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &id, collector_execute_task,
             (void *)collector_elem, collector_elem->collector_task_interval_ms, 0, collector_elem->start_immediately);
-    wifi_util_info_print(WIFI_MON, "%s : %d DFS_DEBUG sched_id:%d id:%d interval:%lu \n",
-        __func__,__LINE__, collector_elem->collector_task_sched_id, id, collector_elem->collector_task_interval_ms);
 
     collector_elem->collector_task_sched_id = id;
     return RETURN_OK;
@@ -4234,7 +4229,6 @@ int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned lo
 
 int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_mon_stats_config_t *stats_config)
 {
-    wifi_util_error_print(WIFI_MON, "DFS_DEBUG Inside %s:%d: \n", __func__,__LINE__);
     if (collector_elem == NULL || collector_elem->stat_desc == NULL || collector_elem->provider_list == NULL || stats_config == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: Null pointer\n", __func__,__LINE__);
         return RETURN_ERR;
@@ -4382,7 +4376,6 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
     if (collector_elem == NULL) {
         if (mon_stats_config->req_state == mon_stats_request_state_start) {
-            wifi_util_info_print(WIFI_MON, "%s:%d: DFS_DEBUG calling coordinator_create_task\n", __func__,__LINE__);
             if (coordinator_create_task(&collector_elem, mon_stats_config, stat_desc) !=
                 RETURN_OK) {
                 wifi_util_error_print(WIFI_MON,
