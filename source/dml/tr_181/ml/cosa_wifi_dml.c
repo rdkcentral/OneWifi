@@ -387,6 +387,11 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->wifi_offchannelscan_sm_rfc;
         return TRUE;
     }
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_MemwrapTool_RFC", TRUE))
+    {
+        *pBool = rfc_pcfg->memwraptool_app_rfc;
+        return TRUE;
+    }
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
     {
         *pBool = rfc_pcfg->wifiinterworking_rfc;
@@ -1127,6 +1132,12 @@ WiFi_SetParamBoolValue
     if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE)) {
         if(bValue != rfc_pcfg->wifi_offchannelscan_sm_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_offchannelscan_sm_rfc);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_MemwrapTool_RFC", TRUE)) {
+        if (bValue != rfc_pcfg->memwraptool_app_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_memwraptool_app_rfc);
         }
         return TRUE;
     }
