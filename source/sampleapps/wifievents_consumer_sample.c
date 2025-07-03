@@ -23,7 +23,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <getopt.h>
-#include <rbus.h>
+#include <rbus/rbus.h>
 #include <signal.h>
 #include <wifi_hal.h>
 #include <collection.h>
