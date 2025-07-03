@@ -1062,8 +1062,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             "%s:%d  Retry (%d) to trigger scan for scan mode %d radio index %d\n", __func__,
             __LINE__, mon_data->scan_trigger_retries[args->radio_index], args->scan_mode,
             args->radio_index);
-        clock_gettime(CLOCK_MONOTONIC, &(mon_data->last_scan_time));
-        mon_data->scan_failed = true;
+        clock_gettime(CLOCK_MONOTONIC, &(mon_data->last_scan_time[args->radio_index]));
+        mon_data->scan_failed[args->radio_index] = true;
         return RETURN_OK;
     }
 
@@ -1071,9 +1071,9 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         RADIO_SCAN_RESULT_INTERVAL / 2, 1, FALSE);
     c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
 
-    if(mon_data->scan_failed == true) {
-        scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id, mon_data->last_scan_time);
-        mon_data->scan_failed = false;
+    if(mon_data->scan_failed[args->radio_index] == true) {
+        scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id, mon_data->last_scan_time[args->radio_index]);
+        mon_data->scan_failed[args->radio_index] = false;
     }
 
     return RETURN_OK;
