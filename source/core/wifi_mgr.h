@@ -61,6 +61,7 @@ typedef struct {
 wifi_mgr_t *get_wifimgr_obj();
 wifi_dml_t *get_wifidml_obj(void);
 
+
 #ifdef __cplusplus
 }
 #endif

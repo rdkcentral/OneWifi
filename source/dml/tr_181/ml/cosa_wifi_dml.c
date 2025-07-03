@@ -115,6 +115,7 @@ uint8_t g_radio_instance_num = 0;
 extern void* g_pDslhDmlAgent;
 extern int gChannelSwitchingCount;
 extern bool wifi_api_is_device_associated(int ap_index, char *mac);
+extern bool levl_init_complete;
 
 /***********************************************************************
  IMPORTANT NOTE:
@@ -356,7 +357,11 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Levl", TRUE))
     {
         *pBool = rfc_pcfg->levl_enabled_rfc;
-        return TRUE;
+
+        if (levl_init_complete == FALSE)
+            return FALSE;
+        else
+            return TRUE;
     }
 
     if (AnscEqualString(ParamName, "DFS", TRUE))
