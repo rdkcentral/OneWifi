@@ -387,6 +387,12 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->wifi_offchannelscan_sm_rfc;
         return TRUE;
     }
+
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_MemwrapTool_RFC") == 0)
+    {
+        *pBool = rfc_pcfg->memwraptool_app_rfc;
+        return TRUE;
+    }
     if (strcmp(ParamName, "WiFi-Interworking") == 0)
     {
         *pBool = rfc_pcfg->wifiinterworking_rfc;
@@ -1126,6 +1132,13 @@ WiFi_SetParamBoolValue
     if (strcmp(ParamName, "WiFi-OffChannelScan") == 0) {
         if(bValue != rfc_pcfg->wifi_offchannelscan_sm_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_offchannelscan_sm_rfc);
+        }
+        return TRUE;
+    }
+
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_MemwrapTool_RFC") == 0) {
+        if (bValue != rfc_pcfg->memwraptool_app_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_memwraptool_app_rfc);
         }
         return TRUE;
     }
@@ -7851,7 +7864,6 @@ Security_GetParamBoolValue
     uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
     wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
     wifi_radio_operationParam_t *radioOperation = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(pcfg->radio_index);
-    BOOL WPA3_RFC = FALSE;
 
     if ((vapInfo == NULL) || (radioOperation ==NULL))
     {
@@ -7875,13 +7887,7 @@ Security_GetParamBoolValue
     }
     if (strcmp(ParamName, "X_RDKCENTRAL-COM_TransitionDisable") == 0)
     {
-        CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
-
-        if ((radioOperation->band != WIFI_FREQUENCY_6_BAND) && (WPA3_RFC)) {
-            *pBool = l_security_cfg->wpa3_transition_disable;
-        } else {
-            *pBool = FALSE;
-        }
+        *pBool = l_security_cfg->wpa3_transition_disable;
     }
 
     if (strcmp(ParamName, "Reset") == 0) {
@@ -8030,6 +8036,13 @@ Security_GetParamUlongValue
         *puLong = pcfg->u.radius.port;
         return TRUE;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.port;
+        return TRUE;
+    }
 	
 	if (strcmp(ParamName, "SecondaryRadiusServerPort") == 0)
     {
@@ -8038,6 +8051,12 @@ Security_GetParamUlongValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.s_port;
+        return TRUE;
+    }
 
     if (strcmp(ParamName, "RadiusDASPort") == 0)
     {
@@ -8319,6 +8338,21 @@ Security_GetParamStringValue
         }
         return 0;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerIPAddr", TRUE))
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
     
     if (strcmp(ParamName, "SecondaryRadiusServerIPAddr") == 0)
     {
@@ -8334,9 +8368,25 @@ Security_GetParamStringValue
         }
         return 0;
     }
+
+    if (strcmp(ParamName, "RepurposedSecondaryRadiusServerIPAddr") == 0)
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.s_ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.s_ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
+
     if (strcmp(ParamName, "MFPConfig") == 0)
     {
-	convert_security_mode_integer_to_string(pcfg->mfp,pValue);
+	      convert_security_mode_integer_to_string(pcfg->mfp,pValue);
         return 0;
     }
     
@@ -8407,7 +8457,6 @@ Security_SetParamBoolValue
     uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
     wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
     wifi_radio_operationParam_t *radioOperation = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(pcfg->radio_index);
-    BOOL WPA3_RFC = FALSE;
 
     if ((vapInfo == NULL) || (radioOperation ==NULL))
     {
@@ -8432,27 +8481,12 @@ Security_SetParamBoolValue
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "X_RDKCENTRAL-COM_TransitionDisable") == 0)
     {
-        if (radioOperation->band == WIFI_FREQUENCY_6_BAND)
-        {
-            CcspWifiTrace(("RDK_LOG_ERROR, %s Transition Mode not supported for 6GHz radio\n", __FUNCTION__));
-            return FALSE;
+        if (l_security_cfg->wpa3_transition_disable != bValue) {
+            l_security_cfg->wpa3_transition_disable = bValue;
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value=%d\n",
+                __func__, __LINE__, l_security_cfg->wpa3_transition_disable, bValue);
+            set_dml_cache_vap_config_changed(instance_number - 1);
         }
-        /* GET the WPA3 Transition RFC value */
-        CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
-        if ( (bValue == TRUE) && (!WPA3_RFC) )
-        {
-            CcspTraceError(("%s: WPA3 Transition RFC is not enabled\n",__func__));
-            return FALSE;
-        }
-        if ( (l_security_cfg->mode != wifi_security_mode_wpa3_transition) &&
-                (WPA3_RFC) )
-        {
-            CcspTraceError(("%s: Security mode is not WPA3-Personal-Transition\n",__func__));
-            return FALSE;
-        }
-        l_security_cfg->wpa3_transition_disable = bValue;
-	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->wpa3_transition_disable,bValue);
-	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -8632,6 +8666,18 @@ Security_SetParamUlongValue
         return TRUE;
     }
 
+    if (strcmp(ParamName, "RepurposedRadiusServerPort") == 0)
+    {
+        if ( l_security_cfg->repurposed_radius.port != uValue )
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:RepurposedRadiusServerPort=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->repurposed_radius.port,uValue);
+            /* save update to backup */
+            l_security_cfg->repurposed_radius.port = uValue;
+            set_dml_cache_vap_config_changed(instance_number - 1);
+        }
+        return TRUE;
+    }
+
     if (strcmp(ParamName, "SecondaryRadiusServerPort") == 0)
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
@@ -8645,6 +8691,18 @@ Security_SetParamUlongValue
             /* save update to backup */
             l_security_cfg->u.radius.s_port = uValue;
 	    set_dml_cache_vap_config_changed(instance_number - 1);
+        }
+        return TRUE;
+    }
+
+    if (strcmp(ParamName, "RepurposedSecondaryRadiusServerPort") == 0)
+    {
+        if ( l_security_cfg->repurposed_radius.s_port != uValue )
+        {
+	        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:SecondaryRadiusServerPort=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->repurposed_radius.s_port,uValue);
+            /* save update to backup */
+            l_security_cfg->repurposed_radius.s_port = uValue;
+	        set_dml_cache_vap_config_changed(instance_number - 1);
         }
         return TRUE;
     }
@@ -9012,6 +9070,32 @@ Security_SetParamStringValue
 
         return TRUE;
     }
+
+    rc = strcmp_s("RepurposedRadiusSecret", strlen("RepurposedRadiusSecret"), ParamName, &ind);
+    ERR_CHK(rc);
+    if((rc == EOK) && (!ind))
+    {
+        rc = strcmp_s(l_security_cfg->repurposed_radius.key, sizeof(l_security_cfg->repurposed_radius.key), pString, &ind);
+        ERR_CHK(rc);
+        if((rc == EOK) && (!ind))
+            return TRUE;
+
+		/* save update to backup */
+        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.key)))
+        {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedRadiusSecret is NULL or too long(length = %s)\n",__func__, __LINE__,strlen(pString));
+            return FALSE;
+        }
+
+        rc = strcpy_s(l_security_cfg->repurposed_radius.key, sizeof(l_security_cfg->repurposed_radius.key), pString);
+        if(rc != EOK)
+        {
+            ERR_CHK(rc);
+            return FALSE;
+        }
+	    set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
 	
     rc = strcmp_s("SecondaryRadiusSecret", strlen("SecondaryRadiusSecret"), ParamName, &ind);
     ERR_CHK(rc);
@@ -9037,6 +9121,31 @@ Security_SetParamStringValue
               return FALSE;
         }
 	set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    rc = strcmp_s("RepurposedSecondaryRadiusSecret", strlen("RepurposedSecondaryRadiusSecret"), ParamName, &ind);
+    ERR_CHK(rc);
+    if((rc == EOK) && (!ind))
+    {
+        rc = strcmp_s(l_security_cfg->repurposed_radius.s_key, sizeof(l_security_cfg->repurposed_radius.s_key), pString, &ind);
+        ERR_CHK(rc);
+        if((rc == EOK) && (!ind))
+           return TRUE;
+    
+	/* save update to backup */
+        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.s_key)))
+        {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedSecondaryRadiusSecret is NULL or too long(length = %s)\n",__func__, __LINE__,strlen(pString));
+            return FALSE;
+        }
+        rc = strcpy_s(l_security_cfg->repurposed_radius.s_key, sizeof(l_security_cfg->repurposed_radius.s_key), pString);
+        if(rc != EOK)
+        {
+              ERR_CHK(rc);
+              return FALSE;
+        }
+	    set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -9067,6 +9176,31 @@ Security_SetParamStringValue
         return TRUE;
     }
 	
+    rc = strcmp_s("RepurposedRadiusServerIPAddr", strlen("RepurposedRadiusServerIPAddr"), ParamName, &ind);
+    ERR_CHK(rc);
+    if((rc == EOK) && (!ind))
+    {
+        rc = strcmp_s((char*)l_security_cfg->repurposed_radius.ip, sizeof( l_security_cfg->repurposed_radius.ip), pString, &ind);
+        ERR_CHK(rc);
+        if((rc == EOK) && (!ind))
+	    return TRUE;
+
+	/* save update to backup */
+        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.ip)))
+        {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedRadiusServerIPAddr string too long(length = %d) or NULL\n",__func__, __LINE__,strlen(pString));
+            return FALSE;
+        }
+        rc = strcpy_s( (char*)l_security_cfg->repurposed_radius.ip, sizeof(l_security_cfg->repurposed_radius.ip), pString);
+        if(rc != EOK)
+        {
+              ERR_CHK(rc);
+              return FALSE;
+        }
+	    set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }    
+
     rc = strcmp_s("SecondaryRadiusServerIPAddr", strlen("SecondaryRadiusServerIPAddr"), ParamName, &ind);
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
@@ -9091,6 +9225,31 @@ Security_SetParamStringValue
               return FALSE;
         }
 	set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    rc = strcmp_s("RepurposedSecondaryRadiusServerIPAddr", strlen("RepurposedSecondaryRadiusServerIPAddr"), ParamName, &ind);
+    ERR_CHK(rc);
+    if((rc == EOK) && (!ind))
+    {
+        rc = strcmp_s((char*)l_security_cfg->u.radius.s_ip, sizeof(l_security_cfg->u.radius.s_ip), pString, &ind);
+        ERR_CHK(rc);
+        if((rc == EOK) && (!ind))
+            return TRUE;
+        
+	/* save update to backup */
+        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.s_ip)))
+        {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedSecondaryRadiusServerIPAddr string too long(length = %d) or NULL\n",__func__, __LINE__,strlen(pString));
+            return FALSE;
+        }
+        rc = strcpy_s((char*)l_security_cfg->repurposed_radius.s_ip, sizeof(l_security_cfg->repurposed_radius.s_ip), pString);
+        if(rc != EOK)
+        {
+              ERR_CHK(rc);
+              return FALSE;
+        }
+	    set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
