@@ -158,6 +158,8 @@ typedef struct {
     int scan_status[MAX_NUM_RADIOS];
     int scan_results_retries[MAX_NUM_RADIOS];
     int scan_trigger_retries[MAX_NUM_RADIOS];
+    struct timespec last_scan_time[MAX_NUM_RADIOS];
+    bool scan_failed[MAX_NUM_RADIOS];
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
     instant_msmt_t      inst_msmt;
@@ -186,8 +188,6 @@ typedef struct {
     bool is_blaster_running;
     hash_map_t  *clctr_subscriber_map; //clctr_subscription_t
     wifi_channelMap_t channel_map[MAX_NUM_RADIOS][MAX_CHANNELS];
-    struct timespec last_scan_time;
-    bool scan_failed;
 } wifi_monitor_t;
 
 typedef struct {

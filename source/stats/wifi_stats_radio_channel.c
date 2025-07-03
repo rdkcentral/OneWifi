@@ -1067,14 +1067,14 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         return RETURN_OK;
     }
 
+    scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results, c_elem,
+        RADIO_SCAN_RESULT_INTERVAL / 2, 1, FALSE);
+    c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
+
     if(mon_data->scan_failed == true) {
         scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id, mon_data->last_scan_time);
         mon_data->scan_failed = false;
     }
-
-    scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results, c_elem,
-        RADIO_SCAN_RESULT_INTERVAL / 2, 1, FALSE);
-    c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
 
     return RETURN_OK;
 }
