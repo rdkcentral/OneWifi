@@ -62,10 +62,10 @@ csi_data_json_obj_t *get_csi_json_obj(void)
     return &json_obj;
 }
 
-#define VERIFY_NULL_CHECK(T) \
-    if (NULL == (T)) { \
+#define VERIFY_NULL_CHECK(T)                                                                     \
+    if (NULL == (T)) {                                                                           \
         WIFI_EVENT_CONSUMER_DGB("[%s:%d] input parameter:%s is NULL\n", __func__, __LINE__, #T); \
-        return; \
+        return;                                                                                  \
     }
 
 FILE *g_fpg = NULL;
@@ -408,8 +408,10 @@ void json_add_wifi_csi_matrix_info(cJSON *csi_matrix_obj_wrapper, wifi_csi_data_
                 cJSON *real_imag_pair_array = cJSON_CreateArray();
                 VERIFY_NULL_CHECK(real_imag_pair_array);
 
-                int16_t real_data = (int16_t)((csi->csi_matrix[sc_idx][ant_idx][stream_idx] >> 16) & 0xFFFF);
-                int16_t imag_data = (int16_t)(csi->csi_matrix[sc_idx][ant_idx][stream_idx] & 0xFFFF);
+                int16_t real_data = (int16_t)((csi->csi_matrix[sc_idx][ant_idx][stream_idx] >> 16) &
+                    0xFFFF);
+                int16_t imag_data = (int16_t)(csi->csi_matrix[sc_idx][ant_idx][stream_idx] &
+                    0xFFFF);
 
                 cJSON_AddItemToArray(real_imag_pair_array, cJSON_CreateNumber(real_data));
                 cJSON_AddItemToArray(real_imag_pair_array, cJSON_CreateNumber(imag_data));
@@ -455,7 +457,8 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
     }
 
     to_mac_str(sta_mac, str_sta_mac);
-    p_csi_json_obj->json_csi_sta_mac = cJSON_GetObjectItem(p_csi_json_obj->json_csi_obj, str_sta_mac);
+    p_csi_json_obj->json_csi_sta_mac = cJSON_GetObjectItem(p_csi_json_obj->json_csi_obj,
+        str_sta_mac);
     if (p_csi_json_obj->json_csi_sta_mac == NULL) {
         p_csi_json_obj->json_csi_sta_mac = cJSON_CreateArray();
         VERIFY_NULL_CHECK(p_csi_json_obj->json_csi_sta_mac);
@@ -479,20 +482,20 @@ void save_json_data_to_file(void)
             return;
         }
 
-        //printf("json file:\n%s\n", json_string);
+        // printf("json file:\n%s\n", json_string);
         p_csi_json_obj->json_dump_fptr = fopen("/tmp/csi_samples.json", "a+");
         if (p_csi_json_obj->json_dump_fptr == NULL) {
             printf("%s Failed to open file\n", __func__);
             goto file_error;
         }
 
-	if (fputs(json_string, p_csi_json_obj->json_dump_fptr) == EOF) {
+        if (fputs(json_string, p_csi_json_obj->json_dump_fptr) == EOF) {
             perror("Failed to write to /tmp/csi_samples.json");
             goto file_error;
         }
         fputc('\n', p_csi_json_obj->json_dump_fptr);
 
-file_error:
+    file_error:
         if (p_csi_json_obj->json_dump_fptr != NULL) {
             fclose(p_csi_json_obj->json_dump_fptr);
         }
@@ -1257,7 +1260,8 @@ int main(int argc, char *argv[])
                             g_sample_counter++;
 
                             if (g_sample_counter >= g_num_of_samples) {
-                                printf("collected samples : %d, exiting program\n", g_sample_counter);
+                                printf("collected samples : %d, exiting program\n",
+                                    g_sample_counter);
                                 save_json_data_to_file();
                                 goto exit2;
                             }
