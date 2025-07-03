@@ -216,10 +216,12 @@ typedef bus_error_t (* wifi_bus_event_subs_async_t)             (bus_handle_t *h
 typedef bus_error_t (* wifi_bus_event_subscribe_ex_t)           (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub, int timeout);
 typedef bus_error_t (* wifi_bus_event_subscribe_ex_async_t)     (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub, void *l_sub_handler, int timeout);
 typedef bus_error_t (* wifi_bus_event_unsubscribe_t)             (bus_handle_t *handle, char const* event_name);
+typedef bus_error_t (* wifi_bus_event_unsubs_ex_t)              (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub);
 typedef bus_error_t (* wifi_bus_reg_elements_t)                 (bus_handle_t *handle, bus_data_element_t *data_element, uint32_t num_of_element);
 typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data);
 typedef bus_error_t (* wifi_bus_reg_table_row_t)                (bus_handle_t *handle, char const *name, uint32_t row_index, char const *alias);
 typedef bus_error_t (* wifi_bus_unreg_table_row_t)              (bus_handle_t *handle, char const *name);
+typedef bus_error_t (* wifi_bus_add_table_row_t)                (bus_handle_t *handle, char const *name, char const *alias, uint32_t *row_index);
 typedef bus_error_t (* wifi_bus_remove_table_row_t)             (bus_handle_t *handle, char const *name);
 typedef bus_error_t (* wifi_bus_unreg_elements_t)              (bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element);
 typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data);
@@ -243,10 +245,12 @@ typedef struct {
     wifi_bus_event_subscribe_ex_t  bus_event_subs_ex_fn;
     wifi_bus_event_subscribe_ex_async_t  bus_event_subs_ex_async_fn;
     wifi_bus_event_unsubscribe_t   bus_event_unsubs_fn;
+    wifi_bus_event_unsubs_ex_t     bus_event_unsubs_ex_fn;
     wifi_bus_method_invoke_t       bus_method_invoke_fn;
     wifi_bus_get_trace_context_t   bus_get_trace_context_fn;
     wifi_bus_reg_table_row_t       bus_reg_table_row_fn;
     wifi_bus_unreg_table_row_t     bus_unreg_table_row_fn;
+    wifi_bus_add_table_row_t       bus_add_table_row_fn;
     wifi_bus_remove_table_row_t    bus_remove_table_row_fn;
     wifi_bus_set_trace_context_t   bus_set_trace_context_fn;
     wifi_bus_error_to_string_t    bus_error_to_string_fn;
