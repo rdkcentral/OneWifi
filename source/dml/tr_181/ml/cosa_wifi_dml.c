@@ -8331,7 +8331,7 @@ Security_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString()(ParamName, "RepurposedSecondaryRadiusSecret", TRUE))
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusSecret", TRUE))
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
