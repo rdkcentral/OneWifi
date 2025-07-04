@@ -7898,6 +7898,13 @@ Security_GetParamUlongValue
         *puLong = pcfg->u.radius.port;
         return TRUE;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.port;
+        return TRUE;
+    }
 	
 	if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
     {
@@ -7906,6 +7913,12 @@ Security_GetParamUlongValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.s_port;
+        return TRUE;
+    }
 
     if( AnscEqualString(ParamName, "RadiusDASPort", TRUE))
     {
@@ -8166,7 +8179,21 @@ Security_GetParamStringValue
         return 0;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }    
+
     if( AnscEqualString(ParamName, "SecondaryRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusSecret", TRUE))
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
@@ -8180,6 +8207,21 @@ Security_GetParamStringValue
         if(result)
         {
             AnscCopyString(pValue, (char *)&pcfg->u.radius.ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerIPAddr", TRUE))
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.ip);
         }
         else
         {
@@ -8202,6 +8244,22 @@ Security_GetParamStringValue
         }
         return 0;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerIPAddr", TRUE))
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.s_ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.s_ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
+
     if( AnscEqualString(ParamName, "MFPConfig", TRUE))
     {
 	convert_security_mode_integer_to_string(pcfg->mfp,pValue);
@@ -8934,7 +8992,7 @@ Security_SetParamStringValue
 	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
-	
+
     rc = strcmp_s("SecondaryRadiusServerIPAddr", strlen("SecondaryRadiusServerIPAddr"), ParamName, &ind);
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
