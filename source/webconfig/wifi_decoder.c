@@ -1480,7 +1480,6 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     cJSON *object = NULL;
     bool connected_value = false;
     bool mdu_value = false, intval = false;
-    char *extra_vendor_ies = NULL;
 
     // VAP Name
     decode_param_string(vap, "VapName", param);
