@@ -84,14 +84,13 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
                              __FUNCTION__, __LINE__, vap_info->vap_index);
         return -1;
     }
-    vap_info->u.bss_info.security.repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
+    memcpy(&vap_info->u.bss_info.security.repurposed_radius, &hotspot_vap_info->u.bss_info.security.u.radius, sizeof(hotspot_vap_info->u.bss_info.security.u.radius));
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d LNF RADIUS Config for vap name = %s - Primary IP: %s Port: %d, Secondary IP: %s Port: %d\n",
                        __func__, __LINE__, vap_info->vap_name,
                        vap_info->u.bss_info.security.repurposed_radius.ip,
                        vap_info->u.bss_info.security.repurposed_radius.port,
                        vap_info->u.bss_info.security.repurposed_radius.s_ip,
                        vap_info->u.bss_info.security.repurposed_radius.s_port);
-
     return 0;
 }
 
@@ -162,7 +161,14 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             // Since DB persistence not supported as of now for MDU LnF, copying it to here. To be moved in future.
             wifi_vap_info_t* lnf_vap_info = NULL;
             lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(vap_info->vap_index);
-            configure_lnf_psk_radius_from_hotspot(lnf_vap_info);
+            if (lnf_vap_info == NULL) {
+                return -1;
+            }
+            if (lnf_vap_info->u.bss_info.mdu_enabled) {
+                memcpy(&lnf_vap_info->u.bss_info.security.repurposed_radius, &p_tgt_vap_map->vap_array[0].u.bss_info.security.repurposed_radius, sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
+            } else {
+                lnf_vap_info->u.bss_info.security.repurposed_radius = 0;
+            }
         }
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
