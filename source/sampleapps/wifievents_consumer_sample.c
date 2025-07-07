@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <wifi_base.h>
 #include <errno.h>
+#include <cjson/cJSON.h>
 
 #define MAX_EVENTS 11
 #define DEFAULT_CSI_INTERVAL 500
@@ -46,6 +47,26 @@
 
 #define WIFI_EVENT_CONSUMER_DGB(msg, ...) \
     wifievents_consumer_dbg_print("%s:%d  " msg "\n", __func__, __LINE__, ##__VA_ARGS__);
+
+typedef struct csi_data_json_obj {
+    cJSON *main_json_obj;
+    cJSON *json_csi_obj;
+    cJSON *json_csi_sta_mac;
+    FILE *json_dump_fptr;
+} csi_data_json_obj_t;
+
+csi_data_json_obj_t json_obj;
+
+csi_data_json_obj_t *get_csi_json_obj(void)
+{
+    return &json_obj;
+}
+
+#define VERIFY_NULL_CHECK(T)                                                                     \
+    if (NULL == (T)) {                                                                           \
+        WIFI_EVENT_CONSUMER_DGB("[%s:%d] input parameter:%s is NULL\n", __func__, __LINE__, #T); \
+        return;                                                                                  \
+    }
 
 FILE *g_fpg = NULL;
 
@@ -75,6 +96,8 @@ uint32_t g_csi_index = 0;
 int g_clientdiag_interval = 0;
 int g_disable_csi_log = 0;
 int g_rbus_direct_enabled = 0;
+int g_num_of_samples = -1;
+int g_sample_counter = 0;
 
 static void wifievents_get_device_vaps()
 {
@@ -323,6 +346,164 @@ static void csiMacListHandler(rbusHandle_t handle, rbusEvent_t const *event,
     UNREFERENCED_PARAMETER(handle);
 }
 
+void json_add_wifi_csi_frame_info(cJSON *sta_obj, wifi_frame_info_t *frame_info)
+{
+    cJSON *obj_array, *number_item;
+
+    cJSON_AddNumberToObject(sta_obj, "bw_mode", frame_info->bw_mode);
+    cJSON_AddNumberToObject(sta_obj, "mcs", frame_info->mcs);
+    cJSON_AddNumberToObject(sta_obj, "Nr", frame_info->Nr);
+    cJSON_AddNumberToObject(sta_obj, "Nc", frame_info->Nc);
+
+    obj_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(sta_obj, "nr_rssi", obj_array);
+    for (int index = 0; index < frame_info->Nr; index++) {
+        number_item = cJSON_CreateNumber(frame_info->nr_rssi[index]);
+        if (number_item == NULL) {
+            return;
+        }
+
+        cJSON_AddItemToArray(obj_array, number_item);
+    }
+
+    cJSON_AddNumberToObject(sta_obj, "valid_mask", frame_info->valid_mask);
+    cJSON_AddNumberToObject(sta_obj, "phy_bw", frame_info->phy_bw);
+    cJSON_AddNumberToObject(sta_obj, "cap_bw", frame_info->cap_bw);
+    cJSON_AddNumberToObject(sta_obj, "num_sc", frame_info->num_sc);
+    cJSON_AddNumberToObject(sta_obj, "decimation", frame_info->decimation);
+    cJSON_AddNumberToObject(sta_obj, "channel", frame_info->channel);
+    cJSON_AddNumberToObject(sta_obj, "cfo", frame_info->cfo);
+    cJSON_AddNumberToObject(sta_obj, "time_stamp", frame_info->time_stamp);
+}
+
+void json_add_wifi_csi_matrix_info(cJSON *csi_matrix_obj_wrapper, wifi_csi_data_t *csi)
+{
+    cJSON *subcarrier_array = cJSON_CreateArray();
+    VERIFY_NULL_CHECK(subcarrier_array);
+    cJSON_AddItemToObject(csi_matrix_obj_wrapper, "sub_carrier", subcarrier_array);
+
+    for (uint32_t sc_idx = 0; sc_idx < csi->frame_info.num_sc; sc_idx++) {
+        cJSON *subcarrier_data_obj = cJSON_CreateObject();
+        VERIFY_NULL_CHECK(subcarrier_data_obj);
+
+        cJSON *stream_array_for_subcarrier = cJSON_CreateArray();
+        VERIFY_NULL_CHECK(stream_array_for_subcarrier);
+
+        cJSON_AddItemToObject(subcarrier_data_obj, "stream", stream_array_for_subcarrier);
+
+        cJSON_AddItemToArray(subcarrier_array, subcarrier_data_obj);
+
+        for (uint32_t stream_idx = 0; stream_idx < csi->frame_info.Nc; stream_idx++) {
+            cJSON *stream_data_obj = cJSON_CreateObject();
+            VERIFY_NULL_CHECK(stream_data_obj);
+
+            cJSON *antenna_data_array = cJSON_CreateArray();
+            VERIFY_NULL_CHECK(antenna_data_array);
+
+            cJSON_AddItemToObject(stream_data_obj, "antenna", antenna_data_array);
+
+            cJSON_AddItemToArray(stream_array_for_subcarrier, stream_data_obj);
+
+            for (uint32_t ant_idx = 0; ant_idx < csi->frame_info.Nr; ant_idx++) {
+                cJSON *real_imag_pair_array = cJSON_CreateArray();
+                VERIFY_NULL_CHECK(real_imag_pair_array);
+
+                int16_t real_data = (int16_t)((csi->csi_matrix[sc_idx][ant_idx][stream_idx] >> 16) &
+                    0xFFFF);
+                int16_t imag_data = (int16_t)(csi->csi_matrix[sc_idx][ant_idx][stream_idx] &
+                    0xFFFF);
+
+                cJSON_AddItemToArray(real_imag_pair_array, cJSON_CreateNumber(real_data));
+                cJSON_AddItemToArray(real_imag_pair_array, cJSON_CreateNumber(imag_data));
+
+                cJSON_AddItemToArray(antenna_data_array, real_imag_pair_array);
+            }
+        }
+    }
+}
+
+void client_csi_data_json_elem_add(cJSON *sta_obj, wifi_csi_data_t *csi)
+{
+    cJSON *obj;
+
+    obj = cJSON_CreateObject();
+    VERIFY_NULL_CHECK(obj);
+    cJSON_AddItemToObject(sta_obj, "frame_info", obj);
+    json_add_wifi_csi_frame_info(obj, &csi->frame_info);
+
+    obj = cJSON_CreateObject();
+    VERIFY_NULL_CHECK(obj);
+    cJSON_AddItemToObject(sta_obj, "csi_matrix", obj);
+    json_add_wifi_csi_matrix_info(obj, csi);
+}
+
+void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
+{
+    if (g_num_of_samples == -1) {
+        return;
+    }
+    mac_addr_str_t str_sta_mac = { 0 };
+
+    csi_data_json_obj_t *p_csi_json_obj = get_csi_json_obj();
+    if (p_csi_json_obj->main_json_obj == NULL) {
+        p_csi_json_obj->main_json_obj = cJSON_CreateObject();
+        VERIFY_NULL_CHECK(p_csi_json_obj->main_json_obj);
+    }
+
+    if (p_csi_json_obj->json_csi_obj == NULL) {
+        p_csi_json_obj->json_csi_obj = cJSON_CreateObject();
+        VERIFY_NULL_CHECK(p_csi_json_obj->json_csi_obj);
+        cJSON_AddItemToObject(p_csi_json_obj->main_json_obj, "CSI", p_csi_json_obj->json_csi_obj);
+    }
+
+    to_mac_str(sta_mac, str_sta_mac);
+    p_csi_json_obj->json_csi_sta_mac = cJSON_GetObjectItem(p_csi_json_obj->json_csi_obj,
+        str_sta_mac);
+    if (p_csi_json_obj->json_csi_sta_mac == NULL) {
+        p_csi_json_obj->json_csi_sta_mac = cJSON_CreateArray();
+        VERIFY_NULL_CHECK(p_csi_json_obj->json_csi_sta_mac);
+        cJSON_AddItemToObject(p_csi_json_obj->json_csi_obj, str_sta_mac,
+            p_csi_json_obj->json_csi_sta_mac);
+    }
+
+    cJSON *obj = cJSON_CreateObject();
+    cJSON_AddItemToArray(p_csi_json_obj->json_csi_sta_mac, obj);
+    client_csi_data_json_elem_add(obj, csi);
+}
+
+void save_json_data_to_file(void)
+{
+    csi_data_json_obj_t *p_csi_json_obj = get_csi_json_obj();
+    if (p_csi_json_obj->main_json_obj != NULL) {
+        char *json_string = cJSON_Print(p_csi_json_obj->main_json_obj);
+        if (json_string == NULL) {
+            cJSON_Delete(p_csi_json_obj->main_json_obj);
+            p_csi_json_obj->main_json_obj = NULL;
+            return;
+        }
+
+        p_csi_json_obj->json_dump_fptr = fopen("/tmp/csi_samples.json", "a+");
+        if (p_csi_json_obj->json_dump_fptr == NULL) {
+            printf("%s Failed to open file\n", __func__);
+            goto file_error;
+        }
+
+        if (fputs(json_string, p_csi_json_obj->json_dump_fptr) == EOF) {
+            perror("Failed to write to /tmp/csi_samples.json");
+            goto file_error;
+        }
+        fputc('\n', p_csi_json_obj->json_dump_fptr);
+
+    file_error:
+        if (p_csi_json_obj->json_dump_fptr != NULL) {
+            fclose(p_csi_json_obj->json_dump_fptr);
+        }
+        cJSON_Delete(p_csi_json_obj->main_json_obj);
+        p_csi_json_obj->main_json_obj = NULL;
+        free(json_string);
+    }
+}
+
 void rotate_and_write_CSIData(mac_address_t sta_mac, wifi_csi_data_t *csi)
 {
 #define MB(x) ((long int)(x) << 20)
@@ -379,6 +560,8 @@ void rotate_and_write_CSIData(mac_address_t sta_mac, wifi_csi_data_t *csi)
         fclose(csifptr_tmp);
         rename(filename_tmp, filename);
     }
+
+    csi_data_in_json_format(sta_mac, csi);
 
     WIFI_EVENT_CONSUMER_DGB("Exit %s: %d\n", __FUNCTION__, __LINE__);
 }
@@ -455,7 +638,7 @@ static void print_csi_data(char *buffer)
 
     // Printing rssii
     WIFI_EVENT_CONSUMER_DGB("rssi values on each Nr are");
-    for (itr = 0; itr <= csi.frame_info.Nr; itr++) {
+    for (itr = 0; itr < csi.frame_info.Nr; itr++) {
         WIFI_EVENT_CONSUMER_DGB("%d...", csi.frame_info.nr_rssi[itr]);
     }
     WIFI_EVENT_CONSUMER_DGB("==========================================================");
@@ -701,7 +884,7 @@ static bool parseArguments(int argc, char **argv)
     bool ret = true;
     char *p;
 
-    while ((c = getopt(argc, argv, "he:s:v:i:c:f:")) != -1) {
+    while ((c = getopt(argc, argv, "he:s:v:i:c:f:n:")) != -1) {
         switch (c) {
         case 'h':
             printf("HELP :  wifi_events_consumer -e [numbers] - default all events\n"
@@ -721,6 +904,7 @@ static bool parseArguments(int argc, char **argv)
                    "-i [csi data interval] - default %dms min %d max %d\n"
                    "-c [client diag interval] - default %dms\n"
                    "-f [debug file name] - default /tmp/wifiEventConsumer\n"
+                   "-n [number of samples]"
                    "Example: wifi_events_consumer -e 1,2,3,7 -s 1 -v 1,2,13,14\n"
                    "touch /nvram/wifiEventsAppCSILogDisable to disable CSI detail log\n"
                    "touch /nvram/wifiEventsAppCSIRBUSDirect to enable RBUS Direct for CSI data\n",
@@ -768,6 +952,14 @@ static bool parseArguments(int argc, char **argv)
                 ret = false;
             }
             snprintf(g_debug_file_name, RBUS_MAX_NAME_LENGTH, "/tmp/%s", optarg);
+            break;
+        case 'n':
+            if (!optarg || atoi(optarg) <= 0) {
+                printf(" Failed to parse number of samples: %s\n", optarg);
+                ret = false;
+            }
+            g_num_of_samples = atoi(optarg);
+            printf(" number of samples to be collected : %d\n", g_num_of_samples);
             break;
         case '?':
             printf("Supposed to get an argument for this option or invalid option\n");
@@ -1063,6 +1255,16 @@ int main(int argc, char *argv[])
                     if (numRead > 0) {
                         WIFI_EVENT_CONSUMER_DGB("CSI\n");
                         print_csi_data(buffer);
+                        if (g_num_of_samples != -1) {
+                            g_sample_counter++;
+
+                            if (g_sample_counter >= g_num_of_samples) {
+                                printf("collected samples : %d, exiting program\n",
+                                    g_sample_counter);
+                                save_json_data_to_file();
+                                goto exit2;
+                            }
+                        }
                     }
                 }
                 if (FD_ISSET(lvel_pipe_read_fd, &readfds)) {
