@@ -51,7 +51,7 @@
 typedef struct csi_data_json_obj {
     cJSON *main_json_obj;
     cJSON *json_csi_obj;
-    cJSON *json_souding_devices;
+    cJSON *json_sounding_devices;
     hash_map_t *stalist_array_map;
     FILE *json_dump_fptr;
 } csi_data_json_obj_t;
@@ -351,12 +351,10 @@ static void csiMacListHandler(rbusHandle_t handle, rbusEvent_t const *event,
     UNREFERENCED_PARAMETER(handle);
 }
 
-void json_add_wifi_csi_frame_info(cJSON *sta_obj, wifi_frame_info_t *frame_info,
-    char *str_sta_mac)
+void json_add_wifi_csi_frame_info(cJSON *sta_obj, wifi_frame_info_t *frame_info)
 {
     cJSON *obj_array, *number_item;
 
-    cJSON_AddStringToObject(sta_obj, "sta_mac", str_sta_mac);
     cJSON_AddNumberToObject(sta_obj, "bw_mode", frame_info->bw_mode);
     cJSON_AddNumberToObject(sta_obj, "mcs", frame_info->mcs);
     cJSON_AddNumberToObject(sta_obj, "Nr", frame_info->Nr);
@@ -412,9 +410,6 @@ void json_add_wifi_csi_matrix_info(cJSON *csi_matrix_obj_wrapper, wifi_csi_data_
             cJSON_AddItemToArray(stream_array_for_subcarrier, stream_data_obj);
 
             for (uint32_t ant_idx = 0; ant_idx < csi->frame_info.Nr; ant_idx++) {
-                cJSON *real_imag_pair_array = cJSON_CreateArray();
-                VERIFY_NULL_CHECK(real_imag_pair_array);
-
                 cJSON *real_imag_object = cJSON_CreateObject();
                 VERIFY_NULL_CHECK(real_imag_object);
 
@@ -437,10 +432,12 @@ void client_csi_data_json_elem_add(cJSON *sta_obj, wifi_csi_data_t *csi,
 {
     cJSON *obj;
 
+    cJSON_AddStringToObject(sta_obj, "sta_mac", str_sta_mac);
+
     obj = cJSON_CreateObject();
     VERIFY_NULL_CHECK(obj);
     cJSON_AddItemToObject(sta_obj, "frame_info", obj);
-    json_add_wifi_csi_frame_info(obj, &csi->frame_info, str_sta_mac);
+    json_add_wifi_csi_frame_info(obj, &csi->frame_info);
 
     obj = cJSON_CreateObject();
     VERIFY_NULL_CHECK(obj);
@@ -468,11 +465,11 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
         cJSON_AddItemToObject(p_csi_json_obj->main_json_obj, "CSI", p_csi_json_obj->json_csi_obj);
     }
 
-    if (p_csi_json_obj->json_souding_devices == NULL) {
-        p_csi_json_obj->json_souding_devices = cJSON_CreateArray();
-        VERIFY_NULL_CHECK(p_csi_json_obj->json_souding_devices);
+    if (p_csi_json_obj->json_sounding_devices == NULL) {
+        p_csi_json_obj->json_sounding_devices = cJSON_CreateArray();
+        VERIFY_NULL_CHECK(p_csi_json_obj->json_sounding_devices);
         cJSON_AddItemToObject(p_csi_json_obj->json_csi_obj, "SoundingDevices",
-            p_csi_json_obj->json_souding_devices);
+            p_csi_json_obj->json_sounding_devices);
     }
 
     if (p_csi_json_obj->stalist_array_map == NULL) {
@@ -493,7 +490,7 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
     if (ptr->sta_json_arr_obj == NULL) {
         ptr->sta_json_arr_obj = cJSON_CreateArray();
         VERIFY_NULL_CHECK(ptr->sta_json_arr_obj);
-        cJSON_AddItemToArray(p_csi_json_obj->json_souding_devices,
+        cJSON_AddItemToArray(p_csi_json_obj->json_sounding_devices,
             ptr->sta_json_arr_obj);
     }
 
