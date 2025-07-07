@@ -2602,6 +2602,24 @@ INSTMSMT_PH2 -->
                                     <writable>true</writable>
                                 </parameter>
                                 <parameter>
+                                    <name>RepurposedRadiusServerIPAddr</name>
+                                    <type>string</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedRadiusServerPort</name>
+                                    <type>unsignedInt</type>
+                                    <syntax>uint32</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedRadiusSecret</name>
+                                    <type>string(63)</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
                                     <name>SecondaryRadiusServerIPAddr</name>
                                     <type>string</type>
                                     <syntax>string</syntax>
@@ -2618,6 +2636,24 @@ INSTMSMT_PH2 -->
                                     <type>string(63)</type>
                                     <syntax>string</syntax>
                                     <writable>true</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedSecondaryRadiusServerIPAddr</name>
+                                    <type>string</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedSecondaryRadiusServerPort</name>
+                                    <type>unsignedInt</type>
+                                    <syntax>uint32</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedSecondaryRadiusSecret</name>
+                                    <type>string(63)</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
                                 </parameter>
 				<parameter>
                                     <name>RadiusDASIPAddr</name>
