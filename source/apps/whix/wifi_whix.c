@@ -2016,20 +2016,16 @@ int capture_vapup_status()
             return RETURN_ERR;
         }
         if (mgr->radio_config[vap_info->radio_index].oper.enable == TRUE &&
-    mgr->global_config.global_parameters.force_disable_radio_feature == FALSE) {
-    vap_status = vap_info->u.bss_info.enabled;
-    if (vap_status) {
-        vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
-        if (!vap_nas_status[vap_index]) {
-            vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
+            mgr->global_config.global_parameters.force_disable_radio_feature == FALSE) {
+            vap_status = vap_info->u.bss_info.enabled;
+            if (vap_status) {
+                vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
+                wifi_util_dbg_print(WIFI_APPS, "VAP %d is UP, count: %d\n", vap_index,
+                    vap_up_arr[vap_index]);
+            }
+        } else {
+            vap_up_arr[vap_index] = 0;
         }
-    } else {
-        vap_nas_status[vap_index] = 0;
-    }
-} else {
-    vap_up_arr[vap_index] = 0;
-}
-}
     vap_iteration++;
     return RETURN_OK;
 }
