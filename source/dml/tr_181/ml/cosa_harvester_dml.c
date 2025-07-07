@@ -140,7 +140,7 @@ WifiClient_GetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    if ( AnscEqualString(ParamName, "Enabled", TRUE))
+    if (strcmp(ParamName, "Enabled") == 0)
     {
         *pBool = pcfg->b_inst_client_enabled;
         return TRUE;
@@ -164,7 +164,7 @@ WifiClient_GetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    if ( AnscEqualString(ParamName, "ReportingPeriod", TRUE))
+    if (strcmp(ParamName, "ReportingPeriod") == 0)
     {
         *puLong = pcfg->u_inst_client_reporting_period;
         return TRUE;
@@ -190,19 +190,19 @@ WifiClient_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    if( AnscEqualString(ParamName, "MacAddress", TRUE))
+    if (strcmp(ParamName, "MacAddress") == 0)
     {
         strncpy(pValue, pcfg->mac_address, *pUlSize);
         return 0;
     }
 
-   if( AnscEqualString(ParamName, "Schema", TRUE))
+   if (strcmp(ParamName, "Schema") == 0)
     {
         AnscCopyString(pValue, "WifiSingleClient.avsc");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SchemaID", TRUE))
+    if (strcmp(ParamName, "SchemaID") == 0)
     {
         unsigned int bufsize = strlen(instSchemaIdBuffer);;
         if(!bufsize)
@@ -249,7 +249,7 @@ WifiClient_SetParamBoolValue
     }
     /* check the parameter name and set the corresponding value */
 
-    if ( AnscEqualString(ParamName, "Enabled", TRUE))
+    if (strcmp(ParamName, "Enabled") == 0)
     {
         if((bValue == true) &&
                (pcfg->u_inst_client_reporting_period > pcfg->u_inst_client_def_override_ttl))
@@ -281,7 +281,7 @@ WifiClient_SetParamUlongValue
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "ReportingPeriod", TRUE))
+    if (strcmp(ParamName, "ReportingPeriod") == 0)
     {
         if (validate_def_reporting_period(uValue)) {
             pcfg->u_inst_client_reporting_period = uValue;
@@ -312,7 +312,7 @@ WifiClient_SetParamStringValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "MacAddress", TRUE))
+    if (strcmp(ParamName, "MacAddress") == 0)
     {
         if (validate_inst_client_mac(pValue)){
             strncpy(pcfg->mac_address, pValue, sizeof(pcfg->mac_address)-1);
@@ -413,14 +413,14 @@ WifiClient_Default_GetParamUlongValue
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "OverrideTTL", TRUE))
+    if (strcmp(ParamName, "OverrideTTL") == 0)
     {
         //*puLong = get_inst_override_ttl();
         *puLong = pcfg->u_inst_client_def_override_ttl;
         return TRUE;
     }
 
-    if ( AnscEqualString(ParamName, "ReportingPeriod", TRUE))
+    if (strcmp(ParamName, "ReportingPeriod") == 0)
     {
         *puLong = pcfg->u_inst_client_def_reporting_period;
         return TRUE;
@@ -446,13 +446,13 @@ WifiClient_Default_SetParamUlongValue
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "ReportingPeriod", TRUE))
+    if (strcmp(ParamName, "ReportingPeriod") == 0)
     {
         pcfg->u_inst_client_def_reporting_period = uValue;
         return TRUE;
     }
 
-    if ( AnscEqualString(ParamName, "OverrideTTL", TRUE))
+    if (strcmp(ParamName, "OverrideTTL") == 0)
     {
         pcfg->u_inst_client_def_override_ttl = uValue;
         return TRUE;
@@ -554,7 +554,7 @@ WifiClient_ActiveMeasurements_GetParamBoolValue
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "Enable", TRUE)) {
+    if (strcmp(ParamName, "Enable") == 0) {
         *pBool = pcfg->ActiveMsmtEnable;
         return TRUE;
     }
@@ -576,17 +576,17 @@ WifiClient_ActiveMeasurements_GetParamUlongValue
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "PacketSize", TRUE)) {
+    if (strcmp(ParamName, "PacketSize") == 0) {
         *puLong = pcfg->ActiveMsmtPktSize;
         return TRUE;
     }
 
-    if ( AnscEqualString(ParamName, "SampleDuration", TRUE)) {
+    if (strcmp(ParamName, "SampleDuration") == 0) {
         *puLong = pcfg->ActiveMsmtSampleDuration;
         return TRUE;
     }
 
-    if ( AnscEqualString(ParamName, "NumberOfSamples", TRUE)) {
+    if (strcmp(ParamName, "NumberOfSamples") == 0) {
         *puLong = pcfg->ActiveMsmtNumberOfSamples;
         return TRUE;
     }
@@ -626,7 +626,7 @@ WifiClient_ActiveMeasurements_SetParamBoolValue
         }
     }
 
-    if ( AnscEqualString(ParamName, "Enable", TRUE)) {
+    if (strcmp(ParamName, "Enable") == 0) {
         pcfg->ActiveMsmtEnable = bValue;
         push_blaster_config_dml_to_ctrl_queue();
         return TRUE;
@@ -651,7 +651,7 @@ WifiClient_ActiveMeasurements_SetParamUlongValue
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "PacketSize", TRUE)) {
+    if (strcmp(ParamName, "PacketSize") == 0) {
         if((uValue < MIN_ACTIVE_MSMT_PKT_SIZE) ||(uValue > MAX_ACTIVE_MSMT_PKT_SIZE)) {
             return FALSE;
         }
@@ -659,7 +659,7 @@ WifiClient_ActiveMeasurements_SetParamUlongValue
         return TRUE;
     }
 
-    if ( AnscEqualString(ParamName, "SampleDuration", TRUE)) {
+    if (strcmp(ParamName, "SampleDuration") == 0) {
         if((uValue < MIN_ACTIVE_MSMT_SAMPLE_DURATION) ||(uValue > MAX_ACTIVE_MSMT_SAMPLE_DURATION)) {
             return FALSE;
         }
@@ -667,7 +667,7 @@ WifiClient_ActiveMeasurements_SetParamUlongValue
         return TRUE;
     }
 
-    if ( AnscEqualString(ParamName, "NumberOfSamples", TRUE)) {
+    if (strcmp(ParamName, "NumberOfSamples") == 0) {
         if((uValue < MIN_ACTIVE_MSMT_SAMPLE_COUNT) ||(uValue > MAX_ACTIVE_MSMT_SAMPLE_COUNT)){
             return FALSE;
         }
@@ -732,7 +732,7 @@ ActiveMeasurements_Plan_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    if ( AnscEqualString(ParamName, "PlanID", TRUE)){
+    if (strcmp(ParamName, "PlanID") == 0){
         strcpy(pValue,(char*)pcfg->PlanId);
         return 0;
     }
@@ -754,8 +754,8 @@ ActiveMeasurements_Plan_SetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    if ( AnscEqualString(ParamName, "PlanID", TRUE)) {
-         if (AnscEqualString(pValue, (char*)pcfg->PlanId, FALSE)) {
+    if (strcmp(ParamName, "PlanID") == 0) {
+         if (strcasecmp(pValue, (char*)pcfg->PlanId) == 0) {
              AnscTraceWarning(("%s : Plan ID is same\n", __func__));
              return TRUE;
          }
@@ -873,7 +873,7 @@ ActiveMeasurement_Step_GetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if ( AnscEqualString(ParamName, "StepID", TRUE)) {
+    if (strcmp(ParamName, "StepID") == 0) {
         /* collect value */
         *puLong = pcfg->Step[StepIns].StepId;
         return TRUE;
@@ -905,12 +905,12 @@ ActiveMeasurement_Step_GetParamStringValue
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "SourceMac", TRUE)) {
+    if (strcmp(ParamName, "SourceMac") == 0) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].SrcMac ,StepIns);
         strcpy(pValue, (char*)pcfg->Step[StepIns].SrcMac);
         return 0;
     }
-    if ( AnscEqualString(ParamName, "DestMac", TRUE)) {
+    if (strcmp(ParamName, "DestMac") == 0) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].DestMac ,StepIns);
         strcpy(pValue, (char*) pcfg->Step[StepIns].DestMac);
         return 0;
@@ -946,7 +946,7 @@ ActiveMeasurement_Step_SetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if ( AnscEqualString(ParamName, "StepID", TRUE)) {
+    if (strcmp(ParamName, "StepID") == 0) {
         pcfg->Step[StepIns].StepId = (unsigned int)uValue;
         return TRUE;
     }
@@ -981,13 +981,13 @@ ActiveMeasurement_Step_SetParamStringValue
         return FALSE;
     }
 
-    if (AnscEqualString(ParamName, "SourceMac", TRUE)) {
+    if (strcmp(ParamName, "SourceMac") == 0) {
         strcpy( (char*)pcfg->Step[StepIns].SrcMac,pValue);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].SrcMac ,StepIns);
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "DestMac", TRUE)) {
+    if (strcmp(ParamName, "DestMac") == 0) {
         strcpy((char*) pcfg->Step[StepIns].DestMac,pValue);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].DestMac ,StepIns);
         return TRUE;
