@@ -3692,6 +3692,47 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     case wifi_event_webconfig_set_data_tunnel:
         memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
+        if (raw == NULL) {
+            return;
+        }
+
+        json = cJSON_Parse(raw);
+        subdoc_type = find_subdoc_type(config, json);
+        cJSON_Delete(json);
+        switch (subdoc_type) {
+        case webconfig_subdoc_type_private:
+            num_ssid += get_list_of_private_ssid(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            break;
+        case webconfig_subdoc_type_home:
+            num_ssid += get_list_of_iot_ssid(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            break;
+        case webconfig_subdoc_type_xfinity:
+            num_ssid += get_list_of_hotspot_open(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            num_ssid += get_list_of_hotspot_secure(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            break;
+        case webconfig_subdoc_type_mesh_backhaul:
+            num_ssid += get_list_of_mesh_backhaul(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            break;
+        case webconfig_subdoc_type_lnf:
+            num_ssid += get_list_of_lnf_psk(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            num_ssid += get_list_of_lnf_radius(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            break;
+
+        default:
+            break;
+        }
+
+        if (num_ssid != 0) {
+            update_subdoc_data(&data, num_ssid, vap_names);
+        }
+
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, &data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
