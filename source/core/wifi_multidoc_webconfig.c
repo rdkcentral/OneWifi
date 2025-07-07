@@ -1236,17 +1236,18 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
 
         char *vap_blob_str = cJSON_Print(n_blob);
         wifi_util_dbg_print(WIFI_CTRL,"WebConfig blob is %s\n",vap_blob_str);
-        wifi_util_info_print(WIFI_CTRL,"%s:%d pushing WebConfig blob to ctrl queue\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL,"SJY %s:%d pushing WebConfig blob to ctrl queue\n", __func__, __LINE__);
         push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
-
+        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d WebConfig blob apply is done\n", __func__, __LINE__);
         bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Called hotspot_cfg_sem_wait_duration, ret_value=%d\n", __func__, __LINE__, ret_value);
         if (ret_value == false) {
             execRetVal->ErrorCode = BLOB_EXECUTION_TIMEDOUT;
             strncpy(execRetVal->ErrorMsg, "subdoc apply is failed", sizeof(execRetVal->ErrorMsg)-1);
             wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed:%s\n", __func__,
                 __LINE__, execRetVal->ErrorMsg);
         } else {
-            wifi_util_info_print(WIFI_CTRL,"%s:%d WebConfig blob is applied success\n", __func__, __LINE__);
+            wifi_util_info_print(WIFI_CTRL,"SJY %s:%d WebConfig blob is applied success\n", __func__, __LINE__);
             execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
         }
 

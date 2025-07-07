@@ -2471,6 +2471,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 **************************************************************************************/
 int wifidb_update_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *config)
 {
+    wifi_util_info_print(WIFI_DB,"SJY Entering %s:%d\n",__func__, __LINE__);
     struct schema_Wifi_Interworking_Config cfg_interworking;
     char *filter_vapinterworking[] = {"-",NULL};
     wifi_db_t *g_wifidb;
@@ -2481,6 +2482,7 @@ int wifidb_update_wifi_interworking_config(char *vap_name, wifi_InterworkingElem
     if(config == NULL)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Interworking - Null pointer \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n",__func__, __LINE__);
         return -1;
     }
 
@@ -2506,6 +2508,7 @@ int wifidb_update_wifi_interworking_config(char *vap_name, wifi_InterworkingElem
     {
         wifidb_print("%s:%d Updated WIFI DB. Wifi Interworking Config table updated successful. \n",__func__, __LINE__);
     }
+    wifi_util_info_print(WIFI_DB,"SJY Exiting %s:%d\n",__func__, __LINE__);
     return 0;
 }
 
@@ -2647,6 +2650,7 @@ void wifidb_get_wifi_macfilter_config()
 int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config)
 {
+    wifi_util_info_print(WIFI_DB,"SJY Entering %s:%d\n",__func__, __LINE__);
     struct schema_Wifi_VAP_Config cfg;
     char *filter_vap[] = {"-",SCHEMA_COLUMN(Wifi_VAP_Config,security),SCHEMA_COLUMN(Wifi_VAP_Config,interworking),SCHEMA_COLUMN(Wifi_VAP_Config,mac_filter),NULL};
     wifi_db_t *g_wifidb;
@@ -2659,16 +2663,19 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     if(config == NULL || rdk_config == NULL)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP Config \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n",__func__, __LINE__);
         return RETURN_ERR;
     }
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
     if (radio_index < 0) {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Invalid radio_index %d \n",__func__, __LINE__,radio_index);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n",__func__, __LINE__);
         return RETURN_ERR;
     }
     if((convert_radio_to_name(radio_index,radio_name))!=0)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Invalid radio_index %d \n",__func__, __LINE__,radio_index);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n",__func__, __LINE__);
         return RETURN_ERR;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,radio_name,config->vap_name);
@@ -2680,6 +2687,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, config->vap_name);
     if (l_vap_index < 0) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, config->vap_name);
+            wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n",__func__, __LINE__);
             return RETURN_ERR;
     }
       if (isVapLnfPsk(l_vap_index) && config->u.bss_info.mdu_enabled) {
@@ -2790,6 +2798,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
 #endif // NEWPLATFORM_PORT
 #endif
     }
+    wifi_util_info_print(WIFI_DB,"SJY Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -6163,6 +6172,7 @@ int wifidb_get_wifi_security_config_old_mode(char *vap_name, int vap_index)
 **************************************************************************************/
 int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 {
+    wifi_util_info_print(WIFI_DB,"SJY Enters %s:%d: \n",__func__, __LINE__);
     struct schema_Wifi_Security_Config cfg_sec;
     char *filter_vapsec[] = {"-",NULL};
     char address[BUFFER_LENGTH_WIFIDB] = {0};
@@ -6177,11 +6187,13 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     if(sec == NULL)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Security Config table - Null pointer \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return RETURN_ERR;
     }
     vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop,vap_name);
     if (vap_index < 0) {
         wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -6268,6 +6280,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 #endif // NEWPLATFORM_PORT
 #endif
     }
+    wifi_util_info_print(WIFI_DB,"SJY returning 0 and exiting %s:%d\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -6384,6 +6397,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
 **************************************************************************************/
 int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *config)
 {
+    wifi_util_info_print(WIFI_DB,"SJY Entering %s:%d\n", __func__, __LINE__);
     struct schema_Wifi_Passpoint_Config cfg_passpoint;
 //     char *filter_passpoint[] = {"-",NULL};
     wifi_db_t *g_wifidb;
@@ -6393,6 +6407,7 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
     if(config == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Null config - Passpoint update failed \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return -1;
     }
     wifi_passpoint_settings_t *cpass = &(config->passpoint);
@@ -6400,12 +6415,14 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
     if(p_json == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Null p_json - passpoint update failed \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return -1;
     }
     cJSON *p_root = cJSON_Parse(p_json);
     if(p_root == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Unable to parse json  - passpoint update failed \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return -1;
     }
     cfg_passpoint.enable = cpass->enable;
@@ -6451,7 +6468,8 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
     {
         reset_passpoint_json(vap_name);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: update table Wifi_Passpoint_Config table successful\n",__func__, __LINE__);
-     }
+    }
+    wifi_util_info_print(WIFI_DB,"SJY returning 0 and exiting %s:%d\n", __func__, __LINE__);
     return 0;
 }
 
@@ -6465,6 +6483,7 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
 **************************************************************************************/
 int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
 {
+    wifi_util_info_print(WIFI_DB,"SJY Entering %s:%d\n", __func__, __LINE__);
     struct schema_Wifi_Anqp_Config cfg_anqp;
 //    char *filter_anqp[] = {"-",NULL};
     wifi_db_t *g_wifidb;
@@ -6474,6 +6493,7 @@ int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
     if(config == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Null config - Anqp update failed \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return -1;
     }
     wifi_anqp_settings_t *canqp = &(config->anqp);
@@ -6481,12 +6501,14 @@ int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
     if(p_json == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Null p_json - Anqp update failed \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return -1;
     }
     cJSON *p_root = cJSON_Parse(p_json);
     if(p_root == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Unable to parse json  - Anqp update failed \n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"SJY returning -1 and exiting %s:%d\n", __func__, __LINE__);
         return -1;
     }
     if( ((unsigned int)canqp->capabilityInfoLength < (sizeof(cfg_anqp.capability_element)-1)) &&
@@ -6557,6 +6579,7 @@ int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: update table Wifi_Anqp_Config table successful\n",__func__, __LINE__);
     }
+    wifi_util_info_print(WIFI_DB,"SJY returning 0 and exiting %s:%d\n", __func__, __LINE__);
     return 0;
 }
 

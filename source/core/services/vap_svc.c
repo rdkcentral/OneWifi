@@ -81,6 +81,7 @@ int svc_init(vap_svc_t *svc, vap_svc_type_t type)
 
 int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info)
 {
+    wifi_util_info_print(WIFI_CTRL, "SJY Entering function :%s:%d:\n", __func__, __LINE__);
     uint8_t j = 0;
     rdk_wifi_vap_info_t *rdk_vaps;
     wifi_vap_info_map_t *vap_map = NULL;
@@ -109,7 +110,7 @@ int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *r
             }
         }
     }
-
+    wifi_util_info_print(WIFI_CTRL, "SJY Exiting function :%s:%d:\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
