@@ -244,7 +244,8 @@ int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, 
     snprintf(str, sizeof(str),
         "Device.WiFi.AccessPoint.%d.AssociatedDeviceNumberOfEntries,%d,%lu,%lu,%d", ap_index + 1, 0,
         new_count, old_count, 2);
-    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_ASSOCIATED_ENTRIES,
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: Sending Notification for str:%s \n", __func__, __LINE__, str);
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_SYNC_COMPONENT,
         str);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
@@ -426,6 +427,28 @@ int tcm_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t 
     return RETURN_OK;
 }
 
+int notify_wifi_sec_mode_enabled(wifi_ctrl_t *ctrl, int ap_index, char *old_mode, char *new_mode) {
+    bus_error_t rc;
+    char str[2048];
+    memset(str, 0, sizeof(str));
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    snprintf(str, sizeof(str),"Device.WiFi.AccessPoint.%d.Security.ModeEnabled,16,%s,%s,2",(ap_index + 1), new_mode, old_mode);
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: sending str %s as notification to WIFI_NOTIFY_SYNC_COMPONENT\n", __func__, __LINE__, str);
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_SYNC_COMPONENT, str);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
+            __LINE__, rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
 int webconfig_bus_apply_for_dml_thread_update(wifi_ctrl_t *ctrl,
     webconfig_subdoc_encoded_data_t *data)
 {
@@ -471,7 +494,7 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     return RETURN_OK;
 }
 
-int get_managed_guest_bridge(char *brval, unsigned long length)
+int get_managed_guest_bridge(char *brval, unsigned long length, int radio_index)
 {
     bus_error_t rc;
     char *token = NULL;
@@ -479,23 +502,28 @@ int get_managed_guest_bridge(char *brval, unsigned long length)
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     raw_data_t data;
     memset(&data, 0, sizeof(raw_data_t));
-
-    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, MANAGED_WIFI_BRIDGE,
-        &data);
+    char str[32];
+    memset(str, 0, sizeof(str));
+    snprintf(str, sizeof(str), "Device.LAN.Bridge.%d.Name", radio_index + 1);
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, str, &data);
     if (data.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
-            MANAGED_WIFI_BRIDGE, data.data_type, rc);
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            str, data.data_type, rc);
         get_bus_descriptor()->bus_data_free_fn(&data);
         return rc;
     }
 
     if (rc == bus_error_success) {
         brname = (char *)data.raw_data.bytes;
-        wifi_util_dbg_print(WIFI_CTRL, "Managed_wifi bridge name is %s\n", brname);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d Managed_wifi bridge name is %s\n",__func__,__LINE__,brname);
         token = strrchr(brname, ':');
-        snprintf(brval, length, "%s", token + 1);
-        wifi_util_info_print(WIFI_CTRL, "Managed_wifi bridge val is %s\n", brval);
+        if (token) {
+            snprintf(brval, length, "%s", token + 1);
+        } else {
+            snprintf(brval, length, "%s", brname); 
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Managed_wifi bridge val is %s\n",__func__,__LINE__,brval);
         get_bus_descriptor()->bus_data_free_fn(&data);
         return RETURN_OK;
     }
@@ -504,21 +532,20 @@ int get_managed_guest_bridge(char *brval, unsigned long length)
     return RETURN_ERR;
 }
 
-int set_managed_guest_interfaces(char *interface_name)
+int set_managed_guest_interfaces(char *interface_name, int radio_index)
 {
     bus_error_t rc;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    rc = get_bus_descriptor()->bus_set_string_fn(&g_wifi_mgr->ctrl.handle, MANAGED_WIFI_INTERFACE,
-        interface_name);
+    char str[48];
+    memset(str, 0, sizeof(str));
+    snprintf(str, sizeof(str), "Device.LAN.Bridge.%d.WiFiInterfaces", radio_index + 1);
+    rc = get_bus_descriptor()->bus_set_string_fn(&g_wifi_mgr->ctrl.handle, str, interface_name);
     if (rc != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL, "Failed to set %s with %s \n", MANAGED_WIFI_INTERFACE,
-            interface_name);
+        wifi_util_error_print(WIFI_CTRL, "Failed to set %s with %s \n", str, interface_name);
         return RETURN_ERR;
     } else {
-        wifi_util_dbg_print(WIFI_CTRL, "Successfuly set %s with %s \n", MANAGED_WIFI_INTERFACE,
-            interface_name);
+        wifi_util_dbg_print(WIFI_CTRL, "Successfuly set %s with %s \n", str, interface_name);
     }
-
     return RETURN_OK;
 }
 
@@ -560,13 +587,13 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         memset(&data, 0, sizeof(webconfig_subdoc_data_t));
         memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
             num_of_radios * sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
-            sizeof(wifi_global_config_t));
+	memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
+			sizeof(wifi_global_config_t));
         memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
         data.u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
-        webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+	webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
 
         uint32_t str_size = (strlen(data.u.encoded.raw) + 1);
         p_data->data_type = bus_data_type_string;
@@ -588,13 +615,17 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         memset(&data, 0, sizeof(webconfig_subdoc_data_t));
         memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
             num_of_radios * sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
-            sizeof(wifi_global_config_t));
         memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
         data.u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
-        webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+	if (ctrl->dev_type != dev_subtype_pod) {
+		memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
+				sizeof(wifi_global_config_t));
+		webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+	} else {
+		webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mesh_sta);
+	}
 
         uint32_t str_size = (strlen(data.u.encoded.raw) + 1);
         p_data->data_type = bus_data_type_string;

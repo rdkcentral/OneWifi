@@ -308,6 +308,15 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         }
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
         em_radio_info->enabled = oper_param->enable;
+
+        if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
+            em_radio_info->band = 0;
+        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
+            em_radio_info->band = 1;
+        } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
+            em_radio_info->band = 2;
+        }
+        
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
@@ -858,10 +867,8 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                 em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
             // Update the consolidated map
             // Link metrics and Extended Link metrics
-            if (ap_metrics->is_sta_link_metrics_enabled == true) {
-                em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
-                    em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
-                if (em_sta_dev_info != NULL) {
+            if (em_sta_dev_info != NULL) {
+                if (ap_metrics->is_sta_link_metrics_enabled == true) {
                     strncpy(em_sta_dev_info->sta_client_type, sta_stats->client_type, sizeof(em_sta_dev_info->sta_client_type));
                     em_sta_dev_info->sta_client_type[strlen(sta_stats->client_type)] = '\0';
                     em_sta_dev_info->last_ul_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
@@ -871,15 +878,9 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                     em_sta_dev_info->rcpi                     = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
                     em_sta_dev_info->util_tx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit;
                     em_sta_dev_info->util_rx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive;
-                    //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: LM updated %d\n", __func__, __LINE__);
                 }
-            }
 
-            if (ap_metrics->is_sta_traffic_stats_enabled == true) {
-                em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
-                    em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
-
-                if (em_sta_dev_info != NULL) {
+                if (ap_metrics->is_sta_traffic_stats_enabled == true) {
                     //Traffic stats
                     em_sta_dev_info->pkts_tx                  = ap_metrics->sta_traffic_stats[count].packets_sent;
                     em_sta_dev_info->pkts_rx                  = ap_metrics->sta_traffic_stats[count].packets_rcvd;
@@ -888,7 +889,6 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                     em_sta_dev_info->errors_tx                = ap_metrics->sta_traffic_stats[count].tx_packtes_errs;
                     em_sta_dev_info->errors_rx                = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
                     em_sta_dev_info->retrans_count            = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
-                    //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Traffic stats  updated\n", __func__, __LINE__);
                 }
             }
         }
@@ -923,13 +923,11 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     // Copy security info (mode/AKMs)
     enum_sec = vap->u.sta_info.security.mode;
     
-    
-    if (key_mgmt_conversion(&enum_sec, vap_row->fronthaul_akm[0],
-                vap_row->fronthaul_akm[1], sizeof(vap_row->fronthaul_akm[0]),
-                sizeof(vap_row->fronthaul_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
 
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
+        return webconfig_error_translate_to_easymesh;
     }
     vap_row->num_fronthaul_akms = len;
     // Set backhaul AKMs to empty
@@ -974,16 +972,14 @@ webconfig_error_t translate_private_vap_info_to_em_bss_config(wifi_vap_info_t *v
 
     vap_row->fronthaul_use = true;
 
-    vap_row->num_fronthaul_akms = 1;
     // convert akm to its equivalent string
     enum_sec = vap->u.bss_info.security.mode;
-    if (key_mgmt_conversion(&enum_sec, vap_row->fronthaul_akm[0],
-                vap_row->fronthaul_akm[1], sizeof(vap_row->fronthaul_akm[0]),
-                sizeof(vap_row->fronthaul_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+        return webconfig_error_translate_to_easymesh;
     }
+    vap_row->num_fronthaul_akms = len;
 
     return webconfig_error_none;
 }
@@ -1001,16 +997,14 @@ webconfig_error_t translate_xhs_vap_info_to_em_bss_config(wifi_vap_info_t *vap, 
 
     /* vap_row->xhs_use = true;
 
-       vap_row->num_xhs_akms = 1;
     // convert akm to its equivalent string
     enum_sec = vap->u.bss_info.security.mode;
-    if (key_mgmt_conversion(&enum_sec, vap_row->xhs_akm[0],
-    vap_row->xhs_akm[1], sizeof(vap_row->xhs_akm[0]),
-    sizeof(vap_row->xhs_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-    "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->xhs_akm)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
+                "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+        return webconfig_error_translate_to_easymesh;
     }
+    vap_row->num_xhs_akms = len;
     strncpy(vap_row->xhs_passphrase, vap->u.bss_info.security.u.key.key,strlen(vap->u.bss_info.security.u.key.key));
      */
     return webconfig_error_none;
@@ -1029,16 +1023,14 @@ webconfig_error_t translate_lnf_psk_vap_info_to_em_bss_config(wifi_vap_info_t *v
     }
     /* vap_row->lnfpsk_use = true;
 
-       vap_row->num_lnf_psk_akms = 1;
     // convert akm to its equivalent string
     enum_sec = vap->u.bss_info.security.mode;
-    if (key_mgmt_conversion(&enum_sec, vap_row->lnf_psk_akm[0],
-    vap_row->lnf_psk_akm[1], sizeof(vap_row->lnf_psk_akm[0]),
-    sizeof(vap_row->lnf_psk_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-    "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->lnf_psk_akm)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
+                "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+        return webconfig_error_translate_to_easymesh;
     }
+    vap_row->num_lnf_psk_akms = len;
     strncpy(vap_row->lnf_psk_passphrase, vap->u.bss_info.security.u.key.key,strlen(vap->u.bss_info.security.u.key.key));
      */
     return webconfig_error_none;
@@ -1056,15 +1048,13 @@ webconfig_error_t translate_lnf_radius_vap_info_to_em_bss_config(wifi_vap_info_t
     }
     /* vap_row->lnfradius_use = true;
 
-       vap_row->num_lnf_radius_akms = 1;
        enum_sec = vap->u.bss_info.security.mode;
-       if (key_mgmt_conversion(&enum_sec, vap_row->lnf_radius_akm[0],
-       vap_row->lnf_radius_akm[1], sizeof(vap_row->lnf_radius_akm[0]),
-       sizeof(vap_row->lnf_radius_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-       wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-       "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+       if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->lnf_radius_akm)) != RETURN_OK) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
+                    "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+            return webconfig_error_translate_to_easymesh;
        }
+       vap_row->num_lnf_radius_akms = len;
        strncpy(vap_row->lnf_radius_passphrase, vap->u.bss_info.security.u.key.key,strlen(vap->u.bss_info.security.u.key.key));
      */
     return webconfig_error_none;
@@ -1082,15 +1072,13 @@ webconfig_error_t translate_mesh_backhaul_vap_info_to_em_bss_config(wifi_vap_inf
     }
     vap_row->backhaul_use = true;
 
-    vap_row->num_backhaul_akms = 1;
     enum_sec = vap->u.bss_info.security.mode;
-    if (key_mgmt_conversion(&enum_sec, vap_row->backhaul_akm[0],
-                vap_row->backhaul_akm[1], sizeof(vap_row->backhaul_akm[0]),
-                sizeof(vap_row->backhaul_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->backhaul_akm)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+        return webconfig_error_translate_to_easymesh;
     }
+    vap_row->num_backhaul_akms = len;
     /* strncpy(vap_row->backhaul_passphrase, vap->u.bss_info.security.u.key.key,strlen(vap->u.bss_info.security.u.key.key)); */
 
     return webconfig_error_none;
@@ -1472,6 +1460,10 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     int vap_index = 0, radio_index = 0;
     wifi_platform_property_t *wifi_prop;
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+    rdk_wifi_radio_t *radio = NULL;
+    wifi_vap_info_t *vap = NULL;
+    wifi_vap_info_map_t *vap_map = NULL;
+    int i = 0;
 
     if (params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
@@ -1489,12 +1481,31 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
         return webconfig_error_translate_to_easymesh;
     }
 
-    radio_info = proto->get_radio_info(proto->data_model, radio_index);
-    bss_info = proto->get_bss_info(proto->data_model, vap_index);
+    radio = &params->radios[radio_index];
+    vap_map = &radio->vaps.vap_map;
+
+    for (i = 0; i < radio->vaps.num_vaps; i++) {
+        vap = &vap_map->vap_array[i];
+        if (vap->vap_index == vap_index) {
+            break;
+        }
+    }
+
+    if (vap == NULL){
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap is NULL\n", __func__,
+            __LINE__);
+    }
+
+    bss_info = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
+
+    if (bss_info == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bss_info is NULL\n", __func__,
+            __LINE__);
+    }
 
     memcpy(em_sta_dev_info.id, params->sta_beacon_report.mac_addr, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.bssid, bss_info->bssid.mac, sizeof(mac_address_t));
-    memcpy(em_sta_dev_info.radiomac, radio_info->intf.mac, sizeof(mac_address_t));
+    memcpy(em_sta_dev_info.radiomac, bss_info->ruid.mac, sizeof(mac_address_t));
     em_sta_dev_info.beacon_report_len = params->sta_beacon_report.data_len;
     em_sta_dev_info.num_beacon_meas_report = params->sta_beacon_report.num_br_data;
 
@@ -1544,12 +1555,10 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
     memcpy(vap->u.sta_info.bssid,      vap_row->bssid.mac,  sizeof(mac_address_t));
 
     // Copy security info (mode/AKMs)
-    if (key_mgmt_conversion(&enum_sec, vap_row->fronthaul_akm[0], vap_row->fronthaul_akm[1], 
-                               sizeof(vap_row->fronthaul_akm[0]), sizeof(vap_row->fronthaul_akm[1]), 
-                               STRING_TO_ENUM, &len) != RETURN_OK) {
-
+    if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_fronthaul_akms, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
+        return webconfig_error_translate_from_easymesh;
     }
 
     vap->u.sta_info.security.mode = enum_sec;
@@ -1568,15 +1577,16 @@ webconfig_error_t translate_em_bss_to_private_vap_info(wifi_vap_info_t *vap, con
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_easymesh;
     }
-    /* 
-       if ((key_mgmt_conversion(&enum_sec, (char *)vap_row->fronthaul_akm[0], (char *)vap_row->fronthaul_akm[1], sizeof(vap_row->fronthaul_akm[0]), sizeof(vap_row->fronthaul_akm[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-       wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
-       (vap_row->fronthaul_akm[0]) ? vap_row->fronthaul_akm[0]: "NULL");
-       return webconfig_error_translate_from_easymesh;
-       }
 
-       strncpy(vap->u.bss_info.security.u.key.key,vap_row->fronthaul_passphrase,strlen(vap->u.bss_info.security.u.key.key));
-       vap->u.bss_info.security.mode = enum_sec;
+    /*
+        if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_fronthaul_akms, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
+                    (vap_row->fronthaul_akm[0]) ? vap_row->fronthaul_akm[0]: "NULL");
+            return webconfig_error_translate_from_easymesh;
+        }
+
+        strncpy(vap->u.bss_info.security.u.key.key,vap_row->fronthaul_passphrase,strlen(vap->u.bss_info.security.u.key.key));
+        vap->u.bss_info.security.mode = enum_sec;
      */
 
     return webconfig_error_none;
@@ -1592,14 +1602,14 @@ webconfig_error_t translate_em_bss_to_xhs_vap_info(wifi_vap_info_t *vap,  const 
         return webconfig_error_translate_from_easymesh;
     }
     /*
-       if ((key_mgmt_conversion(&enum_sec, (char *)vap_row->xhs_akm[0], (char *)vap_row->xhs_akm[1], sizeof(vap_row->xhs_akm[0]), sizeof(vap_row->xhs_akm[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-       wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
-       (vap_row->xhs_akm[0]) ? vap_row->xhs_akm[0]: "NULL");
-       return webconfig_error_translate_from_easymesh;
-       }
+        if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_xhs_akms, (char(*)[])vap_row->xhs_akm)) != RETURN_OK) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
+                    (vap_row->xhs_akm[0]) ? vap_row->xhs_akm[0]: "NULL");
+            return webconfig_error_translate_from_easymesh;
+        }
 
-       strncpy(vap->u.bss_info.security.u.key.key,vap_row->xhs_passphrase,strlen(vap->u.bss_info.security.u.key.key));
-       vap->u.bss_info.security.mode = enum_sec;
+        strncpy(vap->u.bss_info.security.u.key.key,vap_row->xhs_passphrase,strlen(vap->u.bss_info.security.u.key.key));
+        vap->u.bss_info.security.mode = enum_sec;
      */
     return webconfig_error_none;
 }
@@ -1615,14 +1625,15 @@ webconfig_error_t translate_em_bss_to_lnf_psk_vap_info(wifi_vap_info_t *vap, con
         return webconfig_error_translate_from_easymesh;
     }
 
-    /* if ((key_mgmt_conversion(&enum_sec, (char *)vap_row->lnf_psk_akm[0], (char *)vap_row->lnf_psk_akm[1], sizeof(vap_row->lnf_psk_akm[0]), sizeof(vap_row->lnf_psk_akm[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-       wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
-       (vap_row->lnf_psk_akm[0]) ? vap_row->lnf_psk_akm[0]: "NULL");
-       return webconfig_error_translate_from_easymesh;
-       }
+    /*
+        if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_lnf_psk_akms, (char(*)[])vap_row->lnf_psk_akm)) != RETURN_OK) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
+                    (vap_row->lnf_psk_akm[0]) ? vap_row->lnf_psk_akm[0]: "NULL");
+            return webconfig_error_translate_from_easymesh;
+        }
 
-       strncpy(vap->u.bss_info.security.u.key.key,vap_row->lnf_psk_passphrase,strlen(vap->u.bss_info.security.u.key.key));
-       vap->u.bss_info.security.mode = enum_sec;
+        strncpy(vap->u.bss_info.security.u.key.key,vap_row->lnf_psk_passphrase,strlen(vap->u.bss_info.security.u.key.key));
+        vap->u.bss_info.security.mode = enum_sec;
      */
     return webconfig_error_none;
 }
@@ -1638,14 +1649,15 @@ webconfig_error_t translate_em_bss_to_lnf_radius_vap_info(wifi_vap_info_t *vap, 
         return webconfig_error_translate_from_easymesh;
     }
 
-    /* if ((key_mgmt_conversion(&enum_sec, (char *)vap_row->lnf_radius_akm[0], (char *)vap_row->lnf_radius_akm[1], sizeof(vap_row->lnf_radius_akm[0]), sizeof(vap_row->lnf_radius_akm[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-       wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
-       (vap_row->lnf_radius_akm[0]) ? vap_row->lnf_radius_akm[0]: "NULL");
-       return webconfig_error_translate_from_easymesh;
-       }
+    /*
+        if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_lnf_radius_akms, (char(*)[])vap_row->lnf_radius_akm)) != RETURN_OK) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
+                    (vap_row->lnf_radius_akm[0]) ? vap_row->lnf_radius_akm[0]: "NULL");
+            return webconfig_error_translate_from_easymesh;
+        }
 
-       strncpy(vap->u.bss_info.security.u.key.key,vap_row->lnf_radius_passphrase,strlen(vap->u.bss_info.security.u.key.key));
-       vap->u.bss_info.security.mode = enum_sec;
+        strncpy(vap->u.bss_info.security.u.key.key,vap_row->lnf_radius_passphrase,strlen(vap->u.bss_info.security.u.key.key));
+        vap->u.bss_info.security.mode = enum_sec;
      */
     return webconfig_error_none;
 }
@@ -1660,7 +1672,7 @@ webconfig_error_t translate_em_bss_to_mesh_backhaul_vap_info(wifi_vap_info_t *va
         return webconfig_error_translate_from_easymesh;
     }
 
-    if ((key_mgmt_conversion(&enum_sec, (char *)vap_row->backhaul_akm[0], (char *)vap_row->backhaul_akm[1], sizeof(vap_row->backhaul_akm[0]), sizeof(vap_row->backhaul_akm[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
+    if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_backhaul_akms, (char(*)[])vap_row->backhaul_akm)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
                 (vap_row->backhaul_akm[0]) ? vap_row->backhaul_akm[0]: "NULL");
         return webconfig_error_translate_from_easymesh;

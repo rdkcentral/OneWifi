@@ -117,16 +117,6 @@ ssp_WifiMbi_SendTransferCompleteSignal
         void
     );
 
-/*
-static DBusHandlerResult
-path_message_func 
-    (
-        DBusConnection  *conn,
-        DBusMessage     *message,
-        void            *user_data
-    );
-*/
-
 ANSC_STATUS 
 ssp_WifiMbi_RegisterToCR
     (

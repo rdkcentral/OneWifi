@@ -353,6 +353,9 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     //Bridge Name
     cJSON_AddStringToObject(vap_object, "BridgeName", vap_info->bridge_name);
 
+    //Repurposed Bridge Name
+    cJSON_AddStringToObject(vap_object, "RepurposedBridgeName", vap_info->repurposed_bridge_name);
+
     //VAP Name
     cJSON_AddStringToObject(vap_object, "RepurposedVapName", vap_info->repurposed_vap_name);
 
@@ -394,11 +397,17 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     uint8_mac_to_string_mac((uint8_t *)vap_info->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
     cJSON_AddStringToObject(vap_object, "MLD_Addr", mld_mac_str);
 
+    cJSON_AddNumberToObject(vap_object, "SpeedTier", vap_info->u.bss_info.am_config.npc.speed_tier);
+
+    cJSON_AddBoolToObject(vap_object, "MDUEnabled", vap_info->u.bss_info.mdu_enabled);
+
     // Isolation
     cJSON_AddBoolToObject(vap_object, "IsolationEnable", vap_info->u.bss_info.isolation);
 
     // ManagementFramePowerControl
     cJSON_AddNumberToObject(vap_object, "ManagementFramePowerControl", vap_info->u.bss_info.mgmtPowerControl);
+
+    cJSON_AddNumberToObject(vap_object, "InteropNumSta", vap_info->u.bss_info.inum_sta);
 
     // BssMaxNumSta
     cJSON_AddNumberToObject(vap_object, "BssMaxNumSta", vap_info->u.bss_info.bssMaxSta);
@@ -469,6 +478,10 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     // HostapMgtFrameCtrl
     cJSON_AddBoolToObject(vap_object, "HostapMgtFrameCtrl",
         vap_info->u.bss_info.hostap_mgt_frame_ctrl);
+
+    // InteropCtrl
+    cJSON_AddBoolToObject(vap_object, "InteropCtrl",
+        vap_info->u.bss_info.interop_ctrl);
 
     cJSON_AddBoolToObject(vap_object, "MboEnabled", vap_info->u.bss_info.mbo_enabled);
 
@@ -718,6 +731,12 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //Whix_ChUtility_Loginterval
     cJSON_AddNumberToObject(global_obj, "whix_chutility_loginterval", global_info->whix_chutility_loginterval);
 
+    // RSS Mem threshold1
+    cJSON_AddNumberToObject(global_obj, "rss_memory_restart_threshold_low", global_info->rss_memory_restart_threshold_low);
+
+    // RSS Mem threshold2
+    cJSON_AddNumberToObject(global_obj, "rss_memory_restart_threshold_high", global_info->rss_memory_restart_threshold_high);
+
     //AssocMonitorDuration
     cJSON_AddNumberToObject(global_obj, "AssocMonitorDuration", global_info->assoc_monitor_duration);
 
@@ -762,6 +781,42 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     //TxRxRateList
     cJSON_AddStringToObject(global_obj, "TxRxRateList", global_info->txrx_rate_list);
+
+    // MgtFrameRateLimitEnable
+    cJSON_AddBoolToObject(global_obj, "MgtFrameRateLimitEnable",
+        global_info->mgt_frame_rate_limit_enable);
+
+    // MgtFrameRateLimit
+    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimit", global_info->mgt_frame_rate_limit);
+
+    // MgtFrameRateLimitWindowSize
+    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitWindowSize",
+        global_info->mgt_frame_rate_limit_window_size);
+
+    // MgtFrameRateLimitCooldownTime
+    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitCooldownTime",
+        global_info->mgt_frame_rate_limit_cooldown_time);
+
+    // RSSCheckInterval
+    cJSON_AddNumberToObject(global_obj, "rss_check_interval",
+        global_info->memwraptool.rss_check_interval);
+
+    // RSSThreshold
+    cJSON_AddNumberToObject(global_obj, "rss_threshold", global_info->memwraptool.rss_threshold);
+
+    // RSSMaxLimit
+    cJSON_AddNumberToObject(global_obj, "rss_maxlimit", global_info->memwraptool.rss_maxlimit);
+
+    // HeapwalkDuration
+    cJSON_AddNumberToObject(global_obj, "heapwalk_duration",
+        global_info->memwraptool.heapwalk_duration);
+
+    // HeapwalkInterval
+    cJSON_AddNumberToObject(global_obj, "heapwalk_interval",
+        global_info->memwraptool.heapwalk_interval);
+
+    // MemwrapToolEnable
+    cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
 
     return webconfig_error_none;
 }
@@ -809,7 +864,9 @@ webconfig_error_t encode_anqp_object(const char *vap_name, cJSON *inter,const un
     if(cJSON_HasObjectItem(p_root, "ANQP") == true) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  anqp element already exsistingin json\n", __func__, __LINE__);
         anqpElement = cJSON_GetObjectItem(p_root, (const char * const)"ANQP");
+        cJSON_DetachItemViaPointer(p_root, anqpElement);
         cJSON_AddItemToObject(inter, "ANQP", anqpElement);
+        cJSON_Delete(p_root);
     } else {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Add anqp element to json\n", __func__, __LINE__);
         cJSON_AddItemToObject(inter, "ANQP", p_root);
@@ -834,7 +891,9 @@ webconfig_error_t encode_passpoint_object(const char *vap_name, cJSON *inter,con
       if(cJSON_HasObjectItem(p_root, "Passpoint") == true) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Passpoint element already exsisting in json\n", __func__, __LINE__);
         pass = cJSON_GetObjectItem(p_root,  (const char * const) "Passpoint");
+        cJSON_DetachItemViaPointer(p_root, pass);
         cJSON_AddItemToObject(inter, "Passpoint", pass);
+        cJSON_Delete(p_root);
     } else {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Add Passpoint element to json\n", __func__, __LINE__);
         cJSON_AddItemToObject(inter, "Passpoint", p_root);
@@ -955,6 +1014,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
 
     return webconfig_error_none;
 }
+
 
 webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info, cJSON *radius)
 {
@@ -1094,6 +1154,21 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
                 __func__, __LINE__);
             return webconfig_error_encode;
+        }
+    }
+
+    if (security_info->mode == wifi_security_mode_wpa_personal ||
+        security_info->mode == wifi_security_mode_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa3_personal ||
+        security_info->mode == wifi_security_mode_wpa3_transition ||
+        security_info->mode == wifi_security_mode_wpa3_compatibility) {
+        
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToObject(security, "RepurposedRadiusConfig", obj);
+        if (encode_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Failed to encode RepurposedRadiusConfig\n", __FUNCTION__, __LINE__);
+            return webconfig_error_decode;
         }
     }
 
@@ -1777,6 +1852,21 @@ webconfig_error_t encode_levl_object(const levl_config_t *levl, cJSON *levl_obj)
     cJSON_AddNumberToObject(levl_obj, "Duration", levl->levl_sounding_duration);
     cJSON_AddNumberToObject(levl_obj, "Interval", levl->levl_publish_interval);
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_memwraptool_object(memwraptool_config_t *memwrap_info, cJSON *memwrap_obj)
+{
+    if (memwrap_info == NULL || memwrap_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Memwrap info is NULL\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddNumberToObject(memwrap_obj, "rss_check_interval", memwrap_info->rss_check_interval);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_threshold", memwrap_info->rss_threshold);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_maxlimit", memwrap_info->rss_maxlimit);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_duration", memwrap_info->heapwalk_duration);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_interval", memwrap_info->heapwalk_interval);
+    cJSON_AddBoolToObject(memwrap_obj, "enable", memwrap_info->enable);
     return webconfig_error_none;
 }
 
@@ -3073,9 +3163,8 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
 
         for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
             ap_metrics = &ap_report->vap_reports[k];
-            if ((strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
-                sizeof(bssid_t)) == 0) &&
-                (vap->u.bss_info.bssid[0] != 0)) {
+            if (strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
+                sizeof(bssid_t)) == 0) {
                     vap_arr_index = k;
                     break;
             }
@@ -3083,6 +3172,8 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
         if(vap_arr_index == -1) {
             continue;
         }
+
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d vap_arr_index: %d\n", __func__, __LINE__, vap_arr_index);
 
         ap_metrics = &ap_report->vap_reports[vap_arr_index];
 
@@ -3118,6 +3209,25 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
             ap_metrics->vap_metrics.unicast_bytes_sent);
         cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesReceived",
             ap_metrics->vap_metrics.unicast_bytes_rcvd);
+
+
+        // Create Radio Metrics
+        temp_obj = cJSON_CreateObject();
+        if ((temp_obj == NULL)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToObject(param_obj, "Radio Metrics", temp_obj);
+        to_mac_str(ap_report->radio_metrics.ruid, mac_string);
+        cJSON_AddStringToObject(temp_obj, "Radio ID", mac_string);
+        cJSON_AddNumberToObject(temp_obj, "Radio.Noise",
+            ap_report->radio_metrics.noise);
+        cJSON_AddNumberToObject(temp_obj, "Radio.Transmit",
+            ap_report->radio_metrics.transmit);
+        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveSelf",
+            ap_report->radio_metrics.receive_self);
+        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveOther",
+            ap_report->radio_metrics.receive_other);
 
         // check sta link metrics and traffic stats
         if (ap_metrics->is_sta_traffic_stats_enabled == true) {

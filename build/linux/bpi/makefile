@@ -58,8 +58,28 @@ INCLUDE_HOSTAP_LIB_DIRS = \
 EXCLUDE = $(WIFI_RDK_HAL)/src/wifi_hal_frame_test.c $(WIFI_RDK_HAL)/src/wifi_hal_dpp.c
 
 HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
-    $(wildcard $(WIFI_RDK_HAL)/platform/raspberry-pi/*.c) \
+    $(wildcard $(WIFI_RDK_HAL)/platform/banana-pi/*.c) \
     $(wildcard $(WIFI_DEVICE_HAL)/*.c) \
+    $(WIFI_HOSTAP_SUPPLICANT)/sme.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wmm_ac.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wps_supplicant.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wpas_glue.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/interworking.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/op_classes.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/events.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/hs20_supplicant.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/scan.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/bss.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/notify.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wpa_supplicant.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/robust_av.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/bssid_ignore.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/config.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/gas_query.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/offchannel.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/rrm.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/config_file.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/eap_register.c \
     $(WIFI_HOSTAP_SRC)/ap/ieee802_11_auth.c \
     $(WIFI_HOSTAP_SRC)/ap/ap_config.c   \
     $(WIFI_HOSTAP_SRC)/ap/ieee802_11.c   \
@@ -81,6 +101,7 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(WIFI_HOSTAP_SRC)/ap/tkip_countermeasures.c   \
     $(WIFI_HOSTAP_SRC)/ap/hostapd.c   \
     $(WIFI_HOSTAP_SRC)/ap/beacon.c   \
+    $(WIFI_HOSTAP_SRC)/ap/hs20.c  \
     $(WIFI_HOSTAP_SRC)/ap/rrm.c   \
     $(WIFI_HOSTAP_SRC)/ap/wmm.c   \
     $(WIFI_HOSTAP_SRC)/ap/authsrv.c   \
@@ -173,12 +194,22 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(WIFI_HOSTAP_SRC)/drivers/linux_ioctl.c    \
     $(WIFI_HOSTAP_SRC)/drivers/netlink.c    \
     $(WIFI_HOSTAP_SRC)/drivers/rfkill.c    \
+    $(WIFI_HOSTAP_SRC)/ap/gas_serv.c   \
+    $(WIFI_HOSTAP_SRC)/utils/bitfield.c    \
+    $(WIFI_HOSTAP_SRC)/utils/config.c    \
+    $(WIFI_HOSTAP_SRC)/common/sae.c    \
+    $(WIFI_HOSTAP_SRC)/common/gas.c    \
+    $(WIFI_HOSTAP_SRC)/crypto/sha384-prf.c    \
+    $(WIFI_HOSTAP_SRC)/crypto/sha384-kdf.c    \
+    $(WIFI_HOSTAP_SRC)/crypto/sha256-kdf.c    \
+    $(WIFI_HOSTAP_SRC)/crypto/sha512-kdf.c    \
+    $(WIFI_HOSTAP_SRC)/crypto/sha512-prf.c    \
 
 HAL_LIB_OBJECTS = $(HAL_LIB_SOURCES:.c=.o)  # expands to list of object files
 ALL_HAL_LIB_OBJECTS = $(HAL_LIB_OBJECTS)
-HAL_LIB_FLAGS = -g -fPIC $(INCLUDE_HAL_LIB_DIRS) -DENABLE_FEATURE_MESHWIFI -DRASPBERRY_PI_PORT -D_PLATFORM_RASPBERRYPI_ -DCONFIG_HW_CAPABILITIES -DEM_APP
-HOSTAP_LIB_FLAGS = -g -fPIC $(INCLUDE_HOSTAP_LIB_DIRS) -DHOSTAPD -DCONFIG_CRYPTO_INTERNAL -DCONFIG_DRIVER_NL80211 -DNEED_AP_MLME -DCONFIG_IEEE80211AC -DCONFIG_IEEE80211AX -DCONFIG_IEEE80211N -DCONFIG_WPS -DIEEE8021X_EAPOL -DEAP_SERVER_IDENTITY -DEAP_SERVER_MD5 -DEAP_SERVER_TLS -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DCONFIG_ECC -DRDK_ONEWIFI -DCONFIG_IEEE80211W -DCONFIG_OPENSSL_CMAC -DCONFIG_LIBNL20 -DCONFIG_WNM_AP
-HOSTAP_LIB_FLAGS +=  -DHOSTAPD_2_10 -DCONFIG_WEP -DFEATURE_SUPPORT_RADIUSGREYLIST -DCONFIG_DRIVER_BRCM -DCONFIG_DRIVER_BRCM_MAP
+HAL_LIB_FLAGS = -g -fPIC $(INCLUDE_HAL_LIB_DIRS) -DENABLE_FEATURE_MESHWIFI -DBANANA_PI_PORT -D_PLATFORM_BANANAPI_R4_ -DCONFIG_HW_CAPABILITIES
+HOSTAP_LIB_FLAGS = -g -fPIC $(INCLUDE_HOSTAP_LIB_DIRS) -DHOSTAPD -DCONFIG_CRYPTO_INTERNAL -DCONFIG_DRIVER_NL80211 -DNEED_AP_MLME -DCONFIG_IEEE80211AC -DCONFIG_IEEE80211AX -DCONFIG_IEEE80211N -DCONFIG_WPS -DIEEE8021X_EAPOL -DEAP_SERVER_IDENTITY -DEAP_SERVER_MD5 -DEAP_SERVER_TLS -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DCONFIG_ECC -DRDK_ONEWIFI -DCONFIG_IEEE80211W -DCONFIG_OPENSSL_CMAC -DCONFIG_LIBNL20 -DCONFIG_HS20 -DCONFIG_WNM_AP
+HOSTAP_LIB_FLAGS +=  -DHOSTAPD_2_10 -DCONFIG_WEP -DFEATURE_SUPPORT_RADIUSGREYLIST -DCONFIG_DRIVER_BRCM -DCONFIG_DRIVER_BRCM_MAP -DCONFIG_SAE -DCONFIG_SUITEB192 -DCONFIG_SUITE -DCONFIG_SUITEB -DCONFIG_SUITEB192 -DCONFIG_CRYPTO_INTERNAL -DCONFIG_SHA256 -DCONFIG_SHA384 -DCONFIG_SHA512 -DCONFIG_HMAC_SHA384_KDF -DCONFIG_SME -DCONFIG_INTERWORKING -DCONFIG_GAS -DCONFIG_HS20
 
 # wifi agent rules
 
@@ -211,7 +242,6 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/dml/wifi_ssp \
     -I$(ONE_WIFI_HOME)/source/ccsp \
     -I$(ONE_WIFI_HOME)/source/utils \
-    -I$(ONE_WIFI_HOME)/source/utils/mtrx/inc \
     -I$(ONE_WIFI_HOME)/source/stats \
     -I$(ONE_WIFI_HOME)/source/stubs \
     -I$(ONE_WIFI_HOME)/source/dml/linux \
@@ -226,7 +256,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
     -I$(ONE_WIFI_HOME)/source/apps/harvester \
     -I$(ONE_WIFI_HOME)/source/apps/levl \
-    -I$(ONE_WIFI_HOME)/source/apps/sta_mgr \
+    -I$(ONE_WIFI_HOME)/source/apps/memwraptool \
     -I$(ONE_WIFI_HOME)/source/apps/motion \
     -I$(ONE_WIFI_HOME)/source/apps/ocs \
     -I$(ONE_WIFI_HOME)/source/apps/sm \
@@ -303,7 +333,6 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(ONE_WIFI_HOME)/source/ccsp/ccsp.c \
     $(ONE_WIFI_HOME)/source/utils/collection.c	\
     $(ONE_WIFI_HOME)/source/utils/scheduler.c	\
-    $(ONE_WIFI_HOME)/source/utils/mtrx/src/mtrx.c	\
     $(ONE_WIFI_HOME)/source/dml/linux/wifi_dml.c \
     $(ONE_WIFI_HOME)/source/platform/linux/misc.c 	\
     $(ONE_WIFI_HOME)/source/platform/linux/bus.c	\
@@ -335,6 +364,7 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_stats.c		\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_neighbor_stats.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_assocdevice_stats.c	\
+        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_memwraptool.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_temperature.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
@@ -389,8 +419,8 @@ ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/easyconnect/*.c)
 endif
 
-ifdef ONEWIFI_STA_MGR_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_mgr/*.c)
+ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)
 endif
 
 ifdef EM_APP
@@ -413,8 +443,7 @@ ALL_HEBUS_LIB_OBJECTS = $(HEBUS_OBJECTS)
 
 ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(HEBUS_OBJECTS)
 
-CFLAGS = $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DRASPBERRY_PI_PORT  -DNL80211_ACL -D_PLATFORM_RASPBERRYPI_ -DEASY_MESH_NODE  -DEM_APP \
-        -DONEWIFI_STA_MGR_APP_SUPPORT
+CFLAGS += $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DBANANA_PI_PORT  -DNL80211_ACL -D_PLATFORM_BANANAPI_R4_ -DFEATURE_SINGLE_PHY -DEASY_MESH_NODE -DEM_APP
 
 ifneq ($(OS), Darwin)
 CFLAGS += -DPLATFORM_LINUX
@@ -482,7 +511,7 @@ run:
 	./$(PROGRAM)
 
 setup:
-	./build/linux/setup.sh
+	./build/linux/bpi/setup.sh
 
 stamgrsetup:
 	./build/linux/stamgr_setup.sh

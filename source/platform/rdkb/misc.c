@@ -1,4 +1,3 @@
-#include <sysevent/sysevent.h>
 #include "wifi_util.h"
 #include "misc.h"
 #include <semaphore.h>
@@ -12,15 +11,13 @@ sem_t *sem;
 
 int rdkb_sysevent_open(char *ip, unsigned short port, int version, char *id, unsigned int *token)
 {
-    int fd;
-    wifi_util_error_print(WIFI_MGR,"%s:%d calling sysevent_open!\n", __func__, __LINE__);
-    fd = sysevent_open(ip, SE_SERVER_WELL_KNOWN_PORT, SE_VERSION, id, token);
-    return fd;
+    //ToDo
+    return 0;
 }
 
 int rdkb_sysevent_close(const int fd, const unsigned int  token)
 {
-    sysevent_close(fd, token);
+    //ToDo
     return 0;
 }
 

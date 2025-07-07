@@ -120,6 +120,28 @@ int harvester_deinit(wifi_app_t *app)
 }
 #endif
 
+#ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+extern int memwraptool_init(wifi_app_t *app, unsigned int create_flag);
+extern int memwraptool_deinit(wifi_app_t *app);
+extern int memwraptool_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int memwraptool_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int memwraptool_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int memwraptool_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+#endif // ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+
 #ifdef ONEWIFI_LEVL_APP_SUPPORT
 extern int levl_init(wifi_app_t *app, unsigned int create_flag);
 extern int levl_deinit(wifi_app_t *app);
@@ -287,6 +309,7 @@ wifi_app_descriptor_t app_desc[] = {
         NULL,NULL
     },
 #endif
+#if ONEWIFI_CSI_APP_SUPPORT
     {
         wifi_app_inst_csi, 0, 0,
         true, true,
@@ -294,6 +317,8 @@ wifi_app_descriptor_t app_desc[] = {
         csi_init, NULL, NULL,
         NULL, NULL
     },
+#endif
+#if ONEWIFI_LEVL_APP_SUPPORT
     {
         wifi_app_inst_levl, 0,
         wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_csi ,
@@ -302,6 +327,8 @@ wifi_app_descriptor_t app_desc[] = {
         levl_init, levl_event, levl_deinit,
         NULL, levl_update
     },
+#endif
+#if ONEWIFI_MOTION_APP_SUPPORT
     {
         wifi_app_inst_motion, 0,
         wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_csi | wifi_event_type_speed_test,
@@ -310,6 +337,8 @@ wifi_app_descriptor_t app_desc[] = {
         motion_init, motion_event, NULL,
         NULL, NULL
     },
+#endif
+#if ONEWIFI_WHIX_APP_SUPPORT
     {
         wifi_app_inst_whix, 0,
         wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_command | wifi_event_type_hal_ind,
@@ -318,6 +347,8 @@ wifi_app_descriptor_t app_desc[] = {
         whix_init, whix_event, whix_deinit,
         NULL, NULL
     },
+#endif
+#if ONEWIFI_HARVESTER_APP_SUPPORT
     {
         wifi_app_inst_harvester, 0,
         wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_hal_ind,
@@ -326,6 +357,7 @@ wifi_app_descriptor_t app_desc[] = {
         harvester_init, harvester_event, harvester_deinit,
         NULL, NULL
     },
+#endif
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
     {
         wifi_app_inst_ocs, 0,
@@ -336,6 +368,7 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif // (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if ONEWIFI_BLASTER_APP_SUPPORT
     {
         wifi_app_inst_blaster, 0,
         wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_hal_ind,
@@ -344,6 +377,17 @@ wifi_app_descriptor_t app_desc[] = {
         blaster_init, blaster_event, blaster_deinit,
         NULL, NULL
     },
+#endif
+#ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    {
+        wifi_app_inst_memwraptool, 0,
+        wifi_event_type_webconfig | wifi_event_type_command,
+        true, true,
+        "Memwraptool",
+        memwraptool_init, memwraptool_event, memwraptool_deinit,
+        NULL, NULL
+    },
+#endif // ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
     {
         wifi_app_inst_sta_mgr, 0,

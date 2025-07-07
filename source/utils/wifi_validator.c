@@ -308,6 +308,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        UCHAR eap_method_count = 0;
         wifi_naiRealm_t *realmInfoBuf = (wifi_naiRealm_t *)next_pos;
         next_pos += sizeof(realmInfoBuf->data_field_length);
 
@@ -336,17 +337,20 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         cJSON_AddItemToArray(statsList, realmStats);
 
         validate_param_array(anqpEntry,"EAP",subList);
-        realmInfoBuf->eap_method_count = cJSON_GetArraySize(subList);
-        if(realmInfoBuf->eap_method_count > 16){
+        eap_method_count = cJSON_GetArraySize(subList);
+        if(eap_method_count > 16){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: EAP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid number of EAP entries in realm",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
+        *next_pos = eap_method_count;
         next_pos += sizeof(realmInfoBuf->eap_method_count);
 
         cJSON_ArrayForEach(subEntry, subList){
             wifi_eapMethod_t *eapBuf = (wifi_eapMethod_t *)next_pos;
+            next_pos += sizeof(eapBuf->length);
+
             validate_param_integer(subEntry,"Method",subParam);
             eapBuf->method = subParam->valuedouble;
             next_pos += sizeof(eapBuf->method);
@@ -1614,6 +1618,9 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
         validate_param_bool(vap, "HostapMgtFrameCtrl", param);
         vap_info->u.bss_info.hostap_mgt_frame_ctrl = (param->type & cJSON_True) ? true : false;
 
+        validate_param_bool(vap, "InteropCtrl", param);
+        vap_info->u.bss_info.interop_ctrl = (param->type & cJSON_True) ? true : false;
+
         validate_param_bool(vap, "MboEnabled", param);
         vap_info->u.bss_info.mbo_enabled = (param->type & cJSON_True) ? true : false;
 
@@ -1806,6 +1813,22 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     //TxRxRateList
     validate_param_string(global_cfg, "TxRxRatetList", param);
     copy_string(global_info->txrx_rate_list, param->valuestring);
+
+    // MgtFrameRateLimitEnable
+    validate_param_bool(global_cfg, "MgtFrameRateLimitEnable", param);
+    global_info->mgt_frame_rate_limit_enable = (param->type & cJSON_True) ? true : false;
+
+    // MgtFrameRateLimit
+    validate_param_integer(global_cfg, "MgtFrameRateLimit", param);
+    global_info->mgt_frame_rate_limit = param->valuedouble;
+
+    // MgtFrameRateLimitWindowSize
+    validate_param_integer(global_cfg, "MgtFrameRateLimitWindowSize", param);
+    global_info->mgt_frame_rate_limit_window_size = param->valuedouble;
+
+    // MgtFrameRateLimitCooldownTime
+    validate_param_integer(global_cfg, "MgtFrameRateLimitCooldownTime", param);
+    global_info->mgt_frame_rate_limit_cooldown_time = param->valuedouble;
 
     wifi_util_dbg_print(WIFI_PASSPOINT,"wifi global Parameters validate successfully\n");
     return RETURN_OK;
