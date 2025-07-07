@@ -1969,31 +1969,6 @@ static BOOL erouterGetIpAddress()
 }
 #endif
 
-static unsigned char updateNasIpStatus (int apIndex)
-{
-#if defined (DUAL_CORE_XB3)
-
-    static unsigned char erouterIpInitialized = 0;
-    if(isVapHotspotSecure(apIndex)) {
-        if (!erouterIpInitialized) {
-            if (FALSE == erouterGetIpAddress()) {
-                return 0;
-            } else {
-                erouterIpInitialized = 1;
-                return wifi_pushSecureHotSpotNASIP(apIndex, erouterIpAddrStr);
-            }
-        } else {
-                return wifi_pushSecureHotSpotNASIP(apIndex, erouterIpAddrStr);
-        }
-    } else {
-        return 1;
-    }
-#else
-    UNREFERENCED_PARAMETER(apIndex);
-    return 1;
-#endif
-}
-
 int capture_vapup_status()
 {
     int i = 0, vap_status = 0;
