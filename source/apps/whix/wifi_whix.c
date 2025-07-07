@@ -2025,6 +2025,7 @@ int capture_vapup_status()
         } else {
             vap_up_arr[vap_index] = 0;
         }
+    }
     vap_iteration++;
     return RETURN_OK;
 }
