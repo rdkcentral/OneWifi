@@ -92,7 +92,8 @@
 
 extern ULONG g_currentBsUpdate;
 #endif
-
+# define INTEROP_MIN_STA 0
+# define INTEROP_MAX_STA 32
 extern bool is_radio_config_changed;
 static int radio_reset_count;
 ULONG last_vap_change;
@@ -6521,6 +6522,11 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "InteropTelemetryCtrl", TRUE)) {
+        *pBool = pcfg->u.bss_info.interop_ctrl;
+        return TRUE;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -6631,6 +6637,12 @@ AccessPoint_GetParamIntValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "InteropNumSta", TRUE))
+    {
+        *pInt = pcfg->u.bss_info.inum_sta;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d inumsta:%d \n", __FUNCTION__,__LINE__,pcfg->u.bss_info.inum_sta);
+        return TRUE;
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
@@ -7153,6 +7165,15 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "InteropTelemetryCtrl", TRUE))
+    {
+        vapInfo->u.bss_info.interop_ctrl = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: interop_ctrl value = %d\n", __func__,
+            __LINE__, vapInfo->u.bss_info.interop_ctrl);
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7287,6 +7308,23 @@ AccessPoint_SetParamIntValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "InteropNumSta", TRUE))
+    {
+        if (vapInfo->u.bss_info.inum_sta == (UINT)iValue)
+        {
+            return  TRUE;
+        }
+
+        if (iValue < INTEROP_MIN_STA || iValue > INTEROP_MAX_STA) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid value for vap index:%d\n",__func__, __LINE__,pcfg->vap_index);
+            return FALSE;
+        }
+        /* Allow users to set max station for given VAP */
+        vapInfo->u.bss_info.inum_sta = iValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return (TRUE);
+    }
+    
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7860,6 +7898,13 @@ Security_GetParamUlongValue
         *puLong = pcfg->u.radius.port;
         return TRUE;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.port;
+        return TRUE;
+    }
 	
 	if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
     {
@@ -7868,6 +7913,12 @@ Security_GetParamUlongValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.s_port;
+        return TRUE;
+    }
 
     if( AnscEqualString(ParamName, "RadiusDASPort", TRUE))
     {
@@ -8128,7 +8179,21 @@ Security_GetParamStringValue
         return 0;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }    
+
     if( AnscEqualString(ParamName, "SecondaryRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusSecret", TRUE))
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
@@ -8142,6 +8207,21 @@ Security_GetParamStringValue
         if(result)
         {
             AnscCopyString(pValue, (char *)&pcfg->u.radius.ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerIPAddr", TRUE))
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.ip);
         }
         else
         {
@@ -8164,6 +8244,22 @@ Security_GetParamStringValue
         }
         return 0;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerIPAddr", TRUE))
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.s_ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.s_ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
+
     if( AnscEqualString(ParamName, "MFPConfig", TRUE))
     {
 	convert_security_mode_integer_to_string(pcfg->mfp,pValue);
@@ -8896,7 +8992,7 @@ Security_SetParamStringValue
 	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
-	
+
     rc = strcmp_s("SecondaryRadiusServerIPAddr", strlen("SecondaryRadiusServerIPAddr"), ParamName, &ind);
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
