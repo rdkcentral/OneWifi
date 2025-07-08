@@ -1054,6 +1054,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddBoolToObject(vb_entry, "BssHotspot", true);
         cJSON_AddNumberToObject(vb_entry, "WpsPushButton", 0);
         cJSON_AddBoolToObject(vb_entry, "WpsEnable", false);
+        cJSON_AddNumberToObject(vb_entry, "InteropNumSta", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.inum_sta);
         if(strstr(nm_s, "private") != NULL) {
             cJSON_AddNumberToObject(vb_entry, "WpsConfigMethodsEnabled", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wps.methods);
             cJSON_AddItemToObject(vb_entry, "WpsConfigPin", cJSON_CreateString(wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wps.pin));
@@ -1073,7 +1074,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddStringToObject(vb_entry, "RepurposedVapName", wifi_vap_map->vap_array[vapArrayIndex].repurposed_vap_name);
 
         cJSON_AddBoolToObject(vb_entry, "HostapMgtFrameCtrl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.hostap_mgt_frame_ctrl);
-
+        cJSON_AddBoolToObject(vb_entry, "InteropCtrl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.interop_ctrl);
         cJSON_AddBoolToObject(vb_entry, "MboEnabled",
             wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mbo_enabled);
 

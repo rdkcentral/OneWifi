@@ -382,6 +382,8 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     // ManagementFramePowerControl
     cJSON_AddNumberToObject(vap_object, "ManagementFramePowerControl", vap_info->u.bss_info.mgmtPowerControl);
 
+    cJSON_AddNumberToObject(vap_object, "InteropNumSta", vap_info->u.bss_info.inum_sta);
+
     // BssMaxNumSta
     cJSON_AddNumberToObject(vap_object, "BssMaxNumSta", vap_info->u.bss_info.bssMaxSta);
 
@@ -451,6 +453,10 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     // HostapMgtFrameCtrl
     cJSON_AddBoolToObject(vap_object, "HostapMgtFrameCtrl",
         vap_info->u.bss_info.hostap_mgt_frame_ctrl);
+
+    // InteropCtrl
+    cJSON_AddBoolToObject(vap_object, "InteropCtrl",
+        vap_info->u.bss_info.interop_ctrl);
 
     cJSON_AddBoolToObject(vap_object, "MboEnabled", vap_info->u.bss_info.mbo_enabled);
 
