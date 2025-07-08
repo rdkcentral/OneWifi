@@ -65,6 +65,11 @@ ifconfig wifi1.1 up
 ifconfig wifi1.2 up
 ifconfig wifi2 up
 
+
+#Copy configuration file to nvram
+mkdir -p /nvram
+cp InterfaceMap.json /nvram/.
+
 # Create the EasyMeshCfg.json which will have the al_mac_address
 # same as that of wifi_1_1_mac
 al_mac_addr=$wifi1_1_mac
@@ -73,8 +78,30 @@ backhaul_ssid="mesh_backhaul"
 backhaul_keypassphrase="test-backhaul"
 sta_4addr_mode_enabled=true
 
-# Construct the JSON string
-json_data=$(cat <<EOF
+# Write the JSON data to the file
+output_file="/nvram/EasymeshCfg.json"
+write_easymeshcfg=true
+# Don't overwrite if colocated_mode is set to 1
+if [ -f "$output_file" ]; then
+    echo "Checking existing ${output_file} for Colocated_mode..."
+    # Attempt to read the Colocated_mode value using jsonfilter
+    # Redirect stderr to /dev/null to suppress errors if the file is not valid JSON or key is missing
+    existing_colocated_mode=$(jsonfilter -i "$output_file" -e '@.Colocated_mode' 2>/dev/null)
+
+    if [ "$existing_colocated_mode" = "1" ]; then
+        echo "Colocated_mode is already 1 in ${output_file}. Skipping file creation."
+        write_easymeshcfg=false
+    else
+        echo "Colocated_mode is not 1 (or not found) in existing ${output_file}. Proceeding to create/overwrite."
+    fi
+else
+    echo "${output_file} does not exist. Proceeding to create the file."
+fi
+
+# Proceed to write the file only if write_easymeshcfg is true
+if [ "$write_easymeshcfg" = true ]; then
+    # Construct the JSON string
+    json_data=$(cat <<EOF
 {
   "AL_MAC_ADDR": "${al_mac_addr}",
   "Colocated_mode": ${colocated_mode},
@@ -85,15 +112,12 @@ json_data=$(cat <<EOF
 EOF
 )
 
-# Write the JSON data to the file
-output_file="EasymeshCfg.json"
-echo "$json_data" > "$output_file"
+    # Write the JSON data to the file
+    echo "$json_data" > "$output_file"
 
-# Print a confirmation message
-echo "Successfully created ${output_file} with the following content:"
-cat "$output_file"
-
-#Copy configuration file to nvram
-mkdir -p /nvram
-cp InterfaceMap.json /nvram/.
-cp EasymeshCfg.json /nvram/.
+    # Print a confirmation message
+    echo "Successfully created ${output_file} with the following content:"
+    cat "$output_file"
+else
+	echo "No changes made to ${output_file}."
+fi

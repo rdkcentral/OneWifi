@@ -38,6 +38,11 @@ define Build/Compile
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/OneWifi/build/openwrt/  \
 		$(TARGET_CONFIGURE_OPTS)
 
+	echo "Compiling libalsap..."
+	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS)" \
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/libalsap/  \
+		$(TARGET_CONFIGURE_OPTS)
+
 	echo "Compiling Easymesh AGENT..."
 	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) $(STAGING_DIR)" \
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/agent/  \
@@ -55,6 +60,16 @@ define Package/easymesh/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_agent $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_ctrl $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/install/bin/OneWifi $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)/banana-pi
+	$(INSTALL_DIR) $(1)/nvram
+	$(CP) $(PKG_BUILD_DIR)/OneWifi/config/openwrt/banana-pi/* $(1)/banana-pi/
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/config/openwrt/banana-pi/etc/init.d/* $(1)/etc/init.d/
+	$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/config/openwrt/banana-pi/* $(1)/banana-pi/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/config/openwrt/banana-pi/etc/init.d/* $(1)/etc/init.d/
+	#Copy certificate file needed for ssh connection to nvram folder
+	$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/config/test_cert.crt $(1)/nvram/
+	$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/config/test_cert.key $(1)/nvram/
 endef
 
 $(eval $(call BuildPackage,easymesh))
