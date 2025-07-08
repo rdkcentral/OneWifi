@@ -51,9 +51,14 @@
 typedef struct csi_data_json_obj {
     cJSON *main_json_obj;
     cJSON *json_csi_obj;
-    cJSON *json_csi_sta_mac;
+    cJSON *json_sounding_devices;
+    hash_map_t *stalist_array_map;
     FILE *json_dump_fptr;
 } csi_data_json_obj_t;
+
+typedef struct stalist_map_info {
+    cJSON *sta_json_arr_obj;
+} stalist_map_info_t;
 
 csi_data_json_obj_t json_obj;
 
@@ -405,26 +410,29 @@ void json_add_wifi_csi_matrix_info(cJSON *csi_matrix_obj_wrapper, wifi_csi_data_
             cJSON_AddItemToArray(stream_array_for_subcarrier, stream_data_obj);
 
             for (uint32_t ant_idx = 0; ant_idx < csi->frame_info.Nr; ant_idx++) {
-                cJSON *real_imag_pair_array = cJSON_CreateArray();
-                VERIFY_NULL_CHECK(real_imag_pair_array);
+                cJSON *real_imag_object = cJSON_CreateObject();
+                VERIFY_NULL_CHECK(real_imag_object);
 
                 int16_t real_data = (int16_t)((csi->csi_matrix[sc_idx][ant_idx][stream_idx] >> 16) &
                     0xFFFF);
                 int16_t imag_data = (int16_t)(csi->csi_matrix[sc_idx][ant_idx][stream_idx] &
                     0xFFFF);
 
-                cJSON_AddItemToArray(real_imag_pair_array, cJSON_CreateNumber(real_data));
-                cJSON_AddItemToArray(real_imag_pair_array, cJSON_CreateNumber(imag_data));
+                cJSON_AddNumberToObject(real_imag_object, "real", real_data);
+                cJSON_AddNumberToObject(real_imag_object, "img", imag_data);
 
-                cJSON_AddItemToArray(antenna_data_array, real_imag_pair_array);
+                cJSON_AddItemToArray(antenna_data_array, real_imag_object);
             }
         }
     }
 }
 
-void client_csi_data_json_elem_add(cJSON *sta_obj, wifi_csi_data_t *csi)
+void client_csi_data_json_elem_add(cJSON *sta_obj, wifi_csi_data_t *csi,
+    char *str_sta_mac)
 {
     cJSON *obj;
+
+    cJSON_AddStringToObject(sta_obj, "sta_mac", str_sta_mac);
 
     obj = cJSON_CreateObject();
     VERIFY_NULL_CHECK(obj);
@@ -443,6 +451,7 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
         return;
     }
     mac_addr_str_t str_sta_mac = { 0 };
+    cJSON *obj;
 
     csi_data_json_obj_t *p_csi_json_obj = get_csi_json_obj();
     if (p_csi_json_obj->main_json_obj == NULL) {
@@ -456,25 +465,46 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
         cJSON_AddItemToObject(p_csi_json_obj->main_json_obj, "CSI", p_csi_json_obj->json_csi_obj);
     }
 
-    to_mac_str(sta_mac, str_sta_mac);
-    p_csi_json_obj->json_csi_sta_mac = cJSON_GetObjectItem(p_csi_json_obj->json_csi_obj,
-        str_sta_mac);
-    if (p_csi_json_obj->json_csi_sta_mac == NULL) {
-        p_csi_json_obj->json_csi_sta_mac = cJSON_CreateArray();
-        VERIFY_NULL_CHECK(p_csi_json_obj->json_csi_sta_mac);
-        cJSON_AddItemToObject(p_csi_json_obj->json_csi_obj, str_sta_mac,
-            p_csi_json_obj->json_csi_sta_mac);
+    if (p_csi_json_obj->json_sounding_devices == NULL) {
+        p_csi_json_obj->json_sounding_devices = cJSON_CreateArray();
+        VERIFY_NULL_CHECK(p_csi_json_obj->json_sounding_devices);
+        cJSON_AddItemToObject(p_csi_json_obj->json_csi_obj, "SoundingDevices",
+            p_csi_json_obj->json_sounding_devices);
     }
 
-    cJSON *obj = cJSON_CreateObject();
-    cJSON_AddItemToArray(p_csi_json_obj->json_csi_sta_mac, obj);
-    client_csi_data_json_elem_add(obj, csi);
+    if (p_csi_json_obj->stalist_array_map == NULL) {
+        p_csi_json_obj->stalist_array_map = hash_map_create();
+        VERIFY_NULL_CHECK(p_csi_json_obj->stalist_array_map);
+    }
+
+    to_mac_str(sta_mac, str_sta_mac);
+    stalist_map_info_t *ptr = hash_map_get(p_csi_json_obj->stalist_array_map,
+        str_sta_mac);
+    if (ptr == NULL) {
+        ptr = calloc(1, sizeof(stalist_map_info_t));
+        VERIFY_NULL_CHECK(ptr);
+        hash_map_put(p_csi_json_obj->stalist_array_map,
+            strdup(str_sta_mac), ptr);
+    }
+
+    if (ptr->sta_json_arr_obj == NULL) {
+        ptr->sta_json_arr_obj = cJSON_CreateArray();
+        VERIFY_NULL_CHECK(ptr->sta_json_arr_obj);
+        cJSON_AddItemToArray(p_csi_json_obj->json_sounding_devices,
+            ptr->sta_json_arr_obj);
+    }
+
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToArray(ptr->sta_json_arr_obj, obj);
+    client_csi_data_json_elem_add(obj, csi, str_sta_mac);
 }
 
 void save_json_data_to_file(void)
 {
     csi_data_json_obj_t *p_csi_json_obj = get_csi_json_obj();
     if (p_csi_json_obj->main_json_obj != NULL) {
+        hash_map_destroy(p_csi_json_obj->stalist_array_map);
+        p_csi_json_obj->stalist_array_map = NULL;
         char *json_string = cJSON_Print(p_csi_json_obj->main_json_obj);
         if (json_string == NULL) {
             cJSON_Delete(p_csi_json_obj->main_json_obj);
