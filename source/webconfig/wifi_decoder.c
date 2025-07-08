@@ -101,6 +101,19 @@
     }  \
 }   \
 
+#define decode_param_allow_empty_integer(json, key, value, intval) \
+{   \
+    value = cJSON_GetObjectItem(json, key);     \
+    if ((value == NULL) || (cJSON_IsNumber(value) == false)) {    \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation has emptyfor key:%s\n", __func__, __LINE__, key);   \
+        intval = false; \
+    }   \
+    else { \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation for key:%s\n", __func__, __LINE__, key);   \
+        intval = true; \
+    }  \
+}   \
+
 #define decode_param_array(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
@@ -945,7 +958,6 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
        return webconfig_error_decode;
     }
 #endif
-
     decode_param_integer(radius, "RadiusServerPort", param);
     radius_info->port = param->valuedouble;
 
@@ -1021,6 +1033,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     return webconfig_error_none;
 }
+
 
 webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_settings_t *radius_info)
 {
@@ -1466,6 +1479,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     const cJSON *param;
     cJSON *object = NULL;
     bool connected_value = false;
+    bool mdu_value = false, intval = false;
 
     // VAP Name
     decode_param_string(vap, "VapName", param);
@@ -1493,6 +1507,15 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_allow_empty_string(vap, "BridgeName", param);
     strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
 
+    //Repurposed Bridge Name
+    decode_param_allow_optional_string(vap, "RepurposedBridgeName", param);
+    if (param != NULL && param->valuestring != NULL) {
+        strncpy(vap_info->repurposed_bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
+        vap_info->repurposed_bridge_name[WIFI_BRIDGE_NAME_LEN - 1] = '\0';
+    } else {
+        vap_info->repurposed_bridge_name[0] = '\0';
+    }
+
     // repurposed vap_name
     decode_param_allow_empty_string(vap, "RepurposedVapName", param);
     strncpy(vap_info->repurposed_vap_name, param->valuestring,
@@ -1519,7 +1542,22 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // Broadcast SSID
     decode_param_bool(vap, "SSIDAdvertisementEnabled", param);
     vap_info->u.bss_info.showSsid = (param->type & cJSON_True) ? true : false;
+    decode_param_allow_empty_integer(vap, "SpeedTier", param, intval);
+    if (!intval) {
+        vap_info->u.bss_info.am_config.npc.speed_tier = intval;
+    } else {
+        decode_param_integer(vap, "SpeedTier", param);
+        vap_info->u.bss_info.am_config.npc.speed_tier = param->valuedouble;
+    }
 
+    decode_param_allow_empty_bool(vap, "MDUEnabled", param, mdu_value);
+    if (!mdu_value) {
+        vap_info->u.bss_info.mdu_enabled = false;
+    } else {
+        decode_param_bool(vap, "MDUEnabled", param);
+        vap_info->u.bss_info.mdu_enabled = (param->type & cJSON_True) ? true : false;
+    }
+    
     // Isolation
     decode_param_bool(vap, "IsolationEnable", param);
     vap_info->u.bss_info.isolation = (param->type & cJSON_True) ? true : false;
