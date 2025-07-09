@@ -585,12 +585,13 @@ int retrigger_neighbor_scan(void *arg)
 
     mon_data->scan_status[args->radio_index] = 0;
     mon_data->scan_trigger_retries[args->radio_index] = 0;
-    if(mon_data->scan_failed[args->radio_index] == true) {
-            wifi_util_info_print(WIFI_MON,
-                "%s:%d  Previous scan failed. Updating Timeout Scan timeout for Radio %d \n",
-                __func__, __LINE__, args->radio_index);
+    if (mon_data->scan_failed[args->radio_index] == true) {
+        wifi_util_info_print(WIFI_MON,
+            "%s:%d  Previous scan failed. Updating Timeout Scan timeout for Radio %d \n", __func__,
+            __LINE__, args->radio_index);
 
-        scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id, mon_data->last_scan_time[args->radio_index]);
+        scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id,
+            mon_data->last_scan_time[args->radio_index]);
         mon_data->scan_failed[args->radio_index] = false;
     }
 
@@ -655,10 +656,11 @@ int check_scan_complete_read_results(void *arg)
         mon_data->scan_status[args->radio_index] = 0;
         if(mon_data->scan_failed[args->radio_index] == true) {
             wifi_util_info_print(WIFI_MON,
-                "%s:%d  Previous scan failed. Updating Timeout Scan timeout for Radio %d \n",
-                __func__, __LINE__, args->radio_index);
+                "%s:%d  Previous scan failed. Updating Timeout Scan timeout for Radio %d \n", __func__,
+                __LINE__, args->radio_index);
 
-            scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id, mon_data->last_scan_time[args->radio_index]);
+            scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id,
+                mon_data->last_scan_time[args->radio_index]);
             mon_data->scan_failed[args->radio_index] = false;
         }
 
@@ -672,12 +674,13 @@ int check_scan_complete_read_results(void *arg)
         __LINE__, args->scan_mode, args->radio_index);
     mon_data->scan_status[args->radio_index] = 0;
     mon_data->scan_trigger_retries[args->radio_index] = 0;
-    if(mon_data->scan_failed[args->radio_index] == true) {
-            wifi_util_info_print(WIFI_MON,
-                "%s:%d  Previous scan failed. Updating Timeout Scan timeout for Radio %d \n",
-                __func__, __LINE__, args->radio_index);
+    if (mon_data->scan_failed[args->radio_index] == true) {
+        wifi_util_info_print(WIFI_MON,
+            "%s:%d  Previous scan failed. Updating Timeout Scan timeout for Radio %d \n", __func__,
+            __LINE__, args->radio_index);
 
-        scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id, mon_data->last_scan_time[args->radio_index]);
+        scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id,
+            mon_data->last_scan_time[args->radio_index]);
         mon_data->scan_failed[args->radio_index] = false;
     }
 
