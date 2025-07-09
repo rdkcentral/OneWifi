@@ -204,6 +204,7 @@ webconfig_error_t decode_ipv6_address(char *ip) {
 
 webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *interworking_info)
 {
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d Decoding anqp object\n");
     cJSON *anqpElement = NULL;
     cJSON *anqpList = NULL;
     cJSON *anqpEntry = NULL;
@@ -608,6 +609,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
 
 webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interworking_t *interworking_info)
 {
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d decode passpoint object\n");
     cJSON *mainEntry = NULL;
     cJSON *anqpElement = NULL;
     cJSON *anqpList = NULL;
@@ -764,6 +766,7 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
 
 webconfig_error_t decode_interworking_common_object(const cJSON *interworking, wifi_interworking_t *interworking_info)
 {
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Decoding Interworking Common Object\n", __func__, __LINE__);
     const cJSON *param, *venue;
     bool invalid_venue_group_type = false;
 
@@ -910,6 +913,7 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 
 webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_interworking_t *interworking_info)
 {
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Decoding Interworking Object\n", __func__, __LINE__);
     const cJSON *passpoint, *anqp;
 
     if (decode_interworking_common_object(interworking, interworking_info) != webconfig_error_none) {
