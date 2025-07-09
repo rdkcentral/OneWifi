@@ -86,7 +86,7 @@ while true; do
     echo "$(date '+%Y-%m-%d %H:%M:%S') Current RSS : $current_vmrss" >> "$log_file"
     rss_diff=$((current_vmrss - initial_vmrss))
     echo "$(date '+%Y-%m-%d %H:%M:%S') RSS Diff: $rss_diff" >> "$log_file"
-    if [ "$rss_diff" -gt "$RSShreshold" ] || [ "$current_vmrss" -gt "$RSSMaxLimit" ]; then
+    if [ "$rss_diff" -gt "$RSSThreshold" ] || [ "$current_vmrss" -gt "$RSSMaxLimit" ]; then
         heapwalk_pid=$(ps | grep -i "HeapwalkField" | grep -v grep |  awk '{print $1}')
         echo "$(date '+%Y-%m-%d %H:%M:%S') HeapwalkField.sh pid : $heapwalk_pid" >> "$log_file"
         if [ -z "$heapwalk_pid" ]; then

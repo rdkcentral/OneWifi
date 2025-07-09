@@ -513,6 +513,38 @@ static int run_bus_csi_enable_status(void* arg)
     return TIMER_TASK_COMPLETE;
 }
 
+void csi_namespace_activity(char *event_name, raw_data_t *p_data, void *userData)
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d CSI session event name:%s\r\n", __func__, __LINE__, event_name);
+    wifi_util_info_print(WIFI_APPS,"%s:%d CSI data type:%d len:%d\r\n", __func__, __LINE__,
+        p_data->data_type, p_data->raw_data_len);
+    if (p_data->data_type == bus_data_type_string) {
+        wifi_util_info_print(WIFI_APPS,"%s:%d CSI session info:%s\r\n", __func__, __LINE__, p_data->raw_data.bytes);
+    }
+}
+
+static void csi_mac_list_handler(char *event_name, raw_data_t *p_data, void *userData)
+{
+    int csi_session = 0;
+
+    char *pTmp = (char *)p_data->raw_data.bytes;
+    if (pTmp != NULL) {
+        wifi_util_info_print(WIFI_APPS,"%s CSI session:%s - %d MAC list changed to %s\r\n",
+            __func__, event_name, csi_session, pTmp);
+    } else {
+        wifi_util_info_print(WIFI_APPS,"%s CSI session:%s - %d data is NULL\r\n",
+            __func__, event_name, csi_session);
+    }
+}
+
+static void csi_enable_handler(char *event_name, raw_data_t *p_data, void *userData)
+{
+    int csi_session = 0;
+
+    wifi_util_info_print(WIFI_APPS,"%s CSI session:%s - %d enable changed to %d\r\n",
+        __func__, event_name, csi_session, p_data->raw_data.b);
+}
+
 bus_error_t init_bus_subscription(bus_handle_t *bus_handle, wifi_app_t *p_app)
 {
     char *component_name = "CsiAnanlytics";
@@ -542,6 +574,32 @@ bus_error_t init_bus_subscription(bus_handle_t *bus_handle, wifi_app_t *p_app)
         }
         wifi_util_info_print(WIFI_APPS,"%s:%d CSI session:%d added\n", __func__,
             __LINE__, csi_index);
+
+        bus_event_sub_t l_subscriptions[] = {
+            /* Event Name, filter, interval, duration, handler, user data, handle */
+            { "Device.WiFi.X_RDK_CSI.", NULL, 0, 0,
+                csi_namespace_activity, NULL, NULL, NULL, false },
+            { "Device.WiFi.X_RDK_CSI.*.ClientMaclist", NULL, 0, 0,
+                csi_mac_list_handler, NULL, NULL, NULL, false },
+            { "Device.WiFi.X_RDK_CSI.*.Enable", NULL, 0, 0,
+                csi_enable_handler, NULL, NULL, NULL, false }
+        };
+
+        rc = bus_desc->bus_event_subs_ex_fn(bus_handle, l_subscriptions, ARRAY_SZ(l_subscriptions), 0);
+        if (rc != bus_error_success) {
+            wifi_util_error_print(WIFI_APPS,"%s:%d busEvent: Subscribe_ex failed:%d\n",
+                __func__, __LINE__, rc);
+            bus_desc->bus_event_unsubs_ex_fn(bus_handle, l_subscriptions, ARRAY_SZ(l_subscriptions));
+            rc = bus_desc->bus_close_fn(bus_handle);
+            if (rc != bus_error_success) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d: Unable to close bus handle\n",
+                    __func__, __LINE__);
+                return rc;
+            }
+        } else {
+            wifi_util_info_print(WIFI_APPS, "%s:%d bus: bus event subscribe_ex success\n",
+                __func__, __LINE__);
+        }
 
         snprintf(name, BUS_MAX_NAME_LENGTH, "Device.WiFi.X_RDK_CSI.%d.data", csi_index);
         rc = bus_desc->bus_event_subs_fn(bus_handle, name,

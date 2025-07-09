@@ -858,9 +858,11 @@ static void rbus_sub_handler(rbusHandle_t handle, rbusEvent_t const* event,
     }
     bus_sub_callback_table_t *user_cb = &sub_node_data->cb_table;
     if (user_cb->sub_handler != NULL) {
-        ret = get_rbus_object_data(event_name, event->data, &bus_data);
+        ret = get_rbus_object_data((char *)event->name, event->data, &bus_data);
         if (ret == bus_error_success) {
-            user_cb->sub_handler((char *)event_name, &bus_data, userData);
+            wifi_util_info_print(WIFI_BUS,"%s:%d rbus sub user cb"
+                " triggered for:%s, event:%s\n", __func__, __LINE__, event_name, event->name);
+            user_cb->sub_handler((char *)event->name, &bus_data, userData);
         }
     }
 }
