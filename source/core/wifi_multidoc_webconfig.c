@@ -1560,7 +1560,7 @@ static pErr xfinity_exec_common_handler(void *blob, const char *vap_prefix, webc
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
         goto done;
     }
-    webconfig_init_subdoc_data(data); // updating the local variable with existing data
+    webconfig_init_subdoc_data(data);
 
     if (update_vap_info_with_blob_info(blob, NULL, data, vap_prefix, false, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "SJY %s: json parse failure\n", __func__);
