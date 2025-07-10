@@ -253,92 +253,6 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, bool managed
             return -1;
         }
     }
-
-    // decode if vapname is hotspot
-    if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
-        param = cJSON_GetObjectItem(ssid, "IsolationEnable");
-        if (param) {
-        if (cJSON_IsBool(param)) {
-            vap_info->u.bss_info.isolation = cJSON_IsTrue(param) ? true : false;
-            wifi_util_info_print(WIFI_CTRL, "   \"IsolationEnable\": %s\n", (vap_info->u.bss_info.isolation) ? "true" : "false");
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"IsolationEnable\" is not boolean\n", __func__);
-            return -1;
-        }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s: missing \"IsolationEnable\"\n", __func__);
-        return -1;
-    }
-
-    param = cJSON_GetObjectItem(ssid, "ManagementFramePowerControl");
-    if (param) {
-        if (cJSON_IsNumber(param)) {
-            vap_info->u.bss_info.mgmtPowerControl = param->valuedouble;
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"ManagementFramePowerControl\" is not a number\n", __func__);
-            return -1;
-        }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s: missing \"ManagementFramePowerControl\"\n", __func__);
-        return -1;
-    }
-    
-    param = cJSON_GetObjectItem(ssid, "BSSTransitionActivated");
-    if (param) {
-        if (cJSON_IsBool(param)) {
-            vap_info->u.bss_info.bssTransitionActivated = cJSON_IsTrue(param) ? true : false;
-            wifi_util_info_print(WIFI_CTRL, "   \"BSSTransitionActivated\": %s\n", (vap_info->u.bss_info.bssTransitionActivated) ? "true" : "false");
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"BSSTransitionActivated\" is not boolean\n", __func__);
-            return -1;
-        }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s: missing \"BSSTransitionActivated\"\n", __func__);
-        return -1;
-    }
-
-    param = cJSON_GetObjectItem(ssid, "NeighborReportActivated");
-    if (param) {
-        if (cJSON_IsBool(param)) {
-            vap_info->u.bss_info.nbrReportActivated = cJSON_IsTrue(param) ? true : false;
-            wifi_util_info_print(WIFI_CTRL, "   \"NeighborReportActivated\": %s\n", (vap_info->u.bss_info.nbrReportActivated) ? "true" : "false");
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"NeighborReportActivated\" is not boolean\n", __func__);
-            return -1;
-        }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s: missing \"NeighborReportActivated\"\n", __func__);
-        return -1;
-    }
-
-    param = cJSON_GetObjectItem(ssid, "RapidReconnThreshold");
-    if(param) {
-        if (cJSON_IsNumber(param)) {
-            vap_info->u.bss_info.rapidReconnThreshold = param->valuedouble;
-            wifi_util_info_print(WIFI_CTRL, "   \"RapidReconnThreshold\": %d\n", vap_info->u.bss_info.rapidReconnThreshold);
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"RapidReconnThreshold\" is not a number\n", __func__);
-            return -1;
-        }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s: missing \"RapidReconnThreshold\"\n", __func__);
-        return -1;
-    }
-
-    param = cJSON_GetObjectItem(ssid, "VapStatsEnable");
-    if (param) {
-        if (cJSON_IsBool(param)) {
-            vap_info->u.bss_info.vapStatsEnable = cJSON_IsTrue(param) ? true : false;
-            wifi_util_info_print(WIFI_CTRL, "   \"VapStatsEnable\": %s\n", (vap_info->u.bss_info.vapStatsEnable) ? "true" : "false");
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"VapStatsEnable\" is not boolean\n", __func__);
-            return -1;
-        }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s: missing \"VapStatsEnable\"\n", __func__);
-        return -1;
-    }
-}
     return 0;
 }
 static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr execRetVal)
@@ -358,11 +272,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         param = cJSON_GetObjectItem(security, "Passphrase");
         if ((!param) && (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT_SECURE, strlen(VAP_PREFIX_HOTSPOT_SECURE)))) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"Passphrase\"\n", __func__);
-            if (execRetVal) {
-                strncpy(execRetVal->ErrorMsg, "Invalid Passphrase length",
-                    sizeof(execRetVal->ErrorMsg) - 1);
-            }
-            return RETURN_ERR;
         }
         else{
             value = cJSON_GetStringValue(param);
@@ -822,7 +731,6 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
 {
     int status = RETURN_OK;
     cJSON *root = NULL;
-    cJSON *ssid_obj = NULL;
     cJSON *security_obj = NULL;
     cJSON *interworking_obj = NULL;
     cJSON *cac_obj = NULL;
@@ -830,7 +738,8 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
     wifi_vap_name_t security;
     char *blob = cJSON_Print((cJSON *)data);
     char band[8];
-    char *suffix;
+    char *value;
+    cJSON *param;
 
     root = cJSON_Parse(blob);
     if (root == NULL) {
@@ -838,28 +747,11 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
         return RETURN_ERR;
     }
 
-    suffix = strrchr(vap_info->vap_name, (int)'_');
-    if (suffix == NULL) {
-        goto done;
-    }
-    /*
-    For products with 5GHz lower and upper band radios like XLE,
-    the webconfig will support only the VAP names append with '_5gl'. '_5gh' and '_5gu'.
-    The blob is using '_5gl' and '_5gu'. VAP names with '_5gh' will be changed to use
-    '_5gu'.
-    */
-    if (!strcmp(suffix, "_5gh")) {
-        snprintf(band, sizeof(band), "_5gu");
-    } else {
-        snprintf(band, sizeof(band), "%s", suffix);
-    }
-
     if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
-        snprintf(ssid, sizeof(wifi_vap_name_t), "SSID");
         snprintf(security, sizeof(wifi_vap_name_t), "Security");
     }
     else{
-        wifi_util_error_print(WIFI_CTRL, "%s: No SSID and security info for hotspot\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: No security info for hotspot\n", __func__);
         status = RETURN_ERR;
         goto done;
     }
@@ -877,19 +769,166 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
         wifi_util_info_print(WIFI_CTRL, "vap_name:%s %s: %d \n", vap_info->vap_name, __func__,
             __LINE__);
 
-        ssid_obj = cJSON_GetObjectItem(vb_entry, ssid);
-        if (ssid_obj == NULL) {
-            status = RETURN_ERR;
-            wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__,
+        param = cJSON_GetObjectItem(vb_entry, "SSID");
+        if (param == NULL || (cJSON_IsString(param) == false)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Failed to get SSID for %s\n", __func__,
                 vap_info->vap_name);
+            status = RETURN_ERR;
             goto done;
         }
+        value = cJSON_GetStringValue(ssid_obj);
+        if (validate_private_home_ssid_param(value,execRetVal) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
+            return -1;
+        }
+        else {
+            strncpy(vap_info->u.bss_info.ssid, value, sizeof(vap_info->u.bss_info.ssid) - 1);
+            wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
+        }
 
-        /* decode SSID blob*/
-        if (decode_ssid_blob(vap_info, ssid_obj, false, execRetVal) != 0) {
-            wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
-            status = RETURN_ERR;
-            goto done;
+        param = cJSON_GetObjectItem(ssid, "Enable");
+        if (!param) {
+            param = cJSON_GetObjectItem(ssid, "Enabled");
+        }
+        if (param) {
+            if (cJSON_IsBool(param)) {
+                vap_info->u.bss_info.enabled = cJSON_IsTrue(param) ? true : false;
+                wifi_util_info_print(WIFI_CTRL, "   \"Enable\": %s\n",
+                    (vap_info->u.bss_info.enabled) ? "true" : "false");
+                wifi_util_info_print(WIFI_CTRL, "  \" MDU Enabled\": %d\n",
+                    (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled &&
+                            managed_wifi));
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"Enable\"\n", __func__);
+            return -1;
+        }
+
+        param = cJSON_GetObjectItem(ssid, "SSIDAdvertisementEnabled");
+        if (param) {
+            if (cJSON_IsBool(param)) {
+                vap_info->u.bss_info.showSsid = cJSON_IsTrue(param) ? true : false;
+                wifi_util_info_print(WIFI_CTRL, "   \"SSIDAdvertisementEnabled\": %s\n",
+                    (vap_info->u.bss_info.showSsid) ? "true" : "false");
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s: \"SSIDAdvertisementEnabled\" is not boolean\n", __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"SSIDAdvertisementEnabled\"\n",
+                __func__);
+            return -1;
+        }
+
+        if (managed_wifi) {
+            param = cJSON_GetObjectItem(ssid, "BssMaxNumSta");
+            if (param) {
+                vap_info->u.bss_info.bssMaxSta = param->valuedouble;
+                wifi_util_info_print(WIFI_CTRL, "   \"BssMax\": %d\n",
+                    vap_info->u.bss_info.bssMaxSta);
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: missing \"BssMax\"\n", __func__);
+                return -1;
+            }
+        }
+
+        param = cJSON_GetObjectItem(ssid, "IsolationEnable");
+        if (param) {
+            if (cJSON_IsBool(param)) {
+                vap_info->u.bss_info.isolation = cJSON_IsTrue(param) ? true : false;
+                wifi_util_info_print(WIFI_CTRL, "   \"IsolationEnable\": %s\n",
+                    (vap_info->u.bss_info.isolation) ? "true" : "false");
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: \"IsolationEnable\" is not boolean\n",
+                    __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"IsolationEnable\"\n", __func__);
+            return -1;
+        }
+
+        param = cJSON_GetObjectItem(ssid, "ManagementFramePowerControl");
+        if (param) {
+            if (cJSON_IsNumber(param)) {
+                vap_info->u.bss_info.mgmtPowerControl = param->valuedouble;
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s: \"ManagementFramePowerControl\" is not a number\n", __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"ManagementFramePowerControl\"\n",
+                __func__);
+            return -1;
+        }
+
+        param = cJSON_GetObjectItem(ssid, "BSSTransitionActivated");
+        if (param) {
+            if (cJSON_IsBool(param)) {
+                vap_info->u.bss_info.bssTransitionActivated = cJSON_IsTrue(param) ? true : false;
+                wifi_util_info_print(WIFI_CTRL, "   \"BSSTransitionActivated\": %s\n",
+                    (vap_info->u.bss_info.bssTransitionActivated) ? "true" : "false");
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: \"BSSTransitionActivated\" is not boolean\n",
+                    __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"BSSTransitionActivated\"\n", __func__);
+            return -1;
+        }
+
+        param = cJSON_GetObjectItem(ssid, "NeighborReportActivated");
+        if (param) {
+            if (cJSON_IsBool(param)) {
+                vap_info->u.bss_info.nbrReportActivated = cJSON_IsTrue(param) ? true : false;
+                wifi_util_info_print(WIFI_CTRL, "   \"NeighborReportActivated\": %s\n",
+                    (vap_info->u.bss_info.nbrReportActivated) ? "true" : "false");
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: \"NeighborReportActivated\" is not boolean\n",
+                    __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"NeighborReportActivated\"\n", __func__);
+            return -1;
+        }
+
+        param = cJSON_GetObjectItem(ssid, "RapidReconnThreshold");
+        if (param) {
+            if (cJSON_IsNumber(param)) {
+                vap_info->u.bss_info.rapidReconnThreshold = param->valuedouble;
+                wifi_util_info_print(WIFI_CTRL, "   \"RapidReconnThreshold\": %d\n",
+                    vap_info->u.bss_info.rapidReconnThreshold);
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: \"RapidReconnThreshold\" is not a number\n",
+                    __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"RapidReconnThreshold\"\n", __func__);
+            return -1;
+        }
+
+        param = cJSON_GetObjectItem(ssid, "VapStatsEnable");
+        if (param) {
+            if (cJSON_IsBool(param)) {
+                vap_info->u.bss_info.vapStatsEnable = cJSON_IsTrue(param) ? true : false;
+                wifi_util_info_print(WIFI_CTRL, "   \"VapStatsEnable\": %s\n",
+                    (vap_info->u.bss_info.vapStatsEnable) ? "true" : "false");
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: \"VapStatsEnable\" is not boolean\n",
+                    __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"VapStatsEnable\"\n", __func__);
+            return -1;
         }
 
         security_obj = cJSON_GetObjectItem(vb_entry, security);
