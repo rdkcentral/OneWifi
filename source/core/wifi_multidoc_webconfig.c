@@ -824,7 +824,6 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
     cJSON *root = NULL;
     cJSON *ssid_obj = NULL;
     cJSON *security_obj = NULL;
-    cJSON *wifi_vap_config_obj = NULL;
     cJSON *interworking_obj = NULL;
     cJSON *cac_obj = NULL;
     wifi_vap_name_t ssid;
@@ -855,6 +854,16 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
         snprintf(band, sizeof(band), "%s", suffix);
     }
 
+    if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
+        snprintf(ssid, sizeof(wifi_vap_name_t), "SSID");
+        snprintf(security, sizeof(wifi_vap_name_t), "Security");
+    }
+    else{
+        wifi_util_error_print(WIFI_CTRL, "%s: No SSID and security info for hotspot\n", __func__);
+        status = RETURN_ERR;
+        goto done;
+    }
+
     cJSON *vb_entry = NULL;
     cJSON_ArrayForEach(vb_entry, root) {
         cJSON *blob_vap_name = cJSON_GetObjectItem(vb_entry, "VapName");
@@ -868,7 +877,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
         wifi_util_info_print(WIFI_CTRL, "vap_name:%s %s: %d \n", vap_info->vap_name, __func__,
             __LINE__);
 
-        ssid_obj = cJSON_GetObjectItem(vb_entry, SSID);
+        ssid_obj = cJSON_GetObjectItem(vb_entry, ssid);
         if (ssid_obj == NULL) {
             status = RETURN_ERR;
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__,
@@ -883,7 +892,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             goto done;
         }
 
-        security_obj = cJSON_GetObjectItem(vb_entry, Security);
+        security_obj = cJSON_GetObjectItem(vb_entry, security);
         if (security_obj == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s security\n", __func__,
                 vap_info->vap_name);
@@ -1427,12 +1436,12 @@ bool webconf_ver_txn(const char* bb, uint32_t *ver, uint16_t *txn)
     return true;
 }
 
-pErr wifi_vap_cfg_subdoc_handler(void *blob)
+pErr wifi_vap_cfg_subdoc_handler(void *data)
 {
     pErr execRetVal = NULL;
     unsigned long msg_size = 0L;
     unsigned char *msg = NULL;
-    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+
     execRetVal = create_execRetVal();
     if (execRetVal == NULL ) {
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
