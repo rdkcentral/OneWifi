@@ -854,84 +854,81 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
     } else {
         snprintf(band, sizeof(band), "%s", suffix);
     }
-    if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
-        snprintf(ssid, sizeof(wifi_vap_name_t), "hotspot_ssid%s", band);
-        snprintf(security, sizeof(wifi_vap_name_t), "hotspot_security%s", band);
-    }
-    else {
-        wifi_util_error_print(WIFI_CTRL, "%s: No SSID and security info\n", __func__);
-        status = RETURN_ERR;
-        goto done;
-    }
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s: parsing %s and %s blob\n", __func__, ssid, security);
-    ssid_obj = cJSON_GetObjectItem(root, ssid);
-    if (ssid_obj == NULL) {
-        status = RETURN_ERR;
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__,
-            vap_info->vap_name);
-        goto done;
-    }
+    cJSON *vb_entry = NULL;
+    cJSON_ArrayForEach(vb_entry, root) {
+        cJSON *blob_vap_name = cJSON_GetObjectItem(vb_entry, "VapName");
+        if ((blob_vap_name == NULL) || (cJSON_IsString(blob_vap_name) == false)) {
+            wifi_util_info_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
+            continue;
+        }
 
-    security_obj = cJSON_GetObjectItem(root, security);
-    if (security_obj == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s security\n", __func__,
-            vap_info->vap_name);
-        status = RETURN_ERR;
-        goto done;
-    }
-
-    wifi_vap_config_obj = cJSON_GetObjectItem(root, "WifiVapConfig");
-    if (cJSON_IsArray(wifi_vap_config_obj) == false) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__,
+        char *blob_vap_name_str = cJSON_GetStringValue(blob_vap_name);
+        strncpy(vap_info->vap_name, blob_vap_name_str, sizeof(vap_info->vap_name) - 1);
+        wifi_util_info_print(WIFI_CTRL, "vap_name:%s %s: %d \n", vap_info->vap_name, __func__,
             __LINE__);
-        cJSON_Delete(root);
-        return webconfig_error_invalid_subdoc;
-    }
-    /* decode SSID blob*/
-    if (decode_ssid_blob(vap_info, ssid_obj, false, execRetVal) != 0) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
-        status = RETURN_ERR;
-        goto done;
-    }
 
-    /* decode security blob */
-    if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode security blob\n", __func__);
-        status = RETURN_ERR;
-        goto done;
-    }
-
-    /* decode interworking object only if vap prefix is hotspot*/
-    if (!strncmp(vap_prefix, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
-        interworking_obj = cJSON_GetObjectItem(root, "Interworking");
-        if (interworking_obj == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking object not present for %s\n",
-                __FUNCTION__, __LINE__, vap_info->vap_name);
-            status = webconfig_error_invalid_subdoc;
-            goto done;
-        }
-
-        if (decode_interworking_object(interworking_obj, &vap_info->u.bss_info.interworking) !=
-            webconfig_error_none) {
-            wifi_util_error_print(WIFI_WEBCONFIG,
-                "%s:%d: Interworking objects validation failed for %s\n", __FUNCTION__, __LINE__,
+        ssid_obj = cJSON_GetObjectItem(vb_entry, SSID);
+        if (ssid_obj == NULL) {
+            status = RETURN_ERR;
+            wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__,
                 vap_info->vap_name);
-            return webconfig_error_decode;
-        }
-
-        cac_obj = cJSON_GetObjectItem(root, "VapConnectionControl");
-        /*decode cac object */
-        if (cac_obj == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: CAC object not present for %s\n",
-                __FUNCTION__, __LINE__, vap_info->vap_name);
-            status = webconfig_error_invalid_subdoc;
             goto done;
         }
-        if (decode_cac_object(vap_info, cac_obj) != webconfig_error_none) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: CAC objects validation failed for %s\n",
-                __FUNCTION__, __LINE__, vap_info->vap_name);
-            return webconfig_error_decode;
+
+        /* decode SSID blob*/
+        if (decode_ssid_blob(vap_info, ssid_obj, false, execRetVal) != 0) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
+            status = RETURN_ERR;
+            goto done;
+        }
+
+        security_obj = cJSON_GetObjectItem(vb_entry, Security);
+        if (security_obj == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s security\n", __func__,
+                vap_info->vap_name);
+            status = RETURN_ERR;
+            goto done;
+        }
+
+        /* decode security blob */
+        if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode security blob\n", __func__);
+            status = RETURN_ERR;
+            goto done;
+        }
+
+        /* decode interworking object only if vap prefix is hotspot*/
+        if (!strncmp(vap_prefix, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
+            interworking_obj = cJSON_GetObjectItem(vb_entry, "Interworking");
+            if (interworking_obj == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: Interworking object not present for %s\n", __FUNCTION__, __LINE__,
+                    vap_info->vap_name);
+                goto done;
+            }
+
+            if (decode_interworking_object(interworking_obj, &vap_info->u.bss_info.interworking) !=
+                webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: Interworking objects validation failed for %s\n", __FUNCTION__,
+                    __LINE__, vap_info->vap_name);
+                return webconfig_error_decode;
+            }
+
+            cac_obj = cJSON_GetObjectItem(vb_entry, "VapConnectionControl");
+            /*decode cac object */
+            if (cac_obj == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: CAC object not present for %s\n",
+                    __FUNCTION__, __LINE__, vap_info->vap_name);
+                goto done;
+            }
+            if (decode_cac_object(vap_info, cac_obj) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: CAC objects validation failed for %s\n", __FUNCTION__, __LINE__,
+                    vap_info->vap_name);
+                return webconfig_error_decode;
+            }
         }
     }
     done:
@@ -1121,7 +1118,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
     wifi_vap_name_t vap_names_xfinity[MAX_NUM_RADIOS * 2];
 
-    if (!strcmp(vap_prefix, "hotspot")) {
+    if (!strcmp(vap_prefix, "VAP_PREFIX_HOTSPOT")) {
         wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: hotspot vap_prefix = %s\n", __func__, __LINE__,
             vap_prefix);
         /* get a list of VAP names */
@@ -1136,7 +1133,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
     }
 
     for (int index = 0; index < num_vaps; index++) {
-        if (!strcmp(vap_prefix, "hotspot")) {
+        if (!strcmp(vap_prefix, "VAP_PREFIX_HOTSPOT")) {
             wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: hotspot vap_names_xfinity[%d] = %s\n",
                 __func__, __LINE__, index, vap_names_xfinity[index]);
             /* from VAP name, obtain radio index and array index within the radio */
@@ -1153,7 +1150,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
             break;
         }
         /* fill the VAP info with current settings */
-        if (!strcmp(vap_prefix, "hotspot")) {
+        if (!strcmp(vap_prefix, "VAP_PREFIX_HOTSPOT")) {
             wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: Enters hotspot update_vap_info\n", __func__,
                 __LINE__);
             if (managed_wifi_enabled == true) {
@@ -1432,7 +1429,104 @@ bool webconf_ver_txn(const char* bb, uint32_t *ver, uint16_t *txn)
 
 pErr wifi_vap_cfg_subdoc_handler(void *blob)
 {
-    return xfinity_exec_common_handler(blob, VAP_PREFIX_HOTSPOT, webconfig_subdoc_type_xfinity);
+    pErr execRetVal = NULL;
+    unsigned long msg_size = 0L;
+    unsigned char *msg = NULL;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    execRetVal = create_execRetVal();
+    if (execRetVal == NULL ) {
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return NULL;
+    }
+    memset(execRetVal,0,(sizeof(Err)));
+    if(data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
+        if (execRetVal) {
+            execRetVal->ErrorCode = VALIDATION_FALIED;
+            strncpy(execRetVal->ErrorMsg, "Empty subdoc", sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return execRetVal;
+    }
+
+    msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
+    msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
+    if (!msg) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
+        strncpy(execRetVal->ErrorMsg, "Failed to allocate memory", sizeof(execRetVal->ErrorMsg)-1);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        return execRetVal;
+    }
+
+    msg_size = 0;
+    msg_size = b64_decode((unsigned char *)data, strlen((char *)data), msg );
+    if (msg_size == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed in Decoding multicomp blob\n",__FUNCTION__);
+        free(msg);
+        strncpy(execRetVal->ErrorMsg, "Failed  in Decoding multicomp blob", sizeof(execRetVal->ErrorMsg)-1);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        return execRetVal;
+    }
+
+    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+
+    msgpack_zone msg_z;
+    msgpack_object msg_obj;
+
+    msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
+    if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "Msg unpack failed", sizeof(execRetVal->ErrorMsg)-1);
+        free(msg);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
+        return execRetVal;
+    }
+
+    char *blob_buf = (char*)malloc(MAX_JSON_BUFSIZE);
+    if(blob_buf == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "blob mem alloc failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(msg);
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return execRetVal;
+    }
+    memset(blob_buf, 0, MAX_JSON_BUFSIZE);
+    int json_len = msgpack_object_print_jsonstr(blob_buf, MAX_JSON_BUFSIZE, msg_obj);
+    if(json_len <= 0) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "json conversion failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        wifi_util_error_print(WIFI_CTRL, "%s: json conversion failure\n", __func__);
+        return execRetVal;
+    }
+
+    //wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
+
+    cJSON *root = cJSON_Parse(blob_buf);
+    if(root == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *vap_blob = cJSON_DetachItemFromObject(root, "WifiVapConfig");
+    if(vap_blob == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "Failed to detach WifiVapConfig", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        cJSON_Delete(root);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to detach WifiVapConfig\n", __func__);
+        return execRetVal;
+    }
+    return xfinity_exec_common_handler(vap_blob, VAP_PREFIX_HOTSPOT, webconfig_subdoc_type_xfinity);
 }
 
 static pErr xfinity_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type)
