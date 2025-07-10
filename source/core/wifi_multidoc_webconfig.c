@@ -734,7 +734,6 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
     cJSON *security_obj = NULL;
     cJSON *interworking_obj = NULL;
     cJSON *cac_obj = NULL;
-    wifi_vap_name_t ssid;
     wifi_vap_name_t security;
     char *blob = cJSON_Print((cJSON *)data);
     char band[8];
@@ -776,7 +775,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             status = RETURN_ERR;
             goto done;
         }
-        value = cJSON_GetStringValue(ssid_obj);
+        value = cJSON_GetStringValue(param);
         if (validate_private_home_ssid_param(value,execRetVal) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
             return -1;
@@ -786,9 +785,9 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
         }
 
-        param = cJSON_GetObjectItem(ssid, "Enable");
+        param = cJSON_GetObjectItem(vb_entry, "Enable");
         if (!param) {
-            param = cJSON_GetObjectItem(ssid, "Enabled");
+            param = cJSON_GetObjectItem(vb_entry, "Enabled");
         }
         if (param) {
             if (cJSON_IsBool(param)) {
@@ -807,7 +806,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return -1;
         }
 
-        param = cJSON_GetObjectItem(ssid, "SSIDAdvertisementEnabled");
+        param = cJSON_GetObjectItem(vb_entry, "SSIDAdvertisementEnabled");
         if (param) {
             if (cJSON_IsBool(param)) {
                 vap_info->u.bss_info.showSsid = cJSON_IsTrue(param) ? true : false;
@@ -824,19 +823,16 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return -1;
         }
 
-        if (managed_wifi) {
-            param = cJSON_GetObjectItem(ssid, "BssMaxNumSta");
-            if (param) {
-                vap_info->u.bss_info.bssMaxSta = param->valuedouble;
-                wifi_util_info_print(WIFI_CTRL, "   \"BssMax\": %d\n",
-                    vap_info->u.bss_info.bssMaxSta);
-            } else {
-                wifi_util_error_print(WIFI_CTRL, "%s: missing \"BssMax\"\n", __func__);
-                return -1;
-            }
+        param = cJSON_GetObjectItem(vb_entry, "BssMaxNumSta");
+        if (param) {
+            vap_info->u.bss_info.bssMaxSta = param->valuedouble;
+            wifi_util_info_print(WIFI_CTRL, "   \"BssMax\": %d\n", vap_info->u.bss_info.bssMaxSta);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"BssMax\"\n", __func__);
+            return -1;
         }
 
-        param = cJSON_GetObjectItem(ssid, "IsolationEnable");
+        param = cJSON_GetObjectItem(vb_entry, "IsolationEnable");
         if (param) {
             if (cJSON_IsBool(param)) {
                 vap_info->u.bss_info.isolation = cJSON_IsTrue(param) ? true : false;
@@ -852,7 +848,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return -1;
         }
 
-        param = cJSON_GetObjectItem(ssid, "ManagementFramePowerControl");
+        param = cJSON_GetObjectItem(vb_entry, "ManagementFramePowerControl");
         if (param) {
             if (cJSON_IsNumber(param)) {
                 vap_info->u.bss_info.mgmtPowerControl = param->valuedouble;
@@ -867,7 +863,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return -1;
         }
 
-        param = cJSON_GetObjectItem(ssid, "BSSTransitionActivated");
+        param = cJSON_GetObjectItem(vb_entry, "BSSTransitionActivated");
         if (param) {
             if (cJSON_IsBool(param)) {
                 vap_info->u.bss_info.bssTransitionActivated = cJSON_IsTrue(param) ? true : false;
@@ -883,7 +879,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return -1;
         }
 
-        param = cJSON_GetObjectItem(ssid, "NeighborReportActivated");
+        param = cJSON_GetObjectItem(vb_entry, "NeighborReportActivated");
         if (param) {
             if (cJSON_IsBool(param)) {
                 vap_info->u.bss_info.nbrReportActivated = cJSON_IsTrue(param) ? true : false;
@@ -899,7 +895,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return -1;
         }
 
-        param = cJSON_GetObjectItem(ssid, "RapidReconnThreshold");
+        param = cJSON_GetObjectItem(vb_entry, "RapidReconnThreshold");
         if (param) {
             if (cJSON_IsNumber(param)) {
                 vap_info->u.bss_info.rapidReconnThreshold = param->valuedouble;
@@ -915,7 +911,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return -1;
         }
 
-        param = cJSON_GetObjectItem(ssid, "VapStatsEnable");
+        param = cJSON_GetObjectItem(vb_entry, "VapStatsEnable");
         if (param) {
             if (cJSON_IsBool(param)) {
                 vap_info->u.bss_info.vapStatsEnable = cJSON_IsTrue(param) ? true : false;
