@@ -47,7 +47,7 @@ typedef struct _he_bus_handle *he_bus_handle_t;
 
 #define HE_BUS_MSG_IDENTIFICATION_NUM 0x12345678
 #define HE_BUS_RES_RECV_TIMEOUT_S 10
-#define HE_BUS_MAX_NAME_LENGTH 64
+#define HE_BUS_MAX_NAME_LENGTH 128
 
 #define HE_BUS_VERIFY_NULL(T) \
     if (NULL == T) {   \
