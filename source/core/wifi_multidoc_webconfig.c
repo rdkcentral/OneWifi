@@ -244,13 +244,6 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, bool managed
     }
 
     if (managed_wifi) {
-        if (strlen(bridge_name) == 0) {
-            wifi_util_dbg_print(WIFI_CTRL,"BridgeName is empty\n");
-            snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "brlan15");
-        } else {
-            wifi_util_dbg_print(WIFI_CTRL,"BridgeName is %s\n",bridge_name);
-            snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "%s", bridge_name);
-        }
         param = cJSON_GetObjectItem(ssid, "BssMaxNumSta");
         if (param) {
             vap_info->u.bss_info.bssMaxSta = param->valuedouble;
@@ -354,15 +347,12 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
     cJSON *param;
     int pass_len = 0;
     char encryption_method[128] = "";
-    wifi_radius_settings_t *radius_info = vap_info->u.bss_info.security.u.radius;
-    if (vap_info == NULL || security == NULL) {
+
+    if (vap_info == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid input parameters\n", __func__);
         return RETURN_ERR;
     }
-    if (radius_info == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s: radius_info is NULL\n", __func__);
-        return RETURN_ERR;
-    }
+    wifi_radius_settings_t *radius_info = &vap_info->u.bss_info.security.u.radius;
 
     wifi_util_info_print(WIFI_CTRL, "Security blob:\n");
         param = cJSON_GetObjectItem(security, "Passphrase");
@@ -491,7 +481,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         return RETURN_ERR;
     }
     // decode if vap name is hotspot
-    if (!stncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
+    if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
         param = cJSON_GetObjectItem(security, "MFPConfig");
         if (param) {
             value = cJSON_GetStringValue(param);
@@ -528,7 +518,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             param = cJSON_GetObjectItem(param, "RadiusServerIPAddr");
             if (param) {
                 value = cJSON_GetStringValue(param);
-                if ((value == NULL) || (cJSON_IsString(value)) || (value->valuestring == NULL)) {
+                if ((param == NULL) || (cJSON_IsString(param))) {
                     wifi_util_error_print(WIFI_CTRL, "%s: RadiusServerIPAddr is not a string\n",
                         __func__);
                     if (execRetVal) {
@@ -603,7 +593,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     }
                     return RETURN_ERR;
                 } else {
-                    strncpy(radius_info->secret, value, sizeof(radius_info->secret) - 1);
+                    strncpy(radius_info->key, value, sizeof(radius_info->key) - 1);
                 }
             }
             else {
@@ -618,7 +608,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             param = cJSON_GetObjectItem(security, "SecondaryRadiusServerIPAddr");
             if (param) {
                 value = cJSON_GetStringValue(param);
-                if ((value == NULL) || (cJSON_IsString(value)) || (value->valuestring == NULL)) {
+                if ((param == NULL) || (cJSON_IsString(param))) {
                     wifi_util_error_print(WIFI_CTRL,
                         "%s: SecondaryRadiusServerIPAddr is not a string\n", __func__);
                     if (execRetVal) {
@@ -702,7 +692,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     }
                     return RETURN_ERR;
                 } else {
-                    strncpy(radius_info->s_secret, value, sizeof(radius_info->s_secret) - 1);
+                    strncpy(radius_info->s_key, value, sizeof(radius_info->s_key) - 1);
                 }
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s: missing \"SecondaryRadiusSecret\"\n",
@@ -755,7 +745,6 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info, pErr execRetVa
     cJSON *security_obj = NULL;
     wifi_vap_name_t ssid;
     wifi_vap_name_t security;
-    rdk_wifi_vap_info_t *rdk_vap_info;
 
     root = cJSON_Parse((char *)data);
     if (root == NULL) {
@@ -838,6 +827,8 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
     cJSON *wifi_vap_config_obj = NULL;
     cJSON *interworking_obj = NULL;
     cJSON *cac_obj = NULL;
+    wifi_vap_name_t ssid;
+    wifi_vap_name_t security;
     char *blob = cJSON_Print((cJSON *)data);
     char band[8];
     char *suffix;
@@ -895,7 +886,6 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__,
             __LINE__);
         cJSON_Delete(root);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
     /* decode SSID blob*/
@@ -913,7 +903,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
     }
 
     /* decode interworking object only if vap prefix is hotspot*/
-    if (!strncmp(*vap_prefix, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
+    if (!strncmp(vap_prefix, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
         interworking_obj = cJSON_GetObjectItem(root, "Interworking");
         if (interworking_obj == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking object not present for %s\n",
@@ -944,13 +934,14 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             return webconfig_error_decode;
         }
     }
-}
-done:
+    done:
     if (root) {
         cJSON_Delete(root);
     }
     return status;
 }
+
+
 
 static int update_vap_info_managed_guest(void *data, void *amenities_blob,
     wifi_vap_info_t *vap_info, int radio_index, bool connected_building_enabled, pErr execRetVal)
@@ -1168,8 +1159,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
             if (managed_wifi_enabled == true) {
                 if (update_vap_info_managed_xfinity(blob,
                         &data->u.decoded.radios[radio_index]
-                             .vaps.vap_map.vap_array[vap_array_index],
-                        vap_prefix, execRetVal) == RETURN_ERR) {
+                             .vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
                     wifi_util_error_print(WIFI_CTRL, "%s: Failed to update vap info for %s\n",
                         __func__, vap_names_xfinity[index]);
                     status = RETURN_ERR;
@@ -1469,7 +1459,7 @@ static pErr xfinity_exec_common_handler(void *blob, const char *vap_prefix, webc
     }
     webconfig_init_subdoc_data(data); // updating the local variable with existing data
 
-    if (update_vap_info_with_blob_info(blob, amenities_blob, data, vap_prefix, false, execRetVal) != 0) {
+    if (update_vap_info_with_blob_info(blob, NULL, data, vap_prefix, false, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "SJY %s: json parse failure\n", __func__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
