@@ -728,6 +728,7 @@ done:
 
 static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const char *vap_prefix, pErr execRetVal)
 {
+    wifi_util_info_print(WIFI_CTRL, "SJY: %s: Entering update_xfinity_vap_info\n", __func__);
     int status = RETURN_OK;
     cJSON *root = NULL;
     cJSON *security_obj = NULL;
@@ -754,6 +755,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
 
     cJSON *vb_entry = NULL;
     cJSON_ArrayForEach(vb_entry, root) {
+        wifi_util_info_print(WIFI_CTRL, "Entering array for each\n"); 
         cJSON *blob_vap_name = cJSON_GetObjectItem(vb_entry, "VapName");
         if ((blob_vap_name == NULL) || (cJSON_IsString(blob_vap_name) == false)) {
             wifi_util_info_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
@@ -926,6 +928,8 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
         }
 
         /* decode security blob */
+        wifi_util_info_print(WIFI_CTRL, "SJY : %s: Decoding security blob for %s\n", __func__,
+            vap_info->vap_name);
         if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode security blob\n", __func__);
             status = RETURN_ERR;
@@ -934,6 +938,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
 
         /* decode interworking object only if vap prefix is hotspot*/
         if (!strncmp(vap_prefix, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
+            wifi_util_info_print(WIFI_CTRL, "SJY Enters hotspot interworking decode\n");
             interworking_obj = cJSON_GetObjectItem(vb_entry, "Interworking");
             if (interworking_obj == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
@@ -941,7 +946,9 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
                     vap_info->vap_name);
                 goto done;
             }
-
+            wifi_util_info_print(WIFI_CTRL, "SJY: %s: Decoding interworking blob for %s\n",
+                __func__, vap_info->vap_name);
+            /* decode interworking object */
             if (decode_interworking_object(interworking_obj, &vap_info->u.bss_info.interworking) !=
                 webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
@@ -957,6 +964,8 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
                     __FUNCTION__, __LINE__, vap_info->vap_name);
                 goto done;
             }
+            wifi_util_info_print(WIFI_CTRL, "SJY: %s: Decoding CAC blob for %s\n", __func__,
+                vap_info->vap_name);
             if (decode_cac_object(vap_info, cac_obj) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
                     "%s:%d: CAC objects validation failed for %s\n", __FUNCTION__, __LINE__,
@@ -1142,6 +1151,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
     webconfig_subdoc_data_t *data, const char *vap_prefix, bool managed_wifi_enabled,
     pErr execRetVal)
 {
+    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s:%d: \n", __func__, __LINE__);
     int status = RETURN_OK;
     int num_vaps = 0;
     int vap_index;
@@ -1150,7 +1160,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
     wifi_vap_name_t vap_names_xfinity[MAX_NUM_RADIOS * 2];
 
-    if (!strcmp(vap_prefix, "VAP_PREFIX_HOTSPOT")) {
+    if (!strcmp(vap_prefix, VAP_PREFIX_HOTSPOT)) {
         wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: hotspot vap_prefix = %s\n", __func__, __LINE__,
             vap_prefix);
         /* get a list of VAP names */
@@ -1165,7 +1175,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
     }
 
     for (int index = 0; index < num_vaps; index++) {
-        if (!strcmp(vap_prefix, "VAP_PREFIX_HOTSPOT")) {
+        if (!strcmp(vap_prefix, VAP_PREFIX_HOTSPOT)) {
             wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: hotspot vap_names_xfinity[%d] = %s\n",
                 __func__, __LINE__, index, vap_names_xfinity[index]);
             /* from VAP name, obtain radio index and array index within the radio */
@@ -1182,7 +1192,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
             break;
         }
         /* fill the VAP info with current settings */
-        if (!strcmp(vap_prefix, "VAP_PREFIX_HOTSPOT")) {
+        if (!strcmp(vap_prefix, VAP_PREFIX_HOTSPOT)) {
             wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: Enters hotspot update_vap_info\n", __func__,
                 __LINE__);
             if (managed_wifi_enabled == true) {
@@ -1195,6 +1205,8 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
                     break;
                 }
             } else {
+                wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: Enters xfinity update_vap_info\n",
+                    __func__, __LINE__);
                 if (update_xfinity_vap_info(blob,
                         &data->u.decoded.radios[radio_index]
                              .vaps.vap_map.vap_array[vap_array_index],
@@ -1461,6 +1473,7 @@ bool webconf_ver_txn(const char* bb, uint32_t *ver, uint16_t *txn)
 
 pErr wifi_vap_cfg_subdoc_handler(void *data)
 {
+    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s: %d\n", __func__, __LINE__);
     pErr execRetVal = NULL;
     unsigned long msg_size = 0L;
     unsigned char *msg = NULL;
@@ -1479,7 +1492,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         }
         return execRetVal;
     }
-
+    wifi_util_info_print(WIFI_CTRL, "%s: %d decoding the buffer size of blob\n", __func__, __LINE__);
     msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
     msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
     if (!msg) {
@@ -1535,7 +1548,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     }
 
     //wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
-
+    wifi_util_info_print(WIFI_CTRL, "SJY %s:%d parsing the blob\n", __func__, __LINE__);
     cJSON *root = cJSON_Parse(blob_buf);
     if(root == NULL) {
         msgpack_zone_destroy(&msg_z);
@@ -1555,21 +1568,19 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         free(blob_buf);
         free(msg);
         cJSON_Delete(root);
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to detach WifiVapConfig\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "SJY %s: Failed to detach WifiVapConfig\n", __func__);
         return execRetVal;
     }
+    wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: Calling xfinity_exec_common_handler\n",
+        __func__, __LINE__);
     return xfinity_exec_common_handler(vap_blob, VAP_PREFIX_HOTSPOT, webconfig_subdoc_type_xfinity);
 }
 
 static pErr xfinity_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type)
 {
+    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s: %d\n", __func__, __LINE__);
     pErr execRetVal = NULL;
     webconfig_subdoc_data_t *data = NULL;
-
-    if (blob == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
-        return NULL;
-    }
 
     data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
@@ -1583,8 +1594,12 @@ static pErr xfinity_exec_common_handler(void *blob, const char *vap_prefix, webc
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
         goto done;
     }
+    wifi_util_info_print(WIFI_CTRL, "SJY %s: %d Calling webconfig_init_subdoc_data\n", __func__, __LINE__);
+    // Initialize the subdoc data structure
     webconfig_init_subdoc_data(data);
 
+    wifi_util_info_print(WIFI_CTRL, "SJY %s: %d Calling update_vap_info_with_blob_info\n", __func__, __LINE__);
+    // Update the VAP info with the blob data
     if (update_vap_info_with_blob_info(blob, NULL, data, vap_prefix, false, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "SJY %s: json parse failure\n", __func__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
