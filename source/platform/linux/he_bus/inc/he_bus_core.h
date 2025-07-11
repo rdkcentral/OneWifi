@@ -166,7 +166,7 @@ typedef struct data_model_prop {
 } data_model_prop_t;
 
 typedef struct element_node {
-    char name[32]; /* relative name of element */
+    char name[64]; /* relative name of element */
     he_bus_name_string_t full_name; /* full name/path of element */
     he_bus_element_type_t type; /**< Type of an element */
     he_bus_callback_table_t cb_table; /**< Element Handler table. A specific

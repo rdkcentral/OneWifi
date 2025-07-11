@@ -3644,6 +3644,39 @@ void update_subdoc_data(webconfig_subdoc_data_t *data, unsigned int num_ssid,
     }
 }
 
+int free_event_webconfig_data(webconfig_subdoc_type_t type,
+    webconfig_subdoc_decoded_data_t *data)
+{
+    switch (type) {
+        case webconfig_subdoc_type_csi:
+            wifi_util_info_print(WIFI_CTRL, "%s:%d decoded csi queue:%p\n",
+                __func__, __LINE__, data->csi_data_queue);
+            if (data->csi_data_queue != NULL) {
+                queue_destroy(data->csi_data_queue);
+                data->csi_data_queue = NULL;
+            }
+            break;
+        default:
+            break;
+    }
+
+    return RETURN_OK;
+}
+
+int free_webconfig_msg_payload(wifi_event_subtype_t sub_type, webconfig_subdoc_data_t *data)
+{
+    switch(sub_type) {
+        case wifi_event_webconfig_set_data:
+        case wifi_event_webconfig_set_data_dml:
+            free_event_webconfig_data(data->type, &data->u.decoded);
+            break;
+        default:
+            break;
+    }
+
+    return RETURN_OK;
+}
+
 void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len,
     wifi_event_subtype_t subtype)
 {
@@ -3717,6 +3750,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             wifi_event->sub_type = subtype;
             wifi_event->u.webconfig_data = &data;
             apps_mgr_event(&ctrl->apps_mgr, wifi_event);
+            free_webconfig_msg_payload(subtype, &data);
             if (wifi_event != NULL) {
                 free(wifi_event);
             }
