@@ -27,7 +27,7 @@
 #include "scheduler.h"
 #include <unistd.h>
 #include <pthread.h>
-#include <rbus.h>
+#include <rbus/rbus.h>
 #include <libgen.h>
 #include <pcap.h>
 #include "wifi_hal_rdk.h"
