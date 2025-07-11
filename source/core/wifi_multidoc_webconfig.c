@@ -726,8 +726,7 @@ done:
     return status;
 }
 
-static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const char *vap_prefix,
-    pErr execRetVal)
+static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const char *vap_prefix, pErr execRetVal)
 {
     int status = RETURN_OK;
     cJSON *root = NULL;
@@ -784,17 +783,12 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
         }
 
-        param = cJSON_GetObjectItem(vb_entry, "Enable");
-        if (!param) {
-            param = cJSON_GetObjectItem(vb_entry, "Enabled");
-        }
+        param = cJSON_GetObjectItem(vb_entry, "Enabled");
         if (param) {
             if (cJSON_IsBool(param)) {
                 vap_info->u.bss_info.enabled = cJSON_IsTrue(param) ? true : false;
                 wifi_util_info_print(WIFI_CTRL, "   \"Enable\": %s\n",
                     (vap_info->u.bss_info.enabled) ? "true" : "false");
-                wifi_util_info_print(WIFI_CTRL, "  \" MDU Enabled\": %d\n",
-                    (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled));
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
                 return -1;
@@ -1208,7 +1202,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
                 if (update_xfinity_vap_info(blob,
                         &data->u.decoded.radios[radio_index]
                              .vaps.vap_map.vap_array[vap_array_index],
-                        vap_prefix, execRetVal) == RETURN_ERR) {
+                        vap_prefix,  execRetVal) == RETURN_ERR) {
                     wifi_util_error_print(WIFI_CTRL, "%s: Failed to update vap info for %s\n",
                         __func__, vap_names_xfinity[index]);
                     status = RETURN_ERR;
