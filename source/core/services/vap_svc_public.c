@@ -163,6 +163,7 @@ int update_managementFramePower(void *arg) {
 int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
+    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s:%d\n", __func__, __LINE__);
     bool enabled;
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map, *p_tgt_created_vap_map;
@@ -232,11 +233,14 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             wifi_util_info_print(WIFI_CTRL, "%s:%d 6g supported device  %s is enabled  nbrReport is activated\n", __func__,__LINE__,p_tgt_vap_map->vap_array[0].vap_name);
             p_tgt_vap_map->vap_array[0].u.bss_info.nbrReportActivated = true;
         }
+        wifi_util_info_print(WIFI_CTRL,"SJY %s:%d: Calling wifi_hal_createVAP for radio_index:%d vap_index:%d enabled:%d greylist_rfc:%d\n",
+                                                __FUNCTION__,__LINE__,radio_index, map->vap_array[i].vap_index,enabled,greylist_rfc);
         if (wifi_hal_createVAP(radio_index, p_tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
+        wifi_util_info_print(WIFI_CTRL,"SJY %s: wifi hal create vap is done\n",__FUNCTION__);
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
         if (greylist_rfc || ((pcfg != NULL && pcfg->prefer_private))) {
 #ifdef NL80211_ACL
@@ -263,7 +267,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                    p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = true;
                 }
         }
-        wifi_util_error_print(WIFI_CTRL,"%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
+        wifi_util_error_print(WIFI_CTRL,"SJY %s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
         memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
@@ -281,8 +285,10 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             scheduler_add_timer_task(ctrl->sched, FALSE, NULL, update_managementFramePower, NULL, MFPC_TIMER * 1000, 1, FALSE);
         }
     }
-     update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
+    update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
     //Load all the Acl entries related to the created public vaps
+    wifi_util_info_print(WIFI_CTRL,"SJY %s:%d: Calling update_xfinity_acl_entries for vap_name:%s\n",
+                                                __FUNCTION__,__LINE__,p_tgt_vap_map->vap_array[0].vap_name);
     update_xfinity_acl_entries(p_tgt_vap_map->vap_array[0].vap_name);
     free(p_tgt_vap_map);
     free(p_tgt_created_vap_map);
@@ -290,6 +296,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
 }
 int update_xfinity_acl_entries(char* tgt_vap_name)
 {
+    wifi_util_info_print(WIFI_CTRL,"SJY Entering %s:%d tgt_vap_name:%s\n",__func__,__LINE__,tgt_vap_name);
     mac_addr_str_t mac_str;
     mac_address_t acl_device_mac;
     acl_entry_t *acl_entry;
@@ -336,6 +343,7 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
             rdk_vap_info->is_mac_filter_initialized = true;
         }
     }
+    wifi_util_info_print(WIFI_CTRL,"SJY %s:%d Exiting \n",__func__,__LINE__);
     return RETURN_OK;
 }
 
@@ -395,6 +403,7 @@ void process_prefer_private_rfc_event(vap_svc_event_t event, void *data)
 
 void process_xfinity_enable(vap_svc_event_t event, void *data)
 {
+    wifi_util_info_print(WIFI_CTRL,"SJY Entering %s:%d\n",__func__,__LINE__);
     public_vaps_data_t *public = ((public_vaps_data_t *)data);
     wifi_util_dbg_print(WIFI_CTRL,"WIFI Enter RFC Func %s: %d : vap_name:%s:bool %d\n",__FUNCTION__,__LINE__,public->vap_name,public->enabled);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_wifi_db_rfc_parameters();
@@ -416,6 +425,7 @@ void process_xfinity_enable(vap_svc_event_t event, void *data)
 
 void process_xfinity_rrm(vap_svc_event_t event)
 {
+    wifi_util_info_print(WIFI_CTRL,"SJY Entering %s:%d\n",__func__,__LINE__);
     unsigned int secure_6g = 0, open_6g = 0;
     int hotspot_open_2g_index = 0,hotspot_open_5g_index = 0;
     int hotspot_sec_2g_index = 0,hotspot_sec_5g_index = 0;
@@ -486,11 +496,12 @@ void process_xfinity_rrm(vap_svc_event_t event)
     if(hotspot_sec_5g_index !=0 ) {
         wifi_hal_set_neighbor_report(hotspot_sec_5g_index,secure_6g,secure_6g_mac);
     }
+    wifi_util_info_print(WIFI_CTRL,"SJY %s:%d Exiting \n",__func__,__LINE__);
 }
 
 void process_public_service_command(vap_svc_event_t event,wifi_event_subtype_t sub_type,void *data)
 {
-
+    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s:%d event:%d sub_type:%d\n", __func__, __LINE__, event, sub_type);
      switch(sub_type) {
 
         case wifi_event_type_prefer_private_rfc:
@@ -511,7 +522,7 @@ void process_public_service_command(vap_svc_event_t event,wifi_event_subtype_t s
 
 int vap_svc_public_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
 {
-
+   wifi_util_info_print(WIFI_CTRL, "SJY Entering %s:%d type:%d sub_type:%d event:%d\n", __func__, __LINE__, type, sub_type, event);
     switch(type) {
         case wifi_event_type_command:
             process_public_service_command(event, sub_type, arg);
