@@ -84,7 +84,7 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
                              __FUNCTION__, __LINE__, vap_info->vap_index);
         return -1;
     }
-    memcpy((unsigned char *)&vap_info->u.bss_info.security.repurposed_radius, (unsigned char *)&hotspot_vap_info->u.bss_info.security.u.radius, sizeof(hotspot_vap_info->u.bss_info.security.u.radius));
+    memcpy((unsigned char *)&vap_info->u.bss_info.security.repurposed_radius, (unsigned char *)&hotspot_vap_info->u.bss_info.security.u.radius, sizeof(vap_info->u.bss_info.security.repurposed_radius));
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d LNF RADIUS Config for vap name = %s - Primary IP: %s Port: %d, Secondary IP: %s Port: %d\n",
                        __func__, __LINE__, vap_info->vap_name,
                        vap_info->u.bss_info.security.repurposed_radius.ip,
