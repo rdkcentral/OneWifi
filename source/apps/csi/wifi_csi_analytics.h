@@ -10,14 +10,16 @@ extern "C" {
 #endif
 
 #define MAX_LOG_MSG_PRINT_TIME_SEC 10
-#define MAX_MACLIST_SIZE 128
+#define MAX_MACLIST_SIZE 512
 #define MAX_MAC_STR_SIZE 18
 #define STA_MAC_LIST_DELIMITER ','
 #define CSI_ENABLE_TRIGGER_SEC 2
-#define CSI_STA_MACLIST_SET_SEC 2
+#define CSI_STA_MACLIST_SET_SEC 3
+#define CSI_ANALYTICS_INTERVAL    300
 
 #define CSI_CLIENT_MACLIST "Device.WiFi.X_RDK_CSI.%d.ClientMaclist"
 #define CSI_ENABLE_NAME "Device.WiFi.X_RDK_CSI.%d.Enable"
+#define CSI_SUB_DATA "Device.WiFi.X_RDK_CSI.%d.data"
 
 typedef struct csi_analytics_data {
     uint32_t num_sc;

@@ -365,7 +365,7 @@ wifi_app_descriptor_t app_desc[] = {
 #if ONEWIFI_CSI_APP_SUPPORT
     {
         wifi_app_inst_csi_analytics, 0,
-        wifi_event_type_hal_ind,
+        wifi_event_type_webconfig,
         true, true,
         "CSI analytics App",
         csi_analytics_init, csi_analytics_event, csi_analytics_deinit,

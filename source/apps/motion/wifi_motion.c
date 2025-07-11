@@ -1043,6 +1043,7 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
     }
 
     //check new configuration did not exceed the max number of csi clients
+    wifi_util_dbg_print(WIFI_APPS, "%s - webconfig csi config:%p\r\n", __func__, new_config);
     if (new_config != NULL) {
         new_config_count = queue_count(new_config);
         for (itr=0; itr<new_config_count; itr++) {
@@ -1148,9 +1149,6 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
     }
 
 free_csi_data:
-    if (new_config != NULL) {
-        queue_destroy(new_config);
-    }
     if (tmp_cli_list != NULL) {
         free(tmp_cli_list);
     }
