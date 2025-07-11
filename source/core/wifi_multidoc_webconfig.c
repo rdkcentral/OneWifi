@@ -746,8 +746,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
 
     if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
         snprintf(security, sizeof(wifi_vap_name_t), "Security");
-    }
-    else{
+    } else {
         wifi_util_error_print(WIFI_CTRL, "%s: No security info for hotspot\n", __func__);
         status = RETURN_ERR;
         goto done;
@@ -774,11 +773,10 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             goto done;
         }
         value = cJSON_GetStringValue(param);
-        if (validate_private_home_ssid_param(value,execRetVal) != RETURN_OK) {
+        if (validate_private_home_ssid_param(value, execRetVal) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
             return -1;
-        }
-        else {
+        } else {
             strncpy(vap_info->u.bss_info.ssid, value, sizeof(vap_info->u.bss_info.ssid) - 1);
             wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
         }
@@ -967,14 +965,12 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             }
         }
     }
-    done:
+done:
     if (root) {
         cJSON_Delete(root);
     }
     return status;
 }
-
-
 
 static int update_vap_info_managed_guest(void *data, void *amenities_blob,
     wifi_vap_info_t *vap_info, int radio_index, bool connected_building_enabled, pErr execRetVal)
