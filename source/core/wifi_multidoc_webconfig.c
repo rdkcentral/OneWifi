@@ -736,7 +736,6 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
     cJSON *cac_obj = NULL;
     wifi_vap_name_t security;
     char *blob = cJSON_Print((cJSON *)data);
-    char band[8];
     char *value;
     cJSON *param;
 
@@ -795,8 +794,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
                 wifi_util_info_print(WIFI_CTRL, "   \"Enable\": %s\n",
                     (vap_info->u.bss_info.enabled) ? "true" : "false");
                 wifi_util_info_print(WIFI_CTRL, "  \" MDU Enabled\": %d\n",
-                    (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled &&
-                            managed_wifi));
+                    (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled));
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
                 return -1;
