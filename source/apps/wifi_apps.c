@@ -50,8 +50,32 @@ int analytics_event(wifi_app_t *app, wifi_event_t *event)
 
 #ifdef ONEWIFI_CSI_APP_SUPPORT
 extern int csi_init(wifi_app_t *app, unsigned int create_flag);
+extern int csi_analytics_init(wifi_app_t *app, unsigned int create_flag);
+extern int csi_analytics_event(wifi_app_t *app, wifi_event_t *event);
+extern int csi_analytics_deinit(wifi_app_t *app);
+extern int csi_analytics_update(wifi_app_t *app);
 #else
 int csi_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int csi_analytics_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int csi_analytics_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+int csi_analytics_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int csi_analytics_update(wifi_app_t *app)
 {
     return 0;
 }
@@ -336,6 +360,16 @@ wifi_app_descriptor_t app_desc[] = {
         "Motion Application",
         motion_init, motion_event, NULL,
         NULL, NULL
+    },
+#endif
+#if ONEWIFI_CSI_APP_SUPPORT
+    {
+        wifi_app_inst_csi_analytics, 0,
+        wifi_event_type_webconfig,
+        true, true,
+        "CSI analytics App",
+        csi_analytics_init, csi_analytics_event, csi_analytics_deinit,
+        NULL, csi_analytics_update
     },
 #endif
 #if ONEWIFI_WHIX_APP_SUPPORT

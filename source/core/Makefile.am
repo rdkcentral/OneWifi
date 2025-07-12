@@ -129,6 +129,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/levl/wifi_levl.c
 endif
 if ONEWIFI_CSI_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/csi/wifi_csi.c
+OneWifi_SOURCES += $(top_srcdir)/source/apps/csi/wifi_csi_analytics.c
 endif
 if ONEWIFI_MOTION_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/motion/wifi_motion.c
