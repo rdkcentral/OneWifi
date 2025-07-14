@@ -4895,8 +4895,9 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 (char *)vap_config->u.bss_info.security.u.radius.s_ip);
             continue;
         }
-        if (isVapLnfPsk(vap_config->vap_index) && !vap_config->u.bss_info.mdu_enabled) {
+        if (isVapLnfPsk(vap_config->vap_index) && !vap_config->u.bss_info.mdu_enabled && vap_config->u.bss_info.enabled) {
             vap_config->u.bss_info.enabled = false;
+            update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
             wifi_util_info_print(WIFI_DB,"%s:%d SREESH : vap_config->u.bss_info.enabled = false for the vap_name = %s\n",__func__,__LINE__,vap_config->vap_name);
             continue;
         }
