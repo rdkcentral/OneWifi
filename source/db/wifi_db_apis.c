@@ -4895,6 +4895,11 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 (char *)vap_config->u.bss_info.security.u.radius.s_ip);
             continue;
         }
+        if (isVapLnfPsk(vap_config->vap_index) && !vap_config->u.bss_info.mdu_enabled) {
+            vap_config->u.bss_info.enabled = false;
+            wifi_util_info_print(WIFI_DB,"%s:%d SREESH : vap_config->u.bss_info.enabled = false for the vap_name = %s\n",__func__,__LINE__,vap_config->vap_name);
+            continue;
+        }
     }
 }
 
@@ -7123,11 +7128,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.showSsid = false;
         }
 #if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
-        if (isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true; 
         }
 #else
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
 #endif
@@ -7137,6 +7142,10 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.enabled = false;
         }
 #endif
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.enabled = false;
+            wifi_util_info_print(WIFI_DB,"%s:%d SREESH Value of isVapLnfPsk is %d and enabled = %d\n", __func__, __LINE__, isVapLnfPsk(vap_index), cfg.u.bss_info.enabled);
+        }
 #if defined(_SR213_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
         cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
 #else
