@@ -32,9 +32,11 @@ typedef struct csi_analytics_info {
     int32_t pipe_read_fd;
     bool is_read_oper_thread_enabled;
     uint32_t csi_session_index;
+    bool is_csi_capture_enabled;
     pthread_mutex_t maclist_lock;
     char sta_mac[MAX_MACLIST_SIZE];
     int sta_maclist_sched_id;
+    int csi_analytics_enable_sched_id;
     hash_map_t *csi_analytics_map;
 } csi_analytics_info_t;
 

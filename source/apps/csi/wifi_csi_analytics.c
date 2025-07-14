@@ -16,6 +16,7 @@
 
 #ifdef ONEWIFI_CSI_APP_SUPPORT
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
+#define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 
 #define MUTEX_ERROR_CHECK(CMD)                                                                      \
     {                                                                                         \
@@ -47,6 +48,19 @@
     {                                                    \
         MUTEX_ERROR_CHECK(pthread_mutex_unlock(&handle_mutex)) \
     }
+
+void *get_wifi_app_obj(wifi_app_inst_t inst)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *p_app = NULL;
+    if (ctrl != NULL) {
+        apps_mgr = &ctrl->apps_mgr;
+        p_app = (wifi_app_t *)get_app_by_inst(apps_mgr, inst);
+        return p_app;
+    }
+    return NULL;
+}
 
 csi_analytics_data_t *add_new_hash_map_entry(hash_map_t *csi_analytics_map, char *key)
 {
@@ -180,10 +194,10 @@ static int run_bus_csi_sta_maclist(void* arg)
     wifi_app_t *p_app = (wifi_app_t *)arg;
     csi_analytics_info_t *csi_info = &p_app->data.u.csi_analytics;
 
-    csi_info->sta_maclist_sched_id = 0;
     MUTEX_LOCK(csi_info->maclist_lock);
     set_bus_csi_sta_maclist(&p_app->handle, csi_info);
     MUTEX_UNLOCK(csi_info->maclist_lock);
+    csi_info->sta_maclist_sched_id = 0;
     return TIMER_TASK_COMPLETE;
 }
 
@@ -320,6 +334,35 @@ bus_error_t set_bus_csi_sub_enable_status(bus_handle_t *bus_handle, uint32_t csi
     return rc;
 }
 
+static int run_bus_csi_enable_status(void* arg)
+{
+    wifi_app_t *p_app = (wifi_app_t *)arg;
+    csi_analytics_info_t *csi_info = &p_app->data.u.csi_analytics;
+
+    wifi_util_info_print(WIFI_APPS,"%s:%d csi analytics enable status:%d\r\n",
+        __func__, __LINE__, csi_info->is_csi_capture_enabled);
+    set_bus_csi_sub_enable_status(&p_app->handle,
+        csi_info->csi_session_index, csi_info->is_csi_capture_enabled);
+    csi_info->csi_analytics_enable_sched_id = 0;
+
+    return TIMER_TASK_COMPLETE;
+}
+
+void run_csi_enable_timer(wifi_app_t *p_app, bool status)
+{
+    csi_analytics_info_t *csi_info = &p_app->data.u.csi_analytics;
+
+    csi_info->is_csi_capture_enabled = status;
+    if (csi_info->csi_analytics_enable_sched_id == 0) {
+        scheduler_add_timer_task(p_app->ctrl->sched, FALSE,
+            &csi_info->csi_analytics_enable_sched_id,
+            run_bus_csi_enable_status, p_app,
+            (CSI_ENABLE_TRIGGER_SEC * 1000), 1, FALSE);
+        wifi_util_info_print(WIFI_APPS,"%s:%d csi analytics enable"
+            " bus timer started\n", __func__, __LINE__);
+    }
+}
+
 static void do_nothing_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
     UNREFERENCED_PARAMETER(event_name);
@@ -452,14 +495,29 @@ void *pipe_read_oper_thread_func(void *arg)
     return NULL;
 }
 
-static int run_bus_csi_enable_status(void* arg)
+bus_error_t csi_analytics_bus_subscription(bus_handle_t *bus_handle,
+    bus_event_sub_t *bus_event, uint32_t size)
 {
-    wifi_app_t *p_app = (wifi_app_t *)arg;
+    bus_error_t rc;
+    wifi_bus_desc_t *bus_desc = get_bus_descriptor();
 
-    set_bus_csi_sub_enable_status(&p_app->handle,
-        p_app->data.u.csi_analytics.csi_session_index, true);
+    rc = bus_desc->bus_event_subs_ex_fn(bus_handle, bus_event, size, 0);
+        if (rc != bus_error_success) {
+            wifi_util_error_print(WIFI_APPS,"%s:%d busEvent:%s Subscribe failed:%d\n",
+                __func__, __LINE__, bus_event->event_name, rc);
+            bus_desc->bus_event_unsubs_fn(bus_handle, bus_event->event_name);
+            rc = bus_desc->bus_close_fn(bus_handle);
+            if (rc != bus_error_success) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d: Unable to close bus handle\n",
+                    __func__, __LINE__);
+                return rc;
+            }
+        } else {
+            wifi_util_info_print(WIFI_APPS, "%s:%d bus: bus event:%s subscribe success\n",
+                __func__, __LINE__, bus_event->event_name);
+        }
 
-    return TIMER_TASK_COMPLETE;
+    return rc;
 }
 
 bus_error_t init_bus_subscription(bus_handle_t *bus_handle, wifi_app_t *p_app)
@@ -493,34 +551,21 @@ bus_error_t init_bus_subscription(bus_handle_t *bus_handle, wifi_app_t *p_app)
         wifi_util_info_print(WIFI_APPS,"%s:%d CSI session:%d added\n", __func__,
             __LINE__, csi_index);
 
-        bus_event_sub_t bus_event;
-        memset(&bus_event, 0, sizeof(bus_event));
+        bus_event_sub_t bus_events[] = {
+            /* Event Name, filter, interval, duration, handler, user data, handle */
+            { CSI_SUB_DATA, NULL, CSI_ANALYTICS_INTERVAL, 0,
+                do_nothing_handler, NULL, NULL, NULL, false }
+        };
 
-        snprintf(name, BUS_MAX_NAME_LENGTH, CSI_SUB_DATA, csi_index);
-        bus_event.event_name = (char const *)name;
-        bus_event.interval = CSI_ANALYTICS_INTERVAL;
-        bus_event.handler = do_nothing_handler;
-        bus_event.publish_on_sub = false;
-
-        rc = bus_desc->bus_event_subs_ex_fn(bus_handle, &bus_event, 1, 0);
+        snprintf(name, BUS_MAX_NAME_LENGTH, bus_events[0].event_name, csi_index);
+        bus_events[0].event_name = (char const *)name;
+        rc = csi_analytics_bus_subscription(bus_handle, &bus_events[0], 1);
         if (rc != bus_error_success) {
-            wifi_util_error_print(WIFI_APPS,"%s:%d busEvent:%s Subscribe failed:%d\n",
-                __func__, __LINE__, name, rc);
-            bus_desc->bus_event_unsubs_fn(bus_handle, name);
-            rc = bus_desc->bus_close_fn(bus_handle);
-            if (rc != bus_error_success) {
-                wifi_util_error_print(WIFI_APPS, "%s:%d: Unable to close bus handle\n",
-                    __func__, __LINE__);
-                return rc;
-            }
-        } else {
-            wifi_util_info_print(WIFI_APPS, "%s:%d bus: bus event:%s subscribe success\n",
-                __func__, __LINE__, name);
+            return rc;
         }
 
         p_info->csi_session_index = csi_index;
-        scheduler_add_timer_task(p_app->ctrl->sched, FALSE, NULL, run_bus_csi_enable_status, p_app,
-            (CSI_ENABLE_TRIGGER_SEC * 1000), 1, FALSE);
+        run_csi_enable_timer(p_app, true);
     }
 
     return rc;

@@ -57,7 +57,6 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
     int band;
     wifi_vap_info_t *hotspot_vap_info = NULL;
     int rIdx = 0;
-    wifi_vap_security_t* lnf_psk_sec = NULL;
     if (!vap_info) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap_info parameter\n", __FUNCTION__, __LINE__);
         return -1;
@@ -85,23 +84,13 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
                              __FUNCTION__, __LINE__, vap_info->vap_index);
         return -1;
     }
-    // Move the below once DB persistance is implemented. Since only copying from Hotspot Config now, keep the implementation here for now.
-    lnf_psk_sec = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(vap_info->vap_index);
-    if(!lnf_psk_sec)
-    {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get lnf_psk_sec for vap_index=%d\n", 
-                             __FUNCTION__, __LINE__, vap_info->vap_index);
-        return -1;
-    }
-    lnf_psk_sec->repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
-    vap_info->u.bss_info.security.repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
+    memcpy((unsigned char *)&vap_info->u.bss_info.security.repurposed_radius, (unsigned char *)&hotspot_vap_info->u.bss_info.security.u.radius, sizeof(vap_info->u.bss_info.security.repurposed_radius));
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d LNF RADIUS Config for vap name = %s - Primary IP: %s Port: %d, Secondary IP: %s Port: %d\n",
                        __func__, __LINE__, vap_info->vap_name,
-                       lnf_psk_sec->repurposed_radius.ip,
-                       lnf_psk_sec->repurposed_radius.port,
-                       lnf_psk_sec->repurposed_radius.s_ip,
-                       lnf_psk_sec->repurposed_radius.s_port);
-
+                       vap_info->u.bss_info.security.repurposed_radius.ip,
+                       vap_info->u.bss_info.security.repurposed_radius.port,
+                       vap_info->u.bss_info.security.repurposed_radius.s_ip,
+                       vap_info->u.bss_info.security.repurposed_radius.s_port);
     return 0;
 }
 
@@ -169,6 +158,18 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         get_wifidb_obj()->desc.print_fn("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
         if (isVapLnfPsk(p_tgt_vap_map->vap_array[0].vap_index)) {
             update_lnf_psk_vap_hal_prop_bridge_name(svc, p_tgt_vap_map);
+            // Since DB persistence not supported as of now for MDU LnF, copying it to here. To be moved in future.
+            wifi_vap_info_t* lnf_vap_info = NULL;
+            lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(p_tgt_vap_map->vap_array[0].vap_index);
+            if (lnf_vap_info == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d LnF VAP info not found for vap_index=%d\n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
+                return -1;
+            }
+            if (lnf_vap_info->u.bss_info.mdu_enabled) {
+                memcpy((unsigned char *)&lnf_vap_info->u.bss_info.security.repurposed_radius, (unsigned char *)&p_tgt_vap_map->vap_array[0].u.bss_info.security.repurposed_radius, sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
+            } else {
+                memset((unsigned char *)&lnf_vap_info->u.bss_info.security.repurposed_radius, 0, sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
+            }
         }
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
