@@ -261,6 +261,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
     cJSON *param;
     int pass_len = 0;
     char encryption_method[128] = "";
+    cJSON *radius_param = NULL;
 
     if (vap_info == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid input parameters\n", __func__);
@@ -413,12 +414,12 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             return RETURN_ERR;
         }
 
-        param = cJSON_GetObjectItem(security, "RadiusSettings");
-        if (!param) {
+        radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
+        if (!radius_param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusSettings\"\n", __func__);
             return RETURN_ERR;
         } else {
-            param = cJSON_GetObjectItem(param, "RadiusServerIPAddr");
+            param = cJSON_GetObjectItem(radius_param, "RadiusServerIPAddr");
             if (param) {
                 value = cJSON_GetStringValue(param);
                 if (cJSON_IsString(param) != true) {
@@ -460,8 +461,16 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
 #endif
                 }
             }
+             else {
+                wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusServerIPAddr\"\n", __func__);
+                if (execRetVal) {
+                    strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerIPAddr",
+                        sizeof(execRetVal->ErrorMsg) - 1);
+                }
+                return RETURN_ERR;
+            }
 
-            param = cJSON_GetObjectItem(security, "RadiusServerPort");
+            param = cJSON_GetObjectItem(radius_param, "RadiusServerPort");
             if (param) {
                 if (cJSON_IsNumber(param) == true) {
                     radius_info->port = param->valuedouble;
@@ -482,9 +491,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerPort",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
+                return RETURN_ERR;
             }
 
-            param = cJSON_GetObjectItem(security, "RadiusSecret");
+            param = cJSON_GetObjectItem(radius_param, "RadiusSecret");
             if (param && cJSON_IsString(param) == true) {
                 value = cJSON_GetStringValue(param);
                 wifi_util_info_print(WIFI_CTRL, "   \"RadiusSecret\": <Masked>\n");
@@ -503,9 +513,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid RadiusSecret",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
+                return RETURN_ERR;
             }
 
-            param = cJSON_GetObjectItem(security, "SecondaryRadiusServerIPAddr");
+            param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerIPAddr");
             if (param) {
                 value = cJSON_GetStringValue(param);
                 if ((param == NULL) || (cJSON_IsString(param) != true)) {
@@ -553,9 +564,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
+                return RETURN_ERR;
             }
 
-            param = cJSON_GetObjectItem(security, "SecondaryRadiusServerPort");
+            param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerPort");
             if (param) {
                 if (cJSON_IsNumber(param)) {
                     radius_info->s_port = param->valuedouble;
@@ -577,9 +589,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerPort",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
+                return RETURN_ERR;
             }
 
-            param = cJSON_GetObjectItem(security, "SecondaryRadiusSecret");
+            param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusSecret");
             if (param && cJSON_IsString(param) == true) {
                 value = cJSON_GetStringValue(param);
                 wifi_util_info_print(WIFI_CTRL, "   \"SecondaryRadiusSecret\": <Masked>\n");
@@ -599,6 +612,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusSecret",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
+                return RETURN_ERR;
             }
         } // radius settings else
     } // if hotspot open
