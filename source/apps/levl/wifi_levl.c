@@ -44,6 +44,9 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address, in
 static int process_levl_sounding_timeout(timeout_data_t *t_data);
 static int process_levl_postpone_sounding(wifi_app_t *app);
 
+bool levl_init_complete = FALSE;
+
+
 static int levl_csi_status_publish(bus_handle_t *handle, mac_addr_t mac_addr, unsigned int status)
 {
     char eventName[MAX_EVENT_NAME_SIZE];
@@ -1848,6 +1851,7 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
         wifi_util_dbg_print(WIFI_APPS,"%s:%d bus_reg_data_element_fn failed, rc:%d\n", __func__, __LINE__, rc);
     } else {
         wifi_util_info_print(WIFI_APPS,"%s:%d Apps bus_regDataElement success\n", __func__, __LINE__);
+        levl_init_complete = TRUE;
     }
 
     return RETURN_OK;
