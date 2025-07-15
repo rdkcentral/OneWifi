@@ -433,7 +433,6 @@ CFLAGS += -DPLATFORM_OSX
 endif
 
 LDFLAGS = $(LIBDIRS) $(LIBS)
-LDFLAGS += -ltrower-base64
 
 $(BUILD_DIR):
 	@mkdir -p $(INSTALLDIR)/lib
