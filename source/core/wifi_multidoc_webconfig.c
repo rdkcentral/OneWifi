@@ -482,7 +482,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerPort",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
-                return RETURN_ERR;
             }
 
             param = cJSON_GetObjectItem(security, "RadiusSecret");
@@ -504,7 +503,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid RadiusSecret",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
-                return RETURN_ERR;
             }
 
             param = cJSON_GetObjectItem(security, "SecondaryRadiusServerIPAddr");
@@ -555,7 +553,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
-                return RETURN_ERR;
             }
 
             param = cJSON_GetObjectItem(security, "SecondaryRadiusServerPort");
@@ -580,7 +577,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerPort",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
-                return RETURN_ERR;
             }
 
             param = cJSON_GetObjectItem(security, "SecondaryRadiusSecret");
@@ -603,7 +599,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                     strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusSecret",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
-                return RETURN_ERR;
             }
         } // radius settings else
     } // if hotspot open
