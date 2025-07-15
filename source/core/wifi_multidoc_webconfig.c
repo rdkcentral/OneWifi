@@ -943,7 +943,7 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             wifi_util_info_print(WIFI_CTRL, "SJY Enters hotspot interworking decode\n");
             interworking_obj = cJSON_GetObjectItem(vb_entry, "Interworking");
             if (interworking_obj == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG,
+                wifi_util_error_print(WIFI_CTRL,
                     "%s:%d: Interworking object not present for %s\n", __FUNCTION__, __LINE__,
                     vap_info->vap_name);
                 goto done;
@@ -953,16 +953,18 @@ static int update_xfinity_vap_info(void *data, wifi_vap_info_t *vap_info, const 
             /* decode interworking object */
             if (decode_interworking_object(interworking_obj, &vap_info->u.bss_info.interworking) !=
                 webconfig_error_none) {
-                wifi_util_error_print(WIFI_WEBCONFIG,
+                    (WIFI_CTRL,
                     "%s:%d: Interworking objects validation failed for %s\n", __FUNCTION__,
                     __LINE__, vap_info->vap_name);
                 return webconfig_error_decode;
             }
-
+           wifi_util_info_print(WIFI_CTRL, "SJY: %s: Interworking decode done for %s\n",
+                __func__, vap_info->vap_name);
+    
             cac_obj = cJSON_GetObjectItem(vb_entry, "VapConnectionControl");
             /*decode cac object */
             if (cac_obj == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: CAC object not present for %s\n",
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: CAC object not present for %s\n",
                     __FUNCTION__, __LINE__, vap_info->vap_name);
                 goto done;
             }
@@ -1153,7 +1155,6 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
     webconfig_subdoc_data_t *data, const char *vap_prefix, bool managed_wifi_enabled,
     pErr execRetVal)
 {
-    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s:%d: \n", __func__, __LINE__);
     int status = RETURN_OK;
     int num_vaps = 0;
     int vap_index;
@@ -1162,74 +1163,41 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob,
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
     wifi_vap_name_t vap_names_xfinity[MAX_NUM_RADIOS * 2];
 
-    if (!strcmp(vap_prefix, VAP_PREFIX_HOTSPOT)) {
-        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: hotspot vap_prefix = %s\n", __func__, __LINE__,
-            vap_prefix);
+    if (!strcmp(vap_prefix,"hotspot")){
         /* get a list of VAP names */
-        num_vaps = get_list_of_hotspot_open(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
-            vap_names_xfinity);
+        num_vaps= get_list_of_hotspot_open(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, vap_names_xfinity);
         /* get list of hotspot_secure SSID */
-        num_vaps += get_list_of_hotspot_secure(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
-            &vap_names_xfinity[num_vaps]);
-    } else {
-        num_vaps = get_list_of_vap_names(&data->u.decoded.hal_cap.wifi_prop, vap_names,
-            MAX_NUM_RADIOS, 1, vap_prefix);
+        num_vaps += get_list_of_hotspot_secure(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, &vap_names_xfinity[num_vaps]);
+    }
+    else {
+        num_vaps = get_list_of_vap_names(&data->u.decoded.hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS, 1, vap_prefix);
     }
 
     for (int index = 0; index < num_vaps; index++) {
-        if (!strcmp(vap_prefix, VAP_PREFIX_HOTSPOT)) {
-            wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: hotspot vap_names_xfinity[%d] = %s\n",
-                __func__, __LINE__, index, vap_names_xfinity[index]);
+        if (!strcmp(vap_prefix,"hotspot")) {
             /* from VAP name, obtain radio index and array index within the radio */
-            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop,
-                vap_names_xfinity[index]);
+            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names_xfinity[index]);
         } else {
             /* from VAP name, obtain radio index and array index within the radio */
-            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop,
-                vap_names[index]);
+            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[index]);
         }
-        status = get_vap_and_radio_index_from_vap_instance(&data->u.decoded.hal_cap.wifi_prop,
-            vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
+        status = get_vap_and_radio_index_from_vap_instance(&data->u.decoded.hal_cap.wifi_prop, vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if (status == RETURN_ERR) {
             break;
         }
         /* fill the VAP info with current settings */
-        if (!strcmp(vap_prefix, VAP_PREFIX_HOTSPOT)) {
-            wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: Enters hotspot update_vap_info\n", __func__,
-                __LINE__);
-            if (managed_wifi_enabled == true) {
-                if (update_vap_info_managed_xfinity(blob,
-                        &data->u.decoded.radios[radio_index]
-                             .vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
-                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to update vap info for %s\n",
-                        __func__, vap_names_xfinity[index]);
-                    status = RETURN_ERR;
-                    break;
-                }
-            } else {
-                wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: Enters xfinity update_vap_info\n",
-                    __func__, __LINE__);
-                if (update_xfinity_vap_info(blob,
-                        &data->u.decoded.radios[radio_index]
-                             .vaps.vap_map.vap_array[vap_array_index],
-                        vap_prefix,  execRetVal) == RETURN_ERR) {
-                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to update vap info for %s\n",
-                        __func__, vap_names_xfinity[index]);
-                    status = RETURN_ERR;
-                    break;
-                }
-            }
-        } else if (!strcmp(vap_prefix, "lnf_psk")) {
-            if (update_vap_info_managed_guest(blob, amenities_blob,
-                    &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index],
-                    radio_index, managed_wifi_enabled, execRetVal) == RETURN_ERR) {
+        if (!strcmp(vap_prefix,"hotspot")) {
+            if (update_vap_info_managed_xfinity(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
                 status = RETURN_ERR;
                 break;
             }
-        } else {
-            if (update_vap_info(blob,
-                    &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index],
-                    execRetVal) == RETURN_ERR) {
+        } else if (!strcmp(vap_prefix,"lnf_psk")) {
+            if(update_vap_info_managed_guest(blob, amenities_blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], radio_index,managed_wifi_enabled, execRetVal) == RETURN_ERR) {
+                status = RETURN_ERR;
+                break;
+            }
+         } else {
+            if (update_vap_info(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
                 status = RETURN_ERR;
                 break;
             }
@@ -1602,8 +1570,9 @@ static pErr xfinity_exec_common_handler(void *blob, const char *vap_prefix, webc
 
     wifi_util_info_print(WIFI_CTRL, "SJY %s: %d Calling update_vap_info_with_blob_info\n", __func__, __LINE__);
     // Update the VAP info with the blob data
-    if (update_vap_info_with_blob_info(blob, NULL, data, vap_prefix, false, execRetVal) != 0) {
-        wifi_util_error_print(WIFI_CTRL, "SJY %s: json parse failure\n", __func__);
+    if(update_xfinity_vap_info(blob,&data->u.decoded.radios[radio_index]
+                             .vaps.vap_map.vap_array[vap_array_index], vap_prefix, execRetVal) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s: failed to update xfinity VAP info with blob data\n", __func__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
     }
