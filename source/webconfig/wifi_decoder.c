@@ -1292,24 +1292,6 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         return webconfig_error_decode;
     }
 
-    /* Handle RepurposedRadiusConfig for personal modes only */
-    if (security_info->mode == wifi_security_mode_wpa_personal ||
-        security_info->mode == wifi_security_mode_wpa2_personal ||
-        security_info->mode == wifi_security_mode_wpa_wpa2_personal ||
-        security_info->mode == wifi_security_mode_wpa3_personal ||
-        security_info->mode == wifi_security_mode_wpa3_transition ||
-        security_info->mode == wifi_security_mode_wpa3_compatibility) {
-        
-        object = cJSON_GetObjectItem(security, "RepurposedRadiusConfig");
-        if (object != NULL) {
-            decode_param_object(security, "RepurposedRadiusConfig", param);
-            if (decode_open_radius_object(param, &security_info->repurposed_radius) != webconfig_error_none) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d Failed to decode RepurposedRadiusConfig\n", __FUNCTION__, __LINE__);
-                return webconfig_error_decode;
-            }
-        }
-    }
-
     if (security_info->mode == wifi_security_mode_none ||
         security_info->mode == wifi_security_mode_enhanced_open) {
         object = cJSON_GetObjectItem(security, "RadiusSettings");
