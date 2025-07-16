@@ -1189,6 +1189,23 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
             default:
                 break;
         }
+    } else if (type == WIFI_MGMT_FRAME_TYPE_BEACON) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_csa_beacon_frame;
+        wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+        if (ctrl != NULL) {
+            raw_data_t rdata;
+            memset(&rdata, 0, sizeof(raw_data_t));
+            rdata.data_type = bus_data_type_bytes;
+            rdata.raw_data.bytes = (void *)&mgmt_frame.data;
+            rdata.raw_data_len = mgmt_frame.frame.len;
+            get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_CSA_BEACON_FRAME_RECEIVED,
+                &rdata);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Published CSA beacon frame\n", __func__, __LINE__);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Error publishing CSA beacon frame\n", __func__, __LINE__);
+        }
     }
 
     push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
