@@ -1149,6 +1149,20 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         if(interworking_o == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to get Interworking obj for %s\n", __func__, nm_s);
             continue;
+        } else {
+            //if VenueOptionPresent param missing add it.
+            cJSON *venue_o = cJSON_GetObjectItem(interworking_o, "Venue");
+            if (venue_o != NULL) {
+                cJSON *venue_option = cJSON_GetObjectItem(venue_o, "VenueOptionPresent");
+                if (venue_option == NULL) {
+                    wifi_interworking_t *interworking_info =
+                        &wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.interworking;
+                    cJSON_AddBoolToObject(venue_o, "VenueOptionPresent",
+                        interworking_info->interworking.venueOptionPresent);
+                } else {
+                    wifi_util_info_print(WIFI_CTRL, "%s: VenueOptionPresent param available\n", __func__);
+                }
+            }
         }
 
         if ((status = early_validate_interworking(interworking_o,  execRetVal)) != RETURN_OK) {
