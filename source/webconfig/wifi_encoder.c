@@ -929,6 +929,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
+    cJSON_AddBoolToObject(obj, "VenueOptionPresent", interworking_info->interworking.venueOptionPresent);
     cJSON_AddNumberToObject(obj, "VenueType", interworking_info->interworking.venueType);
 
     switch (interworking_info->interworking.venueGroup) {

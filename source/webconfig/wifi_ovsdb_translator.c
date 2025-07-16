@@ -902,6 +902,19 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
         default_vap_info->u.bss_info.mbo_enabled = true;
         default_vap_info->u.bss_info.interop_ctrl = false;
+
+        char str[600] = {0};
+        snprintf(str,sizeof(str),"%s", DEFAULT_ANQP_STR_DATA);
+        snprintf((char *)default_vap_info->u.bss_info.interworking.anqp.anqpParameters,
+            sizeof(default_vap_info->u.bss_info.interworking.anqp.anqpParameters), "%s" , str);
+        memset(str,0,sizeof(str));
+        snprintf(str,sizeof(str),"%s", DEFAULT_PASSPOINT_STR_DATA);
+        snprintf((char *)default_vap_info->u.bss_info.interworking.passpoint.hs2Parameters,
+            sizeof(default_vap_info->u.bss_info.interworking.passpoint.hs2Parameters), "%s" , str);
+
+        default_vap_info->u.bss_info.interworking.interworking.venueOptionPresent = 1;
+        default_vap_info->u.bss_info.interworking.interworking.venueGroup = 0;
+        default_vap_info->u.bss_info.interworking.interworking.venueType = 0;
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
     defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_)
