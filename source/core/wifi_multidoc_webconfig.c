@@ -780,7 +780,7 @@ static int update_xfinity_vap_info(void *blob, webconfig_subdoc_data_t *data, co
             __func__, radio_index, vap_array_index);
 
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        strncpy(vap_info->vap_name, vap_name_str, sizeof(vap_info->vap_name) - 1);
+        snprintf(vap_info->vap_name, sizeof(vap_info->vap_name), "%s", vap_name_str);
         wifi_util_info_print(WIFI_CTRL, "vap_name:%s %s: %d \n", vap_info->vap_name, __func__,
             __LINE__);
 
@@ -796,7 +796,7 @@ static int update_xfinity_vap_info(void *blob, webconfig_subdoc_data_t *data, co
             wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
             return -1;
         } else {
-            strncpy(vap_info->u.bss_info.ssid, value, sizeof(vap_info->u.bss_info.ssid) - 1);
+            snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s", value);
             wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
         }
 
@@ -1583,7 +1583,7 @@ static pErr xfinity_exec_common_handler(void *blob, const char *vap_prefix, webc
 
     wifi_util_info_print(WIFI_CTRL, "SJY %s: %d Calling update_vap_info_with_blob_info\n", __func__, __LINE__);
     // Update the VAP info with the blob data
-    if(update_xfinity_vap_info(blob, &data, vap_prefix, execRetVal) != RETURN_OK) {
+    if(update_xfinity_vap_info(blob, data, vap_prefix, execRetVal) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s: failed to update xfinity VAP info with blob data\n", __func__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
