@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.039",
+  "version": "1.00.040",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1845,6 +1845,15 @@
           }
         },
         "wpa3_compatibility_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "csi_analytics_enabled_rfc": {
           "type": {
             "key": {
               "type": "boolean"

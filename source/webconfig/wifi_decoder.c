@@ -810,6 +810,9 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 
     decode_param_object(interworking, "Venue", venue);
 
+    decode_param_bool(venue, "VenueOptionPresent", param);
+    interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true : false;
+
     decode_param_integer(venue, "VenueType", param);
     interworking_info->interworking.venueType = param->valuedouble;
     if (interworking_info->interworking.venueType > 15) {
