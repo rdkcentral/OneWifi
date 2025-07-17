@@ -30,7 +30,7 @@
 #include "wifi_cac.h"
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_monitor.h"
-#include <rbus.h>
+#include <rbus/rbus.h>
 
 void cac_print(char *format, ...)
 {
