@@ -2778,7 +2778,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
-
+    ctrl = &g_wifidb->ctrl;
     if (ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) {
         memset(&temp_radio_params, 0, sizeof(wifi_radio_operationParam_t));
         temp_radio_params.band = radio_params->band;
@@ -2791,7 +2791,6 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             __LINE__, ch_chg->radioIndex);
     }
 
-    ctrl = &g_wifidb->ctrl;
     if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext)) {
 
         ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
