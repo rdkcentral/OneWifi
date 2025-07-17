@@ -1828,19 +1828,19 @@ static int check_and_reset_channel_change(void *arg)
 {
     int radio_index = (int)(intptr_t)arg;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_util_info_print(WIFI_MON, "%s: Running for radio %d\n", __func__, radio_index);
+    wifi_util_info_print(WIFI_CTRL, "%s: Running for radio %d\n", __func__, radio_index);
 
     if (ctrl == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s: wifi_ctrl_t is NULL\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: wifi_ctrl_t is NULL\n", __func__);
         return -1;
     }
 
     if (ctrl->channel_change_in_progress[radio_index]) {
-        wifi_util_info_print(WIFI_MON, "%s: Channel change still in progress after 5s. Resetting flag and restarting scan.\n", __func__);
+        wifi_util_info_print(WIFI_CTRL, "%s: Channel change still in progress after 5s. Resetting flag and restarting scan.\n", __func__);
         ctrl->channel_change_in_progress[radio_index] = false;
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)

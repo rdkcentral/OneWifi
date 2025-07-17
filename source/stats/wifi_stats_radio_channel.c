@@ -888,9 +888,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         wifi_util_error_print(WIFI_MON, "%s:%d NULL mgr_data pointer\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    wifi_util_dbg_print(WIFI_MON, "%s:%d channel change in progress for radio %d: %s\n", __func__,
-        __LINE__, args->radio_index,
-        ctrl_data->channel_change_in_progress[args->radio_index] ? "true" : "false");
     if (ctrl_data->channel_change_in_progress[args->radio_index] == true) {
         wifi_util_info_print(WIFI_MON,
             "%s: Channel change in progress on radio %d. Scheduling recheck.\n", __func__,
