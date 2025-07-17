@@ -2224,6 +2224,12 @@ INSTMSMT_PH2 -->
                             <writable>true</writable>
                         </parameter>
                         <parameter>
+                            <name>InteropNumSta</name>
+                            <type>int</type>
+                            <syntax>int</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
                             <name>X_CISCO_COM_BssCountStaAsCpe</name>
                             <type>boolean</type>
                             <syntax>bool</syntax>
@@ -2360,6 +2366,12 @@ INSTMSMT_PH2 -->
                           </parameter>
                           <parameter>
                             <name>X_RDKCENTRAL-COM_HostapMgtFrameCtrl</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
+                          </parameter>
+                          <parameter>
+                            <name>InteropTelemetryCtrl</name>
                             <type>boolean</type>
                             <syntax>bool</syntax>
                             <writable>true</writable>

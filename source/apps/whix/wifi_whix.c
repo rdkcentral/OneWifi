@@ -2377,6 +2377,9 @@ void reconfigure_whix_interval(wifi_app_t *app, wifi_event_t *event)
     if (whix_log_interval && whix_chutil_interval) {
         push_whix_config_event_to_monitor_queue(mon_stats_request_state_start, app);
     }
+    if (whix_chutil_interval) {
+        send_monitor_event(wifi_event_monitor_update_interop_interval,"interop_interval");
+    }
     config_rejected_client_stats(app);
 }
 
