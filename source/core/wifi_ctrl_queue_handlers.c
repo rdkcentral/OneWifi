@@ -2785,6 +2785,10 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         temp_radio_params.channel = ch_chg->channel;
         temp_radio_params.channelWidth = ch_chg->channelWidth;
         temp_radio_params.DfsEnabled = radio_params->DfsEnabled;
+        // Channel change completed flag
+        ctrl->channel_change_in_progress[ch_chg->radioIndex] = false;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d channel changes is false for radio:%d\n", __func__,
+            __LINE__, ch_chg->radioIndex);
     }
 
     ctrl = &g_wifidb->ctrl;

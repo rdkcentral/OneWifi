@@ -1297,7 +1297,10 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         // unregister and deinit everything
         return RETURN_ERR;
     }
-    
+
+    // channel change flag initialized as false
+    memset(ctrl->channel_change_in_progress, 0, sizeof(ctrl->channel_change_in_progress));
+
     clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
     clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
     pthread_condattr_init(&cond_attr);

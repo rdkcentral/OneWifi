@@ -854,6 +854,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int new_num_channels = 0;
     int updated_channels[MAX_CHANNELS] = {0};
     wifi_mon_stats_args_t *args = NULL;
+    wifi_ctrl_t *ctrl_data = NULL;
 
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
@@ -879,6 +880,21 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         wifi_util_error_print(WIFI_MON, "%s:%d NULL radioOperation pointer for radio : %d\n",
             __func__, __LINE__, args->radio_index);
         return RETURN_ERR;
+    }
+
+    // channel_change check
+    ctrl_data = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl_data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d NULL mgr_data pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d channel change in progress for radio %d: %s\n", __func__,
+        __LINE__, args->radio_index,
+        ctrl_data->channel_change_in_progress[args->radio_index] ? "true" : "false");
+    if (ctrl_data->channel_change_in_progress[args->radio_index] == true) {
+        wifi_util_info_print(WIFI_MON,
+            "%s: Channel change in progress on radio %d. Scheduling recheck.\n", __func__,
+            args->radio_index);
     }
 
     if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
