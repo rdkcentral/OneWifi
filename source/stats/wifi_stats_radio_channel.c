@@ -887,7 +887,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             num_channels = 1;
             channels[0] = radioOperation->channel;
         } else {
-            // Check if any of the channels are in NOP/CAC started state
             if (get_non_operational_channel_list(args->radio_index, (unsigned int *)channels,
                     num_channels, nop_chan_list, &nop_chan_count, mon_data,
                     radioOperation->band) != RETURN_OK) {
