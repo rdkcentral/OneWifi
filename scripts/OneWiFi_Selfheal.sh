@@ -404,13 +404,15 @@ do
         onewifi_restart_wifi
     fi
 
-    if [ $force_reset_subdoc -le  2 ]; then
+    if [ $force_reset_subdoc -le  5 ]; then
         if [ -f  $SW_UPGRADE_DEFAULT_FILE ]; then
-            webcfg_rfc_enabled=`dmcli eRT getv Device.X_RDK_WebConfig.RfcEnable | grep "value" | cut -d ':' -f3-5`
+            webcfg_rfc_enabled=$(dmcli eRT retv Device.X_RDK_WebConfig.RfcEnable)
             echo_t "webcfg_rfc status is $webcfg_rfc_enabled" >>  /rdklogs/logs/wifi_selfheal.txt
-            dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid
-            echo_t "Selfheal execution to force_reset on private vaps passed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
-            rm -f $SW_UPGRADE_DEFAULT_FILE
+            if [ "$webcfg_rfc_enabled" = "true" ]; then
+                dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid
+                echo_t "Selfheal execution to force_reset on private vaps passed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
+                rm -f $SW_UPGRADE_DEFAULT_FILE
+            fi
         fi
         ((force_reset_subdoc++))
     fi
