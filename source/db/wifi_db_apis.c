@@ -4433,9 +4433,8 @@ static void wifidb_global_config_upgrade()
             RSS_MEM_THRESHOLD2_DEFAULT;
     }
 
-    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_CORRECTION_FLAG) {
-        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__,
-            __LINE__, g_wifidb->db_version);
+    if ((g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low) == 0 &&
+        (g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high) == 0) {
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
             RSS_MEM_THRESHOLD1_DEFAULT;
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
