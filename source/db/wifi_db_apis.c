@@ -177,7 +177,6 @@ static char *Tidle = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTidle";
 
 #ifdef ONEWIFI_DB_SUPPORT
 
-
 void wifidb_init_gas_config_default(wifi_GASConfiguration_t *config);
 
 /************************************************************************************
@@ -1066,7 +1065,6 @@ void callback_Wifi_GAS_Config(ovsdb_update_monitor_t *mon,
     g_wifidb = get_wifimgr_obj();
     int ad_id = 0;
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
-
     if (mon->mon_type == OVSDB_UPDATE_DEL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
@@ -1255,7 +1253,6 @@ void callback_Wifi_Passpoint_Config(ovsdb_update_monitor_t *mon,
 {
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Enter\n", __func__, __LINE__);
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
-
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Delete\n", __func__, __LINE__);
     }
@@ -1316,7 +1313,6 @@ void callback_Wifi_Anqp_Config(ovsdb_update_monitor_t *mon,
        return;
     }
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
-
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Delete\n", __func__, __LINE__);
     }
@@ -4435,24 +4431,10 @@ static void wifidb_global_config_upgrade()
 
     if ((g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low) == 0 &&
         (g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high) == 0) {
-        wifi_util_dbg_print(WIFI_DB,
-            "%s:%d The value of rss_memory_restart_threshold_low %d and "
-            "rss_memory_restart_threshold_high %d\n",
-            __func__, __LINE__,
-            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low,
-            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high);
-
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
             RSS_MEM_THRESHOLD1_DEFAULT;
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
             RSS_MEM_THRESHOLD2_DEFAULT;
-
-        wifi_util_dbg_print(WIFI_DB,
-            "%s:%d Updated the value of rss_memory_restart_threshold_low %d and "
-            "rss_memory_restart_threshold_high %d\n",
-            __func__, __LINE__,
-            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low,
-            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high);
     }
 
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT) {
@@ -4463,7 +4445,6 @@ static void wifidb_global_config_upgrade()
         g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_window_size = 1;
         g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_cooldown_time = 30;
     }
-
 }
 
 /************************************************************************************
