@@ -4427,7 +4427,7 @@ static void wifidb_global_config_upgrade()
             RSS_MEM_THRESHOLD2_DEFAULT;
     }
 
-    if ((g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low) == 0 &&
+    if ((g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low) == 0 ||
         (g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high) == 0) {
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
             RSS_MEM_THRESHOLD1_DEFAULT;
