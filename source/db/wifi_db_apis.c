@@ -4435,10 +4435,24 @@ static void wifidb_global_config_upgrade()
 
     if ((g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low) == 0 &&
         (g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high) == 0) {
+        wifi_util_dbg_print(WIFI_DB,
+            "%s:%d The value of rss_memory_restart_threshold_low %d and "
+            "rss_memory_restart_threshold_high %d\n",
+            __func__, __LINE__,
+            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low,
+            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high);
+
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
             RSS_MEM_THRESHOLD1_DEFAULT;
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
             RSS_MEM_THRESHOLD2_DEFAULT;
+
+        wifi_util_dbg_print(WIFI_DB,
+            "%s:%d Updated the value of rss_memory_restart_threshold_low %d and "
+            "rss_memory_restart_threshold_high %d\n",
+            __func__, __LINE__,
+            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low,
+            g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high);
     }
 
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT) {
