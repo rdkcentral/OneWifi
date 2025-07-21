@@ -2787,8 +2787,9 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         temp_radio_params.DfsEnabled = radio_params->DfsEnabled;
         // Channel change completed flag
         ctrl->channel_change_in_progress[ch_chg->radioIndex] = false;
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d channel changes is false for radio:%d\n", __func__,
-            __LINE__, ch_chg->radioIndex);
+        wifi_util_dbg_print(WIFI_CTRL,
+            "%s:%d channel changes is completed, setting channel change progress to false\n",
+            __func__, __LINE__);
     }
 
     if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext)) {

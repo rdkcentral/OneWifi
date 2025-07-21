@@ -1853,7 +1853,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     int is_changed = 0;
     bool is_radio_6g_modified = false;
     vap_svc_t *pub_svc = NULL;
-    int task_id = 0;
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
     bool old_ecomode = false;
     bool new_ecomode = false;
@@ -1877,13 +1876,13 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         found_radio_index = false;
 
         // channel_change_flag
-        if (radio_data->oper.channel != mgr_radio_data->oper.channel) {
+        if (IS_CHANGED(radio_data->oper.channel, mgr_radio_data->oper.channel)) {
             ctrl->channel_change_in_progress[radio_data->vaps.radio_index] = true;
             wifi_util_dbg_print(WIFI_MGR,
                 "%s:%d: channel_mismatch[%d] set to true (input:%d, ctrl:%d)\n", __func__, __LINE__,
                 radio_data->vaps.radio_index, radio_data->oper.channel,
                 mgr_radio_data->oper.channel);
-            scheduler_add_timer_task(ctrl->sched, false, &task_id, check_and_reset_channel_change,
+            scheduler_add_timer_task(ctrl->sched, false, NULL, check_and_reset_channel_change,
                 (void *)(intptr_t)radio_data->vaps.radio_index, 5000, 1, false);
         }
 
