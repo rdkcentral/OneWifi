@@ -45,7 +45,6 @@
 #include <sched.h>
 #include "scheduler.h"
 #include "timespec_macro.h"
-
 #include <netinet/tcp.h>    //Provides declarations for tcp header
 #include <netinet/ip.h> //Provides declarations for ip header
 #include <arpa/inet.h> // inet_addr
@@ -454,28 +453,71 @@ int set_auth_req_frame_data(frame_data_t *msg) {
     return RETURN_OK;
 }
 
-void telemetry_event_code_count(interop_data_t *sta1,int vapindex, char *mac, char *ap) {
+#define STATUS_COUNT_SIZE 6
+#define REASON_COUNT_SIZE 9
+
+static bool has_non_zero_counts(const int *status_counts, const int *reason_counts) {
+    for (int i = 0; i < STATUS_COUNT_SIZE; i++) {
+        if (status_counts[i] != 0) return true;
+    }
+    for (int i = 0; i < REASON_COUNT_SIZE; i++) {
+        if (reason_counts[i] != 0) return true;
+    }
+    return false;
+}
+
+void telemetry_event_code_count(interop_data_t *sta1, int vapindex, char *mac, char *ap) {
     char telemetry_buff[128] = {0};
     char telemetry_val[512] = {0};
     char telemetry_buff_grep[128] = {0};
     char buff[1024];
     char tmp[128];
+
     if (!mac) {
         wifi_util_info_print(WIFI_MON, "Error: MAC address is NULL\n");
         return;
     }
 
-    memset(telemetry_buff, 0, sizeof(telemetry_buff));
-    memset(telemetry_val, 0, sizeof(telemetry_val));
-    memset(telemetry_buff_grep, 0, sizeof(telemetry_buff_grep));
+    bool has_sta_data = has_non_zero_counts(sta1->sta_status_counts, sta1->sta_reason_counts);
+    bool has_ap_data  = has_non_zero_counts(sta1->ap_status_counts, sta1->ap_reason_counts);
+
+    if (!has_sta_data && !has_ap_data) {
+        wifi_util_dbg_print(WIFI_MON, "All status and reason counts are zero. Skipping telemetry.\n");
+        return;
+    }
+
     snprintf(telemetry_buff, sizeof(telemetry_buff), "REASON_STATUS_COUNT");
-    snprintf(telemetry_val, sizeof(telemetry_val),
-             "%d:Client:%s,AP:%s,Status_codes:1:%d,16:%d,30:%d,31:%d,43:%d,53:%d,Reason_codes:1:%d,2:%d,3:%d,9:%d,14:%d,15:%d,20:%d,23:%d,49:%d\nREASON_STATUS_COUNT:%d:AP:%s,Client:%s,Status_codes:1:%d,16:%d,30:%d,31:%d,43:%d,53:%d,Reason_codes:1:%d,2:%d,3:%d,9:%d,14:%d,15:%d,20:%d,23:%d,49:%d ", vapindex+1, mac, ap, sta1->sta_status_counts[0], sta1->sta_status_counts[1], sta1->sta_status_counts[2], sta1->sta_status_counts[3],sta1->sta_status_counts[4], sta1->sta_status_counts[5],sta1->sta_reason_counts[0],sta1->sta_reason_counts[1],sta1->sta_reason_counts[2],sta1->sta_reason_counts[3],sta1->sta_reason_counts[4],sta1->sta_reason_counts[5],sta1->sta_reason_counts[6],sta1->sta_reason_counts[7],sta1->sta_reason_counts[8],vapindex+1, ap, mac, sta1->ap_status_counts[0], sta1->ap_status_counts[1], sta1->ap_status_counts[2], sta1->ap_status_counts[3],sta1->ap_status_counts[4], sta1->ap_status_counts[5],sta1->ap_reason_counts[0],sta1->ap_reason_counts[1],sta1->ap_reason_counts[2],sta1->ap_reason_counts[3],sta1->ap_reason_counts[4],sta1->ap_reason_counts[5],sta1->ap_reason_counts[6],sta1->ap_reason_counts[7],sta1->ap_reason_counts[8]);
+
+    if (has_sta_data) {
+        snprintf(telemetry_val + strlen(telemetry_val), sizeof(telemetry_val) - strlen(telemetry_val),
+                 "%d:Client:%s,AP:%s,SC:1:%d,16:%d,30:%d,31:%d,43:%d,53:%d,"
+                 "RC:1:%d,2:%d,3:%d,9:%d,14:%d,15:%d,20:%d,23:%d,49:%d\n",
+                 vapindex + 1, mac, ap,
+                 sta1->sta_status_counts[0], sta1->sta_status_counts[1], sta1->sta_status_counts[2],
+                 sta1->sta_status_counts[3], sta1->sta_status_counts[4], sta1->sta_status_counts[5],
+                 sta1->sta_reason_counts[0], sta1->sta_reason_counts[1], sta1->sta_reason_counts[2],
+                 sta1->sta_reason_counts[3], sta1->sta_reason_counts[4], sta1->sta_reason_counts[5],
+                 sta1->sta_reason_counts[6], sta1->sta_reason_counts[7], sta1->sta_reason_counts[8]);
+    }
+
+    if (has_ap_data) {
+        snprintf(telemetry_val + strlen(telemetry_val), sizeof(telemetry_val) - strlen(telemetry_val),
+                 "AP_REASON_STATUS_COUNT:%d:AP:%s,Client:%s,SC:1:%d,16:%d,30:%d,31:%d,43:%d,53:%d,"
+                 "RC:1:%d,2:%d,3:%d,9:%d,14:%d,15:%d,20:%d,23:%d,49:%d ",
+                 vapindex + 1, ap, mac,
+                 sta1->ap_status_counts[0], sta1->ap_status_counts[1], sta1->ap_status_counts[2],
+                 sta1->ap_status_counts[3], sta1->ap_status_counts[4], sta1->ap_status_counts[5],
+                 sta1->ap_reason_counts[0], sta1->ap_reason_counts[1], sta1->ap_reason_counts[2],
+                 sta1->ap_reason_counts[3], sta1->ap_reason_counts[4], sta1->ap_reason_counts[5],
+                 sta1->ap_reason_counts[6], sta1->ap_reason_counts[7], sta1->ap_reason_counts[8]);
+    }
+
     strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
     telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
+
     wifi_util_dbg_print(WIFI_MON, "%s:%s\n", telemetry_buff_grep, telemetry_val);
     get_formatted_time(tmp);
-    snprintf(buff, 1024, "%s:%s:%s\n", tmp, telemetry_buff_grep, telemetry_val);
+    snprintf(buff, sizeof(buff), "%s:%s:%s\n", tmp, telemetry_buff_grep, telemetry_val);
     write_to_file(wifi_health_log, buff);
     get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
 }
@@ -1323,8 +1365,25 @@ int set_sta_client_mode(int ap_index, char *mac, int key_mgmt, frame_type_t fram
 
 void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
+    char buff[2048];
+    char tmp[128];
     sta_key_t sta_key;
     wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
+    /*Wrong password on private, Xfinity Home and LNF SSIDs*/
+    if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
+        get_formatted_time(tmp);
+        snprintf(buff, 2048, "%s WIFI_PASSWORD_FAIL:%d,%s\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key));
+        /* send telemetry of password failure */
+        write_to_file(wifi_health_log, buff);
+    }
+    /*ARRISXB6-11979 Possible Wrong WPS key on private SSIDs*/
+    if ((dev->reason == 2 || dev->reason == 14 || dev->reason == 19) && ( isVapPrivate(ap_index) ))  {
+        get_formatted_time(tmp);
+        snprintf(buff, 2048, "%s WIFI_POSSIBLE_WPS_PSK_FAIL:%d,%s,%d\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key), dev->reason);
+        /* send telemetry of WPS failure */
+        write_to_file(wifi_health_log, buff);
+    }
+    /*Calling process_disconnect as station is disconncetd from vAP*/
     process_disconnect(ap_index, dev);
 }
 
@@ -1617,6 +1676,28 @@ static void update_subscribe_data(wifi_monitor_data_t *event)
     }
 }
 
+int update_monitor_channel_status_map(wifi_channel_status_event_t *data)
+{
+    int radio_index;
+    if (data == NULL || data->radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Invalid input data or radio index out of range\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    radio_index = data->radio_index;
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        if (data->channel_map[i].ch_number == 0)
+            break;
+
+        memcpy(&g_monitor_module.channel_map[radio_index][i], &data->channel_map[i], sizeof(wifi_channelMap_t));
+
+        wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
+            __func__, __LINE__, radio_index, g_monitor_module.channel_map[radio_index][i].ch_number,
+            g_monitor_module.channel_map[radio_index][i].ch_state);
+    }
+    return RETURN_OK;
+}
+
 void *monitor_function  (void *data)
 {
     char event_buff[16] = {0};
@@ -1732,6 +1813,9 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_set_subscribe:
                         update_subscribe_data(event_data);
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
+                    break;
+                    case wifi_event_monitor_channel_status:
+                        update_monitor_channel_status_map(&event_data->u.channel_status_map);
                     break;
                     default:
                     break;

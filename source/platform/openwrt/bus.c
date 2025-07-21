@@ -201,6 +201,18 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return bus_error_success;
 }
 
+static bus_error_t bus_add_table_row(bus_handle_t *handle, char const *name,
+    char const *alias, uint32_t *row_index)
+{
+    return bus_error_success;
+}
+
+static bus_error_t bus_event_unsubs_ex(bus_handle_t *handle,
+    bus_event_sub_t *l_sub_info_map, int num_sub)
+{
+    return bus_error_success;
+}
+
 void wifi_bus_init(void)
 {
     g_bus.desc.bus_init_fn = bus_init;
@@ -218,6 +230,7 @@ void wifi_bus_init(void)
     g_bus.desc.bus_event_subs_fn = bus_event_subscribe;
     g_bus.desc.bus_event_subs_ex_fn = bus_event_subscribe_ex;
     g_bus.desc.bus_event_subs_ex_async_fn = bus_event_subscribe_ex_async;
+    g_bus.bus_event_unsubs_ex_fn = bus_event_unsubs_ex;
     g_bus.desc.bus_property_data_get_fn = bus_property_data_get;
     g_bus.desc.bus_property_data_set_fn = bus_property_data_set;
     g_bus.desc.bus_object_data_get_fn = bus_object_data_get;
@@ -227,6 +240,7 @@ void wifi_bus_init(void)
     g_bus.desc.bus_get_trace_context_fn = bus_get_trace_context;
     g_bus.bus_reg_table_row_fn = bus_reg_table_row;
     g_bus.bus_unreg_table_row_fn = bus_unreg_table_row;
+    g_bus.bus_add_table_row_fn = bus_add_table_row;
     g_bus.bus_remove_table_row_fn = bus_remove_table_row;
     g_bus.desc.bus_error_to_string_fn = bus_error_to_string;
     g_bus.desc.bus_convert_handle_to_actual_ptr_fn = bus_convert_handle_to_ptr;
