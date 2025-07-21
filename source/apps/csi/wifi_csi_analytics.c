@@ -255,7 +255,7 @@ static int webconfig_hal_csi_data_apply(wifi_app_t *apps, webconfig_subdoc_decod
                 for (s_index = 0; s_index < new_csi_data->csi_client_count; s_index++) {
                     memset(mac_str, 0, MAX_MAC_STR_SIZE);
                     to_mac_str(new_csi_data->csi_client_list[s_index], mac_str);
-                    if (add_str_mac_addr(total_str_mac, mac_str) == RETURN_OK) {
+                    if (add_str_mac_addr(total_str_mac, mac_str) != RETURN_OK) {
                         break;
                     }
                 }
