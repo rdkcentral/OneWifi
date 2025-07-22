@@ -831,16 +831,6 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
     return RETURN_OK;
 }
 
-void add_milliseconds(struct timespec *ts, long milliseconds)
-{
-    ts->tv_nsec += milliseconds * 1000000L; // Convert ms to ns
-    // Normalize the time if nanoseconds exceed 1 second
-    if (ts->tv_nsec >= 1000000000L) {
-        ts->tv_sec += ts->tv_nsec / 1000000000L;
-        ts->tv_nsec = ts->tv_nsec % 1000000000L;
-    }
-}
-
 int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data,
     unsigned long task_interval_ms)
 {
@@ -865,7 +855,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int updated_channels[MAX_CHANNELS] = {0};
     wifi_mon_stats_args_t *args = NULL;
     wifi_ctrl_t *ctrl_data = NULL;
-    struct timespec current_time, updated_time;
 
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
@@ -892,29 +881,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         wifi_util_error_print(WIFI_MON, "%s:%d NULL radioOperation pointer for radio : %d\n",
             __func__, __LINE__, args->radio_index);
         return RETURN_ERR;
-    }
-
-    // channel_change check
-    ctrl_data = (wifi_ctrl_t *)get_wifictrl_obj();
-    if (ctrl_data == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d NULL mgr_data pointer\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    if (ctrl_data->channel_change_in_progress[args->radio_index] == true) {
-        wifi_util_dbg_print(WIFI_MON,
-            "%s: Channel change in progress on radio %d. Scheduling recheck.\n", __func__,
-            args->radio_index);
-        // Get current time
-        if (clock_gettime(CLOCK_REALTIME, &current_time) != 0) {
-            wifi_util_error_print(WIFI_MON, "%s:%d clock_gettime failed\n", __func__, __LINE__);
-            return 1;
-        }
-        // Copy current_time to updated_time
-        updated_time = current_time;
-        // Add 100 milliseconds to the copied time
-        add_milliseconds(&updated_time, 100);
-        scheduler_update_timeout(mon_data->sched, c_elem->collector_task_sched_id, updated_time);
-        return RETURN_OK;
     }
 
     if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
