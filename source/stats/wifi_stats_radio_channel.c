@@ -854,11 +854,10 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int new_num_channels = 0;
     int updated_channels[MAX_CHANNELS] = {0};
     wifi_mon_stats_args_t *args = NULL;
-    wifi_ctrl_t *ctrl_data = NULL;
 
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
-            __LINE__, c_elem);
+            __LINE__, args);
         return RETURN_ERR;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d Entered. sched: %p, interval: %lu ms\n", __func__, __LINE__, c_elem->collector_task_sched_id, c_elem->collector_task_interval_ms);
