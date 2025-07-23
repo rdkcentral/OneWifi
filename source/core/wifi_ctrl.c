@@ -1297,6 +1297,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         // unregister and deinit everything
         return RETURN_ERR;
     }
+    
     clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
     clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
     pthread_condattr_init(&cond_attr);
