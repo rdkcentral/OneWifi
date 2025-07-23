@@ -1824,6 +1824,27 @@ void radio_param_config_changed_event_logging(wifi_radio_operationParam_t *old ,
     }
 }
 
+static int check_and_reset_channel_change(void *arg)
+{
+    int radio_index = (int)(intptr_t)arg;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_util_info_print(WIFI_MON, "%s: Running for radio %d\n", __func__, radio_index);
+
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s: wifi_mgr_t is NULL\n", __func__);
+        return -1;
+    }
+
+    if (mgr->channel_change_in_progress[radio_index]) {
+        wifi_util_info_print(WIFI_MON,
+            "%s: Channel change still in progress after 5s. Resetting flag and restarting scan.\n",
+            __func__);
+        mgr->channel_change_in_progress[radio_index] = false;
+    }
+
+    return 0;
+}
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -1861,6 +1882,8 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             mgr->channel_change_in_progress[radio_data->vaps.radio_index] = true;
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: channel_mismatch[%d] set to true\n", __func__,
                 __LINE__, radio_data->vaps.radio_index);
+            scheduler_add_timer_task(ctrl->sched, false, NULL, check_and_reset_channel_change,
+                (void *)(intptr_t)radio_data->vaps.radio_index, 5000, 1, false);
         }
 
         if (is_radio_band_5G(radio_data->oper.band) && is_radio_feat_config_changed(mgr_radio_data, radio_data))
