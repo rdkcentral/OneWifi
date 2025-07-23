@@ -1832,7 +1832,7 @@ static int check_and_reset_channel_change(void *arg)
 
     if (mgr == NULL) {
         wifi_util_error_print(WIFI_MON, "%s: wifi_mgr_t is NULL\n", __func__);
-        return -1;
+        return RETURN_ERR;
     }
 
     if (mgr->channel_change_in_progress[radio_index]) {
@@ -1842,7 +1842,7 @@ static int check_and_reset_channel_change(void *arg)
         mgr->channel_change_in_progress[radio_index] = false;
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
