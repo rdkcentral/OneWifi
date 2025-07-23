@@ -860,7 +860,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             __LINE__, args);
         return RETURN_ERR;
     }
-    wifi_util_dbg_print(WIFI_MON, "%s:%d Entered. sched: %p, interval: %lu ms\n", __func__, __LINE__, c_elem->collector_task_sched_id, c_elem->collector_task_interval_ms);
 
     args = c_elem->args;
     if (args == NULL) {

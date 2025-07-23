@@ -2788,7 +2788,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         // Channel change completed flag
         g_wifidb->channel_change_in_progress[ch_chg->radioIndex] = false;
         wifi_util_dbg_print(WIFI_CTRL,
-            "%s:%d Channel changes is completed, setting channel change progress to false\n",
+            "%s:%d Channel change is completed, setting channel change progress to false\n",
             __func__, __LINE__);
     }
 
