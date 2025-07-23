@@ -2786,7 +2786,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         temp_radio_params.channelWidth = ch_chg->channelWidth;
         temp_radio_params.DfsEnabled = radio_params->DfsEnabled;
         // Channel change completed flag
-        //g_wifidb->channel_change_in_progress[ch_chg->radioIndex] = false;
+        g_wifidb->channel_change_in_progress[ch_chg->radioIndex] = false;
         wifi_util_dbg_print(WIFI_CTRL,
             "%s:%d Channel change is completed, setting channel change progress to false\n",
             __func__, __LINE__);
