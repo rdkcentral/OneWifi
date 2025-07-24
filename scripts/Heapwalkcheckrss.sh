@@ -53,7 +53,7 @@ onewifi_pid=$(ps | grep "/usr/bin/OneWifi -subsys eRT\." | grep -v grep | awk '{
     memleakutil <<EOF> /tmp/HeapResultField.txt
 $onewifi_pid
 4
-7
+0
 EOF
 echo "$(date '+%Y-%m-%d %H:%M:%S') Overall HEAPWALK is marked as walked at starting" >> "$log_file"
 sleep 300
