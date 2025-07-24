@@ -29,6 +29,7 @@ void start_dml()
     start_dml_main(&wifi_mgr->wifidml.ssp);
 
     wifi_util_info_print(WIFI_MGR,"%s: Navya waiting for DML init\n", __func__);
+    wifi_util_info_print(WIFI_MGR,"%s: Navya1 waiting for DML init\n", __func__);
     wifi_util_info_print(WIFI_MGR,"%s: waiting for DML init\n", __func__);
 
     pthread_mutex_lock(&wifi_mgr->lock);
