@@ -100,10 +100,10 @@ define Package/easymesh/install
 		$(CP) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/* $(1)/banana-pi-ots/; \
 		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/InterfaceMap.json  $(1)/nvram/; \
 		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/99-lan3_OTS_bringup.sh  $(1)/etc/hotplug.d/iface/; \
-        $(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/ots_init_file  $(1)/etc/init.d/; \
+        	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/ots_init_file  $(1)/etc/init.d/; \
 		chmod +x $(1)/etc/init.d/ots_init_file; \
 		ln -sf /etc/init.d/ots_init_file $(1)/etc/rc.d/S99xots_init_file; \
-        $(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/network $(1)/etc/config/; \
+        	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/network $(1)/etc/config/; \
 	else \
 		echo "Installing Easymesh CTRL..."; \
 		$(INSTALL_DIR) $(1)/banana-pi; \
