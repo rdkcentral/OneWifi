@@ -2317,6 +2317,41 @@ void process_levl_rfc(bool type)
     return;
 }
 
+int update_wifi_app_rfc(wifi_app_inst_t inst, bool status)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *p_app = NULL;
+    if (ctrl != NULL) {
+        apps_mgr = &ctrl->apps_mgr;
+        p_app = (wifi_app_t *)get_app_by_inst(apps_mgr, inst);
+        if (p_app != NULL) {
+            p_app->desc.rfc = status;
+            p_app->desc.update_fn(p_app);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d app:%d is not found\n", __func__, __LINE__,
+                inst);
+        }
+    }
+    return RETURN_OK;
+}
+
+void process_csi_analytics_rfc(bool type)
+{
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+
+    rfc_param->csi_analytics_enabled_rfc = type;
+    update_wifi_app_rfc(wifi_app_inst_csi_analytics, type);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    return;
+}
+
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -3478,6 +3513,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_rsn_override_rfc:
         process_rsn_override_rfc(*(bool *)data);
         break;
+    case wifi_event_type_csi_analytics_rfc:
+        process_csi_analytics_rfc(*(bool *)data);
+        break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
     case wifi_event_type_udhcp_ip_fail:
@@ -3607,6 +3645,38 @@ void update_subdoc_data(webconfig_subdoc_data_t *data, unsigned int num_ssid,
     }
 }
 
+int free_event_webconfig_data(webconfig_subdoc_type_t type, webconfig_subdoc_decoded_data_t *data)
+{
+    switch (type) {
+    case webconfig_subdoc_type_csi:
+        wifi_util_info_print(WIFI_CTRL, "%s:%d decoded csi queue:%p\n", __func__, __LINE__,
+            data->csi_data_queue);
+        if (data->csi_data_queue != NULL) {
+            queue_destroy(data->csi_data_queue);
+            data->csi_data_queue = NULL;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return RETURN_OK;
+}
+
+int free_webconfig_msg_payload(wifi_event_subtype_t sub_type, webconfig_subdoc_data_t *data)
+{
+    switch (sub_type) {
+    case wifi_event_webconfig_set_data:
+    case wifi_event_webconfig_set_data_dml:
+        free_event_webconfig_data(data->type, &data->u.decoded);
+        break;
+    default:
+        break;
+    }
+
+    return RETURN_OK;
+}
+
 void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len,
     wifi_event_subtype_t subtype)
 {
@@ -3680,6 +3750,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             wifi_event->sub_type = subtype;
             wifi_event->u.webconfig_data = &data;
             apps_mgr_event(&ctrl->apps_mgr, wifi_event);
+            free_webconfig_msg_payload(subtype, &data);
             if (wifi_event != NULL) {
                 free(wifi_event);
             }

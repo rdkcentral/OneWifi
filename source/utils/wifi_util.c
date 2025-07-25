@@ -2564,6 +2564,11 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
         {161, 165, 169, 173, 177, 181, 185, 189},
         {193, 197, 201, 205, 209, 213, 217, 221}
     };
+    int channels_6g_320_mhz[3][16] = {
+        {33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93},
+        {97, 101, 105, 109, 113, 117, 121, 125, 129, 133, 137, 141, 145, 149, 153, 157},
+        {161, 165, 169, 173, 177, 181, 185, 189, 193, 197, 201, 205, 209, 213, 217, 221}
+    };
 
     int found_idx = -1;
     
@@ -2743,7 +2748,27 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
             } else {
                 return -1;
             }
-        
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_320MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_6g_320_mhz); i++) {
+                for (int j = 0; j < 16; j++) {
+                    if (primary_channel == channels_6g_320_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 16; i++) {
+                    channel_list[i] = channels_6g_320_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
         }
     }
 
@@ -3801,6 +3826,56 @@ int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *sca
     return RETURN_ERR;
 }
 
+static bool is_interworking_config_changed(char *vap_name, wifi_interworking_t *old_cfg,
+    wifi_interworking_t *new_cfg)
+{
+    bool is_hotspot_vap = FALSE;
+    if (strncmp((char *)vap_name, "hotspot", strlen("hotspot")) == 0) {
+        is_hotspot_vap = TRUE;
+    }
+
+    return (IS_BIN_CHANGED(&old_cfg->interworking, &new_cfg->interworking,
+            sizeof(wifi_InterworkingElement_t))
+            || (is_hotspot_vap
+                && (IS_BIN_CHANGED(&old_cfg->passpoint, &new_cfg->passpoint,
+                    sizeof(wifi_passpoint_settings_t))
+                   || IS_BIN_CHANGED(&old_cfg->anqp, &new_cfg->anqp,
+                    sizeof(wifi_anqp_settings_t))
+                   || IS_BIN_CHANGED(&old_cfg->roamingConsortium, &new_cfg->roamingConsortium,
+                    sizeof(wifi_roamingConsortiumElement_t)))));
+}
+
+static bool is_vap_preassoc_cac_config_changed(char *vap_name,
+    wifi_preassoc_control_t *old_cfg,
+    wifi_preassoc_control_t *new_cfg)
+{
+    bool is_hotspot_vap = FALSE;
+    if (strncmp((char *)vap_name, "hotspot", strlen("hotspot")) == 0) {
+        is_hotspot_vap = TRUE;
+    }
+
+    if (is_hotspot_vap
+        && (IS_STR_CHANGED(old_cfg->basic_data_transmit_rates,
+                new_cfg->basic_data_transmit_rates,
+                sizeof(old_cfg->basic_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->operational_data_transmit_rates,
+                new_cfg->operational_data_transmit_rates,
+                sizeof(old_cfg->operational_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->supported_data_transmit_rates,
+                new_cfg->supported_data_transmit_rates,
+                sizeof(old_cfg->supported_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->minimum_advertised_mcs,
+                new_cfg->minimum_advertised_mcs,
+                sizeof(old_cfg->minimum_advertised_mcs))
+            || IS_STR_CHANGED(old_cfg->sixGOpInfoMinRate,
+                new_cfg->sixGOpInfoMinRate,
+                sizeof(old_cfg->sixGOpInfoMinRate)))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3862,8 +3937,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.vapStatsEnable) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.security, &vap_info_new->u.bss_info.security,
                 sizeof(wifi_vap_security_t)) ||
-            IS_BIN_CHANGED(&vap_info_old->u.bss_info.interworking,
-                &vap_info_new->u.bss_info.interworking, sizeof(wifi_interworking_t)) ||
+            is_interworking_config_changed(vap_info_new->vap_name,
+                &vap_info_old->u.bss_info.interworking,
+                &vap_info_new->u.bss_info.interworking) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_enable,
                 vap_info_new->u.bss_info.mac_filter_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_mode,
@@ -3895,21 +3971,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.network_initiated_greylist) ||
             IS_CHANGED(vap_info_old->u.bss_info.mcast2ucast,
                 vap_info_new->u.bss_info.mcast2ucast) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.basic_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.operational_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.supported_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs,
-                vap_info_new->u.bss_info.preassoc.minimum_advertised_mcs,
-                sizeof(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate,
-                vap_info_new->u.bss_info.preassoc.sixGOpInfoMinRate,
-                sizeof(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate)) ||
+            is_vap_preassoc_cac_config_changed(vap_info_new->vap_name,
+                    &vap_info_old->u.bss_info.preassoc, &vap_info_new->u.bss_info.preassoc) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_enable,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,

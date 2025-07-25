@@ -251,6 +251,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
         rfc_param->wpa3_compatibility_enable = new_rec->wpa3_compatibility_enable;
+        rfc_param->csi_analytics_enabled_rfc = new_rec->csi_analytics_enabled_rfc;
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
@@ -259,7 +260,8 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
             "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
-            "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d \n",
+            "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d "
+            "csi_analytics_enabled_rfc=%d\r\n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -268,7 +270,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
             rfc_param->rfc_id, rfc_param->memwraptool_app_rfc, rfc_param->levl_enabled_rfc,
-            rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable);
+            rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable, rfc_param->csi_analytics_enabled_rfc);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 }
@@ -1871,6 +1873,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
     rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
+    rfc_info->csi_analytics_enabled_rfc = pcfg->csi_analytics_enabled_rfc;
     free(pcfg);
     return 0;
 }
@@ -3186,8 +3189,9 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         "inst_wifi_client_def_reporting_period %d wifi_active_msmt_enabled %d "
         "wifi_active_msmt_pktsize %d wifi_active_msmt_num_samples %d "
         "wifi_active_msmt_sample_duration %d vlan_cfg_version %d wps_pin %s "
-        "bandsteering_enable %d good_rssi_threshold %d assoc_count_threshold %d assoc_gate_time "
-        "%d assoc_monitor_duration %d rapid_reconnect_enable %d vap_stats_feature %d "
+        "bandsteering_enable %d good_rssi_threshold %d assoc_count_threshold %d assoc_gate_time %d "
+        "rss_memory_restart_threshold_low %d rss_memory_restart_threshold_high %d "
+        "assoc_monitor_duration %d rapid_reconnect_enable %d vap_stats_feature %d "
         "mfp_config_feature %d force_disable_radio_feature %d force_disable_radio_status %d "
         "fixed_wmm_params %d wifi_region_code %s diagnostic_enable %d validate_ssid %d "
         "device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s "
@@ -3203,6 +3207,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         config->wifi_active_msmt_num_samples, config->wifi_active_msmt_sample_duration,
         config->vlan_cfg_version, config->wps_pin, config->bandsteering_enable,
         config->good_rssi_threshold, config->assoc_count_threshold, config->assoc_gate_time,
+        config->rss_memory_restart_threshold_low, config->rss_memory_restart_threshold_high,
         config->assoc_monitor_duration, config->rapid_reconnect_enable, config->vap_stats_feature,
         config->mfp_config_feature, config->force_disable_radio_feature,
         config->force_disable_radio_status, config->fixed_wmm_params, config->wifi_region_code,
@@ -3321,7 +3326,8 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             "wifi_active_msmt_pktsize %d wifi_active_msmt_num_samples %d "
             "wifi_active_msmt_sample_duration %d vlan_cfg_version %d wps_pin %s "
             "bandsteering_enable %d good_rssi_threshold %d assoc_count_threshold %d "
-            "assoc_gate_time %d assoc_monitor_duration %d rapid_reconnect_enable %d "
+            "assoc_gate_time %d rss_memory_restart_threshold_low %d rss_memory_restart_threshold_high %d "
+            "assoc_monitor_duration %d rapid_reconnect_enable %d "
             "vap_stats_feature %d mfp_config_feature %d force_disable_radio_feature %d "
             "force_disable_radio_status %d fixed_wmm_params %d wifi_region_code %s "
             "diagnostic_enable %d validate_ssid %d device_network_mode:%d normalized_rssi_list %s "
@@ -3337,6 +3343,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             config->wifi_active_msmt_num_samples, config->wifi_active_msmt_sample_duration,
             config->vlan_cfg_version, config->wps_pin, config->bandsteering_enable,
             config->good_rssi_threshold, config->assoc_count_threshold, config->assoc_gate_time,
+            config->rss_memory_restart_threshold_low, config->rss_memory_restart_threshold_high,
             config->assoc_monitor_duration, config->rapid_reconnect_enable,
             config->vap_stats_feature, config->mfp_config_feature,
             config->force_disable_radio_feature, config->force_disable_radio_status,
@@ -4534,6 +4541,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifi_offchannelscan_sm_rfc = false;
     rfc_config.tcm_enabled_rfc = false;
     rfc_config.wpa3_compatibility_enable = false;
+    rfc_config.csi_analytics_enabled_rfc = false;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -4587,6 +4595,14 @@ static void wifidb_global_config_upgrade()
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG) {
         wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__,
             __LINE__, g_wifidb->db_version);
+        g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
+            RSS_MEM_THRESHOLD1_DEFAULT;
+        g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
+            RSS_MEM_THRESHOLD2_DEFAULT;
+    }
+
+    if ((g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low) == 0 ||
+        (g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high) == 0) {
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
             RSS_MEM_THRESHOLD1_DEFAULT;
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
@@ -5853,6 +5869,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
     cfg.wpa3_compatibility_enable = rfc_param->wpa3_compatibility_enable;
+    cfg.csi_analytics_enabled_rfc = rfc_param->csi_analytics_enabled_rfc;
     if (update == true) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
         ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &cfg);

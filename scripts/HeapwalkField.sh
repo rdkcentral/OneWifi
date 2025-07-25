@@ -65,7 +65,7 @@ else
 $current_pid
 1
 0
-7
+0
 EOF
 echo "$(date '+%Y-%m-%d %H:%M:%S') Output has been sent to HeapResultField.txt" >> "$log_file"
 
