@@ -517,7 +517,7 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
             vap->u.bss_info.bssid[2], vap->u.bss_info.bssid[3],
             vap->u.bss_info.bssid[4], vap->u.bss_info.bssid[5]);
     str_to_mac_bytes(mac_str,vap_row->bssid.mac);
-    strncpy(vap_row->bssid.name, iface_map->interface_name,sizeof(vap_row->bssid.name));
+    strncpy(vap_row->bssid.name, vap->vap_name, sizeof(vap_row->bssid.name));
 	convert_vap_name_to_hault_type(&vap_row->id.haul_type, (char *)vap->vap_name);
 
     default_em_bss_info(vap_row);
@@ -932,7 +932,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     // Copy basic info
     strncpy(vap_row->ssid, vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid));
     memcpy(vap_row->bssid.mac, vap->u.sta_info.bssid, sizeof(mac_address_t));
-    strncpy(vap_row->bssid.name,iface_map->interface_name,sizeof(vap_row->bssid.name));
+    strncpy(vap_row->bssid.name, vap->vap_name, sizeof(vap_row->bssid.name));
     convert_vap_name_to_hault_type(&vap_row->id.haul_type, (char *)vap->vap_name);
 
     // Copy security info (mode/AKMs)
@@ -970,6 +970,12 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     // Copy radio information
     strncpy(vap_row->ruid.name, radio_iface_map->radio_name,sizeof(vap_row->ruid.name));
     mac_address_from_name(radio_iface_map->interface_name, vap_row->ruid.mac);
+
+    if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
+        vap_row->connect_status = true;
+    } else {
+        vap_row->connect_status = false;
+    }
 
     return webconfig_error_none;
 }

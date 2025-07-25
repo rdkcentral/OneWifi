@@ -1,7 +1,10 @@
 #!/bin/sh
 
 ONEWIFI_DIR=$(pwd)
+OPENWRT_ROOT="$(pwd)/../../.."
 HOSTAP_DIR="$(pwd)/../rdk-wifi-libhostap/source"
+RDK_WIFI_HAL_DIR="$(pwd)/../rdk-wifi-hal"
+KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches/openwrt"
 UPSTREAM_HOSTAP_URL="git://w1.fi/hostap.git"
 SRCREV_2_10="9d07b9447e76059a2ddef2a879c57d0934634188"
 
@@ -53,3 +56,8 @@ cp build/openwrt/Makefile_package ../Makefile
 cp build/openwrt/MT7966.config ../../../.config
 #Copy the avro dependency to package/libs
 cp -r build/openwrt/avro ../../libs/.
+
+#Applying kernel patch from openwrt root directory
+cd $OPENWRT_ROOT
+patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
+cd $ONEWIFI_DIR
