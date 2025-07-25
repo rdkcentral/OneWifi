@@ -148,6 +148,17 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
   */
 int scheduler_free_timer_task_arg(struct scheduler *sched, int id);
 
+/* Description:
+  *      This API is used to update timeout value, to delay the event
+  * Arguments:
+  *      sched - Pointer to the scheduler struct
+  *      id - unique identifier to denote the timer task
+  *      new_time - Time at which previous event was executed
+  * Returns:
+  *       Returns 0 on Success, -1 on Failure
+  */
+int scheduler_update_timeout(struct scheduler *sched, int id, struct timespec new_time);
+
 #ifdef __cplusplus
 }
 #endif
