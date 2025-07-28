@@ -218,13 +218,6 @@ typedef struct hotspot_cfg_sem_param {
     bool cfg_status;
 } hotspot_cfg_sem_param_t;
 
-typedef struct hotspot_cfg_sem_param {
-    bool is_init;
-    pthread_mutex_t lock;
-    pthread_cond_t cond;
-    bool cfg_status;
-} managed_wifi_cfg_sem_param_t;
-
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;

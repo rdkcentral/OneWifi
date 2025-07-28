@@ -49,7 +49,7 @@ size_t wifi_vap_cfg_timeout_handler()
 
 size_t webconf_managed_wifi_timeout_handler()
 {
-    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, MAX_WEBCONFIG_MANAGED_WIFI_BLOB_SET_TIMEOUT);
+    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
     return MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT;
 }
 
