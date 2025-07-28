@@ -325,7 +325,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
         strncpy(em_radio_info->intf.name, radio->name, sizeof(em_interface_name_t));
@@ -432,7 +433,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
         strncpy(em_radio_info->intf.name,radio_iface_map->radio_name, sizeof(em_interface_name_t));
@@ -709,7 +711,7 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
              bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
         if (em_sta_dev_info != NULL) {     
             memcpy(em_sta_dev_info->id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
-            memcpy(em_sta_dev_info->timestamp, time_str ,sizeof(em_sta_dev_info->timestamp));
+            memcpy(em_sta_dev_info->timestamp, time_str, sizeof(time_str));
             em_sta_dev_info->last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
             em_sta_dev_info->last_dl_rate             = client_stats[count].cli_LastDataDownlinkRate;
             //TODO: formulae derivation pending
@@ -1167,7 +1169,8 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
         mac_address_from_name(radio_iface_map->interface_name, rmac);
@@ -1248,7 +1251,8 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
     webconfig_external_easymesh_t *proto;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_hal_capability_t *hal_cap;
-    radio_interface_mapping_t *iface_map;
+    wifi_interface_name_idex_map_t *iface_map;
+    radio_interface_mapping_t *radio_iface_map;
     wifi_vap_info_t *vap;
     unsigned int i = 0,j = 0, k = 0, count = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
@@ -1282,27 +1286,39 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
         radio = &decoded_params->radios[i];
         vap_map = &radio->vaps.vap_map;
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
-        iface_map = NULL;
+        radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
-                iface_map = &(wifi_prop->radio_interface_map[k]);
+                radio_iface_map = &(wifi_prop->radio_interface_map[k]);
                 break;
             }
         }
-        if (iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
-        mac_address_from_name(iface_map->interface_name, rmac);
+        mac_address_from_name(radio_iface_map->interface_name, rmac);
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            if (strstr(vap->vap_name,vap_name) == false) {
+                continue;
+            }
+            iface_map = NULL;
+            for (k = 0; k < (sizeof(wifi_prop->interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
+                if (wifi_prop->interface_map[k].index == vap->vap_index) {
+                    iface_map = &(wifi_prop->interface_map[k]);
+                    break;
+                }
+            }
+            if (iface_map == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_to_easymesh;
+            }
             vap_info_row = proto->get_bss_info(proto->data_model, count);
             if (vap_info_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot find the bssid\n", __func__, __LINE__);
-                continue;
-            }
-            if (strstr(vap->vap_name,vap_name) == false) {
                 continue;
             }
             count++;
@@ -1359,7 +1375,8 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
     wifi_hal_capability_t *hal_cap;
-    radio_interface_mapping_t *iface_map;
+    wifi_interface_name_idex_map_t *iface_map;
+    radio_interface_mapping_t *radio_iface_map;
     mac_address_t rmac;
     unsigned int i = 0,j = 0, k = 0, count = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
@@ -1398,21 +1415,33 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
             continue;
         }
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
-        iface_map = NULL;
+        radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
-                iface_map = &(wifi_prop->radio_interface_map[k]);
+                radio_iface_map = &(wifi_prop->radio_interface_map[k]);
                 break;
             }
         }
-        if (iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
-        mac_address_from_name(iface_map->interface_name, rmac);
+        mac_address_from_name(radio_iface_map->interface_name, rmac);
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            iface_map = NULL;
+            for (k = 0; k < (sizeof(wifi_prop->interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
+                if (wifi_prop->interface_map[k].index == vap->vap_index) {
+                    iface_map = &(wifi_prop->interface_map[k]);
+                    break;
+                }
+            }
+            if (iface_map == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_to_easymesh;
+            }
             vap_info_row = proto->get_bss_info(proto->data_model, count);
             if (vap_info_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot find the bssid\n", __func__, __LINE__);
@@ -1827,8 +1856,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
         }
     }
     if (radio_iface_map == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
-        return webconfig_error_translate_to_easymesh;
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+            __func__, __LINE__, radio_index);
+        return webconfig_error_translate_from_easymesh;
     }
     vap_map = &radio->vaps.vap_map;
     for (j = 0; j < radio->vaps.num_vaps; j++) {
@@ -2049,8 +2079,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
-            return webconfig_error_translate_to_easymesh;
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
+            return webconfig_error_translate_from_easymesh;
         }
         vap_map = &radio->vaps.vap_map;
         for (j = 0; j < radio->vaps.num_vaps; j++) {
@@ -2205,8 +2236,9 @@ webconfig_error_t translate_radio_object_from_easymesh_to_radio(webconfig_subdoc
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
-            return webconfig_error_translate_to_easymesh;
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
+            return webconfig_error_translate_from_easymesh;
         }
         mac_address_from_name(radio_iface_map->interface_name, ruid);
         for (j = 0; j < num; j++) {
