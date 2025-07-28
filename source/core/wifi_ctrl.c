@@ -834,6 +834,7 @@ int start_wifi_services(void)
 #if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
         /* Function to check for default SSID and Passphrase for Private VAPS
         if they are default and last-reboot reason is SW get the previous config from Webconfig */
+        wifi_util_info_print(WIFI_CTRL, "%s:%d calling validate_and_sync_private_vap_credentials \n",__func__, __LINE__);
         validate_and_sync_private_vap_credentials();
 #endif
 
@@ -1684,7 +1685,7 @@ int validate_and_sync_private_vap_credentials()
                     "[%s:%d] bus: bus_set_string_fn error in setting: %s\n", __func__, __LINE__,
                     SUBDOC_FORCE_RESET);
                 get_stubs_descriptor()->v_secure_system_fn(
-                    "touch /tmp/sw_upgrade_private_defaults");
+                    "touch /nvram/sw_upgrade_private_defaults");
                 get_bus_descriptor()->bus_data_free_fn(&data);
                 return RETURN_ERR;
             }
