@@ -121,6 +121,28 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
     }
 }
 
+void process_csa_beacon_frame_event(frame_data_t *msg, uint32_t msg_length, wifi_ctrl_t *ctrl)
+{
+    bus_error_t rc;
+
+    if (ctrl != NULL) {
+        raw_data_t rdata;
+        memset(&rdata, 0, sizeof(raw_data_t));
+        rdata.data_type = bus_data_type_bytes;
+        rdata.raw_data.bytes = (void *)msg->data;
+        rdata.raw_data_len = msg->frame.len;
+        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_CSA_BEACON_FRAME_RECEIVED,
+                &rdata);
+        if (rc != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d CSA beacon frame publish failed\n", __func__, __LINE__);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Published CSA beacon frame\n", __func__, __LINE__);
+        }
+    } else {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d ctrl object is NULL\n", __func__, __LINE__);
+    }
+}
+
 const char* wifi_hotspot_action_to_string(wifi_hotspot_action_t action) {
     switch (action) {
         case hotspot_vap_disable:
@@ -3891,6 +3913,10 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_hal_channel_change:
         process_channel_change_event(data, nop_start_reboot, dfs_timer_secs);
+        break;
+
+    case wifi_event_hal_csa_beacon_frame:
+        process_csa_beacon_frame_event(data, len, ctrl);
         break;
 
     case wifi_event_hal_wps_results:
