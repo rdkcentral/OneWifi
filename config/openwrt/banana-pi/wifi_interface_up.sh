@@ -172,3 +172,7 @@ EOF
 else
 	echo "No changes made to ${output_file}."
 fi
+
+# Increase socket buffer to 2MB to support larger Netlink RX/TX buffers
+sysctl -w net.core.rmem_max=2097152
+sysctl -w net.core.wmem_max=2097152
