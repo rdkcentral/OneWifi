@@ -700,7 +700,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
         wifi_util_info_print(WIFI_CTRL, "%s:%d:SREESH Doing a thread wait for the managed wifi blob for %d seconds\n", __func__, __LINE__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
         ret = managed_wifi_cfg_sem_wait_duration(MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
     }
-    if (ret_value == false)
+    if (ret == false)
     {
         wifi_util_info_print(WIFI_CTRL,"%s:%d WebConfig blob is applied failure\n", __func__, __LINE__);
         webconfig_data_free(data);
