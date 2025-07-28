@@ -95,6 +95,7 @@ extern "C" {
 
 #define MAX_HOTSPOT_BLOB_SET_TIMEOUT             100
 #define MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT   120
+#define MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT        30
 #define MAX_VAP_RE_CFG_APPLY_RETRY     2
 
 //This is a dummy string if the value is not passed.
@@ -217,6 +218,13 @@ typedef struct hotspot_cfg_sem_param {
     bool cfg_status;
 } hotspot_cfg_sem_param_t;
 
+typedef struct hotspot_cfg_sem_param {
+    bool is_init;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    bool cfg_status;
+} managed_wifi_cfg_sem_param_t;
+
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
@@ -264,6 +272,7 @@ typedef struct wifi_ctrl {
     int                 speed_test_running;
     events_bus_data_t   events_bus_data;
     hotspot_cfg_sem_param_t hotspot_sem_param;
+    hotspot_cfg_sem_param_t managed_wifi_sem_param;
 } wifi_ctrl_t;
 
 

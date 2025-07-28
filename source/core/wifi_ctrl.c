@@ -1979,6 +1979,20 @@ void hotspot_cfg_sem_signal(bool status)
     }
 }
 
+void managed_wifi_cfg_sem_signal(bool status)
+{
+    wifi_util_info_print(WIFI_CTRL, "%s:%d - status:%d\n", __func__, __LINE__, status);
+    wifi_ctrl_t *ctrl = NULL;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl->managed_wifi_sem_param.is_init == true) {
+        pthread_mutex_lock(&ctrl->managed_wifi_sem_param.lock);
+        ctrl->managed_wifi_sem_param.cfg_status = status;
+        wifi_util_info_print(WIFI_CTRL, "%s:%d - status:%d and returning the conditional signal\n", __func__, __LINE__, ctrl->managed_wifi_sem_param.cfg_status);
+        pthread_cond_signal(&ctrl->managed_wifi_sem_param.cond);
+        pthread_mutex_unlock(&ctrl->managed_wifi_sem_param.lock);
+    }
+}
+
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec)
 {
     struct timespec ts;
@@ -2013,6 +2027,46 @@ bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec)
     ctrl->hotspot_sem_param.is_init = false;
     pthread_mutex_destroy(&ctrl->hotspot_sem_param.lock);
     pthread_cond_destroy(&ctrl->hotspot_sem_param.cond);
+
+    return status;
+}
+
+bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec)
+{
+    struct timespec ts;
+    int ret;
+    bool status = false;
+
+    wifi_ctrl_t *ctrl = NULL;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Inside the function\n", __func__, __LINE__);
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl->managed_wifi_sem_param.is_init == false) {
+        pthread_condattr_t cond_attr;
+        pthread_condattr_init(&cond_attr);
+        pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+        pthread_cond_init(&ctrl->managed_wifi_sem_param.cond, &cond_attr);
+        pthread_condattr_destroy(&cond_attr);
+        pthread_mutex_init(&ctrl->managed_wifi_sem_param.lock, NULL);
+        ctrl->managed_wifi_sem_param.is_init = true;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    ts.tv_sec += time_in_sec;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d - time_in_sec:%d\r\n", __func__, __LINE__, time_in_sec);
+    pthread_mutex_lock(&ctrl->managed_wifi_sem_param.lock);
+    ret = pthread_cond_timedwait(
+        &ctrl->managed_wifi_sem_param.cond,
+        &ctrl->managed_wifi_sem_param.lock,
+        &ts
+    );
+    if (ret == 0) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d - ret:%d and status:%d\n", __func__, __LINE__, ret, ctrl->managed_wifi_sem_param.cfg_status);
+        status = ctrl->managed_wifi_sem_param.cfg_status;
+    }
+    pthread_mutex_unlock(&ctrl->managed_wifi_sem_param.lock);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d - status:%d\n", __func__, __LINE__, status);
+    ctrl->managed_wifi_sem_param.is_init = false;
+    pthread_mutex_destroy(&ctrl->managed_wifi_sem_param.lock);
+    pthread_cond_destroy(&ctrl->managed_wifi_sem_param.cond);
 
     return status;
 }
