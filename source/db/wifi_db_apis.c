@@ -91,6 +91,12 @@
 
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100042
 
+#ifdef CONFIG_NO_MLD_ONLY_PRIVATE
+#define MLD_UNIT_COUNT 8
+#else
+#define MLD_UNIT_COUNT 1
+#endif /* CONFIG_NO_MLD_ONLY_PRIVATE */
+
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
 ovsdb_table_t table_Wifi_Security_Config;
@@ -7543,6 +7549,88 @@ void wifidb_init_default_value()
 
 }
 
+static int get_ap_mac_by_vap_index(wifi_vap_info_map_t *hal_vap_info_map, int vap_index,  mac_address_t mac)
+{
+    unsigned int j = 0;
+
+    for (j = 0; j < hal_vap_info_map->num_vaps; j++) {
+        if ((int)hal_vap_info_map->vap_array[j].vap_index == vap_index) {
+            memcpy(mac, hal_vap_info_map->vap_array[j].u.bss_info.bssid, sizeof(mac_address_t));
+            return RETURN_OK;
+        }
+    }
+    wifi_util_error_print(WIFI_DB, "%s:%d vap_info not found for vap_index value: %d\n"
+        ,__FUNCTION__, __LINE__, vap_index);
+    return RETURN_ERR;
+}
+
+static int wifidb_vap_config_update_mld_mac()
+{
+    wifi_vap_info_map_t  hal_vap_info_map;
+    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
+    mac_address_t mlo_mac = {0};
+    mac_address_t zero_mac = {0};
+    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = {0};
+    unsigned int r_idx=0;
+    unsigned int i = 0;
+    unsigned int k = 0;
+    int ret = RETURN_OK;
+
+    for (i = 0; i < MLD_UNIT_COUNT; i++) {
+        memset(mld_addr_map, 0, sizeof(mld_addr_map));
+        memset(mlo_mac, 0, sizeof(mac_address_t));
+
+        wifi_util_info_print(WIFI_DB, "%s:%d: Updating MLO MAC for mld_unit %d\r\n", __func__, __LINE__, i);
+
+        for (r_idx=0; r_idx < getNumberRadios(); r_idx++) {
+            memset(&hal_vap_info_map, 0, sizeof(hal_vap_info_map));
+            /* wifi_hal_getRadioVapInfoMap is used  to get the macaddress of wireless interfaces */
+            ret = wifi_hal_getRadioVapInfoMap(r_idx, &hal_vap_info_map);
+            if (ret != RETURN_OK) {
+                wifi_util_error_print(WIFI_DB, "%s:%d wifi_hal_getRadioVapInfoMap failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
+                return ret;
+            }
+            /* vap map with loaded DB - find the main mlo vap */
+            mgr_vap_info_map = get_wifidb_vap_map(r_idx);
+            if (mgr_vap_info_map == NULL) {
+                wifi_util_error_print(WIFI_DB, "%s:%d get_wifidb_vap_map failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
+                return RETURN_ERR;
+            }
+            for (k = 0; k < mgr_vap_info_map->num_vaps; k++) {
+                wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
+                wifi_mld_common_info_t *mld_info = NULL;
+
+                if (isVapSTAMesh(vap_config->vap_index)) {
+                    continue;
+                }
+
+                mld_info = &vap_config->u.bss_info.mld_info.common_info;
+                if (i == 0) { /* Initialise all vap's mld_mac with interface mac */
+                    get_ap_mac_by_vap_index(&hal_vap_info_map, vap_config->vap_index, mld_info->mld_addr);
+                }
+
+                if (mld_info->mld_enable && mld_info->mld_id == i) {
+                    mld_addr_map[r_idx] = mld_info->mld_addr; /* store mld_addr ptr to be updated later */
+                    if(mld_info->mld_link_id == 0) { /* check if the link is main MLO link */
+                        get_ap_mac_by_vap_index(&hal_vap_info_map, vap_config->vap_index, mlo_mac);
+                    }
+                }
+            }
+        }
+
+        if (memcmp(mlo_mac, zero_mac, sizeof(mac_address_t)) == 0) {
+            continue;
+        }
+
+        for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
+            if (mld_addr_map[r_idx] != NULL) {
+                memcpy(mld_addr_map[r_idx], mlo_mac, sizeof(mac_address_t));
+            }
+        }
+    }
+    return RETURN_OK;
+}
+
 /************************************************************************************
  ************************************************************************************
   Function    : init_wifidb_data
@@ -7741,6 +7829,7 @@ void init_wifidb_data()
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
+        wifidb_vap_config_update_mld_mac();
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 
