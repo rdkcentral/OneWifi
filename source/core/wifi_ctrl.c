@@ -2031,11 +2031,16 @@ bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec)
     return status;
 }
 
-bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec)
+bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec, webconfig_subdoc_type_t subdoc_type)
 {
     struct timespec ts;
     int ret;
     bool status = false;
+
+    if (subdoc_type != webconfig_subdoc_type_lnf) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d - subdoc_type:%d not supported\n", __func__, __LINE__, subdoc_type);
+        return true;
+    }
 
     wifi_ctrl_t *ctrl = NULL;
     wifi_util_info_print(WIFI_CTRL, "%s:%d Inside the function\n", __func__, __LINE__);
