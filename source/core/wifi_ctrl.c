@@ -1684,7 +1684,7 @@ int validate_and_sync_private_vap_credentials()
                     "[%s:%d] bus: bus_set_string_fn error in setting: %s\n", __func__, __LINE__,
                     SUBDOC_FORCE_RESET);
                 get_stubs_descriptor()->v_secure_system_fn(
-                    "touch /tmp/sw_upgrade_private_defaults");
+                    "touch /nvram/sw_upgrade_private_defaults");
                 get_bus_descriptor()->bus_data_free_fn(&data);
                 return RETURN_ERR;
             }
