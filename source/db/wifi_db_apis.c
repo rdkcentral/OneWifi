@@ -4918,7 +4918,7 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 (char *)vap_config->u.bss_info.security.u.radius.s_ip);
             continue;
         }
-        if (isVapLnfPsk(vap_config->vap_index) && (!vap_config->u.bss_info.mdu_enabled || !strstr(vap_config->repurposed_vap_name,"managed_guest_")) && vap_config->u.bss_info.enabled) {
+        if (isVapLnfPsk(vap_config->vap_index) && (!vap_config->u.bss_info.mdu_enabled && !strstr(vap_config->repurposed_vap_name,"managed_guest_")) && vap_config->u.bss_info.enabled) {
             vap_config->u.bss_info.enabled = false;
 	    rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
 	    if (rdk_vap_config == NULL) {
