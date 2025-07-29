@@ -211,12 +211,12 @@ typedef struct {
     pthread_mutex_t      events_bus_lock;
 } events_bus_data_t;
 
-typedef struct hotspot_cfg_sem_param {
+typedef struct {
     bool is_init;
     pthread_mutex_t lock;
     pthread_cond_t cond;
     bool cfg_status;
-} hotspot_cfg_sem_param_t;
+} wifi_sem_param_t;
 
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
@@ -264,10 +264,9 @@ typedef struct wifi_ctrl {
     int                 speed_test_timeout;
     int                 speed_test_running;
     events_bus_data_t   events_bus_data;
-    hotspot_cfg_sem_param_t hotspot_sem_param;
-    hotspot_cfg_sem_param_t managed_wifi_sem_param;
+    wifi_sem_param_t    hotspot_sem_param;
+    wifi_sem_param_t    managed_wifi_sem_param;
 } wifi_ctrl_t;
-
 
 typedef struct {
     mac_address_t sta_mac;
