@@ -715,24 +715,33 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
 
         pthread_mutex_lock(&ctrl->queue_lock);
         is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
+        bool forwarded = false;
+        
         if (!is_limit_reached || is_high_priority_event(sub_type)) {
             queue_push(ctrl->queue, event);
             pthread_cond_signal(&ctrl->cond);
+            forwarded = true;
         }
         pthread_mutex_unlock(&ctrl->queue_lock);
 
-        if (is_limit_reached) {
+        if (!forwarded) {
             wifi_util_error_print(WIFI_CTRL,
                 "%s:%d MAX-QUEUE size reached, DROP message type: %s subtype: %s\n", __FUNCTION__,
                 __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
             destroy_wifi_event(event);
             return RETURN_ERR;
         }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid type : %s subtype : %s\n", __FUNCTION__,
-            __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
-        return RETURN_ERR;
-    }
+      if (is_limit_reached && forwarded && is_high_priority_event(sub_type)) {
+            wifi_util_error_print(WIFI_CTRL,
+            "%s:%d MAX-QUEUE size reached, but high priority event type: %s subtype: %s accepted\n",
+            __FUNCTION__, __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
+      }
+
+} else {
+    wifi_util_error_print(WIFI_CTRL, "%s %d Invalid type : %s subtype : %s\n", __FUNCTION__,
+        __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
+    return RETURN_ERR;
+}
 
     return RETURN_OK;
 }
@@ -771,19 +780,27 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
 
     pthread_mutex_lock(&ctrl->queue_lock);
     is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
+    bool forwarded = false;
+  
     if (!is_limit_reached || is_high_priority_event(sub_type)) {
         queue_push(ctrl->queue, event);
         pthread_cond_signal(&ctrl->cond);
+        forwarded = true;
     }
     pthread_mutex_unlock(&ctrl->queue_lock);
 
-    if (is_limit_reached) {
+    if (!forwarded) {
+    // Event was dropped because queue is full and not important
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d MAX-QUEUE size reached, DROP message type: %s subtype: %s\n", __FUNCTION__,
             __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
         destroy_wifi_event(event);
         return RETURN_ERR;
-    }
+    } else if (is_limit_reached && forwarded && is_high_priority_event(sub_type)) {
+    // Priority event accepted despite full queue
+        wifi_util_error_print(WIFI_CTRL,
+        "%s:%d MAX-QUEUE size reached, but high priority event type: %s subtype: %s accepted\n",
+        __FUNCTION__, __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
 
     return RETURN_OK;
 }
@@ -823,18 +840,24 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
 
     pthread_mutex_lock(&monitor_param->queue_lock);
     is_limit_reached = queue_count(monitor_param->queue) >= MONITOR_QUEUE_SIZE_MAX;
+    bool forwarded = false;
+  
     if (!is_limit_reached || is_high_priority_event(sub_type)) {
         queue_push(monitor_param->queue, event);
         pthread_cond_signal(&monitor_param->cond);
+        forwarded = true;
     }
     pthread_mutex_unlock(&monitor_param->queue_lock);
 
-    if (is_limit_reached) {
+    if (!forwarded) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d MAX-QUEUE size reached, DROP message subtype: %s\n",
             __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
         destroy_wifi_event(event);
         return RETURN_ERR;
-    }
+    }else if (is_limit_reached && forwarded && is_high_priority_event(sub_type)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d MAX-QUEUE size reached, but high priority event subtype: %s accepted in monitor queue\n",
+        __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
+}
 
     return RETURN_OK;
 }
