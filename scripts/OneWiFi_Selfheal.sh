@@ -33,7 +33,7 @@ force_reset_subdoc=0
 onewifi_last_restart=0
 webcfg_rfc_enabled=""
 
-SW_UPGRADE_DEFAULT_FILE="/nvram/sw_upgrade_private_defaults"
+SW_UPGRADE_DEFAULT_FILE="/tmp/sw_upgrade_private_defaults"
 wave_driver_restart_cnt=0
 bss_queue_full=0
 bss_queue_full_cnt=0
