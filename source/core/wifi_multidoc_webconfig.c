@@ -783,7 +783,7 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
     }
-    ret = push_blob_data(data, subdoc_type, webconfig_managed_wifi_blob);
+    ret = push_blob_data(data, subdoc_type);
     if (ret == RETURN_ERR) {
         execRetVal->ErrorCode = WIFI_HAL_FAILURE;
         strncpy(execRetVal->ErrorMsg, "push_blob_to_ctrl_queue failed", sizeof(execRetVal->ErrorMsg)-1);
