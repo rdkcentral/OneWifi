@@ -97,13 +97,6 @@ typedef struct {
 } webconfig_error_map_t;
 
 typedef enum {
-    webconfig_hotspot_blob,
-    webconfig_managed_wifi_blob,
-    webconfig_private_blob,
-    webconfig_home_blob
-} webconfig_blob_type_t;
-
-typedef enum {
     webconfig_subdoc_type_unknown,
     webconfig_subdoc_type_private,
     webconfig_subdoc_type_null,

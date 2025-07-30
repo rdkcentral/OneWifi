@@ -2032,12 +2032,12 @@ void managed_wifi_cfg_sem_signal(bool status)
     wifi_sem_param_signal(&ctrl->managed_wifi_sem_param, status);
 }
 
-bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec, webconfig_blob_type_t blob_type)
+bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec, webconfig_subdoc_type_t subdoc_type)
 {
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
 
-    if (blob_type != webconfig_managed_wifi_blob) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d - blob_type:%d not supported\n", __func__, __LINE__, blob_type);
+    if (subdoc_type != webconfig_subdoc_type_lnf) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d - subdoc_type:%d not supported\n", __func__, __LINE__, subdoc_type);
         return true;
     }
 

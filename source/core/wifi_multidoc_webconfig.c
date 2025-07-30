@@ -81,7 +81,7 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info, pErr execRetVa
 static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_vap_info_t *vap_info, int radio_index,bool connected_building_enabled, pErr execRetVal);
 static int update_vap_info_managed_xfinity(void *data, wifi_vap_info_t *vap_info,pErr execRetVal);
 static int update_vap_info_with_blob_info(void *blob, void *amenities_blob, webconfig_subdoc_data_t *data, const char *vap_prefix, bool managed_wifi, pErr execRetVal);
-static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t subdoc_type, webconfig_blob_type_t blob_type);
+static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t subdoc_type);
 static pErr create_execRetVal(void);
 static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type);
 static int validate_private_home_ssid_param(char *str, pErr execRetVal);
@@ -683,7 +683,7 @@ static int update_vap_info_with_blob_info(void *blob, void *amenities_blob, webc
 
     return status;
 }
-static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t subdoc_type, webconfig_blob_type_t blob_type)
+static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t subdoc_type)
 {
     char *str;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -697,7 +697,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d:SREESH Encoded blob:\n%s\n", __func__, __LINE__, str);
     push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
     wifi_util_info_print(WIFI_CTRL, "%s:%d:SREESH Doing a thread wait for the managed wifi blob for %d seconds\n", __func__, __LINE__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
-    ret = managed_wifi_cfg_sem_wait_duration(MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT, blob_type);
+    ret = managed_wifi_cfg_sem_wait_duration(MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT, subdoc_type);
     if (ret == false)
     {
         wifi_util_info_print(WIFI_CTRL,"%s:%d WebConfig blob is applied failure\n", __func__, __LINE__);
@@ -712,7 +712,6 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
 static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type)
 {
     pErr execRetVal = NULL;
-    webconfig_blob_type_t blob_type;
     webconfig_subdoc_data_t *data = NULL;
     if (blob == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
@@ -739,9 +738,8 @@ static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix,
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
     }
-    blob_type = (subdoc_type == webconfig_subdoc_type_private) ? webconfig_private_blob : webconfig_home_blob;
 
-    if (push_blob_data(data, subdoc_type, blob_type) != RETURN_OK) {
+    if (push_blob_data(data, subdoc_type) != RETURN_OK) {
         execRetVal->ErrorCode = WIFI_HAL_FAILURE;
         strncpy(execRetVal->ErrorMsg, "push_blob_to_ctrl_queue failed", sizeof(execRetVal->ErrorMsg)-1);
         wifi_util_error_print(WIFI_CTRL, "%s: failed to encode %s subdoc\n", \
