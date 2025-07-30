@@ -191,23 +191,15 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
 
     return "unknown event";
 }
-bool is_important_event(wifi_event_subtype_t sub_type)
+bool is_high_priority_event(wifi_event_subtype_t sub_type)
 {
     switch (sub_type) {
     case wifi_event_type_notify_monitor_done:
     case wifi_event_type_command_factory_reset:
-    case wifi_event_type_command_wps:
-    case wifi_event_type_command_wps_cancel:
     case wifi_event_type_eth_bh_status:
     case wifi_event_type_xfinity_enable:
     case wifi_event_type_prefer_private_rfc:
     case wifi_event_webconfig_br_report:
-    case wifi_event_radius_eap_failure:
-    case wifi_event_monitor_connect:
-    case wifi_event_monitor_disconnect:
-    case wifi_event_monitor_deauthenticate:
-    case wifi_event_monitor_auth_req:
-    case wifi_event_monitor_assoc_req:
     case wifi_event_exec_start:
     case wifi_event_exec_stop:
     case wifi_event_exec_timeout:
@@ -723,7 +715,7 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
 
         pthread_mutex_lock(&ctrl->queue_lock);
         is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
-        if (!is_limit_reached || is_important_event(sub_type)) {
+        if (!is_limit_reached || is_high_priority_event(sub_type)) {
             queue_push(ctrl->queue, event);
             pthread_cond_signal(&ctrl->cond);
         }
@@ -779,7 +771,7 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
 
     pthread_mutex_lock(&ctrl->queue_lock);
     is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
-    if (!is_limit_reached || is_important_event(sub_type)) {
+    if (!is_limit_reached || is_high_priority_event(sub_type)) {
         queue_push(ctrl->queue, event);
         pthread_cond_signal(&ctrl->cond);
     }
@@ -831,7 +823,7 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
 
     pthread_mutex_lock(&monitor_param->queue_lock);
     is_limit_reached = queue_count(monitor_param->queue) >= MONITOR_QUEUE_SIZE_MAX;
-    if (!is_limit_reached || is_important_event(sub_type)) {
+    if (!is_limit_reached || is_high_priority_event(sub_type)) {
         queue_push(monitor_param->queue, event);
         pthread_cond_signal(&monitor_param->cond);
     }
