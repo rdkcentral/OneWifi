@@ -1186,8 +1186,11 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
                 break;
         }
     }
-
-    push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    if (evt_subtype != wifi_event_hal_unknown_frame) {
+        push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Unknown frame type received! skipped push_event_to_ctrl_queue, ap_index:%d, type:%d\n", __func__, __LINE__, ap_index, type);
+    }
     return RETURN_OK;
 }
 #endif
