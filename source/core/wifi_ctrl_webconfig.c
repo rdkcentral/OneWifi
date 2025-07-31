@@ -822,7 +822,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         // avoid redundant reconfiguration with STA disconnection.
         // For pods, STA is just like any other AP interface, deletion is allowed.
         if (ctrl->dev_type != dev_subtype_pod) {
-            if (ctrl->network_mode == rdk_dev_mode_type_ext && isVapSTAMesh(tgt_vap_index)) {
+            if (isVapSTAMesh(tgt_vap_index)) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: Ignore exists flag change for: %s\n",
+                    __func__, __LINE__, vap_names[i]);
                 mgr_rdk_vap_info->exists = rdk_vap_info->exists;
             }
         }
