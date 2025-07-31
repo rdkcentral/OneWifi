@@ -447,6 +447,28 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
     return 0;
 }
 
+int scheduler_update_timeout(struct scheduler *sched, int id, struct timespec new_time) {
+    unsigned int i;
+    struct timer_task *tt;
+
+    if (sched == NULL) {
+        return -1;
+    }
+    for (i = 0; i < sched->num_tasks; i++) {
+        tt = queue_peek(sched->timer_list, i);
+        if (tt != NULL && tt->id == id) {
+            timespecadd(&new_time, &(tt->interval), &(tt->timeout));
+        }
+    }
+    for (i = 0; i < sched->num_hp_tasks; i++) {
+        tt = queue_peek(sched->high_priority_timer_list, i);
+        if (tt != NULL && tt->id == id) {
+            timespecadd(&new_time, &(tt->interval), &(tt->timeout));
+        }
+    }
+    return 0;
+}
+
 static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec t_now)
 {
     unsigned int i;
