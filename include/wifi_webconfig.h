@@ -342,6 +342,7 @@ webconfig_error_t webconfig_data_free(webconfig_subdoc_data_t *data);
 
 // decode api sets for hotspot
 webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_interworking_t *interworking_info);
+webconfig_error_t decode_cac_object(wifi_vap_info_t *vap_info, cJSON *obj_array);
 webconfig_error_t decode_ipv4_address(char *ip);
 webconfig_error_t decode_ipv6_address(char *ip);
 

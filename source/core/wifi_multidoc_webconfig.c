@@ -759,15 +759,13 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             continue;
         }
         char *vap_name_str = cJSON_GetStringValue(vap_name_obj);
-        wifi_util_info_print(WIFI_CTRL, "vap_name_str: %s\n", vap_name_str);
 
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, vap_name_str);
         vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, vap_name_str);
 
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
         snprintf(vap_info->vap_name, sizeof(vap_info->vap_name), "%s", vap_name_str);
-        wifi_util_info_print(WIFI_CTRL, "vap_name:%s %s: %d \n", vap_info->vap_name, __func__,
-            __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "   \"VapName\": %d\n", vap_info->vap_name);
 
         param = cJSON_GetObjectItem(vb_entry, "SSID");
         if (param == NULL || (cJSON_IsString(param) == false)) {
@@ -781,8 +779,8 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
             return -1;
         } else {
-            wifi_util_info_print(WIFI_CTRL, "the SSID of %s is: %s\n", vap_info->vap_name, value);
             snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s", value);
+            wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %d\n", vap_info->u.bss_info.ssid);
         }
 
         param = cJSON_GetObjectItem(vb_entry, "Enabled");
@@ -846,6 +844,8 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         if (param) {
             if (cJSON_IsNumber(param)) {
                 vap_info->u.bss_info.mgmtPowerControl = param->valuedouble;
+                wifi_util_info_print(WIFI_CTRL, "   \"ManagementFramePowerControl\": %d\n",
+                    vap_info->u.bss_info.mgmtPowerControl);
             } else {
                 wifi_util_error_print(WIFI_CTRL,
                     "%s: \"ManagementFramePowerControl\" is not a number\n", __func__);
@@ -905,6 +905,22 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             return -1;
         }
 
+        param = cJSON_GetObjectItem(vb_entry, "RapidReconnCountEnable");
+        if (param) {
+            if (cJSON_IsBool(param)) {
+                vap_info->u.bss_info.rapidReconnectEnable = cJSON_IsTrue(param) ? true : false;
+                wifi_util_info_print(WIFI_CTRL, "   \"rapidReconnectEnable\": %s\n",
+                    (vap_info->u.bss_info.rapidReconnectEnable) ? "true" : "false");
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: \"rapidReconnectEnable\" is not boolean\n",
+                    __func__);
+                return -1;
+            }
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"rapidReconnectEnable\"\n", __func__);
+            return -1;
+        }
+
         param = cJSON_GetObjectItem(vb_entry, "VapStatsEnable");
         if (param) {
             if (cJSON_IsBool(param)) {
@@ -946,7 +962,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             /* decode interworking object */
             if (decode_interworking_object(interworking_obj, &vap_info->u.bss_info.interworking) !=
                 webconfig_error_none) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: Interworking objects validation failed for %s\n", __FUNCTION__,__LINE__, vap_info->vap_name);
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Interworking objects validation failed for %s\n", __FUNCTION__,__LINE__, vap_info->vap_name);
                 return webconfig_error_decode;
             }
 
@@ -1423,7 +1439,6 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         }
         return execRetVal;
     }
-    wifi_util_info_print(WIFI_CTRL, "%s: %d decoding the buffer size of blob\n", __func__, __LINE__);
     msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
     msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
     if (!msg) {
