@@ -453,7 +453,32 @@ int set_auth_req_frame_data(frame_data_t *msg) {
     return RETURN_OK;
 }
 
-void telemetry_event_access_accept_count(telemetry_data_t *sta1,int vapindex, char *mac, char *ap) {
+void telemetry_event_eap_reason_count(interop_data_t *sta1,int vapindex, char *mac, char *ap) {
+    char telemetry_buff[64] = {0};
+    char telemetry_val[128] = {0};
+    char telemetry_buff_grep[64] = {0};
+if (!mac || !ap) {
+        wifi_util_info_print(WIFI_MON, "%s:%d Error: MAC address is NULL\n", __func__, __LINE__);
+        return;
+    }
+memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+    memset(telemetry_buff_grep, 0, sizeof(telemetry_buff_grep));
+snprintf(telemetry_buff, sizeof(telemetry_buff), "EAP_REASON_COUNTS");
+    snprintf(telemetry_val, sizeof(telemetry_val),
+             "%d,%s,%s,13:%d,16:%d,17:%d,18:%d,19:%d,21:%d,22:%d,24:%d", vapindex+1, ap, mac, sta1->sta_eap_reason_counts[0], sta1->sta_eap_reason_counts[1], sta1->sta_eap_reason_counts[2],
+                 sta1->sta_eap_reason_counts[3], sta1->sta_eap_reason_counts[4], sta1->sta_eap_reason_counts[5],
+                 sta1->sta_eap_reason_counts[6], sta1->sta_eap_reason_counts[7]);
+    strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
+    telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
+    wifi_util_info_print(WIFI_MON, "%s:%s\n", telemetry_buff_grep, telemetry_val);
+    wifi_util_info_print(WIFI_MON, "%s:%d,%d,%s,%s,13:%d,16:%d,17:%d,18:%d,19:%d,21:%d,22:%d,24:%d", __func__, __LINE__, vapindex+1, ap, mac, sta1->ap_eap_reason_counts[0], sta1->ap_eap_reason_counts[1], sta1->ap_eap_reason_counts[2],
+                 sta1->ap_eap_reason_counts[3], sta1->ap_eap_reason_counts[4], sta1->ap_eap_reason_counts[5],
+                 sta1->ap_eap_reason_counts[6], sta1->ap_eap_reason_counts[7]);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
+void telemetry_event_access_accept_count(interop_data_t *sta1,int vapindex, char *mac, char *ap) {
     char telemetry_buff[64] = {0};
     char telemetry_val[128] = {0};
     char telemetry_buff_grep[64] = {0};
@@ -475,7 +500,7 @@ snprintf(telemetry_buff, sizeof(telemetry_buff), "ACCESS_ACCEPT_COUNTS");
 
 
 
-void telemetry_event_eap_success_count(telemetry_data_t *sta1,int vapindex, char *mac, char *ap) {
+void telemetry_event_eap_success_count(interop_data_t *sta1,int vapindex, char *mac, char *ap) {
     char telemetry_buff[64] = {0};
     char telemetry_val[128] = {0};
     char telemetry_buff_grep[64] = {0};
@@ -496,7 +521,7 @@ snprintf(telemetry_buff, sizeof(telemetry_buff), "EAP_SUCCESS_COUNTS");
 }
 
 
-void telemetry_event_eap_failure_count(telemetry_data_t *sta1,int vapindex, char *mac, char *ap) {
+void telemetry_event_eap_failure_count(interop_data_t *sta1,int vapindex, char *mac, char *ap) {
     char telemetry_buff[64] = {0};
     char telemetry_val[128] = {0};
     char telemetry_buff_grep[64] = {0};
@@ -543,7 +568,7 @@ void telemetry_event_code_count(interop_data_t *sta1, int vapindex, char *mac, c
     telemetry_event_access_accept_count(sta1, vapindex, mac, ap);
     telemetry_event_eap_success_count(sta1, vapindex, mac, ap);
     telemetry_event_eap_failure_count(sta1, vapindex, mac, ap);
-
+    telemetry_event_eap_reason_count(sta1, vapindex, mac, ap);
     bool has_sta_data = has_non_zero_counts(sta1->sta_status_counts, sta1->sta_reason_counts);
     bool has_ap_data  = has_non_zero_counts(sta1->ap_status_counts, sta1->ap_reason_counts);
 
