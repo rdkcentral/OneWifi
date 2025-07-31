@@ -822,6 +822,11 @@ typedef struct {
     int sta_reason_counts[9];
     int ap_status_counts[6];
     int ap_reason_counts[9];
+    int access_accept_counts;
+    int eap_success_counts;
+    int eap_failure_reason_counts;
+    int ap_eap_reason_counts[8];
+    int sta_eap_reason_counts[8];
 } interop_data_t;
 
 typedef struct {

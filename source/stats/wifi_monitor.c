@@ -453,6 +453,70 @@ int set_auth_req_frame_data(frame_data_t *msg) {
     return RETURN_OK;
 }
 
+void telemetry_event_access_accept_count(telemetry_data_t *sta1,int vapindex, char *mac, char *ap) {
+    char telemetry_buff[64] = {0};
+    char telemetry_val[128] = {0};
+    char telemetry_buff_grep[64] = {0};
+if (!mac || !ap) {
+        wifi_util_info_print(WIFI_MON, "%s:%d Error: MAC address is NULL\n", __func__, __LINE__);
+        return;
+    }
+memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+    memset(telemetry_buff_grep, 0, sizeof(telemetry_buff_grep));
+snprintf(telemetry_buff, sizeof(telemetry_buff), "ACCESS_ACCEPT_COUNTS");
+    snprintf(telemetry_val, sizeof(telemetry_val),
+             "%d,%s,%s,%d", vapindex+1, ap, mac, sta1->access_accept_counts);
+    strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
+    telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
+    wifi_util_info_print(WIFI_MON, "%s:%s\n", telemetry_buff_grep, telemetry_val);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
+
+
+void telemetry_event_eap_success_count(telemetry_data_t *sta1,int vapindex, char *mac, char *ap) {
+    char telemetry_buff[64] = {0};
+    char telemetry_val[128] = {0};
+    char telemetry_buff_grep[64] = {0};
+if (!mac || !ap) {
+        wifi_util_info_print(WIFI_MON, "%s:%d Error: MAC address is NULL\n", __func__, __LINE__);
+        return;
+    }
+memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+    memset(telemetry_buff_grep, 0, sizeof(telemetry_buff_grep));
+snprintf(telemetry_buff, sizeof(telemetry_buff), "EAP_SUCCESS_COUNTS");
+    snprintf(telemetry_val, sizeof(telemetry_val),
+             "%d,%s,%s,%d", vapindex+1, ap, mac, sta1->eap_success_counts);
+    strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
+    telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
+    wifi_util_info_print(WIFI_MON, "%s:%s\n", telemetry_buff_grep, telemetry_val);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
+
+void telemetry_event_eap_failure_count(telemetry_data_t *sta1,int vapindex, char *mac, char *ap) {
+    char telemetry_buff[64] = {0};
+    char telemetry_val[128] = {0};
+    char telemetry_buff_grep[64] = {0};
+if (!mac || !ap) {
+        wifi_util_info_print(WIFI_MON, "%s:%d Error: MAC address is NULL\n", __func__, __LINE__);
+        return;
+    }
+memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+    memset(telemetry_buff_grep, 0, sizeof(telemetry_buff_grep));
+snprintf(telemetry_buff, sizeof(telemetry_buff), "EAP_FAILURE_COUNTS");
+    snprintf(telemetry_val, sizeof(telemetry_val),
+             "%d,%s,%s,%d", vapindex+1, ap, mac, sta1->eap_failure_reason_counts);
+    strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
+    telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
+    wifi_util_info_print(WIFI_MON, "%s:%s\n", telemetry_buff_grep, telemetry_val);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
+
 #define STATUS_COUNT_SIZE 6
 #define REASON_COUNT_SIZE 9
 
@@ -472,11 +536,13 @@ void telemetry_event_code_count(interop_data_t *sta1, int vapindex, char *mac, c
     char telemetry_buff_grep[128] = {0};
     char buff[1024];
     char tmp[128];
-
-    if (!mac) {
+    if (!mac || !ap) {
         wifi_util_info_print(WIFI_MON, "Error: MAC address is NULL\n");
         return;
     }
+    telemetry_event_access_accept_count(sta1, vapindex, mac, ap);
+    telemetry_event_eap_success_count(sta1, vapindex, mac, ap);
+    telemetry_event_eap_failure_count(sta1, vapindex, mac, ap);
 
     bool has_sta_data = has_non_zero_counts(sta1->sta_status_counts, sta1->sta_reason_counts);
     bool has_ap_data  = has_non_zero_counts(sta1->ap_status_counts, sta1->ap_reason_counts);
@@ -2675,6 +2741,14 @@ int increment_reason_count(interop_data_t *telemetry, wifi_reason_code_t code, i
             case WIFI_REASON_AKMP_NOT_VALID: telemetry->sta_reason_counts[6]++; break;
             case WIFI_REASON_IEEE_802_1X_AUTH_FAILED: telemetry->sta_reason_counts[7]++; break;
             case WIFI_REASON_INVALID_PMKID: telemetry->sta_reason_counts[8]++; break;
+            case WIFI_REASON_INVALID_IE: telemetry->sta_eap_reason_counts[0]++; break;
+            case WIFI_REASON_GROUP_KEY_UPDATE_TIMEOUT: telemetry->sta_eap_reason_counts[1]++; break;
+            case WIFI_REASON_IE_IN_4WAY_DIFFERS: telemetry->sta_eap_reason_counts[2]++; break;
+            case WIFI_REASON_GROUP_CIPHER_NOT_VALID: telemetry->sta_eap_reason_counts[3]++; break;
+            case WIFI_REASON_PAIRWISE_CIPHER_NOT_VALID: telemetry->sta_eap_reason_counts[4]++; break;
+            case WIFI_REASON_UNSUPPORTED_RSN_IE_VERSION: telemetry->sta_eap_reason_counts[5]++; break;
+            case WIFI_REASON_INVALID_RSN_IE_CAPAB: telemetry->sta_eap_reason_counts[6]++; break;
+            case WIFI_REASON_CIPHER_SUITE_REJECTED: telemetry->sta_eap_reason_counts[7]++; break;
             default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown reason code for station \n",__FUNCTION__,__LINE__);
                   return -1;
         }
@@ -2690,6 +2764,14 @@ int increment_reason_count(interop_data_t *telemetry, wifi_reason_code_t code, i
             case WIFI_REASON_AKMP_NOT_VALID: telemetry->ap_reason_counts[6]++; break;
             case WIFI_REASON_IEEE_802_1X_AUTH_FAILED: telemetry->ap_reason_counts[7]++; break;
             case WIFI_REASON_INVALID_PMKID: telemetry->ap_reason_counts[8]++; break;
+            case WIFI_REASON_INVALID_IE: telemetry->ap_eap_reason_counts[0]++; break;
+            case WIFI_REASON_GROUP_KEY_UPDATE_TIMEOUT: telemetry->ap_eap_reason_counts[1]++; break;
+            case WIFI_REASON_IE_IN_4WAY_DIFFERS: telemetry->ap_eap_reason_counts[2]++; break;
+            case WIFI_REASON_GROUP_CIPHER_NOT_VALID: telemetry->ap_eap_reason_counts[3]++; break;
+            case WIFI_REASON_PAIRWISE_CIPHER_NOT_VALID: telemetry->ap_eap_reason_counts[4]++; break;
+            case WIFI_REASON_UNSUPPORTED_RSN_IE_VERSION: telemetry->ap_eap_reason_counts[5]++; break;
+            case WIFI_REASON_INVALID_RSN_IE_CAPAB: telemetry->ap_eap_reason_counts[6]++; break;
+            case WIFI_REASON_CIPHER_SUITE_REJECTED: telemetry->ap_eap_reason_counts[7]++; break;
             default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown reason code for ap \n",__FUNCTION__,__LINE__); 
                  return -1;
         }
@@ -2700,6 +2782,7 @@ int increment_reason_count(interop_data_t *telemetry, wifi_reason_code_t code, i
     }
     return 0;
 }
+
 
 int increment_status_count(interop_data_t *telemetry, wifi_status_code_t code, int ap) {
     if (ap == 0) {
@@ -2729,6 +2812,43 @@ int increment_status_count(interop_data_t *telemetry, wifi_status_code_t code, i
     else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d it's not an ap or station mac \n",__FUNCTION__,__LINE__);
         return -1;
+    }
+    return 0;
+}
+
+int increment_eap_status_count(interop_data_t *telemetry, wifi_eap_status_code_t code) {
+     switch (code) {
+         case WIFI_ACCESS_ACCEPT_STATUS: telemetry->access_accept_counts++; break;
+         case WIFI_EAP_SUCCESS_STATUS: telemetry->eap_success_counts++; break;
+         case WIFI_EAP_FAILURE_STATUS: telemetry->eap_failure_reason_counts++; break;
+         default: wifi_util_dbg_print(WIFI_MON, "%s:%d unknown status code for station \n",__FUNCTION__,__LINE__);
+                 return -1;
+    }
+    return 0;
+}
+
+int eap_status_code(int ap_index, char *src_mac, int reason)
+{
+    hash_map_t *sta_map;
+    interop_data_t *sta;
+    if (src_mac == NULL ) {
+        wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
+        return -1;
+    }
+    sta_map = get_interop_sta_data_map(ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
+        return RETURN_ERR;
+    }
+    sta = (interop_data_t *)hash_map_get(sta_map, src_mac);
+    if (NULL == sta) {
+          wifi_util_dbg_print(WIFI_MON, "%s:%d  station is not found for vap_index:%d src_mac :%s \r\n", __func__, __LINE__, ap_index, src_mac);
+            return RETURN_ERR;
+    }
+    wifi_eap_status_code_t reason_code = (wifi_eap_status_code_t)reason;
+    if (increment_eap_status_count(sta, reason_code) == -1) {
+        wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular reason is not there\n", __func__, __LINE__);
+        return 0;
     }
     return 0;
 }
@@ -3557,6 +3677,7 @@ int init_wifi_monitor()
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
     wifi_hal_stamode_callback_register(set_sta_client_mode);
     wifi_hal_apStatusCode_callback_register(ap_status_code);
+    wifi_hal_radius_eap_status_callback_register(eap_status_code);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.interop_id, reset_interop_sta_data, NULL, (get_chan_util_upload_period() * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, reset_wpa3_enhanced_sta_data, NULL, (MAX_AKM_REPORT_REFRESH_PERIOD * 1000), 0, FALSE);
