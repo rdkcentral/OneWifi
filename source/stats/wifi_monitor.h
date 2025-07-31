@@ -29,6 +29,7 @@
 #endif
 
 #define  ANSC_STATUS_SUCCESS                        0
+
 #define MONITOR_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
 typedef struct {
