@@ -191,7 +191,22 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
 
     return "unknown event";
 }
-
+bool is_high_priority_event(wifi_event_subtype_t sub_type)
+{
+    switch (sub_type) {
+    case wifi_event_type_notify_monitor_done:
+    case wifi_event_type_command_factory_reset:
+    case wifi_event_type_eth_bh_status:
+    case wifi_event_type_xfinity_enable:
+    case wifi_event_type_prefer_private_rfc:
+    case wifi_event_exec_start:
+    case wifi_event_exec_stop:
+    case wifi_event_exec_timeout:
+        return true;
+    default:
+        return false;
+    }
+}
 void free_cloned_event(wifi_event_t *clone)
 {
     destroy_wifi_event(clone);
@@ -699,15 +714,15 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
 
         pthread_mutex_lock(&ctrl->queue_lock);
         is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
-        if (!is_limit_reached) {
+        
+        if (!is_limit_reached || is_high_priority_event(sub_type)) {
             queue_push(ctrl->queue, event);
             pthread_cond_signal(&ctrl->cond);
-        }
-        pthread_mutex_unlock(&ctrl->queue_lock);
-
-        if (is_limit_reached) {
+            pthread_mutex_unlock(&ctrl->queue_lock);
+        } else { 
+            pthread_mutex_unlock(&ctrl->queue_lock);
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d max queue size reached, drop message type: %s subtype: %s\n", __FUNCTION__,
+                "%s:%d MAX-QUEUE size reached, DROP message type: %s subtype: %s\n", __FUNCTION__,
                 __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
             destroy_wifi_event(event);
             return RETURN_ERR;
@@ -755,15 +770,16 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
 
     pthread_mutex_lock(&ctrl->queue_lock);
     is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
-    if (!is_limit_reached) {
+  
+    if (!is_limit_reached || is_high_priority_event(sub_type)) {
         queue_push(ctrl->queue, event);
         pthread_cond_signal(&ctrl->cond);
-    }
-    pthread_mutex_unlock(&ctrl->queue_lock);
-
-    if (is_limit_reached) {
+        pthread_mutex_unlock(&ctrl->queue_lock);
+    } else {
+        /* Event was dropped because queue is full and not important */
+        pthread_mutex_unlock(&ctrl->queue_lock);
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d max queue size reached, drop message type: %s subtype: %s\n", __FUNCTION__,
+            "%s:%d MAX-QUEUE size reached, DROP message type: %s subtype: %s\n", __FUNCTION__,
             __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
         destroy_wifi_event(event);
         return RETURN_ERR;
@@ -807,14 +823,14 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
 
     pthread_mutex_lock(&monitor_param->queue_lock);
     is_limit_reached = queue_count(monitor_param->queue) >= MONITOR_QUEUE_SIZE_MAX;
-    if (!is_limit_reached) {
+  
+    if (!is_limit_reached || is_high_priority_event(sub_type)) {
         queue_push(monitor_param->queue, event);
         pthread_cond_signal(&monitor_param->cond);
-    }
-    pthread_mutex_unlock(&monitor_param->queue_lock);
-
-    if (is_limit_reached) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d max queue size reached, drop message subtype: %s\n",
+        pthread_mutex_unlock(&monitor_param->queue_lock);
+    } else {
+        pthread_mutex_unlock(&monitor_param->queue_lock);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d MAX-QUEUE size reached, DROP message subtype: %s\n",
             __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
         destroy_wifi_event(event);
         return RETURN_ERR;
