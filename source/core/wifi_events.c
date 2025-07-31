@@ -199,7 +199,6 @@ bool is_high_priority_event(wifi_event_subtype_t sub_type)
     case wifi_event_type_eth_bh_status:
     case wifi_event_type_xfinity_enable:
     case wifi_event_type_prefer_private_rfc:
-    case wifi_event_webconfig_br_report:
     case wifi_event_exec_start:
     case wifi_event_exec_stop:
     case wifi_event_exec_timeout:
