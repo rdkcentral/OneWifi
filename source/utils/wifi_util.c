@@ -3879,6 +3879,7 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
+
     if ((vap_info_old == NULL) || (vap_info_new == NULL) || (rdk_old == NULL) ||
         (rdk_new == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,
@@ -3939,9 +3940,6 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             is_interworking_config_changed(vap_info_new->vap_name,
                 &vap_info_old->u.bss_info.interworking,
                 &vap_info_new->u.bss_info.interworking) ||
-            is_interworking_config_changed(vap_info_new->vap_name,
-                &vap_info_old->u.bss_info.interworking,
-                &vap_info_new->u.bss_info.interworking) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_enable,
                 vap_info_new->u.bss_info.mac_filter_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_mode,
@@ -3983,25 +3981,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-            is_vap_preassoc_cac_config_changed(vap_info_new->vap_name,
-                    &vap_info_old->u.bss_info.preassoc, &vap_info_new->u.bss_info.preassoc) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_enable,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.interop_ctrl,
-                vap_info_new->u.bss_info.interop_ctrl) ||
-            IS_CHANGED(vap_info_old->u.bss_info.vendor_elements_len,
-                vap_info_new->u.bss_info.vendor_elements_len) ||
-            IS_BIN_CHANGED(vap_info_old->u.bss_info.vendor_elements,
-                vap_info_new->u.bss_info.vendor_elements,
-                sizeof(vap_info_old->u.bss_info.vendor_elements))) {
                 vap_info_new->u.bss_info.interop_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.vendor_elements_len,
                 vap_info_new->u.bss_info.vendor_elements_len) ||
