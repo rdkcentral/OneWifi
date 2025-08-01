@@ -3797,7 +3797,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
                 __func__, __LINE__, vap_names[i], vap_array_index,
                 data.u.decoded.radios[radio_index]
                     .vaps.vap_map.vap_array[vap_array_index]
-                    .u.bss_info.snr_threshold);
+                    .u.bss_info.preassoc.snr_threshold);
         }
 
         webconfig_decode(config, &data, raw);

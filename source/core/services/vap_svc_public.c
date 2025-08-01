@@ -268,7 +268,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                 }
         }
         wifi_util_error_print(WIFI_CTRL,"%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
-        wifi_util_info_print(WIFI_CTRL,"SJY %s:%d The value of snr_threshold for vap %s is %s\n",__func__, __LINE__, p_tgt_vap_map->vap_array[0].vap_name, p_tgt_vap_map->vap_array[0].u.bss_info.snr_threshold);
+        wifi_util_info_print(WIFI_CTRL,"SJY %s:%d The value of snr_threshold for vap %s is %s\n",__func__, __LINE__, p_tgt_vap_map->vap_array[0].vap_name, p_tgt_vap_map->vap_array[0].u.bss_info.preassoc.snr_threshold);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
         memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
