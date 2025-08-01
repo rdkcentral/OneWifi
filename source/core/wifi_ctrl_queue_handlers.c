@@ -3779,8 +3779,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
                 num_ssid);
         }
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
-        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: webconfig subdoc type %s\n", __func__, __LINE__,
-            webconfig_subdoc_type_to_string(subdoc_type));
+        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: webconfig subdoc type %d\n", __func__, __LINE__,subdoc_type);
 
         for (unsigned int i = 0; i < num_ssid; i++) {
             radio_index = convert_vap_name_to_radio_array_index(&mgr->hal_cap.wifi_prop,
