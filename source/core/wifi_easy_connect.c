@@ -39,7 +39,6 @@
 #include <sys/sysinfo.h>
 #include <sys/un.h>
 #include <assert.h>
-#include <sysevent/sysevent.h>
 #include "wifi_monitor.h"
 #include "wifi_data_plane.h"
 #include "wifi_util.h"

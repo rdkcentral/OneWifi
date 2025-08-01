@@ -24,7 +24,6 @@
 #include <sys/sysinfo.h>
 #include <sys/un.h>
 #include <assert.h>
-#include <sysevent/sysevent.h>
 #include <cjson/cJSON.h>
 #include <dirent.h>
 #include <errno.h>

@@ -89,6 +89,11 @@ bool is_db_backup_required()
     return (g_wifi_mgr.ctrl.dev_type != dev_subtype_pod);
 }
 
+bool is_devtype_pod()
+{
+    return (g_wifi_mgr.ctrl.dev_type == dev_subtype_pod);
+}
+
 int init_wifi_hal()
 {
     int ret = RETURN_OK;
@@ -257,8 +262,10 @@ int init_wifimgr()
         init_global_radio_config(&g_wifi_mgr.radio_config[itr], itr);
     }
 
+#ifdef ONEWIFI_DML_SUPPORT
     /* Initialize DML initial data */
     get_wifidml_obj()->desc.set_dml_init_status_fn(false);
+#endif
 
     sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
     if (stat(db_file, &sb) != 0) {
@@ -300,20 +307,31 @@ int init_wifimgr()
     }
 
     wifidb_init(get_wifidb_obj());
-
+#ifdef ONEWIFI_DML_SUPPORT
     /* Initialize SSP loop */
     get_wifidml_obj()->desc.ssp_init_fn();
-
+#endif
     //Start Wifi DB server, and Initialize data Cache
     get_wifidb_obj()->desc.init_fn();
 
     return 0;
 }
 
+void init_wifi_db_param(void)
+{
+    init_wifidb_data();
+
+    /* Set Wifi Global Parameters */
+    init_wifi_global_config();
+}
+
 int start_wifimgr()
 {
+#ifdef ONEWIFI_DML_SUPPORT
     get_wifidml_obj()->desc.start_dml_fn();
-
+#else
+    init_wifi_db_param();
+#endif
     wifi_ctrl_t *ctrl =  NULL;
     int WIFI_APPS_NUM;
     wifi_app_descriptor_t *app_desc = get_app_desc(&WIFI_APPS_NUM);

@@ -3573,12 +3573,6 @@ int start_wifi_monitor ()
     if(attrp != NULL)
         pthread_attr_destroy( attrp );
 
-    g_monitor_module.sysevent_fd = get_misc_descriptor()->sysevent_open_fn("127.0.0.1", 0, 0, "wifiMonitor", &g_monitor_module.sysevent_token);
-    if (g_monitor_module.sysevent_fd < 0) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Failed to open sysevent\n", __func__, __LINE__);
-    } else {
-        wifi_util_info_print(WIFI_MON, "%s:%d: Opened sysevent\n", __func__, __LINE__);
-    }
     if (get_misc_descriptor()->initparodusTask_fn() == -1) {
         //wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to initialize paroduc task\n", __func__, __LINE__);
 
@@ -3604,7 +3598,6 @@ void deinit_wifi_monitor()
 #endif
     csi_pinger_data_t *pinger_data = NULL, *tmp_pinger_data = NULL;
     mac_addr_str_t mac_str = { 0 };
-    get_misc_descriptor()->sysevent_close_fn(g_monitor_module.sysevent_fd, g_monitor_module.sysevent_token);
     if(g_monitor_module.queue != NULL)
         queue_destroy(g_monitor_module.queue);
 
