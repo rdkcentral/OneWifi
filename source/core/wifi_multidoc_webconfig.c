@@ -748,6 +748,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
     char *value;
     cJSON *param;
+    wifi_mgr_t *g_wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
     size = cJSON_GetArraySize(blob);
     cJSON *vb_entry = NULL;
@@ -789,6 +790,12 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
                 vap_info->u.bss_info.enabled = cJSON_IsTrue(param) ? true : false;
                 wifi_util_info_print(WIFI_CTRL, "   \"Enable\": %s\n",
                     (vap_info->u.bss_info.enabled) ? "true" : "false");
+                if (is_6g_supported_device(&g_wifi_mgr->hal_cap.wifi_prop) &&
+                    vap_info->u.bss_info.enabled) {
+                    vap_info->u.bss_info.nbrReportActivated = true;
+                } else {
+                    vap_info->u.bss_info.nbrReportActivated = false;
+                }
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
                 return -1;
@@ -873,7 +880,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             return -1;
         }
 
-        param = cJSON_GetObjectItem(vb_entry, "NeighborReportActivated");
+       /* param = cJSON_GetObjectItem(vb_entry, "NeighborReportActivated");
         if (param) {
             if (cJSON_IsBool(param)) {
                 vap_info->u.bss_info.nbrReportActivated = cJSON_IsTrue(param) ? true : false;
@@ -888,6 +895,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"NeighborReportActivated\"\n", __func__);
             return -1;
         }
+        */
 
         param = cJSON_GetObjectItem(vb_entry, "RapidReconnThreshold");
         if (param) {
