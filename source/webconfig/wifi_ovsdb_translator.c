@@ -2483,8 +2483,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
     sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
-    dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
-                                                 VAP_PREFIX_MESH_BACKHAUL, VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: network mode: %d\n", __func__, __LINE__,
+        data->u.decoded.config.global_parameters.device_network_mode);
+    if (data->u.decoded.config.global_parameters.device_network_mode == rdk_dev_mode_type_gw) {
+        dml_vap_mask = create_vap_mask(wifi_prop, 7, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT,
+            VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, VAP_PREFIX_MESH_BACKHAUL,
+            VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+    } else {
+        dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT,
+            VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, VAP_PREFIX_MESH_BACKHAUL,
+            VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+    }
 
     if (decoded_params->num_radios > MAX_NUM_RADIOS || decoded_params->num_radios < MIN_NUM_RADIOS) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of radios : %x\n", __func__, __LINE__, decoded_params->num_radios);
@@ -2504,7 +2514,10 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
             rdk_vap = &radio->vaps.rdk_vap_array[j];
 
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
-            if (rdk_vap->exists == false) {
+            if (rdk_vap->exists == false &&
+                !(data->u.decoded.config.global_parameters.device_network_mode ==
+                        rdk_dev_mode_type_gw &&
+                    is_vap_mesh_sta(wifi_prop, vap->vap_index))) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
@@ -2591,17 +2604,26 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: for %d\n", __func__, __LINE__, vap->vap_index);
-                if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
-                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
-                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
-                        return webconfig_error_translate_to_ovsdb;
+                if (data->u.decoded.config.global_parameters.device_network_mode !=
+                    rdk_dev_mode_type_gw) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: for %d\n", __func__, __LINE__,
+                        vap->vap_index);
+                    if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
+                        if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row,
+                                wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
+                            wifi_util_error_print(WIFI_WEBCONFIG,
+                                "%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__,
+                                __LINE__, vap->vap_index);
+                            return webconfig_error_translate_to_ovsdb;
+                        }
+                    } else {
+                        wifi_util_dbg_print(WIFI_WEBCONFIG,
+                            "%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__,
+                            vap->u.sta_info.conn_status, vap->vap_index);
                     }
-                } else {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__, vap->u.sta_info.conn_status, vap->vap_index);
+                    presence_mask |= (1 << vap->vap_index);
+                    count++;
                 }
-                presence_mask |= (1 << vap->vap_index);
-                count++;
             } else {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -3435,9 +3457,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
     unsigned int dml_vap_mask = 0;
     bool sec_schema_is_legacy;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
-    dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
-                                                 VAP_PREFIX_MESH_BACKHAUL, VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
 
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: network mode: %d\n", __func__, __LINE__,
+        data->u.decoded.config.global_parameters.device_network_mode);
+    if (data->u.decoded.config.global_parameters.device_network_mode == rdk_dev_mode_type_gw) {
+        dml_vap_mask = create_vap_mask(wifi_prop, 7, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT,
+            VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, VAP_PREFIX_MESH_BACKHAUL,
+            VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+    } else {
+        dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT,
+            VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, VAP_PREFIX_MESH_BACKHAUL,
+            VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+    }
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -3488,7 +3519,10 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                 return webconfig_error_translate_to_ovsdb;
             }
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
-            if(rdk_vap->exists == false) {
+            if (rdk_vap->exists == false &&
+                !(data->u.decoded.config.global_parameters.device_network_mode ==
+                        rdk_dev_mode_type_gw &&
+                    is_vap_mesh_sta(wifi_prop, vap->vap_index))) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap->vap_index);
@@ -3583,12 +3617,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
-                    return webconfig_error_translate_to_ovsdb;
+                if (data->u.decoded.config.global_parameters.device_network_mode !=
+                    rdk_dev_mode_type_gw) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: add sta\n", __func__, __LINE__);
+                    if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop,
+                            sec_schema_is_legacy) != webconfig_error_none) {
+                        wifi_util_dbg_print(WIFI_WEBCONFIG,
+                            "%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__,
+                            __LINE__, vap->vap_index);
+                        return webconfig_error_translate_to_ovsdb;
+                    }
+                    presence_mask |= (1 << vap->vap_index);
+                    count++;
                 }
-                presence_mask |= (1 << vap->vap_index);
-                count++;
             } else {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -5642,6 +5683,12 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 continue;
             }
 
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) &&
+                data->u.decoded.config.global_parameters.device_network_mode ==
+                    rdk_dev_mode_type_gw) {
+                continue;
+            }
+
             private_vap_mask |= (1 << vap->vap_index);
 
             if (convert_vapname_to_cloudifname(rdk_vap->vap_name,
@@ -5754,12 +5801,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
-                    return webconfig_error_translate_to_ovsdb;
+                if (data->u.decoded.config.global_parameters.device_network_mode !=
+                    rdk_dev_mode_type_gw) {
+                    if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop,
+                            sec_schema_is_legacy) != webconfig_error_none) {
+                        wifi_util_error_print(WIFI_WEBCONFIG,
+                            "%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__,
+                            __LINE__, vap->vap_index);
+                        return webconfig_error_translate_to_ovsdb;
+                    }
+                    count++;
+                    presence_mask |= (1 << vap->vap_index);
                 }
-                count++;
-                presence_mask |= (1 << vap->vap_index);
             } else {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -5932,6 +5985,10 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
     unsigned char count = 0;
     bool sec_schema_is_legacy;
 
+    if (data->u.decoded.config.global_parameters.device_network_mode == rdk_dev_mode_type_gw) {
+        return webconfig_error_none;
+    }
+
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -5997,14 +6054,21 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
                 return webconfig_error_translate_to_ovsdb;
             }
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n",
-                                                        __func__, __LINE__, vap->vap_index);
-                    return webconfig_error_translate_to_ovsdb;
+                if (data->u.decoded.config.global_parameters.device_network_mode !=
+                    rdk_dev_mode_type_gw) {
+                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row,
+                            wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
+                        wifi_util_error_print(WIFI_WEBCONFIG,
+                            "%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n", __func__,
+                            __LINE__, vap->vap_index);
+                        return webconfig_error_translate_to_ovsdb;
+                    }
+                    count++;
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,
+                        "%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__,
+                        vap->u.sta_info.conn_status, vap->vap_index);
+                    presence_mask |= (1 << vap->vap_index);
                 }
-                count++;
-                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__, vap->u.sta_info.conn_status, vap->vap_index);
-                presence_mask  |= (1 << vap->vap_index);
             }
             else {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__, vap->vap_index);
@@ -6284,7 +6348,13 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
     sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
-    mesh_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_MESH_STA, VAP_PREFIX_MESH_BACKHAUL);
+
+    if (data->u.decoded.config.global_parameters.device_network_mode == rdk_dev_mode_type_gw) {
+        mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_BACKHAUL);
+    } else {
+        mesh_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_MESH_STA,
+            VAP_PREFIX_MESH_BACKHAUL);
+    }
 
     hal_cap = &decoded_params->hal_cap;
 
@@ -6353,16 +6423,24 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
                 presence_mask  |= (1 << vap->vap_index);
                 count++;
             } else if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
-                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
-                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
-                        return webconfig_error_translate_to_ovsdb;
+                if (data->u.decoded.config.global_parameters.device_network_mode !=
+                    rdk_dev_mode_type_gw) {
+                    if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
+                        if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row,
+                                wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
+                            wifi_util_error_print(WIFI_WEBCONFIG,
+                                "%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n",
+                                __func__, __LINE__, vap->vap_index);
+                            return webconfig_error_translate_to_ovsdb;
+                        }
+                        count++;
+                    } else {
+                        wifi_util_dbg_print(WIFI_WEBCONFIG,
+                            "%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__,
+                            vap->u.sta_info.conn_status, vap->vap_index);
                     }
-                    count++;
-                } else {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__, vap->u.sta_info.conn_status, vap->vap_index);
+                    presence_mask |= (1 << vap->vap_index);
                 }
-                presence_mask  |= (1 << vap->vap_index);
             }
             else {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__, vap->vap_index);
