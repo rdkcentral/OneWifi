@@ -866,7 +866,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             memset(&tgt_rdk_vap_info, 0, sizeof(rdk_wifi_vap_info_t));
             memcpy(&tgt_rdk_vap_info, rdk_vap_info, sizeof(rdk_wifi_vap_info_t));
             // print the value of snr_threshold for the vap name.
-            wifi_util_info_print(WIFI_WEBCONFIG,"SJY %s:%d: The value of snr threshold for vap %s before public update is %s\n", __func__, __LINE__, p_tgt_vap_map->vap_array[0].vap_name, p_tgt_vap_map->vap_array[0].u.bss_info.snr_threshold);
+            wifi_util_info_print(WIFI_WEBCONFIG,"SJY %s:%d: The value of snr threshold for vap %s before public update is %s\n", __func__, __LINE__, p_tgt_vap_map->vap_array[0].vap_name, p_tgt_vap_map->vap_array[0].u.bss_info.preassoc.snr_threshold);
             start_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
             if (svc->update_fn(svc, tgt_radio_idx, p_tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
@@ -1387,8 +1387,8 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
         l_vap_maps = get_wifidb_vap_map(radio_index);
         for (vap_index = 0; vap_index < getNumberVAPsPerRadio(radio_index); vap_index++) {
             wifi_util_dbg_print(WIFI_CTRL,"Comparing cac config\n");
-            wifi_util_info_print(WIFI_CTRL,"SJY %s:%d The value of snr_threshold in Db for vap %s is %s\n", __func__, __LINE__, l_vap_maps->vap_array[vap_index].vap_name, l_vap_maps->vap_array[vap_index].u.bss_info.snr_threshold);
-            wifi_util_info_print(WIFI_CTRL,"SJY %s:%d The value of snr_threshold in data for vap %s is %s\n", __func__, __LINE__, data->radios[radio_index].vaps.vap_map.vap_array[vap_index].vap_name, data->radios[radio_index].vaps.vap_map.vap_array[vap_index].u.bss_info.snr_threshold);
+            wifi_util_info_print(WIFI_CTRL,"SJY %s:%d The value of snr_threshold in Db for vap %s is %s\n", __func__, __LINE__, l_vap_maps->vap_array[vap_index].vap_name, l_vap_maps->vap_array[vap_index].u.bss_info.preassoc.snr_threshold);
+            wifi_util_info_print(WIFI_CTRL,"SJY %s:%d The value of snr_threshold in data for vap %s is %s\n", __func__, __LINE__, data->radios[radio_index].vaps.vap_map.vap_array[vap_index].vap_name, data->radios[radio_index].vaps.vap_map.vap_array[vap_index].u.bss_info.preassoc.snr_threshold);
             if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
                 || is_postassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])) {
                 // cac or tcm data changed apply
