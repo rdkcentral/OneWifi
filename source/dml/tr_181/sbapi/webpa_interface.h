@@ -26,7 +26,7 @@
 #ifndef _WEBPA_INTERFACE_H_
 #define _WEBPA_INTERFACE_H_
 
-#include <libparodus.h>
+#include <libparodus/libparodus.h>
 #include "collection.h"
   
 #ifdef __cplusplus
