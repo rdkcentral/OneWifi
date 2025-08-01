@@ -286,6 +286,12 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
         }
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "SJY The value of snr threshold for vap name %s and vap index %d is %s\n", __func__,
+            __LINE__, vap_info->vap_name, vap_info->vap_index,
+            params->radios[radio_index]
+                .vaps.vap_map.vap_array[vap_array_index]
+                .u.bss_info.snr_threshold);
 
         if (!strncmp(name, "hotspot_open", strlen("hotspot_open"))) {
             memset(vap_info, 0, sizeof(wifi_vap_info_t));

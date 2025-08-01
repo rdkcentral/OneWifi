@@ -3736,6 +3736,9 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         }
 
         json = cJSON_Parse(raw);
+        // print the json data
+        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: blob data is: %s\n", __func__, __LINE__,
+            cJSON_Print(json));
         subdoc_type = find_subdoc_type(config, json);
         cJSON_Delete(json);
         switch (subdoc_type) {
@@ -3770,9 +3773,33 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
 
         if (num_ssid != 0) {
             update_subdoc_data(&data, num_ssid, vap_names);
+            wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: num ssid is %d\n", __func__, __LINE__,
+                num_ssid);
+        }
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
+        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d: webconfig subdoc type %s\n", __func__, __LINE__,
+            webconfig_subdoc_type_to_string(subdoc_type));
+
+        for (unsigned int i = 0; i < num_ssid; i++) {
+            radio_index = convert_vap_name_to_radio_array_index(&mgr->hal_cap.wifi_prop,
+                vap_names[i]);
+            vap_array_index = convert_vap_name_to_array_index(&mgr->hal_cap.wifi_prop,
+                vap_names[i]);
+
+            if ((vap_array_index == -1) || (radio_index == -1)) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d: invalid index radio_index %d vap_array_index  %d for vapname : %s\n",
+                    __func__, __LINE__, radio_index, vap_array_index, vap_names[i]);
+                continue;
+            }
+            wifi_util_info_print(WIFI_CTRL,
+                "SJY %s:%d: The value of snr threshold for vap name %s and vap index %d is %s\n",
+                __func__, __LINE__, vap_names[i], vap_array_index,
+                data.u.decoded.radios[radio_index]
+                    .vaps.vap_map.vap_array[vap_array_index]
+                    .u.bss_info.snr_threshold);
         }
 
-        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, &data, raw);
         wifi_event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
         if (wifi_event != NULL) {

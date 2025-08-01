@@ -218,7 +218,7 @@ typedef struct {
         1 : 0)
 #define IS_STR_CHANGED(old, new, size)                                                         \
     ((strncmp(old, new, size) != 0) ?                                                          \
-        wifi_util_dbg_print(WIFI_CTRL, "%s:Changed param %s: [%s] -> [%s].\n", __func__, #old, \
+        wifi_util_dbg_print(WIFI_CTRL, "SJY %s:Changed param %s: [%s] -> [%s].\n", __func__, #old, \
             old, new),                                                                         \
         1 : 0)
 #define IS_BIN_CHANGED(old, new, size)                                            \
