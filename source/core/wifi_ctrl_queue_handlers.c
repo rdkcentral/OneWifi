@@ -3788,12 +3788,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             vap_array_index = convert_vap_name_to_array_index(&mgr->hal_cap.wifi_prop,
                 vap_names[i]);
 
-            if ((vap_array_index == -1) || (radio_index == -1)) {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d: invalid index radio_index %d vap_array_index  %d for vapname : %s\n",
-                    __func__, __LINE__, radio_index, vap_array_index, vap_names[i]);
-                continue;
-            }
             wifi_util_info_print(WIFI_CTRL,
                 "SJY %s:%d: The value of snr threshold for vap name %s and vap index %d is %s\n",
                 __func__, __LINE__, vap_names[i], vap_array_index,
