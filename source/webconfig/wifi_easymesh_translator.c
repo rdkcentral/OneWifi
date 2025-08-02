@@ -504,8 +504,11 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
         return webconfig_error_translate_to_easymesh;
     }
 
+    vap_row->vap_mode = em_vap_mode_ap;
+
     vap_row->enabled = vap->u.bss_info.enabled;
     strncpy(vap_row->ssid, vap->u.bss_info.ssid, sizeof(vap_row->ssid));
+    vap_row->vap_index = vap->vap_index;
 
     // Set the em_bss_info_t vendor_elements to the same as wifi_vap_info_t vendor_elements
     memset(vap_row->vendor_elements, 0, sizeof(vap_row->vendor_elements));
@@ -927,7 +930,11 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     }
     default_em_bss_info(vap_row);
 
+    vap_row->vap_mode = em_vap_mode_sta;
+
     vap_row->enabled = vap->u.sta_info.enabled;
+    vap_row->vap_index = vap->vap_index;
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: vap_index %d vap_name %s\n", __func__, __LINE__, vap->vap_index, vap->vap_name);
 
     // Copy basic info
     strncpy(vap_row->ssid, vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid));
