@@ -247,6 +247,7 @@ WiFi_GetParamBoolValue
     char path[32] = {0};
     int val =0 ;
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if(pcfg== NULL)
     {
@@ -355,6 +356,10 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Levl", TRUE))
     {
         *pBool = rfc_pcfg->levl_enabled_rfc;
+
+        if (ctrl->ctrl_initialized == FALSE) {
+            return FALSE;
+        }
         return TRUE;
     }
 
