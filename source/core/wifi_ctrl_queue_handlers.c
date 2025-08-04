@@ -3738,7 +3738,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         }
 
         json = cJSON_Parse(raw);
-        // print the json data
         subdoc_type = find_subdoc_type(config, json);
         cJSON_Delete(json);
         switch (subdoc_type) {
@@ -3775,7 +3774,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             update_subdoc_data(&data, num_ssid, vap_names);
         }
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
-
         webconfig_decode(config, &data, raw);
         wifi_event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
         if (wifi_event != NULL) {
