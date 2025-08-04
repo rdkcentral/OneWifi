@@ -29,7 +29,7 @@
 #include "wifi_util.h"
 #include <cjson/cJSON.h>
 #include "scheduler.h"
-#include "base64.h"
+#include <trower-base64/base64.h>
 #include <unistd.h>
 #include <pthread.h>
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
@@ -155,6 +155,38 @@ void webconfig_init_subdoc_data(webconfig_subdoc_data_t *data)
     memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
     memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
     data->u.decoded.num_radios = getNumberRadios();
+}
+
+int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable) {
+    if (!vap) {
+        return RETURN_ERR;
+    }
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_vap_info_map_t tmp_vap_map;
+    memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
+    tmp_vap_map.num_vaps = 1;
+    memcpy(&tmp_vap_map.vap_array[0], vap, sizeof(wifi_vap_info_t));
+
+    rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap->vap_index);
+    if (!rdk_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
+                              __func__, __LINE__, vap->vap_index);
+        return RETURN_ERR;
+    }
+    tmp_vap_map.vap_array[0].u.bss_info.enabled = enable_or_disable;
+    vap_svc_t *svc = get_svc_by_name(ctrl, vap->vap_name);
+    if (!svc) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: Service not found for vap_name %s\n", __func__, __LINE__, vap->vap_name);
+        return -1;
+    }
+
+    if (svc && svc->update_fn(svc, vap->radio_index, &tmp_vap_map, rdk_vap_info) == RETURN_OK) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d VAP Update done for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d VAP Update failed for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
 }
 
 int webconfig_send_wifi_config_status(wifi_ctrl_t *ctrl)
@@ -917,6 +949,22 @@ bool isglobalParamChanged(wifi_global_config_t *data_config)
     return false;
 }
 
+static bool is_memwraptool_param_changed(wifi_global_config_t *data_config)
+{
+    wifi_global_config_t *mgr_global_config = get_wifidb_wifi_global_config();
+    memwraptool_config_t *mgr_memwraptool_config =
+        &mgr_global_config->global_parameters.memwraptool;
+    memwraptool_config_t *data_memwraptool_config = &data_config->global_parameters.memwraptool;
+
+    if (memcmp(mgr_memwraptool_config, data_memwraptool_config, sizeof(memwraptool_config_t)) !=
+        0) {
+        wifi_util_dbg_print(WIFI_CTRL, "memwraptool param changed\n");
+        return true;
+    }
+
+    return false;
+}
+
 int webconfig_stats_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -1269,6 +1317,22 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     return ret;
 }
 
+static int webconfig_memwraptool_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_global_config_t *data_global_config = &data->config;
+
+    if (!is_memwraptool_param_changed(data_global_config)) {
+        return RETURN_OK;
+    }
+
+    if (update_wifi_global_config(&data_global_config->global_parameters) == -1) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d memwraptool config value is not updated in DB\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
 
 int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
@@ -1758,6 +1822,27 @@ void radio_param_config_changed_event_logging(wifi_radio_operationParam_t *old ,
     }
 }
 
+static int check_and_reset_channel_change(void *arg)
+{
+    int radio_index = (int)(intptr_t)arg;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_util_dbg_print(WIFI_MON, "%s: Running for radio %d\n", __func__, radio_index);
+
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s: wifi_mgr_t is NULL\n", __func__);
+        return RETURN_ERR;
+    }
+
+    if (mgr->channel_change_in_progress[radio_index] == true) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s: Channel change still in progress after 5s. Resetting flag and restarting scan.\n",
+            __func__);
+        mgr->channel_change_in_progress[radio_index] = false;
+    }
+
+    return RETURN_OK;
+}
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -1789,6 +1874,15 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         }
 
         found_radio_index = false;
+
+        // channel_change_flag
+        if (IS_CHANGED(radio_data->oper.channel, mgr_radio_data->oper.channel)) {
+            mgr->channel_change_in_progress[radio_data->vaps.radio_index] = true;
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: channel_mismatch[%d] set to true\n", __func__,
+                __LINE__, radio_data->vaps.radio_index);
+            scheduler_add_timer_task(ctrl->sched, false, NULL, check_and_reset_channel_change,
+                (void *)(intptr_t)radio_data->vaps.radio_index, 5000, 1, false);
+        }
 
         if (is_radio_band_5G(radio_data->oper.band) && is_radio_feat_config_changed(mgr_radio_data, radio_data))
         {
@@ -2097,6 +2191,46 @@ void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
     return;
 }
 
+
+void process_managed_wifi_enable()
+{
+    wifi_vap_info_t *hotspot5g_vap_info = NULL;
+    for (UINT rIdx = 1; rIdx < getNumberRadios(); rIdx++) {
+        UINT lnf_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_LNF_PSK);
+        UINT hotspot_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE);
+
+        wifi_vap_info_t *lnf_vap_info = get_wifidb_vap_parameters(lnf_ap_index);
+        wifi_vap_info_t *hotspot_vap_info = get_wifidb_vap_parameters(hotspot_ap_index);
+
+        if (!lnf_vap_info || !hotspot_vap_info) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF or Hotspot VAP info for radio %u\n", __func__, __LINE__, rIdx);
+            continue;
+        }
+        if (isVapHotspotSecure5g(hotspot_ap_index)) {
+            hotspot5g_vap_info = hotspot_vap_info;
+        }
+        if (should_process_hotspot_config_change(lnf_vap_info, hotspot_vap_info)) {
+            update_vap_params_to_hal_and_db(lnf_vap_info, hotspot_vap_info->u.bss_info.enabled);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, hotspot_vap_info->u.bss_info.enabled?"Hotspot VAP Up":"Hotspot VAP Down");
+        }
+    }
+
+    UINT lnf_ap_index_0 = getApFromRadioIndex(0, VAP_PREFIX_LNF_PSK);
+    wifi_vap_info_t *lnf_vap_info_0 = get_wifidb_vap_parameters(lnf_ap_index_0);
+    if (!lnf_vap_info_0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF VAP info for index %u\n", __func__, __LINE__, lnf_ap_index_0);
+        return;
+    }
+    if (!hotspot5g_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot 5G Secure VAP info not found, cannot update LNF radio 0\n", __func__, __LINE__);
+        return;
+    }
+    if (should_process_hotspot_config_change(lnf_vap_info_0, hotspot5g_vap_info)) {
+        update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info_0->vap_name, hotspot5g_vap_info->u.bss_info.enabled?"Hotspot VAP Up":"Hotspot VAP Down");
+    }
+}
+
 webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)
 {
     int ret = RETURN_OK;
@@ -2207,6 +2341,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     bool status = ((ret == RETURN_OK) ? true : false);
                     hotspot_cfg_sem_signal(status);
                     wifi_util_info_print(WIFI_CTRL,":%s:%d xfinity blob cfg status:%d\n", __func__, __LINE__, ret);
+                    process_managed_wifi_enable();
                     webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
                         wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");
@@ -2393,6 +2528,18 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of cac webconfig subdoc\n", __func__, __LINE__);
             } else {
                 ret = webconfig_cac_apply(ctrl, &data->u.decoded);
+            }
+            break;
+
+        case webconfig_subdoc_type_memwraptool:
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: memwraptool webconfig subdoc\n", __func__,
+                __LINE__);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_error_print(WIFI_MGR,
+                    "%s:%d: Not expected publish of memwraptool webconfig subdoc\n", __func__,
+                    __LINE__);
+            } else {
+                ret = webconfig_memwraptool_apply(ctrl, &data->u.decoded);
             }
             break;
 

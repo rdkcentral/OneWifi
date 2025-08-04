@@ -63,7 +63,6 @@
     arg[5]
 #define AP_UNABLE_TO_HANDLE_ADDITIONAL_ASSOCIATIONS 17
 static unsigned int vap_up_arr[MAX_VAP]={0};
-static unsigned char vap_nas_status[MAX_VAP]={0};
 static unsigned int vap_iteration=0;
 static unsigned int curr_uptime_val = 0;
 static unsigned int prev_uptime_val = 0;
@@ -1006,16 +1005,14 @@ static void get_device_flag(char flag[], int size, char *list_name)
             }
         }
 
-        for(i = 0; i < MAX_VAP && i < size; i ++)
-        {
-            if(buf_int[i] < size && buf_int[i] >= 0)
-            {
-                flag[(buf_int[i] - 1)] = 1;
-            }
-            else
-            {
-                wifi_util_error_print(WIFI_APPS, "%s():%d for vap(%u) failed.\n",
-                        __func__, __LINE__, buf_int[i]);
+        for (i = 0; i < MAX_VAP && buf_int[i] > 0; i++) {
+            if (buf_int[i] - 1 < size) {
+                flag[buf_int[i] - 1] = 1;
+            } else {
+                wifi_util_error_print(WIFI_APPS,
+                    "%s:%d failed to set flag, vap index %d is more than size %d\n", __func__,
+                    __LINE__, buf_int[i], size);
+                return;
             }
         }
     } else {
@@ -1972,31 +1969,6 @@ static BOOL erouterGetIpAddress()
 }
 #endif
 
-static unsigned char updateNasIpStatus (int apIndex)
-{
-#if defined (DUAL_CORE_XB3)
-
-    static unsigned char erouterIpInitialized = 0;
-    if(isVapHotspotSecure(apIndex)) {
-        if (!erouterIpInitialized) {
-            if (FALSE == erouterGetIpAddress()) {
-                return 0;
-            } else {
-                erouterIpInitialized = 1;
-                return wifi_pushSecureHotSpotNASIP(apIndex, erouterIpAddrStr);
-            }
-        } else {
-                return wifi_pushSecureHotSpotNASIP(apIndex, erouterIpAddrStr);
-        }
-    } else {
-        return 1;
-    }
-#else
-    UNREFERENCED_PARAMETER(apIndex);
-    return 1;
-#endif
-}
-
 int capture_vapup_status()
 {
     int i = 0, vap_status = 0;
@@ -2017,14 +1989,16 @@ int capture_vapup_status()
                 __func__, __LINE__, vap_index);
             return RETURN_ERR;
         }
-        vap_status = vap_info->u.bss_info.enabled;
-        if (vap_status) {
-            vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
-            if (!vap_nas_status[vap_index]) {
-                vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
+        if (mgr->radio_config[vap_info->radio_index].oper.enable == TRUE &&
+            mgr->global_config.global_parameters.force_disable_radio_feature == FALSE) {
+            vap_status = vap_info->u.bss_info.enabled;
+            if (vap_status) {
+                vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
+                wifi_util_dbg_print(WIFI_APPS, "VAP %d is UP, count: %d\n", vap_index,
+                    vap_up_arr[vap_index]);
             }
         } else {
-            vap_nas_status[vap_index] = 0;
+            vap_up_arr[vap_index] = 0;
         }
     }
     vap_iteration++;

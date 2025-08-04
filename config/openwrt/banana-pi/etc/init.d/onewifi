@@ -1,15 +1,31 @@
 #!/bin/sh /etc/rc.common
 
-START=99  # Service startup order
-STOP=01  # Service stop order
 USE_PROCD=1
+#Commenting start to ensure that service is started manually
+#START=97  # Service startup order
+STOP=97  # Service stop order
 Name=OneWifi
 
+#Helper function for logging with timestamp
+log_message() {
+    # Get current uptime in seconds and hundredths (e.g., "12345.67")
+    UPTIME_SECONDS_DECIMAL=$(cut -d' ' -f1 /proc/uptime)
+    # Extract integer seconds and fractional part
+    UPTIME_SECONDS=${UPTIME_SECONDS_DECIMAL%.*}
+    UPTIME_FRACTION=${UPTIME_SECONDS_DECIMAL#*.}
+
+    # Convert fraction to milliseconds (take first 3 digits, pad with zeros if needed)
+    # This assumes UPTIME_FRACTION is at least 2 digits.
+    # For robust padding if it's less than 3 digits:
+    MILLISECONDS=$(printf "%-3.3s" "$UPTIME_FRACTION" | sed 's/ /0/g')
+    echo "$(date "+%Y-%m-%d %H:%M:%S").${MILLISECONDS} - $@" >> /tmp/onewifi_log.txt
+}
+
 start_service() {
-    echo "Starting onewifi service..." >> /tmp/onewifi_log.txt
+    log_message "Starting onewifi service..."
     # Run wifi_interface_up.sh only once after boot
     if [ ! -f /tmp/onewifi_bootup_completed ]; then
-        echo "Running wifi_interface_up.sh..." >> /tmp/onewifi_log.txt
+        log_message "Running wifi_interface_up.sh..."
         cd /banana-pi
         ./wifi_interface_up.sh >> /tmp/onewifi_log.txt
         cd -
@@ -26,14 +42,10 @@ start_service() {
     procd_set_param stderr 1 # same for stderr
     procd_set_param pidfile /tmp/onewifi.pid
     procd_close_instance
-
-    # Start the main process for onewifi
-    #/usr/bin/OneWifi -c &   # Replace this with your process path or command
-    #echo $! > /tmp/onewifi.pid   # Save the PID of the process
 }
 
 stop_service() {
-    echo "Stopping onewifi service..." >> /tmp/onewifi_log.txt
+    log_message "Stopping onewifi service..."
     # Stop the main process if it is running
     if [ -f /tmp/onewifi.pid ]; then
         kill -9 "$(cat /tmp/onewifi.pid)"  # Kill the process
@@ -48,19 +60,19 @@ stop_service() {
 }
 
 restart_service() {
-    echo "Restart triggered for onewifi service..."
+    log_message "Restart triggered for onewifi service..."
     stop
     start
 }
 
 reload_service() {
-    echo "Reload triggered for onewifi service..."
+    log_message "Reload triggered for onewifi service..."
     stop
     start
 }
 
 service_triggers() {
-    echo "Setting up respawn trigger for onewifi service..."
+    log_message "Setting up respawn trigger for onewifi service..."
     procd_add_reload_trigger "/nvram/EasymeshCfg.json" "/nvram/InterfaceMap.json"
 }
 

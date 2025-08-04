@@ -378,6 +378,18 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return bus_error_success;
 }
 
+static bus_error_t bus_add_table_row(bus_handle_t *handle, char const *name,
+    char const *alias, uint32_t *row_index)
+{
+    return bus_error_success;
+}
+
+static bus_error_t bus_event_unsubs_ex(bus_handle_t *handle,
+    bus_event_sub_t *l_sub_info_map, int num_sub)
+{
+    return bus_error_success;
+}
+
 static void bus_desc_init(wifi_bus_desc_t *desc)
 {
     desc->bus_init_fn                     = bus_init;
@@ -396,10 +408,12 @@ static void bus_desc_init(wifi_bus_desc_t *desc)
     desc->bus_event_subs_ex_fn            = (wifi_bus_event_subscribe_ex_t)bus_event_subscribe_ex;
     desc->bus_event_subs_ex_async_fn      = (wifi_bus_event_subscribe_ex_async_t)bus_event_subscribe_ex_async;
     desc->bus_event_unsubs_fn     	  = bus_event_unsubscribe;
+    desc->bus_event_unsubs_ex_fn          = bus_event_unsubs_ex;
     desc->bus_method_invoke_fn            = (wifi_bus_method_invoke_t)bus_method_invoke;
     desc->bus_get_trace_context_fn        = (wifi_bus_get_trace_context_t)bus_get_trace_context;
     desc->bus_reg_table_row_fn            = bus_reg_table_row;
     desc->bus_unreg_table_row_fn          = bus_unreg_table_row;
+    desc->bus_add_table_row_fn            = bus_add_table_row;
     desc->bus_remove_table_row_fn         = bus_remove_table_row;
     desc->bus_error_to_string_fn          = bus_error_to_string;
     desc->bus_convert_handle_to_actual_ptr_fn = bus_convert_handle_to_ptr;

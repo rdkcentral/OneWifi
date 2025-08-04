@@ -831,7 +831,8 @@ int start_wifi_services(void)
         start_radios(rdk_dev_mode_type_gw);
         start_gateway_vaps();
         captive_portal_check();
-#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
+#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && \
+        (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_))
         /* Function to check for default SSID and Passphrase for Private VAPS
         if they are default and last-reboot reason is SW get the previous config from Webconfig */
         validate_and_sync_private_vap_credentials();
@@ -1189,9 +1190,16 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
             default:
                 break;
         }
+    } else if (type == WIFI_MGMT_FRAME_TYPE_BEACON) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_csa_beacon_frame;
     }
-
-    push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    if (evt_subtype != wifi_event_hal_unknown_frame) {
+        push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Unknown frame type received! skipped push_event_to_ctrl_queue, ap_index:%d, type:%d\n", __func__, __LINE__, ap_index, type);
+    }
     return RETURN_OK;
 }
 #endif
@@ -2646,6 +2654,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled =
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.memwraptool_app_rfc =
+        g_wifi_mgr->rfc_dml_parameters.memwraptool_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_app_rfc =
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_sm_rfc =
@@ -2654,6 +2664,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
+    g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =
+        g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
@@ -2886,6 +2898,25 @@ UINT getPrivateApFromRadioIndex(UINT radioIndex)
         }
     }
     wifi_util_dbg_print(WIFI_CTRL,"getPrivateApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    return 0;
+}
+
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+{
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (vap_prefix == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
+        return 0;
+    }
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
+        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
+               getRadioIndexFromAp(apIndex) == radioIndex ) {
+            return apIndex;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"getApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
     return 0;
 }
 

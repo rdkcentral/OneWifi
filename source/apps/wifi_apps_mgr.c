@@ -271,6 +271,9 @@ int update_rfc_params(wifi_app_descriptor_t *descriptor)
     if (descriptor->inst == wifi_app_inst_levl) {
         descriptor->rfc = rfc_param->levl_enabled_rfc;
         descriptor->enable = descriptor->rfc;
+    } else if (descriptor->inst == wifi_app_inst_csi_analytics) {
+        descriptor->rfc = rfc_param->csi_analytics_enabled_rfc;
+        descriptor->enable = descriptor->rfc;
     }
     return 0;
 }

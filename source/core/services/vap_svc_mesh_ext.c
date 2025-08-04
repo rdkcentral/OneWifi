@@ -511,6 +511,7 @@ void ext_start_scan(vap_svc_t *svc)
     vap_svc_ext_t   *ext;
     wifi_ctrl_t *ctrl;
     unsigned int radio_index;
+    ssid_t ssid;
     wifi_channels_list_t channels;
     wifi_radio_operationParam_t *radio_oper_param;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -547,9 +548,6 @@ void ext_start_scan(vap_svc_t *svc)
             continue;
         }
 
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
-            radio_index);
-
         radio_oper_param = get_wifidb_radio_map(radio_index);
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
@@ -560,6 +558,17 @@ void ext_start_scan(vap_svc_t *svc)
                sizeof(*channels_list) * num_channels);
         channels.num_channels = num_channels;
 
+        if (get_sta_ssid_from_radio_config_by_radio_index(radio_index, ssid)) {
+            // Didn't find a STA for this radio index
+            continue;
+        }
+        if (strlen(ssid) == 0) {
+            // SSID is wildcard SSID
+            continue;
+        }
+
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
+            radio_index);
         wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time,
             channels.num_channels, channels.channels_list);
     }
@@ -1308,6 +1317,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     mac_addr_str_t bssid_str;
     vap_svc_ext_t *ext;
     wifi_ctrl_t *ctrl;
+    ssid_t sta_ssid;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -1325,6 +1335,22 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     if (ext->conn_state >= connection_state_disconnected_scan_list_all) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Received scan resuts when already have result or connection in progress, should not happen\n",
                         __FUNCTION__,__LINE__);
+        return 0;
+    }
+
+    if (get_sta_ssid_from_radio_config_by_radio_index(results->radio_index, sta_ssid)) {
+        // Didn't find a STA for this radio index
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d Received scan resuts but couldn't find STA for radio index: %d\n", __FUNCTION__,
+            __LINE__, results->radio_index);
+        return 0;
+    }
+    if (strlen(sta_ssid) == 0) {
+        // SSID is wildcard SSID.
+        //  We cannot possibly know the password for whichever network is closest so ignore
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d Recieved scan results for station with wildcard SSID (%d). Ignoring...\n",
+            __FUNCTION__, __LINE__, results->radio_index);
         return 0;
     }
 
@@ -1686,7 +1712,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         }
     }
 
-    if (send_event == true) {
+    if (!is_devtype_pod() && send_event == true) {
         sprintf(name, "Device.WiFi.STA.%d.Connection.Status", index + 1);
 
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus name: %s connection status: %s\n", __func__,

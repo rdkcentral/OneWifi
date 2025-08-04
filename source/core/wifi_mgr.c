@@ -91,6 +91,11 @@ bool is_db_backup_required()
     return (g_wifi_mgr.ctrl.dev_type != dev_subtype_pod);
 }
 
+bool is_devtype_pod()
+{
+    return (g_wifi_mgr.ctrl.dev_type == dev_subtype_pod);
+}
+
 int init_wifi_hal()
 {
     int ret = RETURN_OK;
@@ -226,7 +231,10 @@ bool is_device_type_vbvxer5(void)
 {
     return is_supported_gateway_device("VTER11QEL");
 }
-
+bool is_device_type_xle(void)
+{
+    return is_supported_gateway_device("WNXL11BWL");
+}
 
 int init_wifimgr()
 {
@@ -237,6 +245,9 @@ int init_wifimgr()
     struct stat sb;
     char db_file[128];
     int hal_initialized = RETURN_ERR;
+    
+    // channel change flag initialized as false
+    memset(g_wifi_mgr.channel_change_in_progress, 0, sizeof(g_wifi_mgr.channel_change_in_progress));
 
     if(wifi_hal_pre_init() != RETURN_OK) {
         wifi_util_error_print(WIFI_MGR,"%s wifi hal pre_init failed\n", __func__);
