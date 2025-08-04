@@ -332,6 +332,7 @@ INCLUDEDIRS = \
     -I$(WIFI_HOSTAP_SRC)/ap \
     -I$(WIFI_HOSTAP_SRC)/common \
     -I$(WIFI_NETLINK)/include \
+    -I$(WIFI_TROWER_BASE) \
 
 LIBDIRS = \
     -L$(INSTALLDIR)/lib \
