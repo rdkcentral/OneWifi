@@ -1214,9 +1214,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     if (ret_value == false) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed:%s\n", __func__,
             __LINE__,subdoc_type == webconfig_subdoc_type_xfinity ? "xfinity" : " ");
-    } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d WebConfig blob is applied success\n", __func__,
-            __LINE__);
+        return RETURN_ERR;
     }
     webconfig_data_free(data);
     return RETURN_OK;
@@ -1532,7 +1530,6 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
 
 static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t subdoc_type)
 {
-    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s: %d\n", __func__, __LINE__);
     pErr execRetVal = NULL;
     webconfig_subdoc_data_t *data = NULL;
 
@@ -1567,6 +1564,9 @@ static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t sub
 done:
     if (data) {
         free(data);
+    }
+    if (blob) {
+        free(blob);
     }
     return execRetVal;
 }
