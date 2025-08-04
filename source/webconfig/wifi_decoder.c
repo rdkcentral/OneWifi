@@ -3835,10 +3835,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
-        //print the snr_threshold value
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"SJY %s:%d SNR Threshold value before copying is %s\n", __FUNCTION__,__LINE__, param->valuestring);
         strcpy((char *)preassoc_info->snr_threshold, param->valuestring);
-        wifi_util_info_print(WIFI_WEBCONFIG,"SJY %s:%d SNR Threshold value after copying is %s\n", __FUNCTION__,__LINE__, preassoc_info->snr_threshold);
     }
 
      // CuThreshold
