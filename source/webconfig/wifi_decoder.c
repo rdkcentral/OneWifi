@@ -928,6 +928,7 @@ webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_int
         return webconfig_error_decode;
     }
 
+
     if(cJSON_HasObjectItem(interworking, "ANQP") == true) {
         decode_param_object(interworking, "ANQP", anqp);
 

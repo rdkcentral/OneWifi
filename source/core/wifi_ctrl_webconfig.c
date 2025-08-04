@@ -2339,7 +2339,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     process_managed_wifi_enable();
                     webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
-                        wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n", __func__, __LINE__);
+                        wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");
                         pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
                         if (pub_svc->event_fn != NULL) {
                              pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
