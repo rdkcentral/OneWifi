@@ -4814,7 +4814,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG) {
             config->vap_array[i].u.bss_info.am_config.npc.speed_tier = isVapLnfPsk(config->vap_array[i].vap_index) ? DEFAULT_MANAGED_WIFI_SPEED_TIER : 0;
-            if (isVapLnfPsk(config->vap_array[i].vap_index) && access("/nvram/managed_wifi_phase_two", F_OK) == 0) {
+            if (isVapLnfPsk(config->vap_array[i].vap_index) && access(MANAGED_WIFI_PHASE_TWO_FLAG, F_OK) == 0) {
                 config->vap_array[i].u.bss_info.mdu_enabled = true;
                 config->vap_array[i].u.bss_info.enabled = true;
                 wifi_util_info_print(WIFI_DB,"%s:%d SREESH Update mdu_enabled to true and making VAP enabled as true\n",__func__,__LINE__);
@@ -7707,6 +7707,7 @@ void init_wifidb_data()
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         remove_onewifi_factory_reset_reboot_flag();
         create_onewifi_fr_wifidb_reset_done_flag();
+        remove_managed_wifi_phase_two_flag();
         wifi_util_info_print(WIFI_DB,"%s:%d FactoryReset done. wifidb updated with default values.\n",__func__, __LINE__);
     }
     else {
