@@ -1081,23 +1081,18 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
 {
     unsigned int i;
     wifi_vap_info_map_t tgt_vap_map;
-    vap_svc_ext_t *ext = &svc->u.ext;
 
     for (i = 0; i < map->num_vaps; i++) {
         memset((unsigned char *)&tgt_vap_map, 0, sizeof(tgt_vap_map));
         memcpy((unsigned char *)&tgt_vap_map.vap_array[0], (unsigned char *)&map->vap_array[i],
                     sizeof(wifi_vap_info_t));
         tgt_vap_map.num_vaps = 1;
-        if (is_devtype_pod()) {
-            tgt_vap_map.vap_array[0].u.sta_info.enabled &= rdk_vap_info[i].exists;
-        }
-        else {
-            // avoid disabling mesh sta in extender mode
-            if (tgt_vap_map.vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
-                   __LINE__, tgt_vap_map.vap_array[0].vap_index);
-                tgt_vap_map.vap_array[0].u.sta_info.enabled = true;
-            }
+
+        // avoid disabling mesh sta in extender mode
+        if (tgt_vap_map.vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
+                __LINE__, tgt_vap_map.vap_array[0].vap_index);
+            tgt_vap_map.vap_array[0].u.sta_info.enabled = true;
         }
 
         if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
@@ -1113,9 +1108,6 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.sta_info.security);
-        if (!is_sta_enabled()) {
-            ext_set_conn_state(ext, connection_state_disconnected_steady, __func__, __LINE__);
-        }
     }
 
     return 0;
@@ -1692,7 +1684,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         }
     }
 
-    if (send_event == true) {
+    if (!is_devtype_pod() && send_event == true) {
         sprintf(name, "Device.WiFi.STA.%d.Connection.Status", index + 1);
 
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus name: %s connection status: %s\n", __func__,

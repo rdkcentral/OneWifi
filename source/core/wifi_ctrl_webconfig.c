@@ -796,10 +796,8 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         // Ignore exists flag change because STA interfaces always enabled in HAL. This allows to
         // avoid redundant reconfiguration with STA disconnection.
         // For pods, STA is just like any other AP interface, deletion is allowed.
-        if (ctrl->dev_type != dev_subtype_pod) {
-            if (isVapSTAMesh(tgt_vap_index)) {
-                mgr_rdk_vap_info->exists = rdk_vap_info->exists;
-            }
+        if (ctrl->network_mode == rdk_dev_mode_type_ext && isVapSTAMesh(tgt_vap_index)) {
+            mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
