@@ -51,6 +51,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_dml.h"
 #include "wifi_monitor.h"
 
