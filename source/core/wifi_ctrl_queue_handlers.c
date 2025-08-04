@@ -3720,8 +3720,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     unsigned int num_ssid = 0;
     cJSON *json = NULL;
-    unsigned int radio_index;
-    unsigned int vap_array_index;
 
     switch (subtype) {
     case wifi_event_webconfig_set_data:

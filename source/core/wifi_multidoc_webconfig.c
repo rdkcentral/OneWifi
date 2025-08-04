@@ -1195,8 +1195,8 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
     bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
     if (ret_value == false) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed:%s\n", __func__,
-            __LINE__,subdoc_type == webconfig_subdoc_type_xfinity ? "xfinity" : " ");
+        wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed\n", __func__,
+            __LINE__);
         return RETURN_ERR;
     }
     webconfig_data_free(data);
@@ -1499,7 +1499,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for key:%s\n", __func__, __LINE__, "WifiVapConfig");
         msgpack_zone_destroy(&msg_z);
         execRetVal->ErrorCode = VALIDATION_FALIED;
-        strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg)-1);
+        strncpy(execRetVal->ErrorMsg, "Failed to detach WifiVapConfig", sizeof(execRetVal->ErrorMsg)-1);
         free(blob_buf);
         free(msg);
         return execRetVal;
