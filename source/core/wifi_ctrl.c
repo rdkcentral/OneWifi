@@ -2037,7 +2037,8 @@ bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec, webconfig_subdoc_t
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
 
     if (subdoc_type != webconfig_subdoc_type_lnf) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d - subdoc_type:%d not supported\n", __func__, __LINE__, subdoc_type);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d - subdoc_type:%d not supported\n", __func__,
+            __LINE__, subdoc_type);
         return true;
     }
 

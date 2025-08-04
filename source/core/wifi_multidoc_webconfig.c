@@ -47,9 +47,10 @@ size_t wifi_vap_cfg_timeout_handler()
     return MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT;
 }
 
-size_t webconf_managed_wifi_timeout_handler()
+static size_t webconf_managed_wifi_timeout_handler()
 {
-    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
+    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, 
+            MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
     return MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT;
 }
 
@@ -688,19 +689,18 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     char *str;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     bool ret = true;
+
     if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode for subdoc type %d\n", __FUNCTION__, __LINE__, subdoc_type);
         return RETURN_ERR;
     }
 
     str = data->u.encoded.raw;
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:SREESH Encoded blob:\n%s\n", __func__, __LINE__, str);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:Encoded blob:\n%s\n", __func__, __LINE__, str);
     push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
-    wifi_util_info_print(WIFI_CTRL, "%s:%d:SREESH Doing a thread wait for the managed wifi blob for %d seconds\n", __func__, __LINE__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
     ret = managed_wifi_cfg_sem_wait_duration(MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT, subdoc_type);
-    if (ret == false)
-    {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d WebConfig blob is applied failure\n", __func__, __LINE__);
+    if (ret == false) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d WebConfig blob apply failure\n", __func__, __LINE__);
         webconfig_data_free(data);
         return RETURN_TIMEDOUT;
     }
