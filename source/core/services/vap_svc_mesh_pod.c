@@ -10,7 +10,7 @@
 #include "wifi_util.h"
 #include "wifi_monitor.h"
 #include "wifi_hal_generic.h"
-#include <rbus.h>
+#include <rbus/rbus.h>
 #include <errno.h>
 
 #define WIFI_HOME_AP_IF_PREFIX     "home-ap-"
