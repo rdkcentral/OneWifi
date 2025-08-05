@@ -2844,10 +2844,11 @@ int increment_status_count(interop_data_t *telemetry, wifi_status_code_t code, i
 int increment_eap_status_count(interop_data_t *telemetry, wifi_eap_status_code_t code) {
      switch (code) {
          case WIFI_ACCESS_ACCEPT_STATUS: telemetry->access_accept_counts++; break;
-         case WIFI_EAP_SUCCESS_STATUS: telemetry->eap_success_counts++; break;
+         case WIFI_EAP_SUCCESS_STATUS: telemetry->eap_success_counts = telemetry->eap_success_counts +1 ; break;
          case WIFI_EAP_FAILURE_STATUS: telemetry->eap_failure_reason_counts++; break;
          default: wifi_util_dbg_print(WIFI_MON, "%s:%d unknown status code for station \n",__FUNCTION__,__LINE__);
                  return -1;
+	 wifi_util_info_print(WIFI_MON, "%s:%d counts-> access_accept:%d,eap_success:%d,eap_failure:%d for station \n",__FUNCTION__,__LINE__,telemetry->access_accept_counts,telemetry->eap_success_counts,telemetry->eap_failure_reason_counts);
     }
     return 0;
 }
@@ -2875,6 +2876,7 @@ int eap_status_code(int ap_index, char *src_mac, int reason)
         wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular reason is not there\n", __func__, __LINE__);
         return 0;
     }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d  station is found for vap_index:%d src_mac :%s and incremented with reason:%d \r\n", __func__, __LINE__, ap_index, src_mac, reason);
     return 0;
 }
 
