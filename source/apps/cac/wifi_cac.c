@@ -284,7 +284,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
     int chan_util = 0;
     cac_status_t status = status_ok;
     assoc_dev_data_t *assoc_dev_data = NULL;
-    int itr, itrj;
+    unsigned int itr, itrj;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     bool found = false;
     char *str;
