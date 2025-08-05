@@ -51,6 +51,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_dml.h"
 #include "wifi_monitor.h"
 
@@ -4811,12 +4812,26 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 &rdk_config[i]);
         }
 
-        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG) {
-            config->vap_array[i].u.bss_info.am_config.npc.speed_tier = isVapLnfPsk(config->vap_array[i].vap_index) ? DEFAULT_MANAGED_WIFI_SPEED_TIER : 0;
-            wifi_util_dbg_print(WIFI_DB, "%s:%d Update speed_tier:%d for vap_index:%d \n", __func__, __LINE__,
-                config->vap_array[i].u.bss_info.am_config.npc.speed_tier, config->vap_array[i].vap_index);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                &rdk_config[i]);
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG &&
+            isVapLnfPsk(config->vap_array[i].vap_index) &&
+            access(MANAGED_WIFI_PHASE_TWO_FLAG, F_OK) == 0) {
+            
+            wifi_vap_info_t *vap_info = &config->vap_array[i];
+            vap_info->u.bss_info.mdu_enabled = true;
+            vap_info->u.bss_info.enabled = true;
+            vap_info->u.bss_info.am_config.npc.speed_tier = DEFAULT_MANAGED_WIFI_SPEED_TIER;
+            
+            strncpy(vap_info->repurposed_bridge_name, "brlan15", sizeof(vap_info->repurposed_bridge_name));
+            snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "brlan%d", vap_info->radio_index + 16);
+
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d Update speed_tier:%d mdu_enabled:%d vap enabled:%d bridge_name = %s "
+                "repurposed_bridge_name = %s for vap_index:%d \n",
+                __func__, __LINE__, vap_info->u.bss_info.am_config.npc.speed_tier,
+                vap_info->u.bss_info.mdu_enabled, vap_info->u.bss_info.enabled,
+                vap_info->bridge_name, vap_info->repurposed_bridge_name, vap_info->vap_index);
+
+            wifidb_update_wifi_vap_info(vap_info->vap_name, vap_info, &rdk_config[i]);
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG) {
@@ -4916,6 +4931,17 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
             wifi_util_info_print(WIFI_DB, "%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__,
                 __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
                 (char *)vap_config->u.bss_info.security.u.radius.s_ip);
+            continue;
+        }
+        if (isVapLnfPsk(vap_config->vap_index) && (!vap_config->u.bss_info.mdu_enabled && !strstr(vap_config->repurposed_vap_name,"managed_guest_")) && vap_config->u.bss_info.enabled) {
+            vap_config->u.bss_info.enabled = false;
+	    rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+	    if (rdk_vap_config == NULL) {
+                wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n",
+                    __func__, __LINE__, vap_config->radio_index);
+	    }
+            update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+            wifi_util_info_print(WIFI_DB,"%s:%d: vap_config->u.bss_info.enabled = false for the vap_name = %s\n",__func__,__LINE__,vap_config->vap_name);
             continue;
         }
     }
@@ -7147,11 +7173,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.showSsid = false;
         }
 #if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
-        if (isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true; 
         }
 #else
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
 #endif
@@ -7161,6 +7187,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.enabled = false;
         }
 #endif
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.enabled = false;
+        }
 #if defined(_SR213_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
         cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
 #else
@@ -7682,6 +7711,7 @@ void init_wifidb_data()
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         remove_onewifi_factory_reset_reboot_flag();
         create_onewifi_fr_wifidb_reset_done_flag();
+        remove_managed_wifi_phase_two_flag();
         wifi_util_info_print(WIFI_DB,"%s:%d FactoryReset done. wifidb updated with default values.\n",__func__, __LINE__);
     }
     else {
