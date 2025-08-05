@@ -12,6 +12,7 @@ SRCREV_2_10="9d07b9447e76059a2ddef2a879c57d0934634188"
 cd ..
 git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
 git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
+git clone https://github.com/xmidt-org/trower-base64.git trower-base64
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
@@ -59,5 +60,5 @@ cp -r build/openwrt/avro ../../libs/.
 
 #Applying kernel patch from openwrt root directory
 cd $OPENWRT_ROOT
-patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
+#patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
 cd $ONEWIFI_DIR
