@@ -10,7 +10,7 @@ define Package/easymesh
   SECTION:=base
   CATEGORY:=Base system
   TITLE:=EasyMesh
-  DEPENDS:=+avro-c +libopenssl +cJSON +libev +libnl +libnl-genl +libnl-route +libuuid +libstdcpp +libmariadb +libpcap +libcurl +trower-base64
+  DEPENDS:=+avro-c +libopenssl +cJSON +libev +libnl +libnl-genl +libnl-route +libuuid +libstdcpp +libmariadb +libpcap +libcurl
 endef
 
 define Package/easymesh/description
@@ -36,6 +36,7 @@ define Build/Prepare
 	$(CP) -r ./rdk-wifi-libhostap $(PKG_BUILD_DIR)/
 	$(CP) -r ./OneWifi/install $(PKG_BUILD_DIR)/
 	$(CP) -r ./OneWifi/install/bin $(PKG_BUILD_DIR)/
+	$(CP) -r ./trower-base64 $(PKG_BUILD_DIR)/
 	@if [ "$(OTS_EXTERNAL_AGENT_ENABLE)" = "1" ]; then \
 		if [ ! -d OneWifiTestSuite ]; then \
 			git clone ssh://gerrit.teamccp.com:29418/rdk/components/cpc/OneWifiTestSuite; \
@@ -117,6 +118,7 @@ define Package/easymesh/install
 		$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/config/openwrt/banana-pi/etc/init.d/* $(1)/etc/init.d/; \
 		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/config/test_cert.crt $(1)/nvram/; \
 		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/config/test_cert.key $(1)/nvram/; \
+		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/Reset.json $(1)/nvram/; \
 	fi
 endef
 
