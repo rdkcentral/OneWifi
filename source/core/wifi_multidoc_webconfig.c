@@ -1191,10 +1191,8 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     if (ret_value == false) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed\n", __func__,
             __LINE__);
-        webconfig_data_free(data);
         return RETURN_ERR;
     }
-    webconfig_data_free(data);
     return RETURN_OK;
 }
 
@@ -1545,7 +1543,7 @@ static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t sub
 
 done:
     if (data) {
-        free(data);
+        webconfig_data_free(data);
     }
     if (blob) {
         cJSON_Delete(blob);
