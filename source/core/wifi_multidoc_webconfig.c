@@ -1506,7 +1506,6 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     msgpack_zone_destroy(&msg_z);
     cJSON_Delete(root);
     free(msg);
-    cJSON_Delete(root);
     return execRetVal;
 }
 
