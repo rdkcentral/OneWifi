@@ -269,11 +269,17 @@ do
             cur_timestamp="`date +"%s"` $1"
             #echo_t "cur_timestamp = $cur_timestamp" >> $LOG_FILE
             if [ "$MODEL_NUM" == "SR213" ]; then
+                eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+		eco_mode_6g="false"
+            elif [ "$MODEL_NUM" == "SCER11BEL" ]; then
                 eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
-                eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                eco_mode_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
             else
                 eco_mode_2g="false"
                 eco_mode_5g="false"
+		eco_mode_6g="false"
             fi
             if [ $eco_mode_2g == "false" ]; then
                 radio_status_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
@@ -340,34 +346,37 @@ do
                 fi
             fi
 
-            if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
-                radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
-                if [ $radio_status_6g == "true" ]; then
-                    status_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
-                    if [ $status_6g == "true" ]; then
-                        bss_status="`wl -i wl2.1 bss`"
-                        if [ "$bss_status" == "down" ]; then
-                            if [ $vap_6g_down == 1 ]; then
-                                time_diff=`expr $cur_timestamp - $pre_timestamp`
-                                echo_t "time_diff = $time_diff" >> $LOG_FILE
-                                if [ $time_diff -ge 43200 ]; then
-                                    onewifi_restart_wifi
-                                    pre_timestamp="`date +"%s"` $1"
-                                    vap_6g_down=0
-                                    continue
+            if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ]; then
+                if [ $eco_mode_6g == "false" ]; then
+                    radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                    if [ $radio_status_6g == "true" ]; then
+                        status_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                        if [ $status_6g == "true" ]; then
+                            bss_status="`wl -i wl2.1 bss`"
+                            if [ "$bss_status" == "down" ]; then
+                                if [ $vap_6g_down == 1 ]; then
+                                    time_diff=`expr $cur_timestamp - $pre_timestamp`
+                                    echo_t "time_diff = $time_diff" >> $LOG_FILE
+                                    if [ $time_diff -ge 43200 ]; then
+                                        onewifi_restart_wifi
+                                        pre_timestamp="`date +"%s"` $1"
+                                        vap_6g_down=0
+                                        continue
+                                    else
+                                        vap_restart "private_6g" $private_6g_instance
+                                    fi
                                 else
                                     vap_restart "private_6g" $private_6g_instance
+                                    vap_6g_down=1
                                 fi
                             else
-                                vap_restart "private_6g" $private_6g_instance
-                                vap_6g_down=1
+                                vap_6g_down=0
                             fi
-                        else
-                            vap_6g_down=0
                         fi
                     fi
                 fi
             fi
+
 
         #we need to use this changes for only TechXB7 device.
         if [ "$MODEL_NUM" == "CGM4331COM" -o "$MODEL_NUM" == "CGA4332COM" ]; then
