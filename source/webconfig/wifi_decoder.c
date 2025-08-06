@@ -812,13 +812,14 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
     decode_param_object(interworking, "Venue", venue);
 
     decode_param_allow_empty_bool(venue, "VenueOptionPresent", param, venue_option_present);
-    if(!venue_option_present) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: VenueOptionPresent not present, setting to false\n", __func__, __LINE__);
+    if (!venue_option_present) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d: VenueOptionPresent not present, setting to false\n", __func__, __LINE__);
         interworking_info->interworking.venueOptionPresent = false;
-    }
-    else {
+    } else {
         decode_param_bool(venue, "VenueOptionPresent", param);
-        interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true : false;
+        interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true :
+                                                                                          false;
     }
 
     decode_param_integer(venue, "VenueType", param);
@@ -3817,7 +3818,6 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
-
         strcpy((char *)preassoc_info->rssi_up_threshold, param->valuestring);
     }
 

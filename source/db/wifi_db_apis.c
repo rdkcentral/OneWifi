@@ -7485,7 +7485,9 @@ void wifidb_init_default_value()
         wifidb_init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
         wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
         if (isVapHotspot(vap_index)) {
-            wifi_util_dbg_print(WIFI_DB, "%s:%d: Updating preassoc and postassoc only for hotspot vaps\n", __func__, __LINE__);
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d: Updating preassoc and postassoc only for hotspot vaps\n", __func__,
+                __LINE__);
             wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
             wifidb_init_postassoc_conn_ctrl_config_default(vap_index,
                 &vapInfo->u.bss_info.postassoc);
