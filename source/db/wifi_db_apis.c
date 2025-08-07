@@ -6475,7 +6475,7 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
     {
         reset_passpoint_json(vap_name);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: update table Wifi_Passpoint_Config table successful\n",__func__, __LINE__);
-    }
+     }
     return 0;
 }
 

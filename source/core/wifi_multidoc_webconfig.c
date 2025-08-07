@@ -271,10 +271,11 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
 
     wifi_util_info_print(WIFI_CTRL, "Security blob:\n");
     param = cJSON_GetObjectItem(security, "Passphrase");
-    if ((!param) &&
-        (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT_SECURE,
-            strlen(VAP_PREFIX_HOTSPOT_SECURE)))) {
-        wifi_util_error_print(WIFI_CTRL, "%s: missing \"Passphrase\"\n", __func__);
+    if (!param) {
+        if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT_SECURE,
+                strlen(VAP_PREFIX_HOTSPOT_SECURE))) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"Passphrase\"\n", __func__);
+        }
     } else {
         value = cJSON_GetStringValue(param);
         pass_len = strlen(value);
@@ -430,7 +431,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
         } else {
             param = cJSON_GetObjectItem(radius_param, "RadiusServerIPAddr");
             if (param) {
-                value = cJSON_GetStringValue(param);
                 if (cJSON_IsString(param) != true) {
                     wifi_util_error_print(WIFI_CTRL, "%s: RadiusServerIPAddr is not a string\n",
                         __func__);
@@ -441,7 +441,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
                     return RETURN_ERR;
                 } else if (strlen(param->valuestring) == 0) {
                     wifi_util_info_print(WIFI_CTRL, "%s: RadiusServerIPAddr is NULL\n ");
-                    strcpy(param->valuestring, "0.0.0.0");
                 } else {
                     if (decode_ipv4_address(param->valuestring) == webconfig_error_none ||
                         decode_ipv6_address(param->valuestring) == webconfig_error_none) {
@@ -454,7 +453,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
                             __LINE__);
                         // strncpy(execRetVal->ErrorMsg, "Invalid Radius server
                         // IP",sizeof(execRetVal->ErrorMsg)-1);
-                        return webconfig_error_decode;
+                        return RETURN_ERR;
                     }
 #else
                         /* check the INET family and update the radius ip address */
@@ -465,7 +464,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
                                        &(radius_info->ip.u.IPv6addr)) > 0) {
                             radius_info->ip.family = wifi_ip_family_ipv6;
                         } else {
-                            return webconfig_error_decode;
+                            return RETURN_ERR;
                         }
 #endif
                 }
@@ -526,7 +525,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
 
             param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerIPAddr");
             if (param) {
-                value = cJSON_GetStringValue(param);
                 if ((param == NULL) || (cJSON_IsString(param) != true)) {
                     wifi_util_error_print(WIFI_CTRL,
                         "%s: SecondaryRadiusServerIPAddr is not a string\n", __func__);
@@ -537,7 +535,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
                     return RETURN_ERR;
                 } else if (strlen(param->valuestring) == 0) {
                     wifi_util_info_print(WIFI_CTRL, "%s: SecondaryRadiusServerIPAddr is NULL\n", __func__);
-                    strcpy(param->valuestring, "0.0.0.0");
                 } else {
                     if (decode_ipv4_address(param->valuestring) == webconfig_error_none ||
                         decode_ipv6_address(param->valuestring) == webconfig_error_none) {
@@ -550,7 +547,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
                             __LINE__);
                         // strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server
                         // IP",sizeof(execRetVal->ErrorMsg)-1);
-                        return webconfig_error_decode;
+                        return RETURN_ERR;
                     }
 #else
                             /* check the INET family and update the radius ip address */
@@ -561,7 +558,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
                                            &(radius_info->s_ip.u.IPv6addr)) > 0) {
                                 radius_info->s_ip.family = wifi_ip_family_ipv6;
                             } else {
-                                return webconfig_error_decode;
+                                return RETURN_ERR;
                             }
 #endif
                 }
@@ -964,10 +961,6 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
                 return RETURN_ERR;
             }
         }
-    }
-done:
-    if (blob) {
-        cJSON_Delete(blob);
     }
     return RETURN_OK;
 }
@@ -1408,101 +1401,100 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     cJSON *vap_blob = NULL;
 
     execRetVal = create_execRetVal();
-    if (execRetVal == NULL ) {
+    if (execRetVal == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
         return NULL;
     }
-    memset(execRetVal,0,(sizeof(Err)));
-    if(data == NULL) {
+    memset(execRetVal, 0, (sizeof(Err)));
+    if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
         if (execRetVal) {
             execRetVal->ErrorCode = VALIDATION_FALIED;
-            strncpy(execRetVal->ErrorMsg, "Empty subdoc", sizeof(execRetVal->ErrorMsg)-1);
+            strncpy(execRetVal->ErrorMsg, "Empty subdoc", sizeof(execRetVal->ErrorMsg) - 1);
         }
         return execRetVal;
     }
     msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
-    msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
+    msg = (unsigned char *)calloc(sizeof(unsigned char), msg_size);
     if (!msg) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
-        strncpy(execRetVal->ErrorMsg, "Failed to allocate memory", sizeof(execRetVal->ErrorMsg)-1);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Failed to allocate memory.\n", __FUNCTION__);
+        strncpy(execRetVal->ErrorMsg, "Failed to allocate memory",
+            sizeof(execRetVal->ErrorMsg) - 1);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         return execRetVal;
     }
 
     msg_size = 0;
-    msg_size = b64_decode((unsigned char *)data, strlen((char *)data), msg );
+    msg_size = b64_decode((unsigned char *)data, strlen((char *)data), msg);
     if (msg_size == 0) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed in Decoding multicomp blob\n",__FUNCTION__);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Failed in Decoding multicomp blob\n",
+            __FUNCTION__);
         free(msg);
-        strncpy(execRetVal->ErrorMsg, "Failed  in Decoding multicomp blob", sizeof(execRetVal->ErrorMsg)-1);
+        strncpy(execRetVal->ErrorMsg, "Failed  in Decoding multicomp blob",
+            sizeof(execRetVal->ErrorMsg) - 1);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         return execRetVal;
     }
 
-    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__,
+        get_current_ms_time());
 
     msgpack_zone msg_z;
     msgpack_object msg_obj;
 
     msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
-    if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
+    if (msgpack_unpack((const char *)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) !=
+        MSGPACK_UNPACK_SUCCESS) {
         msgpack_zone_destroy(&msg_z);
         execRetVal->ErrorCode = VALIDATION_FALIED;
-        strncpy(execRetVal->ErrorMsg, "Msg unpack failed", sizeof(execRetVal->ErrorMsg)-1);
+        strncpy(execRetVal->ErrorMsg, "Msg unpack failed", sizeof(execRetVal->ErrorMsg) - 1);
         free(msg);
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
         return execRetVal;
     }
 
-    char *blob_buf = (char*)malloc(MAX_JSON_BUFSIZE);
-    if(blob_buf == NULL) {
+    char *blob_buf = (char *)malloc(MAX_JSON_BUFSIZE);
+    if (blob_buf == NULL) {
         msgpack_zone_destroy(&msg_z);
         execRetVal->ErrorCode = VALIDATION_FALIED;
-        strncpy(execRetVal->ErrorMsg, "blob mem alloc failure", sizeof(execRetVal->ErrorMsg)-1);
+        strncpy(execRetVal->ErrorMsg, "blob mem alloc failure", sizeof(execRetVal->ErrorMsg) - 1);
         free(msg);
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
         return execRetVal;
     }
     memset(blob_buf, 0, MAX_JSON_BUFSIZE);
     int json_len = msgpack_object_print_jsonstr(blob_buf, MAX_JSON_BUFSIZE, msg_obj);
-    if(json_len <= 0) {
-        msgpack_zone_destroy(&msg_z);
+    if (json_len <= 0) {
         execRetVal->ErrorCode = VALIDATION_FALIED;
-        strncpy(execRetVal->ErrorMsg, "json conversion failure", sizeof(execRetVal->ErrorMsg)-1);
-        free(blob_buf);
+        strncpy(execRetVal->ErrorMsg, "json conversion failure", sizeof(execRetVal->ErrorMsg) - 1);
         wifi_util_error_print(WIFI_CTRL, "%s: json conversion failure\n", __func__);
-        return execRetVal;
+        goto finished;
     }
 
-    //wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
+    // wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
     cJSON *root = cJSON_Parse(blob_buf);
-    if(root == NULL) {
-        msgpack_zone_destroy(&msg_z);
+    if (root == NULL) {
         execRetVal->ErrorCode = VALIDATION_FALIED;
-        strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg)-1);
-        free(blob_buf);
-        free(msg);
+        strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg) - 1);
         wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
-        return execRetVal;
+        goto finished;
     }
 
     vap_blob = cJSON_DetachItemFromObject(root, "WifiVapConfig");
     if (vap_blob == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation failed for key:%s\n", __func__,
             __LINE__, "WifiVapConfig");
-        msgpack_zone_destroy(&msg_z);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         strncpy(execRetVal->ErrorMsg, "Failed to detach WifiVapConfig",
             sizeof(execRetVal->ErrorMsg) - 1);
-        free(blob_buf);
-        free(msg);
-        return execRetVal;
+        goto finished;
     }
     execRetVal = xfinity_exec_common_handler(vap_blob, webconfig_subdoc_type_xfinity);
+    cJSON_Delete(root);
+
+finished:
     free(blob_buf);
     msgpack_zone_destroy(&msg_z);
-    cJSON_Delete(root);
     free(msg);
     return execRetVal;
 }
@@ -1542,16 +1534,10 @@ static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t sub
     execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
 
 done:
-    if (data) {
-        webconfig_data_free(data);
-    }
-    if (blob) {
-        cJSON_Delete(blob);
-        free(blob);
-    }
+    webconfig_data_free(data);
+    cJSON_Delete(blob);
     return execRetVal;
 }
-
 
 static pErr create_execRetVal(void)
 {

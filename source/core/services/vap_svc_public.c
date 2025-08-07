@@ -271,19 +271,20 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         get_wifidb_obj()->desc.update_wifi_passpoint_cfg_fn(map->vap_array[i].vap_name,
             &map->vap_array[i].u.bss_info.interworking);
         get_wifidb_obj()->desc.update_wifi_anqp_cfg_fn(map->vap_array[i].vap_name,
-             &map->vap_array[i].u.bss_info.interworking);
-        if(map->vap_array[i].u.bss_info.mgmtPowerControl != 0) {
-            scheduler_add_timer_task(ctrl->sched, FALSE, NULL, update_managementFramePower, NULL, MFPC_TIMER * 1000, 1, FALSE);
+            &map->vap_array[i].u.bss_info.interworking);
+        if (map->vap_array[i].u.bss_info.mgmtPowerControl != 0) {
+            scheduler_add_timer_task(ctrl->sched, FALSE, NULL, update_managementFramePower, NULL,
+                MFPC_TIMER * 1000, 1, FALSE);
         }
     }
-     update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
-    //Load all the Acl entries related to the created public vaps
-     update_xfinity_acl_entries(p_tgt_vap_map->vap_array[0].vap_name);
-     free(p_tgt_vap_map);
-     free(p_tgt_created_vap_map);
-     return 0;
+    update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
+    // Load all the Acl entries related to the created public vaps
+    update_xfinity_acl_entries(p_tgt_vap_map->vap_array[0].vap_name);
+    free(p_tgt_vap_map);
+    free(p_tgt_created_vap_map);
+    return 0;
 }
-int update_xfinity_acl_entries(char *tgt_vap_name)
+int update_xfinity_acl_entries(char* tgt_vap_name)
 {
     mac_addr_str_t mac_str;
     mac_address_t acl_device_mac;

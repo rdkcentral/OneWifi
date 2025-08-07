@@ -3771,6 +3771,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         if (num_ssid != 0) {
             update_subdoc_data(&data, num_ssid, vap_names);
         }
+
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, &data, raw);
         wifi_event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
