@@ -262,7 +262,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
     int pass_len =0;
     char encryption_method[128] = "";
     cJSON *radius_param = NULL;
-    
+
     if (vap_info == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid input parameters\n", __func__);
         return RETURN_ERR;
@@ -272,26 +272,26 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
     wifi_util_info_print(WIFI_CTRL, "Security blob:\n");
     param = cJSON_GetObjectItem(security, "Passphrase");
     if (!param) {
-        if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT_SECURE,
-                strlen(VAP_PREFIX_HOTSPOT_SECURE))) {
-            wifi_util_error_print(WIFI_CTRL, "%s: missing \"Passphrase\"\n", __func__);
+        if (strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT_SECURE,
+                strlen(VAP_PREFIX_HOTSPOT_SECURE)) != 0) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"Passphrase\" for VAP %s\n", __func__,
+                vap_info->vap_name);
+            return RETURN_ERR;
         }
     } else {
         value = cJSON_GetStringValue(param);
         pass_len = strlen(value);
         if ((pass_len < MIN_PWD_LEN) || (pass_len > MAX_PWD_LEN)) {
-            if (!strncmp(vap_info->vap_name, VAP_PREFIX_HOTSPOT, strlen(VAP_PREFIX_HOTSPOT))) {
-                snprintf(vap_info->u.bss_info.security.u.key.key,
-                    sizeof(vap_info->u.bss_info.security.u.key.key), "%s", value);
-            } else {
-                wifi_util_error_print(WIFI_CTRL, "%s: Invalid Passphrase length %d for %s\n",
-                    __func__, pass_len, vap_info->vap_name);
-                if (execRetVal) {
-                    strncpy(execRetVal->ErrorMsg, "Invalid Passphrase length",
-                        sizeof(execRetVal->ErrorMsg) - 1);
-                }
-                return RETURN_ERR;
+            wifi_util_error_print(WIFI_CTRL, "%s: Invalid Passphrase length %d for %s\n",
+                __func__, pass_len, vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid Passphrase length",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        } else {
+            snprintf(vap_info->u.bss_info.security.u.key.key,
+                sizeof(vap_info->u.bss_info.security.u.key.key), "%s", value);
         }
     }
     param = cJSON_GetObjectItem(security, "EncryptionMethod");
