@@ -30,10 +30,10 @@ int platform_init(bus_handle_t *handle)
 
     /* Initialize ccsp trace and log methods */
     wifi_ccsp_rdkb_init(get_wificcsp_obj());
-
+#ifdef ONEWIFI_DML_SUPPORT
     /* Initialize Data Model descriptor */
     wifi_dml_init(get_wifidml_obj());
-
+#endif
     /* Initialize misc data and descriptor */
     wifi_misc_init(get_wifimisc_obj());
 
