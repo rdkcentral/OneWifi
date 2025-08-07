@@ -60,5 +60,7 @@ cp -r build/openwrt/avro ../../libs/.
 
 #Applying kernel patch from openwrt root directory
 cd $OPENWRT_ROOT
-#patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
+if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch; then
+        patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
+fi
 cd $ONEWIFI_DIR
