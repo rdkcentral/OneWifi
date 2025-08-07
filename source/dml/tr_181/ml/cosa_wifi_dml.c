@@ -3228,7 +3228,7 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_AggregationMSDU", TRUE))
     {
-	if (rcfg->AggregationMSDU == bValue)
+       if (rcfg->AggregationMSDU == bValue)
         {
             return TRUE;
         }
@@ -4863,6 +4863,280 @@ Stats3_Commit
     return ANSC_STATUS_SUCCESS; 
 }
 
+/***********************************************************************
+
+  APIs for Object:
+
+ WiFi.Radio.{i}.AMSDU.TID.{i}.Enabled
+
+   *  AMSDU_TID_GetEntryCount
+   *  AMSDU_TID_GetEntry
+   *  AMSDU_TID_GetParamBoolValue
+   *  AMSDU_TID_SetParamBoolValue
+
+ ***********************************************************************/
+
+static const int MAX_TID = 8;
+
+static bool* get_tid_from_param(int tid_idx, wifi_radio_operationParam_t *wifiRadioOperParam)
+{
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: nIndex:%ld\n",__func__, __LINE__, tid_idx);
+    switch(tid_idx)
+    {
+        case 0:
+            return &wifiRadioOperParam->amsduTid[0];
+        case 1:
+            return &wifiRadioOperParam->amsduTid[1];
+        case 2:
+            return &wifiRadioOperParam->amsduTid[2];
+        case 3:
+            return &wifiRadioOperParam->amsduTid[3];
+        case 4:
+            return &wifiRadioOperParam->amsduTid[4];
+        case 5:
+            return &wifiRadioOperParam->amsduTid[5];
+        case 6:
+            return &wifiRadioOperParam->amsduTid[6];
+        case 7:
+            return &wifiRadioOperParam->amsduTid[7];
+        default:
+            return NULL;
+    }
+}
+
+ /**********************************************************************  
+ 
+	 caller:	 owner of this object 
+ 
+   prototype: 
+ 
+     ULONG
+     AMSDU_TID_GetEntryCount
+       (
+         ANSC_HANDLE         hInsContext
+       );
+ 
+   description:
+ 
+     This function is called to retrieve the count of the table.
+ 
+   argument:   ANSC_HANDLE         hInsContext,
+         The instance handle;
+ 
+   return:   The count of the table
+ 
+ **********************************************************************/
+ ULONG
+ AMSDU_TID_GetEntryCount
+   (
+     ANSC_HANDLE         hInsContext
+   )
+ {
+    UNREFERENCED_PARAMETER(hInsContext);
+    return MAX_TID;
+ }
+
+/**********************************************************************  
+
+  caller:   owner of this object 
+
+  prototype: 
+
+    ANSC_HANDLE
+    AMSDU_TID_GetEntry
+      (
+        ANSC_HANDLE         hInsContext,
+        ULONG            nIndex,
+        ULONG*            pInsNumber
+      );
+
+  description:
+
+    This function is called to retrieve the entry specified by the index.
+
+  argument:  ANSC_HANDLE         hInsContext,
+        The instance handle;
+
+        ULONG            nIndex,
+        The index of this entry;
+
+        ULONG*            pInsNumber
+        The output instance number;
+
+  return:   The handle to identify the entry
+
+**********************************************************************/
+ANSC_HANDLE
+AMSDU_TID_GetEntry
+  (
+    ANSC_HANDLE       hInsContext,
+    ULONG              nIndex,
+    ULONG*            pInsNumber
+  )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: nIndex:%ld\n",__func__, __LINE__, nIndex);
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *)hInsContext;
+
+    if ( nIndex < MAX_TID )
+    {
+        if (wifiRadioOperParam == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: No valid wifiRadioOperParam was given for AMSDU setting\n",__func__, __LINE__);
+            return NULL;
+        }
+
+        //BRAYAN: rm
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Trying to access radio band info. Index:%ld\n",__func__, __LINE__, nIndex);
+        if (wifiRadioOperParam->band != WIFI_FREQUENCY_6_BAND)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: nIndex:%ld\n",__func__, __LINE__, nIndex);
+            return NULL;
+        }
+        *pInsNumber = nIndex + 1;
+        return (ANSC_HANDLE)get_tid_from_param(*pInsNumber, wifiRadioOperParam);
+    }
+    return NULL; /* return the handle */
+}
+
+/**********************************************************************  
+
+    caller:     owner of this object 
+
+    prototype: 
+
+        BOOL
+        AMSDU_TID_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value; 
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL
+AMSDU_TID_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    )
+{
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU not supported on the device\n", __FUNCTION__,__LINE__);
+    return FALSE;
+#else
+    //BRAYAN: Remove print
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is %s \n", __FUNCTION__,__LINE__, ParamName);
+
+    if( AnscEqualString(ParamName, "Enabled", TRUE))
+    {
+        bool *is_enabled = (bool *)hInsContext;
+        if (!is_enabled)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid TID for AMSDU - param was \n", __FUNCTION__,__LINE__, ParamName);
+            return FALSE;
+        }
+    
+        if(*is_enabled == bValue)
+        {
+            return TRUE;
+        }
+
+        *is_enabled = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:value=%d\n",__func__, __LINE__, *is_enabled);
+        is_radio_config_changed = TRUE;
+        return TRUE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is malformed - param was %s \n", __FUNCTION__,__LINE__, ParamName);
+    return FALSE;
+
+#endif
+}
+
+/**********************************************************************  
+
+    caller:     owner of this object 
+
+    prototype: 
+
+        BOOL
+        AMSDU_TID_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve bool parameter value; 
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned bool value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL
+AMSDU_TID_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU not supported on the device\n", __FUNCTION__,__LINE__);
+    return FALSE;
+#else
+
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is %s \n", __FUNCTION__,__LINE__, ParamName);
+    *pBool = FALSE;
+
+    if( AnscEqualString(ParamName, "Enabled", TRUE))
+    {
+        BOOL *is_enabled = (BOOL *)hInsContext;
+        if (!is_enabled)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid TID for AMSDU - param was \n", __FUNCTION__,__LINE__, ParamName);
+            return FALSE;
+        }
+
+        *pBool = *is_enabled;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:value=%d\n",__func__, __LINE__, *is_enabled);
+        //is_radio_config_changed = TRUE;
+        return TRUE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU GET param is malformed - param was %s \n", __FUNCTION__,__LINE__, ParamName);
+    return FALSE;
+#endif
+}
 
 /***********************************************************************
 
