@@ -1081,15 +1081,9 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 {
     cJSON *obj;
 
-    if (band == WIFI_FREQUENCY_6_BAND &&
-        security_info->mode == wifi_security_mode_wpa3_compatibility) {
-        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d WPA3-PCM not applicable for 6Gz: %d\n",
-            __func__, __LINE__, security_info->mode);
-        security_info->mode = wifi_security_mode_wpa3_personal;
-    }
-
     if (is_6g &&
         security_info->mode != wifi_security_mode_wpa3_personal &&
+        security_info->mode != wifi_security_mode_wpa3_compatibility &&
         security_info->mode != wifi_security_mode_wpa3_enterprise &&
         security_info->mode != wifi_security_mode_enhanced_open) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
