@@ -122,6 +122,8 @@ webconfig_error_t webconfig_easymesh_encode(webconfig_t *config,
 // sets the default values in em_bss_info_t Easymesh structure
 void default_em_bss_info(em_bss_info_t  *vap_row)
 {
+    vap_row->vap_mode = em_vap_mode_ap;
+    vap_row->connect_status = false;
     memset(vap_row->est_svc_params_be,'\0',sizeof(vap_row->est_svc_params_be));
     memset(vap_row->est_svc_params_bk,'\0',sizeof(vap_row->est_svc_params_bk));
     memset(vap_row->est_svc_params_vi,'\0',sizeof(vap_row->est_svc_params_vi));
@@ -983,6 +985,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     } else {
         vap_row->connect_status = false;
     }
+    vap_row->vap_mode = vap->vap_mode;
 
     return webconfig_error_none;
 }
