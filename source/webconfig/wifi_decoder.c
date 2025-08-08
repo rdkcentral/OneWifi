@@ -766,6 +766,7 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 {
     const cJSON *param, *venue;
     bool invalid_venue_group_type = false;
+    bool venue_option_present = false;
 
     decode_param_bool(interworking, "InterworkingEnable", param);
     interworking_info->interworking.interworkingEnabled = (param->type & cJSON_True) ? true:false;
@@ -810,8 +811,16 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 
     decode_param_object(interworking, "Venue", venue);
 
-    decode_param_bool(venue, "VenueOptionPresent", param);
-    interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true : false;
+    decode_param_allow_empty_bool(venue, "VenueOptionPresent", param, venue_option_present);
+    if (!venue_option_present) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d: VenueOptionPresent not present, setting to false\n", __func__, __LINE__);
+        interworking_info->interworking.venueOptionPresent = false;
+    } else {
+        decode_param_bool(venue, "VenueOptionPresent", param);
+        interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true :
+                                                                                          false;
+    }
 
     decode_param_integer(venue, "VenueType", param);
     interworking_info->interworking.venueType = param->valuedouble;
