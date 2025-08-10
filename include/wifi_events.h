@@ -182,6 +182,8 @@ typedef enum {
     wifi_event_monitor_get_radiodiag_stats,
     wifi_event_monitor_get_radio_temperature,
     wifi_event_monitor_set_subscribe,
+    wifi_event_monitor_auth_req,
+    wifi_event_monitor_update_interop_interval,
     wifi_event_monitor_max,
 
     // Tunnel

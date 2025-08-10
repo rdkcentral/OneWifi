@@ -758,6 +758,15 @@ typedef struct {
 } __attribute__((packed)) radarInfo_t;
 
 typedef struct {
+    mac_address_t sta_mac;
+    mac_address_t ap_mac;
+    int sta_status_counts[6];
+    int sta_reason_counts[9];
+    int ap_status_counts[6];
+    int ap_reason_counts[9];
+} interop_data_t;
+
+typedef struct {
     char    name[16];
     wifi_radio_operationParam_t oper;
     rdk_wifi_vap_map_t          vaps;
