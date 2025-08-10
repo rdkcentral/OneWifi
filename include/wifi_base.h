@@ -819,15 +819,22 @@ typedef struct {
     mac_address_t sta_mac;
     mac_address_t ap_mac;
     int sta_status_counts[6];
-    int sta_reason_counts[9];
+    int sta_reason_counts[5];
     int ap_status_counts[6];
-    int ap_reason_counts[9];
+    int ap_reason_counts[5];
+    int channel;
+    int variant;
+    int rssi;
+    int snr;
+    int noise_floor;
+    int channel_util;
     int access_accept_counts;
     int eap_success_counts;
     int eap_failure_reason_counts;
-    int ap_eap_reason_counts[8];
-    int sta_eap_reason_counts[8];
+    int ap_eap_reason_counts[12];
+    int sta_eap_reason_counts[12];
 } interop_data_t;
+
 
 typedef struct {
     char    name[16];
