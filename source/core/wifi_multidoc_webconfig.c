@@ -848,7 +848,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             return RETURN_ERR;
         }
 
-        if (validate_private_home_ssid(param->valuestring, execRetVal) != RETURN_OK) {
+        if (validate_private_home_ssid_param(param->valuestring, execRetVal) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
             if (execRetVal && strlen(execRetVal->ErrorMsg) == 0) {
                 strncpy(execRetVal->ErrorMsg, "Invalid SSID", sizeof(execRetVal->ErrorMsg) - 1);
