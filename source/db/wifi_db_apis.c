@@ -4812,26 +4812,26 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 &rdk_config[i]);
         }
 
-        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG &&
-            isVapLnfPsk(config->vap_array[i].vap_index) &&
-            access(MANAGED_WIFI_PHASE_TWO_FLAG, F_OK) == 0) {
-            
-            wifi_vap_info_t *vap_info = &config->vap_array[i];
-            vap_info->u.bss_info.mdu_enabled = true;
-            vap_info->u.bss_info.enabled = true;
-            vap_info->u.bss_info.am_config.npc.speed_tier = DEFAULT_MANAGED_WIFI_SPEED_TIER;
-            
-            strncpy(vap_info->repurposed_bridge_name, "brlan15", sizeof(vap_info->repurposed_bridge_name));
-            snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "brlan%d", vap_info->radio_index + 16);
-
-            wifi_util_dbg_print(WIFI_DB,
-                "%s:%d Update speed_tier:%d mdu_enabled:%d vap enabled:%d bridge_name = %s "
-                "repurposed_bridge_name = %s for vap_index:%d \n",
-                __func__, __LINE__, vap_info->u.bss_info.am_config.npc.speed_tier,
-                vap_info->u.bss_info.mdu_enabled, vap_info->u.bss_info.enabled,
-                vap_info->bridge_name, vap_info->repurposed_bridge_name, vap_info->vap_index);
-
-            wifidb_update_wifi_vap_info(vap_info->vap_name, vap_info, &rdk_config[i]);
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG) {
+            if (isVapLnfPsk(config->vap_array[i].vap_index) && access(MANAGED_WIFI_PHASE_TWO_FLAG, F_OK) == 0) {
+                config->vap_array[i].u.bss_info.mdu_enabled = true;
+                config->vap_array[i].u.bss_info.enabled = true;
+                config->vap_array[i].u.bss_info.am_config.npc.speed_tier = DEFAULT_MANAGED_WIFI_SPEED_TIER;
+                strncpy(config->vap_array[i].repurposed_bridge_name,"brlan15",sizeof(config->vap_array[i].repurposed_bridge_name));
+                snprintf(config->vap_array[i].bridge_name,sizeof(config->vap_array[i].bridge_name),"brlan%d",config->vap_array[i].radio_index + 16);
+                wifi_util_info_print(WIFI_DB,"%s:%d SREESH Update mdu_enabled to true and making VAP enabled as true\n",__func__,__LINE__);
+            }
+            wifi_util_dbg_print(
+                WIFI_DB,
+                "%s:%d Update speed_tier:%d mdu_enabled:%d vap enabled:%d bridge_name = %s repurposed_bridge_name = %s for vap_index:%d \n",
+                __func__, __LINE__,
+                config->vap_array[i].u.bss_info.am_config.npc.speed_tier,
+                config->vap_array[i].u.bss_info.mdu_enabled,
+                config->vap_array[i].repurposed_bridge_name,
+                config->vap_array[i].bridge_name,
+                config->vap_array[i].vap_index);
+            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                &rdk_config[i]);
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG) {
