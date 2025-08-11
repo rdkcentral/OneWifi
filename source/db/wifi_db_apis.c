@@ -4924,11 +4924,11 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
         }
         if (isVapLnfPsk(vap_config->vap_index) && (!vap_config->u.bss_info.mdu_enabled && !strstr(vap_config->repurposed_vap_name,"managed_guest_")) && vap_config->u.bss_info.enabled) {
             vap_config->u.bss_info.enabled = false;
-	    rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
-	    if (rdk_vap_config == NULL) {
-                wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n",
+	        rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+	        if (rdk_vap_config == NULL) {
+                    wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n",
                     __func__, __LINE__, vap_config->radio_index);
-	    }
+	        }
             update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
             wifi_util_info_print(WIFI_DB,"%s:%d: vap_config->u.bss_info.enabled = false for the vap_name = %s\n",__func__,__LINE__,vap_config->vap_name);
             continue;
