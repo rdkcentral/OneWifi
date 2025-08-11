@@ -263,34 +263,63 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
     char encryption_method[128] = "";
     cJSON *radius_param = NULL;
 
-    if (!vap_info) {
+    if (vap_info == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid input parameters\n", __func__);
         return RETURN_ERR;
     }
     wifi_radius_settings_t *radius_info = &vap_info->u.bss_info.security.u.radius;
 
     wifi_util_info_print(WIFI_CTRL, "Security blob:\n");
+
     param = cJSON_GetObjectItem(security, "Passphrase");
-    if (!param) {
-        if (!isVapHotspotSecure(vap_info->vap_index)) {
+    value = NULL;
+    pass_len = 0;
+
+    // Non-hotspot VAPs: must validate and copy passphrase
+    if (!isVapHotspot(vap_info->vap_index)) {
+        if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"Passphrase\" for VAP %s\n", __func__,
                 vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid Passphrase",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
+
+        value = cJSON_GetStringValue(param);
+        if (!value) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Passphrase value is NULL for VAP %s\n", __func__,
+                vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid Passphrase",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        pass_len = strlen(value);
+        if (pass_len < MIN_PWD_LEN || pass_len > MAX_PWD_LEN) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Invalid Passphrase length %d for %s\n", __func__,
+                pass_len, vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid Passphrase",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        snprintf(vap_info->u.bss_info.security.u.key.key,
+            sizeof(vap_info->u.bss_info.security.u.key.key), "%s", value);
     }
-    value = cJSON_GetStringValue(param);
-    pass_len = strlen(value);
-    if ((pass_len < MIN_PWD_LEN) || (pass_len > MAX_PWD_LEN)) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Invalid Passphrase length %d for %s\n", __func__,
-            pass_len, vap_info->vap_name);
-        return RETURN_ERR;
-    }
-    snprintf(vap_info->u.bss_info.security.u.key.key,
-        sizeof(vap_info->u.bss_info.security.u.key.key), "%s", value);
 
     param = cJSON_GetObjectItem(security, "EncryptionMethod");
     if (!param) {
         wifi_util_error_print(WIFI_CTRL, "%s: missing \"EncryptionMethod\"\n", __func__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg, "Invalid Encryption Method",
+                sizeof(execRetVal->ErrorMsg) - 1);
+        }
         return RETURN_ERR;
     }
     value = cJSON_GetStringValue(param);
@@ -319,6 +348,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
     }
     if (!param) {
         wifi_util_error_print(WIFI_CTRL, "%s: missing \"ModeEnabled\"\n", __func__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg, "Invalid Security Mode",
+                sizeof(execRetVal->ErrorMsg) - 1);
+        }
         return RETURN_ERR;
     }
     value = cJSON_GetStringValue(param);
@@ -378,6 +411,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
     if (validate_private_home_security_param(value, encryption_method, execRetVal) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid Encryption Security Combination \n",
             __func__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg, "Invalid Encryption Security Combination",
+                sizeof(execRetVal->ErrorMsg) - 1);
+        }
         return RETURN_ERR;
     }
 
@@ -385,6 +422,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         param = cJSON_GetObjectItem(security, "MFPConfig");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"MFPConfig\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid MFPConfig",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
         value = cJSON_GetStringValue(param);
@@ -407,117 +448,168 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
         if (!radius_param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusSettings\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusSettings",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
-        } else {
-            param = cJSON_GetObjectItem(radius_param, "RadiusServerIPAddr");
-            if (!param) {
-                wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusServerIPAddr\"\n", __func__);
-                return RETURN_ERR;
-            }
+        }
 
-            if (!cJSON_IsString(param)) {
-                wifi_util_error_print(WIFI_CTRL, "%s: RadiusServerIPAddr is not a string\n",
-                    __func__);
-                return RETURN_ERR;
+        param = cJSON_GetObjectItem(radius_param, "RadiusServerIPAddr");
+        if (!param) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusServerIPAddr\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerIPAddr",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        }
 
-            if (strlen(param->valuestring) == 0) {
-                wifi_util_info_print(WIFI_CTRL, "%s: RadiusServerIPAddr is NULL\n ");
-                return RETURN_ERR;
+        if (!cJSON_IsString(param)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: RadiusServerIPAddr is not a string\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerIPAddr",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        }
 
-            if (decode_ipv4_address(param->valuestring) == webconfig_error_none ||
-                decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+        if (strlen(param->valuestring) == 0) {
+            wifi_util_info_print(WIFI_CTRL, "%s: RadiusServerIPAddr is NULL\n ");
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "RadiusServerIPAddr is NULL",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        if (decode_ipv4_address(param->valuestring) == webconfig_error_none ||
+            decode_ipv6_address(param->valuestring) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-                strncpy((char *)radius_info->ip, param->valuestring, sizeof(radius_info->ip) - 1);
-            } else {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
-                // strncpy(execRetVal->ErrorMsg, "Invalid Radius server
-                // IP",sizeof(execRetVal->ErrorMsg)-1);
-                return RETURN_ERR;
+            strncpy((char *)radius_info->ip, param->valuestring, sizeof(radius_info->ip) - 1);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Validation failed for RadiusServerIPAddr\n",
+                __func__, __LINE__);
+            // strncpy(execRetVal->ErrorMsg, "Invalid Radius server
+            // IP",sizeof(execRetVal->ErrorMsg)-1);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerIPAddr",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        }
 #else
-                /* check the INET family and update the radius ip address */
-                if (inet_pton(AF_INET, param->valuestring, &(radius_info->ip.u.IPv4addr)) > 0) {
-                    radius_info->ip.family = wifi_ip_family_ipv4;
-                } else if (inet_pton(AF_INET6, param->valuestring, &(radius_info->ip.u.IPv6addr)) >
-                    0) {
-                    radius_info->ip.family = wifi_ip_family_ipv6;
-                } else {
-                    return RETURN_ERR;
-                }
-#endif
-
-            param = cJSON_GetObjectItem(radius_param, "RadiusServerPort");
-            if (!param) {
-                wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusServerPort\"\n", __func__);
-                return RETURN_ERR;
-            }
-
-            if (!cJSON_IsNumber(param)) {
-                wifi_util_error_print(WIFI_CTRL, "%s: \"RadiusServerPort\" is not a number\n",
-                    __func__);
-                return RETURN_ERR;
-            }
-
-            radius_info->port = param->valuedouble;
-            wifi_util_info_print(WIFI_CTRL, "   \"RadiusServerPort\": %d\n", radius_info->port);
-
-            param = cJSON_GetObjectItem(radius_param, "RadiusSecret");
-            if (!param) {
-                wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusSecret\"\n", __func__);
-                return RETURN_ERR;
-            }
-
-            if (!cJSON_IsString(param)) {
-                wifi_util_error_print(WIFI_CTRL, "%s: \"RadiusSecret\" is not a number\n",
-                    __func__);
-                return RETURN_ERR;
-            }
-
-            value = cJSON_GetStringValue(param);
-            wifi_util_info_print(WIFI_CTRL, "   \"RadiusSecret\": <Masked>\n");
-            if (value == NULL) {
+            /* check the INET family and update the radius ip address */
+            if (inet_pton(AF_INET, param->valuestring, &(radius_info->ip.u.IPv4addr)) > 0) {
+                radius_info->ip.family = wifi_ip_family_ipv4;
+            } else if (inet_pton(AF_INET6, param->valuestring, &(radius_info->ip.u.IPv6addr)) > 0) {
+                radius_info->ip.family = wifi_ip_family_ipv6;
+            } else {
                 if (execRetVal) {
-                    strncpy(execRetVal->ErrorMsg, "RadiusSecret is NULL",
+                    strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerIPAddr",
                         sizeof(execRetVal->ErrorMsg) - 1);
                 }
                 return RETURN_ERR;
             }
-            strncpy(radius_info->key, value, sizeof(radius_info->key) - 1);
+#endif
 
-            param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerIPAddr");
-            if (!param) {
-                wifi_util_error_print(WIFI_CTRL, "%s: missing \"SecondaryRadiusServerIPAddr\"\n",
-                    __func__);
-                return RETURN_ERR;
+        param = cJSON_GetObjectItem(radius_param, "RadiusServerPort");
+        if (!param) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusServerPort\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerPort",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        }
 
-            if (!cJSON_IsString(param)) {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s: SecondaryRadiusServerIPAddr is not a string\n", __func__);
-                return RETURN_ERR;
+        if (!cJSON_IsNumber(param)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: \"RadiusServerPort\" is not a number\n",
+                __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerPort",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        }
 
-            if (strlen(param->valuestring) == 0) {
-                wifi_util_info_print(WIFI_CTRL, "%s: SecondaryRadiusServerIPAddr is NULL\n",
-                    __func__);
+        radius_info->port = param->valuedouble;
+        wifi_util_info_print(WIFI_CTRL, "   \"RadiusServerPort\": %d\n", radius_info->port);
+
+        param = cJSON_GetObjectItem(radius_param, "RadiusSecret");
+        if (!param) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusSecret\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusSecret",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        }
 
-            if (decode_ipv4_address(param->valuestring) == webconfig_error_none ||
-                decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+        if (!cJSON_IsString(param)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: \"RadiusSecret\" is not a number\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RadiusSecret",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        value = cJSON_GetStringValue(param);
+        wifi_util_info_print(WIFI_CTRL, "   \"RadiusSecret\": <Masked>\n");
+        if (value == NULL) {
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "RadiusSecret is NULL",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+        strncpy(radius_info->key, value, sizeof(radius_info->key) - 1);
+
+        param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerIPAddr");
+        if (!param) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"SecondaryRadiusServerIPAddr\"\n",
+                __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        if (!cJSON_IsString(param)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: SecondaryRadiusServerIPAddr is not a string\n",
+                __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        if (strlen(param->valuestring) == 0) {
+            wifi_util_info_print(WIFI_CTRL, "%s: SecondaryRadiusServerIPAddr is NULL\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "SecondaryRadiusServerIPAddr is NULL",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+        }
+
+        if (decode_ipv4_address(param->valuestring) == webconfig_error_none ||
+            decode_ipv6_address(param->valuestring) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-                strncpy((char *)radius_info->s_ip, param->valuestring,
-                    sizeof(radius_info->s_ip) - 1);
-            } else {
-                wifi_util_error_print(WIFI_WEBCONFIG,
-                    "%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__,
-                    __LINE__);
-                // strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server
-                // IP",sizeof(execRetVal->ErrorMsg)-1);
-                return RETURN_ERR;
+            strncpy((char *)radius_info->s_ip, param->valuestring, sizeof(radius_info->s_ip) - 1);
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
+            // strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server
+            // IP",sizeof(execRetVal->ErrorMsg)-1);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
+            return RETURN_ERR;
+        }
 #else
                 /* check the INET family and update the radius ip address */
                 if (inet_pton(AF_INET, param->valuestring, &(radius_info->s_ip.u.IPv4addr)) > 0) {
@@ -526,47 +618,65 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                                &(radius_info->s_ip.u.IPv6addr)) > 0) {
                     radius_info->s_ip.family = wifi_ip_family_ipv6;
                 } else {
+                    if (execRetVal) {
+                        strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
+                            sizeof(execRetVal->ErrorMsg) - 1);
+                    }
                     return RETURN_ERR;
                 }
 #endif
 
-            param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerPort");
-            if (!param) {
-                wifi_util_error_print(WIFI_CTRL, "%s: missing \"SecondaryRadiusServerPort\"\n",
-                    __func__);
-                return RETURN_ERR;
+        param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerPort");
+        if (!param) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"SecondaryRadiusServerPort\"\n",
+                __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerPort",
+                    sizeof(execRetVal->ErrorMsg) - 1);
             }
-
-            if (!cJSON_IsNumber(param)) {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s: \"SecondaryRadiusServerPort\" is not a number\n", __func__);
-                return RETURN_ERR;
-            }
-
-            radius_info->s_port = param->valuedouble;
-            wifi_util_info_print(WIFI_CTRL, "   \"SecondaryRadiusServerPort\": %d\n",
-                radius_info->s_port);
-
-            param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusSecret");
-            if (!param) {
-                wifi_util_error_print(WIFI_CTRL, "%s: missing \"SecondaryRadiusSecret\"\n",
-                    __func__);
-                return RETURN_ERR;
-            }
-
-            if (!cJSON_IsString(param)) {
-                wifi_util_error_print(WIFI_CTRL, "%s: \"SecondaryRadiusSecret\" is not a number\n",
-                    __func__);
-                return RETURN_ERR;
-            }
-
-            value = cJSON_GetStringValue(param);
-            wifi_util_info_print(WIFI_CTRL, "   \"SecondaryRadiusSecret\": <Masked>\n");
-            if (value == NULL) {
-                return RETURN_ERR;
-            }
-            strncpy(radius_info->s_key, value, sizeof(radius_info->s_key) - 1);
+            return RETURN_ERR;
         }
+
+        if (!cJSON_IsNumber(param)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: \"SecondaryRadiusServerPort\" is not a number\n",
+                __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerPort",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        radius_info->s_port = param->valuedouble;
+        wifi_util_info_print(WIFI_CTRL, "   \"SecondaryRadiusServerPort\": %d\n",
+            radius_info->s_port);
+
+        param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusSecret");
+        if (!param) {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"SecondaryRadiusSecret\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusSecret",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        if (!cJSON_IsString(param)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: \"SecondaryRadiusSecret\" is not a number\n",
+                __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusSecret",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
+
+        value = cJSON_GetStringValue(param);
+        wifi_util_info_print(WIFI_CTRL, "   \"SecondaryRadiusSecret\": <Masked>\n");
+        if (value == NULL) {
+            return RETURN_ERR;
+        }
+        strncpy(radius_info->s_key, value, sizeof(radius_info->s_key) - 1);
     }
     return RETURN_OK;
 }
@@ -697,11 +807,17 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         cJSON *param = cJSON_GetObjectItem(vb_entry, "VapName");
         if (!param) {
             wifi_util_info_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing VapName", sizeof(execRetVal->ErrorMsg) - 1);
+            }
             continue;
         }
 
         if (!cJSON_IsString(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"VapName\" is not boolean\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid Vapname", sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -718,30 +834,46 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing SSID for vap %s\n", __func__,
                 vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing SSID", sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsString(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"SSID\" is not boolean\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SSID", sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
-        if (validate_private_home_ssid_param(param->valuestring, execRetVal) != RETURN_OK) {
+        if (validate_private_home_ssid(param->valuestring, execRetVal) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
+            if (execRetVal && strlen(execRetVal->ErrorMsg) == 0) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SSID", sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         } else {
-            snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s", param->valuestring);
+            snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s",
+                param->valuestring);
             wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
         }
 
         param = cJSON_GetObjectItem(vb_entry, "Enabled");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"Enable\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing Enable", sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsBool(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid Enable", sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -759,12 +891,20 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"SSIDAdvertisementEnabled\"\n",
                 __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing SSIDAdvertisementEnabled",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsBool(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"SSIDAdvertisementEnabled\" is not boolean\n",
                 __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid SSIDAdvertisementEnabled",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -775,11 +915,19 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         param = cJSON_GetObjectItem(vb_entry, "BssMaxNumSta");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"BssMaxNumSta\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing BssMaxNumSta",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsNumber(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"BssMaxNumSta\" is not a number\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid BssMaxNumSta",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -789,11 +937,19 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         param = cJSON_GetObjectItem(vb_entry, "IsolationEnable");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"IsolationEnable\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing IsolationEnable",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsBool(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"IsolationEnable\" is not boolean\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid IsolationEnable",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -805,12 +961,20 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"ManagementFramePowerControl\"\n",
                 __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing ManagementFramePowerControl",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsNumber(param)) {
             wifi_util_error_print(WIFI_CTRL,
                 "%s: \"ManagementFramePowerControl\" is not a number\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid ManagementFramePowerControl",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -821,12 +985,20 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         param = cJSON_GetObjectItem(vb_entry, "BSSTransitionActivated");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"BSSTransitionActivated\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing BSSTransitionActivated",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsBool(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"BSSTransitionActivated\" is not boolean\n",
                 __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid BSSTransitionActivated",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -837,12 +1009,20 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         param = cJSON_GetObjectItem(vb_entry, "RapidReconnThreshold");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"RapidReconnThreshold\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing RapidReconnThreshold",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsNumber(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"RapidReconnThreshold\" is not a number\n",
                 __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid RapidReconnThreshold",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -853,12 +1033,20 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         param = cJSON_GetObjectItem(vb_entry, "RapidReconnCountEnable");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"rapidReconnectEnable\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing rapidReconnectEnable",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsBool(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"rapidReconnectEnable\" is not boolean\n",
                 __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid rapidReconnectEnable",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -869,11 +1057,19 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         param = cJSON_GetObjectItem(vb_entry, "VapStatsEnable");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"VapStatsEnable\"\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing VapStatsEnable",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         if (!cJSON_IsBool(param)) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"VapStatsEnable\" is not boolean\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid VapStatsEnable",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -885,12 +1081,20 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         if (!security_obj) {
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s security\n", __func__,
                 vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing Security object",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
         /* decode security blob */
         if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode security blob\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Security object validation failed",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -898,6 +1102,10 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         if (!interworking_obj) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: Interworking object not present for %s\n",
                 __FUNCTION__, __LINE__, vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Missing Interworking object",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
         /* decode interworking object */
@@ -906,6 +1114,10 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             wifi_util_error_print(WIFI_CTRL,
                 "%s:%d: Interworking objects validation failed for %s\n", __FUNCTION__, __LINE__,
                 vap_info->vap_name);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Interworking objects validation failed",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
             return RETURN_ERR;
         }
 
@@ -916,9 +1128,12 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
                 __LINE__, vap_info->vap_name);
         } else {
             if (decode_cac_object(vap_info, cac_obj) != webconfig_error_none) {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d: CAC objects validation failed for %s\n", __FUNCTION__, __LINE__,
-                    vap_info->vap_name);
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: CAC objects validation failed for %s\n",
+                    __FUNCTION__, __LINE__, vap_info->vap_name);
+                if (execRetVal) {
+                    strncpy(execRetVal->ErrorMsg, "VapConnectionControl object validation failed",
+                        sizeof(execRetVal->ErrorMsg) - 1);
+                }
                 return RETURN_ERR;
             }
         }
@@ -959,22 +1174,22 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                 continue;
             }
 
-            char *blob_param->valuestring = cJSON_GetStringValue(blob_vap_name);
-            strncpy(repurposed_vap_name,blob_param->valuestring,sizeof(repurposed_vap_name)-1);
+            char *blob_vap_name_str = cJSON_GetStringValue(blob_vap_name);
+            strncpy(repurposed_vap_name,blob_vap_name_str,sizeof(repurposed_vap_name)-1);
             wifi_util_info_print(WIFI_CTRL, "repurposed_vap_name:%s %s: %d \n",repurposed_vap_name, __func__,__LINE__ );
 
-            if (strstr(blob_param->valuestring,"managed_guest_")) {
-                saveptr = strrchr(blob_param->valuestring, (int)'_');
+            if (strstr(blob_vap_name_str,"managed_guest_")) {
+                saveptr = strrchr(blob_vap_name_str, (int)'_');
                 if (saveptr == NULL) {
                     wifi_util_error_print(WIFI_CTRL, "%s: %d vapname is not proper \n", __func__,__LINE__);
                     goto done;
                 }
-                snprintf(blob_param->valuestring,strlen(blob_param->valuestring)-1,"lnf_psk%s",saveptr);
+                snprintf(blob_vap_name_str,strlen(blob_vap_name_str)-1,"lnf_psk%s",saveptr);
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s: %d vapname is not proper \n", __func__,__LINE__);
                 goto done;
             }
-            if (!strcmp(vap_info->vap_name,blob_param->valuestring)) {
+            if (!strcmp(vap_info->vap_name,blob_vap_name_str)) {
                 wifi_util_error_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
                 strncpy(vap_info->repurposed_bridge_name,"brlan15",sizeof(vap_info->repurposed_bridge_name)-1);
                 int rc = get_managed_guest_bridge(brval, sizeof(brval),radio_index);
