@@ -2794,7 +2794,7 @@ int increment_reason_count(interop_data_t *telemetry, wifi_reason_code_t code, i
 			case WIFI_REASON_MICHAEL_MIC_FAILURE: telemetry->ap_eap_reason_counts[1]++; break;
 			case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT: telemetry->ap_eap_reason_counts[2]++; break;
             case WIFI_REASON_GROUP_KEY_UPDATE_TIMEOUT: telemetry->ap_eap_reason_counts[3]++; break;
-            case WIFI_REASON_IE_IN_4WAY_DIFFERS: telemetry->aap_eap_reason_counts[4]++; break;
+            case WIFI_REASON_IE_IN_4WAY_DIFFERS: telemetry->ap_eap_reason_counts[4]++; break;
             case WIFI_REASON_GROUP_CIPHER_NOT_VALID: telemetry->ap_eap_reason_counts[5]++; break;
             case WIFI_REASON_PAIRWISE_CIPHER_NOT_VALID: telemetry->ap_eap_reason_counts[6]++; break;
 			case WIFI_REASON_AKMP_NOT_VALID: telemetry->ap_eap_reason_counts[7]++; break;
