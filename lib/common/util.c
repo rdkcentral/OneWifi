@@ -632,13 +632,6 @@ void remove_onewifi_migration_flag()
     remove(ONEWIFI_MIGRATION_FLAG);
 }
 
-void remove_managed_wifi_phase_two_flag()
-{
-    if (access(MANAGED_WIFI_PHASE_TWO_FLAG, F_OK) == 0) {
-        remove(MANAGED_WIFI_PHASE_TWO_FLAG);
-    }
-}
-
 /*
  * This function creates a file flag to reset wifidb data
  * when Factory Reset with reboot was executed

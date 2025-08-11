@@ -56,8 +56,6 @@ extern "C"
 #define ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG "/tmp/onewifi_fr_wifidb_reset_done_flag"
 #define ONEWIFI_BSS_MAXASSOC_FLAG "/nvram/onewifi_bss_maxassoc_flag"
 #define ONEWIFI_DB_CONSOLIDATED_FLAG "/tmp/db_update_required"
-#define MANAGED_WIFI_PHASE_TWO_FLAG "/nvram/managed_wifi_phase_two"
-
 int csnprintf(char **str, size_t *size, const char *fmt, ...);
 #define append_snprintf csnprintf
 int tsnprintf(char *str, size_t size, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
