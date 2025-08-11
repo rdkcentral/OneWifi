@@ -804,7 +804,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
     for (unsigned int i = 0; i < size; i++) {
         vb_entry = cJSON_GetArrayItem(blob, i);
 
-        cJSON *param = cJSON_GetObjectItem(vb_entry, "VapName");
+        param = cJSON_GetObjectItem(vb_entry, "VapName");
         if (!param) {
             wifi_util_info_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
             if (execRetVal) {
