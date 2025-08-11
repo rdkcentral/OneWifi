@@ -27,7 +27,6 @@
 #include "wifi_mgr.h"
 #include "bus.h"
 #include "wifi_util.h"
-#include "wifi_stubs.h"
 #include "wifi_webconfig.h"
 
 uint32_t get_wifi_blob_version(char* subdoc)
@@ -567,14 +566,10 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
             }
         }
         strncpy(vap_info->repurposed_bridge_name,"brlan15",sizeof(vap_info->repurposed_bridge_name)-1);
-        get_stubs_descriptor()->v_secure_system_fn("touch /nvram/managed_wifi_phase_two");
-        wifi_util_info_print(WIFI_CTRL, "%s: %d managed wifi phase 2 flag touched\n",__func__,__LINE__);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
         snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "br106");
         snprintf(vap_info->repurposed_bridge_name, sizeof(vap_info->repurposed_bridge_name), "br106");
-        get_stubs_descriptor()->v_secure_system_fn("rm -rf /nvram/managed_wifi_phase_two");
-        wifi_util_info_print(WIFI_CTRL, "%s: %d managed wifi phase 2 flag removed\n",__func__,__LINE__);
         vap_info->u.bss_info.showSsid = false;
         vap_info->u.bss_info.enabled = true;
         vap_info->u.bss_info.bssMaxSta = 75;
