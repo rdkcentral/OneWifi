@@ -1358,6 +1358,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     if (ret_value == false) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed\n", __func__,
             __LINE__);
+        webconfig_data_free(data);
         return RETURN_ERR;
     }
     webconfig_data_free(data);
@@ -1698,15 +1699,15 @@ static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t sub
     webconfig_init_subdoc_data(data);
     // update vap info with blob data
     if (update_xfinity_vap_info(blob, data, execRetVal) != RETURN_OK) {
-        wifi_util_error_print(WIFI_CTRL, "%s: failed to update xfinity VAP info with blob data\n",
-            __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to update xfinity VAP info with blob data\n",
+            __func__, __LINE__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
     }
     if (push_blob_data(data, subdoc_type) != RETURN_OK) {
         execRetVal->ErrorCode = WIFI_HAL_FAILURE;
         wifi_util_error_print(WIFI_CTRL, "%s:%d failed to encode xfinity subdoc\n", __func__,
-            __LINE);
+            __LINE__);
         goto done;
     }
     wifi_util_info_print(WIFI_CTRL, "%s:%d Webconfig blob is applied success\n", __func__,
