@@ -255,6 +255,7 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, bool managed
 
     return 0;
 }
+
 static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr execRetVal)
 {
     char *value;
@@ -814,7 +815,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         }
 
         if (!cJSON_IsString(param)) {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"VapName\" is not boolean\n", __func__);
+            wifi_util_error_print(WIFI_CTRL, "%s: \"VapName\" is not string\n", __func__);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid Vapname", sizeof(execRetVal->ErrorMsg) - 1);
             }
@@ -841,7 +842,7 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         }
 
         if (!cJSON_IsString(param)) {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"SSID\" is not boolean\n", __func__);
+            wifi_util_error_print(WIFI_CTRL, "%s: \"SSID\" is not string\n", __func__);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid SSID", sizeof(execRetVal->ErrorMsg) - 1);
             }
@@ -854,11 +855,10 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
                 strncpy(execRetVal->ErrorMsg, "Invalid SSID", sizeof(execRetVal->ErrorMsg) - 1);
             }
             return RETURN_ERR;
-        } else {
-            snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s",
-                param->valuestring);
-            wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
         }
+        snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s",
+            param->valuestring);
+        wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", vap_info->u.bss_info.ssid);
 
         param = cJSON_GetObjectItem(vb_entry, "Enabled");
         if (!param) {
@@ -1375,10 +1375,11 @@ static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix,
     }
     wifi_util_error_print(WIFI_CTRL, "%s: %d\n", __func__,__LINE__);
 
-    data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", \
-                              __func__, sizeof(webconfig_subdoc_data_t));
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d malloc failed to allocate webconfig_subdoc_data_t, size %d\n", __func__,
+            __LINE__, sizeof(webconfig_subdoc_data_t));
         goto done;
     }
 
@@ -1653,6 +1654,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         execRetVal->ErrorCode = VALIDATION_FALIED;
         strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg) - 1);
         wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
+        cJSON_Delete(root);
         goto finished;
     }
 
@@ -1663,10 +1665,10 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         execRetVal->ErrorCode = VALIDATION_FALIED;
         strncpy(execRetVal->ErrorMsg, "Failed to detach WifiVapConfig",
             sizeof(execRetVal->ErrorMsg) - 1);
+        cJSON_Delete(root);
         goto finished;
     }
     execRetVal = xfinity_exec_common_handler(vap_blob, webconfig_subdoc_type_xfinity);
-    cJSON_Delete(root);
 
 finished:
     free(blob_buf);
@@ -1680,13 +1682,14 @@ static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t sub
     pErr execRetVal = NULL;
     webconfig_subdoc_data_t *data = NULL;
 
-    data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", \
-                              __func__, sizeof(webconfig_subdoc_data_t));
+        wifi_util_error_print(WIFI_CTRL,
+            "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", __func__,
+            sizeof(webconfig_subdoc_data_t));
         goto done;
     }
-   
+
     execRetVal = create_execRetVal();
     if (execRetVal == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
@@ -1703,14 +1706,16 @@ static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t sub
     }
     if (push_blob_data(data, subdoc_type) != RETURN_OK) {
         execRetVal->ErrorCode = WIFI_HAL_FAILURE;
-        wifi_util_error_print(WIFI_CTRL, "%s: failed to encode xfinity subdoc\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to encode xfinity subdoc\n", __func__,
+            __LINE);
         goto done;
     }
-    wifi_util_info_print(WIFI_CTRL, "%s: %d Webconfig blob is applied success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Webconfig blob is applied success\n", __func__,
+        __LINE__);
     execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
 
 done:
-    webconfig_data_free(data);
+    free(data);
     cJSON_Delete(blob);
     return execRetVal;
 }
