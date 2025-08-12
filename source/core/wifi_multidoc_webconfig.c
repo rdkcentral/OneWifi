@@ -883,8 +883,6 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
         if (is_6g_supported_device(&g_wifi_mgr->hal_cap.wifi_prop) &&
             vap_info->u.bss_info.enabled) {
             vap_info->u.bss_info.nbrReportActivated = true;
-        } else {
-            vap_info->u.bss_info.nbrReportActivated = false;
         }
 
         param = cJSON_GetObjectItem(vb_entry, "SSIDAdvertisementEnabled");
