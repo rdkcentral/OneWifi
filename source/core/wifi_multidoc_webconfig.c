@@ -548,7 +548,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
 
         if (!cJSON_IsString(param)) {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"RadiusSecret\" is not a number\n", __func__);
+            wifi_util_error_print(WIFI_CTRL, "%s: \"RadiusSecret\" is not a string\n", __func__);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid RadiusSecret",
                     sizeof(execRetVal->ErrorMsg) - 1);
@@ -663,7 +663,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
 
         if (!cJSON_IsString(param)) {
-            wifi_util_error_print(WIFI_CTRL, "%s: \"SecondaryRadiusSecret\" is not a number\n",
+            wifi_util_error_print(WIFI_CTRL, "%s: \"SecondaryRadiusSecret\" is not a string\n",
                 __func__);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusSecret",
@@ -1362,6 +1362,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
             __LINE__);
         return RETURN_ERR;
     }
+    webconfig_data_free(data);
     return RETURN_OK;
 }
 
