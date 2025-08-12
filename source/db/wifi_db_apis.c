@@ -8783,7 +8783,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
-        is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
+        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
         is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
         is_device_type_vbvxer5() == true || is_device_type_xle() == true) {
