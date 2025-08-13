@@ -1503,7 +1503,6 @@ void update_dml_radio_default() {
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
-            radio_cfg[i].AmsduTid[4] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
@@ -1517,7 +1516,6 @@ void update_dml_radio_default() {
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
-            radio_cfg[i].AmsduTid[4] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5L_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
@@ -1531,7 +1529,6 @@ void update_dml_radio_default() {
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
-            radio_cfg[i].AmsduTid[4] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5H_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
@@ -1545,7 +1542,6 @@ void update_dml_radio_default() {
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
-            radio_cfg[i].AmsduTid[4] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_6_BAND) {
             radio_cfg[i].MaxBitRate = 9608;
