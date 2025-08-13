@@ -739,6 +739,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, radio number set to : \"%s\"\n",
             radio_name);
         if (strcmp(radio_name, "Not_found") == 0) {
+            avro_value_set_branch(&drField, 0, &optional);
             avro_value_set_null(&optional);
         } else {
             avro_value_set_enum(&optional,
@@ -836,6 +837,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         (blaster->curStepData.ApIndex < 0)) {
         wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_standard = \"%s\"\n",
             "Not defined, set to NULL");
+        avro_value_set_branch(&drField, 0, &optional);
         avro_value_set_null(&optional);
     } else {
         wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_standard = \"%s\"\n",
@@ -866,6 +868,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         (blaster->curStepData.ApIndex < 0)) {
         wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_channel_bandwidth = \"%s\"\n",
             "set to NULL");
+        avro_value_set_branch(&drField, 0, &optional);
         avro_value_set_null(&optional);
     } else {
         if ( strstr("20MHz", sta_data->sta_active_msmt_data[0].Operating_channelwidth))
@@ -936,6 +939,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     if (blaster->curStepData.ApIndex < 0)
     {
         wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, frequency_band set to NULL\n");
+        avro_value_set_branch(&drField, 0, &optional);
         avro_value_set_null(&optional);
     }
     else
@@ -956,6 +960,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
                 avro_schema_enum_get_by_name(avro_value_get_schema(&optional), "_6GHz"));
         } else {
             wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, frequency_band set to NULL\n");
+            avro_value_set_branch(&drField, 0, &optional);
             avro_value_set_null(&optional);
         }
     }
