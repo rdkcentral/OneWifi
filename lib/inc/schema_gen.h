@@ -209,6 +209,7 @@
         PJS_OVS_BOOL(wifi_offchannelscan_sm_rfc) \
         PJS_OVS_BOOL(tcm_enabled_rfc) \
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
+        PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -2139,7 +2140,8 @@
     COLUMN(wifi_offchannelscan_app_rfc) \
     COLUMN(wifi_offchannelscan_sm_rfc) \
     COLUMN(tcm_enabled_rfc) \
-    COLUMN(wpa3_compatibility_enable)
+    COLUMN(wpa3_compatibility_enable) \
+    COLUMN(csi_analytics_enabled_rfc)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3501,6 +3503,7 @@
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
+#define SCHEMA__Wifi_Rfc_Config__csi_analytics_enabled_rfc "csi_analytics_enabled_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"

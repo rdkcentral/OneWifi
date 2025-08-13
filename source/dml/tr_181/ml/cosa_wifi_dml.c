@@ -76,7 +76,7 @@
 #include "ccsp_psm_helper.h"
 #include "cosa_dbus_api.h"
 #include "collection.h"
-#include "wifi_hal.h"
+#include <wifi_hal.h>
 #include "../../../stubs/wifi_stubs.h"
 #include "wifi_monitor.h"
 
@@ -86,7 +86,8 @@
 #include "wifi_webconfig.h"//ONE_WIFI
 #endif
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_XER5_PRODUCT_REQ_)  || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || \
+    defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 #include "ccsp_base_api.h"
 #include "messagebus_interface_helper.h"
 
@@ -114,7 +115,6 @@ extern unsigned int startTime[MAX_NUM_RADIOS];
 uint8_t g_radio_instance_num = 0;
 extern void* g_pDslhDmlAgent;
 extern int gChannelSwitchingCount;
-extern bool wifi_api_is_device_associated(int ap_index, char *mac);
 
 /***********************************************************************
  IMPORTANT NOTE:
@@ -248,6 +248,7 @@ WiFi_GetParamBoolValue
     char path[32] = {0};
     int val =0 ;
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if(pcfg== NULL)
     {
@@ -356,6 +357,16 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Levl", TRUE))
     {
         *pBool = rfc_pcfg->levl_enabled_rfc;
+
+        if (ctrl->ctrl_initialized == FALSE) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CsiAnalytics", TRUE))
+    {
+        *pBool = rfc_pcfg->csi_analytics_enabled_rfc;
         return TRUE;
     }
 
@@ -1162,6 +1173,15 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->levl_enabled_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_levl_rfc);
+        }
+
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CsiAnalytics", TRUE))
+    {
+        if(bValue != rfc_pcfg->csi_analytics_enabled_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_csi_analytics_rfc);
         }
 
         return TRUE;
@@ -8320,7 +8340,21 @@ Security_GetParamStringValue
         return 0;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }    
+
     if( AnscEqualString(ParamName, "SecondaryRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusSecret", TRUE))
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
@@ -8669,18 +8703,6 @@ Security_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RepurposedRadiusServerPort", TRUE))
-    {
-        if ( l_security_cfg->repurposed_radius.port != uValue )
-        {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:RepurposedRadiusServerPort=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->repurposed_radius.port,uValue);
-            /* save update to backup */
-            l_security_cfg->repurposed_radius.port = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
-        }
-        return TRUE;
-    }
-
     if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
@@ -8694,18 +8716,6 @@ Security_SetParamUlongValue
             /* save update to backup */
             l_security_cfg->u.radius.s_port = uValue;
 	    set_dml_cache_vap_config_changed(instance_number - 1);
-        }
-        return TRUE;
-    }
-
-    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerPort", TRUE))
-    {
-        if ( l_security_cfg->repurposed_radius.s_port != uValue )
-        {
-	        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:SecondaryRadiusServerPort=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->repurposed_radius.s_port,uValue);
-            /* save update to backup */
-            l_security_cfg->repurposed_radius.s_port = uValue;
-	        set_dml_cache_vap_config_changed(instance_number - 1);
         }
         return TRUE;
     }
@@ -9073,32 +9083,6 @@ Security_SetParamStringValue
 
         return TRUE;
     }
-
-    rc = strcmp_s("RepurposedRadiusSecret", strlen("RepurposedRadiusSecret"), ParamName, &ind);
-    ERR_CHK(rc);
-    if((rc == EOK) && (!ind))
-    {
-        rc = strcmp_s(l_security_cfg->repurposed_radius.key, sizeof(l_security_cfg->repurposed_radius.key), pString, &ind);
-        ERR_CHK(rc);
-        if((rc == EOK) && (!ind))
-            return TRUE;
-
-		/* save update to backup */
-        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.key)))
-        {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedRadiusSecret is NULL or too long(length = %s)\n",__func__, __LINE__,strlen(pString));
-            return FALSE;
-        }
-
-        rc = strcpy_s(l_security_cfg->repurposed_radius.key, sizeof(l_security_cfg->repurposed_radius.key), pString);
-        if(rc != EOK)
-        {
-            ERR_CHK(rc);
-            return FALSE;
-        }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
 	
     rc = strcmp_s("SecondaryRadiusSecret", strlen("SecondaryRadiusSecret"), ParamName, &ind);
     ERR_CHK(rc);
@@ -9124,31 +9108,6 @@ Security_SetParamStringValue
               return FALSE;
         }
 	set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
-
-    rc = strcmp_s("RepurposedSecondaryRadiusSecret", strlen("RepurposedSecondaryRadiusSecret"), ParamName, &ind);
-    ERR_CHK(rc);
-    if((rc == EOK) && (!ind))
-    {
-        rc = strcmp_s(l_security_cfg->repurposed_radius.s_key, sizeof(l_security_cfg->repurposed_radius.s_key), pString, &ind);
-        ERR_CHK(rc);
-        if((rc == EOK) && (!ind))
-           return TRUE;
-    
-	/* save update to backup */
-        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.s_key)))
-        {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedSecondaryRadiusSecret is NULL or too long(length = %s)\n",__func__, __LINE__,strlen(pString));
-            return FALSE;
-        }
-        rc = strcpy_s(l_security_cfg->repurposed_radius.s_key, sizeof(l_security_cfg->repurposed_radius.s_key), pString);
-        if(rc != EOK)
-        {
-              ERR_CHK(rc);
-              return FALSE;
-        }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -9178,31 +9137,6 @@ Security_SetParamStringValue
 	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
-	
-    rc = strcmp_s("RepurposedRadiusServerIPAddr", strlen("RepurposedRadiusServerIPAddr"), ParamName, &ind);
-    ERR_CHK(rc);
-    if((rc == EOK) && (!ind))
-    {
-        rc = strcmp_s((char*)l_security_cfg->repurposed_radius.ip, sizeof( l_security_cfg->repurposed_radius.ip), pString, &ind);
-        ERR_CHK(rc);
-        if((rc == EOK) && (!ind))
-	    return TRUE;
-
-	/* save update to backup */
-        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.ip)))
-        {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedRadiusServerIPAddr string too long(length = %d) or NULL\n",__func__, __LINE__,strlen(pString));
-            return FALSE;
-        }
-        rc = strcpy_s( (char*)l_security_cfg->repurposed_radius.ip, sizeof(l_security_cfg->repurposed_radius.ip), pString);
-        if(rc != EOK)
-        {
-              ERR_CHK(rc);
-              return FALSE;
-        }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }    
 
     rc = strcmp_s("SecondaryRadiusServerIPAddr", strlen("SecondaryRadiusServerIPAddr"), ParamName, &ind);
     ERR_CHK(rc);
@@ -9228,31 +9162,6 @@ Security_SetParamStringValue
               return FALSE;
         }
 	set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
-
-    rc = strcmp_s("RepurposedSecondaryRadiusServerIPAddr", strlen("RepurposedSecondaryRadiusServerIPAddr"), ParamName, &ind);
-    ERR_CHK(rc);
-    if((rc == EOK) && (!ind))
-    {
-        rc = strcmp_s((char*)l_security_cfg->u.radius.s_ip, sizeof(l_security_cfg->u.radius.s_ip), pString, &ind);
-        ERR_CHK(rc);
-        if((rc == EOK) && (!ind))
-            return TRUE;
-        
-	/* save update to backup */
-        if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->repurposed_radius.s_ip)))
-        {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d RepurposedSecondaryRadiusServerIPAddr string too long(length = %d) or NULL\n",__func__, __LINE__,strlen(pString));
-            return FALSE;
-        }
-        rc = strcpy_s((char*)l_security_cfg->repurposed_radius.s_ip, sizeof(l_security_cfg->repurposed_radius.s_ip), pString);
-        if(rc != EOK)
-        {
-              ERR_CHK(rc);
-              return FALSE;
-        }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 

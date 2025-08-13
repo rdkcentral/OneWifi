@@ -29,7 +29,7 @@
 #include "wifi_util.h"
 #include <cjson/cJSON.h>
 #include "scheduler.h"
-#include "base64.h"
+#include <trower-base64/base64.h>
 #include <unistd.h>
 #include <pthread.h>
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
@@ -821,10 +821,8 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         // Ignore exists flag change because STA interfaces always enabled in HAL. This allows to
         // avoid redundant reconfiguration with STA disconnection.
         // For pods, STA is just like any other AP interface, deletion is allowed.
-        if (ctrl->dev_type != dev_subtype_pod) {
-            if (ctrl->network_mode == rdk_dev_mode_type_ext && isVapSTAMesh(tgt_vap_index)) {
-                mgr_rdk_vap_info->exists = rdk_vap_info->exists;
-            }
+        if (isVapSTAMesh(tgt_vap_index)) {
+            mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
@@ -1824,6 +1822,27 @@ void radio_param_config_changed_event_logging(wifi_radio_operationParam_t *old ,
     }
 }
 
+static int check_and_reset_channel_change(void *arg)
+{
+    int radio_index = (int)(intptr_t)arg;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_util_dbg_print(WIFI_MON, "%s: Running for radio %d\n", __func__, radio_index);
+
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s: wifi_mgr_t is NULL\n", __func__);
+        return RETURN_ERR;
+    }
+
+    if (mgr->channel_change_in_progress[radio_index] == true) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s: Channel change still in progress after 5s. Resetting flag and restarting scan.\n",
+            __func__);
+        mgr->channel_change_in_progress[radio_index] = false;
+    }
+
+    return RETURN_OK;
+}
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -1855,6 +1874,15 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         }
 
         found_radio_index = false;
+
+        // channel_change_flag
+        if (IS_CHANGED(radio_data->oper.channel, mgr_radio_data->oper.channel)) {
+            mgr->channel_change_in_progress[radio_data->vaps.radio_index] = true;
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: channel_mismatch[%d] set to true\n", __func__,
+                __LINE__, radio_data->vaps.radio_index);
+            scheduler_add_timer_task(ctrl->sched, false, NULL, check_and_reset_channel_change,
+                (void *)(intptr_t)radio_data->vaps.radio_index, 5000, 1, false);
+        }
 
         if (is_radio_band_5G(radio_data->oper.band) && is_radio_feat_config_changed(mgr_radio_data, radio_data))
         {
