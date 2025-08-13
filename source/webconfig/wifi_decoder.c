@@ -3182,6 +3182,29 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     strncpy(radio_info->radarDetected, param->valuestring, sizeof(radio_info->radarDetected) - 1);
     radio_info->radarDetected[sizeof(radio_info->radarDetected) - 1] = '\0';
 
+    // AmsduTid
+    unsigned int amsdu_tid_idx = 0;
+    decode_param_string(obj_radio, "AmsduTid", param);
+    ptr = param->valuestring;
+    tmp = param->valuestring;
+
+    while ((ptr = strchr(tmp, ',')) != NULL) {
+        ptr++;
+        radio_info->channelSecondary[amsdu_tid_idx] = atoi(tmp);
+        tmp = ptr;
+        amsdu_tid_idx++;
+    }
+    // Last channel
+    //radio_info->amsduTid[amsdu_tid_idx++] = atoi(tmp);
+
+    if (amsdu_tid_idx != MAX_AMSDU_TID - 1) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "number of AMSDU TIDs decoded does not match required amount !\n");
+        // strncpy(execRetVal->ErrorMsg, "Invalid Secondary channel
+        // list",sizeof(execRetVal->ErrorMsg)-1);
+        return webconfig_error_decode;
+    }
+
     if (decode_radio_operating_classes(obj_radio, radio_info) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio operation classes decode failed\n",
             __func__, __LINE__);
