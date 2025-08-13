@@ -4878,7 +4878,7 @@ Stats3_Commit
 
 static const int MAX_TID = 8;
 
-static bool* get_tid_from_param(int tid_idx, wifi_radio_operationParam_t *wifiRadioOperParam)
+static BOOL* get_tid_from_param(int tid_idx, wifi_radio_operationParam_t *wifiRadioOperParam)
 {
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: nIndex:%ld\n",__func__, __LINE__, tid_idx);
     switch(tid_idx)
