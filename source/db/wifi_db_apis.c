@@ -6852,21 +6852,21 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     }
 
     for (int j = 0; j < 8; j++) {
-      cfg.AmsduTid[j] = FALSE;
+      cfg.amsduTid[j] = FALSE;
     }
 
 #if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
     if (cfg.band == WIFI_FREQUENCY_6_BAND)
     {
-        memset(cfg.AmsduTid, (BOOL)1, sizeof(BOOL) * 5);
+        memset(cfg.amsduTid, (BOOL)1, sizeof(BOOL) * 5);
     } else {
-        memset(cfg.AmsduTid, (BOOL)1, sizeof(BOOL) * 4);
+        memset(cfg.amsduTid, (BOOL)1, sizeof(BOOL) * 4);
     }
 #elif defined(_XB8_PRODUCT_REQ_)
-    cfg.AmsduTid[0] = 1;
+    cfg.amsduTid[0] = 1;
     if (cfg.band == WIFI_FREQUENCY_6_BAND)
     {
-        cfg.AmsduTid[4] = 1;
+        cfg.amsduTid[4] = 1;
     }
 #endif
 
