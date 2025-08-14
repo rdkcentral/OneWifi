@@ -5039,18 +5039,18 @@ AMSDU_TID_SetParamBoolValue
     )
 {
 #if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU not supported on the device\n", __FUNCTION__,__LINE__);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU not supported on the device\n", __func__,__LINE__);
     return FALSE;
 #else
     //BRAYAN: Remove print
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is %s \n", __FUNCTION__,__LINE__, ParamName);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is %s \n", __func__,__LINE__, ParamName);
 
     if( AnscEqualString(ParamName, "Enabled", TRUE))
     {
         bool *is_enabled = (bool *)hInsContext;
         if (!is_enabled)
         {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid TID for AMSDU - param was \n", __FUNCTION__,__LINE__, ParamName);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid TID for AMSDU - param was %s\n", __func__,__LINE__, ParamName);
             return FALSE;
         }
     
@@ -5065,7 +5065,7 @@ AMSDU_TID_SetParamBoolValue
         return TRUE;
     }
 
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is malformed - param was %s \n", __FUNCTION__,__LINE__, ParamName);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is malformed - param was %s \n", __func__,__LINE__, ParamName);
     return FALSE;
 
 #endif
@@ -5111,11 +5111,11 @@ AMSDU_TID_GetParamBoolValue
     )
 {
 #if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU not supported on the device\n", __FUNCTION__,__LINE__);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU not supported on the device\n", __func__,__LINE__);
     return FALSE;
 #else
 
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is %s \n", __FUNCTION__,__LINE__, ParamName);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU param is %s \n", __func__,__LINE__, ParamName);
     *pBool = FALSE;
 
     if( AnscEqualString(ParamName, "Enabled", TRUE))
@@ -5123,7 +5123,7 @@ AMSDU_TID_GetParamBoolValue
         BOOL *is_enabled = (BOOL *)hInsContext;
         if (!is_enabled)
         {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid TID for AMSDU - param was \n", __FUNCTION__,__LINE__, ParamName);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid TID for AMSDU - param was %s\n", __func__,__LINE__, ParamName);
             return FALSE;
         }
 
@@ -5133,7 +5133,7 @@ AMSDU_TID_GetParamBoolValue
         return TRUE;
     }
 
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU GET param is malformed - param was %s \n", __FUNCTION__,__LINE__, ParamName);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d AMSDU GET param is malformed - param was %s \n", __func__,__LINE__, ParamName);
     return FALSE;
 #endif
 }
