@@ -4994,7 +4994,7 @@ AMSDU_TID_GetEntry
             return NULL;
         }
         *pInsNumber = nIndex + 1;
-        return (ANSC_HANDLE)get_tid_from_param(*pInsNumber, wifiRadioOperParam);
+        return (ANSC_HANDLE)get_tid_from_param(*pInsNumber - 1, wifiRadioOperParam);
     }
     return NULL; /* return the handle */
 }
