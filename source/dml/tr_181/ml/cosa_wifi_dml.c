@@ -5138,6 +5138,40 @@ AMSDU_TID_GetParamBoolValue
 #endif
 }
 
+BOOL
+AMSDU_TID_Validate
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       pReturnParamName,
+        ULONG*                      puLength
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    UNREFERENCED_PARAMETER(pReturnParamName);
+    UNREFERENCED_PARAMETER(puLength);  
+    return TRUE;
+}
+
+ULONG
+AMSDU_TID_Commit
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
+
+ULONG
+AMSDU_TID_Rollback
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    return ANSC_STATUS_SUCCESS;
+}
+
 /***********************************************************************
 
  APIs for Object:
