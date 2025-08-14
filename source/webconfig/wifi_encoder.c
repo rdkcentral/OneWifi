@@ -324,6 +324,30 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     //RadarDetected
     cJSON_AddStringToObject(radio_object, "RadarDetected", radio_info->radarDetected);
 
+    // AmsduTid
+    unsigned int amsdu_tid_idx = MAX_AMSDU_TID;
+    char amsdu_list[BUFFER_LENGTH_WIFIDB] = {0};
+    k = 0;
+    for (i = 0; i < MAX_AMSDU_TID; i++) {
+        if (k >= (len - 1)) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Wifi_Radio_Config table Maximum size reached for AMSDU TIDs\n",__func__, __LINE__);
+            break;
+        }
+
+        snprintf(amsdu_list + k, sizeof(amsdu_list) - k,"%d,", radio_info->amsduTid[i]);
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Wifi_Radio_Config table Channel list %s %d\t",__func__, __LINE__,amsdu_list,strlen(amsdu_list));
+        k = strlen(amsdu_list);
+    }
+
+    memset(str, 0, sizeof(str));
+    if ((strlen(channel_list) > 1) && (strlen(channel_list) < sizeof(str))) {
+        strncpy(str,channel_list,strlen(channel_list)-1);
+    } else {
+        strcpy(str, " ");
+    }
+
+    cJSON_AddStringToObject(radio_object, "Amsdu_Tid",str);
+
     // Operating Class Capability details
     if (encode_radio_operating_classes(radio_info, radio_object) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio operation classes failed\n", __func__,

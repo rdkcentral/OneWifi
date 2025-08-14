@@ -382,6 +382,7 @@
         PJS_OVS_INT_Q(thermal_tx_chainmask) \
         PJS_OVS_SMAP_INT(fallback_parents, 8) \
         PJS_OVS_STRING_Q(zero_wait_dfs, 128 + 1) \
+        PJS_OVS_STRING(amsdu_tid, 128 + 1) \
     )
 
 #define PJS_SCHEMA_Wifi_Radio_State \
@@ -419,6 +420,7 @@
         PJS_OVS_SMAP_STRING(channels, 64, 64 + 1) \
         PJS_OVS_SMAP_INT(fallback_parents, 8) \
         PJS_OVS_STRING_Q(zero_wait_dfs, 128 + 1) \
+        PJS_OVS_STRING(amsdu_tid, 128 + 1) \
     )
 
 #define PJS_SCHEMA_Wifi_Credential_Config \
@@ -1588,6 +1590,7 @@
         PJS_OVS_INT(Tidle) \
         PJS_OVS_INT(dfs_timer) \
         PJS_OVS_STRING(radar_detected, 256 + 1) \
+        PJS_OVS_STRING(amsdu_tid, 128 + 1) \
     )
 
 #define PJS_SCHEMA_Wifi_Global_Config \
@@ -2286,7 +2289,8 @@
     COLUMN(tx_chainmask) \
     COLUMN(thermal_tx_chainmask) \
     COLUMN(fallback_parents) \
-    COLUMN(zero_wait_dfs)
+    COLUMN(zero_wait_dfs) \
+    COLUMN(amsdu_tid)
 
 #define SCHEMA__Wifi_Radio_State "Wifi_Radio_State"
 #define SCHEMA_COLUMN__Wifi_Radio_State(COLUMN) \
@@ -2320,7 +2324,8 @@
     COLUMN(allowed_channels) \
     COLUMN(channels) \
     COLUMN(fallback_parents) \
-    COLUMN(zero_wait_dfs)
+    COLUMN(zero_wait_dfs) \
+    COLUMN(amsdu_tid)
 
 #define SCHEMA__Wifi_Credential_Config "Wifi_Credential_Config"
 #define SCHEMA_COLUMN__Wifi_Credential_Config(COLUMN) \
@@ -3267,7 +3272,8 @@
     COLUMN(Nscan) \
     COLUMN(Tidle) \
     COLUMN(dfs_timer) \
-    COLUMN(radar_detected)
+    COLUMN(radar_detected) \
+    COLUMN(amsdu_tid)
 
 #define SCHEMA__Wifi_Global_Config "Wifi_Global_Config"
 #define SCHEMA_COLUMN__Wifi_Global_Config(COLUMN) \
@@ -3636,6 +3642,7 @@
 #define SCHEMA__Wifi_Radio_Config_ovs__thermal_tx_chainmask "thermal_tx_chainmask"
 #define SCHEMA__Wifi_Radio_Config_ovs__fallback_parents "fallback_parents"
 #define SCHEMA__Wifi_Radio_Config_ovs__zero_wait_dfs "zero_wait_dfs"
+#define SCHEMA__Wifi_Radio_Config_ovs__amsdu_tid "amsdu_tid"
 
 #define SCHEMA__Wifi_Radio_State__if_name "if_name"
 #define SCHEMA__Wifi_Radio_State__radio_config "radio_config"
@@ -3668,6 +3675,7 @@
 #define SCHEMA__Wifi_Radio_State__channels "channels"
 #define SCHEMA__Wifi_Radio_State__fallback_parents "fallback_parents"
 #define SCHEMA__Wifi_Radio_State__zero_wait_dfs "zero_wait_dfs"
+#define SCHEMA__Wifi_Radio_State__amsdu_tid "amsdu_tid"
 
 
 #define SCHEMA__Wifi_Credential_Config__ssid "ssid"
@@ -4542,6 +4550,7 @@
 #define SCHEMA__Wifi_Radio_Config__Tidle "Tidle"
 #define SCHEMA__Wifi_Radio_Config__dfs_timer "dfs_timer"
 #define SCHEMA__Wifi_Radio_Config__radar_detected "radar_detected"
+#define SCHEMA__Wifi_Radio_Config__amsdu_tid "amsdu_tid"
 
 #define SCHEMA__Wifi_Global_Config__gas_config "gas_config"
 #define SCHEMA__Wifi_Global_Config__notify_wifi_changes "notify_wifi_changes"

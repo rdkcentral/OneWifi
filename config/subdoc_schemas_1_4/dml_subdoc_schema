@@ -119,7 +119,8 @@
 			"UserControl": 0,
 			"AdminControl": 0,
 			"ChanUtilThreshold": 90,
-			"ChanUtilSelfHealEnable": false
+			"ChanUtilSelfHealEnable": false,
+			"Amsdu_Tid": ""
 		},
 		{
 			"WifiRadioSetup": {
@@ -190,7 +191,8 @@
 			"UserControl": 0,
 			"AdminControl": 0,
 			"ChanUtilThreshold": 90,
-			"ChanUtilSelfHealEnable": false
+			"ChanUtilSelfHealEnable": false,
+			"Amsdu_Tid": ""
 		}
 	],
 	"WiFiCap": {

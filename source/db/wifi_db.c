@@ -182,6 +182,25 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         Fcfg.OffChanTidleInSec = 0;
     }
 
+    for (int j = 0; j < 8; j++) {
+      cfg.amsduTid[j] = FALSE;
+    }
+
+#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+    if (cfg.band == WIFI_FREQUENCY_6_BAND)
+    {
+        memset(cfg.amsduTid, (BOOL)1, sizeof(BOOL) * 5);
+    } else {
+        memset(cfg.amsduTid, (BOOL)1, sizeof(BOOL) * 4);
+    }
+#elif defined(_XB8_PRODUCT_REQ_)
+    cfg.amsduTid[0] = 1;
+    if (cfg.band == WIFI_FREQUENCY_6_BAND)
+    {
+        cfg.amsduTid[4] = 1;
+    }
+#endif
+
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     /* Call the function to update the operating classes based on Country code and Radio */
     update_radio_operating_classes(&cfg);

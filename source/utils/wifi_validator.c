@@ -2185,6 +2185,33 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
         validate_param_string(wifi, "RadarDetected", param);
         copy_string(wifi_radio_info->radarDetected, param->valuestring );
 
+        //AmsduTid
+        validate_param_string(wifi, "AmsduTid",param);
+        ptr = param->valuestring;
+        tmp = param->valuestring;
+        
+        uint8_t tid_idx = 0;
+        while ((ptr = strchr(tmp, ',')) != NULL) {
+                ptr++;
+                wifi_radio_info->amsduTid[tid_idx] = atoi(tmp);
+                if ((wifi_radio_info->amsduTid[tid_idx] != 0 || wifi_radio_info->amsduTid[tid_idx] != 1))
+                {
+                    wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid value when parsing AMSDU TID: %d\n", wifi_radio_info->amsduTid[tid_idx]);
+                    strncpy(execRetVal->ErrorMsg, "Invalid AMSDU TID list",sizeof(execRetVal->ErrorMsg)-1);
+                    return RETURN_ERR;
+                }
+                tmp = ptr;
+                tid_idx++;
+        }
+        // Last channel
+        //wifi_radio_info->channelSecondary[num_of_channel++] = atoi(tmp);
+        
+        if(tid_idx != MAX_AMSDU_TID - 1) {
+                wifi_util_dbg_print(WIFI_PASSPOINT,"Number of AMSDU TIDs decoded does not match required value\n");
+                strncpy(execRetVal->ErrorMsg, "Invalid AMSDU TID list",sizeof(execRetVal->ErrorMsg)-1);
+                return RETURN_ERR;
+        }
+
     return RETURN_OK;
 }
 
