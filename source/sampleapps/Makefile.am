@@ -29,9 +29,7 @@ endif
 if CCSP_ARCH_PC
 AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 endif
-AM_LDFLAGS = -L$(top_builddir)/source/sysevent/lib
-AM_LDFLAGS += -lsysevent
-AM_LDFLAGS += -L$(top_builddir)/source/utils/
+AM_LDFLAGS = -L$(top_builddir)/source/utils/
 AM_LDFLAGS += -lwifi_utils
 if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
@@ -50,7 +48,7 @@ onewifi_component_test_app_SOURCES = wifi_webconfig_consumer.c webconfig_consume
 
 onewifi_component_test_app_SOURCES += $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c
 
-onewifi_component_test_app_LDFLAGS = -lsysevent -lrbus
+onewifi_component_test_app_LDFLAGS = -lrbus
 onewifi_component_test_app_LDFLAGS += -L$(top_builddir)/source/utils/
 onewifi_component_test_app_LDFLAGS += -lwifi_utils
 if WITH_LIBWEBCONFIG
@@ -65,5 +63,4 @@ onewifi_component_test_app_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 bin_PROGRAMS += wifi_events_consumer
 wifi_events_consumer_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats
 wifi_events_consumer_SOURCES = wifievents_consumer_sample.c
-wifi_events_consumer_LDFLAGS = -lsysevent -lrbus
-
+wifi_events_consumer_LDFLAGS = -lrbus
