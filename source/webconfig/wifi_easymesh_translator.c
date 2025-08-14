@@ -325,7 +325,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
         strncpy(em_radio_info->intf.name, radio->name, sizeof(em_interface_name_t));
@@ -432,7 +433,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
         strncpy(em_radio_info->intf.name,radio_iface_map->radio_name, sizeof(em_interface_name_t));
@@ -492,11 +494,21 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
     radio_interface_mapping_t *radio_iface_map;
 
     if ((vap_row == NULL) || (vap == NULL)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: input argument is NULL\n", __func__,
+            __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
+    if (vap->vap_mode != wifi_vap_mode_ap) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap_mode:%d is not wifi_vap_mode_ap.\n",
+            __func__, __LINE__, vap->vap_mode);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    vap_row->vap_mode = em_vap_mode_ap;
+
     vap_row->enabled = vap->u.bss_info.enabled;
     strncpy(vap_row->ssid, vap->u.bss_info.ssid, sizeof(vap_row->ssid));
+    vap_row->vap_index = vap->vap_index;
 
     // Set the em_bss_info_t vendor_elements to the same as wifi_vap_info_t vendor_elements
     memset(vap_row->vendor_elements, 0, sizeof(vap_row->vendor_elements));
@@ -508,8 +520,8 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
             vap->u.bss_info.bssid[2], vap->u.bss_info.bssid[3],
             vap->u.bss_info.bssid[4], vap->u.bss_info.bssid[5]);
     str_to_mac_bytes(mac_str,vap_row->bssid.mac);
-    strncpy(vap_row->bssid.name, iface_map->interface_name,sizeof(vap_row->bssid.name));
-	convert_vap_name_to_hault_type(&vap_row->id.haul_type, vap->vap_name);
+    strncpy(vap_row->bssid.name, vap->vap_name, sizeof(vap_row->bssid.name));
+	convert_vap_name_to_hault_type(&vap_row->id.haul_type, (char *)vap->vap_name);
 
     default_em_bss_info(vap_row);
     radio_iface_map = NULL;
@@ -602,7 +614,13 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     printf("%s:%d: client_state: %d\n", __func__, __LINE__, assoc_dev_data->client_state);
 
                     memcpy(em_sta_dev_info->id, assoc_dev_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
-                    memcpy(em_sta_dev_info->bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
+                    if (vap->vap_mode == wifi_vap_mode_ap) {
+                        memcpy(em_sta_dev_info->bssid, vap->u.bss_info.bssid,
+                            sizeof(mac_address_t));
+                    } else if (vap->vap_mode == wifi_vap_mode_sta) {
+                        memcpy(em_sta_dev_info->bssid, vap->u.sta_info.bssid,
+                            sizeof(mac_address_t));
+                    }
                     memcpy(em_sta_dev_info->radiomac, radio_info->intf.mac, sizeof(mac_address_t));
                     em_sta_dev_info->last_ul_rate = assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
                     em_sta_dev_info->last_dl_rate = assoc_dev_data->dev_stats.cli_LastDataDownlinkRate;
@@ -696,7 +714,7 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
              bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
         if (em_sta_dev_info != NULL) {     
             memcpy(em_sta_dev_info->id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
-            memcpy(em_sta_dev_info->timestamp, time_str ,sizeof(em_sta_dev_info->timestamp));
+            memcpy(em_sta_dev_info->timestamp, time_str, sizeof(time_str));
             em_sta_dev_info->last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
             em_sta_dev_info->last_dl_rate             = client_stats[count].cli_LastDataDownlinkRate;
             //TODO: formulae derivation pending
@@ -840,7 +858,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
         //Get the corresponding vap
         vap = &vap_map->vap_array[j];
         ap_metrics = &em_ap_report->vap_reports[j];
-        if (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) != 0) {
+        if ((vap->vap_mode != wifi_vap_mode_ap) || (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) != 0)) {
             continue;
         }
 
@@ -912,13 +930,17 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     }
     default_em_bss_info(vap_row);
 
+    vap_row->vap_mode = em_vap_mode_sta;
+
     vap_row->enabled = vap->u.sta_info.enabled;
+    vap_row->vap_index = vap->vap_index;
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: vap_index %d vap_name %s\n", __func__, __LINE__, vap->vap_index, vap->vap_name);
 
     // Copy basic info
     strncpy(vap_row->ssid, vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid));
     memcpy(vap_row->bssid.mac, vap->u.sta_info.bssid, sizeof(mac_address_t));
-    strncpy(vap_row->bssid.name,iface_map->interface_name,sizeof(vap_row->bssid.name));
-    convert_vap_name_to_hault_type(&vap_row->id.haul_type, vap->vap_name);
+    strncpy(vap_row->bssid.name, vap->vap_name, sizeof(vap_row->bssid.name));
+    convert_vap_name_to_hault_type(&vap_row->id.haul_type, (char *)vap->vap_name);
 
     // Copy security info (mode/AKMs)
     enum_sec = vap->u.sta_info.security.mode;
@@ -955,6 +977,12 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     // Copy radio information
     strncpy(vap_row->ruid.name, radio_iface_map->radio_name,sizeof(vap_row->ruid.name));
     mac_address_from_name(radio_iface_map->interface_name, vap_row->ruid.mac);
+
+    if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
+        vap_row->connect_status = true;
+    } else {
+        vap_row->connect_status = false;
+    }
 
     return webconfig_error_none;
 }
@@ -1154,7 +1182,8 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
         mac_address_from_name(radio_iface_map->interface_name, rmac);
@@ -1235,7 +1264,8 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
     webconfig_external_easymesh_t *proto;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_hal_capability_t *hal_cap;
-    radio_interface_mapping_t *iface_map;
+    wifi_interface_name_idex_map_t *iface_map;
+    radio_interface_mapping_t *radio_iface_map;
     wifi_vap_info_t *vap;
     unsigned int i = 0,j = 0, k = 0, count = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
@@ -1269,27 +1299,39 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
         radio = &decoded_params->radios[i];
         vap_map = &radio->vaps.vap_map;
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
-        iface_map = NULL;
+        radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
-                iface_map = &(wifi_prop->radio_interface_map[k]);
+                radio_iface_map = &(wifi_prop->radio_interface_map[k]);
                 break;
             }
         }
-        if (iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
-        mac_address_from_name(iface_map->interface_name, rmac);
+        mac_address_from_name(radio_iface_map->interface_name, rmac);
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            if (strstr(vap->vap_name,vap_name) == false) {
+                continue;
+            }
+            iface_map = NULL;
+            for (k = 0; k < (sizeof(wifi_prop->interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
+                if (wifi_prop->interface_map[k].index == vap->vap_index) {
+                    iface_map = &(wifi_prop->interface_map[k]);
+                    break;
+                }
+            }
+            if (iface_map == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_to_easymesh;
+            }
             vap_info_row = proto->get_bss_info(proto->data_model, count);
             if (vap_info_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot find the bssid\n", __func__, __LINE__);
-                continue;
-            }
-            if (strstr(vap->vap_name,vap_name) == false) {
                 continue;
             }
             count++;
@@ -1346,7 +1388,8 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
     wifi_hal_capability_t *hal_cap;
-    radio_interface_mapping_t *iface_map;
+    wifi_interface_name_idex_map_t *iface_map;
+    radio_interface_mapping_t *radio_iface_map;
     mac_address_t rmac;
     unsigned int i = 0,j = 0, k = 0, count = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
@@ -1385,21 +1428,33 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
             continue;
         }
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
-        iface_map = NULL;
+        radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
-                iface_map = &(wifi_prop->radio_interface_map[k]);
+                radio_iface_map = &(wifi_prop->radio_interface_map[k]);
                 break;
             }
         }
-        if (iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_easymesh;
         }
-        mac_address_from_name(iface_map->interface_name, rmac);
+        mac_address_from_name(radio_iface_map->interface_name, rmac);
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            iface_map = NULL;
+            for (k = 0; k < (sizeof(wifi_prop->interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
+                if (wifi_prop->interface_map[k].index == vap->vap_index) {
+                    iface_map = &(wifi_prop->interface_map[k]);
+                    break;
+                }
+            }
+            if (iface_map == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_to_easymesh;
+            }
             vap_info_row = proto->get_bss_info(proto->data_model, count);
             if (vap_info_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot find the bssid\n", __func__, __LINE__);
@@ -1491,16 +1546,22 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
         }
     }
 
-    if (vap == NULL){
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap is NULL\n", __func__,
-            __LINE__);
+    if (vap == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    if (vap->vap_mode != wifi_vap_mode_ap) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap_mode:%d is not wifi_vap_mode_ap\n",
+            __func__, __LINE__, vap->vap_mode);
+        return webconfig_error_translate_to_easymesh;
     }
 
     bss_info = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
 
     if (bss_info == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bss_info is NULL\n", __func__,
-            __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bss_info is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
     }
 
     memcpy(em_sta_dev_info.id, params->sta_beacon_report.mac_addr, sizeof(mac_address_t));
@@ -1521,9 +1582,16 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
 webconfig_error_t translate_em_common_to_vap_info_common( wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: input argument is NULL\n", __func__,
+            __LINE__);
         return webconfig_error_translate_from_easymesh;
     }
+    if (vap->vap_mode != wifi_vap_mode_ap) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap_mode:%d is not wifi_vap_mode_ap.\n",
+            __func__, __LINE__, vap->vap_mode);
+        return webconfig_error_translate_from_easymesh;
+    }
+
     vap->u.bss_info.enabled = vap_row->enabled ;
     strncpy(vap->u.bss_info.ssid,vap_row->ssid, sizeof(vap->u.bss_info.ssid));
 
@@ -1562,8 +1630,7 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
     }
 
     vap->u.sta_info.security.mode = enum_sec;
-    
-    //Copy Passphrase
+    // Copy Passphrase
     strncpy(vap->u.sta_info.security.u.key.key, vap_row->mesh_sta_passphrase, sizeof(vap->u.sta_info.security.u.key.key));
     
     return webconfig_error_none;
@@ -1802,14 +1869,23 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
         }
     }
     if (radio_iface_map == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
-        return webconfig_error_translate_to_easymesh;
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+            __func__, __LINE__, radio_index);
+        return webconfig_error_translate_from_easymesh;
     }
     vap_map = &radio->vaps.vap_map;
     for (j = 0; j < radio->vaps.num_vaps; j++) {
         //Get the corresponding vap
         vap = &vap_map->vap_array[j];
-        vap_info_row = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
+        if (vap->vap_mode == wifi_vap_mode_ap) {
+            vap_info_row = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
+        } else if (vap->vap_mode == wifi_vap_mode_sta) {
+            vap_info_row = proto->get_bss_info_with_mac(proto->data_model, vap->u.sta_info.bssid);
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: unhandled vap_mode:%d\n",
+                __func__, __LINE__, vap->vap_mode);
+            vap_info_row = NULL;
+        }
         if (vap_info_row == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_vap_info is NULL\n", __func__, __LINE__);
             continue;
@@ -1852,14 +1928,29 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
 
         if (radio_config != NULL) {
             for(k = 0; k < radio_config->noofbssconfig; k++) {
-                convert_vap_name_to_hault_type(&haultype, vap->vap_name );
+                convert_vap_name_to_hault_type(&haultype, (char *)vap->vap_name);
                 if (radio_config->haultype[k] == haultype) {
-                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: ssid=%s sec_mode=%d password=%s", __func__, __LINE__,
-                    radio_config->ssid[k],radio_config->authtype[k],radio_config->password[k]);
-                    vap->u.bss_info.security.mode = radio_config->authtype[k];
-                    strncpy(vap->u.bss_info.ssid, radio_config->ssid[k], sizeof(vap->u.bss_info.ssid)-1);
-                    strncpy(vap->u.bss_info.security.u.key.key, radio_config->password[k], sizeof(vap->u.bss_info.security.u.key.key)-1);
-                    vap->u.bss_info.enabled = radio_config->enable[k];
+                    wifi_util_info_print(WIFI_WEBCONFIG,
+                        "%s:%d: vap_mode:%d ssid=%s sec_mode=%d\n", __func__, __LINE__,
+                        vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
+                    if (vap->vap_mode == wifi_vap_mode_ap) {
+                        vap->u.bss_info.security.mode = radio_config->authtype[k];
+                        strncpy(vap->u.bss_info.ssid, radio_config->ssid[k],
+                            sizeof(vap->u.bss_info.ssid) - 1);
+                        strncpy(vap->u.bss_info.security.u.key.key, radio_config->password[k],
+                            sizeof(vap->u.bss_info.security.u.key.key) - 1);
+                        vap->u.bss_info.enabled = radio_config->enable[k];
+                    } else if (vap->vap_mode == wifi_vap_mode_sta) {
+                        vap->u.sta_info.security.mode = radio_config->authtype[k];
+                        strncpy(vap->u.sta_info.ssid, radio_config->ssid[k],
+                            sizeof(vap->u.sta_info.ssid) - 1);
+                        strncpy(vap->u.sta_info.security.u.key.key, radio_config->password[k],
+                            sizeof(vap->u.sta_info.security.u.key.key) - 1);
+                        vap->u.sta_info.enabled = radio_config->enable[k];
+                    } else {
+                        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: unhandled vap_mode:%d\n",
+                            __func__, __LINE__, vap->vap_mode);
+                    }
                 }
             }
         }
@@ -2001,8 +2092,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
-            return webconfig_error_translate_to_easymesh;
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
+            return webconfig_error_translate_from_easymesh;
         }
         vap_map = &radio->vaps.vap_map;
         for (j = 0; j < radio->vaps.num_vaps; j++) {
@@ -2061,14 +2153,29 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
 
             if (radio_config != NULL) {
                 for(k = 0; k < radio_config->noofbssconfig; k++) {
-                    convert_vap_name_to_hault_type(&haultype, vap->vap_name );
+                    convert_vap_name_to_hault_type(&haultype, (char *)vap->vap_name );
                     if (radio_config->haultype[k] == haultype) {
-                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: ssid=%s sec_mode=%d password=%s", __func__, __LINE__,
-                        radio_config->ssid[k],radio_config->authtype[k],radio_config->password[k]);
-                        vap->u.bss_info.security.mode = radio_config->authtype[k];
-                        strncpy(vap->u.bss_info.ssid, radio_config->ssid[k], sizeof(vap->u.bss_info.ssid)-1);
-                        strncpy(vap->u.bss_info.security.u.key.key, radio_config->password[k], sizeof(vap->u.bss_info.security.u.key.key)-1);
-                        vap->u.bss_info.enabled = radio_config->enable[k];
+                        wifi_util_info_print(WIFI_WEBCONFIG,
+                            "%s:%d: vap_mode:%d ssid=%s sec_mode=%d\n", __func__, __LINE__,
+                            vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
+                        if (vap->vap_mode == wifi_vap_mode_ap) {
+                            vap->u.bss_info.security.mode = radio_config->authtype[k];
+                            strncpy(vap->u.bss_info.ssid, radio_config->ssid[k],
+                                sizeof(vap->u.bss_info.ssid) - 1);
+                            strncpy(vap->u.bss_info.security.u.key.key, radio_config->password[k],
+                                sizeof(vap->u.bss_info.security.u.key.key) - 1);
+                            vap->u.bss_info.enabled = radio_config->enable[k];
+                        } else if (vap->vap_mode == wifi_vap_mode_sta) {
+                            vap->u.sta_info.security.mode = radio_config->authtype[k];
+                            strncpy(vap->u.sta_info.ssid, radio_config->ssid[k],
+                                sizeof(vap->u.sta_info.ssid) - 1);
+                            strncpy(vap->u.sta_info.security.u.key.key, radio_config->password[k],
+                                sizeof(vap->u.sta_info.security.u.key.key) - 1);
+                            vap->u.sta_info.enabled = radio_config->enable[k];
+                        } else {
+                            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: unhandled vap_mode:%d\n",
+                                __func__, __LINE__, vap->vap_mode);
+                        }
                     }
                 }
             }
@@ -2142,8 +2249,9 @@ webconfig_error_t translate_radio_object_from_easymesh_to_radio(webconfig_subdoc
             }
         }
         if (radio_iface_map == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
-            return webconfig_error_translate_to_easymesh;
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the radio map entry for radio_index:%d\n",
+                __func__, __LINE__, radio_index);
+            return webconfig_error_translate_from_easymesh;
         }
         mac_address_from_name(radio_iface_map->interface_name, ruid);
         for (j = 0; j < num; j++) {

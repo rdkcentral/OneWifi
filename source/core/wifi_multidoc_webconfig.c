@@ -345,9 +345,15 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
             vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
         } else if (!strcmp(value, "WPA3-Personal-Compatibility")) {
-            vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
-            vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
-            vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+            if (strncmp(vap_info->vap_name, "private_ssid_6g", sizeof(vap_info->vap_name)) == 0) {
+                vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+                vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+                vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+            } else {
+                vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
+                vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+                vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+            }
         } else {
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg,"Invalid Security Mode",sizeof(execRetVal->ErrorMsg)-1);
@@ -1175,6 +1181,20 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         if(interworking_o == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to get Interworking obj for %s\n", __func__, nm_s);
             continue;
+        } else {
+            //if VenueOptionPresent param missing add it.
+            cJSON *venue_o = cJSON_GetObjectItem(interworking_o, "Venue");
+            if (venue_o != NULL) {
+                cJSON *venue_option = cJSON_GetObjectItem(venue_o, "VenueOptionPresent");
+                if (venue_option == NULL) {
+                    wifi_interworking_t *interworking_info =
+                        &wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.interworking;
+                    cJSON_AddBoolToObject(venue_o, "VenueOptionPresent",
+                        interworking_info->interworking.venueOptionPresent);
+                } else {
+                    wifi_util_info_print(WIFI_CTRL, "%s: VenueOptionPresent param available\n", __func__);
+                }
+            }
         }
 
         if ((status = early_validate_interworking(interworking_o,  execRetVal)) != RETURN_OK) {

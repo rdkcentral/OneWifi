@@ -1365,8 +1365,25 @@ int set_sta_client_mode(int ap_index, char *mac, int key_mgmt, frame_type_t fram
 
 void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
+    char buff[2048];
+    char tmp[128];
     sta_key_t sta_key;
     wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
+    /*Wrong password on private, Xfinity Home and LNF SSIDs*/
+    if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
+        get_formatted_time(tmp);
+        snprintf(buff, 2048, "%s WIFI_PASSWORD_FAIL:%d,%s\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key));
+        /* send telemetry of password failure */
+        write_to_file(wifi_health_log, buff);
+    }
+    /*ARRISXB6-11979 Possible Wrong WPS key on private SSIDs*/
+    if ((dev->reason == 2 || dev->reason == 14 || dev->reason == 19) && ( isVapPrivate(ap_index) ))  {
+        get_formatted_time(tmp);
+        snprintf(buff, 2048, "%s WIFI_POSSIBLE_WPS_PSK_FAIL:%d,%s,%d\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key), dev->reason);
+        /* send telemetry of WPS failure */
+        write_to_file(wifi_health_log, buff);
+    }
+    /*Calling process_disconnect as station is disconncetd from vAP*/
     process_disconnect(ap_index, dev);
 }
 
@@ -3895,9 +3912,10 @@ int collector_postpone_execute_task(void *arg)
 {
     wifi_mon_collector_element_t *elem = (wifi_mon_collector_element_t *)arg;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
 
-    if ((mon_data->scan_status[elem->args->radio_index] == 1) && (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
+    if ((mon_data->scan_status[elem->args->radio_index] == 1 || mgr->channel_change_in_progress[elem->args->radio_index] == true) && (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
         wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
         scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
         elem->collector_postpone_task_sched_id = id;
@@ -3920,11 +3938,12 @@ int collector_execute_task(void *arg)
 {
     wifi_mon_collector_element_t *elem = (wifi_mon_collector_element_t *)arg;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
 
     if (elem->stat_desc->stats_type == mon_stats_type_radio_channel_stats || 
             elem->stat_desc->stats_type == mon_stats_type_neighbor_stats) {
-        if (mon_data->scan_status[elem->args->radio_index] == 1) {
+        if (mon_data->scan_status[elem->args->radio_index] == 1 || mgr->channel_change_in_progress[elem->args->radio_index] == true) {
             if (elem->collector_postpone_task_sched_id == 0) {
                 wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
                 scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);

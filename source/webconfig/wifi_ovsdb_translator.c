@@ -67,7 +67,9 @@ struct ovs_vapname_cloudvifname_map {
     char vapname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_) || defined (_SCER11BEL_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_) || \
+    defined (_SCER11BEL_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || \
+    defined (_SCXF11BFL_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
     {"bhaul-ap-l50", "mesh_backhaul_5gl"},
@@ -902,15 +904,28 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
         default_vap_info->u.bss_info.mbo_enabled = true;
         default_vap_info->u.bss_info.interop_ctrl = false;
+
+        char str[600] = {0};
+        snprintf(str,sizeof(str),"%s", DEFAULT_ANQP_STR_DATA);
+        snprintf((char *)default_vap_info->u.bss_info.interworking.anqp.anqpParameters,
+            sizeof(default_vap_info->u.bss_info.interworking.anqp.anqpParameters), "%s" , str);
+        memset(str,0,sizeof(str));
+        snprintf(str,sizeof(str),"%s", DEFAULT_PASSPOINT_STR_DATA);
+        snprintf((char *)default_vap_info->u.bss_info.interworking.passpoint.hs2Parameters,
+            sizeof(default_vap_info->u.bss_info.interworking.passpoint.hs2Parameters), "%s" , str);
+
+        default_vap_info->u.bss_info.interworking.interworking.venueOptionPresent = 1;
+        default_vap_info->u.bss_info.interworking.interworking.venueGroup = 0;
+        default_vap_info->u.bss_info.interworking.interworking.venueType = 0;
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_)
+    defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
         if (!is_vap_mesh_sta(&hal_cap->wifi_prop, vapIndex)) {
             default_vap_info->u.bss_info.hostap_mgt_frame_ctrl = true;
         }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_)
+       // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
         if (is_vap_private(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             default_vap_info->u.bss_info.network_initiated_greylist = false;
             default_vap_info->u.bss_info.vapStatsEnable = true;
