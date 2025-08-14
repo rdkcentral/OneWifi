@@ -346,7 +346,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
         strcpy(str, " ");
     }
 
-    cJSON_AddStringToObject(radio_object, "AmsduTID",str);
+    cJSON_AddStringToObject(radio_object, "Amsdu_Tid",str);
 
     // Operating Class Capability details
     if (encode_radio_operating_classes(radio_info, radio_object) != webconfig_error_none) {

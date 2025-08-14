@@ -3184,7 +3184,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // AmsduTid
     unsigned int amsdu_tid_idx = 0;
-    decode_param_string(obj_radio, "AmsduTid", param);
+    decode_param_string(obj_radio, "Amsdu_Tid", param);
     ptr = param->valuestring;
     tmp = param->valuestring;
 
