@@ -135,7 +135,7 @@ WifiClient_GetParamBoolValue
     UNREFERENCED_PARAMETER(hInsContext);
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
 
-    if(pcfg== NULL)
+    if((pcfg== NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
@@ -159,7 +159,7 @@ WifiClient_GetParamUlongValue
     UNREFERENCED_PARAMETER(hInsContext);
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
 
-    if(pcfg== NULL)
+    if((pcfg== NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
@@ -185,7 +185,7 @@ WifiClient_GetParamStringValue
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(pUlSize);
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
-    if(pcfg== NULL)
+    if((pcfg== NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
@@ -243,7 +243,8 @@ WifiClient_SetParamBoolValue
     UNREFERENCED_PARAMETER(hInsContext);
     instant_measurement_config_t *pcfg = NULL;
     pcfg = (instant_measurement_config_t*) get_dml_cache_harvester();
-    if(pcfg == NULL) {
+    if((pcfg == NULL) || (ParamName == NULL)) 
+	{
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -276,7 +277,7 @@ WifiClient_SetParamUlongValue
     UNREFERENCED_PARAMETER(hInsContext);
     instant_measurement_config_t *pcfg = NULL;
     pcfg = (instant_measurement_config_t*) get_dml_cache_harvester();
-    if(pcfg == NULL) {
+    if((pcfg == NULL) || (ParamName == NULL)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -307,7 +308,8 @@ WifiClient_SetParamStringValue
     instant_measurement_config_t *pcfg = NULL;
     pcfg = (instant_measurement_config_t*) get_dml_cache_harvester();
 
-    if(pcfg == NULL) {
+    if((pcfg == NULL) || (ParamName == NULL)) 
+	{
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -320,7 +322,7 @@ WifiClient_SetParamStringValue
         }else{
             return FALSE;
         }
-	return TRUE;
+	    return TRUE;
     }
 
     return FALSE;
@@ -407,7 +409,7 @@ WifiClient_Default_GetParamUlongValue
     UNREFERENCED_PARAMETER(hInsContext);
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
 
-    if(pcfg== NULL)
+    if((pcfg== NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
@@ -441,7 +443,8 @@ WifiClient_Default_SetParamUlongValue
     instant_measurement_config_t *pcfg = NULL;
     pcfg = (instant_measurement_config_t*) get_dml_cache_harvester();
 
-    if(pcfg == NULL) {
+    if((pcfg == NULL) || (ParamName == NULL)) 
+	{
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -549,7 +552,8 @@ WifiClient_ActiveMeasurements_GetParamBoolValue
 {
     UNREFERENCED_PARAMETER(hInsContext);
     active_msmt_t *pcfg = (active_msmt_t *) get_dml_blaster();
-    if(pcfg == NULL) {
+    if((pcfg == NULL) || (ParamName == NULL)) 
+	{
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -571,7 +575,8 @@ WifiClient_ActiveMeasurements_GetParamUlongValue
 {
     UNREFERENCED_PARAMETER(hInsContext);
     active_msmt_t *pcfg = (active_msmt_t *) get_dml_blaster();
-    if(pcfg== NULL) {
+    if((pcfg== NULL) || (ParamName == NULL)) 
+	{
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -626,11 +631,13 @@ WifiClient_ActiveMeasurements_SetParamBoolValue
         }
     }
 
-    if (strcmp(ParamName, "Enable") == 0) {
-        pcfg->ActiveMsmtEnable = bValue;
-        push_blaster_config_dml_to_ctrl_queue();
-        return TRUE;
-    }
+    if(ParamName != NULL) {
+	    if (strcmp(ParamName, "Enable") == 0) {
+            pcfg->ActiveMsmtEnable = bValue;
+            push_blaster_config_dml_to_ctrl_queue();
+            return TRUE;
+        }
+	}
 
     return FALSE;
 }
@@ -646,7 +653,7 @@ WifiClient_ActiveMeasurements_SetParamUlongValue
     UNREFERENCED_PARAMETER(hInsContext);
     active_msmt_t *pcfg = NULL;
     pcfg = (active_msmt_t *) get_dml_cache_blaster();
-    if(pcfg== NULL) {
+    if((pcfg== NULL) || (ParamName == NULL)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -728,7 +735,7 @@ ActiveMeasurements_Plan_GetParamStringValue
     )
 {
     active_msmt_t *pcfg = (active_msmt_t *) get_dml_blaster();
-    if(pcfg== NULL) {
+    if((pcfg== NULL) || (ParamName == NULL)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -750,7 +757,7 @@ ActiveMeasurements_Plan_SetParamStringValue
     UNREFERENCED_PARAMETER(hInsContext);
     active_msmt_t *pcfg = NULL;
     pcfg = (active_msmt_t *) get_dml_cache_blaster();
-    if(pcfg== NULL) {
+    if((pcfg== NULL) || (ParamName == NULL) || (pValue == NULL)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -873,11 +880,14 @@ ActiveMeasurement_Step_GetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "StepID") == 0) {
-        /* collect value */
-        *puLong = pcfg->Step[StepIns].StepId;
-        return TRUE;
-    }
+	if (ParamName != NULL)
+	{
+        if (strcmp(ParamName, "StepID") == 0) {
+            /* collect value */
+            *puLong = pcfg->Step[StepIns].StepId;
+            return TRUE;
+        }
+	}
     return FALSE;
 }
 
@@ -895,7 +905,7 @@ ActiveMeasurement_Step_GetParamStringValue
     active_msmt_step_t *pStepCfg  = (active_msmt_step_t*)hInsContext;
     active_msmt_t *pcfg = (active_msmt_t *) get_dml_blaster();
 
-    if(pcfg== NULL) {
+    if((pcfg== NULL) || (ParamName == NULL)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -946,10 +956,12 @@ ActiveMeasurement_Step_SetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "StepID") == 0) {
-        pcfg->Step[StepIns].StepId = (unsigned int)uValue;
-        return TRUE;
-    }
+	if (ParamName != NULL) {
+        if (strcmp(ParamName, "StepID") == 0) {
+            pcfg->Step[StepIns].StepId = (unsigned int)uValue;
+            return TRUE;
+        }
+	}
     return FALSE;
 }
 
@@ -981,17 +993,19 @@ ActiveMeasurement_Step_SetParamStringValue
         return FALSE;
     }
 
-    if (strcmp(ParamName, "SourceMac") == 0) {
-        strcpy( (char*)pcfg->Step[StepIns].SrcMac,pValue);
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].SrcMac ,StepIns);
-        return TRUE;
-    }
+    if(ParamName != NULL) {
+	    if (strcmp(ParamName, "SourceMac") == 0) {
+            strcpy( (char*)pcfg->Step[StepIns].SrcMac,pValue);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].SrcMac ,StepIns);
+            return TRUE;
+        }
 
-    if (strcmp(ParamName, "DestMac") == 0) {
-        strcpy((char*) pcfg->Step[StepIns].DestMac,pValue);
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].DestMac ,StepIns);
-        return TRUE;
-    }
+        if (strcmp(ParamName, "DestMac") == 0) {
+            strcpy((char*) pcfg->Step[StepIns].DestMac,pValue);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].DestMac ,StepIns);
+            return TRUE;
+        }
+	}
     return FALSE;
 }
 BOOL
