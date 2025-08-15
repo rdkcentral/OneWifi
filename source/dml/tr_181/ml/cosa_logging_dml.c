@@ -158,15 +158,15 @@ Logging_GetParamBoolValue
 {
     UNREFERENCED_PARAMETER(hInsContext);
     /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "FlushAllLogs") == 0)
-    {
-        /* collect value */
-        *pBool = FALSE;
-        
-        return TRUE;
-    }
-
-    /* CcspWecbTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	if (ParamName != NULL) {
+        if (strcmp(ParamName, "FlushAllLogs") == 0)
+        {
+            /* collect value */
+            *pBool = FALSE;        
+            return TRUE;
+        }
+	    /* CcspWecbTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	}
     return FALSE;
 }
 
@@ -212,12 +212,13 @@ Logging_SetParamBoolValue
     UNREFERENCED_PARAMETER(bValue);
    
     /* check the parameter name and set the corresponding value */
-    if (strcmp(ParamName, "FlushAllLogs") == 0)
-    {
-        /* save update to backup */
-	CosaDmlLogging_FlushAllLogs();
-        return TRUE;
-    }
-
+	if (ParamName != NULL) {
+        if (strcmp(ParamName, "FlushAllLogs") == 0)
+        {
+            /* save update to backup */
+	        CosaDmlLogging_FlushAllLogs();
+            return TRUE;
+        }
+	}
     return FALSE;
 }
