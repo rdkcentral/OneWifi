@@ -331,28 +331,24 @@ COSA_IsObjSupported
      * Realistically, we will have certain ones cannot be supported at the early stage of development.
      * We can rule them out by return FALSE even if they're defined in COSA XML file.
      */
-
+    if(pObjName != NULL) {
 #if 0 
-
-    if (strcmp(pObjName, "InternetGatewayDevice.UserInterface.") == 0)
-    {
-        /* all the objects/parameters under "UserInterface" will not be populated in Data Model Tree. */
-        return FALSE;
-    }
-
+        if (strcmp(pObjName, "InternetGatewayDevice.UserInterface.") == 0)
+        {
+            /* all the objects/parameters under "UserInterface" will not be populated in Data Model Tree. */
+            return FALSE;
+        }
 #endif
 
 #if (defined(_COSA_DRG_CNS_))
-
-    if (strcmp(pObjName, "Device.DNS.Client.") == 0)
-    {
-        return FALSE;
-    }        
-
+        if (strcmp(pObjName, "Device.DNS.Client.") == 0)
+        {
+            return FALSE;
+        }        
 #else
-    UNREFERENCED_PARAMETER(pObjName);
+        UNREFERENCED_PARAMETER(pObjName);
 #endif
-
+	}
     return TRUE;
 }
 
