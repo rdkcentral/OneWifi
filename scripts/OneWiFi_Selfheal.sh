@@ -41,6 +41,8 @@ bss_queue_full_cnt=0
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
 CGA4="CGA4332COM"
+CGM43="CGM4331COM"
+CGM49="CGM4981COM"
 
 onewifi_restart_wifi()
 {
@@ -348,7 +350,7 @@ do
                 fi
             fi
 
-            if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
+            if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
                 if [ $eco_mode_6g == "false" ]; then
                     radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
                     if [ $radio_status_6g == "true" ]; then
@@ -380,7 +382,7 @@ do
             fi
 
         #we need to use this changes for only TechXB7 device.
-        if [ "$MODEL_NUM" == "CGM4331COM" -o "$MODEL_NUM" == "$CGA4" ]; then
+        if [ "$MODEL_NUM" == "$CGM43" -o "$MODEL_NUM" == "$CGA4" ]; then
             check_wifi_2g_stuck_status
             check_wifi_5g_stuck_status
         fi
