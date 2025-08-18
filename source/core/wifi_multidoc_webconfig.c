@@ -1478,8 +1478,7 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
         wifi_util_error_print(WIFI_CTRL, "%s: failed to encode %s subdoc\n", \
                               __func__, (subdoc_type == webconfig_subdoc_type_lnf) ? "lnf_psk" : "xfinity");
         goto done;
-    }
-    else if(ret == RETURN_TIMEDOUT) {
+    } else if(ret == RETURN_TIMEDOUT) {
         execRetVal->ErrorCode = BLOB_EXECUTION_TIMEDOUT;
         strncpy(execRetVal->ErrorMsg, "subdoc apply is failed", sizeof(execRetVal->ErrorMsg)-1);
         wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed:%s\n", __func__,
