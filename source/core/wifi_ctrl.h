@@ -403,7 +403,7 @@ int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
 
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
-bool managed_wifi_sem_wait_duration(uint32_t time_in_sec, webconfig_subdoc_type_t subdoc_type);
+bool managed_wifi_sem_wait_duration(uint32_t time_in_sec);
 void managed_wifi_sem_signal(bool status);
 
 #ifdef __cplusplus

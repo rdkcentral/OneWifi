@@ -1975,7 +1975,7 @@ void start_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedu
 
 static void wifi_sem_param_init(wifi_sem_param_t *sem_param)
 {
-    if (!sem_param->is_init) {
+    if (sem_param && !sem_param->is_init) {
         pthread_condattr_t cond_attr;
         pthread_condattr_init(&cond_attr);
         pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
@@ -1989,7 +1989,7 @@ static void wifi_sem_param_init(wifi_sem_param_t *sem_param)
 
 static void wifi_sem_param_destroy(wifi_sem_param_t *sem_param)
 {
-    if (sem_param->is_init) {
+    if (sem_param && sem_param->is_init) {
         pthread_mutex_destroy(&sem_param->lock);
         pthread_cond_destroy(&sem_param->cond);
         sem_param->is_init = false;
@@ -2021,7 +2021,7 @@ static bool wifi_sem_param_wait(wifi_sem_param_t *sem_param, uint32_t time_in_se
 
 static void wifi_sem_param_signal(wifi_sem_param_t *sem_param, bool status)
 {
-    if (sem_param->is_init) {
+    if (sem_param && sem_param->is_init) {
         pthread_mutex_lock(&sem_param->lock);
         sem_param->cfg_status = status;
         pthread_cond_signal(&sem_param->cond);
@@ -2036,15 +2036,9 @@ void managed_wifi_cfg_sem_signal(bool status)
     wifi_sem_param_signal(&ctrl->managed_wifi_sem_param, status);
 }
 
-bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec, webconfig_subdoc_type_t subdoc_type)
+bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec)
 {
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
-
-    if (subdoc_type != webconfig_subdoc_type_lnf) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d - subdoc_type:%d not supported\n", __func__, __LINE__, subdoc_type);
-        return true;
-    }
-
     wifi_util_info_print(WIFI_CTRL, "%s:%d - time_in_sec:%d\n", __func__, __LINE__, time_in_sec);
     return wifi_sem_param_wait(&ctrl->managed_wifi_sem_param, time_in_sec);
 }

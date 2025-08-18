@@ -1351,30 +1351,47 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     bool ret = true;
     if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode for subdoc type %d\n", __FUNCTION__, __LINE__, subdoc_type);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode for subdoc type %d\n",
+            __FUNCTION__, __LINE__, subdoc_type);
         return RETURN_ERR;
     }
 
     str = data->u.encoded.raw;
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d:SREESH Encoded blob:\n%s\n", __func__, __LINE__, str);
-    push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
-    wifi_util_info_print(WIFI_CTRL, "%s:%d:SREESH Doing a thread wait for the managed wifi blob for %d seconds\n", __func__, __LINE__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
-    ret = managed_wifi_cfg_sem_wait_duration(MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT, subdoc_type);
-    if (ret == false)
-    {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d WebConfig blob is applied failure\n", __func__, __LINE__);
+    push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+        wifi_event_webconfig_set_data_webconfig, NULL);
+
+    if (subdoc_type == webconfig_subdoc_type_lnf) {
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d:SREESH Doing a thread wait for the managed wifi blob for %d seconds\n", __func__,
+            __LINE__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
+        ret = managed_wifi_cfg_sem_wait_duration(MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
+
+        if (ret == true) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Managed wifi blob applied successfully\n",
+                __func__, __LINE__);
+            webconfig_data_free(data);
+            return RETURN_OK;
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Managed wifi blob failed, exiting\n", __func__,
+                __LINE__);
+            webconfig_data_free(data);
+            return RETURN_TIMEDOUT;
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Not managed wifi, proceeding with hotspot wait\n",
+            __func__, __LINE__);
+
+        bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
+        if (ret_value == false) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot blob apply failed\n", __func__,
+                __LINE__);
+            webconfig_data_free(data);
+            return RETURN_TIMEDOUT;
+        }
         webconfig_data_free(data);
-        return RETURN_TIMEDOUT;
-    }    
-    bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
-    if (ret_value == false) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed\n", __func__,
-            __LINE__);
-        webconfig_data_free(data);
-        return RETURN_TIMEDOUT;
+        return RETURN_OK;
     }
-    webconfig_data_free(data);
-    return RETURN_OK;
 }
 
 static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type)
