@@ -71,6 +71,7 @@ captiveportal_count=0
 DPC394="DPC3941"
 DPC393="DPC3939"
 TG1="TG1682"
+XB3="XB3"
 
 source /lib/rdk/t2Shared_api.sh
 
@@ -158,7 +159,7 @@ do
 
 captiveportel_OFF=`sysevent get CaptivePortalCheck`
 
-if [ "$BOX_TYPE" = "XB3" ] && [ "$captiveportel_OFF" != "" ]; then
+if [ "$BOX_TYPE" = "$XB3" ] && [ "$captiveportel_OFF" != "" ]; then
 	echo_t " captive portal check is set to  $captiveportel_OFF" 
 
 	if [ "$captiveportel_OFF" == "false" ] && [ $captiveportal_count -eq 0 ]; then
@@ -182,7 +183,7 @@ interface=1
 #Checking if ping to ARM is not failing
 	while [ $interface -eq 1 ]
 	do
-	        if [ "$DEVICE_MODEL" = "TCHXB3" ]; then
+	        if [ "$DEVICE_MODEL" = "TCH${XB3}" ]; then
         	        PING_RES=`ping -I eth0.500 -c 2 -w 10 $ARM_INTERFACE_IP`
                 	CHECK_PING_RES=`echo $PING_RES | grep "packet loss" | cut -d"," -f3 | cut -d"%" -f1`
 			if [ "$CHECK_PING_RES" = "" ]
@@ -404,7 +405,7 @@ interface=1
                     fi
                 fi
 
-		if [ -e "/lib/rdk/platform_process_monitor.sh" ] && [ -e "/lib/rdk/platform_ap_monitor.sh" ] && [ "$DEVICE_MODEL" == "TCHXB3" ];then
+		if [ -e "/lib/rdk/platform_process_monitor.sh" ] && [ -e "/lib/rdk/platform_ap_monitor.sh" ] && [ "$DEVICE_MODEL" == "TCH${XB3}" ];then
 			sh /lib/rdk/platform_process_monitor.sh 
 			sh /lib/rdk/platform_ap_monitor.sh 
 		fi
@@ -880,7 +881,7 @@ interface=1
                 $BINPATH/harvester &
         fi
 
-       if [ "$BOX_TYPE" = "XB3" ] && [ -f "/etc/webgui_atom.sh" ]
+       if [ "$BOX_TYPE" = "$XB3" ] && [ -f "/etc/webgui_atom.sh" ]
        then
           Lighttpd_PID=`pidof lighttpd`
           if [ "$Lighttpd_PID" = "" ]
