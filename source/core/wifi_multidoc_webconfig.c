@@ -1380,12 +1380,12 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
             webconfig_data_free(data);
             return RETURN_TIMEDOUT;
         }
-    } else {
+    } else if(subdoc_type == webconfig_subdoc_type_xfinity) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Not managed wifi, proceeding with hotspot wait\n",
             __func__, __LINE__);
 
-        bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
-        if (ret_value == false) {
+        ret = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
+        if (ret == false) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot blob apply failed\n", __func__,
                 __LINE__);
             webconfig_data_free(data);
@@ -1394,6 +1394,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
         webconfig_data_free(data);
         return RETURN_OK;
     }
+    return RETURN_OK;
 }
 
 static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type)
