@@ -534,6 +534,7 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                 {
                     snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "%s", brval);
                 }
+
                 if (decode_ssid_blob(vap_info, vb_entry, true, execRetVal) != 0) {
                     wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
                     status = RETURN_ERR;
@@ -565,7 +566,8 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                 }
             }
         }
-        strncpy(vap_info->repurposed_bridge_name,"brlan15",sizeof(vap_info->repurposed_bridge_name)-1);
+        strncpy(vap_info->repurposed_bridge_name, "brlan15",
+            sizeof(vap_info->repurposed_bridge_name) - 1);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
         snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "br106");
