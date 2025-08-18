@@ -24,6 +24,7 @@
 #include <ev.h>
 #include <sys/time.h>
 #include <assert.h>
+#include "const.h"
 #include "wifi_data_plane.h"
 #include "wifi_monitor.h"
 #include "wifi_db.h"
@@ -225,7 +226,7 @@ bool is_device_type_sr213(void)
 }
 bool is_device_type_cbr2(void)
 {
-    return is_supported_gateway_device("CGA4332COM");
+    return is_supported_gateway_device(C_CGA4);
 }
 bool is_device_type_scxer10(void)
 {
