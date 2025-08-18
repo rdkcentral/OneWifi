@@ -21,6 +21,7 @@
 #This script is used to log parameters for each AP
 
 CGM4="CGM4331COM"
+TG4="TG4482A"
 
 if [ -f /etc/device.properties ]
 then
@@ -28,7 +29,7 @@ then
 fi
 
 if [ "$(pidof OneWifi)" != "" ]; then
-if [ "$MODEL_NUM" == "TG4482A" ]; then
+if [ "$MODEL_NUM" == "$TG4" ]; then
     ssid1="wlan0.0"
     ssid2="wlan2.0"
 elif [ "$MODEL_NUM" == "VTER11QEL" ]; then
@@ -42,7 +43,7 @@ else # not OneWifi
 if [ "$BOX_TYPE" == "TCCBR" ] || [ "$BOX_TYPE" == "XF3" ] || [ "$BOX_TYPE" == "HUB4" ] || [ "$MODEL_NUM" == "$CGM4" ]; then
     ssid1="wl0"
     ssid2="wl1"
-elif [ "$MODEL_NUM" == "TG4482A" ]; then
+elif [ "$MODEL_NUM" == "$TG4" ]; then
     ssid1="wlan0"
     ssid2="wlan2"
 else
