@@ -13,9 +13,10 @@ RSSThreshold=$2
 RSSMaxLimit=$3
 HeapwalkDuration=$4
 HeapwalkInterval=$5
+CGM4="CGM4331COM"
 
 device=`deviceinfo.sh -mo`
-if [[ $device == "CGM4331COM" ]]; then
+if [[ $device == "$CGM4" ]]; then
     max_vaps=16
 else
     max_vaps=24
