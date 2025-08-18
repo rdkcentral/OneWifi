@@ -18,9 +18,11 @@ OPENSYNC_ENABLE=`syscfg get opensync`
 OPENSYNC_44_ENABLE=`syscfg get opensync_44`
 OPENSYNC_SCRIPTS_PATH=/usr/opensync/scripts
 HAL_WRAPPER_ENABLE=`syscfg get ow_core_thread`
+DPC394="DPC3941"
+DPC393="DPC3939"
 platform_checks()
 {
-if [ "$MODEL_NUM" == "DPC3941" ] || [ "$MODEL_NUM" == "DPC3939" ]; then
+if [ "$MODEL_NUM" == "$DPC394" ] || [ "$MODEL_NUM" == "$DPC393" ]; then
  if [ "$OPENSYNC_ENABLE" == "true" ];then
   echo "Opensync mode enabled"
   DOWNLOAD_PATH_OPENSYNC="/tmp/plume_dnld/usr/opensync/"
