@@ -29,6 +29,7 @@ BRIDGE_MTU=1600
 CGA4="CGA4332COM"
 CGM43="CGM4331COM"
 CGM49="CGM4981COM"
+TG4="TG4482A"
 if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
 MESHBR24_DEFAULT_IP="169.254.70.1"
 MESHBR50_DEFAULT_IP="169.254.71.1"
@@ -66,13 +67,13 @@ secBhaulEnable=`syscfg get SecureBackhaul_Enable`
 wifiDynamicProfile=`sysevent get wifiDynamicProfile` # 0 - LnF, 1 - mesh onboarding
 
 if [ "x$ovs_enable" = "xtrue" ] || [ "x$bridgeUtilEnable" = "xtrue" ] ; then
-	if [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] ||  [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR300" ] || [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
+	if [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] ||  [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR300" ] || [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "$TG4" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
 	  USE_BRIDGEUTILS=1
 	fi
 fi
 
 #XF3 & CommScope XB7 XLE specific changes
-if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
+if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "$TG4" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
  IF_MESHBR24="brlan112"
  IF_MESHBR50="brlan113"
  IF_MESHBRONBOARD="brlan115"
@@ -203,7 +204,7 @@ brctl addbr $PLUME_BH2_NAME
 /sbin/ifconfig $PLUME_BH1_NAME $DEFAULT_PLUME_BH1_IPV4_ADDR netmask $DEFAULT_PLUME_BH_NETMASK up
 /sbin/ifconfig $PLUME_BH2_NAME $DEFAULT_PLUME_BH2_IPV4_ADDR netmask $DEFAULT_PLUME_BH_NETMASK up
 
-if [ "$MODEL_NUM" == "TG4482A" ]; then
+if [ "$MODEL_NUM" == "$TG4" ]; then
     ifconfig $IF_MESHBR24 mtu $BRIDGE_MTU
     ifconfig $IF_MESHVAP24 mtu $BRIDGE_MTU
     ifconfig $IF_MESHBR50 mtu $BRIDGE_MTU
@@ -236,7 +237,7 @@ if [ "$1" == "set_eb" ];then
     exit 0
 fi
 
-if [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ]  || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "TG4482A" ]; then
+if [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ]  || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "$TG4" ]; then
   if [ $USE_BRIDGEUTILS -eq 1 ]; then
     if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
       if [ "`psmcli get dmsb.l3net.10.V4Addr`" != "$MESHBR24_DEFAULT_IP" ]; then
@@ -281,7 +282,7 @@ if [ "$MODEL_NUM" == "VTER11QEL" ]; then
     ifconfig $wifi7_MESHVAP50 mtu $BRIDGE_MTU
 fi
 
-if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ]  || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
+if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ]  || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "$TG4" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
     brctl112=`brctl show | grep "$IF_MESHVAP24"`
     brctl113=`brctl show | grep "$IF_MESHVAP50"`
     if [ "$brctl113" == "" ] || [ "$brctl112" == "" ] && [ "$MODEL_NUM" == "PX5001" ]; then
