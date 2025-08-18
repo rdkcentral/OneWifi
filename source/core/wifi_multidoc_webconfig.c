@@ -531,21 +531,12 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
             }
             if (!strcmp(vap_info->vap_name,blob_vap_name_str)) {
                 wifi_util_error_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
-                int rc = get_managed_guest_bridge(brval, sizeof(brval),radio_index);
-                if (rc != 0)
-                {
-                    snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "brlan%d", radio_index+16);
-                }
-                else
-                {
-                    snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "%s", brval);
-                }
 
                 if (decode_ssid_blob(vap_info, vb_entry, true, execRetVal) != 0) {
                     wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
                     status = RETURN_ERR;
                     goto done;
-                 }
+                }
 
                 security_obj = cJSON_GetObjectItem(vb_entry, "Security");
                 if (security_obj == NULL) {
@@ -553,7 +544,6 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                     status = RETURN_ERR;
                     goto done;
                 }
-
 
                 /* decode security blob */
                 if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
@@ -570,10 +560,17 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                 if (strlen(repurposed_vap_name) != 0) {
                     strncpy(vap_info->repurposed_vap_name, repurposed_vap_name, (strlen(repurposed_vap_name) + 1));
                 }
+                strncpy(vap_info->repurposed_bridge_name, "brlan15",
+                    sizeof(vap_info->repurposed_bridge_name) - 1);
+                int rc = get_managed_guest_bridge(brval, sizeof(brval), radio_index);
+                if (rc != 0) {
+                    snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "brlan%d",
+                        radio_index + 16);
+                } else {
+                    snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "%s", brval);
+                }
             }
         }
-        strncpy(vap_info->repurposed_bridge_name, "brlan15",
-            sizeof(vap_info->repurposed_bridge_name) - 1);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
         snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "br106");
