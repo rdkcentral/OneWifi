@@ -47,9 +47,10 @@ size_t wifi_vap_cfg_timeout_handler()
     return MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT;
 }
 
-size_t webconf_managed_wifi_timeout_handler()
+static size_t webconf_managed_wifi_timeout_handler()
 {
-    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
+    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, 
+            MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT);
     return MAX_MANAGED_WIFI_BLOB_SET_TIMEOUT;
 }
 
@@ -1350,6 +1351,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     char *str;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     bool ret = true;
+
     if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode for subdoc type %d\n",
             __FUNCTION__, __LINE__, subdoc_type);
