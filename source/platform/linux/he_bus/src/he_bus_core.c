@@ -1179,8 +1179,8 @@ he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char const *event_name, h
     return status;
 }
 
-he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_name,
-    he_bus_raw_data_t *p_input_data, he_bus_raw_data_t *p_output_data)
+he_bus_error_t he_bus_method_invoke_internal(he_bus_handle_t handle, char const *event_name,
+    he_bus_data_objs_t *p_input_data, he_bus_data_objs_t *p_output_data, uint32_t timeout)
 {
     VERIFY_NULL_WITH_RC(event_name);
     VERIFY_NULL_WITH_RC(handle);
@@ -1189,7 +1189,8 @@ he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_na
     he_bus_stretch_buff_t raw_buff = { 0 };
     he_bus_stretch_buff_t res_data = { 0 };
     he_bus_error_t status = he_bus_error_success;
-    he_bus_raw_data_t payload_data = { 0 };
+    he_bus_data_objs_t payload_data = { 0 };
+    he_bus_raw_data_t dummy_data = { 0 };
 
     if (p_input_data == NULL) {
         p_input_data = &payload_data;
@@ -1202,22 +1203,28 @@ he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_na
         return status;
     }
 
+    //main cb trigger point namespace
     status = prepare_rem_payload_bus_msg_data(event_name, &req_data, he_bus_msg_method_event,
-        p_input_data, he_bus_error_success);
+        &dummy_data, he_bus_error_success);
     if (status != he_bus_error_success) {
         he_bus_core_error_print("%s:%d rem bus payload prepare is failed:%d for %s\r\n", __func__,
             __LINE__, status, event_name);
         return status;
     }
 
+    move_multi_objs_data(&req_data, &p_input_data->data_obj);
+    he_bus_all_objs_retain(&p_input_data->data_obj);
+
     if (convert_bus_raw_msg_data_to_buffer(&req_data, &raw_buff) != he_bus_error_success) {
         he_bus_core_error_print("%s:%d wrong data for :%s namespace\r\n", __func__, __LINE__,
             event_name);
         FREE_BUFF_MEMORY(raw_buff.buff);
+        free_bus_msg_obj_data(&req_data.data_obj);
         return he_bus_error_invalid_input;
     }
+    free_bus_msg_obj_data(&req_data.data_obj);
 
-    int ret = ipc_unix_send_data_and_wait_for_res(&raw_buff, &res_data, HE_BUS_RES_RECV_TIMEOUT_S);
+    int ret = ipc_unix_send_data_and_wait_for_res(&raw_buff, &res_data, timeout);
     if (ret != HE_BUS_RETURN_OK) {
         he_bus_core_info_print("%s:%d event:%s bus get send failure:%d\r\n", __func__, __LINE__,
             event_name, ret);
@@ -1232,12 +1239,14 @@ he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_na
         convert_buffer_to_bus_raw_msg_data(&recv_data, &res_data);
         if (recv_data.msg_type == he_bus_msg_response &&
             p_obj_data->msg_sub_type == he_bus_msg_method_event) {
+            he_bus_core_info_print("%s:%d event:%s bus method get response found\r\n", __func__,
+                __LINE__, event_name);
             if (!strncmp(event_name, p_obj_data->name, (strlen(p_obj_data->name) + 1))) {
-                he_bus_core_info_print("%s:%d event:%s bus method get response found\r\n", __func__,
-                    __LINE__, event_name);
                 if ((p_obj_data->status == he_bus_error_success) &&
                     (p_output_data != NULL)) {
-                    memcpy(p_output_data, &p_obj_data->data, sizeof(p_obj_data->data));
+                    p_output_data->num_obj = recv_data.num_of_obj - 1;
+                    memcpy(&p_output_data->data_obj, p_obj_data->next_data,
+                        sizeof(he_bus_data_object_t));
                 } else {
                     he_bus_core_error_print("%s:%d event:%s bus method get is falied:%d\r\n", __func__,
                     __LINE__, event_name, p_obj_data->status);
@@ -1254,6 +1263,88 @@ he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_na
 
     FREE_BUFF_MEMORY(raw_buff.buff);
     FREE_BUFF_MEMORY(res_data.buff);
+    return status;
+}
+
+he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_name,
+    he_bus_data_objs_t *p_input_data, he_bus_data_objs_t *p_output_data)
+{
+    return he_bus_method_invoke_internal(handle, event_name, p_input_data,
+        p_output_data, HE_BUS_RES_RECV_TIMEOUT_S);
+}
+
+void *async_method_invoke_thread_func(void *arg)
+{
+    he_bus_method_invoke_async_data_t *in_data =
+        (he_bus_method_invoke_async_data_t *)arg;
+    he_bus_error_t status;
+    he_bus_data_objs_t output_data = { 0 };
+
+    status = he_bus_method_invoke_internal(in_data->handle, in_data->method_name,
+        &in_data->in_params, &output_data, in_data->timeout);
+    if (status != he_bus_error_success) {
+        he_bus_core_error_print("%s:%d async method invoke trigger failed\n", __func__, __LINE__);
+    }
+
+    //trigger method async callback
+    in_data->cb(in_data->method_name, status, &output_data.data_obj, in_data->handle);
+
+    free_bus_msg_obj_data(&output_data.data_obj);
+    free_bus_msg_obj_data(&in_data->in_params.data_obj);
+    he_bus_free(in_data);
+    return NULL;
+}
+
+he_bus_error_t he_bus_async_method_invoke(he_bus_handle_t handle, char const *event_name,
+    he_bus_data_objs_t *input_data, he_bus_method_async_resp_handler_t cb, uint32_t timeout)
+{
+    VERIFY_NULL_WITH_RC(handle);
+    VERIFY_NULL_WITH_RC(event_name);
+    VERIFY_NULL_WITH_RC(input_data);
+
+    ssize_t stack_size = 0x800000; /* 8MB */
+    pthread_attr_t attr;
+    pthread_attr_t *attrp = NULL;
+    pthread_t pid;
+    int ret = 0;
+    he_bus_error_t status = he_bus_error_success;
+    he_bus_mgr_t *bus_mgr = get_bus_mgr_object();
+
+    he_bus_method_invoke_async_data_t *in_data;
+
+    attrp = &attr;
+    pthread_attr_init(&attr);
+    ret = pthread_attr_setstacksize(&attr, stack_size);
+    if (ret != 0) {
+        he_bus_core_error_print("%s:%d pthread_attr_setstacksize failed for size:%ld ret:%d\n",
+                __func__, __LINE__, stack_size, ret);
+    }
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    in_data = he_bus_calloc(1, sizeof(he_bus_method_invoke_async_data_t));
+    HE_BUS_CHECK_NULL_WITH_RC(in_data, he_bus_error_out_of_resources);
+    in_data->handle = handle;
+    strcpy(in_data->method_name, event_name);
+    memcpy(&in_data->in_params, input_data, sizeof(he_bus_data_objs_t));
+    he_bus_all_objs_retain(&input_data->data_obj);
+    in_data->cb = cb;
+    in_data->timeout = timeout;
+
+    if (pthread_create(&pid, attrp, async_method_invoke_thread_func, in_data) !=
+        0) {
+        he_bus_core_error_print(":%s async method invoke thread create error\n", __func__);
+        if(attrp != NULL) {
+            pthread_attr_destroy(attrp);
+        }
+        free_bus_msg_obj_data(&in_data->in_params.data_obj);
+        he_bus_free(in_data);
+        return he_bus_error_out_of_resources;
+    }
+
+    if(attrp != NULL) {
+        pthread_attr_destroy(attrp);
+    }
+
     return status;
 }
 
