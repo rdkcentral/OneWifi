@@ -238,7 +238,7 @@ bool is_device_type_vbvxer5(void)
 }
 bool is_device_type_xle(void)
 {
-    return is_supported_gateway_device("WNXL11BWL");
+    return is_supported_gateway_device(C_WNX);
 }
 
 int init_wifimgr()
