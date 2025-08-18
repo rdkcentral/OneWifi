@@ -86,7 +86,8 @@
 #include "wifi_webconfig.h"//ONE_WIFI
 #endif
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_XER5_PRODUCT_REQ_)  || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || \
+    defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 #include "ccsp_base_api.h"
 #include "messagebus_interface_helper.h"
 
@@ -247,6 +248,7 @@ WiFi_GetParamBoolValue
     char path[32] = {0};
     int val =0 ;
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if(pcfg== NULL)
     {
@@ -355,6 +357,10 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Levl", TRUE))
     {
         *pBool = rfc_pcfg->levl_enabled_rfc;
+
+        if (ctrl->ctrl_initialized == FALSE) {
+            return FALSE;
+        }
         return TRUE;
     }
 

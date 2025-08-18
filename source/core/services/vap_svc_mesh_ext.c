@@ -749,6 +749,9 @@ void ext_try_connecting(vap_svc_t *svc)
     unsigned int i, vap_index, radio_index;
     bss_candidate_t         *candidate;
     mac_addr_str_t bssid_str;
+    bss_candidate_t *temp = NULL;
+    bss_candidate_t *new_bss = NULL;
+    bss_candidate_t *last_connected_bss = NULL;
     bool found_at_least_one_candidate = false;
     wifi_ctrl_t *ctrl;
 
@@ -767,13 +770,39 @@ void ext_try_connecting(vap_svc_t *svc)
         candidate = ext->candidates_list.scan_list;
 
         for (i = 0; i < ext->candidates_list.scan_count; i++) {
-            if ((candidate->conn_attempt == connection_attempt_wait) && (candidate->conn_retry_attempt < STA_MAX_CONNECT_ATTEMPT)) {
-                candidate->conn_retry_attempt++;
-                found_at_least_one_candidate = true;
+            if (temp == NULL && (candidate->conn_attempt == connection_attempt_wait) &&
+                (candidate->conn_retry_attempt < STA_MAX_CONNECT_ATTEMPT)) {
+                temp = candidate;
+            }
+            if (new_bss == NULL &&
+                !memcmp(candidate->external_ap.bssid, ext->new_bss.external_ap.bssid,
+                    sizeof(candidate->external_ap.bssid))) {
+                new_bss = candidate;
                 break;
+            } else if (last_connected_bss == NULL &&
+                !memcmp(candidate->external_ap.bssid, ext->last_connected_bss.external_ap.bssid,
+                    sizeof(candidate->external_ap.bssid))) {
+                last_connected_bss = candidate;
             }
 
             candidate++;
+        }
+        if (new_bss || last_connected_bss || temp) {
+            if (new_bss) {
+                candidate = new_bss;
+                candidate->conn_retry_attempt = 1;
+                candidate->conn_attempt = connection_attempt_wait;
+                memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
+            } else if (last_connected_bss) {
+                candidate = last_connected_bss;
+                candidate->conn_retry_attempt = 1;
+                candidate->conn_attempt = connection_attempt_wait;
+                memset(&ext->last_connected_bss, 0, sizeof(bss_candidate_t));
+            } else if (temp) {
+                candidate = temp;
+                candidate->conn_retry_attempt++;
+            }
+            found_at_least_one_candidate = true;
         }
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - conn_state : %s\n", __func__, __LINE__,
@@ -1090,23 +1119,18 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
 {
     unsigned int i;
     wifi_vap_info_map_t tgt_vap_map;
-    vap_svc_ext_t *ext = &svc->u.ext;
 
     for (i = 0; i < map->num_vaps; i++) {
         memset((unsigned char *)&tgt_vap_map, 0, sizeof(tgt_vap_map));
         memcpy((unsigned char *)&tgt_vap_map.vap_array[0], (unsigned char *)&map->vap_array[i],
                     sizeof(wifi_vap_info_t));
         tgt_vap_map.num_vaps = 1;
-        if (is_devtype_pod()) {
-            tgt_vap_map.vap_array[0].u.sta_info.enabled &= rdk_vap_info[i].exists;
-        }
-        else {
-            // avoid disabling mesh sta in extender mode
-            if (tgt_vap_map.vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
-                   __LINE__, tgt_vap_map.vap_array[0].vap_index);
-                tgt_vap_map.vap_array[0].u.sta_info.enabled = true;
-            }
+
+        // avoid disabling mesh sta in extender mode
+        if (tgt_vap_map.vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
+                __LINE__, tgt_vap_map.vap_array[0].vap_index);
+            tgt_vap_map.vap_array[0].u.sta_info.enabled = true;
         }
 
         if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
@@ -1122,9 +1146,6 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.sta_info.security);
-        if (!is_sta_enabled()) {
-            ext_set_conn_state(ext, connection_state_disconnected_steady, __func__, __LINE__);
-        }
     }
 
     return 0;
@@ -1720,7 +1741,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         }
     }
 
-    if (send_event == true) {
+    if (!is_devtype_pod() && send_event == true) {
         sprintf(name, "Device.WiFi.STA.%d.Connection.Status", index + 1);
 
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus name: %s connection status: %s\n", __func__,
@@ -1747,19 +1768,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         if ((found_candidate == false && (ext->conn_state != connection_state_connected)) ||
                 ((found_candidate == true) && (candidate->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT))) {
             // fallback to last connected bssid if new bssid fails
-            if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
-                // clear new bssid since it is not used for reconnection
-                memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
-
-                // connection to new bssid is done before disconnection so the last bssid
-                // still can be connected
-                if (!is_connected_to_bssid(ext)) {
-                    ext_set_conn_state(ext, connection_state_connection_to_lcb_in_progress,
-                        __func__, __LINE__);
-                    candidate = &ext->last_connected_bss;
-                } else {
-                    ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
-                }
+            if (ext->conn_state == connection_state_connection_to_nb_in_progress &&
+                is_connected_to_bssid(ext)) {
+                ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
             } else {
                 candidate->conn_attempt = connection_attempt_failed;
                 ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,

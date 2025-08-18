@@ -440,7 +440,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.showSsid = false;
         }
 /*For XER5/XB10/XER10 2.4G XHS is disable by default*/
-#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || \
+    defined(_SCXF11BFL_PRODUCT_REQ_)
         if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
