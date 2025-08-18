@@ -68,6 +68,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define C_CGM43 "CGM4331COM"
 #define C_CGM49 "CGM4981COM"
 #define C_TG4 "TG4482A"
+#define C_WNX "WNXL11BWL"
 
 /*
  * ===========================================================================
