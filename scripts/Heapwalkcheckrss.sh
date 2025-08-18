@@ -7,6 +7,7 @@ echo "Starting heapwalkcheckrss.sh script" >> "log_file"
 tmpfile1="/tmp/HeapResultField.txt"
 tmpfile2="/tmp/HeapwalkFinalResultField.txt"
 tmpfile3="/tmp/HeapwalkFinalOutputField.txt"
+CGM4="CGM4331COM"
 
 if [ -f "$tmpfile1" ]; then
     rm "$tmpfile1"
@@ -91,7 +92,7 @@ while true; do
         echo "$(date '+%Y-%m-%d %H:%M:%S') HeapwalkField.sh pid : $heapwalk_pid" >> "$log_file"
         if [ -z "$heapwalk_pid" ]; then
             device=`deviceinfo.sh -mo`
-            if [[ $device == "CGM4331COM" ]]; then
+            if [[ $device == "$CGM4" ]]; then
                 max_vaps=16
             else
                 max_vaps=24
