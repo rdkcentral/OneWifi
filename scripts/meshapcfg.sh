@@ -26,7 +26,8 @@ qca_cfg=0
 DPC394="DPC3941"
 DPC393="DPC3939"
 TG1="TG1682G"
-if [ "$BOX_TYPE" = "XB3" ]; then
+XB3="XB3"
+if [ "$BOX_TYPE" = "$XB3" ]; then
 sycfgfile="/nvram/syscfg.db"
 else
 sycfgfile="/opt/secure/data/syscfg.db"
