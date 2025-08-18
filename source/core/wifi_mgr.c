@@ -196,7 +196,7 @@ bool is_supported_gateway_device(const char *model)
 
 bool is_device_type_cmxb7(void)
 {
-    return is_supported_gateway_device("TG4482A");
+    return is_supported_gateway_device(C_TG4);
 }
 
 bool is_device_type_xb7(void)

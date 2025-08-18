@@ -43,6 +43,7 @@ LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
 CGA4="CGA4332COM"
 CGM43="CGM4331COM"
 CGM49="CGM4981COM"
+TG4="TG4482A"
 
 onewifi_restart_wifi()
 {
@@ -237,7 +238,7 @@ onewifi_mem_restart() {
 
 while true
 do
-    if [ "$MODEL_NUM" == "TG4482A" ]; then
+    if [ "$MODEL_NUM" == "$TG4" ]; then
         #CMXB7 onewifi selfheal for Both BSS TX queues full, dropping the frame
         echo_t "Executing Onewifi selfheal for CMXB7" >> $LOG_FILE
         mw=0
