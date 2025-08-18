@@ -68,6 +68,8 @@ incorrect_hostapd_config=0
 
 prev_beacon_swba_intr=0
 captiveportal_count=0
+DPC394="DPC3941"
+DPC393="DPC3939"
 
 source /lib/rdk/t2Shared_api.sh
 
@@ -375,7 +377,7 @@ interface=1
 	                      beacon_swba_intr=`apstats -v -i ath1 | grep "Total beacons sent to fw in SWBA intr" | awk '{print $10}'`
                               if [ "$beacon_swba_intr" == "$prev_beacon_swba_intr" ] && [ "$beacon_swba_intr" != "0" ]; then
                                  echo_t "5G_FW_UNRESPONSIVE"
-                                 if [ "$MODEL_NUM" == "TG1682G" ] || [ "$MODEL_NUM" == "DPC3941" ] || [ "$MODEL_NUM" == "DPC3941B" ] || [ "$MODEL_NUM" == "DPC3939B" ]; then
+                                 if [ "$MODEL_NUM" == "TG1682G" ] || [ "$MODEL_NUM" == "$DPC394" ] || [ "$MODEL_NUM" == "${DPC394}B" ] || [ "$MODEL_NUM" == "${DPC393}B" ]; then
                                     txSelfHeal=`dmcli eRT getv Device.WiFi.TxOverflowSelfheal | grep true`
                                     if [ "$txSelfHeal" != "" ];then
                                        echo_t "Starting Self Heal..."
@@ -387,7 +389,7 @@ interface=1
                                                 /usr/sbin/wps_gpio write 10 0
                                                 /usr/sbin/wps_gpio write 10 1
                                        fi
-                                       if [ "$MODEL_NUM" == "DPC3941" ] || [ "$MODEL_NUM" == "DPC3941B" ] || [ "$MODEL_NUM" == "DPC3939B" ]; then
+                                       if [ "$MODEL_NUM" == "$DPC394" ] || [ "$MODEL_NUM" == "${DPC394}B" ] || [ "$MODEL_NUM" == "${DPC393}B" ]; then
                                                 wifi_pci_reset
                                        fi
                                        sleep 5
@@ -912,7 +914,7 @@ interface=1
         
 #MESH-492 Checking if Mesh bridges br12/br13 has a valid IP for XB3 devices
 	if [ "$MESH_ENABLE" == "true" ]; then
- 	 if [ "$MODEL_NUM" == "DPC3941" ] || [ "$MODEL_NUM" == "TG1682G" ] || [ "$MODEL_NUM" == "DPC3939" ] || [ "$MODEL_NUM" == "TG1682" ]; then
+ 	 if [ "$MODEL_NUM" == "$DPC394" ] || [ "$MODEL_NUM" == "TG1682G" ] || [ "$MODEL_NUM" == "$DPC393" ] || [ "$MODEL_NUM" == "TG1682" ]; then
 
                 #Check for Vaps present, else create it
                 meshap="12 13"
