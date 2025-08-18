@@ -3,6 +3,7 @@ LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 CGM43="CGM4331COM"
 CGM49="CGM4981COM"
+TG4="TG4482A"
 
 if [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" == "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
     for i in 0 1
@@ -28,7 +29,7 @@ if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MOD
     done
 fi
 
-if [ "$MODEL_NUM" == "TG4482A" ]; then
+if [ "$MODEL_NUM" == "$TG4" ]; then
     for i in 0 2
     do
         for j in 0 1 2 3 4 5 6
