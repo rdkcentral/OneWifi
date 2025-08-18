@@ -766,6 +766,7 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 {
     const cJSON *param, *venue;
     bool invalid_venue_group_type = false;
+    bool venue_option_present = false;
 
     decode_param_bool(interworking, "InterworkingEnable", param);
     interworking_info->interworking.interworkingEnabled = (param->type & cJSON_True) ? true:false;
@@ -810,8 +811,16 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 
     decode_param_object(interworking, "Venue", venue);
 
-    decode_param_bool(venue, "VenueOptionPresent", param);
-    interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true : false;
+    decode_param_allow_empty_bool(venue, "VenueOptionPresent", param, venue_option_present);
+    if (!venue_option_present) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d: VenueOptionPresent not present, setting to false\n", __func__, __LINE__);
+        interworking_info->interworking.venueOptionPresent = false;
+    } else {
+        decode_param_bool(venue, "VenueOptionPresent", param);
+        interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true :
+                                                                                          false;
+    }
 
     decode_param_integer(venue, "VenueType", param);
     interworking_info->interworking.venueType = param->valuedouble;
@@ -1246,7 +1255,7 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
 }
 
 webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_security_t *security_info,
-    int band)
+    int band, wifi_vap_mode_t vap_mode)
 {
     const cJSON *param, *object;
 
@@ -1430,14 +1439,17 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         return webconfig_error_none;
     }
 
-    decode_param_string(security, "Passphrase", param);
+    decode_param_allow_empty_string(security, "Passphrase", param);
 
-    if (security_info->mode != wifi_security_mode_none &&
-        (strlen(param->valuestring) < MIN_PWD_LEN || strlen(param->valuestring) > MAX_PWD_LEN)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid password length: %d\n", __func__,
-            __LINE__, strlen(param->valuestring));
-        return webconfig_error_decode;
+    if (vap_mode != wifi_vap_mode_sta) {
+        if (security_info->mode != wifi_security_mode_none &&
+            (strlen(param->valuestring) < MIN_PWD_LEN || strlen(param->valuestring) > MAX_PWD_LEN)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid password length: %d\n", __func__,
+                __LINE__, strlen(param->valuestring));
+            return webconfig_error_decode;
+        }
     }
+
 
     strncpy(security_info->u.key.key, param->valuestring, sizeof(security_info->u.key.key) - 1);
 
@@ -1818,7 +1830,7 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1863,7 +1875,7 @@ webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_in
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1905,7 +1917,7 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1950,7 +1962,7 @@ webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1996,7 +2008,7 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2042,7 +2054,7 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2088,7 +2100,7 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2142,7 +2154,7 @@ webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *v
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2249,7 +2261,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.sta_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.sta_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
