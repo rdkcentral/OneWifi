@@ -199,12 +199,12 @@ bool is_device_type_cmxb7(void)
 
 bool is_device_type_xb7(void)
 {
-    return is_supported_gateway_device("CGM4331COM");
+    return is_supported_gateway_device(C_CGM43);
 }
 
 bool is_device_type_xb8(void)
 {
-    return is_supported_gateway_device("CGM4981COM");
+    return is_supported_gateway_device(C_CGM49);
 }
 bool is_device_type_vbvxb10(void)
 {
