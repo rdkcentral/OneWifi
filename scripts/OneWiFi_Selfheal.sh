@@ -40,6 +40,7 @@ bss_queue_full_cnt=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
+CGA4="CGA4332COM"
 
 onewifi_restart_wifi()
 {
@@ -379,7 +380,7 @@ do
 
 
         #we need to use this changes for only TechXB7 device.
-        if [ "$MODEL_NUM" == "CGM4331COM" -o "$MODEL_NUM" == "CGA4332COM" ]; then
+        if [ "$MODEL_NUM" == "CGM4331COM" -o "$MODEL_NUM" == "$CGA4" ]; then
             check_wifi_2g_stuck_status
             check_wifi_5g_stuck_status
         fi

@@ -64,6 +64,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define C_HEXINT64_LEN  sizeof("-0xFFFFFFFFFFFFFFFF")       /**< Space needed to represent a 64-bit hex integer */
 #define C_PID_LEN       C_INT64_LEN
 #define C_BCM "BCM43684"
+#define C_CGA4 "CGA4332COM"
 
 /*
  * ===========================================================================
