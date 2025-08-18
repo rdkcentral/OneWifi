@@ -79,7 +79,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
             cfg.operatingClass = 81;
-            cfg.channel = 1;
+            cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
             break;
@@ -440,17 +440,21 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.showSsid = false;
         }
 /*For XER5/XB10/XER10 2.4G XHS is disable by default*/
-#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
-        if (isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || \
+    defined(_SCXF11BFL_PRODUCT_REQ_)
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
 #else
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
 #endif 
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.enabled = false;
+        }
 
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
@@ -808,6 +812,31 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
 }
 
 int get_wifi_global_param(wifi_global_param_t *config)
+{
+   return 0;
+}
+
+int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
+{
+   return 0;
+}
+
+int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)
+{
+   return 0;
+}
+
+int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
+{
+   return 0;
+}
+
+int get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
+{
+   return 0;
+}
+
+int get_all_param_from_psm_and_set_into_db(void)
 {
    return 0;
 }

@@ -738,9 +738,13 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         char *radio_name = get_frequency_band_from_radio_index(RadioCount, radio_stats);
         wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, radio number set to : \"%s\"\n",
             radio_name);
-        avro_value_set_enum(&optional,
-            avro_schema_enum_get_by_name(avro_value_get_schema(&optional), radio_name));
-
+        if (strcmp(radio_name, "Not_found") == 0) {
+            avro_value_set_branch(&drField, 0, &optional);
+            avro_value_set_null(&optional);
+        } else {
+            avro_value_set_enum(&optional,
+                avro_schema_enum_get_by_name(avro_value_get_schema(&optional), radio_name));
+        }
         //noise_floor
         avro_value_get_by_name(&rdr, "noise_floor", &brdrField, NULL);
         if ( CHK_AVRO_ERR ) {
@@ -828,16 +832,19 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     avro_value_set_branch(&drField, 1, &optional);
     wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_standard\tType: %d\n", avro_value_get_type(&optional));
     //Patch HAL values if necessary
-    if ( blaster->curStepData.ApIndex < 0)
-    {
-        wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_standard = \"%s\"\n", "Not defined, set to NULL" );
+    if ((sta_data == NULL || sta_data->sta_active_msmt_data == NULL ||
+            (strcmp(sta_data->sta_active_msmt_data[0].Operating_standard, "") == 0)) ||
+        (blaster->curStepData.ApIndex < 0)) {
+        wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_standard = \"%s\"\n",
+            "Not defined, set to NULL");
+        avro_value_set_branch(&drField, 0, &optional);
         avro_value_set_null(&optional);
-    }
-    else
-    {
-        wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_standard = \"%s\"\n", sta_data->sta_active_msmt_data[0].Operating_standard);
-        avro_value_set_enum(&optional, avro_schema_enum_get_by_name(avro_value_get_schema(&optional),
-        sta_data->sta_active_msmt_data[0].Operating_standard));
+    } else {
+        wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_standard = \"%s\"\n",
+            sta_data->sta_active_msmt_data[0].Operating_standard);
+        avro_value_set_enum(&optional,
+            avro_schema_enum_get_by_name(avro_value_get_schema(&optional),
+                sta_data->sta_active_msmt_data[0].Operating_standard));
     }
     if ( CHK_AVRO_ERR ) {
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__, avro_strerror());
@@ -855,14 +862,15 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     }
     avro_value_set_branch(&drField, 1, &optional);
     wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_channel_bandwidth\tType: %d\n", avro_value_get_type(&optional));
-    //Patch HAL values if necessary
-    if ( blaster->curStepData.ApIndex < 0)
-    {
-        wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_channel_bandwidth = \"%s\"\n", "set to NULL" );
+    // Patch HAL values if necessary
+    if ((sta_data == NULL || sta_data->sta_active_msmt_data == NULL ||
+            (strcmp(sta_data->sta_active_msmt_data[0].Operating_channelwidth, "") == 0)) ||
+        (blaster->curStepData.ApIndex < 0)) {
+        wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_channel_bandwidth = \"%s\"\n",
+            "set to NULL");
+        avro_value_set_branch(&drField, 0, &optional);
         avro_value_set_null(&optional);
-    }
-    else
-    {
+    } else {
         if ( strstr("20MHz", sta_data->sta_active_msmt_data[0].Operating_channelwidth))
         {
             wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, operating_channel_bandwidth = \"%s\"\n", "set to _20MHz" );
@@ -931,6 +939,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     if (blaster->curStepData.ApIndex < 0)
     {
         wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, frequency_band set to NULL\n");
+        avro_value_set_branch(&drField, 0, &optional);
         avro_value_set_null(&optional);
     }
     else
@@ -949,6 +958,10 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
                 "6GHz, set to _6GHz");
             avro_value_set_enum(&optional,
                 avro_schema_enum_get_by_name(avro_value_get_schema(&optional), "_6GHz"));
+        } else {
+            wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, frequency_band set to NULL\n");
+            avro_value_set_branch(&drField, 0, &optional);
+            avro_value_set_null(&optional);
         }
     }
     if ( CHK_AVRO_ERR ) {

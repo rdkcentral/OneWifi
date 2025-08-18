@@ -797,6 +797,27 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitCooldownTime",
         global_info->mgt_frame_rate_limit_cooldown_time);
 
+    // RSSCheckInterval
+    cJSON_AddNumberToObject(global_obj, "rss_check_interval",
+        global_info->memwraptool.rss_check_interval);
+
+    // RSSThreshold
+    cJSON_AddNumberToObject(global_obj, "rss_threshold", global_info->memwraptool.rss_threshold);
+
+    // RSSMaxLimit
+    cJSON_AddNumberToObject(global_obj, "rss_maxlimit", global_info->memwraptool.rss_maxlimit);
+
+    // HeapwalkDuration
+    cJSON_AddNumberToObject(global_obj, "heapwalk_duration",
+        global_info->memwraptool.heapwalk_duration);
+
+    // HeapwalkInterval
+    cJSON_AddNumberToObject(global_obj, "heapwalk_interval",
+        global_info->memwraptool.heapwalk_interval);
+
+    // MemwrapToolEnable
+    cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
+
     return webconfig_error_none;
 }
 
@@ -908,6 +929,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
+    cJSON_AddBoolToObject(obj, "VenueOptionPresent", interworking_info->interworking.venueOptionPresent);
     cJSON_AddNumberToObject(obj, "VenueType", interworking_info->interworking.venueType);
 
     switch (interworking_info->interworking.venueGroup) {
@@ -1055,7 +1077,7 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
 }
 
 webconfig_error_t encode_security_object(const wifi_vap_security_t *security_info, cJSON *security,
-    bool is_6g)
+    bool is_6g, wifi_vap_mode_t vap_mode)
 {
     cJSON *obj;
 
@@ -1133,21 +1155,6 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
                 __func__, __LINE__);
             return webconfig_error_encode;
-        }
-    }
-
-    if (security_info->mode == wifi_security_mode_wpa_personal ||
-        security_info->mode == wifi_security_mode_wpa2_personal ||
-        security_info->mode == wifi_security_mode_wpa_wpa2_personal ||
-        security_info->mode == wifi_security_mode_wpa3_personal ||
-        security_info->mode == wifi_security_mode_wpa3_transition ||
-        security_info->mode == wifi_security_mode_wpa3_compatibility) {
-        
-        obj = cJSON_CreateObject();
-        cJSON_AddItemToObject(security, "RepurposedRadiusConfig", obj);
-        if (encode_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d Failed to encode RepurposedRadiusConfig\n", __FUNCTION__, __LINE__);
-            return webconfig_error_decode;
         }
     }
 
@@ -1264,12 +1271,14 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_none;
     }
 
-    if (security_info->mode != wifi_security_mode_none &&
-        (strlen(security_info->u.key.key) < MIN_PWD_LEN ||
-        strlen(security_info->u.key.key) > MAX_PWD_LEN)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid password length: %d\n", __func__,
-            __LINE__, strlen(security_info->u.key.key));
-        return webconfig_error_encode;
+    if (vap_mode != wifi_vap_mode_sta) {
+        if (security_info->mode != wifi_security_mode_none &&
+            (strlen(security_info->u.key.key) < MIN_PWD_LEN ||
+            strlen(security_info->u.key.key) > MAX_PWD_LEN)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid password length: %d\n", __func__,
+                __LINE__, strlen(security_info->u.key.key));
+            return webconfig_error_encode;
+        }
     }
 
     cJSON_AddBoolToObject(security, "Wpa3_transition_disable",
@@ -1306,7 +1315,7 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
     is_6g = strstr(vap_info->vap_name, "6g") ? true : false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1355,7 +1364,7 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
     is_6g = strstr(vap_info->vap_name, "6g") ? true : false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1398,7 +1407,7 @@ webconfig_error_t encode_lnf_psk_vap_object(const wifi_vap_info_t *vap_info,
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1429,7 +1438,7 @@ webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info,
     is_6g = strstr(vap_info->vap_name, "6g") ? true : false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1459,7 +1468,7 @@ webconfig_error_t encode_mesh_backhaul_vap_object(const wifi_vap_info_t *vap_inf
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1489,7 +1498,7 @@ webconfig_error_t encode_iot_vap_object(const wifi_vap_info_t *vap_info,
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1519,7 +1528,7 @@ webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info,
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1601,7 +1610,7 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     // Security
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_security_object(&vap_info->u.sta_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.sta_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1831,6 +1840,21 @@ webconfig_error_t encode_levl_object(const levl_config_t *levl, cJSON *levl_obj)
     cJSON_AddNumberToObject(levl_obj, "Duration", levl->levl_sounding_duration);
     cJSON_AddNumberToObject(levl_obj, "Interval", levl->levl_publish_interval);
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_memwraptool_object(memwraptool_config_t *memwrap_info, cJSON *memwrap_obj)
+{
+    if (memwrap_info == NULL || memwrap_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Memwrap info is NULL\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddNumberToObject(memwrap_obj, "rss_check_interval", memwrap_info->rss_check_interval);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_threshold", memwrap_info->rss_threshold);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_maxlimit", memwrap_info->rss_maxlimit);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_duration", memwrap_info->heapwalk_duration);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_interval", memwrap_info->heapwalk_interval);
+    cJSON_AddBoolToObject(memwrap_obj, "enable", memwrap_info->enable);
     return webconfig_error_none;
 }
 

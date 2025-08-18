@@ -2178,6 +2178,18 @@ bus_error_t bus_method_async_invoke(bus_handle_t *handle, void *param_name, char
     return bus_error_success;
 }
 
+static bus_error_t bus_add_table_row(bus_handle_t *handle, char const *name,
+    char const *alias, uint32_t *row_index)
+{
+    return bus_error_success;
+}
+
+static bus_error_t bus_event_unsubs_ex(bus_handle_t *handle,
+    bus_event_sub_t *l_sub_info_map, int num_sub)
+{
+    return bus_error_success;
+}
+
 void rdkb_bus_desc_init(wifi_bus_desc_t *desc)
 {
     desc->bus_init_fn = bus_init;
@@ -2197,9 +2209,11 @@ void rdkb_bus_desc_init(wifi_bus_desc_t *desc)
     desc->bus_event_subs_ex_async_fn = bus_event_subscribe_ex_async;
     desc->bus_event_subs_async_fn = bus_event_subscribe_async;
     desc->bus_event_unsubs_fn = bus_event_unsubscribe;
+    desc->bus_event_unsubs_ex_fn = bus_event_unsubs_ex;
     desc->bus_method_invoke_fn = bus_method_invoke;
     desc->bus_get_trace_context_fn = bus_get_trace_context;
     desc->bus_set_trace_context_fn = bus_set_trace_context;
     desc->bus_error_to_string_fn = bus_error_to_string;
     desc->bus_method_async_invoke_fn = bus_method_async_invoke;
+    desc->bus_add_table_row_fn = bus_add_table_row;
 }
