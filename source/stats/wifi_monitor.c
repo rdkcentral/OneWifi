@@ -495,7 +495,7 @@ void telemetry_event_eap_ap_reason_count(interop_data_t *sta1,int vapindex, char
     if (!mac || !ap || !has_non_zero_eap_counts(sta1->ap_eap_reason_counts)) {
         return;
     }
-    char telemetry_buff[128] = "EAP_AP_REASON_COUNTS";
+    char telemetry_buff[128] = "EAPOL_AP_REASON_COUNTS";
     char telemetry_val[512] = {0};
     char buff[1024];
     char tmp[128];
@@ -516,7 +516,7 @@ void telemetry_event_eap_reason_count(interop_data_t *sta1,int vapindex, char *m
     if (!mac || !ap || !has_non_zero_eap_counts(sta1->sta_eap_reason_counts)) {
         return;
     }
-    char telemetry_buff[128] = "EAP_REASON_COUNTS";
+    char telemetry_buff[128] = "EAPOL_REASON_COUNTS";
     char telemetry_val[512] = {0};
     char buff[1024];
     char tmp[128];
@@ -584,7 +584,7 @@ void telemetry_event_ap_reason_status_count(interop_data_t *sta1, int vapindex, 
     if (!mac || !ap || !has_non_zero_counts(sta1->ap_status_counts, sta1->ap_reason_counts)) {
         return;
     }
-    char telemetry_buff[128] = "AP_REASON_STATUS_COUNT";
+    char telemetry_buff[128] = "AP_STATUS_REASON_COUNT";
     char telemetry_val[512] = {0};
     char buff[1024];
     char tmp[128];
