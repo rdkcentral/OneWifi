@@ -22,6 +22,7 @@
 
 CGM4="CGM4331COM"
 TG4="TG4482A"
+XF3="XF3"
 
 if [ -f /etc/device.properties ]
 then
@@ -40,7 +41,7 @@ else
     ssid2="wl1.1"
 fi
 else # not OneWifi
-if [ "$BOX_TYPE" == "TCCBR" ] || [ "$BOX_TYPE" == "XF3" ] || [ "$BOX_TYPE" == "HUB4" ] || [ "$MODEL_NUM" == "$CGM4" ]; then
+if [ "$BOX_TYPE" == "TCCBR" ] || [ "$BOX_TYPE" == "$XF3" ] || [ "$BOX_TYPE" == "HUB4" ] || [ "$MODEL_NUM" == "$CGM4" ]; then
     ssid1="wl0"
     ssid2="wl1"
 elif [ "$MODEL_NUM" == "$TG4" ]; then
