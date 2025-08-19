@@ -245,6 +245,11 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
                 if(tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled) {
                     tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled = enable;
                 }
+                wifi_util_info_print(WIFI_CTRL,
+                    "%s:%d Vap name is %s and enabled value = %d and rdk_exists = %d\n",
+                    __FUNCTION__, __LINE__, tgt_vap_map->vap_array[tgt_vap_map->num_vaps].vap_name,
+                    tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled,
+                    tgt_rdk_vaps[tgt_vap_map->num_vaps].exists);
                 // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP
                 // entries are saved to VAP_Config with exist flag set to 0 and default values.
                 enabled[tgt_vap_map->num_vaps] =
@@ -268,7 +273,6 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
 
             tgt_vap_map->num_vaps++;
         }
-
         if (wifi_hal_createVAP(i, tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d\n",__FUNCTION__, i);
             free(tgt_vap_map);
