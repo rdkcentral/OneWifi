@@ -1973,56 +1973,86 @@ void start_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedu
     }
 }
 
-void hotspot_cfg_sem_signal(bool status)
+static void wifi_sem_param_init(wifi_sem_param_t *sem_param)
 {
-    wifi_ctrl_t *ctrl = NULL;
-
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    if (ctrl->hotspot_sem_param.is_init == true) {
-        pthread_mutex_lock(&ctrl->hotspot_sem_param.lock);
-        ctrl->hotspot_sem_param.cfg_status = status;
-        pthread_cond_signal(&ctrl->hotspot_sem_param.cond);
-        pthread_mutex_unlock(&ctrl->hotspot_sem_param.lock);
+    if (sem_param && !sem_param->is_init) {
+        pthread_condattr_t cond_attr;
+        pthread_condattr_init(&cond_attr);
+        pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+        pthread_cond_init(&sem_param->cond, &cond_attr);
+        pthread_condattr_destroy(&cond_attr);
+        pthread_mutex_init(&sem_param->lock, NULL);
+        sem_param->is_init = true;
+        sem_param->cfg_status = false;
     }
 }
 
-bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec)
+static void wifi_sem_param_destroy(wifi_sem_param_t *sem_param)
+{
+    if (sem_param && sem_param->is_init) {
+        pthread_mutex_destroy(&sem_param->lock);
+        pthread_cond_destroy(&sem_param->cond);
+        sem_param->is_init = false;
+    }
+}
+
+static bool wifi_sem_param_wait(wifi_sem_param_t *sem_param, uint32_t time_in_sec)
 {
     struct timespec ts;
     int ret;
     bool status = false;
 
-    wifi_ctrl_t *ctrl = NULL;
+    wifi_sem_param_init(sem_param);
 
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    if (ctrl->hotspot_sem_param.is_init == false) {
-        pthread_condattr_t  cond_attr;
-        pthread_condattr_init(&cond_attr);
-        pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
-        pthread_cond_init(&ctrl->hotspot_sem_param.cond, &cond_attr);
-        pthread_condattr_destroy(&cond_attr);
-        pthread_mutex_init(&ctrl->hotspot_sem_param.lock, NULL);
-        ctrl->hotspot_sem_param.is_init = true;
-    }
     clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    /* Add wait duration*/
     ts.tv_sec += time_in_sec;
 
-    pthread_mutex_lock(&ctrl->hotspot_sem_param.lock);
-    ret = pthread_cond_timedwait(&ctrl->hotspot_sem_param.cond, &ctrl->hotspot_sem_param.lock, &ts);
+    pthread_mutex_lock(&sem_param->lock);
+    ret = pthread_cond_timedwait(&sem_param->cond, &sem_param->lock, &ts);
     if (ret == 0) {
-        status = ctrl->hotspot_sem_param.cfg_status;
+        status = sem_param->cfg_status;
     }
+    pthread_mutex_unlock(&sem_param->lock);
 
-    pthread_mutex_unlock(&ctrl->hotspot_sem_param.lock);
-
-    ctrl->hotspot_sem_param.is_init = false;
-    pthread_mutex_destroy(&ctrl->hotspot_sem_param.lock);
-    pthread_cond_destroy(&ctrl->hotspot_sem_param.cond);
+    wifi_sem_param_destroy(sem_param);
 
     return status;
+}
+
+static void wifi_sem_param_signal(wifi_sem_param_t *sem_param, bool status)
+{
+    if (sem_param && sem_param->is_init) {
+        pthread_mutex_lock(&sem_param->lock);
+        sem_param->cfg_status = status;
+        pthread_cond_signal(&sem_param->cond);
+        pthread_mutex_unlock(&sem_param->lock);
+    }
+}
+
+void managed_wifi_cfg_sem_signal(bool status)
+{
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    wifi_util_info_print(WIFI_CTRL, "%s:%d - status:%d\n", __func__, __LINE__, status);
+    wifi_sem_param_signal(&ctrl->managed_wifi_sem_param, status);
+}
+
+bool managed_wifi_cfg_sem_wait_duration(uint32_t time_in_sec)
+{
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    wifi_util_info_print(WIFI_CTRL, "%s:%d - time_in_sec:%d\n", __func__, __LINE__, time_in_sec);
+    return wifi_sem_param_wait(&ctrl->managed_wifi_sem_param, time_in_sec);
+}
+
+bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec)
+{
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    return wifi_sem_param_wait(&ctrl->hotspot_sem_param, time_in_sec);
+}
+
+void hotspot_cfg_sem_signal(bool status)
+{
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    wifi_sem_param_signal(&ctrl->hotspot_sem_param, status);
 }
 
 void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_scheduler_type_t type)

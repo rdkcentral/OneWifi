@@ -2370,6 +2370,10 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_lnf_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_lnf_vap_apply(ctrl, &data->u.decoded);
+                    bool status = ((ret == RETURN_OK) ? true : false);
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d lnf blob cfg status:%d\n", __func__,
+                        __LINE__, ret);
+                    managed_wifi_cfg_sem_signal(status);
                 }
             }
         break;
