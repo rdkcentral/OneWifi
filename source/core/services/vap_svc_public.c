@@ -134,6 +134,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             wifi_util_dbg_print(WIFI_CTRL,"add %s mac to %s\n",new_mac_str,rdk_vap_info->vap_name);
         }
     }
+    get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
 }
 
 int update_managementFramePower(void *arg) {
@@ -211,7 +212,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         }
         // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP entries are
         // saved to VAP_Config with exist flag set to 0 and default values.
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if(rdk_vap_info[i].exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if(map->vap_array[i].vap_index != 2 && map->vap_array[i].vap_index != 3) {
@@ -223,7 +224,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             rdk_vap_info[i].exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
         }
-#endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+#endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
         if (is_6g_supported_device(&g_wifi_mgr->hal_cap.wifi_prop) && p_tgt_vap_map->vap_array[0].u.bss_info.enabled) {

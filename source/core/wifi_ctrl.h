@@ -78,6 +78,8 @@ extern "C" {
 #define ETH_BH_STATUS                      "Device.X_RDK_MeshAgent.EthernetBhaulUplink.Status"
 #define ACS_KEEP_OUT                       "Device.X_RDK_MeshAgent.Mesh.ChannelPlan.Data.KeepOut"
 
+#define TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED "Device.X_RDK_Features.GatewayFailover.Enable"
+
 #define WIFI_ALL_RADIO_INDICES             0xffff
 #define DEVICE_TUNNEL_UP                   1
 #define DEVICE_TUNNEL_DOWN                 0
@@ -103,8 +105,6 @@ extern "C" {
 #define PRIVATE_SUB_DOC                  "privatessid"
 // Connected building wifi subdoc and bus related constants
 #define MULTI_COMP_SUPPORTED_SUBDOC_COUNT 2
-#define MANAGED_WIFI_BRIDGE "Device.LAN.Bridge.1.Name"
-#define MANAGED_WIFI_INTERFACE "Device.LAN.Bridge.1.WiFiInterfaces"
 
 #define PRIVATE 0b0001
 #define HOTSPOT 0b0010
@@ -116,7 +116,7 @@ extern "C" {
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
 
-#define CTRL_QUEUE_SIZE_MAX 500
+#define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
 typedef enum {
     ctrl_webconfig_state_none = 0,
@@ -310,9 +310,11 @@ wifi_ctrl_t *get_wifictrl_obj();
 void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
 bool is_db_consolidated();
 bool is_db_backup_required();
+bool is_devtype_pod();
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix);
 CHAR* getVAPName(UINT apIndex);
 BOOL isVapPrivate(UINT apIndex);
 BOOL isVapXhs(UINT apIndex);
@@ -378,6 +380,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl);
 bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 bool check_for_greylisted_mac_filter(void);
+int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable);
 void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
 bool is_sta_enabled(void);
 void reset_wifi_radios();

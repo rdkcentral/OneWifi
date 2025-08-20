@@ -2355,7 +2355,7 @@ bool ssid_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
             dm_rdk_vap_info->exists = output_value;
         }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if (output_value == false) {
             wifi_util_error_print(WIFI_DMCLI,
                 "%s:%d User is Trying to disable SSID for vap_index=%d\n", __func__, __LINE__,
@@ -3028,45 +3028,45 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name,
 
         p_dm_sec_cfg->mode = l_tmp_sec_mode;
         switch (p_dm_sec_cfg->mode) {
-        case wifi_security_mode_none:
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
-            break;
-        case wifi_security_mode_wep_64:
-        case wifi_security_mode_wep_128:
-            p_dm_sec_cfg->u.key.type = wifi_security_key_type_pass;
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
-            break;
-        case wifi_security_mode_wpa_personal:
-        case wifi_security_mode_wpa2_personal:
-        case wifi_security_mode_wpa_wpa2_personal:
-            p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk;
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
-            break;
-        case wifi_security_mode_wpa_enterprise:
-        case wifi_security_mode_wpa2_enterprise:
-        case wifi_security_mode_wpa_wpa2_enterprise:
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
-            break;
-        case wifi_security_mode_wpa3_personal:
-            p_dm_sec_cfg->u.key.type = wifi_security_key_type_sae;
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
-            break;
-        case wifi_security_mode_wpa3_enterprise:
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
-            break;
-        case wifi_security_mode_wpa3_transition:
-            p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk_sae;
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_optional;
-            break;
-        case wifi_security_mode_enhanced_open:
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
-            break;
-        case wifi_security_mode_wpa3_compatibility:
-            l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
-            p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
-            break;
-        default:
-            break;
+            case wifi_security_mode_none:
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
+            case wifi_security_mode_wep_64:
+            case wifi_security_mode_wep_128:
+                p_dm_sec_cfg->u.key.type = wifi_security_key_type_pass;
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
+            case wifi_security_mode_wpa_personal:
+            case wifi_security_mode_wpa2_personal:
+            case wifi_security_mode_wpa_wpa2_personal:
+                p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk;
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
+            case wifi_security_mode_wpa_enterprise:
+            case wifi_security_mode_wpa2_enterprise:
+            case wifi_security_mode_wpa_wpa2_enterprise:
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
+            case wifi_security_mode_wpa3_personal:
+                p_dm_sec_cfg->u.key.type = wifi_security_key_type_sae;
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
+                break;
+            case wifi_security_mode_wpa3_enterprise:
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
+                break;
+            case wifi_security_mode_wpa3_transition:
+                p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk_sae;
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_optional;
+                break;
+            case wifi_security_mode_enhanced_open:
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
+                break;
+            case wifi_security_mode_wpa3_compatibility:
+                p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk_sae;
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
+            default:
+                break;
         }
         set_dml_cache_vap_config_changed(instance_number - 1);
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Set Value=%d success\n", __func__, __LINE__,

@@ -39,7 +39,6 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <limits.h>
-#include <sysevent/sysevent.h>
 #include "wifi_passpoint.h"
 #include "safec_lib_common.h"
 #include "secure_wrapper.h"
@@ -2376,6 +2375,9 @@ void reconfigure_whix_interval(wifi_app_t *app, wifi_event_t *event)
     wifi_util_dbg_print(WIFI_APPS,"%s:%d Intervals are %d %d\n", __func__, __LINE__, whix_log_interval, whix_chutil_interval);
     if (whix_log_interval && whix_chutil_interval) {
         push_whix_config_event_to_monitor_queue(mon_stats_request_state_start, app);
+    }
+    if (whix_chutil_interval) {
+        send_monitor_event(wifi_event_monitor_update_interop_interval,"interop_interval");
     }
     config_rejected_client_stats(app);
 }
