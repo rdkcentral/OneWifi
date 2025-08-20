@@ -458,14 +458,14 @@ int set_auth_req_frame_data(frame_data_t *msg) {
     if (radioOperation != NULL) {
         sta->channel = radioOperation->channel;
 		sta->variant = radioOperation->variant;
-        wifi_util_dbg_print(WIFI_MON, "%s:%d channel:%d, variant:%d \n", __func__, __LINE__,sta->channel, sta->variant);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Harsha channel:%d, variant:%d \n", __func__, __LINE__,sta->channel, sta->variant);
 	}
 	get_radio_data(radioIndex, &chan_stats);
 	sta->rssi = msg->frame.sig_dbm;
 	sta->noise_floor = chan_stats.radio_NoiseFloor;
 	sta->snr =  msg->frame.sig_dbm - chan_stats.radio_NoiseFloor;
 	sta->channel_util = chan_stats.radio_ChannelUtilization;
-	wifi_util_dbg_print(WIFI_MON, "%s:%d rssi:%d, noise:%d snr:%d channel_util:%d \n", __func__, __LINE__, sta->rssi, sta->noise_floor, sta->snr, sta->channel_util);
+	wifi_util_dbg_print(WIFI_MON, "%s:%d Harsha rssi:%d, noise:%d snr:%d channel_util:%d \n", __func__, __LINE__, sta->rssi, sta->noise_floor, sta->snr, sta->channel_util);
     return RETURN_OK;
 }
 
@@ -3354,12 +3354,13 @@ static void parse_assoc_ies(const uint8_t *ies, size_t ies_len, assoc_dev_data_t
 }
 
 
+
 static void get_interop_client_assoc_frame(int ap_index, wifi_associated_dev_t *associated_dev, int noise)
 {
     interop_data_t *sta;
     char mac_addr[MAC_STR_LEN];
     if (!isVapPrivate(ap_index) && !(isVapHotspotSecure5g(ap_index) || isVapHotspotSecure6g(ap_index) || isVapHotspotOpen5g(ap_index) || isVapHotspotOpen6g(ap_index))){
-        //wifi_util_dbg_print(WIFI_MON, "%s:%d It's not a private vap or hotspot vap \r\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d It's not a private vap or hotspot vap \r\n", __func__, __LINE__);
         return;
     }
     hash_map_t     *sta_map = get_interop_sta_data_map(ap_index);
@@ -3385,7 +3386,6 @@ static void get_interop_client_assoc_frame(int ap_index, wifi_associated_dev_t *
     }
 	wifi_util_dbg_print(WIFI_MON, "%s:%d station found for mac :%s rssi:%d, noise:%d snr:%d channel_util:%d \n", __func__, __LINE__, mac_addr, sta->rssi, sta->noise_floor, sta->snr, sta->channel_util);
 }
-
 
 static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associated_dev,
     assoc_dev_data_t *assoc_data)
@@ -3453,7 +3453,8 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     get_radio_data(radio_index, &chan_stats);
     //Update the assoc frame of the associated_dev in assoc_data
     get_client_assoc_frame(ap_index, associated_dev, &assoc_data);
-    get_interop_client_assoc_frame(ap_index, associated_dev, chan_stats.radio_NoiseFloor);
+	
+	get_interop_client_assoc_frame(ap_index, associated_dev, chan_stats.radio_NoiseFloor);
 	
     memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
