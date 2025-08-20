@@ -274,6 +274,7 @@ typedef struct {
 
 typedef struct {
     unsigned int apIndex;
+    mac_address_t sta_mac;
     int failure_reason;
 } radius_eap_data_t;
 
