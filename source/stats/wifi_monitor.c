@@ -3044,12 +3044,12 @@ void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_d
     }
 }
 
-int radius_eap_failure_callback(unsigned int apIndex, int reason)
+int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, int reason)
 {
     radius_eap_data_t radius_eap_data;
     radius_eap_data.apIndex = apIndex;
     radius_eap_data.failure_reason = reason;
-
+    memcpy(radius_eap_data.sta_mac, mac_addr, sizeof(mac_address_t));
     //Push event to ctrl queue and handle it in whix app
     push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
     return 0;
