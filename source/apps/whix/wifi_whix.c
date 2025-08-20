@@ -2462,7 +2462,7 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
     char eventName[1024]={0};
     char telemetry_buf[1024]={0};
     radius_eap_data_t *radius_eap_data = (radius_eap_data_t *) data;
-
+    mac_addr_str_t  sta_mac_str;
     get_formatted_time(tmp);
 
     if (radius_eap_data->failure_reason == RADIUS_ACCESS_REJECT) {
@@ -2473,7 +2473,7 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
             app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]++;
             snprintf(telemetry_buf, sizeof(telemetry_buf), "XWIFI_Radius_Failures_%d_split", (radius_eap_data->apIndex)+1);
             get_stubs_descriptor()->t2_event_d_fn(telemetry_buf, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
-            snprintf(eventName, sizeof(eventName), "%s XWIFI_Radius_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
+            snprintf(eventName, sizeof(eventName), "%s XWIFI_Radius_Failures_%d_split:%d:%s\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex],to_mac_str(radius_eap_data->sta_mac, sta_mac_str));
             write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
         }
     } else if (radius_eap_data->failure_reason == EAP_FAILURE) {
@@ -2481,7 +2481,7 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
             app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]++;
             snprintf(telemetry_buf, sizeof(telemetry_buf), "XWIFI_EAP_Failures_%d_split", (radius_eap_data->apIndex)+1);
             get_stubs_descriptor()->t2_event_d_fn(telemetry_buf, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
-            snprintf(eventName, sizeof(eventName), "%s XWIFI_EAP_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
+            snprintf(eventName, sizeof(eventName), "%s XWIFI_EAP_Failures_%d_split:%d:%s\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex], to_mac_str(radius_eap_data->sta_mac, sta_mac_str));
             write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
         }
     }
