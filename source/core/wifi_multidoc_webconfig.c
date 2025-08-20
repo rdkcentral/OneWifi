@@ -1352,12 +1352,14 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
     str = data->u.encoded.raw;
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Encoded blob:\n%s\n", __func__, __LINE__, str);
     push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
-    bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
-    if (ret_value == false) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed\n", __func__,
-            __LINE__);
-        webconfig_data_free(data);
-        return RETURN_ERR;
+    if (subdoc_type == webconfig_subdoc_type_xfinity) {
+        bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
+        if (ret_value == false) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed\n", __func__,
+                __LINE__);
+            webconfig_data_free(data);
+            return RETURN_ERR;
+        }
     }
     webconfig_data_free(data);
     return RETURN_OK;
