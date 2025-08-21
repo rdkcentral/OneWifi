@@ -1107,8 +1107,8 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
         }
         if (strcmp(param->valuestring, "AES") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;	
-        } else {
-            vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+        } else if (strcmp(param->valuestring, "AES+GCMP") == 0) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
         }
 
         // MFPConfig
