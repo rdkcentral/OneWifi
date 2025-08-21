@@ -85,6 +85,8 @@
 #define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
 #define ONEWIFI_DB_VERSION_STATS_FLAG 100037
 #define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100039
+#define DEFAULT_WHIX_CHUTILITY_LOGINTERVAL 900
+#define DEFAULT_WHIX_LOGINTERVAL 3600
 
 #ifdef CONFIG_NO_MLD_ONLY_PRIVATE
 #define MLD_UNIT_COUNT 8
@@ -1244,9 +1246,19 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.assoc_count_threshold =
             new_rec->assoc_count_threshold;
         g_wifidb->global_config.global_parameters.assoc_gate_time = new_rec->assoc_gate_time;
-        g_wifidb->global_config.global_parameters.whix_log_interval = new_rec->whix_log_interval;
-        g_wifidb->global_config.global_parameters.whix_chutility_loginterval =
-            new_rec->whix_chutility_loginterval;
+        if (new_rec->whix_log_interval > 0) {
+            g_wifidb->global_config.global_parameters.whix_log_interval =
+                new_rec->whix_log_interval;
+        } else {
+            g_wifidb->global_config.global_parameters.whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
+        }
+        if (new_rec->whix_chutility_loginterval > 0) {
+            g_wifidb->global_config.global_parameters.whix_chutility_loginterval =
+                new_rec->whix_chutility_loginterval;
+        } else {
+            g_wifidb->global_config.global_parameters.whix_chutility_loginterval =
+                DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
+        }
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
             new_rec->rss_memory_restart_threshold_low;
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
@@ -3282,8 +3294,16 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->good_rssi_threshold = pcfg->good_rssi_threshold;
         config->assoc_count_threshold = pcfg->assoc_count_threshold;
         config->assoc_gate_time = pcfg->assoc_gate_time;
-        config->whix_log_interval = pcfg->whix_log_interval;
-        config->whix_chutility_loginterval = pcfg->whix_chutility_loginterval;
+        if (pcfg->whix_log_interval > 0) {
+            config->whix_log_interval = pcfg->whix_log_interval;
+        } else {
+            config->whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
+        }
+        if (pcfg->whix_chutility_loginterval > 0) {
+            config->whix_chutility_loginterval = pcfg->whix_chutility_loginterval;
+        } else {
+            config->whix_chutility_loginterval = DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
+        }        
         config->memwraptool.rss_check_interval = pcfg->rss_check_interval;
         config->memwraptool.rss_threshold = pcfg->rss_threshold;
         config->memwraptool.rss_maxlimit = pcfg->rss_maxlimit;
@@ -4577,6 +4597,7 @@ static void wifidb_global_config_upgrade()
             wifi_util_dbg_print(WIFI_DB, "whix_log_interval is %d and str is %s \n",
                 g_wifidb->global_config.global_parameters.whix_log_interval, str);
         } else {
+            g_wifidb->global_config.global_parameters.whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
             wifi_util_error_print(WIFI_DB, ":%s:%d str value for whix_log_interval is null \r\n",
                 __func__, __LINE__);
         }
@@ -4595,6 +4616,8 @@ static void wifidb_global_config_upgrade()
                 __func__, __LINE__,
                 g_wifidb->global_config.global_parameters.whix_chutility_loginterval, str);
         } else {
+             g_wifidb->global_config.global_parameters.whix_chutility_loginterval = 
+                DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
             wifi_util_error_print(WIFI_DB,
                 ":%s:%d str value for whix_chutility_loginterval is null \r\n", __func__, __LINE__);
         }
@@ -7327,8 +7350,8 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.good_rssi_threshold = -65;
     cfg.assoc_count_threshold = 0;
     cfg.assoc_gate_time  = 0;
-    cfg.whix_log_interval = 3600;
-    cfg.whix_chutility_loginterval = 900;
+    cfg.whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
+    cfg.whix_chutility_loginterval = DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
     cfg.memwraptool.rss_check_interval = DEFAULT_RSS_CHECK_INTERVAL;
     cfg.memwraptool.rss_threshold = DEFAULT_RSS_THRESHOLD;
     cfg.memwraptool.rss_maxlimit = DEFAULT_RSS_MAXLIMIT;
@@ -8076,6 +8099,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
         global_cfg->whix_log_interval = atoi(str);
         wifi_util_dbg_print(WIFI_MGR,"global_cfg->whix_log_interval is %d and str is %s and atoi(str) is %d\n", global_cfg->whix_log_interval, str, atoi(str));
     } else {
+        global_cfg->whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
         wifi_util_error_print(WIFI_MGR,":%s:%d str value for whix_log_interval is null \n", __func__, __LINE__);
     }
 
@@ -8085,6 +8109,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
         global_cfg->whix_chutility_loginterval = atoi(str);
         wifi_util_dbg_print(WIFI_MGR,"%s:%d global_cfg->whix_chutility_log_interval is %d and str is %s and atoi(str) is %d\n", __func__, __LINE__, global_cfg->whix_chutility_loginterval, str, atoi(str));
     } else {
+        global_cfg->whix_chutility_loginterval = DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
         wifi_util_error_print(WIFI_MGR,":%s:%d str value for whix_chutility_loginterval is null \n", __func__, __LINE__);
     }
 
