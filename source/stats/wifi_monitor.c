@@ -211,6 +211,7 @@ static int refresh_task_period(void *arg);
 int associated_device_diagnostics_send_event(void *arg);
 static void scheduler_telemetry_tasks(void);
 static void update_interop_interval(void);
+int process_eap_status(int ap_index, mac_address_t sta_mac, int reason);
 int csi_sendPingData(void * arg);
 static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinger);
 static int clientdiag_sheduler_enable(int ap_index);
@@ -1913,6 +1914,9 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_channel_status:
                         update_monitor_channel_status_map(&event_data->u.channel_status_map);
                     break;
+		    case wifi_event_monitor_eap_status:
+		        process_eap_status(event_data->u.eap_data.ap_index, event_data->u.eap_data.sta_mac, event_data->u.eap_data.reason);
+                    break;
                     default:
                     break;
 
@@ -2860,8 +2864,44 @@ int increment_eap_status_count(interop_data_t *telemetry, wifi_eap_status_code_t
 
 int eap_status_code(int ap_index, char *src_mac, int reason)
 {
+    /*hash_map_t *sta_map;
+    interop_data_t *sta;
+    if (src_mac == NULL ) {
+        wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
+        return -1;
+    }
+    sta_map = get_interop_sta_data_map(ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
+        return RETURN_ERR;
+    }
+    sta = (interop_data_t *)hash_map_get(sta_map, src_mac);
+    if (NULL == sta) {
+          wifi_util_dbg_print(WIFI_MON, "%s:%d  station is not found for vap_index:%d src_mac :%s \r\n", __func__, __LINE__, ap_index, src_mac);
+            return RETURN_ERR;
+    }
+    wifi_eap_status_code_t reason_code = (wifi_eap_status_code_t)reason;
+    if (increment_eap_status_count(sta, reason_code) == -1) {
+        wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular reason is not there\n", __func__, __LINE__);
+        return 0;
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d  station is found for vap_index:%d src_mac :%s and incremented with reason:%d \r\n", __func__, __LINE__, ap_index, src_mac, reason);
+    return 0;*/
+    return 0;
+}
+
+int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
+{
+    mac_addr_str_t sta_mac_str;
     hash_map_t *sta_map;
     interop_data_t *sta;
+    char  *src_mac = to_mac_str(mgmt->sa, sta_mac_str);
+    if (reason == 2) {
+        reason = 23;
+    }
+    if (reason == 1) {
+	return 0 ;
+    }
     if (src_mac == NULL ) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
         return -1;
@@ -3044,7 +3084,7 @@ void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_d
     }
 }
 
-int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, int reason)
+/*int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, int reason)
 {
     radius_eap_data_t radius_eap_data;
     radius_eap_data.apIndex = apIndex;
@@ -3052,6 +3092,20 @@ int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, in
     memcpy(radius_eap_data.sta_mac, mac_addr, sizeof(mac_address_t));
     //Push event to ctrl queue and handle it in whix app
     push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
+    return 0;
+}*/
+
+
+
+int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, int reason)
+{
+    wifi_monitor_data_t data;
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
+    data.u.eap_data.ap_index = apIndex;
+    data.u.eap_data.reason = reason;
+    memcpy(data.u.eap_data.sta_mac, mac_addr, sizeof(mac_address_t));
+    push_event_to_monitor_queue(&data, wifi_event_monitor_eap_status, NULL);    
     return 0;
 }
 

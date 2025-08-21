@@ -210,6 +210,12 @@ typedef struct {
     wifi_associated_dev3_t dev_stats;
 } auth_deauth_dev_t;
 
+typedef struct {
+    mac_address_t  sta_mac;
+    int reason;
+    int ap_index;
+} eap_data_t;
+
 #define MAX_MQTT_TOPIC_LEN 256
 
 typedef enum {
@@ -403,6 +409,7 @@ typedef struct {
         ocs_params_t        ocs_params;
         collect_stats_t     collect_stats;
         wifi_channel_status_event_t channel_status_map;
+        eap_data_t eap_data;
     } u;
 } wifi_monitor_data_t;
 

@@ -200,6 +200,7 @@ typedef enum {
     wifi_event_monitor_auth_req,
     wifi_event_monitor_update_interop_interval,
     wifi_event_monitor_channel_status,
+    wifi_event_monitor_eap_status,
     wifi_event_monitor_max,
 
     // Tunnel
