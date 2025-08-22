@@ -2897,7 +2897,7 @@ int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
     mac_addr_str_t sta_mac_str;
     hash_map_t *sta_map;
     interop_data_t *sta;
-    char  *src_mac = to_mac_str(mgmt->sa, sta_mac_str);
+    char  *src_mac = to_mac_str(sta_mac, sta_mac_str);
     if (reason == 2) {
         reason = 23;
     }
