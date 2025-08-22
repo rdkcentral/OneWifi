@@ -1248,8 +1248,7 @@ static int schedule_maclist_timeout_task(wifi_ctrl_t *ctrl, rdk_wifi_vap_info_t 
     bool has_successful_operations)
 {
 
-    if (rdk_vap_info == NULL || assoc_maclist == NULL || kick_details == NULL ||
-        assoc_maclist == NULL || kick_details == NULL) {
+    if (rdk_vap_info == NULL || assoc_maclist == NULL || kick_details == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid input parameters\n", __func__,__LINE__);
         return RETURN_ERR;
     }
