@@ -1116,7 +1116,7 @@ static void finalize_kick_config_change(int vap_index, wifi_vap_info_t *vap_info
     }
 }
 
-static int handle_acl_operation(int vap_index, const char *mac_str, wifi_vap_info_t *vap_info,
+static int handle_acl_operation(int vap_index, char *mac_str, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, bool is_add_operation)
 {
     bool success = false;
