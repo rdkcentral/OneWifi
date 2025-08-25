@@ -2106,7 +2106,7 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
         snprintf(str, str_len, "qcn6224");
     }
 #else 
-    snprintf(str, str_len, "BCM43684");
+    snprintf(str, str_len, C_BCM);
 #endif
     return RETURN_OK;
 }
