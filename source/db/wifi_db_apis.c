@@ -427,11 +427,22 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
             i++;
         }
         l_radio_cfg->numSecondaryChannels = new_rec->num_secondary_channels;
+
+        i = 0;
+        tmp = new_rec->amsdu_tid;
+        while ((ptr = strchr(tmp, ',')) != NULL)
+        {
+            ptr++;
+            l_radio_cfg->amsduTid[i] = atoi(tmp);
+            tmp = ptr;
+            i++;
+        }
+
         f_radio_cfg->OffChanTscanInMsec = new_rec->Tscan;
         f_radio_cfg->OffChanNscanInSec = (new_rec->Nscan == 0) ? 0 : (24*3600)/(new_rec->Nscan);
         f_radio_cfg->OffChanTidleInSec = new_rec->Tidle;
         f_radio_cfg->radio_index = index;
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d OperatingEnviroment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down= %d dfs_timer:%d radar_Detected:%s \n",__func__, __LINE__,l_radio_cfg->enable,l_radio_cfg->band,l_radio_cfg->autoChannelEnabled,l_radio_cfg->channel,l_radio_cfg->channelWidth,l_radio_cfg->variant,l_radio_cfg->csa_beacon_count,l_radio_cfg->countryCode,l_radio_cfg->operatingEnvironment,l_radio_cfg->DCSEnabled,l_radio_cfg->numSecondaryChannels,new_rec->secondary_channels_list,l_radio_cfg->dtimPeriod,l_radio_cfg->beaconInterval,l_radio_cfg->operatingClass,l_radio_cfg->basicDataTransmitRates,l_radio_cfg->operationalDataTransmitRates,l_radio_cfg->fragmentationThreshold,l_radio_cfg->guardInterval,l_radio_cfg->transmitPower,l_radio_cfg->rtsThreshold,l_radio_cfg->factoryResetSsid,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->ctsProtection,l_radio_cfg->obssCoex,l_radio_cfg->stbcEnable,l_radio_cfg->greenFieldEnable,l_radio_cfg->userControl,l_radio_cfg->adminControl,l_radio_cfg->chanUtilThreshold,l_radio_cfg->chanUtilSelfHealEnable, l_radio_cfg->EcoPowerDown, l_radio_cfg->DFSTimer, l_radio_cfg->radarDetected);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d OperatingEnviroment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down= %d dfs_timer:%d radar_Detected:%s amsdu_tid: [%d, %d, %d, %d, %d, %d, %d, %d] \n",__func__, __LINE__,l_radio_cfg->enable,l_radio_cfg->band,l_radio_cfg->autoChannelEnabled,l_radio_cfg->channel,l_radio_cfg->channelWidth,l_radio_cfg->variant,l_radio_cfg->csa_beacon_count,l_radio_cfg->countryCode,l_radio_cfg->operatingEnvironment,l_radio_cfg->DCSEnabled,l_radio_cfg->numSecondaryChannels,new_rec->secondary_channels_list,l_radio_cfg->dtimPeriod,l_radio_cfg->beaconInterval,l_radio_cfg->operatingClass,l_radio_cfg->basicDataTransmitRates,l_radio_cfg->operationalDataTransmitRates,l_radio_cfg->fragmentationThreshold,l_radio_cfg->guardInterval,l_radio_cfg->transmitPower,l_radio_cfg->rtsThreshold,l_radio_cfg->factoryResetSsid,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->ctsProtection,l_radio_cfg->obssCoex,l_radio_cfg->stbcEnable,l_radio_cfg->greenFieldEnable,l_radio_cfg->userControl,l_radio_cfg->adminControl,l_radio_cfg->chanUtilThreshold,l_radio_cfg->chanUtilSelfHealEnable, l_radio_cfg->EcoPowerDown, l_radio_cfg->DFSTimer, l_radio_cfg->radarDetected, l_radio_cfg->amsduTid[0], l_radio_cfg->amsduTid[1], l_radio_cfg->amsduTid[2], l_radio_cfg->amsduTid[3], l_radio_cfg->amsduTid[4], l_radio_cfg->amsduTid[5], l_radio_cfg->amsduTid[6], l_radio_cfg->amsduTid[7]);
         wifi_util_dbg_print(WIFI_DB, "%s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu, Tidle=%lu\n", __FUNCTION__, __LINE__, f_radio_cfg->OffChanTscanInMsec, f_radio_cfg->OffChanNscanInSec, f_radio_cfg->OffChanTidleInSec);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
@@ -1801,8 +1812,8 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     unsigned int i = 0;
     int k = 0;
     int len = 0;
-    char channel_list[BUFFER_LENGTH_WIFIDB] = {0};
-    len = sizeof(channel_list)-1;
+    char list_buffer[BUFFER_LENGTH_WIFIDB] = {0};
+    len = sizeof(list_buffer)-1;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -1872,15 +1883,28 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
             wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Maximum size reached for secondary_channels_list\n",__func__, __LINE__);
             break;
         }
-        snprintf(channel_list+k,sizeof(channel_list)-k,"%d,",config->channelSecondary[i]);
-        wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Channel list %s %d\t",__func__, __LINE__,channel_list,strlen(channel_list));
-        k = strlen(channel_list);
+        snprintf(list_buffer+k,sizeof(list_buffer)-k,"%d,",config->channelSecondary[i]);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Channel list %s %d\t",__func__, __LINE__,list_buffer,strlen(list_buffer));
+        k = strlen(list_buffer);
     }
-    strncpy(cfg.secondary_channels_list,channel_list,sizeof(cfg.secondary_channels_list)-1);
+    strncpy(cfg.secondary_channels_list,list_buffer,sizeof(cfg.secondary_channels_list)-1);
     cfg.num_secondary_channels = config->numSecondaryChannels;
     strncpy(cfg.radio_name,name,sizeof(cfg.radio_name)-1);
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d  radio_stats_measuring_rate = %d   radio_stats_measuring_interval = %d cts_protection = %d obss_coex = %d  stbc_enable = %d  greenfield_enable = %d user_control = %d  admin_control = %d  chan_util_threshold = %d  chan_util_selfheal_enable = %d  eco_power_down = %d DFSTimer:%d radarDetected:%s \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->DCSEnabled,config->numSecondaryChannels,cfg.secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringRate,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable,config->EcoPowerDown, config->DFSTimer, config->radarDetected);
+    k = 0;
+    memset(list_buffer, 0, sizeof(list_buffer));
+    for(i=0;i<MAX_AMSDU_TID;i++)
+    {
+        if(k >= (len-1))
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Maximum size reached for amsdu_tid list\n",__func__, __LINE__);
+            break;
+        }
+        snprintf(list_buffer+k,sizeof(list_buffer)-k,"%d,",config->amsduTid[i]);
+        k = strlen(list_buffer);
+    }
+    strncpy(cfg.amsdu_tid,list_buffer,sizeof(cfg.amsdu_tid)-1);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d  radio_stats_measuring_rate = %d   radio_stats_measuring_interval = %d cts_protection = %d obss_coex = %d  stbc_enable = %d  greenfield_enable = %d user_control = %d  admin_control = %d  chan_util_threshold = %d  chan_util_selfheal_enable = %d  eco_power_down = %d DFSTimer:%d radarDetected:%s, amsduTid: %d, %d, %d, %d, %d, %d, %d, %d\n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->DCSEnabled,config->numSecondaryChannels,cfg.secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringRate,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable,config->EcoPowerDown, config->DFSTimer, config->radarDetected, config->amsduTid[0], config->amsduTid[1],config->amsduTid[2], config->amsduTid[3],config->amsduTid[4], config->amsduTid[5],config->amsduTid[6], config->amsduTid[7]);
     wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n", __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec, feat_config->OffChanTidleInSec);
     if(onewifi_ovsdb_table_upsert_f(g_wifidb->wifidb_sock_path,&table_Wifi_Radio_Config,&cfg,false,insert_filter) == false)
     {
@@ -2048,7 +2072,17 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     }
     config->numSecondaryChannels = cfg->num_secondary_channels;
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d operatingEnvironment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down=%d DFSTimer:%d radarDetected:%s \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->operatingEnvironment,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable, config->EcoPowerDown, config->DFSTimer, config->radarDetected);
+    i = 0;
+    tmp = cfg->amsdu_tid;
+    while ((ptr = strchr(tmp, ',')) != NULL)
+    {
+        ptr++;
+        config->amsduTid[i] = atoi(tmp);
+        tmp = ptr;
+        i++;
+    }
+
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d operatingEnvironment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down=%d DFSTimer:%d radarDetected:%s, amsduTid:[%d, %d, %d, %d, %d, %d, %d, %d]\n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->operatingEnvironment,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable, config->EcoPowerDown, config->DFSTimer, config->radarDetected, config->amsduTid[0], config->amsduTid[1], config->amsduTid[2], config->amsduTid[3], config->amsduTid[4], config->amsduTid[5], config->amsduTid[6], config->amsduTid[7]);
     wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n", __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec, feat_config->OffChanTidleInSec);
     free(cfg);
     return RETURN_OK;
@@ -6616,6 +6650,29 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         Fcfg.OffChanNscanInSec = 0;
         Fcfg.OffChanTidleInSec = 0;
     }
+
+    for (int j = 0; j < MAX_AMSDU_TID; j++) {
+        cfg.amsduTid[j] = FALSE;
+    }
+
+#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        for (int i = 0; i < 5; i++)
+        {
+            cfg.amsduTid[i] = TRUE;
+        }
+    } else {
+        for (int i = 0; i < 4; i++)
+        {
+            cfg.amsduTid[i] = TRUE;
+        }
+    }
+#elif defined(_XB8_PRODUCT_REQ_)
+    cfg.amsduTid[0] = TRUE;
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        cfg.amsduTid[4] = TRUE;
+    }
+#endif
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     /* Call the function to update the operating classes based on Country code and Radio */

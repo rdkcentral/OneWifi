@@ -2984,6 +2984,27 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_string(obj_radio, "RadarDetected", param);
     strncpy(radio_info->radarDetected, param->valuestring, sizeof(radio_info->radarDetected));
 
+    // AmsduTid
+    unsigned int amsdu_tid_idx = 0;
+    decode_param_string(obj_radio, "Amsdu_Tid", param);
+    ptr = param->valuestring;
+    tmp = param->valuestring;
+
+    while ((ptr = strchr(tmp, ',')) != NULL) {
+        ptr++;
+        radio_info->amsduTid[amsdu_tid_idx] = (BOOL)atoi(tmp);
+        tmp = ptr;
+        amsdu_tid_idx++;
+    }
+    // Last AMSDU TID
+    radio_info->amsduTid[amsdu_tid_idx++] = atoi(tmp);
+
+    if (amsdu_tid_idx != MAX_AMSDU_TID) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "number of AMSDU TIDs decoded - %d does not match required amount - %d!\n", amsdu_tid_idx, MAX_AMSDU_TID);
+        return webconfig_error_decode;
+    }
+
     if (decode_radio_operating_classes(obj_radio, radio_info) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio operation classes decode failed\n",
             __func__, __LINE__);
