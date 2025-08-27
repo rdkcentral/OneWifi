@@ -88,6 +88,7 @@
 #define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100040
 #define DEFAULT_WHIX_CHUTILITY_LOGINTERVAL 900
 #define DEFAULT_WHIX_LOGINTERVAL 3600
+#define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100042
 
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100042
 
@@ -4863,6 +4864,18 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 wifi_util_info_print(WIFI_DB, "%s:%d force change wpa3 transition"
                     " disable state to false for vap:%s ret:%d\r\n", __func__, __LINE__,
                     config->vap_array[i].vap_name, ret);
+            }
+        }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG) {
+            wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
+                __func__, __LINE__, g_wifidb->db_version);
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 0;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
+                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                    &rdk_config[i]);
             }
         }
     }
