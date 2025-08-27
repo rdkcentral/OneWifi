@@ -31,15 +31,22 @@
                             "InterfaceName": "wifi1.1",
                             "Bridge": "br-lan",
                             "vlanId": 0,
-                            "vapIndex": 15,
-                            "vapName": "mesh_sta_5g"
+                            "vapIndex": 13,
+                            "vapName": "mesh_backhaul_5g"
                         },
                         {
                             "InterfaceName": "wifi1.2",
                             "Bridge": "br-lan",
                             "vlanId": 0,
-                            "vapIndex": 13,
-                            "vapName": "mesh_backhaul_5g"
+                            "vapIndex": 3,
+                            "vapName": "iot_ssid_5g"
+                        },
+                        {
+                            "InterfaceName": "wifi1.3",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 15,
+                            "vapName": "mesh_sta_5g"
                         }
                     ]
                 },
@@ -53,6 +60,20 @@
                             "vlanId": 0,
                             "vapIndex": 0,
                             "vapName": "private_ssid_2g"
+                        },
+                        {
+                            "InterfaceName": "wifi0.1",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 12,
+                            "vapName": "mesh_backhaul_2g"
+                        },
+                        {
+                            "InterfaceName": "wifi0.2",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 2,
+                            "vapName": "iot_ssid_2g"
                         }
                     ]
                 }
