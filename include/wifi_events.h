@@ -141,6 +141,7 @@ typedef enum {
     wifi_event_type_wifi_offchannelscan_app_rfc,
     wifi_event_type_wifi_offchannelscan_sm_rfc,
     wifi_event_type_levl_rfc,
+    wifi_event_type_memwraptool_app_rfc,
     wifi_event_type_eth_bh_status,
     wifi_event_type_managed_wifi_disable,
     wifi_event_type_notify_monitor_done,
@@ -182,6 +183,8 @@ typedef enum {
     wifi_event_monitor_get_radiodiag_stats,
     wifi_event_monitor_get_radio_temperature,
     wifi_event_monitor_set_subscribe,
+    wifi_event_monitor_auth_req,
+    wifi_event_monitor_update_interop_interval,
     wifi_event_monitor_max,
 
     // Tunnel

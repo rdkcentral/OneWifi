@@ -42,7 +42,7 @@ extern "C" {
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
-#define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
+#define WIFI_NOTIFY_SYNC_COMPONENT      "Device.NotifyComponent.SetNotifi_ParamName"
 #define WIFI_NOTIFY_FORCE_DISASSOCIATION    "Device.WiFi.ConnectionControl.ClientForceDisassociation"
 #define WIFI_NOTIFY_DENY_ASSOCIATION        "Device.WiFi.ConnectionControl.ClientDenyAssociation"
 #define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
@@ -98,6 +98,15 @@ extern "C" {
 #define MIN_DIAG_INTERVAL   5000
 #define CSI_PING_INTERVAL   100
 
+#define DEFAULT_RSS_CHECK_INTERVAL 5 // minutes
+#define DEFAULT_RSS_THRESHOLD 1000 // kbytes
+#define DEFAULT_RSS_MAXLIMIT 70000 // kbytes
+#define DEFAULT_HEAPWALK_DURATION 60 // minutes
+#define DEFAULT_HEAPWALK_INTERVAL 15 // minutes
+
+#define RSS_MEM_THRESHOLD1_DEFAULT 81920 /*Threshold1 is 80MB*/
+#define RSS_MEM_THRESHOLD2_DEFAULT 112640 /*Threshold2 is 110MB*/
+
 #define wifi_sub_component_base     0x01
 #define wifi_app_inst_base          0x01
 
@@ -138,7 +147,8 @@ typedef enum {
     wifi_app_inst_whix = wifi_app_inst_base << 13,
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
-    wifi_app_inst_max = wifi_app_inst_base << 16
+    wifi_app_inst_memwraptool = wifi_app_inst_base << 16,
+    wifi_app_inst_max = wifi_app_inst_base << 17
 } wifi_app_inst_t;
 
 typedef struct {
@@ -178,6 +188,7 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STA_XB8      100     /**< Max supported stations for TCHX8 specific platform */
 #define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
 #define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
+#define BSS_MAX_NUM_STA_HOTSPOT_XB      5      /**< Max supported stations for hotspot vaps in XB platform */
 
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
@@ -390,6 +401,15 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
+    unsigned int rss_check_interval; // minutes
+    unsigned int rss_threshold; // kbytes
+    unsigned int rss_maxlimit; // kbytes
+    unsigned int heapwalk_duration; // minutes
+    unsigned int heapwalk_interval; // minutes
+    bool enable;
+} __attribute__((packed)) memwraptool_config_t;
+
+typedef struct {
     bool wifi_offchannelscan_app_rfc;
     bool wifi_offchannelscan_sm_rfc;
     bool wifipasspoint_rfc;
@@ -417,6 +437,7 @@ typedef struct {
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
     bool wpa3_compatibility_enable;
+    bool memwraptool_app_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -441,6 +462,8 @@ typedef struct {
     int  assoc_gate_time;
     int  whix_log_interval; //seconds
     int  whix_chutility_loginterval; //seconds
+    ULONG rss_memory_restart_threshold_low;
+    ULONG rss_memory_restart_threshold_high;
     int  assoc_monitor_duration;
     bool rapid_reconnect_enable;
     bool vap_stats_feature;
@@ -456,6 +479,11 @@ typedef struct {
     char cli_stat_list[MAX_BUF_LENGTH];
     char snr_list[MAX_BUF_LENGTH];
     char txrx_rate_list[MAX_BUF_LENGTH];
+    memwraptool_config_t memwraptool;
+    bool mgt_frame_rate_limit_enable;
+    int mgt_frame_rate_limit;
+    int mgt_frame_rate_limit_window_size;
+    int mgt_frame_rate_limit_cooldown_time;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
@@ -747,6 +775,15 @@ typedef struct {
     int num_detected;
     long long int timestamp;
 } __attribute__((packed)) radarInfo_t;
+
+typedef struct {
+    mac_address_t sta_mac;
+    mac_address_t ap_mac;
+    int sta_status_counts[6];
+    int sta_reason_counts[9];
+    int ap_status_counts[6];
+    int ap_reason_counts[9];
+} interop_data_t;
 
 typedef struct {
     char    name[16];

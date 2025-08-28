@@ -101,6 +101,19 @@
     }  \
 }   \
 
+#define decode_param_allow_empty_integer(json, key, value, intval) \
+{   \
+    value = cJSON_GetObjectItem(json, key);     \
+    if ((value == NULL) || (cJSON_IsNumber(value) == false)) {    \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation has emptyfor key:%s\n", __func__, __LINE__, key);   \
+        intval = false; \
+    }   \
+    else { \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation for key:%s\n", __func__, __LINE__, key);   \
+        intval = true; \
+    }  \
+}   \
+
 #define decode_param_array(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
@@ -755,6 +768,9 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 
     decode_param_object(interworking, "Venue", venue);
 
+    decode_param_bool(venue, "VenueOptionPresent", param);
+    interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true : false;
+
     decode_param_integer(venue, "VenueType", param);
     interworking_info->interworking.venueType = param->valuedouble;
     if (interworking_info->interworking.venueType > 15) {
@@ -945,7 +961,6 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
        return webconfig_error_decode;
     }
 #endif
-
     decode_param_integer(radius, "RadiusServerPort", param);
     radius_info->port = param->valuedouble;
 
@@ -1021,6 +1036,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     return webconfig_error_none;
 }
+
 
 webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_settings_t *radius_info)
 {
@@ -1466,6 +1482,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     const cJSON *param;
     cJSON *object = NULL;
     bool connected_value = false;
+    bool mdu_value = false, intval = false;
 
     // VAP Name
     decode_param_string(vap, "VapName", param);
@@ -1493,6 +1510,15 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_allow_empty_string(vap, "BridgeName", param);
     strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
 
+    //Repurposed Bridge Name
+    decode_param_allow_optional_string(vap, "RepurposedBridgeName", param);
+    if (param != NULL && param->valuestring != NULL) {
+        strncpy(vap_info->repurposed_bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
+        vap_info->repurposed_bridge_name[WIFI_BRIDGE_NAME_LEN - 1] = '\0';
+    } else {
+        vap_info->repurposed_bridge_name[0] = '\0';
+    }
+
     // repurposed vap_name
     decode_param_allow_empty_string(vap, "RepurposedVapName", param);
     strncpy(vap_info->repurposed_vap_name, param->valuestring,
@@ -1519,7 +1545,22 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // Broadcast SSID
     decode_param_bool(vap, "SSIDAdvertisementEnabled", param);
     vap_info->u.bss_info.showSsid = (param->type & cJSON_True) ? true : false;
+    decode_param_allow_empty_integer(vap, "SpeedTier", param, intval);
+    if (!intval) {
+        vap_info->u.bss_info.am_config.npc.speed_tier = intval;
+    } else {
+        decode_param_integer(vap, "SpeedTier", param);
+        vap_info->u.bss_info.am_config.npc.speed_tier = param->valuedouble;
+    }
 
+    decode_param_allow_empty_bool(vap, "MDUEnabled", param, mdu_value);
+    if (!mdu_value) {
+        vap_info->u.bss_info.mdu_enabled = false;
+    } else {
+        decode_param_bool(vap, "MDUEnabled", param);
+        vap_info->u.bss_info.mdu_enabled = (param->type & cJSON_True) ? true : false;
+    }
+    
     // Isolation
     decode_param_bool(vap, "IsolationEnable", param);
     vap_info->u.bss_info.isolation = (param->type & cJSON_True) ? true : false;
@@ -1527,6 +1568,9 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // ManagementFramePowerControl
     decode_param_integer(vap, "ManagementFramePowerControl", param);
     vap_info->u.bss_info.mgmtPowerControl = param->valuedouble;
+
+    decode_param_integer(vap, "InteropNumSta", param);
+    vap_info->u.bss_info.inum_sta = param->valuedouble;
 
     // BssMaxNumSta
     decode_param_integer(vap, "BssMaxNumSta", param);
@@ -1639,6 +1683,9 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // HostapMgtFrameCtrl
     decode_param_bool(vap, "HostapMgtFrameCtrl", param);
     vap_info->u.bss_info.hostap_mgt_frame_ctrl = (param->type & cJSON_True) ? true : false;
+
+    decode_param_bool(vap, "InteropCtrl", param);
+    vap_info->u.bss_info.interop_ctrl = (param->type & cJSON_True) ? true : false;
 
     decode_param_bool(vap, "MboEnabled", param);
     vap_info->u.bss_info.mbo_enabled = (param->type & cJSON_True) ? true : false;
@@ -2212,6 +2259,12 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "whix_chutility_loginterval", param);
     global_info->whix_chutility_loginterval = param->valuedouble;
 
+    //Rss threshold
+    decode_param_integer(global_cfg, "rss_memory_restart_threshold_low", param);
+    global_info->rss_memory_restart_threshold_low = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_memory_restart_threshold_high", param);
+    global_info->rss_memory_restart_threshold_high = param->valuedouble;
 
     //AssocMonitorDuration
     decode_param_integer(global_cfg, "AssocMonitorDuration", param);
@@ -2240,6 +2293,40 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     //FixedWmmParams
     decode_param_integer(global_cfg, "FixedWmmParams", param);
     global_info->fixed_wmm_params = param->valuedouble;
+
+    // MgtFrameRateLimitEnable
+    decode_param_bool(global_cfg, "MgtFrameRateLimitEnable", param);
+    global_info->mgt_frame_rate_limit_enable = (param->type & cJSON_True) ? true : false;
+
+    // MgtFrameRateLimit
+    decode_param_integer(global_cfg, "MgtFrameRateLimit", param);
+    global_info->mgt_frame_rate_limit = param->valuedouble;
+
+    // MgtFrameRateLimitWindowSize
+    decode_param_integer(global_cfg, "MgtFrameRateLimitWindowSize", param);
+    global_info->mgt_frame_rate_limit_window_size = param->valuedouble;
+
+    // MgtFrameRateLimitCooldownTime
+    decode_param_integer(global_cfg, "MgtFrameRateLimitCooldownTime", param);
+    global_info->mgt_frame_rate_limit_cooldown_time = param->valuedouble;
+
+    decode_param_bool(global_cfg, "MemwrapToolEnable", param);
+    global_info->memwraptool.enable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(global_cfg, "rss_check_interval", param);
+    global_info->memwraptool.rss_check_interval = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_threshold", param);
+    global_info->memwraptool.rss_threshold = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_maxlimit", param);
+    global_info->memwraptool.rss_maxlimit = param->valuedouble;
+
+    decode_param_integer(global_cfg, "heapwalk_duration", param);
+    global_info->memwraptool.heapwalk_duration = param->valuedouble;
+
+    decode_param_integer(global_cfg, "heapwalk_interval", param);
+    global_info->memwraptool.heapwalk_interval = param->valuedouble;
 
     //WifiRegionCode
     decode_param_string(global_cfg, "WifiRegionCode", param);
@@ -3551,6 +3638,31 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     decode_param_integer(levl_cfg, "Interval", param);
     levl_config->levl_publish_interval = param->valuedouble;
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_memwraptool_object(const cJSON *memwraptool_cfg,
+    memwraptool_config_t *memwrap_info)
+{
+    const cJSON *param;
+
+    decode_param_bool(memwraptool_cfg, "enable", param);
+    memwrap_info->enable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(memwraptool_cfg, "rss_check_interval", param);
+    memwrap_info->rss_check_interval = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_threshold", param);
+    memwrap_info->rss_threshold = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_maxlimit", param);
+    memwrap_info->rss_maxlimit = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_duration", param);
+    memwrap_info->heapwalk_duration = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_interval", param);
+    memwrap_info->heapwalk_interval = param->valuedouble;
     return webconfig_error_none;
 }
 

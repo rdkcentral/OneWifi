@@ -284,6 +284,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>X_RDKCENTRAL-COM_MemwrapTool_RFC</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>DFSatBootUp</name>
             <type>boolean</type>
             <syntax>bool</syntax>
@@ -917,6 +923,43 @@ INSTMSMT_PH2 -->
 			  	</object>
 			</objects>
 		</object>
+
+               <object>
+                    <name>X_RDKCENTRAL-COM_MgtFrameRateLimit</name>
+                    <objectType>object</objectType>
+                    <functions>
+                        <func_GetParamBoolValue>MgtFrameRateLimit_GetParamBoolValue</func_GetParamBoolValue>
+                        <func_SetParamBoolValue>MgtFrameRateLimit_SetParamBoolValue</func_SetParamBoolValue>
+                        <func_GetParamUlongValue>MgtFrameRateLimit_GetParamUlongValue</func_GetParamUlongValue>
+                        <func_SetParamUlongValue>MgtFrameRateLimit_SetParamUlongValue</func_SetParamUlongValue>
+                    </functions>
+                        <parameters>
+                        <parameter>
+                            <name>Enable</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>RateLimit</name>
+                            <type>unsignedInt</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>WindowSize</name>
+                            <type>unsignedInt</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>CooldownTime</name>
+                            <type>unsignedInt</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                    </parameters>
+                </object>
 
                 <object>
                     <name>Radio</name>
@@ -2043,6 +2086,36 @@ INSTMSMT_PH2 -->
                         </object>
                     </objects>
                 </object>
+                    <object>
+                        <name>WiFiRestart</name>
+                        <objectType>object</objectType>
+                        <functions></functions>
+	                    <parameters></parameters>
+                        <objects>
+                            <object>
+                                <name>RSSMemory</name>
+                                <objectType>object</objectType>
+                                <functions>
+                                    <func_GetParamUlongValue>RSSMemory_GetParamUlongValue</func_GetParamUlongValue>
+                                    <func_SetParamUlongValue>RSSMemory_SetParamUlongValue</func_SetParamUlongValue>
+                                </functions>
+                                <parameters>
+                                    <parameter>
+                                        <name>Threshold1</name>
+                                        <type>unsignedInt</type>
+                                        <syntax>uint32</syntax>
+                                        <writable>true</writable>
+                                    </parameter>
+                                    <parameter>
+                                        <name>Threshold2</name>
+                                        <type>unsignedInt</type>
+                                        <syntax>uint32</syntax>
+                                        <writable>true</writable>
+                                    </parameter>
+                                </parameters>
+                            </object>
+                        </objects>
+                    </object>
                 <object>
                     <name>AccessPoint</name>
                     <objectType>staticTable</objectType>
@@ -2152,6 +2225,12 @@ INSTMSMT_PH2 -->
                         </parameter>
                         <parameter>
                             <name>X_CISCO_COM_BssMaxNumSta</name>
+                            <type>int</type>
+                            <syntax>int</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>InteropNumSta</name>
                             <type>int</type>
                             <syntax>int</syntax>
                             <writable>true</writable>
@@ -2293,6 +2372,12 @@ INSTMSMT_PH2 -->
                           </parameter>
                           <parameter>
                             <name>X_RDKCENTRAL-COM_HostapMgtFrameCtrl</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
+                          </parameter>
+                          <parameter>
+                            <name>InteropTelemetryCtrl</name>
                             <type>boolean</type>
                             <syntax>bool</syntax>
                             <writable>true</writable>
@@ -2535,6 +2620,24 @@ INSTMSMT_PH2 -->
                                     <writable>true</writable>
                                 </parameter>
                                 <parameter>
+                                    <name>RepurposedRadiusServerIPAddr</name>
+                                    <type>string</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedRadiusServerPort</name>
+                                    <type>unsignedInt</type>
+                                    <syntax>uint32</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedRadiusSecret</name>
+                                    <type>string(63)</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
                                     <name>SecondaryRadiusServerIPAddr</name>
                                     <type>string</type>
                                     <syntax>string</syntax>
@@ -2551,6 +2654,24 @@ INSTMSMT_PH2 -->
                                     <type>string(63)</type>
                                     <syntax>string</syntax>
                                     <writable>true</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedSecondaryRadiusServerIPAddr</name>
+                                    <type>string</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedSecondaryRadiusServerPort</name>
+                                    <type>unsignedInt</type>
+                                    <syntax>uint32</syntax>
+                                    <writable>false</writable>
+                                </parameter>
+                                <parameter>
+                                    <name>RepurposedSecondaryRadiusSecret</name>
+                                    <type>string(63)</type>
+                                    <syntax>string</syntax>
+                                    <writable>false</writable>
                                 </parameter>
 				<parameter>
                                     <name>RadiusDASIPAddr</name>

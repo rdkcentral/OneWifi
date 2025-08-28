@@ -37,6 +37,58 @@
 extern "C" {
 #endif
 
+#define UNREFERENCED_PARAMETER(_p_) (void)(_p_)
+
+#define VERIFY_NULL(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return; \
+        } \
+    } while(0)
+
+#define VERIFY_NULL_WITH_RETURN_ADDR(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return NULL; \
+        } \
+    } while(0)
+
+#define VERIFY_NULL_WITH_RETURN_INT(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return RETURN_ERR; \
+        } \
+    } while(0)
+
+#define BUS_CHECK_NULL_WITH_RC(ptr, rc) \
+    do { \
+        if ((ptr) == NULL) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #ptr); \
+            return (rc); \
+        } \
+    } while (0)
+
+#define ERROR_CHECK(CMD) \
+    do { \
+        int l_error; \
+        if ((l_error = CMD) != 0) { \
+            wifi_util_info_print(WIFI_CTRL, "Error %d: running command " #CMD, l_error); \
+        } \
+    } while (0)
+
+#define VERIFY_NULL_WITH_RC(T) \
+    if (NULL == (T)) { \
+        wifi_util_error_print(WIFI_CTRL, "[%s] input parameter: %s is NULL\n", __func__, #T); \
+        return bus_error_invalid_input; \
+    }
+
 #define MAX_SCAN_MODE_LEN 16
 
 typedef enum {
@@ -58,6 +110,7 @@ typedef enum {
     WIFI_BLASTER,
     WIFI_OCS,
     WIFI_BUS,
+    WIFI_MEMWRAPTOOL,
     WIFI_TCM
 } wifi_dbg_type_t;
 
@@ -272,6 +325,7 @@ BOOL is_vap_hotspot_secure_5g(wifi_platform_property_t *wifi_prop, unsigned int 
 BOOL is_vap_hotspot_secure_6g(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_lnf_radius(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
+
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len,
     unsigned int conv_type);
 int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_id,
@@ -287,6 +341,8 @@ int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *chan
     unsigned int channel_state_strlen);
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band,
     UINT wifi_channel);
+bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
+                                         const wifi_vap_info_t *hotspot_vap_info);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
     wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp,
     int encryp_len, unsigned int conv_type);

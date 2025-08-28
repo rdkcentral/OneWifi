@@ -837,7 +837,8 @@ int start_wifi_services(void)
         start_radios(rdk_dev_mode_type_gw);
         start_gateway_vaps();
         captive_portal_check();
-#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
+#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && \
+        (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_))
         /* Function to check for default SSID and Passphrase for Private VAPS
         if they are default and last-reboot reason is SW get the previous config from Webconfig */
         validate_and_sync_private_vap_credentials();
@@ -885,6 +886,7 @@ bool get_notify_wifi_from_psm(char *PsmParamName)
             psm_notify_flag = false;
         }
     }
+    get_bus_descriptor()->bus_data_free_fn(&data);
     wifi_util_dbg_print(WIFI_CTRL, "get_notify_wifi_from_psm ends: %d\n", rc);
 
     return psm_notify_flag;
@@ -1185,8 +1187,11 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
                 break;
         }
     }
-
-    push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    if (evt_subtype != wifi_event_hal_unknown_frame) {
+        push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Unknown frame type received! skipped push_event_to_ctrl_queue, ap_index:%d, type:%d\n", __func__, __LINE__, ap_index, type);
+    }
     return RETURN_OK;
 }
 #endif
@@ -1480,6 +1485,7 @@ int wifi_hal_platform_post_init()
     unsigned int index = 0;
     wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
     wifi_vap_info_map_t *p_vap_map = NULL;
+    wifi_global_param_t *global_param;
 
     memset(vap_map, 0, sizeof(vap_map));
 
@@ -1498,6 +1504,13 @@ int wifi_hal_platform_post_init()
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s start wifi apps failed, ret:%d\n",__FUNCTION__, ret);
         return RETURN_ERR;
+    }
+
+    global_param = get_wifidb_wifi_global_param();
+    if (global_param != NULL) {
+        wifi_hal_set_mgt_frame_rate_limit(global_param->mgt_frame_rate_limit_enable,
+            global_param->mgt_frame_rate_limit, global_param->mgt_frame_rate_limit_window_size,
+            global_param->mgt_frame_rate_limit_cooldown_time);
     }
 
     return RETURN_OK;
@@ -2594,6 +2607,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled =
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.memwraptool_app_rfc =
+        g_wifi_mgr->rfc_dml_parameters.memwraptool_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_app_rfc =
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_sm_rfc =
@@ -2834,6 +2849,25 @@ UINT getPrivateApFromRadioIndex(UINT radioIndex)
         }
     }
     wifi_util_dbg_print(WIFI_CTRL,"getPrivateApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    return 0;
+}
+
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+{
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (vap_prefix == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
+        return 0;
+    }
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
+        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
+               getRadioIndexFromAp(apIndex) == radioIndex ) {
+            return apIndex;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"getApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
     return 0;
 }
 

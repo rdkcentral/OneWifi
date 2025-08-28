@@ -80,6 +80,7 @@ typedef struct {
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         off_channel_param_t  ocs[MAX_NUM_RADIOS];
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
+        memwraptool_config_t memwraptool;
     } u;
 } wifi_app_data_t;
 

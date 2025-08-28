@@ -46,7 +46,6 @@ typedef struct {
 wifi_bus_desc_t *get_bus_descriptor();
 wifi_bus_t *get_bus_obj(void);
 bus_error_t bus_init(bus_handle_t *handle);
-
 #ifdef __cplusplus
 }
 #endif

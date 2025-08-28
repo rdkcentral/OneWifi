@@ -1,15 +1,15 @@
 /************************************************************************************
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
-  
-  Copyright 2018 RDK Management
-  
+
+  Copyright 2024 RDK Management
+
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
-  
+
   http://www.apache.org/licenses/LICENSE-2.0
-  
+
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,19 +17,27 @@
   limitations under the License.
  **************************************************************************/
 
-#ifndef WIFI_CTRL_H
-#define WIFI_CTRL_H
+#ifndef _MISC_H_
+#define _MISC_H_
+
+#include "misc_common.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-typedef struct {
+void wifi_misc_init();
 
-} wifi_ctrl_t;
+typedef struct {
+    wifi_misc_desc_t                desc;
+} wifi_misc_t;
+
+wifi_misc_desc_t *get_misc_descriptor();
+wifi_misc_t *get_misc_obj();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //WIFI_CTRL_H
+#endif //_MISC_H

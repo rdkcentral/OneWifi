@@ -351,6 +351,9 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     //Bridge Name
     cJSON_AddStringToObject(vap_object, "BridgeName", vap_info->bridge_name);
 
+    //Repurposed Bridge Name
+    cJSON_AddStringToObject(vap_object, "RepurposedBridgeName", vap_info->repurposed_bridge_name);
+
     //VAP Name
     cJSON_AddStringToObject(vap_object, "RepurposedVapName", vap_info->repurposed_vap_name);
 
@@ -375,12 +378,19 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // Broadcast SSID
     cJSON_AddBoolToObject(vap_object, "SSIDAdvertisementEnabled", vap_info->u.bss_info.showSsid);
+    // Speed Tier for Amenity Network
+    cJSON_AddNumberToObject(vap_object, "SpeedTier", vap_info->u.bss_info.am_config.npc.speed_tier);
+
+    // Managed WiFi Phase 2 Enabled
+    cJSON_AddBoolToObject(vap_object, "MDUEnabled", vap_info->u.bss_info.mdu_enabled);
 
     // Isolation
     cJSON_AddBoolToObject(vap_object, "IsolationEnable", vap_info->u.bss_info.isolation);
 
     // ManagementFramePowerControl
     cJSON_AddNumberToObject(vap_object, "ManagementFramePowerControl", vap_info->u.bss_info.mgmtPowerControl);
+
+    cJSON_AddNumberToObject(vap_object, "InteropNumSta", vap_info->u.bss_info.inum_sta);
 
     // BssMaxNumSta
     cJSON_AddNumberToObject(vap_object, "BssMaxNumSta", vap_info->u.bss_info.bssMaxSta);
@@ -451,6 +461,10 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     // HostapMgtFrameCtrl
     cJSON_AddBoolToObject(vap_object, "HostapMgtFrameCtrl",
         vap_info->u.bss_info.hostap_mgt_frame_ctrl);
+
+    // InteropCtrl
+    cJSON_AddBoolToObject(vap_object, "InteropCtrl",
+        vap_info->u.bss_info.interop_ctrl);
 
     cJSON_AddBoolToObject(vap_object, "MboEnabled", vap_info->u.bss_info.mbo_enabled);
 
@@ -694,6 +708,12 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //Whix_ChUtility_Loginterval
     cJSON_AddNumberToObject(global_obj, "whix_chutility_loginterval", global_info->whix_chutility_loginterval);
 
+    // RSS Mem threshold1
+    cJSON_AddNumberToObject(global_obj, "rss_memory_restart_threshold_low", global_info->rss_memory_restart_threshold_low);
+
+    // RSS Mem threshold2
+    cJSON_AddNumberToObject(global_obj, "rss_memory_restart_threshold_high", global_info->rss_memory_restart_threshold_high);
+
     //AssocMonitorDuration
     cJSON_AddNumberToObject(global_obj, "AssocMonitorDuration", global_info->assoc_monitor_duration);
 
@@ -738,6 +758,42 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     //TxRxRateList
     cJSON_AddStringToObject(global_obj, "TxRxRateList", global_info->txrx_rate_list);
+
+    // MgtFrameRateLimitEnable
+    cJSON_AddBoolToObject(global_obj, "MgtFrameRateLimitEnable",
+        global_info->mgt_frame_rate_limit_enable);
+
+    // MgtFrameRateLimit
+    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimit", global_info->mgt_frame_rate_limit);
+
+    // MgtFrameRateLimitWindowSize
+    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitWindowSize",
+        global_info->mgt_frame_rate_limit_window_size);
+
+    // MgtFrameRateLimitCooldownTime
+    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitCooldownTime",
+        global_info->mgt_frame_rate_limit_cooldown_time);
+
+    // RSSCheckInterval
+    cJSON_AddNumberToObject(global_obj, "rss_check_interval",
+        global_info->memwraptool.rss_check_interval);
+
+    // RSSThreshold
+    cJSON_AddNumberToObject(global_obj, "rss_threshold", global_info->memwraptool.rss_threshold);
+
+    // RSSMaxLimit
+    cJSON_AddNumberToObject(global_obj, "rss_maxlimit", global_info->memwraptool.rss_maxlimit);
+
+    // HeapwalkDuration
+    cJSON_AddNumberToObject(global_obj, "heapwalk_duration",
+        global_info->memwraptool.heapwalk_duration);
+
+    // HeapwalkInterval
+    cJSON_AddNumberToObject(global_obj, "heapwalk_interval",
+        global_info->memwraptool.heapwalk_interval);
+
+    // MemwrapToolEnable
+    cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
 
     return webconfig_error_none;
 }
@@ -846,6 +902,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
+    cJSON_AddBoolToObject(obj, "VenueOptionPresent", interworking_info->interworking.venueOptionPresent);
     cJSON_AddNumberToObject(obj, "VenueType", interworking_info->interworking.venueType);
 
     switch (interworking_info->interworking.venueGroup) {
@@ -931,6 +988,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
 
     return webconfig_error_none;
 }
+
 
 webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info, cJSON *radius)
 {
@@ -1746,6 +1804,21 @@ webconfig_error_t encode_levl_object(const levl_config_t *levl, cJSON *levl_obj)
     cJSON_AddNumberToObject(levl_obj, "Duration", levl->levl_sounding_duration);
     cJSON_AddNumberToObject(levl_obj, "Interval", levl->levl_publish_interval);
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_memwraptool_object(memwraptool_config_t *memwrap_info, cJSON *memwrap_obj)
+{
+    if (memwrap_info == NULL || memwrap_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Memwrap info is NULL\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddNumberToObject(memwrap_obj, "rss_check_interval", memwrap_info->rss_check_interval);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_threshold", memwrap_info->rss_threshold);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_maxlimit", memwrap_info->rss_maxlimit);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_duration", memwrap_info->heapwalk_duration);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_interval", memwrap_info->heapwalk_interval);
+    cJSON_AddBoolToObject(memwrap_obj, "enable", memwrap_info->enable);
     return webconfig_error_none;
 }
 
