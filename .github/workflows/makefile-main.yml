@@ -73,11 +73,37 @@ jobs:
       run: |
         git config --global user.email "${{ github.actor }}@users.noreply.github.com"
         git config --global user.name "${{ github.actor }}"
-        make -f ${{ matrix.platform.makefile_path }} setup
+
+        MF="${{ matrix.platform.makefile_path }}"
+        if [ ! -f "$MF" ]; then
+          echo "Makefile '$MF' not found on main; trying to pull it from develop…"
+          git remote add upstream https://github.com/rdkcentral/OneWifi.git || true
+          git fetch --depth=1 origin develop || true
+          git fetch --depth=1 upstream develop || true
+
+          mkdir -p "$(dirname "$MF")"
+          if git cat-file -e origin/develop:"$MF" 2>/dev/null; then
+            git show origin/develop:"$MF" > "$MF"
+          elif git cat-file -e upstream/develop:"$MF" 2>/dev/null; then
+            git show upstream/develop:"$MF" > "$MF"
+          fi
+        fi
+
+        if [ ! -f "$MF" ]; then
+          echo "Makefile '$MF' still missing; falling back to build/linux/makefile"
+          MF="build/linux/makefile"
+        fi
+
+        make -f "$MF" setup
       env:
         GITHUB_ACTOR: ${{ github.actor }}
 
     - name: Build OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
       run: |
-        make -f ${{ matrix.platform.makefile_path }} all
+        MF="${{ matrix.platform.makefile_path }}"
+        if [ ! -f "$MF" ]; then
+          # If we created it during setup, it will exist; otherwise keep the same fallback.
+          [ -f "$MF" ] || MF="build/linux/makefile"
+        fi
+        make -f "$MF" all
