@@ -66,7 +66,7 @@ typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 #define EXT_SCAN_RESULT_TIMEOUT                4000
 #define EXT_SCAN_RESULT_WAIT_TIMEOUT           4000
 #define EXT_CONN_STATUS_IND_TIMEOUT            5000
-#define EXT_CSA_WAIT_TIMEOUT                   3000
+#define EXT_CSA_WAIT_TIMEOUT                   10000
 #define EXT_DISCONNECTION_IND_TIMEOUT          5000
 #define EXT_UDHCP_IP_CHECK_INTERVAL            60000
 #define EXT_UDHCP_IP_CHECK_NUM                 3
@@ -110,6 +110,7 @@ typedef struct {
     bss_candidate_t        new_bss;
     connection_state_t     conn_state;
     bool                   is_radio_ignored;
+    bool                   is_on_channel;
     wifi_radio_index_t     ignored_radio_index;
     unsigned int           selfheal_status;
     unsigned int           connected_vap_index;
