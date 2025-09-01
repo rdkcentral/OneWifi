@@ -87,6 +87,7 @@
 #define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100040
 #define DEFAULT_WHIX_CHUTILITY_LOGINTERVAL 900
 #define DEFAULT_WHIX_LOGINTERVAL 3600
+#define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100042
 
 #ifdef CONFIG_NO_MLD_ONLY_PRIVATE
 #define MLD_UNIT_COUNT 8
@@ -4895,6 +4896,18 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     &rdk_config[i]);
             }
         }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG) {
+            wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
+                __func__, __LINE__, g_wifidb->db_version);
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 0;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
+                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                    &rdk_config[i]);
+            }
+        }
     }
 }
 
@@ -9163,7 +9176,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
-        is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
+        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
         is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
         is_device_type_vbvxer5() == true || is_device_type_xle() == true) {
