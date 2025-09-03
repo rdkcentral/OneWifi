@@ -2862,7 +2862,7 @@ int increment_eap_status_count(interop_data_t *telemetry, wifi_eap_status_code_t
     return 0;
 }
 
-int eap_status_code(int ap_index, char *src_mac, int reason)
+/*int eap_status_code(int ap_index, char *src_mac, int reason)
 {
     hash_map_t *sta_map;
     interop_data_t *sta;
@@ -3101,14 +3101,18 @@ void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_d
 
 int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, int reason)
 {
-    wifi_monitor_data_t data;
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.u.eap_data.ap_index = apIndex;
-    data.u.eap_data.reason = reason;
-    memcpy(data.u.eap_data.sta_mac, mac_addr, sizeof(mac_address_t));
-    push_event_to_monitor_queue(&data, wifi_event_monitor_eap_status, NULL);    
-    return 0;
+    if ( reason == 1 || reason == 2) {
+        radius_eap_data_t radius_eap_data;
+        radius_eap_data.apIndex = apIndex;
+        radius_eap_data.failure_reason = reason;
+        push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
+		wifi_util_dbg_print(WIFI_MON,"%s Harsha called ctrl_queue \n",__func__);
+     }
+     if ( reason == 0 || reason == 2 || reason == 3) {
+		 wifi_util_dbg_print(WIFI_MON,"%s Harsha called process_eap_status \n",__func__);
+         process_eap_status(apIndex, mac_addr, reason);
+     }
+     return 0;
 }
 
 int radius_fallback_and_failover_callback(unsigned int apIndex, int reason)
@@ -3801,7 +3805,7 @@ int init_wifi_monitor()
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
     wifi_hal_stamode_callback_register(set_sta_client_mode);
     wifi_hal_apStatusCode_callback_register(ap_status_code);
-    wifi_hal_radius_eap_status_callback_register(eap_status_code);
+    //wifi_hal_radius_eap_status_callback_register(eap_status_code);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.interop_id, reset_interop_sta_data, NULL, (get_chan_util_upload_period() * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, reset_wpa3_enhanced_sta_data, NULL, (MAX_AKM_REPORT_REFRESH_PERIOD * 1000), 0, FALSE);
