@@ -4973,7 +4973,7 @@ AMSDU_TID_GetEntry(ANSC_HANDLE hInsContext, ULONG nIndex, ULONG *pInsNumber)
 
 BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;
@@ -5056,7 +5056,7 @@ BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL 
 
 BOOL AMSDU_TID_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_XER10_PRODUCT_REQ_)
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;

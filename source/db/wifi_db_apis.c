@@ -6910,7 +6910,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         cfg.amsduTid[j] = FALSE;
     }
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
     if (cfg.band == WIFI_FREQUENCY_6_BAND) {
         for (int i = 0; i < 5; i++)
         {
