@@ -547,7 +547,7 @@ int memwraptool_deinit(wifi_app_t *app)
 
     rc = get_bus_descriptor()->bus_close_fn(&app->handle);
     if (rc != bus_error_success) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: Unable to close Levl bus handle\n", __func__,
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: Unable to close memwraptool bus handle\n", __func__,
             __LINE__);
     }
     return RETURN_OK;

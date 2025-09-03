@@ -347,7 +347,7 @@ do
                 fi
             fi
 
-            if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
+            if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
                 if [ $eco_mode_6g == "false" ]; then
                     radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
                     if [ $radio_status_6g == "true" ]; then

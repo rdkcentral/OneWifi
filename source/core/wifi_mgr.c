@@ -211,6 +211,10 @@ bool is_device_type_vbvxb10(void)
 {
     return is_supported_gateway_device("CGM601TCOM");
 }
+bool is_device_type_vbvxb9(void)
+{
+    return is_supported_gateway_device("CWA438TCOM");
+}
 bool is_device_type_sercommxb10(void)
 {
     return is_supported_gateway_device("SG417DBCT");
