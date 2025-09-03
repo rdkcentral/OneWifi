@@ -2890,7 +2890,7 @@ int increment_eap_status_count(interop_data_t *telemetry, wifi_eap_status_code_t
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d  station is found for vap_index:%d src_mac :%s and incremented with reason:%d \r\n", __func__, __LINE__, ap_index, src_mac, reason);
     return 0;
-}
+}*/
 
 int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
 {
