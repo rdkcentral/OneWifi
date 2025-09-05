@@ -76,21 +76,15 @@ jobs:
 
         MF="${{ matrix.platform.makefile_path }}"
         if [ ! -f "$MF" ]; then
-          echo "Makefile '$MF' not found on main; trying to pull it from develop…"
+          echo "Makefile '$MF' not on main; pulling its folder from develop…"
           git remote add upstream https://github.com/rdkcentral/OneWifi.git || true
-          git fetch --depth=1 origin develop || true
-          git fetch --depth=1 upstream develop || true
-
-          mkdir -p "$(dirname "$MF")"
-          if git cat-file -e origin/develop:"$MF" 2>/dev/null; then
-            git show origin/develop:"$MF" > "$MF"
-          elif git cat-file -e upstream/develop:"$MF" 2>/dev/null; then
-            git show upstream/develop:"$MF" > "$MF"
-          fi
+          git fetch --depth=1 upstream develop
+          plat_dir="$(dirname "$MF")"
+          git checkout upstream/develop -- "$plat_dir"
         fi
 
         if [ ! -f "$MF" ]; then
-          echo "Makefile '$MF' still missing; falling back to build/linux/makefile"
+          echo "Still missing '$MF'; falling back to generic build/linux/makefile"
           MF="build/linux/makefile"
         fi
 
@@ -102,8 +96,5 @@ jobs:
       working-directory: easymesh_project/OneWifi
       run: |
         MF="${{ matrix.platform.makefile_path }}"
-        if [ ! -f "$MF" ]; then
-          # If we created it during setup, it will exist; otherwise keep the same fallback.
-          [ -f "$MF" ] || MF="build/linux/makefile"
-        fi
+        [ -f "$MF" ] || MF="build/linux/makefile"
         make -f "$MF" all
