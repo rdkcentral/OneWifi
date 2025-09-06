@@ -141,6 +141,7 @@ typedef enum {
     wifi_event_type_wifi_offchannelscan_app_rfc,
     wifi_event_type_wifi_offchannelscan_sm_rfc,
     wifi_event_type_levl_rfc,
+    wifi_event_type_memwraptool_app_rfc,
     wifi_event_type_eth_bh_status,
     wifi_event_type_managed_wifi_disable,
     wifi_event_type_notify_monitor_done,

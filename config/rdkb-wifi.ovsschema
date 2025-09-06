@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.039",
+  "version": "1.00.040",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1691,6 +1691,15 @@
                 "max": 1
             }
         },
+        "memwraptool_app_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
         "ow_core_thread_rfc": {
           "type": {
             "key": {
@@ -1935,6 +1944,60 @@
           "type": {
             "key": {
               "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "rss_check_interval": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "rss_threshold": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "rss_maxlimit": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "heapwalk_duration": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "heapwalk_interval": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "memwraptool_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
             },
             "min": 0,
             "max": 1

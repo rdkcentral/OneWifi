@@ -110,6 +110,7 @@ typedef enum {
     WIFI_BLASTER,
     WIFI_OCS,
     WIFI_BUS,
+    WIFI_MEMWRAPTOOL,
     WIFI_TCM
 } wifi_dbg_type_t;
 

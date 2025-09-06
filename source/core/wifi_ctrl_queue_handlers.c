@@ -2248,6 +2248,15 @@ void process_prefer_private_rfc(bool type)
     }
 }
 
+static void process_memwraptool_app_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "WIFI Enter RFC Func %s: %d : bool %d\n", __FUNCTION__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->memwraptool_app_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
 void process_wifi_offchannelscan_app_rfc(bool type) // ocs scan for 5g radio in gateway
 {
     wifi_util_dbg_print(WIFI_DB, "WIFI Enter RFC Func %s: %d : bool %d\n", __FUNCTION__, __LINE__,
@@ -3290,6 +3299,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_wifi_passpoint_rfc:
         process_wifi_passpoint_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_memwraptool_app_rfc:
+        process_memwraptool_app_rfc(*(bool *)data);
         break;
     case wifi_event_type_wifi_offchannelscan_app_rfc:
         process_wifi_offchannelscan_app_rfc(*(bool *)data);
