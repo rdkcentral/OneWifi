@@ -91,6 +91,11 @@ extern "C" {
 #define HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC  (15 * 60)
 
 #define MAX_WIFI_SCHED_TIMEOUT         (4 * 1000)
+#define MAX_WIFI_SCHED_CSA_TIMEOUT     (8 * 1000)
+
+#define MAX_HOTSPOT_BLOB_SET_TIMEOUT             100
+#define MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT   120
+#define MAX_VAP_RE_CFG_APPLY_RETRY     2
 
 //This is a dummy string if the value is not passed.
 #define INVALID_KEY                      "12345678"
@@ -100,8 +105,6 @@ extern "C" {
 #define PRIVATE_SUB_DOC                  "privatessid"
 // Connected building wifi subdoc and bus related constants
 #define MULTI_COMP_SUPPORTED_SUBDOC_COUNT 2
-#define MANAGED_WIFI_BRIDGE "Device.LAN.Bridge.1.Name"
-#define MANAGED_WIFI_INTERFACE "Device.LAN.Bridge.1.WiFiInterfaces"
 
 #define PRIVATE 0b0001
 #define HOTSPOT 0b0010
@@ -113,7 +116,7 @@ extern "C" {
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
 
-#define CTRL_QUEUE_SIZE_MAX 500
+#define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
 typedef enum {
     ctrl_webconfig_state_none = 0,
@@ -207,6 +210,13 @@ typedef struct {
     pthread_mutex_t      events_bus_lock;
 } events_bus_data_t;
 
+typedef struct hotspot_cfg_sem_param {
+    bool is_init;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    bool cfg_status;
+} hotspot_cfg_sem_param_t;
+
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
@@ -231,6 +241,8 @@ typedef struct wifi_ctrl {
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
     bool                marker_list_config_subscribed;
+    bool                wifi_sta_2g_status_subscribed;
+    bool                wifi_sta_5g_status_subscribed;
     bool                eth_bh_status_subscribed;
     bool                mesh_keep_out_chans_subscribed;
     wifiapi_t           wifiapi;
@@ -251,6 +263,7 @@ typedef struct wifi_ctrl {
     int                 speed_test_timeout;
     int                 speed_test_running;
     events_bus_data_t   events_bus_data;
+    hotspot_cfg_sem_param_t hotspot_sem_param;
 } wifi_ctrl_t;
 
 
@@ -305,9 +318,11 @@ wifi_ctrl_t *get_wifictrl_obj();
 void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
 bool is_db_consolidated();
 bool is_db_backup_required();
+bool is_devtype_pod();
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix);
 CHAR* getVAPName(UINT apIndex);
 BOOL isVapPrivate(UINT apIndex);
 BOOL isVapXhs(UINT apIndex);
@@ -373,6 +388,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl);
 bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 bool check_for_greylisted_mac_filter(void);
+int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable);
 void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
 bool is_sta_enabled(void);
 void reset_wifi_radios();
@@ -383,6 +399,9 @@ char *get_assoc_devices_blob();
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc);
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
+
+bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
+void hotspot_cfg_sem_signal(bool status);
 
 #ifdef __cplusplus
 }

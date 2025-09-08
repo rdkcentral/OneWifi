@@ -831,7 +831,8 @@ int start_wifi_services(void)
         start_radios(rdk_dev_mode_type_gw);
         start_gateway_vaps();
         captive_portal_check();
-#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
+#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && \
+        (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
         /* Function to check for default SSID and Passphrase for Private VAPS
         if they are default and last-reboot reason is SW get the previous config from Webconfig */
         validate_and_sync_private_vap_credentials();
@@ -1189,9 +1190,16 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
             default:
                 break;
         }
+    } else if (type == WIFI_MGMT_FRAME_TYPE_BEACON) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_csa_beacon_frame;
     }
-
-    push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    if (evt_subtype != wifi_event_hal_unknown_frame) {
+        push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Unknown frame type received! skipped push_event_to_ctrl_queue, ap_index:%d, type:%d\n", __func__, __LINE__, ap_index, type);
+    }
     return RETURN_OK;
 }
 #endif
@@ -1485,6 +1493,7 @@ int wifi_hal_platform_post_init()
     unsigned int index = 0;
     wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
     wifi_vap_info_map_t *p_vap_map = NULL;
+    wifi_global_param_t *global_param;
 
     memset(vap_map, 0, sizeof(vap_map));
 
@@ -1503,6 +1512,13 @@ int wifi_hal_platform_post_init()
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s start wifi apps failed, ret:%d\n",__FUNCTION__, ret);
         return RETURN_ERR;
+    }
+
+    global_param = get_wifidb_wifi_global_param();
+    if (global_param != NULL) {
+        wifi_hal_set_mgt_frame_rate_limit(global_param->mgt_frame_rate_limit_enable,
+            global_param->mgt_frame_rate_limit, global_param->mgt_frame_rate_limit_window_size,
+            global_param->mgt_frame_rate_limit_cooldown_time);
     }
 
     return RETURN_OK;
@@ -1889,6 +1905,9 @@ int wifi_sched_timeout(void *arg)
 
     if (args->type == wifi_csa_sched) {
         resched_data_to_ctrl_queue();
+    } else if ((check_wifi_csa_sched_timeout_active_status(l_ctrl) == false)
+        && (args->type == wifi_vap_sched)) {
+        resched_data_to_ctrl_queue();
     }
     if (args->type == wifi_acs_sched) {
         l_ctrl->acs_pending[args->index] = false; // Clearing acs_pending flag
@@ -1941,12 +1960,69 @@ void start_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedu
         args->type = type;
         args->index = handler_index;
 
-        scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
-            wifi_sched_timeout, args, MAX_WIFI_SCHED_TIMEOUT, 1, FALSE);
+        if(type == wifi_csa_sched) {
+            scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
+                wifi_sched_timeout, args, MAX_WIFI_SCHED_CSA_TIMEOUT, 1, FALSE);
+        } else {
+            scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
+                wifi_sched_timeout, args, MAX_WIFI_SCHED_TIMEOUT, 1, FALSE);
+        }
     } else {
         wifi_util_info_print(WIFI_CTRL,"%s:%d - Already wifi index:%d type:%d scheduler timer started\r\n",
                                 __func__, __LINE__, handler_index, type);
     }
+}
+
+void hotspot_cfg_sem_signal(bool status)
+{
+    wifi_ctrl_t *ctrl = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (ctrl->hotspot_sem_param.is_init == true) {
+        pthread_mutex_lock(&ctrl->hotspot_sem_param.lock);
+        ctrl->hotspot_sem_param.cfg_status = status;
+        pthread_cond_signal(&ctrl->hotspot_sem_param.cond);
+        pthread_mutex_unlock(&ctrl->hotspot_sem_param.lock);
+    }
+}
+
+bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec)
+{
+    struct timespec ts;
+    int ret;
+    bool status = false;
+
+    wifi_ctrl_t *ctrl = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl->hotspot_sem_param.is_init == false) {
+        pthread_condattr_t  cond_attr;
+        pthread_condattr_init(&cond_attr);
+        pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+        pthread_cond_init(&ctrl->hotspot_sem_param.cond, &cond_attr);
+        pthread_condattr_destroy(&cond_attr);
+        pthread_mutex_init(&ctrl->hotspot_sem_param.lock, NULL);
+        ctrl->hotspot_sem_param.is_init = true;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    /* Add wait duration*/
+    ts.tv_sec += time_in_sec;
+
+    pthread_mutex_lock(&ctrl->hotspot_sem_param.lock);
+    ret = pthread_cond_timedwait(&ctrl->hotspot_sem_param.cond, &ctrl->hotspot_sem_param.lock, &ts);
+    if (ret == 0) {
+        status = ctrl->hotspot_sem_param.cfg_status;
+    }
+
+    pthread_mutex_unlock(&ctrl->hotspot_sem_param.lock);
+
+    ctrl->hotspot_sem_param.is_init = false;
+    pthread_mutex_destroy(&ctrl->hotspot_sem_param.lock);
+    pthread_cond_destroy(&ctrl->hotspot_sem_param.cond);
+
+    return status;
 }
 
 void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_scheduler_type_t type)
@@ -2103,6 +2179,7 @@ static int run_greylist_event(void *arg)
     }
     return TIMER_TASK_COMPLETE;
 }
+
 static int run_analytics_event(void* arg)
 {
     wifi_ctrl_t *ctrl = NULL;
@@ -2577,6 +2654,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled =
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.memwraptool_app_rfc =
+        g_wifi_mgr->rfc_dml_parameters.memwraptool_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_app_rfc =
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_sm_rfc =
@@ -2585,6 +2664,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
+    g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =
+        g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
@@ -2817,6 +2898,25 @@ UINT getPrivateApFromRadioIndex(UINT radioIndex)
         }
     }
     wifi_util_dbg_print(WIFI_CTRL,"getPrivateApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    return 0;
+}
+
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+{
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (vap_prefix == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
+        return 0;
+    }
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
+        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
+               getRadioIndexFromAp(apIndex) == radioIndex ) {
+            return apIndex;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"getApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
     return 0;
 }
 

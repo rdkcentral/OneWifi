@@ -1,4 +1,23 @@
 #!/bin/sh
+####################################################################################
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
+#
+#  Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##################################################################################
+
 source /etc/log_timestamp.sh
 source /lib/rdk/t2Shared_api.sh
 source /usr/ccsp/tad/corrective_action.sh
@@ -30,6 +49,7 @@ cur_rxprobe_req_5g_cnt=0
 pre_txprobe_resp_5g_cnt=0
 cur_txprobe_resp_5g_cnt=0
 force_reset_subdoc=0
+onewifi_last_restart=0
 webcfg_rfc_enabled=""
 
 SW_UPGRADE_DEFAULT_FILE="/tmp/sw_upgrade_private_defaults"
@@ -39,6 +59,10 @@ bss_queue_full_cnt=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
+CGA4="CGA4332COM"
+CGM43="CGM4331COM"
+CGM49="CGM4981COM"
+TG4="TG4482A"
 
 onewifi_restart_wifi()
 {
@@ -178,9 +202,62 @@ check_bss_queue_one_min()
     done
 }
 
+onewifi_mem_restart() {
+    # Find the OneWifi process PID
+    onewifi_pid=$(ps | grep "/usr/bin/OneWifi -subsys eRT\." | grep -v grep | awk '{print $1}')
+    STATUS_FILE="/proc/$onewifi_pid/status"
+    if [ -z "$onewifi_pid" ]; then
+        echo_t "OneWifi process not found in ps output" >> $LOG_FILE
+        return
+    fi
+
+    checkMaintenanceWindow
+    m_win=0
+    if [ "$reb_window" == "1" ]; then
+        m_win=1
+    fi
+
+    # Get memory usage (VmRSS in kB)
+    vmrss=$(grep -i 'VmRSS' "$STATUS_FILE" | awk '{print $2}')
+
+    # Get thresholds (in kB)
+    threshold1=$(dmcli eRT retv Device.WiFi.WiFiRestart.RSSMemory.Threshold1)
+    threshold2=$(dmcli eRT retv Device.WiFi.WiFiRestart.RSSMemory.Threshold2)
+
+    now=$(date +%s)
+    time_since_last_restart=$((now - onewifi_last_restart))
+
+    # Added check for threshold1 and threshold2 if any of them are zero or empty, then skip the OneWifi restart.
+    if [ -z "$vmrss" ] || [ -z "$threshold2" ] || [ -z "$threshold1" ] || \
+        [ "$vmrss" -eq 0 ] || [ "$threshold2" -eq 0 ] || [ "$threshold1" -eq 0 ]; then
+        echo_t "Invalid vmrss=$vmrss, threshold1=$threshold1, threshold2=$threshold2" >> $LOG_FILE
+        return
+    fi
+
+    if [ "$vmrss" -ge "$threshold2" ]; then
+        if [ "$time_since_last_restart" -ge 86400 ]; then
+            echo_t "RSS Memory of Onewifi exceeds RSS threshold2 value and restarting Onewifi [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
+            systemctl restart onewifi.service
+            onewifi_last_restart=$now
+        else
+            echo_t "OneWifi restart skipped for RSS threshold2 since last restart time is less than 24 hrs [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
+        fi
+    elif [ "$vmrss" -ge "$threshold1" ] && [ "$m_win" -eq 1 ]; then
+        if [ "$time_since_last_restart" -ge 86400 ]; then
+            echo_t "RSS Memory of Onewifi exceeds RSS threshold1 value during maintenance window and restarting Onewifi [Rss : ($vmrss kB) Threshold1 : ($threshold1 kB)]" >> $LOG_FILE
+            systemctl restart onewifi.service
+            onewifi_last_restart=$now
+        else
+            echo_t "OneWifi restart skipped for RSS threshold1 since last restart time is less than 24 hrs [Rss : ($vmrss kB) Threshold1 : ($threshold1 kB)]" >> $LOG_FILE
+        fi
+    else
+        echo_t "RSS Memory usage of Onewifi is within the RSS threshold values [Rss : ($vmrss kB)]" >> $LOG_FILE
+    fi
+}
+
 while true
 do
-    if [ "$MODEL_NUM" == "TG4482A" ]; then
+    if [ "$MODEL_NUM" == "$TG4" ]; then
         #CMXB7 onewifi selfheal for Both BSS TX queues full, dropping the frame
         echo_t "Executing Onewifi selfheal for CMXB7" >> $LOG_FILE
         mw=0
@@ -218,7 +295,7 @@ do
                 eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
                 eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_6g="false"
-            elif [ "$MODEL_NUM" == "SCER11BEL" ]; then
+            elif [ "$MODEL_NUM" == "SCER11BEL" ]  || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
                 eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
                 eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
@@ -293,7 +370,7 @@ do
                 fi
             fi
 
-            if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ]; then
+            if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
                 if [ $eco_mode_6g == "false" ]; then
                     radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
                     if [ $radio_status_6g == "true" ]; then
@@ -325,7 +402,7 @@ do
             fi
 
         #we need to use this changes for only TechXB7 device.
-        if [ "$MODEL_NUM" == "CGM4331COM" -o "$MODEL_NUM" == "CGA4332COM" ]; then
+        if [ "$MODEL_NUM" == "$CGM43" -o "$MODEL_NUM" == "$CGA4" ]; then
             check_wifi_2g_stuck_status
             check_wifi_5g_stuck_status
         fi
@@ -359,17 +436,21 @@ do
         onewifi_restart_wifi
     fi
 
-    if [ $force_reset_subdoc -le  2 ]; then
+    if [ $force_reset_subdoc -le  5 ]; then
         if [ -f  $SW_UPGRADE_DEFAULT_FILE ]; then
-            webcfg_rfc_enabled=`dmcli eRT getv Device.X_RDK_WebConfig.RfcEnable | grep "value" | cut -d ':' -f3-5`
+            webcfg_rfc_enabled=$(dmcli eRT retv Device.X_RDK_WebConfig.RfcEnable)
             echo_t "webcfg_rfc status is $webcfg_rfc_enabled" >>  /rdklogs/logs/wifi_selfheal.txt
-            dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid
-            echo_t "Selfheal execution to force_reset on private vaps passed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
-            rm -f $SW_UPGRADE_DEFAULT_FILE
+            if [ "$webcfg_rfc_enabled" = "true" ]; then
+                dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid
+                echo_t "Selfheal execution to force_reset on private vaps passed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
+                rm -f $SW_UPGRADE_DEFAULT_FILE
+            fi
         fi
         ((force_reset_subdoc++))
     fi
 
+    # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
+    onewifi_mem_restart
     sleep 5m
     ((check_count++))
 done

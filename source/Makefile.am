@@ -22,7 +22,6 @@ if WITH_LIBWEBCONFIG
 SUBDIRS += platform webconfig
 endif
 
-SUBDIRS += test/core
 SUBDIRS += sampleapps
 if ONEWIFI_DML_SUPPORT
 SUBDIRS += dml

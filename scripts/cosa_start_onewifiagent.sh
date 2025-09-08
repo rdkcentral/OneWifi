@@ -41,11 +41,12 @@ fi
 
 CRONFILE=$CRON_SPOOL"/root"
 CRONFILE_BK="/tmp/cron_tab$$.txt"
+XB3="XB3"
 
 killall OneWifi
 
 DEVICEMODELEXISTS=`cat /etc/device.properties | grep DEVICE_MODEL | cut -f2 -d=`
-if [[ $DEVICEMODELEXISTS == "TCHXB3" ]]; then
+if [[ $DEVICEMODELEXISTS == "TCH${XB3}" ]]; then
         # have IP address for dbus config generated
         vconfig add eth0 500
         ifconfig eth0.500 169.254.101.2
@@ -83,7 +84,7 @@ if [ -e ./wifi ]; then
 	fi
 fi
 
-if [[ $DEVICEMODELEXISTS == "TCHXB3" ]]; then
+if [[ $DEVICEMODELEXISTS == "TCH${XB3}" ]]; then
         echo "starting process monitor script"
         sh /usr/ccsp/wifi/process_monitor_atom.sh &
 

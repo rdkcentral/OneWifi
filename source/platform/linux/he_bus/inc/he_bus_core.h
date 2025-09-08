@@ -103,7 +103,7 @@ typedef struct he_bus_callback_table {
     he_bus_table_remove_row_handler_t table_remove_row_handler; /**< Remove a row from a table*/
     he_bus_event_sub_handler_t event_sub_handler; /**< Event subscribe and unsubscribe
                                                        handler for the event name */
-    he_bus_method_handler_t methodHandler; /**< Method handler  */
+    he_bus_method_handler_t method_handler; /**< Method handler  */
 } he_bus_callback_table_t;
 
 typedef struct he_bus_sub_callback_table {
@@ -150,7 +150,7 @@ typedef struct own_sub_element {
 } own_sub_element_t;
 
 typedef struct he_bus_event_sub {
-    char *event_name;
+    char const *event_name;
     he_bus_event_sub_action_t action;
     uint32_t interval;
     he_bus_sub_callback_table_t handler;
@@ -166,7 +166,7 @@ typedef struct data_model_prop {
 } data_model_prop_t;
 
 typedef struct element_node {
-    char name[32]; /* relative name of element */
+    char name[64]; /* relative name of element */
     he_bus_name_string_t full_name; /* full name/path of element */
     he_bus_element_type_t type; /**< Type of an element */
     he_bus_callback_table_t cb_table; /**< Element Handler table. A specific
@@ -234,7 +234,7 @@ he_bus_error_t he_bus_open(he_bus_handle_t *handle, char *component_name);
 he_bus_error_t he_bus_close(he_bus_handle_t handle);
 he_bus_error_t he_bus_reg_data_elem(he_bus_handle_t handle, he_bus_data_element_t *p_bus_reg_data,
     uint32_t num_of_elem);
-he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char const *event_name,
     he_bus_event_consumer_sub_handler_t sub_handler, uint32_t interval);
 he_bus_error_t he_bus_event_sub_ex(he_bus_handle_t handle, he_bus_event_sub_t *p_sub_data_map,
     uint32_t num_of_sub, uint32_t timeout);
@@ -242,9 +242,9 @@ he_bus_error_t he_bus_event_sub_ex_async(he_bus_handle_t handle, he_bus_event_su
     uint32_t num_of_sub, he_bus_event_sub_ex_async_handler_t sub_ex_async_handler,
     uint32_t timeout);
 // caller needs to free allocated memory
-he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data);
-he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data);
-he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data);
+he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data);
+he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char const *event_name,
     he_bus_raw_data_t *p_data);
 
 #ifdef __cplusplus

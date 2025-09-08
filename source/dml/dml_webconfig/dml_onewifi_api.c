@@ -208,6 +208,20 @@ void mac_filter_dml_vap_cache_update(int radio_index, int vap_array_index)
     }
 }
 
+void update_dml_macfilter_list(webconfig_subdoc_data_t *data)
+{
+    unsigned int radio_idx = 0, vap_idx = 0;
+
+    for (radio_idx = 0; radio_idx < get_num_radio_dml(); radio_idx++) {
+        for (vap_idx = 0; vap_idx < MAX_NUM_VAP_PER_RADIO; vap_idx++) {
+            hash_map_t **acl_dev_map = get_dml_acl_hash_map(radio_idx, vap_idx);
+
+            mac_filter_dml_vap_cache_update(radio_idx, vap_idx);
+            *acl_dev_map = data->u.decoded.radios[radio_idx].vaps.rdk_vap_array[vap_idx].acl_map;
+        }
+    }
+}
+
 void update_dml_subdoc_vap_data(webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
@@ -379,6 +393,9 @@ void existing_assoc_list_update(webconfig_subdoc_decoded_data_t *params)
                     }
                     free(temp_assoc_dev_data);
                 }
+                hash_map_destroy(associated_devices_map);
+                params->radios[r_index].vaps.rdk_vap_array[v_index].associated_devices_diff_map =
+                    NULL;
             }
         }
     }
@@ -432,6 +449,7 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
         case webconfig_subdoc_type_mac_filter:
             wifi_util_info_print(WIFI_DMCLI,"%s:%d subdoc parse and update macfilter entries:%d\n", __func__,
                 __LINE__, data->type);
+            update_dml_macfilter_list(data);
 #ifndef ONEWIFI_DML_SUPPORT
             sync_dml_macfilter_table_entries();
 #endif
@@ -1455,7 +1473,10 @@ void update_dml_radio_default() {
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;
-	radio_cfg[i].AggregationMSDU = 0;
+        radio_cfg[i].AggregationMSDU = 0;
+        for (int j = 0; j < MAX_AMSDU_TID; j++) {
+            radio_cfg[i].AmsduTid[j] = FALSE;
+        }
         radio_cfg[i].AutoBlockAck = 0;
         radio_cfg[i].DeclineBARequest = 0;
         radio_cfg[i].WirelessOnOffButton = 0;
@@ -1477,6 +1498,12 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1485,6 +1512,11 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5L_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1493,6 +1525,11 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5H_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"149",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1501,6 +1538,11 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_6_BAND) {
             radio_cfg[i].MaxBitRate = 9608;
             strncpy(radio_cfg[i].ChannelsInUse,"181",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1510,6 +1552,12 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, (BOOL)1, sizeof(BOOL) * 5);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+            radio_cfg[i].AmsduTid[4] = 1;
+#endif
         }
     }
 }
@@ -1709,7 +1757,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             wifidb_init_vap_config_default(vap_index,&default_vap,&rdk_default_vap);
             wifidb_init_interworking_config_default(vap_index,&default_vap.u.bss_info.interworking);
             memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
             if(rdk_default_vap.exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap_index != 2 && vap_index != 3) {
@@ -1721,7 +1769,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                 rdk_default_vap.exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
             rdk_vap_info->exists = rdk_default_vap.exists;
             set_dml_cache_vap_config_changed(vap_index);
         }

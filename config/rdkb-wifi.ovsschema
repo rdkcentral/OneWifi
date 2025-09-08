@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.033",
+  "version": "1.00.042",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -828,6 +828,15 @@
             "max": 1
           }
         },
+        "inum_sta": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
         "bss_transition_activated": {
           "type": {
             "key": {
@@ -1121,10 +1130,91 @@
             "max": 1
           }
         },
+        "interop_ctrl": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
         "mbo_enabled": {
           "type": {
             "key": {
               "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mld_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mld_id": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mld_link_id": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mld_addr": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mld_apply": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mdu_enabled": {
+          "type": {
+            "key" : {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "speed_tier": {
+          "type" : {
+            "key" : {
+              "type" : "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "repurposed_bridge_name": {
+          "type" : {
+            "key" : {
+              "type" : "string"
             },
             "min": 0,
             "max": 1
@@ -1518,6 +1608,15 @@
             "min": 0,
             "max": 1
           }
+        },
+        "amsdu_tid": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
         }
       },
     "isRoot": true
@@ -1646,6 +1745,15 @@
                 "max": 1
             }
         },
+        "memwraptool_app_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
         "ow_core_thread_rfc": {
           "type": {
             "key": {
@@ -1746,6 +1854,15 @@
           }
         },
         "wpa3_compatibility_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "csi_analytics_enabled_rfc": {
           "type": {
             "key": {
               "type": "boolean"
@@ -1895,6 +2012,60 @@
             "max": 1
           }
         },
+        "rss_check_interval": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "rss_threshold": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "rss_maxlimit": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "heapwalk_duration": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "heapwalk_interval": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "memwraptool_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
         "vlan_cfg_version": {
           "type": {
             "key": {
@@ -1959,6 +2130,24 @@
           }
         },
         "whix_chutility_loginterval": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "rss_memory_restart_threshold_low" : {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "rss_memory_restart_threshold_high" : {
           "type": {
             "key": {
               "type": "integer"
@@ -2094,6 +2283,42 @@
           }
         },
         "device_network_mode": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mgt_frame_rate_limit_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mgt_frame_rate_limit": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mgt_frame_rate_limit_window_size": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mgt_frame_rate_limit_cooldown_time": {
           "type": {
             "key": {
               "type": "integer"

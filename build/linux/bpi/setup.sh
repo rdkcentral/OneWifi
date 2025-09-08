@@ -9,6 +9,7 @@ SRCREV_2_10="9d07b9447e76059a2ddef2a879c57d0934634188"
 cd ..
 git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
 git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
+git clone https://github.com/xmidt-org/trower-base64.git trower-base64
 
 cd $ONEWIFI_DIR
 mkdir -p install/bin
@@ -38,7 +39,9 @@ patch_filenames="hostap-patches/0001-OneWifi-related-hostap-patch-for-2.10-based
 	hostap-patches/0002-radius_failover_2.10.patch \
 	hostap-patches/0003-mbssid_support_2.10.patch \
         hostap-patches/wpa3_compatibility_hostap_2_10.patch \
-        hostap-patches/0005-RDKB-58414-Dynamically-update-NAS_2_10.patch"
+        hostap-patches/0005-RDKB-58414-Dynamically-update-NAS_2_10.patch \
+        hostap-patches/0006-RDKB-59523-connectivity-via-supplicant.patch \
+	hostap-patches/mdu_radius_psk_auth_2_10.patch"
 echo "Applying patches ..."
 git am $patch_filenames
 

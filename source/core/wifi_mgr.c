@@ -24,6 +24,7 @@
 #include <ev.h>
 #include <sys/time.h>
 #include <assert.h>
+#include "const.h"
 #include "wifi_data_plane.h"
 #include "wifi_monitor.h"
 #include "wifi_db.h"
@@ -89,6 +90,11 @@ bool is_db_consolidated()
 bool is_db_backup_required()
 {
     return (g_wifi_mgr.ctrl.dev_type != dev_subtype_pod);
+}
+
+bool is_devtype_pod()
+{
+    return (g_wifi_mgr.ctrl.dev_type == dev_subtype_pod);
 }
 
 int init_wifi_hal()
@@ -190,21 +196,25 @@ bool is_supported_gateway_device(const char *model)
 
 bool is_device_type_cmxb7(void)
 {
-    return is_supported_gateway_device("TG4482A");
+    return is_supported_gateway_device(C_TG4);
 }
 
 bool is_device_type_xb7(void)
 {
-    return is_supported_gateway_device("CGM4331COM");
+    return is_supported_gateway_device(C_CGM43);
 }
 
 bool is_device_type_xb8(void)
 {
-    return is_supported_gateway_device("CGM4981COM");
+    return is_supported_gateway_device(C_CGM49);
 }
 bool is_device_type_vbvxb10(void)
 {
     return is_supported_gateway_device("CGM601TCOM");
+}
+bool is_device_type_vbvxb9(void)
+{
+    return is_supported_gateway_device("CWA438TCOM");
 }
 bool is_device_type_sercommxb10(void)
 {
@@ -216,7 +226,7 @@ bool is_device_type_sr213(void)
 }
 bool is_device_type_cbr2(void)
 {
-    return is_supported_gateway_device("CGA4332COM");
+    return is_supported_gateway_device(C_CGA4);
 }
 bool is_device_type_scxer10(void)
 {
@@ -226,7 +236,10 @@ bool is_device_type_vbvxer5(void)
 {
     return is_supported_gateway_device("VTER11QEL");
 }
-
+bool is_device_type_xle(void)
+{
+    return is_supported_gateway_device(C_WNX);
+}
 
 int init_wifimgr()
 {
@@ -237,6 +250,9 @@ int init_wifimgr()
     struct stat sb;
     char db_file[128];
     int hal_initialized = RETURN_ERR;
+    
+    // channel change flag initialized as false
+    memset(g_wifi_mgr.channel_change_in_progress, 0, sizeof(g_wifi_mgr.channel_change_in_progress));
 
     if(wifi_hal_pre_init() != RETURN_OK) {
         wifi_util_error_print(WIFI_MGR,"%s wifi hal pre_init failed\n", __func__);
@@ -256,8 +272,10 @@ int init_wifimgr()
         init_global_radio_config(&g_wifi_mgr.radio_config[itr], itr);
     }
 
+#ifdef ONEWIFI_DML_SUPPORT
     /* Initialize DML initial data */
     get_wifidml_obj()->desc.set_dml_init_status_fn(false);
+#endif
 
     sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
     if (stat(db_file, &sb) != 0) {
@@ -299,20 +317,31 @@ int init_wifimgr()
     }
 
     wifidb_init(get_wifidb_obj());
-
+#ifdef ONEWIFI_DML_SUPPORT
     /* Initialize SSP loop */
     get_wifidml_obj()->desc.ssp_init_fn();
-
+#endif
     //Start Wifi DB server, and Initialize data Cache
     get_wifidb_obj()->desc.init_fn();
 
     return 0;
 }
 
+void init_wifi_db_param(void)
+{
+    init_wifidb_data();
+
+    /* Set Wifi Global Parameters */
+    init_wifi_global_config();
+}
+
 int start_wifimgr()
 {
+#ifdef ONEWIFI_DML_SUPPORT
     get_wifidml_obj()->desc.start_dml_fn();
-
+#else
+    init_wifi_db_param();
+#endif
     wifi_ctrl_t *ctrl =  NULL;
     int WIFI_APPS_NUM;
     wifi_app_descriptor_t *app_desc = get_app_desc(&WIFI_APPS_NUM);

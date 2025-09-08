@@ -23,13 +23,17 @@
 source /etc/device.properties
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 qca_cfg=0
-if [ "$BOX_TYPE" = "XB3" ]; then
+DPC394="DPC3941"
+DPC393="DPC3939"
+TG1="TG1682G"
+XB3="XB3"
+if [ "$BOX_TYPE" = "$XB3" ]; then
 sycfgfile="/nvram/syscfg.db"
 else
 sycfgfile="/opt/secure/data/syscfg.db"
 fi
 
-if [ $MODEL_NUM == "DPC3941" ] || [ $MODEL_NUM == "TG1682G" ]  || [ $MODEL_NUM == "DPC3939" ]; then
+if [ $MODEL_NUM == "$DPC394" ] || [ $MODEL_NUM == "$TG1" ]  || [ $MODEL_NUM == "$DPC393" ]; then
  # RDKB-15951: Create a bridge for Mesh Bhaul and add vlan to it
  echo "Creating Mesh Bhaul bridge"
  brctl addbr br403

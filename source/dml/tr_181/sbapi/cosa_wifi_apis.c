@@ -90,7 +90,6 @@
 #include "ansc_platform.h"
 #include "pack_file.h"
 #include "ccsp_WifiLog_wrapper.h"
-#include <sysevent/sysevent.h>
 #include <sys/sysinfo.h>
 #include "print_uptime.h"
 #include "wifi_passpoint.h"
@@ -132,7 +131,10 @@
 
 #if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
 #define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
-#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE_BACKUP      "/nvram/bootstrap.json"
+#define CLEAR_TRACK_FILE                "/nvram/ClearUnencryptedData_flags"
+#define NVRAM_BOOTSTRAP_CLEARED         (1 << 0)
 #endif
 
 #ifdef FEATURE_SUPPORT_ONBOARD_LOGGING
@@ -154,9 +156,10 @@ static char *FactoryReset       = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.
 extern bool is_radio_config_changed;
 struct wifiSecEncrCosaHalMap wifiSecEncrMap[] =
 {
-      {wifi_encryption_tkip,     COSA_DML_WIFI_AP_SEC_TKIP,     "TKIP"},
-      {wifi_encryption_aes,      COSA_DML_WIFI_AP_SEC_AES,      "AES"},
-      {wifi_encryption_aes_tkip, COSA_DML_WIFI_AP_SEC_AES_TKIP, "AES_TKIP"}
+      {wifi_encryption_tkip,        COSA_DML_WIFI_AP_SEC_TKIP,     "TKIP"},
+      {wifi_encryption_aes,         COSA_DML_WIFI_AP_SEC_AES,      "AES"},
+      {wifi_encryption_aes_tkip,    COSA_DML_WIFI_AP_SEC_AES_TKIP, "AES_TKIP"},
+      {wifi_encryption_aes_gcmp256, COSA_DML_WIFI_AP_SEC_AES_GCMP, "AES_GCMP"}
 };
 
 struct wifiSecCosaHalMap wifiSecMap[] =
@@ -1570,7 +1573,7 @@ ValidateActiveMsmtPlanID(UCHAR *pPlanId)
 }
 
 #define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
-#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
 
 static int writeToJson(char *data, char *file)
 {
@@ -1913,6 +1916,19 @@ ANSC_STATUS UpdateJsonParam
                     cJsonOut = cJSON_Print(json);
                     CcspTraceWarning(( "Updated json content is %s\n", cJsonOut));
                     configUpdateStatus = writeToJson(cJsonOut, BOOTSTRAP_INFO_FILE);
+                    //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+                    unsigned int flags = 0;
+                    FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+                    if (fp)
+                    {
+                        fscanf(fp, "%u", &flags);
+                        fclose(fp);
+                    }
+                    if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0)
+                    {
+                        CcspTraceWarning(("%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP));
+                        writeToJson(cJsonOut, BOOTSTRAP_INFO_FILE_BACKUP);
+                    }
                     cJSON_free(cJsonOut);
                     if ( !configUpdateStatus)
                     {

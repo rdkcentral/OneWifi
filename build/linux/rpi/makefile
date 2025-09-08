@@ -81,6 +81,7 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(WIFI_HOSTAP_SRC)/ap/tkip_countermeasures.c   \
     $(WIFI_HOSTAP_SRC)/ap/hostapd.c   \
     $(WIFI_HOSTAP_SRC)/ap/beacon.c   \
+    $(WIFI_HOSTAP_SRC)/ap/hs20.c  \
     $(WIFI_HOSTAP_SRC)/ap/rrm.c   \
     $(WIFI_HOSTAP_SRC)/ap/wmm.c   \
     $(WIFI_HOSTAP_SRC)/ap/authsrv.c   \
@@ -177,7 +178,7 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
 HAL_LIB_OBJECTS = $(HAL_LIB_SOURCES:.c=.o)  # expands to list of object files
 ALL_HAL_LIB_OBJECTS = $(HAL_LIB_OBJECTS)
 HAL_LIB_FLAGS = -g -fPIC $(INCLUDE_HAL_LIB_DIRS) -DENABLE_FEATURE_MESHWIFI -DRASPBERRY_PI_PORT -D_PLATFORM_RASPBERRYPI_ -DCONFIG_HW_CAPABILITIES -DEM_APP
-HOSTAP_LIB_FLAGS = -g -fPIC $(INCLUDE_HOSTAP_LIB_DIRS) -DHOSTAPD -DCONFIG_CRYPTO_INTERNAL -DCONFIG_DRIVER_NL80211 -DNEED_AP_MLME -DCONFIG_IEEE80211AC -DCONFIG_IEEE80211AX -DCONFIG_IEEE80211N -DCONFIG_WPS -DIEEE8021X_EAPOL -DEAP_SERVER_IDENTITY -DEAP_SERVER_MD5 -DEAP_SERVER_TLS -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DCONFIG_ECC -DRDK_ONEWIFI -DCONFIG_IEEE80211W -DCONFIG_OPENSSL_CMAC -DCONFIG_LIBNL20 -DCONFIG_WNM_AP
+HOSTAP_LIB_FLAGS = -g -fPIC $(INCLUDE_HOSTAP_LIB_DIRS) -DHOSTAPD -DCONFIG_CRYPTO_INTERNAL -DCONFIG_DRIVER_NL80211 -DNEED_AP_MLME -DCONFIG_IEEE80211AC -DCONFIG_IEEE80211AX -DCONFIG_IEEE80211N -DCONFIG_WPS -DIEEE8021X_EAPOL -DEAP_SERVER_IDENTITY -DEAP_SERVER_MD5 -DEAP_SERVER_TLS -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DCONFIG_ECC -DRDK_ONEWIFI -DCONFIG_IEEE80211W -DCONFIG_OPENSSL_CMAC -DCONFIG_LIBNL20 -DCONFIG_HS20 -DCONFIG_WNM_AP
 HOSTAP_LIB_FLAGS +=  -DHOSTAPD_2_10 -DCONFIG_WEP -DFEATURE_SUPPORT_RADIUSGREYLIST -DCONFIG_DRIVER_BRCM -DCONFIG_DRIVER_BRCM_MAP
 
 # wifi agent rules
@@ -226,6 +227,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
     -I$(ONE_WIFI_HOME)/source/apps/harvester \
     -I$(ONE_WIFI_HOME)/source/apps/levl \
+    -I$(ONE_WIFI_HOME)/source/apps/memwraptool \
     -I$(ONE_WIFI_HOME)/source/apps/sta_mgr \
     -I$(ONE_WIFI_HOME)/source/apps/motion \
     -I$(ONE_WIFI_HOME)/source/apps/ocs \
@@ -255,6 +257,7 @@ INCLUDEDIRS = \
     -I$(WIFI_HOSTAP_SRC) \
     -I$(WIFI_HOSTAP_SRC)/ap \
     -I$(WIFI_NETLINK)/include \
+    -I$(WIFI_TROWER_BASE) \
 
 LIBDIRS = \
     -L$(INSTALLDIR)/lib \
@@ -393,13 +396,19 @@ ifdef ONEWIFI_STA_MGR_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_mgr/*.c)
 endif
 
+ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)    \
+    WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_memwraptool.c
+endif
+
 ifdef EM_APP
     #INCLUDEDIRS +=  -I$(ONE_WIFI_HOME)/source/apps/em
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/em/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c    \
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_beacon_report.c  \
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_channel_stats.c  \
-                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_sta_link_metrics.c
+                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_sta_link_metrics.c \
+                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_ap_metrics_report.c
 endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
@@ -481,7 +490,7 @@ run:
 	./$(PROGRAM)
 
 setup:
-	./build/linux/setup.sh
+	./build/linux/rpi/setup.sh
 
 stamgrsetup:
 	./build/linux/stamgr_setup.sh

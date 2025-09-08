@@ -47,7 +47,7 @@ typedef struct _he_bus_handle *he_bus_handle_t;
 
 #define HE_BUS_MSG_IDENTIFICATION_NUM 0x12345678
 #define HE_BUS_RES_RECV_TIMEOUT_S 10
-#define HE_BUS_MAX_NAME_LENGTH 64
+#define HE_BUS_MAX_NAME_LENGTH 128
 
 #define HE_BUS_VERIFY_NULL(T) \
     if (NULL == T) {   \
@@ -141,7 +141,8 @@ typedef enum {
     he_bus_msg_table_remove_event,
     he_bus_msg_publish_event,
     he_bus_msg_sub_event,
-    he_bus_msg_sub_ex_async_event
+    he_bus_msg_sub_ex_async_event,
+    he_bus_msg_method_event
 } he_bus_msg_sub_type_t;
 
 typedef enum he_bus_error {
@@ -194,7 +195,7 @@ typedef union he_bus_raw_data_format {
     uint64_t u64;
     float f32;
     double f64;
-    void *bytes;
+    void const *bytes;
 } he_bus_raw_data_format_t;
 
 typedef struct he_bus_raw_data {

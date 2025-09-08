@@ -1,0 +1,79 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+#Commenting start to ensure that service is started manually
+#START=97  # Service startup order
+STOP=97  # Service stop order
+Name=OneWifi
+
+#Helper function for logging with timestamp
+log_message() {
+    # Get current uptime in seconds and hundredths (e.g., "12345.67")
+    UPTIME_SECONDS_DECIMAL=$(cut -d' ' -f1 /proc/uptime)
+    # Extract integer seconds and fractional part
+    UPTIME_SECONDS=${UPTIME_SECONDS_DECIMAL%.*}
+    UPTIME_FRACTION=${UPTIME_SECONDS_DECIMAL#*.}
+
+    # Convert fraction to milliseconds (take first 3 digits, pad with zeros if needed)
+    # This assumes UPTIME_FRACTION is at least 2 digits.
+    # For robust padding if it's less than 3 digits:
+    MILLISECONDS=$(printf "%-3.3s" "$UPTIME_FRACTION" | sed 's/ /0/g')
+    echo "$(date "+%Y-%m-%d %H:%M:%S").${MILLISECONDS} - $@" >> /tmp/onewifi_log.txt
+}
+
+start_service() {
+    log_message "Starting onewifi service..."
+    # Run wifi_interface_up.sh only once after boot
+    if [ ! -f /tmp/onewifi_bootup_completed ]; then
+        log_message "Running wifi_interface_up.sh..."
+        cd /banana-pi
+        ./wifi_interface_up.sh >> /tmp/onewifi_log.txt
+        cd -
+        touch /tmp/onewifi_bootup_completed  # Create flag to ensure it's not run again
+    fi
+
+    # Use procd to manage the OneWifi process
+    procd_open_instance
+    procd_set_param command /usr/bin/OneWifi -c  # Command with arguments
+    procd_set_param respawn 50 10 10  # Automatically restart if down
+    procd_set_param limits core="unlimited"
+    procd_set_param limits stack="unlimited"
+    procd_set_param stdout 1 # forward stdout of the command to logd
+    procd_set_param stderr 1 # same for stderr
+    procd_set_param pidfile /tmp/onewifi.pid
+    procd_close_instance
+}
+
+stop_service() {
+    log_message "Stopping onewifi service..."
+    # Stop the main process if it is running
+    if [ -f /tmp/onewifi.pid ]; then
+        kill -9 "$(cat /tmp/onewifi.pid)"  # Kill the process
+        rm -f /tmp/onewifi.pid         # Remove the PID file
+    fi
+    cd /banana-pi
+    ./wifi_interface_down.sh >> /tmp/onewifi_log.txt
+    cd -
+    if [ -f /tmp/onewifi_bootup_completed ]; then
+       rm -rf /tmp/onewifi_bootup_completed
+    fi
+}
+
+restart_service() {
+    log_message "Restart triggered for onewifi service..."
+    stop
+    start
+}
+
+reload_service() {
+    log_message "Reload triggered for onewifi service..."
+    stop
+    start
+}
+
+service_triggers() {
+    log_message "Setting up respawn trigger for onewifi service..."
+    procd_add_reload_trigger "/nvram/EasymeshCfg.json" "/nvram/InterfaceMap.json"
+}
+
+

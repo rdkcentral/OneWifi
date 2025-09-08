@@ -1,3 +1,22 @@
+/************************************************************************************
+  If not stated otherwise in this file or this component's LICENSE file the
+  following copyright and licenses apply:
+  
+  Copyright 2025 RDK Management
+  
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  
+  http://www.apache.org/licenses/LICENSE-2.0
+  
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ **************************************************************************/
+
 #include <stdbool.h>
 #include "wifi_hal.h"
 #include "wifi_db.h"
@@ -44,7 +63,7 @@ void init_wifidb(void)
 #define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
 #define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
 #define OFFCHAN_DEFAULT_TIDLE_IN_SEC 5
-
+#define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
 #define DFS_DEFAULT_TIMER_IN_MIN 30
 
 static int init_radio_config_default(int radio_index, wifi_radio_operationParam_t *config,
@@ -79,14 +98,14 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
             cfg.operatingClass = 81;
-            cfg.channel = 1;
+            cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg.operatingClass = 128;
-            cfg.channel = 44;
+            cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 
@@ -181,6 +200,27 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         Fcfg.OffChanNscanInSec = 0;
         Fcfg.OffChanTidleInSec = 0;
     }
+
+    for (int j = 0; j < MAX_AMSDU_TID; j++) {
+        cfg.amsduTid[j] = FALSE;
+    }
+
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        for (int j = 0; j < 5; j++) {
+            cfg.amsduTid[j] = TRUE;
+        }
+    } else {
+        for (int j = 0; j < 4; j++) {
+            cfg.amsduTid[j] = TRUE;
+        }
+    }
+#elif defined(_XB8_PRODUCT_REQ_)
+    cfg.amsduTid[0] = TRUE;
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        cfg.amsduTid[4] = TRUE;
+    }
+#endif
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     /* Call the function to update the operating classes based on Country code and Radio */
@@ -287,7 +327,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.vap_mode = wifi_vap_mode_sta;
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
-            cfg.u.sta_info.security.wpa3_transition_disable = true;
+            cfg.u.sta_info.security.wpa3_transition_disable = false;
             cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
             cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
         } else {
@@ -336,6 +376,13 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg.u.bss_info.network_initiated_greylist = false;
         cfg.u.bss_info.connected_building_enabled = false;
+        cfg.u.bss_info.mdu_enabled = false;
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.am_config.npc.speed_tier = DEFAULT_MANAGED_WIFI_SPEED_TIER;
+        }
+        else {
+            cfg.u.bss_info.am_config.npc.speed_tier = 0;
+        }
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;
@@ -386,7 +433,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else if (isVapPrivate(vap_index))  {
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                cfg.u.bss_info.security.wpa3_transition_disable = true;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
@@ -397,7 +444,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else  {
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                cfg.u.bss_info.security.wpa3_transition_disable = true;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
@@ -410,6 +457,12 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
         cfg.vap_mode = wifi_vap_mode_ap;
+        /*TODO: Are values correct?  */
+        cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
+        cfg.u.bss_info.mld_info.common_info.mld_id = 255;
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
+        cfg.u.bss_info.mld_info.common_info.mld_apply = 1;
+//        strcpy(cfg.u.bss_info.mld_info.common_info.mld_addr, "11:11:11:11:11:11");
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
@@ -426,9 +479,21 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+/*For XER5/XB10/XER10 2.4G XHS is disable by default*/
+#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || \
+    defined(_SCXF11BFL_PRODUCT_REQ_)
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
+        }
+#else
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
+            isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
+            cfg.u.bss_info.enabled = true;
+        }
+#endif 
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.enabled = false;
         }
 
         if (isVapPrivate(vap_index)) {
@@ -681,6 +746,8 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         config->u.bss_info.wps.enable = TRUE;
         config->u.bss_info.hostap_mgt_frame_ctrl = TRUE;
         config->u.bss_info.mbo_enabled = TRUE;
+        config->u.bss_info.interop_ctrl = FALSE;
+	config->u.bss_info.inum_sta = 0;
     }
     return ret;
 }
@@ -785,6 +852,31 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
 }
 
 int get_wifi_global_param(wifi_global_param_t *config)
+{
+   return 0;
+}
+
+int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
+{
+   return 0;
+}
+
+int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)
+{
+   return 0;
+}
+
+int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
+{
+   return 0;
+}
+
+int get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
+{
+   return 0;
+}
+
+int get_all_param_from_psm_and_set_into_db(void)
 {
    return 0;
 }

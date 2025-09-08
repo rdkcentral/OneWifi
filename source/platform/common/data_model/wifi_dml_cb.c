@@ -1,3 +1,22 @@
+/************************************************************************************
+  If not stated otherwise in this file or this component's LICENSE file the
+  following copyright and licenses apply:
+
+  Copyright 2025 RDK Management
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ **************************************************************************/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -2163,7 +2182,7 @@ bool ssid_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
             dm_rdk_vap_info->exists = output_value;
         }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if (output_value == false) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d User is Trying to disable SSID for vap_index=%d\n", __func__,
                 __LINE__, p_dm_vap_info->vap_index);

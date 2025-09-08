@@ -76,7 +76,7 @@
 #include "ccsp_psm_helper.h"
 #include "cosa_dbus_api.h"
 #include "collection.h"
-#include "wifi_hal.h"
+#include <wifi_hal.h>
 #include "../../../stubs/wifi_stubs.h"
 #include "wifi_monitor.h"
 
@@ -86,13 +86,15 @@
 #include "wifi_webconfig.h"//ONE_WIFI
 #endif
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || defined(_XER5_PRODUCT_REQ_)  || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || \
+    defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 #include "ccsp_base_api.h"
 #include "messagebus_interface_helper.h"
 
 extern ULONG g_currentBsUpdate;
 #endif
-
+# define INTEROP_MIN_STA 0
+# define INTEROP_MAX_STA 32
 extern bool is_radio_config_changed;
 static int radio_reset_count;
 ULONG last_vap_change;
@@ -113,7 +115,6 @@ extern unsigned int startTime[MAX_NUM_RADIOS];
 uint8_t g_radio_instance_num = 0;
 extern void* g_pDslhDmlAgent;
 extern int gChannelSwitchingCount;
-extern bool wifi_api_is_device_associated(int ap_index, char *mac);
 
 /***********************************************************************
  IMPORTANT NOTE:
@@ -247,6 +248,7 @@ WiFi_GetParamBoolValue
     char path[32] = {0};
     int val =0 ;
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if(pcfg== NULL)
     {
@@ -355,6 +357,16 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Levl", TRUE))
     {
         *pBool = rfc_pcfg->levl_enabled_rfc;
+
+        if (ctrl->ctrl_initialized == FALSE) {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CsiAnalytics", TRUE))
+    {
+        *pBool = rfc_pcfg->csi_analytics_enabled_rfc;
         return TRUE;
     }
 
@@ -384,6 +396,11 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE))
     {
         *pBool = rfc_pcfg->wifi_offchannelscan_sm_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_MemwrapTool_RFC", TRUE))
+    {
+        *pBool = rfc_pcfg->memwraptool_app_rfc;
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
@@ -1129,6 +1146,12 @@ WiFi_SetParamBoolValue
         }
         return TRUE;
     }
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_MemwrapTool_RFC", TRUE)) {
+        if (bValue != rfc_pcfg->memwraptool_app_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_memwraptool_app_rfc);
+        }
+        return TRUE;
+    }
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
     {
         if(bValue != rfc_pcfg->wifiinterworking_rfc) {
@@ -1150,6 +1173,15 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->levl_enabled_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_levl_rfc);
+        }
+
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CsiAnalytics", TRUE))
+    {
+        if(bValue != rfc_pcfg->csi_analytics_enabled_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_csi_analytics_rfc);
         }
 
         return TRUE;
@@ -3216,8 +3248,7 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_AggregationMSDU", TRUE))
     {
-	if (rcfg->AggregationMSDU == bValue)
-        {
+        if (rcfg->AggregationMSDU == bValue) {
             return TRUE;
         }
         rcfg->AggregationMSDU = bValue;
@@ -4851,6 +4882,284 @@ Stats3_Commit
     return ANSC_STATUS_SUCCESS; 
 }
 
+/***********************************************************************
+
+  APIs for Object:
+
+ WiFi.Radio.{i}.AMSDU_TID.{i}.Enabled
+
+   *  AMSDU_TID_GetEntryCount
+   *  AMSDU_TID_GetEntry
+   *  AMSDU_TID_GetParamBoolValue
+   *  AMSDU_TID_SetParamBoolValue
+
+ ***********************************************************************/
+/**********************************************************************
+
+        caller:	 owner of this object
+
+  prototype:
+
+    ULONG
+    AMSDU_TID_GetEntryCount
+      (
+        ANSC_HANDLE         hInsContext
+      );
+
+  description:
+
+    This function is called to retrieve the count of the table.
+
+  argument:   ANSC_HANDLE         hInsContext,
+        The instance handle;
+
+  return:   The count of the table
+
+**********************************************************************/
+ULONG
+AMSDU_TID_GetEntryCount(ANSC_HANDLE hInsContext)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return MAX_AMSDU_TID;
+}
+
+/**********************************************************************
+
+  caller:   owner of this object
+
+  prototype:
+
+    ANSC_HANDLE
+    AMSDU_TID_GetEntry
+      (
+        ANSC_HANDLE         hInsContext,
+        ULONG            nIndex,
+        ULONG*            pInsNumber
+      );
+
+  description:
+
+    This function is called to retrieve the entry specified by the index.
+
+  argument:  ANSC_HANDLE         hInsContext,
+        The instance handle;
+
+        ULONG            nIndex,
+        The index of this entry;
+
+        ULONG*            pInsNumber
+        The output instance number;
+
+  return:   The handle to identify the entry
+
+**********************************************************************/
+ANSC_HANDLE
+AMSDU_TID_GetEntry(ANSC_HANDLE hInsContext, ULONG nIndex, ULONG *pInsNumber)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: nIndex:%ld\n", __func__, __LINE__, nIndex);
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *)hInsContext;
+
+    INT radio_instance_number = 0;
+
+    if (nIndex >= MAX_AMSDU_TID) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Bad AMSDU TID idx specified: %ld\n", __func__,__LINE__, nIndex);
+        return NULL;
+    }
+
+    if (wifiRadioOperParam == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed to get wifiRadioOperParam\n", __func__,__LINE__);
+        return FALSE;
+    }
+
+    if (convert_freq_band_to_radio_index(wifiRadioOperParam->band, &radio_instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band - can't decode radio idx %X\n", __func__, __LINE__, wifiRadioOperParam->band);
+        return FALSE;
+    }
+
+    if ((radio_instance_number < 0) || (radio_instance_number > (INT)get_num_radio_dml()))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Radio instanceNumber:%d out of range\n", __func__,__LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    *pInsNumber = nIndex + 1;
+    return (ANSC_HANDLE) ((radio_instance_number << 8) + *pInsNumber);
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        AMSDU_TID_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
+{
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_)
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
+        __LINE__);
+    return FALSE;
+#else
+
+
+    unsigned long amsdu_mask = (unsigned long)hInsContext;
+    uint8_t radio_instance_number = amsdu_mask >> 8;
+    uint8_t tid_idx = (amsdu_mask & 0xf) - 1;
+
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(radio_instance_number);
+
+    if (wifiRadioOperParam == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    if ((radio_instance_number < 0) || (radio_instance_number > (INT)get_num_radio_dml()))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Radio instanceNumber:%d out of range\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        BOOL *is_enabled = (BOOL *)&wifiRadioOperParam->amsduTid[tid_idx];
+        if (!is_enabled) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid TID for AMSDU - param was %s\n",
+                __func__, __LINE__, ParamName);
+            return FALSE;
+        }
+
+        if (*is_enabled == bValue) {
+            return TRUE;
+        }
+
+        *is_enabled = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:value=%d\n", __func__, __LINE__, *is_enabled);
+        is_radio_config_changed = TRUE;
+        return TRUE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU param is malformed - param was %s \n", __func__,
+        __LINE__, ParamName);
+    return FALSE;
+
+#endif
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        AMSDU_TID_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve bool parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned bool value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL AMSDU_TID_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
+{
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_)
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
+        __LINE__);
+    return FALSE;
+#else
+
+    unsigned long amsdu_mask = (unsigned long)hInsContext;
+    uint8_t radio_instance_number = amsdu_mask >> 8;
+    uint8_t tid_idx = (amsdu_mask & 0xf) - 1;
+
+    wifi_radio_operationParam_t *wifiRadioOperParam = get_dml_radio_operation_param(radio_instance_number);
+
+    if (wifiRadioOperParam == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    if ((radio_instance_number < 0) || (radio_instance_number > (INT)get_num_radio_dml()))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Radio instanceNumber:%d out of range\n", __func__, __LINE__, radio_instance_number);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        *pBool = wifiRadioOperParam->amsduTid[tid_idx];
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:value=%d\n", __func__, __LINE__, *pBool);
+        return TRUE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU GET param is malformed - param was %s \n",
+        __func__, __LINE__, ParamName);
+    return FALSE;
+#endif
+}
+
+BOOL AMSDU_TID_Validate(ANSC_HANDLE hInsContext, char *pReturnParamName, ULONG *puLength)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    UNREFERENCED_PARAMETER(pReturnParamName);
+    UNREFERENCED_PARAMETER(puLength);
+    return TRUE;
+}
+
+ULONG
+AMSDU_TID_Commit(ANSC_HANDLE hInsContext)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
+ULONG
+AMSDU_TID_Rollback(ANSC_HANDLE hInsContext)
+{
+    return ANSC_STATUS_SUCCESS;
+}
 
 /***********************************************************************
 
@@ -5474,7 +5783,7 @@ SSID_SetParamBoolValue
             rdk_vap_info->exists = bValue;
         }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if (bValue == false) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d User is Trying to disable SSID for vap_index=%d\n",__FUNCTION__,__LINE__,vapInfo->vap_index);
         }
@@ -6407,6 +6716,20 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
+    {
+        /* collect value */
+        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Apply", TRUE))
+    {
+        /* collect value */
+        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_apply;
+        return TRUE;
+    }
+
     if( AnscEqualString(ParamName, "WMMCapability", TRUE))
     {
         /* collect value */
@@ -6549,6 +6872,11 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "InteropTelemetryCtrl", TRUE)) {
+        *pBool = pcfg->u.bss_info.interop_ctrl;
+        return TRUE;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -6659,6 +6987,12 @@ AccessPoint_GetParamIntValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "InteropNumSta", TRUE))
+    {
+        *pInt = pcfg->u.bss_info.inum_sta;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d inumsta:%d \n", __FUNCTION__,__LINE__,pcfg->u.bss_info.inum_sta);
+        return TRUE;
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
@@ -6748,6 +7082,18 @@ AccessPoint_GetParamUlongValue
     if( AnscEqualString(ParamName, "RetryLimit", TRUE))
     {
         *puLong = cfg->retry_limit;
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
+    {
+        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
+    {
+        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_link_id;
         return TRUE;
     }
 
@@ -6899,6 +7245,38 @@ AccessPoint_GetParamStringValue
         return 0;
 
     }
+
+    if( AnscEqualString(ParamName, "MLD_Addr", TRUE))
+    {
+        char buff[24] = {0};
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            _ansc_sprintf
+            (
+                buff,
+                "%02X:%02X:%02X:%02X:%02X:%02X",
+                0x0,
+                0x0,
+                0x0,
+                0x0,
+                0x0,
+                0x0
+            );
+        } else {
+            _ansc_sprintf
+            (
+                buff,
+                "%02X:%02X:%02X:%02X:%02X:%02X",
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[0],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[1],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[2],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[3],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[4],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[5]
+            );
+        }
+        memcpy(pValue, buff, strlen(buff)+1);
+        return 0;
+     }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return -1;
 }
@@ -7021,6 +7399,32 @@ AccessPoint_SetParamBoolValue
         
         /* save update to backup */
         vapInfo->u.bss_info.showSsid = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_enable == bValue )
+        {
+            return TRUE;
+        }
+
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_enable = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Apply", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_apply == bValue )
+        {
+            return TRUE;
+        }
+
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_apply = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -7181,6 +7585,15 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "InteropTelemetryCtrl", TRUE))
+    {
+        vapInfo->u.bss_info.interop_ctrl = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: interop_ctrl value = %d\n", __func__,
+            __LINE__, vapInfo->u.bss_info.interop_ctrl);
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7315,6 +7728,23 @@ AccessPoint_SetParamIntValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "InteropNumSta", TRUE))
+    {
+        if (vapInfo->u.bss_info.inum_sta == (UINT)iValue)
+        {
+            return  TRUE;
+        }
+
+        if (iValue < INTEROP_MIN_STA || iValue > INTEROP_MAX_STA) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid value for vap index:%d\n",__func__, __LINE__,pcfg->vap_index);
+            return FALSE;
+        }
+        /* Allow users to set max station for given VAP */
+        vapInfo->u.bss_info.inum_sta = iValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return (TRUE);
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7416,6 +7846,31 @@ AccessPoint_SetParamUlongValue
         cfg->associated_devices_highwatermark_threshold = uValue;
         return TRUE;
     }
+
+    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_id == (unsigned int)uValue )
+        {
+            return  TRUE;
+        }
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_id = uValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue )
+        {
+            return  TRUE;
+        }
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7709,7 +8164,6 @@ Security_GetParamBoolValue
     uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
     wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
     wifi_radio_operationParam_t *radioOperation = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(pcfg->radio_index);
-    BOOL WPA3_RFC = FALSE;
 
     if ((vapInfo == NULL) || (radioOperation ==NULL))
     {
@@ -7733,13 +8187,7 @@ Security_GetParamBoolValue
     }
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
     {
-        CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
-
-        if ((radioOperation->band != WIFI_FREQUENCY_6_BAND) && (WPA3_RFC)) {
-            *pBool = l_security_cfg->wpa3_transition_disable;
-        } else {
-            *pBool = FALSE;
-        }
+        *pBool = l_security_cfg->wpa3_transition_disable;
     }
 
     if( AnscEqualString(ParamName, "Reset", TRUE)) {
@@ -7888,6 +8336,13 @@ Security_GetParamUlongValue
         *puLong = pcfg->u.radius.port;
         return TRUE;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.port;
+        return TRUE;
+    }
 	
 	if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
     {
@@ -7896,6 +8351,12 @@ Security_GetParamUlongValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerPort", TRUE))
+    {
+        /* collect value */
+        *puLong = pcfg->repurposed_radius.s_port;
+        return TRUE;
+    }
 
     if( AnscEqualString(ParamName, "RadiusDASPort", TRUE))
     {
@@ -8156,7 +8617,21 @@ Security_GetParamStringValue
         return 0;
     }
 
+    if( AnscEqualString(ParamName, "RepurposedRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }    
+
     if( AnscEqualString(ParamName, "SecondaryRadiusSecret", TRUE))
+    {
+        /* Radius Secret should always return empty string when read */
+        AnscCopyString(pValue, "");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusSecret", TRUE))
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
@@ -8167,9 +8642,24 @@ Security_GetParamStringValue
     {
         int result;
         result=strcmp((char *)&pcfg->u.radius.ip,"");
-        if(result)
+        if((iscntrl(result) == 0) && result)
         {
             AnscCopyString(pValue, (char *)&pcfg->u.radius.ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RepurposedRadiusServerIPAddr", TRUE))
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.ip);
         }
         else
         {
@@ -8192,6 +8682,22 @@ Security_GetParamStringValue
         }
         return 0;
     }
+
+    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerIPAddr", TRUE))
+    {
+        int result;
+        result=strcmp((char *)&pcfg->repurposed_radius.s_ip,"");
+        if(result)
+        {
+            AnscCopyString(pValue, (char *)&pcfg->repurposed_radius.s_ip);
+        }
+        else
+        {
+            AnscCopyString(pValue,"0.0.0.0");
+        }
+        return 0;
+    }
+
     if( AnscEqualString(ParamName, "MFPConfig", TRUE))
     {
 	convert_security_mode_integer_to_string(pcfg->mfp,pValue);
@@ -8265,7 +8771,6 @@ Security_SetParamBoolValue
     uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
     wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
     wifi_radio_operationParam_t *radioOperation = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(pcfg->radio_index);
-    BOOL WPA3_RFC = FALSE;
 
     if ((vapInfo == NULL) || (radioOperation ==NULL))
     {
@@ -8290,27 +8795,12 @@ Security_SetParamBoolValue
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
     {
-        if (radioOperation->band == WIFI_FREQUENCY_6_BAND)
-        {
-            CcspWifiTrace(("RDK_LOG_ERROR, %s Transition Mode not supported for 6GHz radio\n", __FUNCTION__));
-            return FALSE;
+        if (l_security_cfg->wpa3_transition_disable != bValue) {
+            l_security_cfg->wpa3_transition_disable = bValue;
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value=%d\n",
+                __func__, __LINE__, l_security_cfg->wpa3_transition_disable, bValue);
+            set_dml_cache_vap_config_changed(instance_number - 1);
         }
-        /* GET the WPA3 Transition RFC value */
-        CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
-        if ( (bValue == TRUE) && (!WPA3_RFC) )
-        {
-            CcspTraceError(("%s: WPA3 Transition RFC is not enabled\n",__func__));
-            return FALSE;
-        }
-        if ( (l_security_cfg->mode != wifi_security_mode_wpa3_transition) &&
-                (WPA3_RFC) )
-        {
-            CcspTraceError(("%s: Security mode is not WPA3-Personal-Transition\n",__func__));
-            return FALSE;
-        }
-        l_security_cfg->wpa3_transition_disable = bValue;
-	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->wpa3_transition_disable,bValue);
-	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -8924,7 +9414,7 @@ Security_SetParamStringValue
 	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
-	
+
     rc = strcmp_s("SecondaryRadiusServerIPAddr", strlen("SecondaryRadiusServerIPAddr"), ParamName, &ind);
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
@@ -16288,6 +16778,148 @@ AssociatedDevice1_GetParamStringValue
     return -1;
 }
 
+/**********************************************************************
+ APIs for Object:
+   WiFi.WiFiRestart.RssMemory
+
+   * RSSMemory_GetParamUlongValue
+   * RSSMemory_SetParamUlongValue
+
+************************************************************************/
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        RSSMemory_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                       pULong
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+               ULONG*                       pULong
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL RSSMemory_GetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG *pULong)
+{
+    wifi_util_error_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_global_param_t *pcfg = (wifi_global_param_t *)get_dml_wifi_global_param();
+
+    if (pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d  NULL pointer Get fail\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Threshold1", TRUE)) {
+        /* collect value */
+        *pULong = pcfg->rss_memory_restart_threshold_low;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d\n", __func__, __LINE__,
+            *pULong);
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "Threshold2", TRUE)) {
+        /* collect value */
+        *pULong = pcfg->rss_memory_restart_threshold_high;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d\n", __func__, __LINE__,
+            *pULong);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        RSSMemory_SetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG                       iValue
+            );
+
+    description:
+
+        This function is called to set ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG                       iValue
+                The updated value;
+
+    return:     TRUE if succeeded.
+**********************************************************************/
+
+BOOL RSSMemory_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG iValue)
+{
+    wifi_util_error_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_global_config_t *global_wifi_config;
+    global_wifi_config = (wifi_global_config_t *)get_dml_cache_global_wifi_config();
+
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get Global Config\n", __FUNCTION__,
+            __LINE__);
+        return FALSE;
+    }
+    /* check the parameter name and set the corresponding value */
+    if (AnscEqualString(ParamName, "Threshold1", TRUE)) {
+        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_low == iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d New Value = %d\n", __func__,
+            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_low,
+            iValue);
+        global_wifi_config->global_parameters.rss_memory_restart_threshold_low = iValue;
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RSS Threshold1 value to onewifi db\n", __func__, __LINE__);
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "Threshold2", TRUE)) {
+        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_high == iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d New Value = %d\n", __func__,
+            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_high,
+            iValue);
+        global_wifi_config->global_parameters.rss_memory_restart_threshold_high = iValue;
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RSS Threshold2 value to onewifi db\n", __func__, __LINE__);
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
 
 /***********************************************************************
 
@@ -19928,15 +20560,15 @@ Passpoint_GetParamStringValue
 
     if( AnscEqualString(ParamName, "WANMetrics", TRUE))
     {
-        WiFi_GetWANMetrics((vap_pcfg->vap_index + 1), (char *)&pcfg->passpoint.wanMetricsInfo,
-                sizeof(pcfg->passpoint.wanMetricsInfo));
+        char WANMetricsInfo[256] = {0};
+        WiFi_GetWANMetrics((vap_pcfg->vap_index + 1), WANMetricsInfo, sizeof(WANMetricsInfo));
         /* collect value */
-        if( AnscSizeOfString((char *)&pcfg->passpoint.wanMetricsInfo) < *pUlSize)
+	if( AnscSizeOfString(WANMetricsInfo) < *pUlSize)
         {
-            AnscCopyString(pValue, (char *)&pcfg->passpoint.wanMetricsInfo);
+	    AnscCopyString(pValue, WANMetricsInfo);
             return 0;
         }else{
-            *pUlSize = AnscSizeOfString((char *)&pcfg->passpoint.wanMetricsInfo)+1;
+	    *pUlSize = AnscSizeOfString(WANMetricsInfo)+1;
             return 1;
         }
         return 0;
@@ -20123,3 +20755,279 @@ Passpoint_SetParamStringValue
     return FALSE;
 }
 
+/***********************************************************************
+
+ APIs for Object:
+
+    WiFi.X_RDKCENTRAL-COM_MgtFrameRateLimit.
+
+    *  MgtFrameRateLimit_GetParamBoolValue
+    *  MgtFrameRateLimit_SetParamBoolValue
+    *  MgtFrameRateLimit_GetParamUlongValue
+    *  MgtFrameRateLimit_SetParamUlongValue
+
+***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        MgtFrameRateLimit_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL MgtFrameRateLimit_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
+{
+    wifi_global_param_t *pcfg = get_dml_wifi_global_param();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        *pBool = pcfg->mgt_frame_rate_limit_enable;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************  
+ 
+	 caller:	 owner of this object 
+ 
+	 prototype: 
+ 
+		 BOOL
+		 MgtFrameRateLimit_SetParamBoolValue
+			 (
+				 ANSC_HANDLE					hInsContext,
+				 char*						ParamName,
+				 BOOL						bValue
+			 );
+ 
+	 description:
+ 
+		 This function is called to set BOOL parameter value; 
+ 
+	 argument:	 ANSC_HANDLE				 hInsContext,
+				 The instance handle;
+ 
+				 char*						 ParamName,
+				 The parameter name;
+ 
+				 BOOL						 bValue
+				 The updated BOOL value;
+ 
+	 return:	 TRUE if succeeded.
+ 
+ **********************************************************************/
+BOOL MgtFrameRateLimit_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
+{
+    wifi_global_config_t *global_wifi_config = get_dml_cache_global_wifi_config();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        if (global_wifi_config->global_parameters.mgt_frame_rate_limit_enable == bValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RateLimit Enable: %d\n", __func__, __LINE__,
+            bValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit_enable = bValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit Enable value to onewifi db\n", __func__, __LINE__);
+        }
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        MgtFrameRateLimit_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                      pULong
+            );
+
+    description:
+
+        This function is called to retrieve ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+               ULONG*                       pULong
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL MgtFrameRateLimit_GetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG *pULong)
+{
+    wifi_global_param_t *pcfg = get_dml_wifi_global_param();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "RateLimit", TRUE)) {
+        *pULong = pcfg->mgt_frame_rate_limit;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d RateLimit: %d\n", __func__, __LINE__, *pULong);
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "WindowSize", TRUE)) {
+        *pULong = pcfg->mgt_frame_rate_limit_window_size;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Window size: %d\n", __func__, __LINE__, *pULong);
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CooldownTime", TRUE)) {
+        *pULong = pcfg->mgt_frame_rate_limit_cooldown_time;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Cooldown time: %d\n", __func__, __LINE__, *pULong);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        MgtFrameRateLimit_SetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG                       iValue
+            );
+
+    description:
+
+        This function is called to set ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG                       iValue
+                The updated value;
+
+    return:     TRUE if succeeded.
+**********************************************************************/
+
+BOOL MgtFrameRateLimit_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG iValue)
+{
+    wifi_global_config_t *global_wifi_config = get_dml_cache_global_wifi_config();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "RateLimit", TRUE)) {
+        if ((ULONG)global_wifi_config->global_parameters.mgt_frame_rate_limit == iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Rate Limit: %d\n", __func__, __LINE__, iValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit = iValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit value to onewifi db\n", __func__, __LINE__);
+        }
+
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "WindowSize", TRUE)) {
+        if ((ULONG)global_wifi_config->global_parameters.mgt_frame_rate_limit_window_size ==
+            iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Rate Limit Window Size: %d\n", __func__, __LINE__,
+            iValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit_window_size = iValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit WindowSize value to onewifi db\n", __func__,
+                __LINE__);
+        }
+
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CooldownTime", TRUE)) {
+        if ((ULONG)global_wifi_config->global_parameters.mgt_frame_rate_limit_cooldown_time ==
+            iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Rate Limit CooldownTime: %d\n", __func__, __LINE__,
+            iValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit_cooldown_time = iValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit CooldownTime value to onewifi db\n", __func__,
+                __LINE__);
+        }
+
+        return TRUE;
+    }
+
+    return FALSE;
+}

@@ -1,3 +1,22 @@
+/************************************************************************************
+  If not stated otherwise in this file or this component's LICENSE file the
+  following copyright and licenses apply:
+
+  Copyright 2025 RDK Management
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ **************************************************************************/
+
 #include "scheduler.h"
 #include "wifi_dml_api.h"
 #include "wifi_stubs.h"
@@ -17,7 +36,10 @@
 extern sem_t *sem;
 
 #define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
-#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE_BACKUP      "/nvram/bootstrap.json"
+#define CLEAR_TRACK_FILE                "/nvram/ClearUnencryptedData_flags"
+#define NVRAM_BOOTSTRAP_CLEARED         (1 << 0)
 
 int set_output_string(scratch_data_buff_t *output_value, char *str)
 {   
@@ -187,10 +209,11 @@ int get_sec_encr_int_from_string(const char *p_sec_encr_name, wifi_encryption_me
     DM_CHECK_NULL_WITH_RC(p_sec_encr_type, ret);
 
     wifi_sec_encr_hal_map_t wifi_sec_encr_map[] = {
-        { wifi_encryption_none,     "NONE" },
-        { wifi_encryption_tkip,     "TKIP" },
-        { wifi_encryption_aes,      "AES" },
-        { wifi_encryption_aes_tkip, "AES+TKIP" }
+        { wifi_encryption_none,        "NONE"     },
+        { wifi_encryption_tkip,        "TKIP"     },
+        { wifi_encryption_aes,         "AES"      },
+        { wifi_encryption_aes_tkip,    "AES+TKIP" },
+        { wifi_encryption_aes_gcmp256, "AES+GCMP" }
     };
 
     for (counter = 0 ; counter < (uint32_t)ARRAY_SZ(wifi_sec_encr_map) ; ++counter) {
@@ -209,10 +232,11 @@ int get_sec_encr_string_from_int(wifi_encryption_method_t l_sec_encr_type, char 
     uint32_t index;
     bool     str_found = false;
     wifi_sec_encr_hal_map_t wifi_sec_encr_map[] = {
-        { wifi_encryption_none,     "NONE" },
-        { wifi_encryption_tkip,     "TKIP" },
-        { wifi_encryption_aes,      "AES" },
-        { wifi_encryption_aes_tkip, "AES+TKIP" }
+        { wifi_encryption_none,        "NONE"     },
+        { wifi_encryption_tkip,        "TKIP"     },
+        { wifi_encryption_aes,         "AES"      },
+        { wifi_encryption_aes_tkip,    "AES+TKIP" },
+        { wifi_encryption_aes_gcmp256, "AES+GCMP" }
     };
 
     for (index = 0 ; index < (uint32_t)ARRAY_SZ(wifi_sec_encr_map) ; index++) {
@@ -1884,6 +1908,17 @@ int update_json_param(char *p_key, char *partner_id, char *p_value, char *p_sour
                     cjson_out = cJSON_Print(json);
                     wifi_util_error_print(WIFI_DMCLI, "Updated json content is %s\n", cjson_out);
                     config_update_status = write_to_json(cjson_out, BOOTSTRAP_INFO_FILE);
+                    //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+                    unsigned int flags = 0;
+                    FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+                    if (fp) {
+                        fscanf(fp, "%u", &flags);
+                        fclose(fp);
+                    }
+                    if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0) {
+                        wifi_util_error_print(WIFI_DMCLI, "%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+                        write_to_json(cjson_out, BOOTSTRAP_INFO_FILE_BACKUP);
+                    }
                     cJSON_free(cjson_out);
                     if (!config_update_status) {
                         wifi_util_error_print(WIFI_DMCLI, "Bootstrap config update: %s, %s, %s, %s \n", p_key,

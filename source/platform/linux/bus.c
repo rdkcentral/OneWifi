@@ -39,11 +39,14 @@ bool is_server_process(void)
 
     snprintf(file_name, sizeof(file_name), "/proc/%d/comm", getpid());
     if ((fp = fopen(file_name, "r")) != NULL) {
-        fgets(file_name, sizeof(file_name), fp);
-        fclose(fp);
+        if (fgets(file_name, sizeof(file_name), fp) != NULL) {
+            fclose(fp);
 
-        if (strstr(file_name, BUS_SERVER_PROCESS_NAME)) {
-            return true;
+            if (strstr(file_name, BUS_SERVER_PROCESS_NAME)) {
+                return true;
+            }
+        } else {
+            fclose(fp);
         }
     }
 
@@ -75,11 +78,11 @@ static bus_error_t bus_open(bus_handle_t *handle, char *component_name)
     VERIFY_NULL_WITH_RC(handle);
     VERIFY_NULL_WITH_RC(component_name);
 
-    he_bus_error_t rc = bus_error_success;
+    he_bus_error_t rc = (he_bus_error_t)bus_error_success;
 
     if ((handle->is_bus_init == true) && (handle->u.he_bus_handle != NULL)) {
         wifi_util_info_print(WIFI_BUS, "%s:%d: Already he_bus_open() completed handle:%p\n", __func__, __LINE__, handle->u.he_bus_handle);
-        return rc;
+        return (bus_error_t)rc;
     }
 
     rc = he_bus_open(&handle->u.he_bus_handle, component_name);
@@ -98,7 +101,7 @@ static bus_error_t bus_close(bus_handle_t *handle)
     VERIFY_NULL_WITH_RC(handle);
     he_bus_handle_t p_he_bus_handle = handle->u.he_bus_handle;
 
-    he_bus_error_t rc = bus_error_success;
+    he_bus_error_t rc = (he_bus_error_t)bus_error_success;
 
     rc = he_bus_close(p_he_bus_handle);
     if (rc != he_bus_error_success) {
@@ -174,7 +177,7 @@ static bus_error_t bus_raw_event_publish(bus_handle_t *handle, char *name, void 
 
     raw_data.data_type = he_bus_data_type_bytes;
     raw_data.raw_data.bytes = data;
-    raw_data.raw_data_len = size;
+    raw_data.raw_data_len = (uint32_t)size;
 
     rc = he_bus_publish_event(p_bus_handle, name, &raw_data);
 
@@ -192,7 +195,7 @@ static bus_error_t bus_set_string(bus_handle_t *handle, char const *name, char c
 
     raw_data.data_type = he_bus_data_type_string;
     raw_data.raw_data.bytes = param_str;
-    raw_data.raw_data_len = strlen(param_str) + 1;
+    raw_data.raw_data_len = (uint32_t)(strlen(param_str) + 1);
 
     rc = he_bus_set_data(p_bus_handle, name, &raw_data);
 
@@ -216,16 +219,16 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
 
     for (uint32_t index = 0; index < num_of_element; index++) {
         p_data_elem_map[index].full_name = data_element[index].full_name;
-        p_data_elem_map[index].type      = data_element[index].type;
-        p_data_elem_map[index].type      = data_element[index].type;
+        p_data_elem_map[index].type      = (he_bus_element_type_t)data_element[index].type;
+        p_data_elem_map[index].type      = (he_bus_element_type_t)data_element[index].type;
         p_data_elem_map[index].num_of_table_row = data_element[index].num_of_table_row;
 
-        p_data_elem_map[index].cb_table.get_handler  = data_element[index].cb_table.get_handler;
-        p_data_elem_map[index].cb_table.set_handler  = data_element[index].cb_table.set_handler;
-        p_data_elem_map[index].cb_table.table_add_row_handler  = data_element[index].cb_table.table_add_row_handler;
-        p_data_elem_map[index].cb_table.table_remove_row_handler  = data_element[index].cb_table.table_remove_row_handler;
-        p_data_elem_map[index].cb_table.event_sub_handler  = data_element[index].cb_table.event_sub_handler;
-        p_data_elem_map[index].cb_table.methodHandler  = data_element[index].cb_table.method_handler;
+        p_data_elem_map[index].cb_table.get_handler  = (he_bus_get_handler_t)data_element[index].cb_table.get_handler;
+        p_data_elem_map[index].cb_table.set_handler  = (he_bus_set_handler_t)data_element[index].cb_table.set_handler;
+        p_data_elem_map[index].cb_table.table_add_row_handler  = (he_bus_table_add_row_handler_t)data_element[index].cb_table.table_add_row_handler;
+        p_data_elem_map[index].cb_table.table_remove_row_handler  = (he_bus_table_remove_row_handler_t)data_element[index].cb_table.table_remove_row_handler;
+        p_data_elem_map[index].cb_table.event_sub_handler  = (he_bus_event_sub_handler_t)data_element[index].cb_table.event_sub_handler;
+        p_data_elem_map[index].cb_table.method_handler  = (he_bus_method_handler_t)data_element[index].cb_table.method_handler;
     }
 
     rc = he_bus_reg_data_elem(p_bus_handle, p_data_elem_map, num_of_element);
@@ -237,10 +240,20 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
     return (bus_error_t)rc;
 }
 
-bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event, char *data, bool *psm_notify_flag, int flag)
+bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
+    raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data)
 {
-    int rc = bus_error_success;
-    return ((rc != 0) ? -1 : 0);
+    VERIFY_NULL_WITH_RC(handle);
+    VERIFY_NULL_WITH_RC(event);
+
+    he_bus_error_t rc;
+    he_bus_handle_t p_bus_handle = handle->u.he_bus_handle;
+
+    rc = he_bus_method_invoke(p_bus_handle, event, input_data, output_data);
+    if (rc != HE_BUS_RETURN_OK) {
+        wifi_util_error_print(WIFI_BUS,"%s:%d method_invoke is failed:%d\n", __func__, __LINE__, rc);
+    }
+    return (bus_error_t)rc;
 }
 
 bus_error_t bus_unreg_data_elements(bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element)
@@ -280,9 +293,9 @@ bus_error_t bus_event_subscribe(bus_handle_t *handle, char const *event_name, vo
 
     he_bus_error_t rc;
     he_bus_handle_t p_bus_handle = handle->u.he_bus_handle;
-    he_bus_event_consumer_sub_handler_t p_bus_cb = (he_bus_event_consumer_sub_handler_t *)cb;
+    he_bus_event_consumer_sub_handler_t p_bus_cb = (he_bus_event_consumer_sub_handler_t )cb;
 
-    rc = he_bus_event_sub(p_bus_handle, event_name, p_bus_cb, timeout);
+    rc = he_bus_event_sub(p_bus_handle, event_name, p_bus_cb, (uint32_t)timeout);
 
     return (bus_error_t)rc;
 }
@@ -308,11 +321,11 @@ bus_error_t bus_event_subscribe_ex(bus_handle_t *handle, bus_event_sub_t *l_sub_
         p_sub_data_map[index].action     = he_bus_event_action_subscribe;
         p_sub_data_map[index].interval   = l_sub_info_map[index].interval;
         p_sub_data_map[index].handler.sub_handler = l_sub_info_map[index].handler;
-        p_sub_data_map[index].handler.sub_ex_async_handler = l_sub_info_map[index].async_handler;
+        p_sub_data_map[index].handler.sub_ex_async_handler = (he_bus_event_sub_ex_async_handler_t)l_sub_info_map[index].async_handler;
 
     }
 
-    rc = he_bus_event_sub_ex(p_bus_handle, p_sub_data_map, num_of_sub, timeout);
+    rc = he_bus_event_sub_ex(p_bus_handle, p_sub_data_map, num_of_sub, (uint32_t)timeout);
 
     free(p_sub_data_map);
     return (bus_error_t)rc;
@@ -339,11 +352,11 @@ bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_sub_t *
         p_sub_data_map[index].action     = he_bus_event_action_subscribe;
         p_sub_data_map[index].interval   = l_sub_info_map[index].interval;
         p_sub_data_map[index].handler.sub_handler = l_sub_info_map[index].handler;
-        p_sub_data_map[index].handler.sub_ex_async_handler = l_sub_info_map[index].async_handler;
+        p_sub_data_map[index].handler.sub_ex_async_handler = (he_bus_event_sub_ex_async_handler_t)l_sub_info_map[index].async_handler;
 
     }
 
-    rc = he_bus_event_sub_ex_async(p_bus_handle, p_sub_data_map, num_of_sub, l_sub_handler, timeout);
+    rc = he_bus_event_sub_ex_async(p_bus_handle, p_sub_data_map, num_of_sub, l_sub_handler, (uint32_t)timeout);
 
     free(p_sub_data_map);
     return (bus_error_t)rc;
@@ -365,6 +378,18 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return bus_error_success;
 }
 
+static bus_error_t bus_add_table_row(bus_handle_t *handle, char const *name,
+    char const *alias, uint32_t *row_index)
+{
+    return bus_error_success;
+}
+
+static bus_error_t bus_event_unsubs_ex(bus_handle_t *handle,
+    bus_event_sub_t *l_sub_info_map, int num_sub)
+{
+    return bus_error_success;
+}
+
 static void bus_desc_init(wifi_bus_desc_t *desc)
 {
     desc->bus_init_fn                     = bus_init;
@@ -376,17 +401,19 @@ static void bus_desc_init(wifi_bus_desc_t *desc)
     desc->bus_reg_data_element_fn         = bus_reg_data_elements;
     desc->bus_unreg_data_element_fn       = bus_unreg_data_elements;
     desc->bus_event_publish_fn            = bus_event_publish;
-    desc->bus_raw_event_publish_fn        = bus_raw_event_publish;
+    desc->bus_raw_event_publish_fn        = (wifi_bus_raw_event_publish_t)bus_raw_event_publish;
     desc->bus_set_string_fn               = bus_set_string;
     desc->bus_event_subs_fn               = bus_event_subscribe;
     desc->bus_event_subs_async_fn         = bus_event_subscribe_async;
-    desc->bus_event_subs_ex_fn            = bus_event_subscribe_ex;
-    desc->bus_event_subs_ex_async_fn      = bus_event_subscribe_ex_async;
+    desc->bus_event_subs_ex_fn            = (wifi_bus_event_subscribe_ex_t)bus_event_subscribe_ex;
+    desc->bus_event_subs_ex_async_fn      = (wifi_bus_event_subscribe_ex_async_t)bus_event_subscribe_ex_async;
     desc->bus_event_unsubs_fn     	  = bus_event_unsubscribe;
-    desc->bus_method_invoke_fn            = bus_method_invoke;
-    desc->bus_get_trace_context_fn        = bus_get_trace_context;
+    desc->bus_event_unsubs_ex_fn          = bus_event_unsubs_ex;
+    desc->bus_method_invoke_fn            = (wifi_bus_method_invoke_t)bus_method_invoke;
+    desc->bus_get_trace_context_fn        = (wifi_bus_get_trace_context_t)bus_get_trace_context;
     desc->bus_reg_table_row_fn            = bus_reg_table_row;
     desc->bus_unreg_table_row_fn          = bus_unreg_table_row;
+    desc->bus_add_table_row_fn            = bus_add_table_row;
     desc->bus_remove_table_row_fn         = bus_remove_table_row;
     desc->bus_error_to_string_fn          = bus_error_to_string;
     desc->bus_convert_handle_to_actual_ptr_fn = bus_convert_handle_to_ptr;

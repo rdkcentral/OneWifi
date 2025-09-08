@@ -308,6 +308,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        UCHAR eap_method_count = 0;
         wifi_naiRealm_t *realmInfoBuf = (wifi_naiRealm_t *)next_pos;
         next_pos += sizeof(realmInfoBuf->data_field_length);
 
@@ -336,17 +337,20 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         cJSON_AddItemToArray(statsList, realmStats);
 
         validate_param_array(anqpEntry,"EAP",subList);
-        realmInfoBuf->eap_method_count = cJSON_GetArraySize(subList);
-        if(realmInfoBuf->eap_method_count > 16){
+        eap_method_count = cJSON_GetArraySize(subList);
+        if(eap_method_count > 16){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: EAP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid number of EAP entries in realm",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
+        *next_pos = eap_method_count;
         next_pos += sizeof(realmInfoBuf->eap_method_count);
 
         cJSON_ArrayForEach(subEntry, subList){
             wifi_eapMethod_t *eapBuf = (wifi_eapMethod_t *)next_pos;
+            next_pos += sizeof(eapBuf->length);
+
             validate_param_integer(subEntry,"Method",subParam);
             eapBuf->method = subParam->valuedouble;
             next_pos += sizeof(eapBuf->method);
@@ -1094,7 +1098,8 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
     }
 
         validate_param_string(security, "EncryptionMethod", param);
-        if ((strcmp(param->valuestring, "AES") != 0) && (strcmp(param->valuestring, "AES+TKIP") != 0)) {
+        if (strcmp(param->valuestring, "AES") != 0 && strcmp(param->valuestring, "AES+TKIP") != 0 &&
+            strcmp(param->valuestring, "AES+GCMP") != 0) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Xfinity WiFi VAP Encrytpion mode is Invalid:%s\n", 
                     __func__, __LINE__, param->valuestring);
             strncpy(execRetVal->ErrorMsg, "Invalid enc mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);  
@@ -1158,10 +1163,12 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
 
         if (strcmp(param->valuestring, "TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_tkip;
-        } else if(strcmp(param->valuestring, "AES") == 0) {
+        } else if (strcmp(param->valuestring, "AES") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;
-        } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
+        } else if (strcmp(param->valuestring, "AES+TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+        } else if (strcmp(param->valuestring, "AES+GCMP") == 0) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
         } else {
             get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, %s: Invalid Encryption method for private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
@@ -1508,6 +1515,26 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 	validate_param_bool(vap, "SSIDAdvertisementEnabled", param);
 	vap_info->u.bss_info.showSsid = (param->type & cJSON_True) ? true:false;
 
+    // MLD Enable
+    validate_param_bool(vap, "MLD_Enable", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_enable = (param->type & cJSON_True) ? true:false;
+
+    // MLD Apply
+	validate_param_bool(vap, "MLD_Apply", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_apply = (param->type & cJSON_True) ? true:false;
+
+    // MLD ID
+	validate_param_integer(vap, "MLD_ID", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_id = param->valuedouble;
+
+    // MLD Link ID
+	validate_param_integer(vap, "MLD_Link_ID", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_link_id = param->valuedouble;
+
+    // MLD_Addr
+    validate_param_string(vap, "MLD_Addr", param);
+    string_mac_to_uint8_mac((uint8_t *)&vap_info->u.bss_info.mld_info.common_info.mld_addr, param->valuestring);
+
 	// Isolation
 	validate_param_bool(vap, "IsolationEnable", param);
 	vap_info->u.bss_info.isolation = (param->type & cJSON_True) ? true:false;
@@ -1590,6 +1617,9 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
         // HostapMgtFrameCtrl
         validate_param_bool(vap, "HostapMgtFrameCtrl", param);
         vap_info->u.bss_info.hostap_mgt_frame_ctrl = (param->type & cJSON_True) ? true : false;
+
+        validate_param_bool(vap, "InteropCtrl", param);
+        vap_info->u.bss_info.interop_ctrl = (param->type & cJSON_True) ? true : false;
 
         validate_param_bool(vap, "MboEnabled", param);
         vap_info->u.bss_info.mbo_enabled = (param->type & cJSON_True) ? true : false;
@@ -1783,6 +1813,22 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     //TxRxRateList
     validate_param_string(global_cfg, "TxRxRatetList", param);
     copy_string(global_info->txrx_rate_list, param->valuestring);
+
+    // MgtFrameRateLimitEnable
+    validate_param_bool(global_cfg, "MgtFrameRateLimitEnable", param);
+    global_info->mgt_frame_rate_limit_enable = (param->type & cJSON_True) ? true : false;
+
+    // MgtFrameRateLimit
+    validate_param_integer(global_cfg, "MgtFrameRateLimit", param);
+    global_info->mgt_frame_rate_limit = param->valuedouble;
+
+    // MgtFrameRateLimitWindowSize
+    validate_param_integer(global_cfg, "MgtFrameRateLimitWindowSize", param);
+    global_info->mgt_frame_rate_limit_window_size = param->valuedouble;
+
+    // MgtFrameRateLimitCooldownTime
+    validate_param_integer(global_cfg, "MgtFrameRateLimitCooldownTime", param);
+    global_info->mgt_frame_rate_limit_cooldown_time = param->valuedouble;
 
     wifi_util_dbg_print(WIFI_PASSPOINT,"wifi global Parameters validate successfully\n");
     return RETURN_OK;
@@ -2138,6 +2184,37 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
         //RadarDetected
         validate_param_string(wifi, "RadarDetected", param);
         copy_string(wifi_radio_info->radarDetected, param->valuestring );
+
+        // Amsdu_Tid
+        validate_param_string(wifi, "Amsdu_Tid", param);
+        ptr = param->valuestring;
+        tmp = param->valuestring;
+
+        uint8_t tid_idx = 0;
+        while ((ptr = strchr(tmp, ',')) != NULL) {
+            ptr++;
+            wifi_radio_info->amsduTid[tid_idx] = atoi(tmp);
+            if ((wifi_radio_info->amsduTid[tid_idx] != FALSE ||
+                    wifi_radio_info->amsduTid[tid_idx] != TRUE)) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "Invalid value when parsing AMSDU TID: %d\n",
+                    wifi_radio_info->amsduTid[tid_idx]);
+                strncpy(execRetVal->ErrorMsg, "Invalid AMSDU TID list",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+                return RETURN_ERR;
+            }
+            tmp = ptr;
+            tid_idx++;
+        }
+        // Last AMSDU TID
+        wifi_radio_info->amsduTid[tid_idx++] = atoi(tmp);
+
+        if (tid_idx != MAX_AMSDU_TID) {
+            wifi_util_dbg_print(WIFI_PASSPOINT,
+                "Number of AMSDU TIDs decoded does not match required value\n");
+            strncpy(execRetVal->ErrorMsg, "Invalid AMSDU TID list",
+                sizeof(execRetVal->ErrorMsg) - 1);
+            return RETURN_ERR;
+        }
 
     return RETURN_OK;
 }

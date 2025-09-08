@@ -1,0 +1,125 @@
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=easymesh
+PKG_VERSION:=1.0
+PKG_RELEASE:=1
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/easymesh
+  SECTION:=base
+  CATEGORY:=Base system
+  TITLE:=EasyMesh
+  DEPENDS:=+avro-c +libopenssl +cJSON +libev +libnl +libnl-genl +libnl-route +libuuid +libstdcpp +libmariadb +libpcap +libcurl
+endef
+
+define Package/easymesh/description
+  A simple EasyMesh utility package.
+endef
+
+TARGET_CFLAGS+= -ggdb3 -O0 -static -nostdinc++ -nodefaultlibs -Wl,--stack,2097152
+TARGET_LDFLAGS+= -lgcc -lc -luClibc++
+
+ifdef CONFIG_ENABLE_OTS_EXTERNAL_AGENT 
+    OTS_EXTERNAL_AGENT_ENABLE:=1
+else
+    OTS_EXTERNAL_AGENT_ENABLE:=0
+endif
+
+define Build/Prepare
+	echo "Preparing Easymesh..."
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) -r ./OneWifi $(PKG_BUILD_DIR)/
+	$(CP) -r ./unified-wifi-mesh $(PKG_BUILD_DIR)/
+	$(CP) -r ./halinterface $(PKG_BUILD_DIR)/
+	$(CP) -r ./rdk-wifi-hal $(PKG_BUILD_DIR)/
+	$(CP) -r ./rdk-wifi-libhostap $(PKG_BUILD_DIR)/
+	$(CP) -r ./OneWifi/install $(PKG_BUILD_DIR)/
+	$(CP) -r ./OneWifi/install/bin $(PKG_BUILD_DIR)/
+	$(CP) -r ./trower-base64 $(PKG_BUILD_DIR)/
+	@if [ "$(OTS_EXTERNAL_AGENT_ENABLE)" = "1" ]; then \
+		if [ ! -d OneWifiTestSuite ]; then \
+			git clone ssh://gerrit.teamccp.com:29418/rdk/components/cpc/OneWifiTestSuite; \
+			cd OneWifiTestSuite/; \
+			git checkout origin/25Q3_sprint; \
+			git clone http://github.com/yhirose/cpp-httplib; \
+			cd cpp-httplib; \
+			git checkout 9bbb4741b4f7c8fc5083c8a56d8d301a8abc25a3; \
+			cp httplib.h ../src/external_agent_cci/ext_inc/; \
+			cd ..; \
+			rm -rf cpp-httplib; \
+			cd ..; \
+		fi; \
+		printf  "Preparing with One Wifi Test Suite\n"; \
+		$(CP) -r ./OneWifiTestSuite $(PKG_BUILD_DIR)/; \
+		$(CP) -r ./OneWifiTestSuite/install/bin $(PKG_BUILD_DIR)/;  \
+	else    \
+		printf  "Preparing without One Wifi Test Suite\n";  \
+     fi
+endef
+
+define Build/Compile
+	echo "Compiling OneWifi..."
+	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS)" \
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/OneWifi/build/openwrt/  \
+		$(TARGET_CONFIGURE_OPTS)
+
+	@if [ "$(OTS_EXTERNAL_AGENT_ENABLE)" = "1" ]; then \
+		echo "Compiling OneWifiTestSuite..."; \
+		rm -rf $(PKG_BUILD_DIR)/rdk-wifi-hal/src/*.o; \
+		CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS)" \
+		$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/  \
+			$(TARGET_CONFIGURE_OPTS); \
+	else    \
+		echo "Compiling libalsap..."; \
+		CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS)" \
+		$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/libalsap/  \
+			$(TARGET_CONFIGURE_OPTS); \
+		echo "Compiling Easymesh AGENT..."; \
+		CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) $(STAGING_DIR)" \
+		$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/agent/  \
+			$(TARGET_CONFIGURE_OPTS); \
+		echo "Compiling Easymesh CTRL..."; \
+		CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) $(STAGING_DIR)" \
+		$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/ctrl/  \
+			$(TARGET_CONFIGURE_OPTS) $(TARGET_CPPFLAGS); \
+	fi
+endef
+
+define Package/easymesh/install
+	$(INSTALL_DIR) $(1)/usr/bin; 
+	$(INSTALL_DIR) $(1)/nvram
+	$(INSTALL_DIR) $(1)/etc/init.d
+
+	@if [ "$(OTS_EXTERNAL_AGENT_ENABLE)" = "1" ]; then \
+		echo "Installing Onewifi Testsuite..."; \
+		$(INSTALL_DIR) $(1)/banana-pi-ots; \
+		$(INSTALL_DIR) $(1)/etc/hotplug.d/iface; \
+		$(INSTALL_DIR) $(1)/etc/rc.d; \
+		$(INSTALL_DIR) $(1)/etc/config; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/install/bin/cci $(1)/usr/bin/; \
+		$(CP) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/* $(1)/banana-pi-ots/; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/InterfaceMap.json  $(1)/nvram/; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/99-lan3_OTS_bringup.sh  $(1)/etc/hotplug.d/iface/; \
+        	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/ots_init_file  $(1)/etc/init.d/; \
+		chmod +x $(1)/etc/init.d/ots_init_file; \
+		ln -sf /etc/init.d/ots_init_file $(1)/etc/rc.d/S99xots_init_file; \
+        	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifiTestSuite/build/openwrt/banana_pi_scripts/network $(1)/etc/config/; \
+	else \
+		echo "Installing Easymesh CTRL..."; \
+		$(INSTALL_DIR) $(1)/banana-pi; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_agent $(1)/usr/bin/; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_ctrl $(1)/usr/bin/; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/install/bin/OneWifi $(1)/usr/bin/; \
+		$(CP) $(PKG_BUILD_DIR)/OneWifi/config/openwrt/banana-pi/* $(1)/banana-pi/; \
+		$(INSTALL_DIR) $(1)/etc/init.d; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/config/openwrt/banana-pi/etc/init.d/* $(1)/etc/init.d/; \
+		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/config/openwrt/banana-pi/* $(1)/banana-pi/; \
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/config/openwrt/banana-pi/etc/init.d/* $(1)/etc/init.d/; \
+		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/config/test_cert.crt $(1)/nvram/; \
+		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/config/test_cert.key $(1)/nvram/; \
+		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/Reset.json $(1)/nvram/; \
+	fi
+endef
+
+$(eval $(call BuildPackage,easymesh))

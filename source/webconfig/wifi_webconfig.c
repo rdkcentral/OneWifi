@@ -562,6 +562,19 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_levl].translate_from_subdoc = translate_from_levl_subdoc;
 #endif //ONEWIFI_LEVL_APP_SUPPORT
 
+#ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    config->subdocs[webconfig_subdoc_type_memwraptool].type = webconfig_subdoc_type_memwraptool;
+    strcpy(config->subdocs[webconfig_subdoc_type_memwraptool].name, "memwraptool config");
+    config->subdocs[webconfig_subdoc_type_memwraptool].major = 1;
+    config->subdocs[webconfig_subdoc_type_memwraptool].minor = 1;
+    config->subdocs[webconfig_subdoc_type_memwraptool].init_subdoc = init_memwraptool_subdoc;
+    config->subdocs[webconfig_subdoc_type_memwraptool].access_check_subdoc = access_memwraptool_subdoc;
+    config->subdocs[webconfig_subdoc_type_memwraptool].encode_subdoc = encode_memwraptool_subdoc;
+    config->subdocs[webconfig_subdoc_type_memwraptool].decode_subdoc = decode_memwraptool_subdoc;
+    config->subdocs[webconfig_subdoc_type_memwraptool].translate_to_subdoc = translate_to_memwraptool_subdoc;
+    config->subdocs[webconfig_subdoc_type_memwraptool].translate_from_subdoc = translate_from_memwraptool_subdoc;
+#endif //ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     config->subdocs[webconfig_subdoc_type_cac].type = webconfig_subdoc_type_cac;
     strcpy(config->subdocs[webconfig_subdoc_type_cac].name, "connection_control");
@@ -697,7 +710,7 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_radio_5G].translate_from_subdoc = translate_from_single_radio_subdoc;
 
     config->subdocs[webconfig_subdoc_type_radio_6G].type = webconfig_subdoc_type_radio_6G;
-    strcpy(config->subdocs[webconfig_subdoc_type_radio_6G].name, "radio_5G");
+    strcpy(config->subdocs[webconfig_subdoc_type_radio_6G].name, "radio_6G");
     config->subdocs[webconfig_subdoc_type_radio_6G].major = 1;
     config->subdocs[webconfig_subdoc_type_radio_6G].minor = 1;
     config->subdocs[webconfig_subdoc_type_radio_6G].init_subdoc = init_single_radio_subdoc;
@@ -744,6 +757,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].decode_subdoc = decode_em_sta_link_subdoc;
     config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].translate_to_subdoc = translate_to_em_sta_link_subdoc;
     config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].translate_from_subdoc = translate_from_em_sta_link_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].type = webconfig_subdoc_type_em_ap_metrics_report;
+    strcpy(config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].name, "Easymesh AP Metrics Report");
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].major = 1;
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].minor = 1;
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].init_subdoc = init_em_ap_metrics_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].init_subdoc(&config->subdocs[webconfig_subdoc_type_em_ap_metrics_report]);
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].access_check_subdoc = access_check_em_ap_metrics_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].encode_subdoc = encode_em_ap_metrics_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].decode_subdoc = decode_em_ap_metrics_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].translate_to_subdoc = translate_to_em_ap_metrics_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].translate_from_subdoc = translate_from_em_ap_metrics_report_subdoc;
 
 #endif //EM_APP Support
 

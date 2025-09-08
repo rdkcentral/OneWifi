@@ -42,7 +42,7 @@ extern "C" {
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
-#define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
+#define WIFI_NOTIFY_SYNC_COMPONENT          "Device.NotifyComponent.SetNotifi_ParamName"
 #define WIFI_NOTIFY_FORCE_DISASSOCIATION    "Device.WiFi.ConnectionControl.ClientForceDisassociation"
 #define WIFI_NOTIFY_DENY_ASSOCIATION        "Device.WiFi.ConnectionControl.ClientDenyAssociation"
 #define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
@@ -76,6 +76,7 @@ extern "C" {
 #define WIFI_COLLECT_STATS_VAP_TABLE                   "Device.WiFi.CollectStats.AccessPoint.{i}."
 #define WIFI_COLLECT_STATS_ASSOC_DEVICE_STATS          "Device.WiFi.CollectStats.AccessPoint.{i}.AssociatedDeviceStats"
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
+#define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
 #define PLAN_ID_LENGTH     38
@@ -99,6 +100,15 @@ extern "C" {
 #define MIN_CSI_INTERVAL    100
 #define MIN_DIAG_INTERVAL   5000
 #define CSI_PING_INTERVAL   100
+
+#define DEFAULT_RSS_CHECK_INTERVAL 5 //minutes
+#define DEFAULT_RSS_THRESHOLD 1000 //kbytes
+#define DEFAULT_RSS_MAXLIMIT 70000 //kbytes
+#define DEFAULT_HEAPWALK_DURATION 60 //minutes
+#define DEFAULT_HEAPWALK_INTERVAL 15 //minutes
+
+#define RSS_MEM_THRESHOLD1_DEFAULT 81920 /*Threshold1 is 80MB*/
+#define RSS_MEM_THRESHOLD2_DEFAULT 112640 /*Threshold2 is 110MB*/
 
 #define wifi_sub_component_base     0x01
 #define wifi_app_inst_base          0x01
@@ -141,7 +151,9 @@ typedef enum {
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
-    wifi_app_inst_max = wifi_app_inst_base << 18
+    wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
+    wifi_app_inst_csi_analytics = wifi_app_inst_base << 19,
+    wifi_app_inst_max = wifi_app_inst_base << 20
 } wifi_app_inst_t;
 
 typedef struct {
@@ -181,6 +193,7 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STA_XB8      100     /**< Max supported stations for TCHX8 specific platform */
 #define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
 #define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
+#define BSS_MAX_NUM_STA_HOTSPOT_XB      5      /**< Max supported stations for hotspot vaps in XB platform */
 
 #define STA_MAX_BSS_ASSOCIATIONS  1
 
@@ -342,6 +355,11 @@ typedef struct {
 } __attribute__((packed)) wifi_mon_stats_config_t;
 
 typedef struct {
+    wifi_channelMap_t channel_map[MAX_CHANNELS];
+    wifi_radio_index_t radio_index;
+} wifi_channel_status_event_t;
+
+typedef struct {
     wifi_frame_t    frame;
     unsigned char data[MAX_FRAME_SZ];
 } __attribute__((__packed__)) frame_data_t;
@@ -379,12 +397,12 @@ typedef struct {
         instant_msmt_t      imsmt;
         active_msmt_t       amsmt;
         associated_devs_t   devs;
-        wifi_csi_dev_t      csi;
         csi_mon_t           csi_mon;
         wifi_mon_stats_config_t mon_stats_config;
         frame_data_t msg;
         ocs_params_t        ocs_params;
         collect_stats_t     collect_stats;
+        wifi_channel_status_event_t channel_status_map;
     } u;
 } wifi_monitor_data_t;
 
@@ -421,6 +439,15 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
+    unsigned int rss_check_interval; //minutes
+    unsigned int rss_threshold; //kbytes
+    unsigned int rss_maxlimit; //kbytes
+    unsigned int heapwalk_duration; //minutes
+    unsigned int heapwalk_interval; //minutes
+    bool enable;
+} __attribute__((packed)) memwraptool_config_t;
+
+typedef struct {
     bool wifi_offchannelscan_app_rfc;
     bool wifi_offchannelscan_sm_rfc;
     bool wifipasspoint_rfc;
@@ -448,6 +475,8 @@ typedef struct {
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
     bool wpa3_compatibility_enable;
+    bool memwraptool_app_rfc;
+    bool csi_analytics_enabled_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -472,6 +501,8 @@ typedef struct {
     int  assoc_gate_time;
     int  whix_log_interval; //seconds
     int  whix_chutility_loginterval; //seconds
+    ULONG rss_memory_restart_threshold_low;
+    ULONG rss_memory_restart_threshold_high;
     int  assoc_monitor_duration;
     bool rapid_reconnect_enable;
     bool vap_stats_feature;
@@ -487,6 +518,11 @@ typedef struct {
     char cli_stat_list[MAX_BUF_LENGTH];
     char snr_list[MAX_BUF_LENGTH];
     char txrx_rate_list[MAX_BUF_LENGTH];
+    memwraptool_config_t memwraptool;
+    bool mgt_frame_rate_limit_enable;
+    int mgt_frame_rate_limit;
+    int mgt_frame_rate_limit_window_size;
+    int mgt_frame_rate_limit_cooldown_time;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
@@ -780,6 +816,15 @@ typedef struct {
 } __attribute__((packed)) radarInfo_t;
 
 typedef struct {
+    mac_address_t sta_mac;
+    mac_address_t ap_mac;
+    int sta_status_counts[6];
+    int sta_reason_counts[9];
+    int ap_status_counts[6];
+    int ap_reason_counts[9];
+} interop_data_t;
+
+typedef struct {
     char    name[16];
     wifi_radio_operationParam_t oper;
     rdk_wifi_vap_map_t          vaps;
@@ -856,7 +901,6 @@ typedef struct {
     unsigned int    rapid_reconnects;
     bool            updated;
     wifi_associated_dev3_t dev_stats;
-    wifi_associated_dev3_t dev_stats_last;
     unsigned int    reconnect_count;
     long            assoc_monitor_start_time;
     long            gate_time;
@@ -1148,8 +1192,6 @@ typedef struct {
 } assoc_sta_link_metrics_data_t;
 
 typedef struct {
-    mac_addr_t sta_mac;
-    unsigned char client_type[32];
     int num_bssid;
     assoc_sta_link_metrics_data_t assoc_sta_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
 } assoc_sta_link_metrics_t;
@@ -1168,12 +1210,13 @@ typedef struct {
 } assoc_sta_ext_link_metrics_data_t;
 
 typedef struct {
-    mac_addr_t sta_mac;
     int num_bssid;
     assoc_sta_ext_link_metrics_data_t assoc_sta_ext_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
 } assoc_sta_ext_link_metrics_t;
 
 typedef struct {
+    mac_addr_t sta_mac;
+    unsigned char client_type[32];
     assoc_sta_link_metrics_t assoc_sta_link_metrics;
     error_code_t error_code;
     assoc_sta_ext_link_metrics_t assoc_sta_ext_link_metrics;
@@ -1250,6 +1293,62 @@ typedef struct {
     UINT num_results;
     channel_scan_result_t results[EM_MAX_RESULTS];
 } channel_scan_response_t;
+
+typedef struct {
+    mac_addr_t sta_mac;
+    int bytes_sent;
+    int bytes_rcvd;
+    int packets_sent;
+    int packets_rcvd;
+    int tx_packtes_errs;
+    int rx_packtes_errs;
+    int retrans_cnt;
+} assoc_sta_traffic_stats_t;
+
+typedef struct {
+    bssid_t bssid;
+    int channel_util;
+    int num_of_assoc_stas;
+    bool inc_esp_ac_be;
+    bool inc_esp_ac_bk;
+    bool inc_esp_ac_vo;
+    bool inc_esp_ac_vi;
+    int esp_ac_be;
+    int esp_ac_bk;
+    int esp_ac_vo;
+    int esp_ac_vi;
+    // Extended report
+    int unicast_bytes_sent;
+    int unicast_bytes_rcvd;
+    int multicast_bytes_sent;
+    int multicast_bytes_rcvd;
+    int broadcast_bytes_sent;
+    int broadcast_bytes_rcvd;
+} ap_metrics_t;
+
+typedef struct {
+    mac_addr_t ruid;
+    unsigned char noise;
+    unsigned char transmit;
+    unsigned char receive_self;
+    unsigned char receive_other;
+} radio_metrics_t;
+
+typedef struct {
+    ap_metrics_t vap_metrics;
+    int sta_cnt;
+    bool is_sta_traffic_stats_enabled;
+    assoc_sta_traffic_stats_t *sta_traffic_stats;
+    bool is_sta_link_metrics_enabled;
+    per_sta_metrics_t *sta_link_metrics;
+} em_vap_metrics_t;
+
+typedef struct {
+    int radio_index;
+    radio_metrics_t radio_metrics;
+    em_vap_metrics_t vap_reports[MAX_NUM_VAP_PER_RADIO];
+} em_ap_metrics_report_t;
+
 #endif
 
 #ifdef __cplusplus

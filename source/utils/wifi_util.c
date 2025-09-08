@@ -27,6 +27,7 @@
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
+#include "services/vap_svc.h"
 #include <netinet/in.h>
 #include <time.h>
 #include <openssl/sha.h>
@@ -712,7 +713,7 @@ char *get_formatted_time(char *time)
 
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
 {
-    char buff[256] = {0};
+    char buff[256] = { 0 };
     va_list list;
     FILE *fpg = NULL;
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
@@ -723,120 +724,127 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
     char module_filename[32];
     char filename[100];
 
-    switch(module)
-    {
-        case WIFI_DB:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDbDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiDb");
-            break;
-        }
-        case WIFI_MGR:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMgrDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiMgr");
-            break;
-        }
-        case WIFI_WEBCONFIG:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiWebConfigDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiWebConfig");
-            break;
-        }
-        case WIFI_CTRL:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCtrlDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiCtrl");
-            break;
-        }
-        case WIFI_PASSPOINT:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPasspointDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiPasspointDbg");
-            break;
-        }
-        case WIFI_DPP:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDppDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiDPP");
-            break;
-        }
-        case WIFI_MON:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMonDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiMon");
-            break;
-        }
-        case WIFI_DMCLI:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDMCLI");
-            snprintf(module_filename, sizeof(module_filename), "wifiDMCLI");
-            break;
-        }
-        case WIFI_LIB:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiLib");
-            snprintf(module_filename, sizeof(module_filename), "wifiLib");
-            break;
-        }
-        case WIFI_PSM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPsm");
-            snprintf(module_filename, sizeof(module_filename), "wifiPsm");
-            break;
-        }
-        case WIFI_ANALYTICS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiAnalytics");
-            snprintf(module_filename, sizeof(module_filename), "wifiAnalytics");
-            break;
-        }
-        case WIFI_APPS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiApps");
-            snprintf(module_filename, sizeof(module_filename), "wifiApps");
-            break;
-        }
-        case WIFI_SERVICES:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiServices");
-            snprintf(module_filename, sizeof(module_filename), "wifiServices");
-            break;
-        }
-        case WIFI_HARVESTER:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiHarvester");
-            snprintf(module_filename, sizeof(module_filename), "wifiHarvester");
-            break;
-        }
-        case WIFI_SM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSM");
-            snprintf(module_filename, sizeof(module_filename), "wifiSM");
-            break;
-        }
-        case WIFI_EM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEM");
-            snprintf(module_filename, sizeof(module_filename), "wifiEM");
-            break;
-        }
-        case WIFI_BLASTER:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBlaster");
-            snprintf(module_filename, sizeof(module_filename), "wifiBlaster");
-            break;
-        }
-        case WIFI_OCS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiOcsDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiOcs");
-            break;
-        }
-        case WIFI_BUS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBusDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiBus");
-            break;
-        }
-        case WIFI_TCM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiTCMDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiTransientClientMgmtCtrl");
-            break;
-        }
-        case WIFI_EC: {
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
-            snprintf(module_filename, sizeof(module_filename), "wifiEc");
-            break;
-        }
-        case WIFI_CSI: {
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCsi");
-            snprintf(module_filename, sizeof(module_filename), "wifiCsi");
-            break;
-        }
-        default:
-            return;
+    switch (module) {
+    case WIFI_DB: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDbDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiDb");
+        break;
+    }
+    case WIFI_MGR: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMgrDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiMgr");
+        break;
+    }
+    case WIFI_WEBCONFIG: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable),
+            LOG_PATH_PREFIX "wifiWebConfigDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiWebConfig");
+        break;
+    }
+    case WIFI_CTRL: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCtrlDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiCtrl");
+        break;
+    }
+    case WIFI_PASSPOINT: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable),
+            LOG_PATH_PREFIX "wifiPasspointDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiPasspointDbg");
+        break;
+    }
+    case WIFI_DPP: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDppDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiDPP");
+        break;
+    }
+    case WIFI_MON: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMonDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiMon");
+        break;
+    }
+    case WIFI_DMCLI: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDMCLI");
+        snprintf(module_filename, sizeof(module_filename), "wifiDMCLI");
+        break;
+    }
+    case WIFI_LIB: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiLib");
+        snprintf(module_filename, sizeof(module_filename), "wifiLib");
+        break;
+    }
+    case WIFI_PSM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPsm");
+        snprintf(module_filename, sizeof(module_filename), "wifiPsm");
+        break;
+    }
+    case WIFI_ANALYTICS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiAnalytics");
+        snprintf(module_filename, sizeof(module_filename), "wifiAnalytics");
+        break;
+    }
+    case WIFI_APPS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiApps");
+        snprintf(module_filename, sizeof(module_filename), "wifiApps");
+        break;
+    }
+    case WIFI_SERVICES: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiServices");
+        snprintf(module_filename, sizeof(module_filename), "wifiServices");
+        break;
+    }
+    case WIFI_HARVESTER: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiHarvester");
+        snprintf(module_filename, sizeof(module_filename), "wifiHarvester");
+        break;
+    }
+    case WIFI_SM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSM");
+        snprintf(module_filename, sizeof(module_filename), "wifiSM");
+        break;
+    }
+    case WIFI_EM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEM");
+        snprintf(module_filename, sizeof(module_filename), "wifiEM");
+        break;
+    }
+    case WIFI_BLASTER: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBlaster");
+        snprintf(module_filename, sizeof(module_filename), "wifiBlaster");
+        break;
+    }
+    case WIFI_MEMWRAPTOOL: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable),
+            LOG_PATH_PREFIX "wifiMemwrapTool");
+        snprintf(module_filename, sizeof(module_filename), "wifiMemwrapTool");
+        break;
+    }
+    case WIFI_OCS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiOcsDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiOcs");
+        break;
+    }
+    case WIFI_BUS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBusDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiBus");
+        break;
+    }
+    case WIFI_TCM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiTCMDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiTransientClientMgmtCtrl");
+        break;
+    }
+    case WIFI_EC: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
+        snprintf(module_filename, sizeof(module_filename), "wifiEc");
+        break;
+    }
+    case WIFI_CSI: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCsi");
+        snprintf(module_filename, sizeof(module_filename), "wifiCsi");
+        break;
+    }
+    default:
+        return;
     }
 
     if ((access(filename_dbg_enable, R_OK)) == 0) {
@@ -847,21 +855,26 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         }
     } else {
         switch (level) {
-            case WIFI_LOG_LVL_INFO:
-            case WIFI_LOG_LVL_ERROR:
-                snprintf(filename, sizeof(filename), "/rdklogs/logs/%s.txt", module_filename);
-                fpg = fopen(filename, "a+");
-                if (fpg == NULL) {
-                    return;
-                }
-                break;
-            case WIFI_LOG_LVL_DEBUG:
-            default:
+        case WIFI_LOG_LVL_INFO:
+        case WIFI_LOG_LVL_ERROR:
+#if defined DEVICE_EXTENDER
+            snprintf(filename, sizeof(filename), "/var/log/messages");
+#else
+            snprintf(filename, sizeof(filename), "/rdklogs/logs/%s.txt", module_filename);
+#endif
+            fpg = fopen(filename, "a+");
+            if (fpg == NULL) {
                 return;
+            }
+            break;
+        case WIFI_LOG_LVL_DEBUG:
+        default:
+            return;
         }
     }
 
-    // formatting here. For analytics, do not need any time formatting, need timestamp for all others
+    // formatting here. For analytics, do not need any time formatting, need timestamp for all
+    // others
     if (module != WIFI_ANALYTICS) {
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
         pid = syscall(__NR_gettid);
@@ -872,8 +885,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         get_formatted_time(&buff[strlen(buff)]);
 #endif
 
-        static const char *level_marker[WIFI_LOG_LVL_MAX] =
-        {
+        static const char *level_marker[WIFI_LOG_LVL_MAX] = {
             [WIFI_LOG_LVL_DEBUG] = "<D>",
             [WIFI_LOG_LVL_INFO] = "<I>",
             [WIFI_LOG_LVL_ERROR] = "<E>",
@@ -2000,49 +2012,64 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
     return ret;
 }
 
-#define MAX_SEC_LEN 32
+typedef struct {
+    const char keys[16][MAX_SEC_LEN];
+    int len;
+    wifi_security_modes_t mode;
+} security_mapping_table_t;
 
-int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len, int sec_len2, unsigned int conv_type, int *len)
+static const security_mapping_table_t security_map[] = {
+    { .keys = { "wpa-psk" },        .len = 1, .mode = wifi_security_mode_wpa_personal },
+    { .keys = { "wpa2-psk" },       .len = 1, .mode = wifi_security_mode_wpa2_personal },
+    { .keys = { "wpa2-eap" },       .len = 1, .mode = wifi_security_mode_wpa2_enterprise },
+    { .keys = { "sae" },            .len = 1, .mode = wifi_security_mode_wpa3_personal },
+    { .keys = { "aes" },            .len = 1, .mode = wifi_security_mode_wpa3_enterprise },
+    { .keys = { "enhanced-open" },  .len = 1, .mode = wifi_security_mode_enhanced_open },
+    { .keys = { "wpa-eap" },        .len = 1, .mode = wifi_security_mode_wpa_enterprise },
+    { .keys = { "wpa-eap", "wpa2-eap" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_enterprise },
+    { .keys = { "wpa2-psk", "sae" },        .len = 2, .mode = wifi_security_mode_wpa3_transition },
+    { .keys = { "wpa-psk", "wpa2-psk" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_personal },
+    { .keys = { "wpa2-psk", "sae", "rsno" },    .len = 3, .mode = wifi_security_mode_wpa3_compatibility }
+};
+
+int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN])
 {
-    char arr_str[][MAX_SEC_LEN] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae", "wpa2-psk sae", "wpa2-psk sae", "aes", "wpa-eap wpa2-eap", "enhanced-open", "wpa-eap", "wpa-psk wpa2-psk"};
-    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal, wifi_security_mode_wpa3_transition, wifi_security_mode_wpa3_compatibility, wifi_security_mode_wpa3_enterprise, wifi_security_mode_wpa_wpa2_enterprise, wifi_security_mode_enhanced_open, wifi_security_mode_wpa_enterprise, wifi_security_mode_wpa_wpa2_personal};
-    unsigned int i = 0;
+    int i, j = 0;
+    int num_key_found = 0;
+    char key_mgmt_buff_str[MAX_SEC_LEN] = {0};
 
-    if ((enum_sec == NULL) || (str_sec == NULL)) {
+    if ((enum_sec == NULL) || wpa_key_mgmt == NULL) {
         return RETURN_ERR;
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        char str_buff[MAX_SEC_LEN] = {0};
-        if (strlen(str_sec2) != 0) {
-            snprintf(str_buff, sizeof(str_buff), "%s %s", str_sec2, str_sec);
-        } else {
-            snprintf(str_buff, sizeof(str_buff), "%s", str_sec);
+        for (i = 0; i < wpa_key_mgmt_len; i++) {
+            snprintf(key_mgmt_buff_str + strlen(key_mgmt_buff_str), sizeof(key_mgmt_buff_str) - strlen(key_mgmt_buff_str), "%s", wpa_key_mgmt[i]);
         }
-        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
-            if (strcmp(arr_str[i], str_buff) == 0) {
-                *enum_sec = arr_num[i];
+        for (i = 0; i < ARRAY_LEN(security_map); i++) {
+            if (wpa_key_mgmt_len != security_map[i].len) {
+                continue;
+            }
+            num_key_found = 0;
+            for (j = 0; j < wpa_key_mgmt_len; j++) {
+                char *found_key = strstr(key_mgmt_buff_str, security_map[i].keys[j]);
+                if (found_key == NULL) {
+                    break;
+                }
+                num_key_found++;
+            }
+            if (num_key_found == wpa_key_mgmt_len) {
+                *enum_sec = security_map[i].mode;
                 return RETURN_OK;
             }
         }
     } else if (conv_type == ENUM_TO_STRING) {
-        for (i = 0; i < ARRAY_SIZE(arr_num); i++) {
-            if (arr_num[i]  == *enum_sec) {
-                if ((*enum_sec == wifi_security_mode_wpa3_transition) || (*enum_sec == wifi_security_mode_wpa3_compatibility)
-                    || (*enum_sec == wifi_security_mode_wpa_wpa2_enterprise) || (*enum_sec == wifi_security_mode_wpa_wpa2_personal))
-                {
-                    *len = 2;
-                    char *sec_safe;
-                    char *sec1 = strtok_r(arr_str[i], " ", &sec_safe);
-                    char *sec2 = NULL;
-                    if (NULL != sec1) {
-                       sec2 = strtok_r(NULL, " ", &sec_safe);
-                       snprintf(str_sec, sec_len, "%s", sec1);
-                       snprintf(str_sec2, sec_len2, "%s", sec2);
-                    }
-                } else {
-                    *len = 1;
-                    snprintf(str_sec, sec_len, "%s", arr_str[i]);
+        for (i = 0; i < ARRAY_LEN(security_map); i++) {
+            if (*enum_sec == security_map[i].mode) {
+                *sec_len = security_map[i].len;
+                for (j = 0; j < security_map[i].len; j++) {
+                    snprintf(wpa_key_mgmt[j], sizeof(wpa_key_mgmt[j]), "%s", security_map[i].keys[j]);
                 }
                 return RETURN_OK;
             }
@@ -2066,13 +2093,20 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
     else {
         snprintf(str, str_len, "QCN6224");
     }
-#elif defined (_SCER11BEL_PRODUCT_REQ_)
+#elif defined (_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     if (radio_index == 0) {
     }
     else {
     }
+#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+    if (radio_index == 0) {
+        snprintf(str, str_len, "qca5332");
+    }
+    else {
+        snprintf(str, str_len, "qcn6224");
+    }
 #else 
-    snprintf(str, str_len, "BCM43684");
+    snprintf(str, str_len, C_BCM);
 #endif
     return RETURN_OK;
 }
@@ -2222,6 +2256,104 @@ int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_i
     return (prop) ? (int)prop->rdk_radio_index : RETURN_ERR;
 }
 
+bool wifi_radius_config_changed(const wifi_radius_settings_t *old_config,
+                                const wifi_radius_settings_t *new_config)
+{
+    if (!old_config || !new_config) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid configuration pointers\n", __func__);
+        return false;
+    }
+
+    bool changed = false;
+
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+    changed |= IS_BIN_CHANGED(&old_config->ip, &new_config->ip, sizeof(ip_addr_t));
+#else
+    changed |= IS_BIN_CHANGED(old_config->ip, new_config->ip, sizeof(old_config->ip));
+#endif
+    changed |= IS_CHANGED(old_config->port, new_config->port);
+    changed |= IS_STR_CHANGED(old_config->key, new_config->key, sizeof(old_config->key));
+    changed |= IS_STR_CHANGED(old_config->identity, new_config->identity, sizeof(old_config->identity));
+
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+    changed |= IS_BIN_CHANGED(&old_config->s_ip, &new_config->s_ip, sizeof(ip_addr_t));
+#else
+    changed |= IS_BIN_CHANGED(old_config->s_ip, new_config->s_ip, sizeof(old_config->s_ip));
+#endif
+    changed |= IS_CHANGED(old_config->s_port, new_config->s_port);
+    changed |= IS_STR_CHANGED(old_config->s_key, new_config->s_key, sizeof(old_config->s_key));
+    changed |= IS_BIN_CHANGED(&old_config->dasip, &new_config->dasip, sizeof(ip_addr_t));
+    changed |= IS_CHANGED(old_config->dasport, new_config->dasport);
+    changed |= IS_STR_CHANGED(old_config->daskey, new_config->daskey, sizeof(old_config->daskey));
+    if (!changed) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: No RADIUS configuration changes detected\n", __func__);
+    }
+    return changed;
+}
+
+bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
+                                         const wifi_vap_info_t *hotspot_vap_info)
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Entry\n", __func__);
+    
+    if (!lnf_vap_info || !hotspot_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s: NULL pointer check failed - lnf_vap_info=%p, hotspot_vap_info=%p\n", 
+                             __func__, lnf_vap_info, hotspot_vap_info);
+        return false;
+    }
+    
+    wifi_util_dbg_print(WIFI_CTRL, "%s: lnf_vap_name=%s, hotspot_vap_name=%s\n", 
+                       __func__, 
+                       lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
+                       hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL");
+    
+    bool is_mdu_enabled = lnf_vap_info->u.bss_info.mdu_enabled;
+    wifi_util_dbg_print(WIFI_CTRL, "%s: is_mdu_enabled=%s\n", 
+                       __func__, is_mdu_enabled ? "true" : "false");
+    
+    bool is_secure_hotspot = !strncmp(hotspot_vap_info->vap_name, 
+                                     VAP_PREFIX_HOTSPOT_SECURE,
+                                     strlen(VAP_PREFIX_HOTSPOT_SECURE));
+    wifi_util_dbg_print(WIFI_CTRL, "%s: is_secure_hotspot=%s (vap_name=%s, prefix=%s)\n", 
+                       __func__, 
+                       is_secure_hotspot ? "true" : "false",
+                       hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
+                       VAP_PREFIX_HOTSPOT_SECURE);
+    
+    bool lnf_enabled = lnf_vap_info->u.bss_info.enabled;
+    bool hotspot_enabled = hotspot_vap_info->u.bss_info.enabled;
+    bool vap_enabled_changed = (lnf_enabled != hotspot_enabled);
+    wifi_util_dbg_print(WIFI_CTRL, "%s: vap_enabled_changed=%s (lnf_enabled=%s, hotspot_enabled=%s)\n", 
+                       __func__, 
+                       vap_enabled_changed ? "true" : "false",
+                       lnf_enabled ? "true" : "false",
+                       hotspot_enabled ? "true" : "false");
+    
+    bool radius_config_changed = wifi_radius_config_changed(
+        &lnf_vap_info->u.bss_info.security.repurposed_radius,
+        &hotspot_vap_info->u.bss_info.security.u.radius);
+    wifi_util_dbg_print(WIFI_CTRL, "%s: radius_config_changed=%s\n", 
+                       __func__, radius_config_changed ? "true" : "false");
+    
+    bool result = (is_mdu_enabled &&
+                  is_secure_hotspot &&
+                  (vap_enabled_changed || radius_config_changed));
+    
+    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d:%d:%d - result=%s\n", 
+                        __func__,
+                        hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
+                        lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
+                        is_mdu_enabled ? 1 : 0,
+                        is_secure_hotspot ? 1 : 0,
+                        vap_enabled_changed ? 1 : 0,
+                        radius_config_changed ? 1 : 0,
+                        (vap_enabled_changed || radius_config_changed) ? 1 : 0,
+                        result ? "true" : "false");
+    
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Exit - returning %s\n", __func__, result ? "true" : "false");
+    
+    return result;
+}
 
 int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType)
 {
@@ -2432,6 +2564,11 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
         {161, 165, 169, 173, 177, 181, 185, 189},
         {193, 197, 201, 205, 209, 213, 217, 221}
     };
+    int channels_6g_320_mhz[3][16] = {
+        {33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93},
+        {97, 101, 105, 109, 113, 117, 121, 125, 129, 133, 137, 141, 145, 149, 153, 157},
+        {161, 165, 169, 173, 177, 181, 185, 189, 193, 197, 201, 205, 209, 213, 217, 221}
+    };
 
     int found_idx = -1;
     
@@ -2611,7 +2748,27 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
             } else {
                 return -1;
             }
-        
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_320MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_6g_320_mhz); i++) {
+                for (int j = 0; j < 16; j++) {
+                    if (primary_channel == channels_6g_320_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 16; i++) {
+                    channel_list[i] = channels_6g_320_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
         }
     }
 
@@ -3669,6 +3826,56 @@ int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *sca
     return RETURN_ERR;
 }
 
+static bool is_interworking_config_changed(char *vap_name, wifi_interworking_t *old_cfg,
+    wifi_interworking_t *new_cfg)
+{
+    bool is_hotspot_vap = FALSE;
+    if (strncmp((char *)vap_name, "hotspot", strlen("hotspot")) == 0) {
+        is_hotspot_vap = TRUE;
+    }
+
+    return (IS_BIN_CHANGED(&old_cfg->interworking, &new_cfg->interworking,
+            sizeof(wifi_InterworkingElement_t))
+            || (is_hotspot_vap
+                && (IS_BIN_CHANGED(&old_cfg->passpoint, &new_cfg->passpoint,
+                    sizeof(wifi_passpoint_settings_t))
+                   || IS_BIN_CHANGED(&old_cfg->anqp, &new_cfg->anqp,
+                    sizeof(wifi_anqp_settings_t))
+                   || IS_BIN_CHANGED(&old_cfg->roamingConsortium, &new_cfg->roamingConsortium,
+                    sizeof(wifi_roamingConsortiumElement_t)))));
+}
+
+static bool is_vap_preassoc_cac_config_changed(char *vap_name,
+    wifi_preassoc_control_t *old_cfg,
+    wifi_preassoc_control_t *new_cfg)
+{
+    bool is_hotspot_vap = FALSE;
+    if (strncmp((char *)vap_name, "hotspot", strlen("hotspot")) == 0) {
+        is_hotspot_vap = TRUE;
+    }
+
+    if (is_hotspot_vap
+        && (IS_STR_CHANGED(old_cfg->basic_data_transmit_rates,
+                new_cfg->basic_data_transmit_rates,
+                sizeof(old_cfg->basic_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->operational_data_transmit_rates,
+                new_cfg->operational_data_transmit_rates,
+                sizeof(old_cfg->operational_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->supported_data_transmit_rates,
+                new_cfg->supported_data_transmit_rates,
+                sizeof(old_cfg->supported_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->minimum_advertised_mcs,
+                new_cfg->minimum_advertised_mcs,
+                sizeof(old_cfg->minimum_advertised_mcs))
+            || IS_STR_CHANGED(old_cfg->sixGOpInfoMinRate,
+                new_cfg->sixGOpInfoMinRate,
+                sizeof(old_cfg->sixGOpInfoMinRate)))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3691,6 +3898,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         IS_CHANGED(vap_info_old->radio_index, vap_info_new->radio_index) ||
         IS_STR_CHANGED(vap_info_old->bridge_name, vap_info_new->bridge_name,
             sizeof(vap_info_old->bridge_name)) ||
+        IS_STR_CHANGED(vap_info_old->repurposed_bridge_name, vap_info_new->repurposed_bridge_name,
+            sizeof(vap_info_old->repurposed_bridge_name)) ||
         IS_CHANGED(vap_info_old->vap_mode, vap_info_new->vap_mode)) {
         return true;
     }
@@ -3715,6 +3924,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             IS_CHANGED(vap_info_old->u.bss_info.mgmtPowerControl,
                 vap_info_new->u.bss_info.mgmtPowerControl) ||
             IS_CHANGED(vap_info_old->u.bss_info.bssMaxSta, vap_info_new->u.bss_info.bssMaxSta) ||
+            IS_CHANGED(vap_info_old->u.bss_info.inum_sta, vap_info_new->u.bss_info.inum_sta) ||
             IS_CHANGED(vap_info_old->u.bss_info.bssTransitionActivated,
                 vap_info_new->u.bss_info.bssTransitionActivated) ||
             IS_CHANGED(vap_info_old->u.bss_info.nbrReportActivated,
@@ -3727,8 +3937,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.vapStatsEnable) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.security, &vap_info_new->u.bss_info.security,
                 sizeof(wifi_vap_security_t)) ||
-            IS_BIN_CHANGED(&vap_info_old->u.bss_info.interworking,
-                &vap_info_new->u.bss_info.interworking, sizeof(wifi_interworking_t)) ||
+            is_interworking_config_changed(vap_info_new->vap_name,
+                &vap_info_old->u.bss_info.interworking,
+                &vap_info_new->u.bss_info.interworking) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_enable,
                 vap_info_new->u.bss_info.mac_filter_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_mode,
@@ -3750,6 +3961,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.wpsPushButton) ||
             IS_CHANGED(vap_info_old->u.bss_info.connected_building_enabled,
                 vap_info_new->u.bss_info.connected_building_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mdu_enabled, vap_info_new->u.bss_info.mdu_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.am_config.npc.speed_tier,
+                vap_info_new->u.bss_info.am_config.npc.speed_tier) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.beaconRateCtl,
                 &vap_info_new->u.bss_info.beaconRateCtl,
                 sizeof(vap_info_old->u.bss_info.beaconRateCtl)) ||
@@ -3757,23 +3971,20 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.network_initiated_greylist) ||
             IS_CHANGED(vap_info_old->u.bss_info.mcast2ucast,
                 vap_info_new->u.bss_info.mcast2ucast) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.basic_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.operational_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.supported_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs,
-                vap_info_new->u.bss_info.preassoc.minimum_advertised_mcs,
-                sizeof(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate,
-                vap_info_new->u.bss_info.preassoc.sixGOpInfoMinRate,
-                sizeof(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate)) ||
+            is_vap_preassoc_cac_config_changed(vap_info_new->vap_name,
+                    &vap_info_old->u.bss_info.preassoc, &vap_info_new->u.bss_info.preassoc) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_enable,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
+            IS_CHANGED(vap_info_old->u.bss_info.interop_ctrl,
+                vap_info_new->u.bss_info.interop_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.vendor_elements_len,
                 vap_info_new->u.bss_info.vendor_elements_len) ||
             IS_BIN_CHANGED(vap_info_old->u.bss_info.vendor_elements,

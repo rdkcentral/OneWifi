@@ -1,4 +1,22 @@
-#include <sysevent/sysevent.h>
+/************************************************************************************
+  If not stated otherwise in this file or this component's LICENSE file the
+  following copyright and licenses apply:
+
+  Copyright 2025 RDK Management
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ **************************************************************************/
+
 #include "wifi_util.h"
 #include "misc.h"
 #include <semaphore.h>
@@ -12,15 +30,13 @@ sem_t *sem;
 
 int rdkb_sysevent_open(char *ip, unsigned short port, int version, char *id, unsigned int *token)
 {
-    int fd;
-    wifi_util_error_print(WIFI_MGR,"%s:%d calling sysevent_open!\n", __func__, __LINE__);
-    fd = sysevent_open(ip, SE_SERVER_WELL_KNOWN_PORT, SE_VERSION, id, token);
-    return fd;
+    //ToDo
+    return 0;
 }
 
 int rdkb_sysevent_close(const int fd, const unsigned int  token)
 {
-    sysevent_close(fd, token);
+    //ToDo
     return 0;
 }
 
