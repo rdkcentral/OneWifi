@@ -1499,7 +1499,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1512,7 +1512,7 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1525,7 +1525,7 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1538,7 +1538,7 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1552,7 +1552,7 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, (BOOL)1, sizeof(BOOL) * 5);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
