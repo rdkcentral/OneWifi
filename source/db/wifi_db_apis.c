@@ -4768,9 +4768,11 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG) {
-            config->vap_array[i].u.bss_info.am_config.npc.speed_tier = isVapLnfPsk(config->vap_array[i].vap_index) ? DEFAULT_MANAGED_WIFI_SPEED_TIER : 0;
-            wifi_util_dbg_print(WIFI_DB, "%s:%d Update speed_tier:%d for vap_index:%d \n", __func__, __LINE__,
-                config->vap_array[i].u.bss_info.am_config.npc.speed_tier, config->vap_array[i].vap_index);
+            config->vap_array[i].u.bss_info.am_config.npc.speed_tier =
+                isVapLnfPsk(config->vap_array[i].vap_index) ? DEFAULT_MANAGED_WIFI_SPEED_TIER : 0;
+            wifi_util_dbg_print(WIFI_DB, "%s:%d Update speed_tier:%d for vap_index:%d \n", __func__,
+                __LINE__, config->vap_array[i].u.bss_info.am_config.npc.speed_tier,
+                config->vap_array[i].vap_index);
             wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                 &rdk_config[i]);
         }
@@ -4872,6 +4874,23 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
             wifi_util_info_print(WIFI_DB, "%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__,
                 __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
                 (char *)vap_config->u.bss_info.security.u.radius.s_ip);
+            continue;
+        }
+        if (isVapLnfPsk(vap_config->vap_index) &&
+            (!vap_config->u.bss_info.mdu_enabled &&
+                !strstr(vap_config->repurposed_vap_name, "managed_guest_")) &&
+            vap_config->u.bss_info.enabled) {
+            vap_config->u.bss_info.enabled = false;
+            rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+            if (rdk_vap_config == NULL) {
+                wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n",
+                    __func__, __LINE__, vap_config->radio_index);
+                continue;
+            }
+            update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+            wifi_util_info_print(WIFI_DB,
+                "%s:%d: vap_config->u.bss_info.enabled = false for the vap_name = %s\n", __func__,
+                __LINE__, vap_config->vap_name);
             continue;
         }
     }
@@ -7078,12 +7097,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
+
 #if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
-        if (isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true; 
         }
 #else
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
 #endif
@@ -7093,6 +7113,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.enabled = false;
         }
 #endif
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.enabled = false;
+        }
 #if defined(_SR213_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
         cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
 #else
@@ -7579,9 +7602,9 @@ void init_wifidb_data()
             if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
                 wifi_countrycode_type_t r_country_code;
-                strncpy(radio_country_code, country_code, strlen(country_code) - 1);
+                strncpy(radio_country_code, country_code, sizeof(radio_country_code) - 1);
                 if (country_code_conversion(&r_country_code, radio_country_code, COUNTRY_CODE_LEN, STRING_TO_ENUM) < 0) {
-                        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string\n", __func__, __LINE__);
+                        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string, country_code = %s\n", __func__, __LINE__,radio_country_code);
                 } else {
                     if (l_radio_cfg->countryCode != r_country_code) {
                         l_radio_cfg->countryCode = r_country_code;
@@ -8897,7 +8920,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
-        is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
+        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
         is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
         is_device_type_vbvxer5() == true || is_device_type_xle() == true) {
