@@ -21,6 +21,8 @@
 source /etc/log_timestamp.sh
 source /lib/rdk/t2Shared_api.sh
 
+WNX="WNXL11BWL"
+
 if [ $# -eq 0 ]; then
 enable=`syscfg get mesh_enable`
 if [ "$enable" == "true" ]; then
@@ -42,7 +44,7 @@ fi
 check_mac_address() {
     local mac_address=$1
     local file_path="/nvram/dnsmasq.leases"
-    local search_string="WNXL11BWL"
+    local search_string="$WNX"
     grep -q "$mac_address.*$search_string" "$file_path"
     if [ $? -eq 0 ]; then
         return 0

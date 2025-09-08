@@ -1129,6 +1129,40 @@ webconfig_error_t translate_mesh_sta_info_to_em_bss_config(wifi_vap_info_t *vap,
     return webconfig_error_none;
 }
 
+void fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_info_t *vap,
+    radio_interface_mapping_t *radio_iface_map)
+{
+
+    if (ap_info == NULL || vap == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
+        return false;
+    }
+
+    memset(ap_info, 0, sizeof(em_ap_mld_info_t));
+
+    ap_info->mac_addr_valid = true;
+    memcpy(&ap_info->mac_addr, vap->u.bss_info.mld_info.common_info.mld_addr,
+        sizeof(mac_address_t));
+    strncpy(ap_info->ssid, vap->u.bss_info.ssid, sizeof(ssid_t));
+
+    // Todo: VAP structure currently does not have below details, so set it to default for testing.
+    ap_info->str = true;
+    ap_info->nstr = false;
+    ap_info->emlsr = true;
+    ap_info->emlmr = false;
+
+    ap_info->num_affiliated_ap++;
+    em_affiliated_ap_info_t *aff = &ap_info->affiliated_ap[0];
+    memset(aff, 0, sizeof(*aff));
+
+    aff->mac_addr_valid = true;
+    aff->link_id_valid = true;
+    strncpy((char *)aff->ruid.name, radio_iface_map->radio_name, sizeof(aff->ruid.name));
+    mac_address_from_name(radio_iface_map->interface_name, aff->ruid.mac);
+    memcpy(&aff->mac_addr, &vap->u.bss_info.bssid, sizeof(mac_address_t));
+    aff->link_id = vap->u.bss_info.mld_info.common_info.mld_link_id;
+}
+
 // translate_vap_object_to_easymesh_for_dml() converts DML data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data_t *data)
 {
@@ -1251,6 +1285,23 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
             } else {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_easymesh;
+            }
+
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+                // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
+                // details for STA
+                // em_bsta_info_t *bsta_info;
+                // fill_bsta_info_from_vap(&bsta_info, vap, radio_iface_map);
+                // proto->update_bsta_info(proto->data_model, bsta_info);
+            } else {
+                if (vap->u.bss_info.mld_info.common_info.mld_enable == true) {
+                    em_ap_mld_info_t ap_info;
+                    fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map);
+                    proto->update_ap_mld_info(proto->data_model, &ap_info);
+                } else {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: AP MLD is not enabled on vap %s\n",
+                        __func__, __LINE__, vap->vap_name);
+                }
             }
         }
     }
@@ -1827,6 +1878,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
     m2ctrl_radioconfig *radio_config;
     mac_address_t mac;
     em_haul_type_t haultype;
+    char bssid_mac_str[32] = {};
 
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -1956,6 +2008,44 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                     }
                 }
             }
+        }
+
+        if (vap->vap_mode == wifi_vap_mode_ap) {
+            uint8_mac_to_string_mac(vap->u.bss_info.bssid, bssid_mac_str);
+
+            em_ap_mld_info_t *ap_mld_info = proto->get_ap_mld_frm_bssid(proto->data_model,
+                vap->u.bss_info.bssid);
+            if (!ap_mld_info) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,
+                    "%s:%d: No AP MLD information available for bssid %s\n", __func__, __LINE__,
+                    bssid_mac_str);
+                continue;
+            }
+
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Found AP MLD information for bssid=%s\n",
+                __func__, __LINE__, bssid_mac_str);
+
+            // ToDo : Update vap structure based on ap_mld_info
+            /* Commented below code as we dont proper value for MLD AP sub doc.
+             Currently not needed as mld details are updated from vap structure itself and we are
+             not changing. memcpy(vap->u.bss_info.mld_info.common_info.mld_addr,
+             &ap_mld_info->mac_addr, sizeof(mac_address_t)); strncpy(vap->u.bss_info.ssid,
+             ap_mld_info->ssid, sizeof(ssid_t));
+
+             for (i = 0; i < ap_mld_info->num_affiliated_ap; i++) {
+                 //em_affiliated_ap_info_t *affiliated_ap = &ap_mld_info->affiliated_ap[i];
+                 if (memcmp(ap_mld_info->affiliated_ap[i].mac_addr, vap->u.bss_info.bssid,
+             sizeof(mac_address_t)) == 0) { vap->u.bss_info.mld_info.common_info.mld_link_id =
+             ap_mld_info->affiliated_ap[i].link_id; break;
+                 }
+             } */
+
+        } else if (vap->vap_mode == wifi_vap_mode_sta) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap_mode:%d\n", __func__, __LINE__,
+                vap->vap_mode);
+            // ToDo : Update vap structure based on sta_mld_info
+            // em_sta_mld_info_t *sta_mld_info = proto->get_sta_mld_info(proto->data_model,
+            // vap->u.sta_info.bssid);
         }
     }
 
@@ -2781,7 +2871,9 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_em_get_bss_info_t get_bss, ext_proto_em_get_op_class_info_t get_op_class,
         ext_proto_get_first_sta_info_t get_first_sta, ext_proto_get_next_sta_info_t get_next_sta,
         ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac,
-        ext_proto_put_scan_results_t put_scan_res)
+        ext_proto_put_scan_results_t put_scan_res, ext_proto_update_ap_mld_info_t update_ap_mld,
+        ext_proto_update_bsta_mld_info_t update_bsta_mld, ext_proto_update_assoc_sta_mld_info_t update_assoc_sta_mld,
+        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid)
 {
     proto->data_model = data_model;
     proto->m2ctrl_radioconfig = m2ctrl_radioconfig;
@@ -2804,4 +2896,8 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
     proto->put_sta_info = put_sta;
     proto->get_bss_info_with_mac = get_bss_with_mac;
     proto->put_scan_results = put_scan_res;
+    proto->update_ap_mld_info = update_ap_mld;
+    proto->update_bsta_mld_info = update_bsta_mld;
+    proto->update_assoc_sta_mld_info = update_assoc_sta_mld;
+    proto->get_ap_mld_frm_bssid = get_ap_mld_frm_bssid;
 }
