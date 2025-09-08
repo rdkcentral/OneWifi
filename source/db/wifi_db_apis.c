@@ -7169,7 +7169,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif  /* defined(_PLATFORM_BANANAPI_R4_) */
 #endif /* defined(CONFIG_IEEE80211BE) */
 
-
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
 #endif
