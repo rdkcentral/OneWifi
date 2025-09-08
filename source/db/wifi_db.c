@@ -205,7 +205,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         cfg.amsduTid[j] = FALSE;
     }
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_XER10_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
     if (cfg.band == WIFI_FREQUENCY_6_BAND) {
         for (int j = 0; j < 5; j++) {
             cfg.amsduTid[j] = TRUE;
