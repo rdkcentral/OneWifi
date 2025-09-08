@@ -4806,7 +4806,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_WNXL11BWL_PRODUCT_REQ_)
+    defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
                 config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
                 wifi_util_info_print(WIFI_DB,
@@ -4818,7 +4818,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_WNXL11BWL_PRODUCT_REQ_)
+       // defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_STATS_FLAG) {
@@ -7227,7 +7227,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_WNXL11BWL_PRODUCT_REQ_)
+    defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         if (!isVapSTAMesh(vap_index)) {
             cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
             wifi_util_info_print(WIFI_DB, "%s:%d vap_index:%d hostap_mgt_frame_ctrl:%d\n", __func__,
@@ -7235,7 +7235,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_WNXL11BWL_PRODUCT_REQ_)
+       // defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         cfg.u.bss_info.interop_ctrl = false;
         cfg.u.bss_info.inum_sta = 0;
         wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d interop_ctrl:%d inum_sta:%d \n", __func__,
