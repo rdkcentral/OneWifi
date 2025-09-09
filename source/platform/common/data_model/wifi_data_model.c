@@ -579,19 +579,19 @@ bus_error_t ssid_get_param_value(char *event_name, raw_data_t *p_data, struct bu
     uint32_t index = 0;
     char     extension[64] = {0};
     wifi_vap_info_t *vap_param;
-    wifi_dml_data_model_t *p_dml_param = get_dml_data_model_param();
     dml_callback_table_t dml_data_cb = {
         ssid_get_param_bool_value, ssid_get_param_int_value, ssid_get_param_uint_value, ssid_get_param_string_value,
         ssid_set_param_bool_value, ssid_set_param_int_value, ssid_set_param_uint_value, ssid_set_param_string_value
     };
 
     sscanf(event_name, "Device.WiFi.SSID.%d.%s", &index, extension);
-    if (p_dml_param->table_ssid_index < index) {
-        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong ssid get index for:[%s]:%d\r\n", __func__, __LINE__, event_name, index);
-        return bus_error_invalid_input;
-    }
 
     vap_param = (wifi_vap_info_t *)getVapInfo(index - 1);
+    if (vap_param == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong vap index:%d for:[%s]\r\n", __func__,
+            __LINE__, index, event_name);
+        return bus_error_invalid_input;
+    }
     
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d SSID Event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
     bus_error_t status = dml_get_set_param_value(&dml_data_cb, DML_GET_CB, (void *)vap_param, extension, p_data);
@@ -607,19 +607,19 @@ bus_error_t ssid_set_param_value(char *event_name, raw_data_t *p_data, struct bu
     uint32_t index = 0;
     char     extension[64] = {0};
     wifi_vap_info_t *vap_param;
-    wifi_dml_data_model_t *p_dml_param = get_dml_data_model_param();
     dml_callback_table_t dml_data_cb = {
         ssid_get_param_bool_value, ssid_get_param_int_value, ssid_get_param_uint_value, ssid_get_param_string_value,
         ssid_set_param_bool_value, ssid_set_param_int_value, ssid_set_param_uint_value, ssid_set_param_string_value
     };
 
     sscanf(event_name, "Device.WiFi.SSID.%d.%s", &index, extension);
-    if (p_dml_param->table_ssid_index < index) {
-        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong ssid set index for:[%s]:%d\r\n", __func__, __LINE__, event_name, index);
-        return bus_error_invalid_input;
-    }
 
     vap_param = (wifi_vap_info_t *)getVapInfo(index - 1);
+    if (vap_param == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong vap index:%d for:[%s]\r\n", __func__,
+            __LINE__, index, event_name);
+        return bus_error_invalid_input;
+    }
 
     wifi_util_info_print(WIFI_DMCLI,"%s:%d SSID Event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
     bus_error_t status = dml_get_set_param_value(&dml_data_cb, DML_SET_CB, (void *)vap_param, extension, p_data);
