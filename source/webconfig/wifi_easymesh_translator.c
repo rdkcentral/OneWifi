@@ -511,6 +511,7 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
     vap_row->enabled = vap->u.bss_info.enabled;
     strncpy(vap_row->ssid, vap->u.bss_info.ssid, sizeof(vap_row->ssid));
     vap_row->vap_index = vap->vap_index;
+    strncpy(vap_row->mesh_ap_passphrase, vap->u.bss_info.security.u.key.key, sizeof(vap_row->mesh_ap_passphrase));
 
     // Set the em_bss_info_t vendor_elements to the same as wifi_vap_info_t vendor_elements
     memset(vap_row->vendor_elements, 0, sizeof(vap_row->vendor_elements));
