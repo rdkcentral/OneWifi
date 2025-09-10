@@ -6841,6 +6841,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #if defined (NEWPLATFORM_PORT) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
+
+#if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
@@ -7202,7 +7207,8 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
+    defined(_PLATFORM_BANANAPI_R4_)
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
