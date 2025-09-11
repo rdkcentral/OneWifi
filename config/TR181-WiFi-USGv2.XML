@@ -1486,6 +1486,28 @@ INSTMSMT_PH2 -->
                         </parameter>
                     </parameters>
                     <objects>
+                        <object>
+                            <name>AMSDU_TID</name>
+                            <objectType>staticTable</objectType>
+                            <maxInstance>8</maxInstance>
+                            <functions>
+                                <func_GetEntryCount>AMSDU_TID_GetEntryCount</func_GetEntryCount>
+                                <func_GetEntry>AMSDU_TID_GetEntry</func_GetEntry>
+                                <func_GetParamBoolValue>AMSDU_TID_GetParamBoolValue</func_GetParamBoolValue>
+                                <func_SetParamBoolValue>AMSDU_TID_SetParamBoolValue</func_SetParamBoolValue>
+                                <func_Validate>AMSDU_TID_Validate</func_Validate>
+                                <func_Commit>AMSDU_TID_Commit</func_Commit>
+                                <func_Rollback>AMSDU_TID_Rollback</func_Rollback>
+                            </functions>
+                            <parameters>
+                                <parameter>
+                                    <name>Enable</name>
+                                    <type>boolean</type>
+                                    <syntax>bool</syntax>
+                                    <writable>true</writable>
+                                </parameter>
+                            </parameters>
+                        </object>
 <!-- INSTMSMT_PH2
                         <object>
                             <name>X_TCH_COM_11nCalcResult</name>
@@ -1811,7 +1833,7 @@ INSTMSMT_PH2 -->
 									<func_Commit>BandSetting_Commit</func_Commit>
 									<func_Rollback>BandSetting_Rollback</func_Rollback>
 								</functions>
-								<parameters>	
+								<parameters>
 									<parameter>
 										<name>UtilizationThreshold</name>
 										<type>int</type>
