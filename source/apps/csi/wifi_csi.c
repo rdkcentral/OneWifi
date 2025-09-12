@@ -33,7 +33,7 @@ INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
     wifi_event_t *event = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    wifi_util_dbg_print(WIFI_APPS, "%s: CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
+    wifi_util_dbg_print(WIFI_APPS, "%s: AMEDPA922 CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 
     event = create_wifi_event(sizeof(wifi_csi_dev_t), wifi_event_type_csi, wifi_event_type_csi_data); 
