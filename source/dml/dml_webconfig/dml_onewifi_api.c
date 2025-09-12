@@ -1802,3 +1802,19 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
     return TRUE;
 }
+UINT get_dml_wifi7_radio_modes()
+{
+    return get_wifidb_wifi7_radio_modes();
+}
+
+int update_dml_apmld_info()
+{
+    if(get_wifidb_apmld_info() == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
+}
