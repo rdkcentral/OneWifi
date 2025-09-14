@@ -257,6 +257,10 @@ WiFi_GetParamBoolValue
     }
 
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+	if (ParamName == NULL) {
+		return FALSE;
+	}
+	
     if (strcmp(ParamName, "ApplyRadioSettings") == 0)
     {
         /* always return false when get */
@@ -492,7 +496,7 @@ WiFi_GetParamIntValue
     UNREFERENCED_PARAMETER(hInsContext);
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
 
-    if (pcfg== NULL)
+    if ((pcfg == NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
@@ -587,14 +591,16 @@ WiFi_GetParamUlongValue
 {
     UNREFERENCED_PARAMETER(hInsContext);
 
-    /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "Status") == 0)
-    {
-        UINT numOfRadios = get_num_radio_dml();
-        *puLong = numOfRadios;
-        return TRUE;
-    }
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	if( ParamName != NULL ) {
+	    /* check the parameter name and return the corresponding value */
+	    if (strcmp(ParamName, "Status") == 0)
+	    {
+	        UINT numOfRadios = get_num_radio_dml();
+	        *puLong = numOfRadios;
+	        return TRUE;
+	    }
+	    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	}
     return FALSE;
 }
 /**********************************************************************  
@@ -849,6 +855,9 @@ WiFi_SetParamBoolValue
         return FALSE;
     }
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
+	if (ParamName == NULL) {
+		return FALSE;
+	}
     if (strcmp(ParamName, "ApplyRadioSettings") == 0)
     {
         if (bValue == TRUE){
@@ -1462,9 +1471,9 @@ WiFi_SetParamIntValue
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t *) get_dml_cache_global_wifi_config();
 
-    if (global_wifi_config == NULL)
+    if ((global_wifi_config == NULL) || (ParamName == NULL))
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config Or Inv Param\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
 
@@ -1594,7 +1603,7 @@ WiFi_SetParamUlongValue
     UNREFERENCED_PARAMETER(hInsContext);
 
     /* check the parameter name and set the corresponding value */
-    if (strcmp(ParamName, "Status") == 0)
+    if ( (ParamName != NULL) && (strcmp(ParamName, "Status") == 0) )
     {
         return TRUE;
     }
@@ -1631,7 +1640,7 @@ WiFiRegion_GetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "Code") == 0)
+    if ( (ParamName != NULL) && (strcmp(ParamName, "Code") == 0) )
     {
         AnscCopyString(pValue,pcfg->wifi_region_code);
         return 0;
@@ -1697,7 +1706,7 @@ WiFiRegion_SetParamStringValue
         return FALSE;
     }
 
-    if (strcmp(ParamName, "Code") == 0)
+    if ( (ParamName != NULL) && (strcmp(ParamName, "Code") == 0) )
     {
         if (strcmp(requestorStr, BS_SOURCE_RFC_STR) == 0 && strcmp(wifiRegionUpdateSource, BS_SOURCE_WEBPA_STR) == 0)
         {
@@ -1908,7 +1917,7 @@ Radio_GetParamBoolValue
     dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
     wifi_radio_capabilities_t radio_capab = ((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop.radiocap[instance_number];
 
-    if(rcfg == NULL) {
+    if((rcfg == NULL) || (ParamName == NULL)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -2103,7 +2112,8 @@ Radio_GetParamBoolValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* if(ParamName != NULL) { 
+		CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName));  }	*/
     return FALSE;
 }
 
@@ -2160,7 +2170,7 @@ Radio_GetParamIntValue
     }
     dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
-    if(rcfg == NULL) {
+    if((rcfg == NULL) || (ParamName == NULL)) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
@@ -2239,7 +2249,8 @@ Radio_GetParamIntValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* if(ParamName != NULL) {
+		CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); } */
     return FALSE;
 }
 
@@ -2325,6 +2336,9 @@ Radio_GetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+		return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "X_COMCAST_COM_RadioUpTime") == 0)
     {
@@ -2555,7 +2569,8 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* if(ParamName != NULL) {
+		CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); } */
     return FALSE;
 }
 
@@ -2625,6 +2640,10 @@ Radio_GetParamStringValue
         return FALSE;
     }
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+
+	if(ParamName == NULL) {
+		return -1;
+	}
 
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Alias") == 0)
@@ -3047,7 +3066,8 @@ Radio_GetParamStringValue
         return 0;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* if (ParamName != NULL) {
+		CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); } */
     return -1;
 }
 
@@ -3138,6 +3158,9 @@ Radio_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+		return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "Enable") == 0)
     {
@@ -3462,7 +3485,10 @@ Radio_SetParamIntValue
         return FALSE;
     }
  
-    /* check the parameter name and set the corresponding value */
+    if(ParamName == NULL) {
+		return FALSE;
+	}
+	/* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "MCS") == 0)
     {
         rcfg->MCS = iValue;
@@ -3687,7 +3713,9 @@ Radio_SetParamUlongValue
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Offchannel distro not present\n", __FUNCTION__,__LINE__);
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
-
+	if(ParamName == NULL) {
+		return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "Channel") == 0)
     {
@@ -4119,7 +4147,10 @@ Radio_SetParamStringValue
         return FALSE;
     }
 
-    /* check the parameter name and set the corresponding value */
+    if(ParamName == NULL) {
+		return FALSE;
+	}
+	/* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "Alias") == 0)
     {
         if (strcmp(pString, rcfg->Alias) == 0) {
