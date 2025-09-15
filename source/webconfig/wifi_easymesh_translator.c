@@ -640,7 +640,10 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     }
                     mgmt = (struct ieee80211_mgmt *) assoc_dev_data->sta_data.msg_data.data;
                     tag_len = assoc_dev_data->sta_data.msg_data.frame.len - IEEE80211_HDRLEN - sizeof(mgmt->u.assoc_req);
-                    memcpy(em_sta_dev_info->frame_body, mgmt->u.assoc_req.variable, sizeof(em_sta_dev_info->frame_body));
+                    if (tag_len > EM_MAX_FRAME_BODY_LEN) {
+                        tag_len = EM_MAX_FRAME_BODY_LEN-1;
+                    }
+                    memcpy(em_sta_dev_info->frame_body, mgmt->u.assoc_req.variable, tag_len);
                     em_sta_dev_info->frame_body_len = tag_len;
 
                     if (assoc_dev_data->client_state == 0) {

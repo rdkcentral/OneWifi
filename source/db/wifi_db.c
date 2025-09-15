@@ -101,6 +101,9 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
+#if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
@@ -437,7 +440,14 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
+#if defined(_PLATFORM_BANANAPI_R4_)
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+#else
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+#endif // _PLATFORM_BANANAPI_R4_
             }
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
             cfg.u.bss_info.bssHotspot = false;
