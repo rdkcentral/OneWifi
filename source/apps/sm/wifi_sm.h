@@ -31,6 +31,7 @@ typedef struct {
     hash_map_t           *report_tasks_map;
     unsigned int off_chan_report_counter[MAX_NUM_RADIOS];
     unsigned int on_chan_report_counter[MAX_NUM_RADIOS];
+    bool         sm_app_enable_subscribed;
 } sm_data_t;
 
 typedef enum {
