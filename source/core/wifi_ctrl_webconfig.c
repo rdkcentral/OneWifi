@@ -1594,6 +1594,10 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     if (IS_CHANGED(old->variant,new->variant)) return true;
     if (IS_CHANGED(old->EcoPowerDown,new->EcoPowerDown)) return true;
     if (IS_CHANGED(old->DFSTimer, new->DFSTimer)) return true;
+    for (int i = 0; i < MAX_AMSDU_TID; ++i)
+    {
+        if (IS_CHANGED(old->amsduTid[i], new->amsduTid[i])) return true;
+    }
 
     return false;
 }

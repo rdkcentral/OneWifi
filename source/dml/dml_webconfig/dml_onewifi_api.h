@@ -66,6 +66,7 @@ typedef struct {
     BOOL    DCSSupported;
     BOOL    ReverseDirectionGrant;
     BOOL    AggregationMSDU;
+    BOOL    AmsduTid[MAX_AMSDU_TID];
     BOOL    AutoBlockAck;
     BOOL    DeclineBARequest;
     BOOL    WirelessOnOffButton;
