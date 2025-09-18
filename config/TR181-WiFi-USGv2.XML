@@ -2975,6 +2975,12 @@ INSTMSMT_PH2 -->
                                     <type>string</type>
                                     <syntax>string</syntax>
                                     <writable>true</writable>
+			        </parameter>
+                                <parameter>
+                                    <name>InteropDetails</name>
+                                    <type>string</type>
+                                    <syntax>string</syntax>
+                                    <writable>true</writable>
                                 </parameter>
                             </parameters>
                             <objects>

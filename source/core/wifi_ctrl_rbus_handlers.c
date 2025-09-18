@@ -427,6 +427,35 @@ int tcm_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t 
     return RETURN_OK;
 }
 
+int interop_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t src_mac,
+ mac_addr_str_t ap_mac, int type, int status, int ap)
+{
+    bus_error_t rc;
+    char str[2048];
+    memset(str, 0, sizeof(str));
+   wifi_vap_info_t *vap_info = NULL;
+   vap_info = getVapInfo(ap_index);
+   if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+   }
+   snprintf(str, sizeof(str), "%d,%s,%s,%d,%d,%d", (ap_index + 1), src_mac, ap_mac, type, status, ap);
+
+   if (vap_info != NULL) {
+        strncpy(vap_info->u.bss_info.interop_info, str,
+            sizeof(vap_info->u.bss_info.interop_info));
+   }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: Harsha interop details %s \n", __func__, __LINE__, str);
+     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_INTEROP_DETAILS, str);
+     if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
+            __LINE__, rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
+
 int notify_wifi_sec_mode_enabled(wifi_ctrl_t *ctrl, int ap_index, char *old_mode, char *new_mode) {
     bus_error_t rc;
     char str[2048];
