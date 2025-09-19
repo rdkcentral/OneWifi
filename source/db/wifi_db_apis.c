@@ -84,7 +84,10 @@
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100039
 #define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
 #define ONEWIFI_DB_VERSION_STATS_FLAG 100037
-#define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100039
+#define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100040
+#define DEFAULT_WHIX_CHUTILITY_LOGINTERVAL 900
+#define DEFAULT_WHIX_LOGINTERVAL 3600
+#define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100042
 
 #ifdef CONFIG_NO_MLD_ONLY_PRIVATE
 #define MLD_UNIT_COUNT 8
@@ -448,11 +451,22 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
             i++;
         }
         l_radio_cfg->numSecondaryChannels = new_rec->num_secondary_channels;
+
+        i = 0;
+        tmp = new_rec->amsdu_tid;
+        while ((ptr = strchr(tmp, ',')) != NULL)
+        {
+            ptr++;
+            l_radio_cfg->amsduTid[i] = atoi(tmp);
+            tmp = ptr;
+            i++;
+        }
+
         f_radio_cfg->OffChanTscanInMsec = new_rec->Tscan;
         f_radio_cfg->OffChanNscanInSec = (new_rec->Nscan == 0) ? 0 : (24*3600)/(new_rec->Nscan);
         f_radio_cfg->OffChanTidleInSec = new_rec->Tidle;
         f_radio_cfg->radio_index = index;
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d OperatingEnviroment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down= %d dfs_timer:%d radar_Detected:%s \n",__func__, __LINE__,l_radio_cfg->enable,l_radio_cfg->band,l_radio_cfg->autoChannelEnabled,l_radio_cfg->channel,l_radio_cfg->channelWidth,l_radio_cfg->variant,l_radio_cfg->csa_beacon_count,l_radio_cfg->countryCode,l_radio_cfg->operatingEnvironment,l_radio_cfg->DCSEnabled,l_radio_cfg->numSecondaryChannels,new_rec->secondary_channels_list,l_radio_cfg->dtimPeriod,l_radio_cfg->beaconInterval,l_radio_cfg->operatingClass,l_radio_cfg->basicDataTransmitRates,l_radio_cfg->operationalDataTransmitRates,l_radio_cfg->fragmentationThreshold,l_radio_cfg->guardInterval,l_radio_cfg->transmitPower,l_radio_cfg->rtsThreshold,l_radio_cfg->factoryResetSsid,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->ctsProtection,l_radio_cfg->obssCoex,l_radio_cfg->stbcEnable,l_radio_cfg->greenFieldEnable,l_radio_cfg->userControl,l_radio_cfg->adminControl,l_radio_cfg->chanUtilThreshold,l_radio_cfg->chanUtilSelfHealEnable, l_radio_cfg->EcoPowerDown, l_radio_cfg->DFSTimer, l_radio_cfg->radarDetected);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d OperatingEnviroment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down= %d dfs_timer:%d radar_Detected:%s amsdu_tid: [%d, %d, %d, %d, %d, %d, %d, %d] \n",__func__, __LINE__,l_radio_cfg->enable,l_radio_cfg->band,l_radio_cfg->autoChannelEnabled,l_radio_cfg->channel,l_radio_cfg->channelWidth,l_radio_cfg->variant,l_radio_cfg->csa_beacon_count,l_radio_cfg->countryCode,l_radio_cfg->operatingEnvironment,l_radio_cfg->DCSEnabled,l_radio_cfg->numSecondaryChannels,new_rec->secondary_channels_list,l_radio_cfg->dtimPeriod,l_radio_cfg->beaconInterval,l_radio_cfg->operatingClass,l_radio_cfg->basicDataTransmitRates,l_radio_cfg->operationalDataTransmitRates,l_radio_cfg->fragmentationThreshold,l_radio_cfg->guardInterval,l_radio_cfg->transmitPower,l_radio_cfg->rtsThreshold,l_radio_cfg->factoryResetSsid,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->ctsProtection,l_radio_cfg->obssCoex,l_radio_cfg->stbcEnable,l_radio_cfg->greenFieldEnable,l_radio_cfg->userControl,l_radio_cfg->adminControl,l_radio_cfg->chanUtilThreshold,l_radio_cfg->chanUtilSelfHealEnable, l_radio_cfg->EcoPowerDown, l_radio_cfg->DFSTimer, l_radio_cfg->radarDetected, l_radio_cfg->amsduTid[0], l_radio_cfg->amsduTid[1], l_radio_cfg->amsduTid[2], l_radio_cfg->amsduTid[3], l_radio_cfg->amsduTid[4], l_radio_cfg->amsduTid[5], l_radio_cfg->amsduTid[6], l_radio_cfg->amsduTid[7]);
         wifi_util_dbg_print(WIFI_DB, "%s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu, Tidle=%lu\n", __FUNCTION__, __LINE__, f_radio_cfg->OffChanTscanInMsec, f_radio_cfg->OffChanNscanInSec, f_radio_cfg->OffChanTidleInSec);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     } else {
@@ -1244,9 +1258,19 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.assoc_count_threshold =
             new_rec->assoc_count_threshold;
         g_wifidb->global_config.global_parameters.assoc_gate_time = new_rec->assoc_gate_time;
-        g_wifidb->global_config.global_parameters.whix_log_interval = new_rec->whix_log_interval;
-        g_wifidb->global_config.global_parameters.whix_chutility_loginterval =
-            new_rec->whix_chutility_loginterval;
+        if (new_rec->whix_log_interval > 0) {
+            g_wifidb->global_config.global_parameters.whix_log_interval =
+                new_rec->whix_log_interval;
+        } else {
+            g_wifidb->global_config.global_parameters.whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
+        }
+        if (new_rec->whix_chutility_loginterval > 0) {
+            g_wifidb->global_config.global_parameters.whix_chutility_loginterval =
+                new_rec->whix_chutility_loginterval;
+        } else {
+            g_wifidb->global_config.global_parameters.whix_chutility_loginterval =
+                DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
+        }
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
             new_rec->rss_memory_restart_threshold_low;
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
@@ -1931,8 +1955,8 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     unsigned int i = 0;
     int k = 0;
     int len = 0;
-    char channel_list[BUFFER_LENGTH_WIFIDB] = {0};
-    len = sizeof(channel_list)-1;
+    char list_buffer[BUFFER_LENGTH_WIFIDB] = {0};
+    len = sizeof(list_buffer)-1;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -2002,15 +2026,28 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
             wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Maximum size reached for secondary_channels_list\n",__func__, __LINE__);
             break;
         }
-        snprintf(channel_list+k,sizeof(channel_list)-k,"%d,",config->channelSecondary[i]);
-        wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Channel list %s %d\t",__func__, __LINE__,channel_list,strlen(channel_list));
-        k = strlen(channel_list);
+        snprintf(list_buffer+k,sizeof(list_buffer)-k,"%d,",config->channelSecondary[i]);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Channel list %s %d\t",__func__, __LINE__,list_buffer,strlen(list_buffer));
+        k = strlen(list_buffer);
     }
-    strncpy(cfg.secondary_channels_list,channel_list,sizeof(cfg.secondary_channels_list)-1);
+    strncpy(cfg.secondary_channels_list,list_buffer,sizeof(cfg.secondary_channels_list)-1);
     cfg.num_secondary_channels = config->numSecondaryChannels;
     strncpy(cfg.radio_name,name,sizeof(cfg.radio_name)-1);
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d  radio_stats_measuring_rate = %d   radio_stats_measuring_interval = %d cts_protection = %d obss_coex = %d  stbc_enable = %d  greenfield_enable = %d user_control = %d  admin_control = %d  chan_util_threshold = %d  chan_util_selfheal_enable = %d  eco_power_down = %d DFSTimer:%d radarDetected:%s \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->DCSEnabled,config->numSecondaryChannels,cfg.secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringRate,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable,config->EcoPowerDown, config->DFSTimer, config->radarDetected);
+    k = 0;
+    memset(list_buffer, 0, sizeof(list_buffer));
+    for(i=0;i<MAX_AMSDU_TID;i++)
+    {
+        if(k >= (len-1))
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi_Radio_Config table Maximum size reached for amsdu_tid list\n",__func__, __LINE__);
+            break;
+        }
+        snprintf(list_buffer+k,sizeof(list_buffer)-k,"%d,",config->amsduTid[i]);
+        k = strlen(list_buffer);
+    }
+    strncpy(cfg.amsdu_tid,list_buffer,sizeof(cfg.amsdu_tid)-1);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d  radio_stats_measuring_rate = %d   radio_stats_measuring_interval = %d cts_protection = %d obss_coex = %d  stbc_enable = %d  greenfield_enable = %d user_control = %d  admin_control = %d  chan_util_threshold = %d  chan_util_selfheal_enable = %d  eco_power_down = %d DFSTimer:%d radarDetected:%s, amsduTid: %d, %d, %d, %d, %d, %d, %d, %d\n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->DCSEnabled,config->numSecondaryChannels,cfg.secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringRate,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable,config->EcoPowerDown, config->DFSTimer, config->radarDetected, config->amsduTid[0], config->amsduTid[1],config->amsduTid[2], config->amsduTid[3],config->amsduTid[4], config->amsduTid[5],config->amsduTid[6], config->amsduTid[7]);
     wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n", __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec, feat_config->OffChanTidleInSec);
     if(onewifi_ovsdb_table_upsert_f(g_wifidb->wifidb_sock_path,&table_Wifi_Radio_Config,&cfg,false,insert_filter) == false)
     {
@@ -2180,7 +2217,17 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     }
     config->numSecondaryChannels = cfg->num_secondary_channels;
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d operatingEnvironment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down=%d DFSTimer:%d radarDetected:%s \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->operatingEnvironment,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable, config->EcoPowerDown, config->DFSTimer, config->radarDetected);
+    i = 0;
+    tmp = cfg->amsdu_tid;
+    while ((ptr = strchr(tmp, ',')) != NULL)
+    {
+        ptr++;
+        config->amsduTid[i] = atoi(tmp);
+        tmp = ptr;
+        i++;
+    }
+
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d operatingEnvironment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down=%d DFSTimer:%d radarDetected:%s, amsduTid:[%d, %d, %d, %d, %d, %d, %d, %d]\n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->operatingEnvironment,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable, config->EcoPowerDown, config->DFSTimer, config->radarDetected, config->amsduTid[0], config->amsduTid[1], config->amsduTid[2], config->amsduTid[3], config->amsduTid[4], config->amsduTid[5], config->amsduTid[6], config->amsduTid[7]);
     wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n", __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec, feat_config->OffChanTidleInSec);
     free(cfg);
     return RETURN_OK;
@@ -3282,8 +3329,16 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->good_rssi_threshold = pcfg->good_rssi_threshold;
         config->assoc_count_threshold = pcfg->assoc_count_threshold;
         config->assoc_gate_time = pcfg->assoc_gate_time;
-        config->whix_log_interval = pcfg->whix_log_interval;
-        config->whix_chutility_loginterval = pcfg->whix_chutility_loginterval;
+        if (pcfg->whix_log_interval > 0) {
+            config->whix_log_interval = pcfg->whix_log_interval;
+        } else {
+            config->whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
+        }
+        if (pcfg->whix_chutility_loginterval > 0) {
+            config->whix_chutility_loginterval = pcfg->whix_chutility_loginterval;
+        } else {
+            config->whix_chutility_loginterval = DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
+        }        
         config->memwraptool.rss_check_interval = pcfg->rss_check_interval;
         config->memwraptool.rss_threshold = pcfg->rss_threshold;
         config->memwraptool.rss_maxlimit = pcfg->rss_maxlimit;
@@ -4577,6 +4632,7 @@ static void wifidb_global_config_upgrade()
             wifi_util_dbg_print(WIFI_DB, "whix_log_interval is %d and str is %s \n",
                 g_wifidb->global_config.global_parameters.whix_log_interval, str);
         } else {
+            g_wifidb->global_config.global_parameters.whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
             wifi_util_error_print(WIFI_DB, ":%s:%d str value for whix_log_interval is null \r\n",
                 __func__, __LINE__);
         }
@@ -4595,6 +4651,8 @@ static void wifidb_global_config_upgrade()
                 __func__, __LINE__,
                 g_wifidb->global_config.global_parameters.whix_chutility_loginterval, str);
         } else {
+             g_wifidb->global_config.global_parameters.whix_chutility_loginterval = 
+                DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
             wifi_util_error_print(WIFI_DB,
                 ":%s:%d str value for whix_chutility_loginterval is null \r\n", __func__, __LINE__);
         }
@@ -4813,9 +4871,11 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG) {
-            config->vap_array[i].u.bss_info.am_config.npc.speed_tier = isVapLnfPsk(config->vap_array[i].vap_index) ? DEFAULT_MANAGED_WIFI_SPEED_TIER : 0;
-            wifi_util_dbg_print(WIFI_DB, "%s:%d Update speed_tier:%d for vap_index:%d \n", __func__, __LINE__,
-                config->vap_array[i].u.bss_info.am_config.npc.speed_tier, config->vap_array[i].vap_index);
+            config->vap_array[i].u.bss_info.am_config.npc.speed_tier =
+                isVapLnfPsk(config->vap_array[i].vap_index) ? DEFAULT_MANAGED_WIFI_SPEED_TIER : 0;
+            wifi_util_dbg_print(WIFI_DB, "%s:%d Update speed_tier:%d for vap_index:%d \n", __func__,
+                __LINE__, config->vap_array[i].u.bss_info.am_config.npc.speed_tier,
+                config->vap_array[i].vap_index);
             wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                 &rdk_config[i]);
         }
@@ -4832,6 +4892,18 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             if (sec->wpa3_transition_disable != false) {
                 sec->wpa3_transition_disable = false;
                 wifi_util_dbg_print(WIFI_DB, "%s:%d force change wpa3 transition disable state to false\r\n", __func__, __LINE__);
+                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                    &rdk_config[i]);
+            }
+        }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG) {
+            wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
+                __func__, __LINE__, g_wifidb->db_version);
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 0;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                     &rdk_config[i]);
             }
@@ -4917,6 +4989,23 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
             wifi_util_info_print(WIFI_DB, "%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__,
                 __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
                 (char *)vap_config->u.bss_info.security.u.radius.s_ip);
+            continue;
+        }
+        if (isVapLnfPsk(vap_config->vap_index) &&
+            (!vap_config->u.bss_info.mdu_enabled &&
+                !strstr(vap_config->repurposed_vap_name, "managed_guest_")) &&
+            vap_config->u.bss_info.enabled) {
+            vap_config->u.bss_info.enabled = false;
+            rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+            if (rdk_vap_config == NULL) {
+                wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n",
+                    __func__, __LINE__, vap_config->radio_index);
+                continue;
+            }
+            update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+            wifi_util_info_print(WIFI_DB,
+                "%s:%d: vap_config->u.bss_info.enabled = false for the vap_name = %s\n", __func__,
+                __LINE__, vap_config->vap_name);
             continue;
         }
     }
@@ -6752,6 +6841,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #if defined (NEWPLATFORM_PORT) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
+
+#if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
@@ -6875,6 +6969,29 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         Fcfg.OffChanNscanInSec = 0;
         Fcfg.OffChanTidleInSec = 0;
     }
+
+    for (int j = 0; j < MAX_AMSDU_TID; j++) {
+        cfg.amsduTid[j] = FALSE;
+    }
+
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        for (int i = 0; i < 5; i++)
+        {
+            cfg.amsduTid[i] = TRUE;
+        }
+    } else {
+        for (int i = 0; i < 4; i++)
+        {
+            cfg.amsduTid[i] = TRUE;
+        }
+    }
+#elif defined(_XB8_PRODUCT_REQ_)
+    cfg.amsduTid[0] = TRUE;
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        cfg.amsduTid[4] = TRUE;
+    }
+#endif
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     /* Call the function to update the operating classes based on Country code and Radio */
@@ -7090,7 +7207,8 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
+    defined(_PLATFORM_BANANAPI_R4_)
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -7148,12 +7266,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
+
 #if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
-        if (isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true; 
         }
 #else
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
 #endif
@@ -7163,6 +7282,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.enabled = false;
         }
 #endif
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.enabled = false;
+        }
 #if defined(_SR213_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
         cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
 #else
@@ -7304,8 +7426,8 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.good_rssi_threshold = -65;
     cfg.assoc_count_threshold = 0;
     cfg.assoc_gate_time  = 0;
-    cfg.whix_log_interval = 3600;
-    cfg.whix_chutility_loginterval = 900;
+    cfg.whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
+    cfg.whix_chutility_loginterval = DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
     cfg.memwraptool.rss_check_interval = DEFAULT_RSS_CHECK_INTERVAL;
     cfg.memwraptool.rss_threshold = DEFAULT_RSS_THRESHOLD;
     cfg.memwraptool.rss_maxlimit = DEFAULT_RSS_MAXLIMIT;
@@ -7486,9 +7608,14 @@ void wifidb_init_default_value()
         }
         wifidb_init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
         wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
-        wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
-        wifidb_init_postassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.postassoc);
-
+        if (isVapHotspot(vap_index)) {
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d: Updating preassoc and postassoc only for hotspot vaps\n", __func__,
+                __LINE__);
+            wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
+            wifidb_init_postassoc_conn_ctrl_config_default(vap_index,
+                &vapInfo->u.bss_info.postassoc);
+        }
       //As wifidb_init_vap_config_default() does memcpy of wifi_vap_info_t structure
       //so here we are restoring the interface mac into wifi_vap_info_t from temporary array
         if (isVapSTAMesh(vap_index) == TRUE) {
@@ -8048,6 +8175,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
         global_cfg->whix_log_interval = atoi(str);
         wifi_util_dbg_print(WIFI_MGR,"global_cfg->whix_log_interval is %d and str is %s and atoi(str) is %d\n", global_cfg->whix_log_interval, str, atoi(str));
     } else {
+        global_cfg->whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
         wifi_util_error_print(WIFI_MGR,":%s:%d str value for whix_log_interval is null \n", __func__, __LINE__);
     }
 
@@ -8057,6 +8185,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
         global_cfg->whix_chutility_loginterval = atoi(str);
         wifi_util_dbg_print(WIFI_MGR,"%s:%d global_cfg->whix_chutility_log_interval is %d and str is %s and atoi(str) is %d\n", __func__, __LINE__, global_cfg->whix_chutility_loginterval, str, atoi(str));
     } else {
+        global_cfg->whix_chutility_loginterval = DEFAULT_WHIX_CHUTILITY_LOGINTERVAL;
         wifi_util_error_print(WIFI_MGR,":%s:%d str value for whix_chutility_loginterval is null \n", __func__, __LINE__);
     }
 
@@ -9053,7 +9182,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
-        is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
+        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
         is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
         is_device_type_vbvxer5() == true || is_device_type_xle() == true) {

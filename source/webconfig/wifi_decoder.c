@@ -766,6 +766,7 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 {
     const cJSON *param, *venue;
     bool invalid_venue_group_type = false;
+    bool venue_option_present = false;
 
     decode_param_bool(interworking, "InterworkingEnable", param);
     interworking_info->interworking.interworkingEnabled = (param->type & cJSON_True) ? true:false;
@@ -810,8 +811,16 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 
     decode_param_object(interworking, "Venue", venue);
 
-    decode_param_bool(venue, "VenueOptionPresent", param);
-    interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true : false;
+    decode_param_allow_empty_bool(venue, "VenueOptionPresent", param, venue_option_present);
+    if (!venue_option_present) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d: VenueOptionPresent not present, setting to false\n", __func__, __LINE__);
+        interworking_info->interworking.venueOptionPresent = false;
+    } else {
+        decode_param_bool(venue, "VenueOptionPresent", param);
+        interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true :
+                                                                                          false;
+    }
 
     decode_param_integer(venue, "VenueType", param);
     interworking_info->interworking.venueType = param->valuedouble;
@@ -3169,6 +3178,27 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_string(obj_radio, "RadarDetected", param);
     strncpy(radio_info->radarDetected, param->valuestring, sizeof(radio_info->radarDetected) - 1);
     radio_info->radarDetected[sizeof(radio_info->radarDetected) - 1] = '\0';
+
+    // AmsduTid
+    unsigned int amsdu_tid_idx = 0;
+    decode_param_string(obj_radio, "Amsdu_Tid", param);
+    ptr = param->valuestring;
+    tmp = param->valuestring;
+
+    while ((ptr = strchr(tmp, ',')) != NULL) {
+        ptr++;
+        radio_info->amsduTid[amsdu_tid_idx] = (BOOL)atoi(tmp);
+        tmp = ptr;
+        amsdu_tid_idx++;
+    }
+    // Last AMSDU TID
+    radio_info->amsduTid[amsdu_tid_idx++] = atoi(tmp);
+
+    if (amsdu_tid_idx != MAX_AMSDU_TID) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "number of AMSDU TIDs decoded - %d does not match required amount - %d!\n", amsdu_tid_idx, MAX_AMSDU_TID);
+        return webconfig_error_decode;
+    }
 
     if (decode_radio_operating_classes(obj_radio, radio_info) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio operation classes decode failed\n",

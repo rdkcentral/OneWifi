@@ -1,3 +1,22 @@
+/************************************************************************************
+  If not stated otherwise in this file or this component's LICENSE file the
+  following copyright and licenses apply:
+  
+  Copyright 2025 RDK Management
+  
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  
+  http://www.apache.org/licenses/LICENSE-2.0
+  
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ **************************************************************************/
+
 #include <stdbool.h>
 #include "wifi_hal.h"
 #include "wifi_db.h"
@@ -82,6 +101,9 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
+#if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
@@ -181,6 +203,27 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         Fcfg.OffChanNscanInSec = 0;
         Fcfg.OffChanTidleInSec = 0;
     }
+
+    for (int j = 0; j < MAX_AMSDU_TID; j++) {
+        cfg.amsduTid[j] = FALSE;
+    }
+
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        for (int j = 0; j < 5; j++) {
+            cfg.amsduTid[j] = TRUE;
+        }
+    } else {
+        for (int j = 0; j < 4; j++) {
+            cfg.amsduTid[j] = TRUE;
+        }
+    }
+#elif defined(_XB8_PRODUCT_REQ_)
+    cfg.amsduTid[0] = TRUE;
+    if (cfg.band == WIFI_FREQUENCY_6_BAND) {
+        cfg.amsduTid[4] = TRUE;
+    }
+#endif
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     /* Call the function to update the operating classes based on Country code and Radio */
@@ -397,7 +440,14 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
+#if defined(_PLATFORM_BANANAPI_R4_)
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+#else
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+#endif // _PLATFORM_BANANAPI_R4_
             }
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
             cfg.u.bss_info.bssHotspot = false;
@@ -442,16 +492,19 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 /*For XER5/XB10/XER10 2.4G XHS is disable by default*/
 #if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || \
     defined(_SCXF11BFL_PRODUCT_REQ_)
-        if (isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
 #else
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
 #endif 
+        if (isVapLnfPsk(vap_index)) {
+            cfg.u.bss_info.enabled = false;
+        }
 
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
