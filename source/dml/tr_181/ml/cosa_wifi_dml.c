@@ -4455,7 +4455,7 @@ ReceivedSignalLevel_GetParamIntValue
     )
 {
 	
-    if(!hInsContext)
+    if((!hInsContext) || (ParamName == NULL))
         return FALSE;
 	
     if (strcmp(ParamName, "ReceivedSignalLevel") == 0)   {
@@ -4532,7 +4532,10 @@ Stats3_GetParamBoolValue
         BOOL                        *pBool
     )
 {
-
+    if(ParamName == NULL) {
+        return FALSE;
+	}
+	
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsEnable") == 0)    {
          return TRUE;
@@ -4548,6 +4551,9 @@ Stats3_SetParamBoolValue
         BOOL                        bValue
     )
 {
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsEnable") == 0)   {
         return TRUE;
     }
@@ -4613,6 +4619,9 @@ Stats3_GetParamIntValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "X_COMCAST-COM_NoiseFloor") == 0)    {
         *pInt = monitor_param->radio_data[instance_number].NoiseFloor; 
@@ -4746,6 +4755,9 @@ Stats3_GetParamUlongValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "BytesSent") == 0)   {
         *puLong = monitor_param->radio_data[instance_number].radio_BytesSent;
@@ -4866,7 +4878,10 @@ Stats3_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
         return FALSE;
     }
- 
+
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringRate") == 0)   {
         if( wifi_radio->radioStatsMeasuringRate == (UINT)iValue)
         {
@@ -5089,6 +5104,9 @@ SSID_GetParamBoolValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
             return FALSE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Enable") == 0)
     {
@@ -5124,7 +5142,7 @@ SSID_GetParamBoolValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -5222,6 +5240,9 @@ SSID_GetParamUlongValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Status") == 0)
     {
@@ -5264,7 +5285,7 @@ SSID_GetParamUlongValue
     }
 
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -5325,6 +5346,9 @@ SSID_GetParamStringValue
         return FALSE;
     }
     memset(str,0,sizeof(str));
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Alias") == 0)
     {
@@ -5453,7 +5477,7 @@ SSID_GetParamStringValue
         return 0;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL )); */
     return -1;
 }
 
@@ -5528,6 +5552,9 @@ SSID_SetParamBoolValue
             return FALSE;
     }
     /* check the parameter name and set the corresponding value */
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "Enable") == 0)
     {
         rdk_wifi_vap_info_t *rdk_vap_info;
@@ -5622,7 +5649,7 @@ SSID_SetParamBoolValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -5773,6 +5800,9 @@ SSID_SetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "Alias") == 0)
     {
@@ -5826,7 +5856,7 @@ SSID_SetParamStringValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -6085,6 +6115,9 @@ Stats4_GetParamUlongValue
     )
 {
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "BytesSent") == 0)
     {
@@ -6212,7 +6245,7 @@ Stats4_GetParamUlongValue
         *puLong = 0;
         return TRUE;
     }
-	/* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	/* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -6440,22 +6473,27 @@ AccessPoint_GetParamBoolValue
         return FALSE;
     }
 
-    if (strcmp(ParamName, "Enable") == 0)
-    {
-        /* collect value */
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            *pBool = pcfg->u.sta_info.enabled;
-            return TRUE;
-        }
-        *pBool = pcfg->u.bss_info.enabled;
-        return TRUE;
-    }
+	if(ParamName != NULL) {
+	    if (strcmp(ParamName, "Enable") == 0)
+	    {
+	        /* collect value */
+	        if (isVapSTAMesh(pcfg->vap_index)) {
+	            *pBool = pcfg->u.sta_info.enabled;
+	            return TRUE;
+	        }
+	        *pBool = pcfg->u.bss_info.enabled;
+	        return TRUE;
+	    }
+	}
 
     if (isVapSTAMesh(pcfg->vap_index)) {
         *pBool = TRUE;
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "IsolationEnable") == 0)
     {
@@ -6625,13 +6663,13 @@ AccessPoint_GetParamBoolValue
         *pBool = pcfg->u.bss_info.hostap_mgt_frame_ctrl;
         return TRUE;
     }
-
-    if (AnscEqualString(ParamName, "InteropTelemetryCtrl", TRUE)) {
+    
+	if (strcmp(ParamName, "InteropTelemetryCtrl") == 0) {
         *pBool = pcfg->u.bss_info.interop_ctrl;
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -6690,6 +6728,9 @@ AccessPoint_GetParamIntValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "X_CISCO_COM_WmmNoAck") == 0)
     {
@@ -6742,14 +6783,14 @@ AccessPoint_GetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "InteropNumSta", TRUE))
+    if (strcmp(ParamName, "InteropNumSta") == 0)
     {
         *pInt = pcfg->u.bss_info.inum_sta;
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d inumsta:%d \n", __FUNCTION__,__LINE__,pcfg->u.bss_info.inum_sta);
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -6807,6 +6848,9 @@ AccessPoint_GetParamUlongValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Status") == 0)
     {
@@ -6896,7 +6940,7 @@ AccessPoint_GetParamUlongValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -6958,6 +7002,9 @@ AccessPoint_GetParamStringValue
     }
     instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
 
+	if(ParamName == NULL) {
+        return -1;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Alias") == 0)
     {
@@ -7001,7 +7048,7 @@ AccessPoint_GetParamStringValue
 
     }
 
-    if( AnscEqualString(ParamName, "MLD_Addr", TRUE))
+    if (strcmp(ParamName, "MLD_Addr") == 0)
     {
         char buff[24] = {0};
         if (isVapSTAMesh(pcfg->vap_index)) {
@@ -7032,7 +7079,7 @@ AccessPoint_GetParamStringValue
         memcpy(pValue, buff, strlen(buff)+1);
         return 0;
      }
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return -1;
 }
 
@@ -7108,29 +7155,33 @@ AccessPoint_SetParamBoolValue
         return FALSE;
     }
 
-    if (strcmp(ParamName, "Enable") == 0)
-    {
-        if (global_wifi_config->global_parameters.force_disable_radio_feature)
-        {
-            CcspWifiTrace(("RDK_LOG_ERROR, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n" ));
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n", __FUNCTION__,__LINE__);
-            return FALSE;
-        }
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            vapInfo->u.sta_info.enabled = bValue;
-        } else {
-            vapInfo->u.bss_info.enabled = bValue;
-        }
-        set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
-
+	if(ParamName != NULL) {
+	    if (strcmp(ParamName, "Enable") == 0)
+	    {
+	        if (global_wifi_config->global_parameters.force_disable_radio_feature)
+	        {
+	            CcspWifiTrace(("RDK_LOG_ERROR, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n" ));
+	            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n", __FUNCTION__,__LINE__);
+	            return FALSE;
+	        }
+	        if (isVapSTAMesh(pcfg->vap_index)) {
+	            vapInfo->u.sta_info.enabled = bValue;
+	        } else {
+	            vapInfo->u.bss_info.enabled = bValue;
+	        }
+	        set_dml_cache_vap_config_changed(instance_number - 1);
+	        return TRUE;
+	    }
+	}
 
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     //Following parameters are nots supported in Mesh STA Mode
     if (strcmp(ParamName, "IsolationEnable") == 0)
     {
@@ -7340,7 +7391,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "InteropTelemetryCtrl", TRUE))
+    if (strcmp(ParamName, "InteropTelemetryCtrl") == 0)
     {
         vapInfo->u.bss_info.interop_ctrl = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
@@ -7349,7 +7400,7 @@ AccessPoint_SetParamBoolValue
             __LINE__, vapInfo->u.bss_info.interop_ctrl);
         return TRUE;
     }
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -7419,6 +7470,9 @@ AccessPoint_SetParamIntValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "X_CISCO_COM_WmmNoAck") == 0)
     {
@@ -7482,8 +7536,8 @@ AccessPoint_SetParamIntValue
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
-
-    if( AnscEqualString(ParamName, "InteropNumSta", TRUE))
+    
+	if (strcmp(ParamName, "InteropNumSta") == 0)
     {
         if (vapInfo->u.bss_info.inum_sta == (UINT)iValue)
         {
@@ -7500,7 +7554,7 @@ AccessPoint_SetParamIntValue
         return (TRUE);
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -7563,7 +7617,10 @@ AccessPoint_SetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
- 
+
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "RetryLimit") == 0)
     {
@@ -7601,8 +7658,8 @@ AccessPoint_SetParamUlongValue
         cfg->associated_devices_highwatermark_threshold = uValue;
         return TRUE;
     }
-
-    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
+    
+	if (strcmp(ParamName, "MLD_ID") == 0)
     {
         if ( vapInfo->u.bss_info.mld_info.common_info.mld_id == (unsigned int)uValue )
         {
@@ -7614,7 +7671,7 @@ AccessPoint_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
+    if (strcmp(ParamName, "MLD_Link_ID") == 0)
     {
         if ( vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue )
         {
@@ -7626,7 +7683,7 @@ AccessPoint_SetParamUlongValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -7940,6 +7997,9 @@ Security_GetParamBoolValue
             return FALSE;
         }
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "X_RDKCENTRAL-COM_TransitionDisable") == 0)
     {
         *pBool = l_security_cfg->wpa3_transition_disable;
@@ -7990,7 +8050,10 @@ Security_GetParamIntValue
         int*                        pInt
     )
 {
-    if (strcmp(ParamName, "X_CISCO_COM_RadiusReAuthInterval") == 0)
+    if(ParamName == NULL) {
+        return FALSE;
+	}
+	if (strcmp(ParamName, "X_CISCO_COM_RadiusReAuthInterval") == 0)
     {
         /* collect value */
         *pInt = 0;
@@ -8002,7 +8065,7 @@ Security_GetParamIntValue
         *pInt = 0;
         return TRUE;
     }
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
 
     return TRUE;
 }
@@ -8070,7 +8133,9 @@ Security_GetParamUlongValue
         }
     }
 
-
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "RekeyingInterval") == 0)
     {
         /* collect value */
@@ -8105,8 +8170,8 @@ Security_GetParamUlongValue
         *puLong = pcfg->u.radius.s_port;
         return TRUE;
     }
-
-    if( AnscEqualString(ParamName, "RepurposedSecondaryRadiusServerPort", TRUE))
+    
+	if (strcmp(ParamName, "RepurposedSecondaryRadiusServerPort") == 0)
     {
         /* collect value */
         *puLong = pcfg->repurposed_radius.s_port;
@@ -8119,7 +8184,7 @@ Security_GetParamUlongValue
         *puLong = pcfg->u.radius.dasport;
         return TRUE;
     }
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -8240,7 +8305,9 @@ Security_GetParamStringValue
         }
     }
 
-
+	if(ParamName == NULL) {
+        return -1;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "ModesSupported") == 0)
     {
@@ -8408,7 +8475,7 @@ Security_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "RepurposedRadiusServerIPAddr", TRUE))
+    if (strcmp(ParamName, "RepurposedRadiusServerIPAddr") == 0)
     {
         int result;
         result=strcmp((char *)&pcfg->repurposed_radius.ip,"");
@@ -8471,7 +8538,7 @@ Security_GetParamStringValue
         return 0;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return -1;
 }
 
@@ -8547,6 +8614,9 @@ Security_SetParamBoolValue
             return FALSE;
         }
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "X_RDKCENTRAL-COM_TransitionDisable") == 0)
     {
@@ -8564,7 +8634,7 @@ Security_SetParamBoolValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -8606,6 +8676,9 @@ Security_SetParamIntValue
         int                         iValue
     )
 {
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "X_CISCO_COM_RadiusReAuthInterval") == 0)
     {
@@ -8616,8 +8689,7 @@ Security_SetParamIntValue
     {
         return TRUE;
     }
-
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -8692,6 +8764,9 @@ Security_SetParamUlongValue
         }
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "RekeyingInterval") == 0)
     {
@@ -8770,7 +8845,7 @@ Security_SetParamUlongValue
     }
 
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -9605,6 +9680,9 @@ ConnectionControl_GetParamStringValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return -1;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "ClientForceDisassociation") == 0)
     {
@@ -10006,6 +10084,9 @@ PreAssocDeny_GetParamIntValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "TcmWaitTime") == 0)
     {
