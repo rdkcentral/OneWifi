@@ -10203,6 +10203,9 @@ PreAssocDeny_GetParamStringValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return -1;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "RssiUpThresholdSupported") == 0)
     {
@@ -10378,6 +10381,9 @@ PreAssocDeny_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "TcmWaitTime") == 0)
     {
@@ -10518,6 +10524,9 @@ PreAssocDeny_SetParamStringValue
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "RssiUpThreshold") == 0)
     {
@@ -11092,6 +11101,9 @@ PostAssocDisc_GetParamStringValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return -1;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "RssiUpThresholdSupported") == 0)
     {
@@ -11337,6 +11349,9 @@ PostAssocDisc_SetParamStringValue
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "RssiUpThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.postassoc.rssi_up_threshold) == 0) {
@@ -11646,7 +11661,7 @@ WPS_GetParamBoolValue
 {
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
 
-    if (pcfg == NULL)
+    if ((pcfg == NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
@@ -11657,7 +11672,7 @@ WPS_GetParamBoolValue
         return TRUE;
     }
 
-    if (strcmp(ParamName, "Enable") == 0)
+	if (strcmp(ParamName, "Enable") == 0)
     {
         *pBool = pcfg->u.bss_info.wps.enable;
         return TRUE;
@@ -11706,12 +11721,12 @@ WPS_GetParamIntValue
 {
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
 
-    if (pcfg == NULL)
+    if ((pcfg == NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-
+	
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "X_CISCO_COM_WpsPushButton") == 0)
     {
@@ -11818,7 +11833,7 @@ WPS_GetParamStringValue
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
     ULONG vap_index = 0;
     errno_t  rc           = -1;
-    if (pcfg == NULL)
+    if ((pcfg == NULL) || (ParamName == NULL))
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
@@ -12108,6 +12123,9 @@ WPS_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "Enable") == 0) {
         if (vapInfo->u.bss_info.wps.enable != bValue) {
@@ -12179,6 +12197,9 @@ WPS_SetParamIntValue
  
     /* check the parameter name and set the corresponding value */
 #ifdef FEATURE_SUPPORT_WPS
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "X_CISCO_COM_WpsPushButton") == 0) {
         return TRUE;
     }
@@ -12280,6 +12301,9 @@ WPS_SetParamIntValue
                 __FUNCTION__, __LINE__, instance_number);
             return FALSE;
         }
+		if(ParamName == NULL) {
+            return FALSE;
+	    }
         /* check the parameter name and set the corresponding value */
         if (strcmp(ParamName, "ConfigMethodsEnabled") == 0) {
             int match = 0;
@@ -12639,6 +12663,9 @@ InterworkingElement_GetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Internet") == 0)
     {
@@ -12689,7 +12716,7 @@ InterworkingElement_GetParamBoolValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -12795,6 +12822,9 @@ InterworkingElement_GetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "AccessNetworkType") == 0)
     {
@@ -12803,7 +12833,7 @@ InterworkingElement_GetParamUlongValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -12872,6 +12902,9 @@ InterworkingElement_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+        return -1;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "HESSID") == 0)
     {
@@ -12881,7 +12914,7 @@ InterworkingElement_GetParamStringValue
         return 0;
     }
     
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return -1;
 }
 
@@ -12942,6 +12975,9 @@ InterworkingElement_SetParamBoolValue
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Internet") == 0)
     {
@@ -13015,7 +13051,7 @@ InterworkingElement_SetParamBoolValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
     
 }
@@ -13122,6 +13158,9 @@ InterworkingElement_SetParamUlongValue
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "AccessNetworkType") == 0)
     {
@@ -13137,10 +13176,7 @@ InterworkingElement_SetParamUlongValue
             return TRUE;
         }
     }
-
     return FALSE;
-
-
 }
 
 /**********************************************************************  
@@ -13200,15 +13236,18 @@ InterworkingElement_SetParamStringValue
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "HESSID") == 0)
     {
         AnscCopyString(vapInfo->u.bss_info.interworking.interworking.hessid, pString);
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	    set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
     
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -13530,6 +13569,9 @@ BOOL InterworkingElement_Venue_GetParamUlongValue
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "Type") == 0)
     {
         /* collect value */
@@ -13544,7 +13586,7 @@ BOOL InterworkingElement_Venue_GetParamUlongValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -13602,6 +13644,9 @@ InterworkingElement_Venue_SetParamUlongValue
         return FALSE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "Type") == 0)
     {
         int updateInvalidType = 0;
@@ -13718,7 +13763,7 @@ InterworkingElement_Venue_SetParamUlongValue
         }
     }
 
-       /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+       /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 
 
@@ -13734,6 +13779,9 @@ InterworkingElement_GetParamBoolValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "Internet") == 0)
     {
         *pBool = false;
@@ -13765,7 +13813,7 @@ InterworkingElement_GetParamBoolValue
         *pBool = false;
         return TRUE;
     }
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -13794,12 +13842,15 @@ InterworkingElement_GetParamUlongValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "AccessNetworkType") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -13813,6 +13864,9 @@ InterworkingElement_GetParamStringValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
+	if(ParamName == NULL) {
+        return -1;
+	}
     if (strcmp(ParamName, "HESSID") == 0)
     {
         AnscCopyString(pValue, "no support for non xb3");
@@ -13820,7 +13874,7 @@ InterworkingElement_GetParamStringValue
         return 0;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return -1;
 }
 
@@ -13833,6 +13887,9 @@ InterworkingElement_Venue_GetParamUlongValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "Type") == 0)
     {
         /* collect value */
@@ -13847,7 +13904,7 @@ InterworkingElement_Venue_GetParamUlongValue
         return TRUE;
     }
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -13995,13 +14052,16 @@ GASConfig_GetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "PauseForServerResponse") == 0)
     {
         /* collect value */
         *pBool  = pcfg->PauseForServerResponse;
         return TRUE;
     }
-
+	
     return FALSE;
 }
 
@@ -14051,6 +14111,9 @@ GASConfig_GetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* collect value */
     if (strcmp(ParamName, "AdvertisementID") == 0)
     {
@@ -14222,6 +14285,9 @@ GASStats_GetParamUlongValue
     if(ANSC_STATUS_SUCCESS != WiFi_GetGasStats(pGASStats)){
         return FALSE;
     }
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* collect value */
     if (strcmp(ParamName, "AdvertisementID") == 0)
     {
@@ -14344,6 +14410,9 @@ MacFilter_GetParamBoolValue
         return TRUE;
     }
 
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     /* check the parameter name and return the corresponding value */
     if (strcmp(ParamName, "Enable") == 0)
     {
@@ -14368,7 +14437,7 @@ MacFilter_GetParamBoolValue
     }
 
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -14582,8 +14651,11 @@ MacFilter_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
-
-    /* check the parameter name and set the corresponding value */
+	
+    if(ParamName == NULL) {
+        return FALSE;
+	}
+	/* check the parameter name and set the corresponding value */
     if (strcmp(ParamName, "Enable") == 0)
     {
         /* save update to backup */
@@ -14608,7 +14680,7 @@ MacFilter_SetParamBoolValue
     }
 
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName ? ParamName : NULL)); */
     return FALSE;
 }
 
@@ -15025,6 +15097,9 @@ DPP_GetParamUlongValue
         ULONG*                      puLong
     )
 {
+	if(ParamName == NULL) {
+        return FALSE;
+	}
     if (strcmp(ParamName, "Version") == 0)
     {
         return TRUE;
@@ -15079,6 +15154,9 @@ DPP_GetParamStringValue
         ULONG*                      pUlSize
     )
 {
+	if(ParamName == NULL) {
+        return -1;
+	}
     if (strcmp(ParamName, "PrivateSigningKey") == 0)
     {
         AnscCopyString(pValue, "");
@@ -16171,26 +16249,27 @@ AssociatedDevice1_GetParamBoolValue
     memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
 
-    /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "AuthenticationState") == 0)
-    {
-        /* collect value */
-        *pBool = assoc_dev_data->dev_stats.cli_AuthenticationState;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "Active") == 0)
-    {
-        /* collect value */
-        *pBool = assoc_dev_data->dev_stats.cli_Active;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
-    free(assoc_dev_data);
+	if(ParamName != NULL) {
+	    /* check the parameter name and return the corresponding value */
+	    if (strcmp(ParamName, "AuthenticationState") == 0)
+	    {
+	        /* collect value */
+	        *pBool = assoc_dev_data->dev_stats.cli_AuthenticationState;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "Active") == 0)
+	    {
+	        /* collect value */
+	        *pBool = assoc_dev_data->dev_stats.cli_Active;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	}
+	free(assoc_dev_data);
     return FALSE;
 }
 
@@ -16270,57 +16349,59 @@ AssociatedDevice1_GetParamIntValue
     memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
 
-   /* check the parameter name and return the corresponding value */
-   if (strcmp(ParamName, "SignalStrength") == 0)
-   {
-       /* collect value */
-       *pInt = assoc_dev_data->dev_stats.cli_SignalStrength;
-       free(assoc_dev_data);
-       return TRUE;
+   if(ParamName != NULL) {
+	   /* check the parameter name and return the corresponding value */
+	   if (strcmp(ParamName, "SignalStrength") == 0)
+	   {
+	       /* collect value */
+	       *pInt = assoc_dev_data->dev_stats.cli_SignalStrength;
+	       free(assoc_dev_data);
+	       return TRUE;
+	   }
+	
+	
+	   if (strcmp(ParamName, "X_COMCAST-COM_SNR") == 0)
+	   {
+	       /* collect value */
+	       *pInt = assoc_dev_data->dev_stats.cli_SNR;
+	       free(assoc_dev_data);
+	       return TRUE;
+	   }
+	
+	   if (strcmp(ParamName, "X_RDKCENTRAL-COM_SNR") == 0)
+	   {
+	       /* collect value */
+	       *pInt = assoc_dev_data->dev_stats.cli_SNR;
+	       free(assoc_dev_data);
+	       return TRUE;
+	   }
+	
+	   if (strcmp(ParamName, "X_COMCAST-COM_RSSI") == 0)
+	   {
+	       /* collect value */
+	       *pInt = assoc_dev_data->dev_stats.cli_RSSI;
+	       free(assoc_dev_data);
+	       return TRUE;
+	   }
+	
+	   if (strcmp(ParamName, "X_COMCAST-COM_MinRSSI") == 0)
+	   {
+	       /* collect value */
+	       *pInt = assoc_dev_data->dev_stats.cli_MinRSSI;
+	       free(assoc_dev_data);
+	       return TRUE;
+	   }
+	
+	   if (strcmp(ParamName, "X_COMCAST-COM_MaxRSSI") == 0)
+	   {
+	       /* collect value */
+	       *pInt = assoc_dev_data->dev_stats.cli_MaxRSSI;
+	       free(assoc_dev_data);
+	       return TRUE;
+	   }
+	
+	   /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
    }
-
-
-   if (strcmp(ParamName, "X_COMCAST-COM_SNR") == 0)
-   {
-       /* collect value */
-       *pInt = assoc_dev_data->dev_stats.cli_SNR;
-       free(assoc_dev_data);
-       return TRUE;
-   }
-
-   if (strcmp(ParamName, "X_RDKCENTRAL-COM_SNR") == 0)
-   {
-       /* collect value */
-       *pInt = assoc_dev_data->dev_stats.cli_SNR;
-       free(assoc_dev_data);
-       return TRUE;
-   }
-
-   if (strcmp(ParamName, "X_COMCAST-COM_RSSI") == 0)
-   {
-       /* collect value */
-       *pInt = assoc_dev_data->dev_stats.cli_RSSI;
-       free(assoc_dev_data);
-       return TRUE;
-   }
-
-   if (strcmp(ParamName, "X_COMCAST-COM_MinRSSI") == 0)
-   {
-       /* collect value */
-       *pInt = assoc_dev_data->dev_stats.cli_MinRSSI;
-       free(assoc_dev_data);
-       return TRUE;
-   }
-
-   if (strcmp(ParamName, "X_COMCAST-COM_MaxRSSI") == 0)
-   {
-       /* collect value */
-       *pInt = assoc_dev_data->dev_stats.cli_MaxRSSI;
-       free(assoc_dev_data);
-       return TRUE;
-   }
-
-   /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
    free(assoc_dev_data);
    return FALSE;
 }
@@ -16399,81 +16480,83 @@ AssociatedDevice1_GetParamUlongValue
 
     memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
-    
-    if (strcmp(ParamName, "LastDataDownlinkRate") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_LastDataDownlinkRate;
-        free(assoc_dev_data);
-        return TRUE;
-    }
 
-    if (strcmp(ParamName, "LastDataUplinkRate") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "Retransmissions") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_Retransmissions;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_DataFramesSentAck") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentAck;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_DataFramesSentNoAck") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentNoAck;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_BytesSent") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_BytesSent;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_BytesReceived") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_BytesReceived;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_Disassociations") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_Disassociations;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_AuthenticationFailures") == 0)
-    {
-        /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	if(ParamName != NULL) {
+	    if (strcmp(ParamName, "LastDataDownlinkRate") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_LastDataDownlinkRate;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "LastDataUplinkRate") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "Retransmissions") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_Retransmissions;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_DataFramesSentAck") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentAck;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_DataFramesSentNoAck") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentNoAck;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_BytesSent") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_BytesSent;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_BytesReceived") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_BytesReceived;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_Disassociations") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_Disassociations;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_AuthenticationFailures") == 0)
+	    {
+	        /* collect value */
+	        *puLong = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	
+	    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	}
     free(assoc_dev_data);
     return FALSE;
 }
@@ -16562,53 +16645,55 @@ AssociatedDevice1_GetParamStringValue
     
     memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
-    
-    if (strcmp(ParamName, "MACAddress") == 0)
-    {
-        char p_mac[18];
-        snprintf(p_mac, 18, "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1], assoc_dev_data->dev_stats.cli_MACAddress[2],
-                   assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4], assoc_dev_data->dev_stats.cli_MACAddress[5]);
-        if ( AnscSizeOfString(p_mac) < *pUlSize)
-        {
-            AnscCopyString(pValue, p_mac);
-            free(assoc_dev_data);
-            return 0;
-        }
-        else
-        {
-            *pUlSize = AnscSizeOfString(p_mac)+1;
-            free(assoc_dev_data);
-            return 1;
-        }
 
-        return 0;
-    }
-    if (strcmp(ParamName, "X_COMCAST-COM_OperatingStandard") == 0)
-    {
-        /* collect value */
-        rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingStandard);
-        ERR_CHK(rc);
-        free(assoc_dev_data);
-        return 0;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_OperatingChannelBandwidth") == 0)
-    {
-        /* collect value */
-        rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth);
-        ERR_CHK(rc);
-        free(assoc_dev_data);
-        return 0;
-    }
-
-    if (strcmp(ParamName, "X_COMCAST-COM_InterferenceSources") == 0)
-    {
-        /* collect value */
-        rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_InterferenceSources);
-        ERR_CHK(rc);
-        free(assoc_dev_data);
-        return 0;
-    }
+	if(ParamName != NULL) {
+	    if (strcmp(ParamName, "MACAddress") == 0)
+	    {
+	        char p_mac[18];
+	        snprintf(p_mac, 18, "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1], assoc_dev_data->dev_stats.cli_MACAddress[2],
+	                   assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4], assoc_dev_data->dev_stats.cli_MACAddress[5]);
+	        if ( AnscSizeOfString(p_mac) < *pUlSize)
+	        {
+	            AnscCopyString(pValue, p_mac);
+	            free(assoc_dev_data);
+	            return 0;
+	        }
+	        else
+	        {
+	            *pUlSize = AnscSizeOfString(p_mac)+1;
+	            free(assoc_dev_data);
+	            return 1;
+	        }
+	
+	        return 0;
+	    }
+	    if (strcmp(ParamName, "X_COMCAST-COM_OperatingStandard") == 0)
+	    {
+	        /* collect value */
+	        rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingStandard);
+	        ERR_CHK(rc);
+	        free(assoc_dev_data);
+	        return 0;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_OperatingChannelBandwidth") == 0)
+	    {
+	        /* collect value */
+	        rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth);
+	        ERR_CHK(rc);
+	        free(assoc_dev_data);
+	        return 0;
+	    }
+	
+	    if (strcmp(ParamName, "X_COMCAST-COM_InterferenceSources") == 0)
+	    {
+	        /* collect value */
+	        rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_InterferenceSources);
+	        ERR_CHK(rc);
+	        free(assoc_dev_data);
+	        return 0;
+	    }
+	}
 
     free(assoc_dev_data);
     return -1;
@@ -16664,21 +16749,23 @@ BOOL RSSMemory_GetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULON
         return FALSE;
     }
 
-    if (AnscEqualString(ParamName, "Threshold1", TRUE)) {
-        /* collect value */
-        *pULong = pcfg->rss_memory_restart_threshold_low;
-        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d\n", __func__, __LINE__,
-            *pULong);
-        return TRUE;
-    }
-
-    if (AnscEqualString(ParamName, "Threshold2", TRUE)) {
-        /* collect value */
-        *pULong = pcfg->rss_memory_restart_threshold_high;
-        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d\n", __func__, __LINE__,
-            *pULong);
-        return TRUE;
-    }
+	if(ParamName != NULL) {
+		if (strcmp(ParamName, "Threshold1") == 0) {    
+	        /* collect value */
+	        *pULong = pcfg->rss_memory_restart_threshold_low;
+	        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d\n", __func__, __LINE__,
+	            *pULong);
+	        return TRUE;
+	    }
+	
+		if (strcmp(ParamName, "Threshold2") == 0) {    
+	        /* collect value */
+	        *pULong = pcfg->rss_memory_restart_threshold_high;
+	        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d\n", __func__, __LINE__,
+	            *pULong);
+	        return TRUE;
+	    }
+	}
     return FALSE;
 }
 
@@ -16724,36 +16811,38 @@ BOOL RSSMemory_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULON
             __LINE__);
         return FALSE;
     }
-    /* check the parameter name and set the corresponding value */
-    if (AnscEqualString(ParamName, "Threshold1", TRUE)) {
-        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_low == iValue) {
-            return TRUE;
-        }
-        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d New Value = %d\n", __func__,
-            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_low,
-            iValue);
-        global_wifi_config->global_parameters.rss_memory_restart_threshold_low = iValue;
-        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
-            wifi_util_error_print(WIFI_DMCLI,
-                "%s:%d: Failed to push RSS Threshold1 value to onewifi db\n", __func__, __LINE__);
-        }
-        return TRUE;
-    }
-
-    if (AnscEqualString(ParamName, "Threshold2", TRUE)) {
-        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_high == iValue) {
-            return TRUE;
-        }
-        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d New Value = %d\n", __func__,
-            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_high,
-            iValue);
-        global_wifi_config->global_parameters.rss_memory_restart_threshold_high = iValue;
-        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
-            wifi_util_error_print(WIFI_DMCLI,
-                "%s:%d: Failed to push RSS Threshold2 value to onewifi db\n", __func__, __LINE__);
-        }
-        return TRUE;
-    }
+	if(ParamName != NULL) {
+	    /* check the parameter name and set the corresponding value */
+		if (strcmp(ParamName, "Threshold1") == 0) {    
+	        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_low == iValue) {
+	            return TRUE;
+	        }
+	        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d New Value = %d\n", __func__,
+	            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_low,
+	            iValue);
+	        global_wifi_config->global_parameters.rss_memory_restart_threshold_low = iValue;
+	        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+	            wifi_util_error_print(WIFI_DMCLI,
+	                "%s:%d: Failed to push RSS Threshold1 value to onewifi db\n", __func__, __LINE__);
+	        }
+	        return TRUE;
+	    }
+	
+		if (strcmp(ParamName, "Threshold2") == 0) {
+	        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_high == iValue) {
+	            return TRUE;
+	        }
+	        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d New Value = %d\n", __func__,
+	            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_high,
+	            iValue);
+	        global_wifi_config->global_parameters.rss_memory_restart_threshold_high = iValue;
+	        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+	            wifi_util_error_print(WIFI_DMCLI,
+	                "%s:%d: Failed to push RSS Threshold2 value to onewifi db\n", __func__, __LINE__);
+	        }
+	        return TRUE;
+	    }
+	}
     return FALSE;
 }
 
@@ -16842,79 +16931,81 @@ Stats_GetParamUlongValue
 
     memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
-    
-    /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "BytesSent") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_BytesSent;
-        free(assoc_dev_data);
-        return TRUE;
-    }
 
-    if (strcmp(ParamName, "BytesReceived") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_BytesReceived;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "PacketsSent") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_PacketsSent;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "PacketsReceived") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_PacketsReceived;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "ErrorsSent") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_ErrorsSent;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "RetransCount") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_RetransCount;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "FailedRetransCount") == 0)
-    {
-       /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_FailedRetransCount;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "RetryCount") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_RetryCount;
-        free(assoc_dev_data);
-        return TRUE;
-    }
-
-    if (strcmp(ParamName, "MultipleRetryCount") == 0)
-    {
-        /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_MultipleRetryCount;
-        free(assoc_dev_data);
-        return TRUE;
-    }
+	if(ParamName != NULL) {
+	    /* check the parameter name and return the corresponding value */
+	    if (strcmp(ParamName, "BytesSent") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_BytesSent;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "BytesReceived") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_BytesReceived;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "PacketsSent") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_PacketsSent;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "PacketsReceived") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_PacketsReceived;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "ErrorsSent") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_ErrorsSent;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "RetransCount") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_RetransCount;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "FailedRetransCount") == 0)
+	    {
+	       /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_FailedRetransCount;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "RetryCount") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_RetryCount;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	
+	    if (strcmp(ParamName, "MultipleRetryCount") == 0)
+	    {
+	        /* collect value */
+	        *pULong = assoc_dev_data->dev_stats.cli_MultipleRetryCount;
+	        free(assoc_dev_data);
+	        return TRUE;
+	    }
+	}
 
     free(assoc_dev_data);
     return FALSE;
@@ -16959,14 +17050,16 @@ Stats_GetParamBoolValue
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    /* check the parameter name and return the corresponding value */
-    if (strcmp(ParamName, "InstantMeasurementsEnable") == 0)
-    {
-        /* collect value */
-        return TRUE;
-    }
-
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	if(ParamName != NULL) {
+	    /* check the parameter name and return the corresponding value */
+	    if (strcmp(ParamName, "InstantMeasurementsEnable") == 0)
+	    {
+	        /* collect value */
+	        return TRUE;
+	    }
+	
+	    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+	}
     return FALSE;
 }
 
@@ -17001,12 +17094,12 @@ WEPKey64Bit_GetParamStringValue
         ULONG*                      pUlSize
     )
 {
-
-    if (strcmp(ParamName, "WEPKey") == 0)
-    {
-        return 0;
-    }
-
+	if(ParamName != NULL) {
+	    if (strcmp(ParamName, "WEPKey") == 0)
+	    {
+	        return 0;
+	    }
+	}
     return -1;
 }
 
