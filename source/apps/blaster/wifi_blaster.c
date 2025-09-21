@@ -207,7 +207,7 @@ static bool DeviceCpuUtil_DataGet(unsigned int *util_cpu)
             continue;
         }
 
-        sscanf(buff, "cpu %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64, &hz_user, &hz_nice, &hz_system, &hz_idle);
+        sscanf(buff, "cpu %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64, &hz_user, &hz_nice, &hz_system, &hz_idle);
 
         if (init == true) {
 
