@@ -431,8 +431,8 @@ int interop_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_st
  mac_addr_str_t ap_mac, int type, int status, int ap)
 {
     bus_error_t rc;
-    char str[2048];
-    memset(str, 0, sizeof(str));
+    char str[64];
+    memset(str, 0, 64);
    wifi_vap_info_t *vap_info = NULL;
    vap_info = getVapInfo(ap_index);
    if (ctrl == NULL) {
