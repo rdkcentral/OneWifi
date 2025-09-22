@@ -502,7 +502,7 @@ void telemetry_event_interop_extra_details(interop_data_t *sta1, int vapindex, c
     char tmp[128];
     snprintf(telemetry_val, sizeof(telemetry_val),
         "%d,%s,%s,%d,%d,%d,%d,%d,%d",
-        vapindex + 1, ap, mac, sta1->channel, sta1->variant
+        vapindex + 1, ap, mac, sta1->channel, sta1->variant,
         sta1->rssi, sta1->noise_floor, sta1->snr, sta1->channel_util);
     wifi_util_dbg_print(WIFI_MON, "%s:%s\n", telemetry_buff, telemetry_val);
     get_formatted_time(tmp);
