@@ -492,6 +492,25 @@ static bool has_non_zero_counts(const int *status_counts, const int *reason_coun
     return false;
 }
 
+void telemetry_event_interop_extra_details(interop_data_t *sta1, int vapindex, char *mac, char *ap) {
+    if (!mac || !ap) {
+        return;
+    }
+    char telemetry_buff[128] = "INTEROP_EXTRA_DETAILS";
+    char telemetry_val[512] = {0};
+    char buff[1024];
+    char tmp[128];
+    snprintf(telemetry_val, sizeof(telemetry_val),
+        "%d,%s,%s,%d,%d,%d,%d,%d,%d",
+        vapindex + 1, ap, mac, sta1->channel, sta1->variant
+        sta1->rssi, sta1->noise_floor, sta1->snr, sta1->channel_util);
+    wifi_util_dbg_print(WIFI_MON, "%s:%s\n", telemetry_buff, telemetry_val);
+    get_formatted_time(tmp);
+    snprintf(buff, sizeof(buff), "%s:%s:%s\n", tmp, telemetry_buff, telemetry_val);
+    write_to_file(wifi_health_log, buff);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
 void telemetry_event_eap_ap_reason_count(interop_data_t *sta1,int vapindex, char *mac, char *ap) {
     if (!mac || !ap || !has_non_zero_eap_counts(sta1->ap_eap_reason_counts)) {
         return;
@@ -616,6 +635,7 @@ void telemetry_event_code_count(interop_data_t *sta1, int vapindex, char *mac, c
 	telemetry_event_eap_ap_reason_count(sta1, vapindex, mac, ap);
     telemetry_event_reason_status_count(sta1, vapindex, mac, ap);
     telemetry_event_ap_reason_status_count(sta1, vapindex, mac, ap);
+	telemetry_event_interop_extra_details(sta1, vapindex, mac, ap);
 	
 }
 
