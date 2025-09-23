@@ -1418,7 +1418,7 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
 }
 
 bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
-    raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data)
+    bus_data_obj_t *input_data, bus_data_obj_t *output_data, uint8_t input_bus_data)
 {
     rbusError_t rc;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
@@ -1796,6 +1796,12 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return convert_rbus_to_bus_error_code(rc);
 }
 
+static bus_error_t bus_method_async_invoke(bus_handle_t *handle, void *param_name, char *event_name,
+    bus_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout)
+{
+    return bus_error_success;
+}
+
 void rdkb_bus_desc_init(wifi_bus_desc_t *desc)
 {
     desc->bus_init_fn = bus_init;
@@ -1823,4 +1829,5 @@ void rdkb_bus_desc_init(wifi_bus_desc_t *desc)
     desc->bus_unreg_table_row_fn = bus_unreg_table_row;
     desc->bus_add_table_row_fn = bus_add_table_row;
     desc->bus_remove_table_row_fn = bus_remove_table_row;
+    desc->bus_method_async_invoke_fn = bus_method_async_invoke;
 }
