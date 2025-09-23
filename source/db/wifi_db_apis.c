@@ -177,6 +177,8 @@ static char *Tidle = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTidle";
 
 #ifdef ONEWIFI_DB_SUPPORT
 
+static bool dbwritten = false;
+
 void wifidb_init_gas_config_default(wifi_GASConfiguration_t *config);
 
 /************************************************************************************
@@ -217,6 +219,11 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
 
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB, "%s:%d:Delete\n", __func__, __LINE__);
@@ -289,6 +296,11 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
 
     if (mon->mon_type == OVSDB_UPDATE_DEL)
     {
@@ -554,6 +566,11 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
 
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
+
     if (mon->mon_type == OVSDB_UPDATE_DEL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
@@ -734,6 +751,11 @@ void callback_Wifi_Interworking_Config(ovsdb_update_monitor_t *mon,
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
 
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
+
     if (mon->mon_type == OVSDB_UPDATE_DEL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
@@ -838,6 +860,11 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
     rdk_wifi_vap_info_t *l_rdk_vap_info = NULL;
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
 
     if (mon->mon_type == OVSDB_UPDATE_DEL)
     {
@@ -1078,6 +1105,12 @@ void callback_Wifi_GAS_Config(ovsdb_update_monitor_t *mon,
     g_wifidb = get_wifimgr_obj();
     int ad_id = 0;
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
+
     if (mon->mon_type == OVSDB_UPDATE_DEL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
@@ -1131,6 +1164,11 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
     g_wifidb = get_wifimgr_obj();
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
 
     if (mon->mon_type == OVSDB_UPDATE_DEL)
     {
@@ -1266,6 +1304,12 @@ void callback_Wifi_Passpoint_Config(ovsdb_update_monitor_t *mon,
 {
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Enter\n", __func__, __LINE__);
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
+
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Delete\n", __func__, __LINE__);
     }
@@ -1326,6 +1370,12 @@ void callback_Wifi_Anqp_Config(ovsdb_update_monitor_t *mon,
        return;
     }
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
+
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Delete\n", __func__, __LINE__);
     }
@@ -1408,6 +1458,11 @@ void callback_Wifi_Preassoc_Control_Config(ovsdb_update_monitor_t *mon,
     wifi_preassoc_control_t *l_preassoc_ctrl_cfg = NULL;
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
 
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
@@ -1495,6 +1550,11 @@ void callback_Wifi_Postassoc_Control_Config(ovsdb_update_monitor_t *mon,
     wifi_postassoc_control_t *l_postassoc_ctrl_cfg = NULL;
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
 
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
@@ -7342,6 +7402,7 @@ void init_wifidb_data()
         return;
     }
     wifidb_init_default_value();
+    dbwritten = true;
 
     if ((access(ONEWIFI_FR_REBOOT_FLAG, F_OK) == 0) && (access(ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG, F_OK) != 0)) {
         wifidb_update_rfc_config(0, rfc_param);
