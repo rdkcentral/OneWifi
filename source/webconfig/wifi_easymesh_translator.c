@@ -928,6 +928,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     int len = 0;
     unsigned k = 0;
     radio_interface_mapping_t *radio_iface_map = NULL;
+    mac_addr_str_t mac_str;
 
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -945,6 +946,9 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     strncpy(vap_row->ssid, vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid));
     memcpy(vap_row->bssid.mac, vap->u.sta_info.bssid, sizeof(mac_address_t));
     strncpy(vap_row->bssid.name, vap->vap_name, sizeof(vap_row->bssid.name));
+    memcpy(vap_row->sta_mac, vap->u.sta_info.mac, sizeof(mac_address_t));
+    uint8_mac_to_string_mac( vap_row->sta_mac, mac_str);
+    wifi_util_info_print(WIFI_WEBCONFIG, "Backhaul sta mac: %s\n", mac_str);
     convert_vap_name_to_hault_type(&vap_row->id.haul_type, (char *)vap->vap_name);
 
     // Copy security info (mode/AKMs)
