@@ -16,6 +16,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  **************************************************************************/
+
 #include "wifi_data_model_parse.h"
 #include "bus.h"
 #include "wifi_data_model.h"

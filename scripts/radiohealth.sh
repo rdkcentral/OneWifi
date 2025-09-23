@@ -27,6 +27,7 @@ source /etc/device.properties
 fi
 
 source /lib/rdk/t2Shared_api.sh
+XF3="XF3"
 
 exec 3>&1 4>&2 >>$WiFi_Health_LogFile 2>&1
 
@@ -44,7 +45,7 @@ if [ ! -d "$logfolder" ] ; then
 fi
 
 #TCCBR-4090 - Adding markers for chipset failures
-if [ "x$BOX_TYPE" == "xTCCBR" ] || [ "x$BOX_TYPE" == "xXF3" ]; then
+if [ "x$BOX_TYPE" == "xTCCBR" ] || [ "x$BOX_TYPE" == "x${XF3}" ]; then
 #print status of wifi adapter, it will return either up,down
 #or "adaptor not found in case of issue"
 	wl -i wl0 bss > /tmp/wifihealth/tmp_output 2>&1

@@ -24,6 +24,7 @@
 #include <ev.h>
 #include <sys/time.h>
 #include <assert.h>
+#include "const.h"
 #include "wifi_data_plane.h"
 #include "wifi_monitor.h"
 #include "wifi_db.h"
@@ -193,17 +194,17 @@ bool is_supported_gateway_device(const char *model)
 
 bool is_device_type_cmxb7(void)
 {
-    return is_supported_gateway_device("TG4482A");
+    return is_supported_gateway_device(C_TG4);
 }
 
 bool is_device_type_xb7(void)
 {
-    return is_supported_gateway_device("CGM4331COM");
+    return is_supported_gateway_device(C_CGM43);
 }
 
 bool is_device_type_xb8(void)
 {
-    return is_supported_gateway_device("CGM4981COM");
+    return is_supported_gateway_device(C_CGM49);
 }
 bool is_device_type_vbvxb10(void)
 {
@@ -223,7 +224,7 @@ bool is_device_type_sr213(void)
 }
 bool is_device_type_cbr2(void)
 {
-    return is_supported_gateway_device("CGA4332COM");
+    return is_supported_gateway_device(C_CGA4);
 }
 bool is_device_type_scxer10(void)
 {
@@ -235,7 +236,7 @@ bool is_device_type_vbvxer5(void)
 }
 bool is_device_type_xle(void)
 {
-    return is_supported_gateway_device("WNXL11BWL");
+    return is_supported_gateway_device(C_WNX);
 }
 
 int init_wifimgr()

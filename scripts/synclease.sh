@@ -22,6 +22,6 @@
 #restart
 ARM_IP=`grep "ARM_INTERFACE_IP" /etc/device.properties | cut -d "=" -f2`
 if [ ! -f /tmp/login.swr ]; then
-    configparamgen jx /etc/dropbear/elxrretyt.swr /tmp/login.swr
+    /usr/bin/GetConfigFile /tmp/login.swr
 fi
 scp -i /tmp/login.swr root@$ARM_IP:/nvram/dnsmasq.leases /tmp/dnsmasq.leases
