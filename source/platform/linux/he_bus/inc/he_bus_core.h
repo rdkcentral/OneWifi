@@ -88,13 +88,16 @@ typedef he_bus_error_t (*he_bus_table_add_row_handler_t)(char const *tableName,
     char const *aliasName, uint32_t *instNum);
 typedef he_bus_error_t (*he_bus_table_remove_row_handler_t)(char const *rowName);
 typedef he_bus_error_t (*he_bus_method_handler_t)(char const *methodName,
-    he_bus_raw_data_t *inParams, he_bus_raw_data_t *outParams, void *asyncHandle);
+    he_bus_data_object_t const *inParams, he_bus_data_object_t *outParams, void *asyncHandle);
 typedef he_bus_error_t (*he_bus_event_sub_handler_t)(char *eventName,
     he_bus_event_sub_action_t action, int32_t interval, bool *autoPublish);
 
 typedef he_bus_error_t (
     *he_bus_event_consumer_sub_handler_t)(char *event_name, he_bus_raw_data_t *p_data, void *userData);
 typedef he_bus_error_t (*he_bus_event_sub_ex_async_handler_t)(char *event_name, he_bus_error_t ret, void *userData);
+
+typedef void (*he_bus_method_async_resp_handler_t) (char const* methodName, he_bus_error_t ret,
+    he_bus_data_object_t *params, void *userData);
 
 typedef struct he_bus_callback_table {
     he_bus_get_handler_t get_handler; /**< Get parameters handler for the named paramter   */
@@ -194,6 +197,14 @@ typedef struct _he_bus_handle {
     pthread_mutex_t handle_mutex;
 } he_bus_handle;
 
+typedef struct he_bus_method_invoke_async_data {
+    he_bus_handle_t handle;
+    he_bus_name_string_t method_name;
+    he_bus_data_objs_t in_params;
+    he_bus_method_async_resp_handler_t cb;
+    uint32_t timeout;
+} he_bus_method_invoke_async_data_t;
+
 typedef struct traversal_cb_param {
     union {
         hash_map_t *node_data;
@@ -246,6 +257,10 @@ he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char const *event_name, h
 he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data);
 he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char const *event_name,
     he_bus_raw_data_t *p_data);
+he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_name,
+    he_bus_data_objs_t *p_input_data, he_bus_data_objs_t *p_output_data);
+he_bus_error_t he_bus_async_method_invoke(he_bus_handle_t handle, char const *event_name,
+    he_bus_data_objs_t *input_data, he_bus_method_async_resp_handler_t cb, uint32_t timeout);
 
 #ifdef __cplusplus
 }
