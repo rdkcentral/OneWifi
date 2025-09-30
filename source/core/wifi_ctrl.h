@@ -402,6 +402,8 @@ int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
 
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
+UINT get_wifidb_wifi7_radio_modes();
+int get_wifidb_apmld_info();
 
 #ifdef __cplusplus
 }
