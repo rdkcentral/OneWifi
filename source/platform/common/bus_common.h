@@ -35,6 +35,8 @@ extern "C" {
 #define ZERO_TABLE                  0
 #define UNREFERENCED_PARAMETER(_p_) (void)(_p_)
 
+#define MIN_VAL(a, b) (((a) < (b)) ? (a) : (b))
+
 #define BUS_METHOD_GET              0
 #define BUS_METHOD_SET              1
 #define BUS_METHOD_SET_GET         2
@@ -224,8 +226,9 @@ typedef bus_error_t (*bus_get_handler_t)(char *event_name, raw_data_t *p_data, b
 typedef bus_error_t (*bus_set_handler_t)(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data);
 typedef bus_error_t (*bus_table_add_row_handler_t)(char const* tableName, char const* aliasName, uint32_t* instNum);
 typedef bus_error_t (*bus_table_remove_row_handler_t)(char const* rowName);
-typedef bus_error_t (*bus_method_handler_t)(char const* method_name, bus_data_prop_t const *in_params,
-    bus_data_prop_t *out_params, void *async_handle);
+//typedef bus_error_t (*bus_method_handler_t)(char const* method_name, bus_data_prop_t const *in_params,
+    //bus_data_prop_t *out_params, void *async_handle);//we need to do it later
+typedef bus_error_t (*bus_method_handler_t)(char const* methodName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle);
 typedef bus_error_t (*bus_name_sub_handler_t)(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
 
 typedef bus_error_t (*bus_event_sub_handler_t)(char *event_name, raw_data_t *p_data, void *userData);
@@ -252,7 +255,8 @@ typedef bus_error_t (* wifi_bus_event_subscribe_ex_async_t)     (bus_handle_t *h
 typedef bus_error_t (* wifi_bus_event_unsubscribe_t)             (bus_handle_t *handle, char const* event_name);
 typedef bus_error_t (* wifi_bus_event_unsubs_ex_t)              (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub);
 typedef bus_error_t (* wifi_bus_reg_elements_t)                 (bus_handle_t *handle, bus_data_element_t *data_element, uint32_t num_of_element);
-typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, char const *param_name, char const *event_name, bus_data_obj_t *input_data, bus_data_obj_t *output_data, uint8_t input_bus_data);
+//typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, char const *param_name, char const *event_name, bus_data_obj_t *input_data, bus_data_obj_t *output_data, uint8_t input_bus_data);//we will do it later
+typedef bus_error_t (* wifi_bus_method_invoke_t) (bus_handle_t *handle, void *paramName, char *event, raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data);
 typedef bus_error_t (* wifi_bus_reg_table_row_t)                (bus_handle_t *handle, char const *name, uint32_t row_index, char const *alias);
 typedef bus_error_t (* wifi_bus_unreg_table_row_t)              (bus_handle_t *handle, char const *name);
 typedef bus_error_t (* wifi_bus_add_table_row_t)                (bus_handle_t *handle, char const *name, char const *alias, uint32_t *row_index);

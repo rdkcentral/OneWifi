@@ -241,18 +241,20 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
 }
 
 bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
-    bus_data_obj_t *input_data, bus_data_obj_t *output_data, uint8_t input_bus_data)
+    raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data)
 {
     VERIFY_NULL_WITH_RC(handle);
     VERIFY_NULL_WITH_RC(event);
 
-    he_bus_error_t rc;
+    he_bus_error_t rc = he_bus_error_success;
+#if 0
     he_bus_handle_t p_bus_handle = handle->u.he_bus_handle;
 
     rc = he_bus_method_invoke(p_bus_handle, event, input_data, output_data);
     if (rc != HE_BUS_RETURN_OK) {
         wifi_util_error_print(WIFI_BUS,"%s:%d method_invoke is failed:%d\n", __func__, __LINE__, rc);
     }
+#endif//we will do it later
     return (bus_error_t)rc;
 }
 
@@ -378,7 +380,7 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return bus_error_success;
 }
 
-static bus_error_t bus_method_async_invoke(bus_handle_t *handle, void *param_name, char *event_name,
+static bus_error_t bus_method_async_invoke(bus_handle_t *handle, char const *param_name, char const *event_name,
     bus_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout)
 {
     return bus_error_success;

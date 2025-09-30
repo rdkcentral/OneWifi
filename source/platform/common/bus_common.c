@@ -868,7 +868,7 @@ int bus_get_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, r
     if (event_name == NULL) {
         *p_raw_data = p_bus_prop->value;
     } else {
-        uint32_t str_len = min(strlen(event_name) + 1, BUS_MAX_NAME_LENGTH);
+        uint32_t str_len = MIN_VAL(strlen(event_name) + 1, BUS_MAX_NAME_LENGTH);
 
         while(p_bus_prop) {
             if (!strncmp(event_name, p_bus_prop->name, str_len)) {
@@ -912,7 +912,7 @@ int bus_set_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, r
             memset(temp->name, 0, sizeof(temp->name));
         }
 
-        temp->next_raw_data = p_bus_prop->next_data;
+        temp->next_data = p_bus_prop->next_data;
         p_bus_prop->next_data = temp;
     }
 
@@ -924,7 +924,7 @@ int bus_set_raw_data_obj(bus_data_obj_t *p_bus_obj, const char *event_name, raw_
     BUS_CHECK_NULL_WITH_RC(p_bus_obj, RETURN_ERR);
     BUS_CHECK_NULL_WITH_RC(p_raw_data, RETURN_ERR);
 
-    int ret = bus_set_raw_data_prop(&p_bus_obj->data_prop, p_raw_data);
+    int ret = bus_set_raw_data_prop(&p_bus_obj->data_prop, event_name, p_raw_data);
     if (ret == RETURN_OK) {
         p_bus_obj->num_prop++;
     }

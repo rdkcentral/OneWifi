@@ -1418,7 +1418,7 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
 }
 
 bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
-    bus_data_obj_t *input_data, bus_data_obj_t *output_data, uint8_t input_bus_data)
+    raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data)
 {
     rbusError_t rc;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
@@ -1796,7 +1796,7 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return convert_rbus_to_bus_error_code(rc);
 }
 
-static bus_error_t bus_method_async_invoke(bus_handle_t *handle, void *param_name, char *event_name,
+static bus_error_t bus_method_async_invoke(bus_handle_t *handle, char const *param_name, char const *event_name,
     bus_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout)
 {
     return bus_error_success;
