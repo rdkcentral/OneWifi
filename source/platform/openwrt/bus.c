@@ -126,8 +126,8 @@ char *bus_property_get_name(bus_handle_t handle, bus_property_t property)
     return c_ret;
 }
 
-bus_error_t bus_method_invoke(bus_handle_t handle, void *paramName, char *event, bus_data_obj_t *input_data,
-    bus_data_obj_t *output_data, bool input_bus_data)
+bus_error_t bus_method_invoke(bus_handle_t handle, void *paramName, char *event, char *input_data,
+    char *output_data, bool input_bus_data)
 {
     bus_error_t rc = bus_error_success;
     return rc;
@@ -201,7 +201,7 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return bus_error_success;
 }
 
-static bus_error_t bus_method_async_invoke(bus_handle_t *handle, void *param_name, char *event_name,
+static bus_error_t bus_method_async_invoke(bus_handle_t *handle, char const *param_name, char const *event_name,
     bus_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout)
 {
     return bus_error_success;
