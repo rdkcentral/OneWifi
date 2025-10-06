@@ -2981,14 +2981,11 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
         wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular status is not there\n", __func__, __LINE__);
         return 0;
     }
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int ret = -1;
-    if (ctrl == NULL) {
-      wifi_util_dbg_print(WIFI_MON, "%s:%d ctrl is a NULL Pointer \n", __func__,
-                         __LINE__);
-      return ret;
-    }
-    interop_notify_deny_association(ctrl,ap_index,src_mac,dest_mac,type,status,is_ap);
+    radius_eap_data_t radius_eap_data;
+    radius_eap_data.apIndex = ap_index;
+    radius_eap_data.failure_reason = 0;
+    push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
+    interop_notify_deny_association(ap_index,src_mac,dest_mac,type,status,is_ap);
     wifi_util_dbg_print(WIFI_MON, " exit %s:%d done\n", __func__, __LINE__);
     return 0;
 }
@@ -3027,14 +3024,11 @@ int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int re
         wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular reason is not there\n", __func__, __LINE__);
         return 0;
     }
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int ret = -1;
-    if (ctrl == NULL) {
-      wifi_util_dbg_print(WIFI_MON, "%s:%d ctrl is a NULL Pointer \n", __func__,
-                         __LINE__);
-      return ret;
-    }
-    interop_notify_deny_association(ctrl,ap_index,src_mac,dest_mac,type,reason,is_ap);
+    radius_eap_data_t radius_eap_data;
+    radius_eap_data.apIndex = ap_index;
+    radius_eap_data.failure_reason = 0;
+    push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
+    interop_notify_deny_association(ap_index,src_mac,dest_mac,type,reason,is_ap);
     wifi_util_dbg_print(WIFI_MON, " exit %s:%d done", __func__, __LINE__);
     return 0;
 }
@@ -3143,11 +3137,14 @@ int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, in
         radius_eap_data_t radius_eap_data;
         radius_eap_data.apIndex = apIndex;
         radius_eap_data.failure_reason = reason;
-        push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
-		wifi_util_dbg_print(WIFI_MON,"%s Harsha called ctrl_queue \n",__func__);
+        push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);           wifi_util_dbg_print(WIFI_MON,"%s Harsha called ctrl_queue \n",__func__);
      }
      if ( reason == 0 || reason == 2 || reason == 3) {
-		 wifi_util_dbg_print(WIFI_MON,"%s Harsha called process_eap_status \n",__func__);
+        radius_eap_data_t radius_eap_data;
+        radius_eap_data.apIndex = apIndex;
+        radius_eap_data.failure_reason = reason;
+         wifi_util_dbg_print(WIFI_MON,"%s Harsha called process_eap_status \n",__func__);
+	 push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
          process_eap_status(apIndex, mac_addr, reason);
      }
      return 0;

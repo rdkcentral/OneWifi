@@ -2470,6 +2470,10 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
     radius_eap_data_t *radius_eap_data = (radius_eap_data_t *) data;
     mac_addr_str_t  sta_mac_str;
     get_formatted_time(tmp);
+    if (radius_eap_data->failure_reason == 0 || radius_eap_data->failure_reason ==3) {
+	 wifi_util_info_print(WIFI_APPS, "Entering %s\n", __func__);
+        return;
+    }
     wifi_util_info_print(WIFI_APPS, "%s:%d ap index:%d failure reeason:%d \n", __func__, __LINE__,(radius_eap_data->apIndex)+1,radius_eap_data->failure_reason);
     if (radius_eap_data->failure_reason == RADIUS_ACCESS_REJECT) {
         if (isVapHotspotSecure5g(radius_eap_data->apIndex) || \

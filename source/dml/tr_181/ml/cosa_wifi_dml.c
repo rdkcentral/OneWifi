@@ -9869,11 +9869,11 @@ ConnectionControl_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "InteropDetails", TRUE))
+    /*if( AnscEqualString(ParamName, "InteropDetails", TRUE))
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.interop_info);
         return 0;
-    }
+    }*/
     return -1;
 }
 

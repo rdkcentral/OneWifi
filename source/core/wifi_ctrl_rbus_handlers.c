@@ -446,12 +446,6 @@ int interop_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_st
             sizeof(vap_info->u.bss_info.interop_info));
    }
     wifi_util_info_print(WIFI_CTRL, "%s:%d: Harsha interop details %s \n", __func__, __LINE__, str);
-     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_INTEROP_DETAILS, str);
-     if (rc != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
-            __LINE__, rc);
-        return RETURN_ERR;
-    }
     return RETURN_OK;
 }
 
@@ -2441,6 +2435,44 @@ bus_error_t ap_get_handler(char *name, raw_data_t *p_data, bus_user_data_t *user
     return bus_error_invalid_input;
 }
 
+bus_error_t ap_get_interop_details(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    unsigned int idx = 0;
+    int ret;
+    unsigned int num_of_radios = getNumberRadios();
+if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, name);
+uint32_t str_len;
+ret = sscanf(name, "Device.WiFi.AccessPoint.%d.InteropDetails", &idx);
+    if (ret == 1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+        wifi_front_haul_bss_t *vap_bss =  Get_wifi_object_bss_parameter(idx - 1);
+        if(vap_bss->enabled){
+            str_len = strlen((char*)vap_bss->interop_info) + 1;
+            p_data->data_type = bus_data_type_string;
+            p_data->raw_data.bytes = malloc(str_len);
+            if (p_data->raw_data.bytes == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+                __LINE__, str_len);
+             return bus_error_out_of_resources;
+            }
+            strcpy((char *)p_data->raw_data.bytes, (char*)vap_bss->interop_info);
+            p_data->raw_data_len = str_len;
+        }
+        else
+        {
+            wifi_util_dbg_print(WIFI_CTRL, "%s(): else case\n", __FUNCTION__);
+       }
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "%s(): exit\n", __FUNCTION__);
+    return bus_error_success;
+}
+
+
 bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -2574,6 +2606,16 @@ bus_error_t ap_table_addrowhandler(char const *tableName, char const *aliasName,
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.Security.ConnectedRadiusEndpoint", *instNum);
         event->idx = vap_index;
         event->type =  wifi_event_radius_fallback_and_failover;
+        event->subscribed = FALSE;
+        event->num_subscribers = 0;
+        queue_push(ctrl->events_bus_data.events_bus_queue, event);
+    }
+
+    event = (event_bus_element_t *)malloc(sizeof(event_bus_element_t));
+    if (event != NULL) {
+        sprintf(event->name, "Device.WiFi.AccessPoint.%d.InteropDetails", *instNum);
+        event->idx = vap_index;
+        event->type =  wifi_event_radius_eap_failure;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(ctrl->events_bus_data.events_bus_queue, event);
@@ -3199,6 +3241,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
                                 { WIFI_ACCESSPOINT_RADIUS_CONNECTED_ENDPOINT, bus_element_type_method,
                                     { ap_get_radius_connected_endpoint, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false , 0, 0, 0, NULL } },
+                                { WIFI_NOTIFY_INTEROP_DETAILS, bus_element_type_method,
+                                    { ap_get_interop_details, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false , 0, 0, 0, NULL } },
                                 { WIFI_ACCESSPOINT_DIAGDATA, bus_element_type_event,
                                     { ap_get_handler, NULL, NULL, NULL, eventSubHandler, NULL}, slow_speed, ZERO_TABLE,
