@@ -12,6 +12,7 @@ iw phy phy0 interface add wifi1.3 type __ap
 iw phy phy0 interface add wifi2 type __ap
 #iw phy phy0 interface add wifi2.1 type __ap
 #iw phy phy0 interface add wifi2.2 type __ap
+iw phy phy0 interface add mld0 type __ap radios all
 
 #Derive the initial wifi mac address from eth0 or erouter0 address
 #as they are unique for each Banana PI
@@ -106,6 +107,15 @@ ifconfig wifi2 up
 #ifconfig wifi2.1 up
 #ifconfig wifi2.2 up
 
+# Set MLD interface address as wifi2 MAC address + 1
+prefix="${wifi2_mac%:*}"
+last_byte="${wifi2_mac##*:}"
+
+new_byte=$(printf "%02X" $(( (0x$last_byte + 1) & 0xFF )))
+new_mac="$prefix:$new_byte"
+
+ip link set dev "mld0" down
+ip link set dev "mld0" address "$new_mac"
 
 #Copy configuration file to nvram
 mkdir -p /nvram
