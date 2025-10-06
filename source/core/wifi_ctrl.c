@@ -1624,6 +1624,14 @@ int init_wireless_interface_mac()
                         wifi_vap_info->u.bss_info.bssid[4],
                         wifi_vap_info->u.bss_info.bssid[5]
                         );
+#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+                // For fronthaul interfaces, update the mld info
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_enable = hal_vap_info_map.vap_array[j].u.bss_info.mld_info.common_info.mld_enable;
+                memcpy(wifi_vap_info->u.bss_info.mld_info.common_info.mld_addr, hal_vap_info_map.vap_array[j].u.bss_info.mld_info.common_info.mld_addr, sizeof(wifi_vap_info->u.bss_info.mld_info.common_info.mld_addr));
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_link_id = hal_vap_info_map.vap_array[j].u.bss_info.mld_info.common_info.mld_link_id;
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_id = hal_vap_info_map.vap_array[j].u.bss_info.mld_info.common_info.mld_id;
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_apply = hal_vap_info_map.vap_array[j].u.bss_info.mld_info.common_info.mld_apply;
+#endif
             }
         }
     }

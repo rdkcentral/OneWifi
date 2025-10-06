@@ -1997,6 +1997,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                         vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
                     if (vap->vap_mode == wifi_vap_mode_ap) {
                         vap->u.bss_info.security.mode = radio_config->authtype[k];
+                        if(vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+                            vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                        }
                         strncpy(vap->u.bss_info.ssid, radio_config->ssid[k],
                             sizeof(vap->u.bss_info.ssid) - 1);
                         strncpy(vap->u.bss_info.security.u.key.key, radio_config->password[k],
@@ -2004,6 +2007,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                         vap->u.bss_info.enabled = radio_config->enable[k];
                     } else if (vap->vap_mode == wifi_vap_mode_sta) {
                         vap->u.sta_info.security.mode = radio_config->authtype[k];
+                        if(vap->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) {
+                            vap->u.sta_info.security.mfp = wifi_mfp_cfg_optional;
+                        }
                         strncpy(vap->u.sta_info.ssid, radio_config->ssid[k],
                             sizeof(vap->u.sta_info.ssid) - 1);
                         strncpy(vap->u.sta_info.security.u.key.key, radio_config->password[k],
@@ -2260,6 +2266,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
                             vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
                         if (vap->vap_mode == wifi_vap_mode_ap) {
                             vap->u.bss_info.security.mode = radio_config->authtype[k];
+                            if(vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+                                vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                            }
                             strncpy(vap->u.bss_info.ssid, radio_config->ssid[k],
                                 sizeof(vap->u.bss_info.ssid) - 1);
                             strncpy(vap->u.bss_info.security.u.key.key, radio_config->password[k],
@@ -2267,6 +2276,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
                             vap->u.bss_info.enabled = radio_config->enable[k];
                         } else if (vap->vap_mode == wifi_vap_mode_sta) {
                             vap->u.sta_info.security.mode = radio_config->authtype[k];
+                            if(vap->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) {
+                                vap->u.sta_info.security.mfp = wifi_mfp_cfg_optional;
+                            }
                             strncpy(vap->u.sta_info.ssid, radio_config->ssid[k],
                                 sizeof(vap->u.sta_info.ssid) - 1);
                             strncpy(vap->u.sta_info.security.u.key.key, radio_config->password[k],
