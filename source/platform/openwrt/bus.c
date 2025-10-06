@@ -201,6 +201,12 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return bus_error_success;
 }
 
+static bus_error_t bus_method_async_invoke(bus_handle_t *handle, char const *param_name, char const *event_name,
+    bus_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout)
+{
+    return bus_error_success;
+}
+
 static bus_error_t bus_add_table_row(bus_handle_t *handle, char const *name,
     char const *alias, uint32_t *row_index)
 {
@@ -244,4 +250,5 @@ void wifi_bus_init(void)
     g_bus.bus_remove_table_row_fn = bus_remove_table_row;
     g_bus.desc.bus_error_to_string_fn = bus_error_to_string;
     g_bus.desc.bus_convert_handle_to_actual_ptr_fn = bus_convert_handle_to_ptr;
+    g_bus.desc.bus_method_async_invoke_fn = bus_method_async_invoke;
 }

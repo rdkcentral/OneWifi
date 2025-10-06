@@ -1077,10 +1077,10 @@ bus_error_t hotspot_event_handler(char* eventName, bus_event_sub_action_t action
 int wifiapi_result_publish(void)
 {
     bus_error_t rc;
-    int len;
     bus_error_t status = bus_error_success;
-    char data[128];
-    raw_data_t rdata;
+    /* Init with default string for case when wifiapi.result is NULL */
+    char data[] = "Result is not available";
+    raw_data_t rdata = {0};
 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
@@ -1090,23 +1090,20 @@ int wifiapi_result_publish(void)
     }
 
     if (ctrl->wifiapi.result == NULL) {
-        len = strlen("Result not avaiable");
-        strncpy(data, "Result not avaiable", len);
+        rdata.raw_data.bytes = data;
+        rdata.raw_data_len = strlen(data);
     } else {
-        len = strlen(ctrl->wifiapi.result);
-        strncpy(data, ctrl->wifiapi.result, len);
+        rdata.raw_data.bytes = ctrl->wifiapi.result;
+        rdata.raw_data_len = strlen(ctrl->wifiapi.result);
     }
 
-    memset(&rdata, 0, sizeof(raw_data_t));
     rdata.data_type = bus_data_type_string;
-    rdata.raw_data.bytes = (void *)data;
-    rdata.raw_data_len = len;
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_BUS_WIFIAPI_RESULT, &rdata);
 
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d bus_event_publish_fn %s failed: %d\n", __func__,
-            WIFI_BUS_WIFIAPI_RESULT, __LINE__, rc);
+            __LINE__, WIFI_BUS_WIFIAPI_RESULT, rc);
     }
     return rc;
 }
