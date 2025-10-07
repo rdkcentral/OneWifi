@@ -427,18 +427,13 @@ int tcm_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t 
     return RETURN_OK;
 }
 
-int interop_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t src_mac,
+int interop_notify_deny_association(int ap_index, mac_addr_str_t src_mac,
  mac_addr_str_t ap_mac, int type, int status, int ap)
 {
-    bus_error_t rc;
     char str[64];
     memset(str, 0, 64);
    wifi_vap_info_t *vap_info = NULL;
    vap_info = getVapInfo(ap_index);
-   if (ctrl == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
-        return RETURN_ERR;
-   }
    snprintf(str, sizeof(str), "%d,%s,%s,%d,%d,%d", (ap_index + 1), src_mac, ap_mac, type, status, ap);
 
    if (vap_info != NULL) {
