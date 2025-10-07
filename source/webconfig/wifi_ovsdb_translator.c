@@ -1407,6 +1407,7 @@ webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_
         }
     }
 
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: num of mac acl config:%d\n", __func__, __LINE__, row->mac_list_len);
     for (i = 0; i < row->mac_list_len; i++) {
         mac_str = (char *)row->mac_list[i];
         if (mac_str == NULL) {
