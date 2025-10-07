@@ -758,6 +758,7 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
     he_bus_data_object_t *p_obj_data = &p_msg_data->data_obj;
     uint32_t l_num_of_obj = (uint32_t)p_msg_data->num_of_obj;
     he_bus_raw_data_t payload_data = { 0 };
+    he_bus_raw_data_t dummy_data = { 0 };
     he_bus_data_object_t payload_objs = { 0 };
 
     prepare_initial_bus_header(p_res_data, p_msg_data->component_name, he_bus_msg_response);
@@ -797,8 +798,6 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
                 &payload_data, ret);
             break;
         case he_bus_msg_method_event:
-            he_bus_raw_data_t dummy_data = { 0 };
-
             ret = process_bus_method_event(handle, p_msg_data->component_name, p_obj_data,
                 &payload_objs);
             prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
