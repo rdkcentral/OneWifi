@@ -22,6 +22,7 @@
                     "InterfaceList": [
                         {
                             "InterfaceName": "wifi1",
+                            "MldName": "mld0",
                             "Bridge": "br-lan",
                             "vlanId": 0,
                             "vapIndex": 1,
