@@ -2945,7 +2945,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_NOP_FINISHED;
                 break;
             case WIFI_EVENT_RADAR_PRE_CAC_EXPIRED :
-                chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
+                chan_state = CHAN_STATE_DFS_NOP_FINISHED;
                 break;
             case WIFI_EVENT_RADAR_CAC_STARTED :
                 chan_state = CHAN_STATE_DFS_CAC_START;
