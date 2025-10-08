@@ -866,12 +866,14 @@ ANSC_STATUS txRateStrToUint(char *inputStr, UINT *pTxRate)
         isRateInvalid = TRUE;
         for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiDataTxRateMap); seqCounter++)
         {
-            if (AnscEqualString(token, wifiDataTxRateMap[seqCounter].DataTxRateStr, TRUE))
-            {
-                *pTxRate |= wifiDataTxRateMap[seqCounter].DataTxRateEnum;
-                //ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s Token : %s txRate : %d\n", __FUNCTION__, token, *pTxRate);
-                isRateInvalid = FALSE;
-            }
+			if(wifiDataTxRateMap[seqCounter].DataTxRateStr != NULL) {
+	            if (strcmp(token, wifiDataTxRateMap[seqCounter].DataTxRateStr) == 0)
+	            {
+	                *pTxRate |= wifiDataTxRateMap[seqCounter].DataTxRateEnum;
+	                //ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s Token : %s txRate : %d\n", __FUNCTION__, token, *pTxRate);
+	                isRateInvalid = FALSE;
+	            }
+			}
         }
 
         if (isRateInvalid == TRUE)
@@ -906,10 +908,12 @@ ANSC_STATUS isSupportedRate(char *inputStr)
         isRateInvalid = TRUE;
         for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiDataTxRateMap); seqCounter++)
         {
-            if (AnscEqualString(token, wifiDataTxRateMap[seqCounter].DataTxRateStr, TRUE))
-            {
-                isRateInvalid = FALSE;
-            }
+			if(wifiDataTxRateMap[seqCounter].DataTxRateStr != NULL) {
+	            if (strcmp(token, wifiDataTxRateMap[seqCounter].DataTxRateStr) == 0)
+	            {
+	                isRateInvalid = FALSE;
+	            }
+			}
         }
 
         if (isRateInvalid == TRUE)
@@ -1190,24 +1194,28 @@ ANSC_STATUS regDomainStrToEnums(char *pRegDomain, wifi_countrycode_type_t *count
 
     for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiCountryMapMembers); seqCounter++)
     {
-        if (AnscEqualString(tmp_regDomain, wifiCountryMapMembers[seqCounter].countryStr, TRUE))
-        {
-            *countryCode = wifiCountryMapMembers[seqCounter].countryCode;
-            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s Countrycode : %d\n", __FUNCTION__, pRegDomain, *countryCode);
-            isregDomainInvalid = FALSE;
-            break;
-        }
+		if((tmp_regDomain != NULL) && (wifiCountryMapMembers[seqCounter].countryStr != NULL)) {
+	        if (strcmp(tmp_regDomain, wifiCountryMapMembers[seqCounter].countryStr) == 0)
+	        {
+	            *countryCode = wifiCountryMapMembers[seqCounter].countryCode;
+	            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s Countrycode : %d\n", __FUNCTION__, pRegDomain, *countryCode);
+	            isregDomainInvalid = FALSE;
+	            break;
+	        }
+		}
     }
 
     for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiEnviromentMap); seqCounter++)
     {
-        if (AnscEqualString(environment, wifiEnviromentMap[seqCounter].environment, TRUE))
-        {
-            *operatingEnvironment = wifiEnviromentMap[seqCounter].operatingEnvironment;
-            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s OperatingEnvironment : %d\n", __FUNCTION__, pRegDomain, *operatingEnvironment);
-            isregDomainInvalid = FALSE;
-            break;
-        }
+		if((environment != NULL) && (wifiEnviromentMap[seqCounter].environment != NULL)) {
+	        if (strcmp(environment, wifiEnviromentMap[seqCounter].environment) == 0)
+	        {
+	            *operatingEnvironment = wifiEnviromentMap[seqCounter].operatingEnvironment;
+	            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s OperatingEnvironment : %d\n", __FUNCTION__, pRegDomain, *operatingEnvironment);
+	            isregDomainInvalid = FALSE;
+	            break;
+	        }
+		}
     }
 
     if (isregDomainInvalid == TRUE)
@@ -1243,7 +1251,7 @@ ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211V
         isWifiStdInvalid = TRUE;
         for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiStdDmlMap); seqCounter++)
         {
-            if ((AnscEqualString("ax", token, TRUE)) && (instance_number == 0)
+            if ((strcmp("ax", token) == 0) && (instance_number == 0)
                 && !rfc_pcfg->twoG80211axEnable_rfc)
             {
                 CcspWifiTrace(("RDK_LOG_INFO, Radio instanceNumber:%lu Device.WiFi.2G80211axEnable"
@@ -1251,7 +1259,7 @@ ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211V
                     instance_number,rfc_pcfg->twoG80211axEnable_rfc));
                 isWifiStdInvalid = FALSE;
             }
-            else if (AnscEqualString(token, wifiStdDmlMap[seqCounter].wifiStdName, TRUE))
+            else if ((wifiStdDmlMap[seqCounter].wifiStdName != NULL) && (strcmp(token, wifiStdDmlMap[seqCounter].wifiStdName) == 0))
             {
                 *p80211VarEnum |= wifiStdDmlMap[seqCounter].halWifiStd;
                 ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s wifiStandard : %d\n", __FUNCTION__, pWifiStdStr, *p80211VarEnum);
@@ -1283,13 +1291,15 @@ ANSC_STATUS freqBandStrToEnum(char *pFreqBandStr, wifi_freq_bands_t *pFreqBandEn
 
     for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiFreqBandMap); seqCounter++)
     {
-        if (AnscEqualString(pFreqBandStr, wifiFreqBandMap[seqCounter].wifiFreqBandStr, TRUE))
-        {
-            *pFreqBandEnum = wifiFreqBandMap[seqCounter].halWifiFreqBand;
-            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s OperatingFrequencyBand : %d\n", __FUNCTION__, pFreqBandStr, *pFreqBandEnum);
-            isBandInvalid = FALSE;
-            break;
-        }
+		if(wifiFreqBandMap[seqCounter].wifiFreqBandStr != NULL) {
+	        if (strcmp(pFreqBandStr, wifiFreqBandMap[seqCounter].wifiFreqBandStr) == 0)
+	        {
+	            *pFreqBandEnum = wifiFreqBandMap[seqCounter].halWifiFreqBand;
+	            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s OperatingFrequencyBand : %d\n", __FUNCTION__, pFreqBandStr, *pFreqBandEnum);
+	            isBandInvalid = FALSE;
+	            break;
+	        }
+		}
     }
 
     if (isBandInvalid == TRUE)
@@ -1413,34 +1423,36 @@ void WriteWiFiLog(char *msg)
     strncpy(LogLevel, msg, sizeof(LogLevel)-1);
     LogLevel[sizeof(LogLevel)-1] = '\0';
     strtok_r (LogLevel, ",",&LogMsg);
-    if( AnscEqualString(LogLevel, "RDK_LOG_ERROR", TRUE))
-    {
-        CcspTraceError(("%s", LogMsg));
-    }
-    else if( AnscEqualString(LogLevel, "RDK_LOG_WARN", TRUE))
-    {
-        CcspTraceWarning(("%s", LogMsg));
-    }
-    else if( AnscEqualString(LogLevel, "RDK_LOG_NOTICE", TRUE))
-    {
-        CcspTraceNotice(("%s", LogMsg));
-    }
-    else if( AnscEqualString(LogLevel, "RDK_LOG_INFO", TRUE))
-    {
-        CcspTraceInfo(("%s", LogMsg));
-    }
-    else if( AnscEqualString(LogLevel, "RDK_LOG_DEBUG", TRUE))
-    {
-        CcspTraceDebug(("%s", LogMsg));
-    }
-    else if( AnscEqualString(LogLevel, "RDK_LOG_FATAL", TRUE))
-    {
-        CcspTraceCritical(("%s", LogMsg));
-    }
-    else
-    {
-        CcspTraceInfo(("%s", LogMsg));
-    }
+	if(LogLevel != NULL) {
+	    if (strcmp(LogLevel, "RDK_LOG_ERROR") == 0)
+	    {
+	        CcspTraceError(("%s", LogMsg));
+	    }
+	    else if (strcmp(LogLevel, "RDK_LOG_WARN") == 0)
+	    {
+	        CcspTraceWarning(("%s", LogMsg));
+	    }
+	    else if (strcmp(LogLevel, "RDK_LOG_NOTICE") == 0)
+	    {
+	        CcspTraceNotice(("%s", LogMsg));
+	    }
+	    else if (strcmp(LogLevel, "RDK_LOG_INFO") == 0)
+	    {
+	        CcspTraceInfo(("%s", LogMsg));
+	    }
+	    else if (strcmp(LogLevel, "RDK_LOG_DEBUG") == 0)
+	    {
+	        CcspTraceDebug(("%s", LogMsg));
+	    }
+	    else if (strcmp(LogLevel, "RDK_LOG_FATAL") == 0)
+	    {
+	        CcspTraceCritical(("%s", LogMsg));
+	    }
+	    else
+	    {
+	        CcspTraceInfo(("%s", LogMsg));
+	    }
+	}
 }
 
 void AssociatedDevice_callback_register()
