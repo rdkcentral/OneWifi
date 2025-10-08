@@ -1027,13 +1027,23 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service start\n", __func__, __LINE__);
 
+    if (radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d failed to start mesh service: wrong radio index %d\n", __func__, __LINE__,
+            radio_index);
+        return -1;
+    }
+
+    /* create STA vap's and install acl filters */
+    if (!ext->is_vap_started[radio_index]) {
+        vap_svc_start(svc, radio_index);
+        ext->is_vap_started[radio_index] = true;
+    }
+
     if (ext->is_started == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already started\n", __func__, __LINE__);
         return 0;
     }
-
-    /* create STA vap's and install acl filters */
-    vap_svc_start(svc);
 
     // initialize all extender specific structures
     memset(ext, 0, sizeof(vap_svc_ext_t));
@@ -1075,15 +1085,27 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service stop\n", __func__, __LINE__);
 
-    if (ext->is_started == false) {
+    if (ext->is_started) {
+        vap_svc_mesh_ext_disconnect(svc);
+        cancel_all_running_timer(svc);
+        vap_svc_mesh_ext_clear_variable(svc);
+        ext->is_started = false;
+    } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already stopped\n", __func__, __LINE__);
-        return 0;
     }
-    vap_svc_mesh_ext_disconnect(svc);
-    cancel_all_running_timer(svc);
-    vap_svc_stop(svc);
-    vap_svc_mesh_ext_clear_variable(svc);
-    ext->is_started = false;
+
+    if (radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d failed to stop mesh service: wrong radio index %d\n", __func__, __LINE__,
+            radio_index);
+        return -1;
+    }
+
+    if (ext->is_vap_started[radio_index]) {
+        vap_svc_stop(svc, radio_index);
+        ext->is_vap_started[radio_index] = false;
+    }
+
     return 0;
 }
 
