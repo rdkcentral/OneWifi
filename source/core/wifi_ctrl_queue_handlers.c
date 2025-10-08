@@ -1024,12 +1024,12 @@ void process_active_gw_check_command(bool active_gw_check)
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop xfinity vaps\n", __func__, __LINE__);
         process_xfinity_vaps(hotspot_vap_disable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-        start_extender_vaps();
+        start_extender_vaps(WIFI_ALL_RADIO_INDICES);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start xfinity vaps\n", __func__, __LINE__);
         process_xfinity_vaps(hotspot_vap_enable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-        stop_extender_vaps();
+        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
@@ -2715,17 +2715,17 @@ void process_device_mode_command_event(int device_mode)
         if (device_mode == rdk_dev_mode_type_ext) {
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-                start_extender_vaps();
+                start_extender_vaps(WIFI_ALL_RADIO_INDICES);
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
         } else if (device_mode == rdk_dev_mode_type_gw) {
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-                stop_extender_vaps();
+                stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
             }
             wifi_util_info_print(WIFI_CTRL, "%s:%d: start gw vaps\n", __func__, __LINE__);
-            start_gateway_vaps();
+            start_gateway_vaps(WIFI_ALL_RADIO_INDICES);
         }
     }
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
@@ -3416,10 +3416,10 @@ static void process_eth_bh_status_command(bool eth_bh_status)
 
     if (is_enabled == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-        start_extender_vaps();
+        start_extender_vaps(WIFI_ALL_RADIO_INDICES);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-        stop_extender_vaps();
+        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
