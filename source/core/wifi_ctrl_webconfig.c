@@ -1630,15 +1630,16 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                                 wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                                         __func__, __LINE__, vap_index, current_mac_str);
                                 ret = RETURN_ERR;
-                                goto free_data;
-                            }
-                            current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
-                            temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
-                            if (temp_acl_entry != NULL) {
-                                snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+                                current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                            } else {
+                                current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                                temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+                                if (temp_acl_entry != NULL) {
+                                    snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
 
-                                wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
-                                free(temp_acl_entry);
+                                    wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+                                    free(temp_acl_entry);
+                                }
                             }
                         } else {
                             current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
@@ -1670,7 +1671,6 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                                     __func__, __LINE__, vap_index, new_mac_str);
                             ret = RETURN_ERR;
-                            goto free_data;
                         }
 
                         temp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
@@ -1695,7 +1695,6 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
         }
     }
 
-free_data:
     if ((new_config != NULL) && (new_config->acl_map != NULL)) {
         new_acl_entry = hash_map_get_first(new_config->acl_map);
         while (new_acl_entry != NULL) {
