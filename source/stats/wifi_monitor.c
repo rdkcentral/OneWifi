@@ -1677,6 +1677,28 @@ static void update_subscribe_data(wifi_monitor_data_t *event)
     }
 }
 
+int update_monitor_channel_status_map(wifi_channel_status_event_t *data)
+{
+    int radio_index;
+    if (data == NULL || data->radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Invalid input data or radio index out of range\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    radio_index = data->radio_index;
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        if (data->channel_map[i].ch_number == 0)
+            break;
+
+        memcpy(&g_monitor_module.channel_map[radio_index][i], &data->channel_map[i], sizeof(wifi_channelMap_t));
+
+        wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
+            __func__, __LINE__, radio_index, g_monitor_module.channel_map[radio_index][i].ch_number,
+            g_monitor_module.channel_map[radio_index][i].ch_state);
+    }
+    return RETURN_OK;
+}
+
 void *monitor_function  (void *data)
 {
     char event_buff[16] = {0};
@@ -1792,6 +1814,9 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_set_subscribe:
                         update_subscribe_data(event_data);
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
+                    break;
+                    case wifi_event_monitor_channel_status:
+                        update_monitor_channel_status_map(&event_data->u.channel_status_map);
                     break;
                     default:
                     break;
