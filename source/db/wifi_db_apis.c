@@ -83,11 +83,12 @@
 #define ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG 100035
 #define ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT 100036
 #define ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG 100038
-#define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100039
 #define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100040
 #define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
 
 #define ONEWIFI_DB_VERSION_STATS_FLAG 100037
+#define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100042
+
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
 ovsdb_table_t table_Wifi_Security_Config;
@@ -4822,9 +4823,10 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
             if (sec->wpa3_transition_disable != false) {
                 sec->wpa3_transition_disable = false;
-                wifi_util_dbg_print(WIFI_DB, "%s:%d force change wpa3 transition disable state to false\r\n", __func__, __LINE__);
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                    &rdk_config[i]);
+                int ret = wifidb_update_wifi_security_config(config->vap_array[i].vap_name, sec);
+                wifi_util_info_print(WIFI_DB, "%s:%d force change wpa3 transition"
+                    " disable state to false for vap:%s ret:%d\r\n", __func__, __LINE__,
+                    config->vap_array[i].vap_name, ret);
             }
         }
     }
