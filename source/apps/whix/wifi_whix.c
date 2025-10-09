@@ -2085,23 +2085,29 @@ static void whix_route(wifi_event_route_t *route)
 
 static void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data, bool is_channel_util)
 {
+    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+
     data->u.mon_stats_config.inst = wifi_app_inst_whix;
 
-    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
-    if ((global_param != NULL) && (global_param->whix_chutility_loginterval != 0) && (global_param->whix_log_interval != 0)) {
-        if (is_channel_util) {
-            data->u.mon_stats_config.interval_ms = (global_param->whix_chutility_loginterval) * 1000;
+    if (is_channel_util) {
+        if ((global_param != NULL) && (global_param->whix_chutility_loginterval != 0)) {
+
+            data->u.mon_stats_config.interval_ms = (global_param->whix_chutility_loginterval) *
+                1000;
         } else {
-            data->u.mon_stats_config.interval_ms = (global_param->whix_log_interval) * 1000;
+            data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
         }
     } else {
-        if (is_channel_util) {
-            data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
+        if ((global_param != NULL) && (global_param->whix_log_interval != 0)) {
+
+            data->u.mon_stats_config.interval_ms = (global_param->whix_log_interval) * 1000;
         } else {
             data->u.mon_stats_config.interval_ms = TELEMETRY_UPDATE_INTERVAL_MS;
         }
     }
-    wifi_util_dbg_print(WIFI_APPS, "%s:%d Interval is %lu\n", __func__, __LINE__, data->u.mon_stats_config.interval_ms);
+
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d Interval is %lu\n", __func__, __LINE__,
+        data->u.mon_stats_config.interval_ms);
 }
 
 static void config_radio_channel_util(wifi_monitor_data_t *data)

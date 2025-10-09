@@ -849,45 +849,53 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 
     } else {
         int i;
+        int on_chan_list[MAX_CHANNELS] = { 0 };
+        int onchan_num_channels = 0;
+        int new_num_channels = 0;
+        int updated_channels[MAX_CHANNELS] = { 0 };
         if (args->channel_list.num_channels == 0) {
             return RETURN_ERR;
         }
-        //dont run offchan scan if device current using dfs channel
-        if (radioOperation->band == WIFI_FREQUENCY_5L_BAND
-          || radioOperation->band == WIFI_FREQUENCY_5H_BAND || radioOperation->band == WIFI_FREQUENCY_5_BAND) {
-            if (is_5g_20M_channel_in_dfs(radioOperation->channel) || radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
-                wifi_util_dbg_print(WIFI_MON, "%s:%d  off channel scan not executed duo to DFS channel in use for radio index %d\n",__func__,__LINE__, args->radio_index);
+        // dont run offchan scan if device current using dfs channel
+        if (radioOperation->band == WIFI_FREQUENCY_5L_BAND ||
+            radioOperation->band == WIFI_FREQUENCY_5H_BAND ||
+            radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+            if (is_5g_20M_channel_in_dfs(radioOperation->channel) ||
+                radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+                wifi_util_dbg_print(WIFI_MON,
+                    "%s:%d  off channel scan not executed duo to DFS channel in use for radio "
+                    "index %d\n",
+                    __func__, __LINE__, args->radio_index);
                 return RETURN_OK;
             }
         }
-
-        if ((unsigned int)args->channel_list.channels_list[0] == radioOperation->channel && args->channel_list.num_channels > 1) {
-            channels[0] = args->channel_list.channels_list[1];
-        } else {
-            channels[0] = args->channel_list.channels_list[0];
+        if (get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth,
+                radioOperation->channel, on_chan_list, &onchan_num_channels) != 0) {
+            onchan_num_channels = 1;
+            on_chan_list[0] = radioOperation->channel;
         }
-        for(i=0;i<args->channel_list.num_channels;i++)
-        {
-            if (mon_data->last_scanned_channel[args->radio_index] == args->channel_list.channels_list[i]) {
-                if ((i+1) >= args->channel_list.num_channels) {
-                    channels[0] = args->channel_list.channels_list[0];
-
-                    //skip current channel
-                    if ((unsigned int)channels[0] == radioOperation->channel && args->channel_list.num_channels > 1) {
-                        channels[0] = args->channel_list.channels_list[1];
-                    }
-                } else {
-                    channels[0] = args->channel_list.channels_list[i+1];
-
-                    //skip current channel
-                    if ((unsigned int)channels[0] == radioOperation->channel) {
-                        if ((i+2) >= args->channel_list.num_channels) {
-                            channels[0] = args->channel_list.channels_list[0];
-                        } else {
-                            channels[0] = args->channel_list.channels_list[i+2];
-                        }
-                    }
+        // skip on-channel scan list
+        for (int i = 0; i < args->channel_list.num_channels; i++) {
+            int unmatched = 1;
+            for (int j = 0; j < onchan_num_channels; j++) {
+                if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
+                    unmatched = 0;
+                    break;
                 }
+            }
+            if (unmatched) {
+                updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
+            }
+        }
+        channels[0] = updated_channels[0];
+        for (i = 0; i < new_num_channels; i++) {
+            if (mon_data->last_scanned_channel[args->radio_index] == updated_channels[i]) {
+                if ((i + 1) >= new_num_channels) {
+                    channels[0] = updated_channels[0];
+                } else {
+                    channels[0] = updated_channels[i + 1];
+                }
+                break;
             }
         }
         num_channels = 1;

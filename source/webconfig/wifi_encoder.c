@@ -111,9 +111,9 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 {
     const wifi_radio_operationParam_t *radio_info;
     const wifi_radio_feature_param_t *radio_feat;
-    char channel_list[BUFFER_LENGTH_WIFIDB] = {0}, str[BUFFER_LENGTH_WIFIDB] = {0};
+    char out_list[BUFFER_LENGTH_WIFIDB] = { 0 }, str[BUFFER_LENGTH_WIFIDB] = { 0 };
     char chan_buf[512] = {0};
-    unsigned int num_channels, i, k = 0, len = sizeof(channel_list) - 1;
+    unsigned int num_channels, i, k = 0, len = sizeof(out_list) - 1;
     int itr = 0, arr_size = 0;
     cJSON *obj;
     CHAR buf[512] = {'\0'};
@@ -159,14 +159,15 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
             break;
         }
 
-        snprintf(channel_list + k, sizeof(channel_list) - k,"%d,", radio_info->channelSecondary[i]);
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Wifi_Radio_Config table Channel list %s %d\t",__func__, __LINE__,channel_list,strlen(channel_list));
-        k = strlen(channel_list);
+        snprintf(out_list + k, sizeof(out_list) - k, "%d,", radio_info->channelSecondary[i]);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Wifi_Radio_Config table Channel list %s %d\t",
+            __func__, __LINE__, out_list, strlen(out_list));
+        k = strlen(out_list);
     }
 
     memset(str, 0, sizeof(str));
-    if ((strlen(channel_list) > 1) && (strlen(channel_list) < sizeof(str))) {
-        strncpy(str,channel_list,strlen(channel_list)-1);
+    if ((strlen(out_list) > 1) && (strlen(out_list) < sizeof(str))) {
+        strncpy(str, out_list, strlen(out_list) - 1);
     } else {
         strcpy(str, " ");
     }
@@ -323,6 +324,29 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     //RadarDetected
     cJSON_AddStringToObject(radio_object, "RadarDetected", radio_info->radarDetected);
+
+    // AmsduTid
+    memset(out_list, 0, sizeof(str));
+    k = 0;
+    for (i = 0; i < MAX_AMSDU_TID; i++) {
+        if (k >= (len - 1)) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d Wifi_Radio_Config table Maximum size reached for AMSDU TIDs\n", __func__,
+                __LINE__);
+            break;
+        }
+
+        snprintf(out_list + k, sizeof(out_list) - k, "%d,", radio_info->amsduTid[i]);
+        k = strlen(out_list);
+    }
+
+    if ((strlen(out_list) > 1) && (strlen(out_list) < sizeof(str))) {
+        strncpy(str, out_list, strlen(out_list) - 1);
+    } else {
+        strcpy(str, " ");
+    }
+
+    cJSON_AddStringToObject(radio_object, "Amsdu_Tid", str);
 
     // Operating Class Capability details
     if (encode_radio_operating_classes(radio_info, radio_object) != webconfig_error_none) {
@@ -774,6 +798,27 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitCooldownTime",
         global_info->mgt_frame_rate_limit_cooldown_time);
 
+    // RSSCheckInterval
+    cJSON_AddNumberToObject(global_obj, "rss_check_interval",
+        global_info->memwraptool.rss_check_interval);
+
+    // RSSThreshold
+    cJSON_AddNumberToObject(global_obj, "rss_threshold", global_info->memwraptool.rss_threshold);
+
+    // RSSMaxLimit
+    cJSON_AddNumberToObject(global_obj, "rss_maxlimit", global_info->memwraptool.rss_maxlimit);
+
+    // HeapwalkDuration
+    cJSON_AddNumberToObject(global_obj, "heapwalk_duration",
+        global_info->memwraptool.heapwalk_duration);
+
+    // HeapwalkInterval
+    cJSON_AddNumberToObject(global_obj, "heapwalk_interval",
+        global_info->memwraptool.heapwalk_interval);
+
+    // MemwrapToolEnable
+    cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
+
     return webconfig_error_none;
 }
 
@@ -881,6 +926,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
+    cJSON_AddBoolToObject(obj, "VenueOptionPresent", interworking_info->interworking.venueOptionPresent);
     cJSON_AddNumberToObject(obj, "VenueType", interworking_info->interworking.venueType);
 
     switch (interworking_info->interworking.venueGroup) {
@@ -1782,6 +1828,21 @@ webconfig_error_t encode_levl_object(const levl_config_t *levl, cJSON *levl_obj)
     cJSON_AddNumberToObject(levl_obj, "Duration", levl->levl_sounding_duration);
     cJSON_AddNumberToObject(levl_obj, "Interval", levl->levl_publish_interval);
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_memwraptool_object(memwraptool_config_t *memwrap_info, cJSON *memwrap_obj)
+{
+    if (memwrap_info == NULL || memwrap_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Memwrap info is NULL\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddNumberToObject(memwrap_obj, "rss_check_interval", memwrap_info->rss_check_interval);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_threshold", memwrap_info->rss_threshold);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_maxlimit", memwrap_info->rss_maxlimit);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_duration", memwrap_info->heapwalk_duration);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_interval", memwrap_info->heapwalk_interval);
+    cJSON_AddBoolToObject(memwrap_obj, "enable", memwrap_info->enable);
     return webconfig_error_none;
 }
 

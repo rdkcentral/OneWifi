@@ -124,6 +124,29 @@ typedef struct {
 #define LNF_PRIMARY_RADIUS_IP      "127.0.0.1"
 #define LNF_SECONDARY_RADIUS_IP    "192.168.106.254"
 
+#define DEFAULT_ANQP_STR_DATA " { \"ANQP\":{ " \
+                               "\"IPAddressTypeAvailabilityANQPElement\":{ " \
+                               "\"IPv6AddressType\":0, " \
+                               "\"IPv4AddressType\":0}, " \
+                               "\"DomainANQPElement\":{\"DomainName\":[]}, " \
+                               "\"NAIRealmANQPElement\":{\"Realm\":[]}, " \
+                               "\"3GPPCellularANQPElement\":{ " \
+                               "\"GUD\":0, " \
+                               "\"PLMN\":[]}, " \
+                               "\"RoamingConsortiumANQPElement\": { " \
+                               "\"OI\": []}, " \
+                               "\"VenueNameANQPElement\": { " \
+                               "\"VenueInfo\": []}}}"
+
+#define DEFAULT_PASSPOINT_STR_DATA "{ \"Passpoint\":{ " \
+                                   "\"PasspointEnable\":false, " \
+                                   "\"NAIHomeRealmANQPElement\":{\"Realms\":[]}, " \
+                                   "\"OperatorFriendlyNameANQPElement\":{\"Name\":[]}, " \
+                                   "\"ConnectionCapabilityListANQPElement\":{\"ProtoPort\":[]}, " \
+                                   "\"GroupAddressedForwardingDisable\":true, " \
+                                   "\"P2pCrossConnectionDisable\":false}}"
+
+
 int start_wifidb();
 int init_wifidb_tables();
 int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,

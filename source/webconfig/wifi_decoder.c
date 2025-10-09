@@ -768,6 +768,9 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 
     decode_param_object(interworking, "Venue", venue);
 
+    decode_param_bool(venue, "VenueOptionPresent", param);
+    interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true : false;
+
     decode_param_integer(venue, "VenueType", param);
     interworking_info->interworking.venueType = param->valuedouble;
     if (interworking_info->interworking.venueType > 15) {
@@ -2307,6 +2310,24 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "MgtFrameRateLimitCooldownTime", param);
     global_info->mgt_frame_rate_limit_cooldown_time = param->valuedouble;
 
+    decode_param_bool(global_cfg, "MemwrapToolEnable", param);
+    global_info->memwraptool.enable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(global_cfg, "rss_check_interval", param);
+    global_info->memwraptool.rss_check_interval = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_threshold", param);
+    global_info->memwraptool.rss_threshold = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_maxlimit", param);
+    global_info->memwraptool.rss_maxlimit = param->valuedouble;
+
+    decode_param_integer(global_cfg, "heapwalk_duration", param);
+    global_info->memwraptool.heapwalk_duration = param->valuedouble;
+
+    decode_param_integer(global_cfg, "heapwalk_interval", param);
+    global_info->memwraptool.heapwalk_interval = param->valuedouble;
+
     //WifiRegionCode
     decode_param_string(global_cfg, "WifiRegionCode", param);
     strcpy(global_info->wifi_region_code, param->valuestring);
@@ -3028,6 +3049,27 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_string(obj_radio, "RadarDetected", param);
     strncpy(radio_info->radarDetected, param->valuestring, sizeof(radio_info->radarDetected));
 
+    // AmsduTid
+    unsigned int amsdu_tid_idx = 0;
+    decode_param_string(obj_radio, "Amsdu_Tid", param);
+    ptr = param->valuestring;
+    tmp = param->valuestring;
+
+    while ((ptr = strchr(tmp, ',')) != NULL) {
+        ptr++;
+        radio_info->amsduTid[amsdu_tid_idx] = (BOOL)atoi(tmp);
+        tmp = ptr;
+        amsdu_tid_idx++;
+    }
+    // Last AMSDU TID
+    radio_info->amsduTid[amsdu_tid_idx++] = atoi(tmp);
+
+    if (amsdu_tid_idx != MAX_AMSDU_TID) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "number of AMSDU TIDs decoded - %d does not match required amount - %d!\n", amsdu_tid_idx, MAX_AMSDU_TID);
+        return webconfig_error_decode;
+    }
+
     if (decode_radio_operating_classes(obj_radio, radio_info) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio operation classes decode failed\n",
             __func__, __LINE__);
@@ -3617,6 +3659,31 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     decode_param_integer(levl_cfg, "Interval", param);
     levl_config->levl_publish_interval = param->valuedouble;
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_memwraptool_object(const cJSON *memwraptool_cfg,
+    memwraptool_config_t *memwrap_info)
+{
+    const cJSON *param;
+
+    decode_param_bool(memwraptool_cfg, "enable", param);
+    memwrap_info->enable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(memwraptool_cfg, "rss_check_interval", param);
+    memwrap_info->rss_check_interval = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_threshold", param);
+    memwrap_info->rss_threshold = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_maxlimit", param);
+    memwrap_info->rss_maxlimit = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_duration", param);
+    memwrap_info->heapwalk_duration = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_interval", param);
+    memwrap_info->heapwalk_interval = param->valuedouble;
     return webconfig_error_none;
 }
 

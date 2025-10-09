@@ -800,6 +800,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiBlaster");
             break;
         }
+        case WIFI_MEMWRAPTOOL:{
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMemwrapTool");
+        snprintf(module_filename, sizeof(module_filename), "wifiMemwrapTool");
+        break;
+        }
         case WIFI_OCS:{
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiOcsDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiOcs");
@@ -2061,7 +2066,7 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
         snprintf(str, str_len, "qcn6224");
     }
 #else 
-    snprintf(str, str_len, "BCM43684");
+    snprintf(str, str_len, C_BCM);
 #endif
     return RETURN_OK;
 }
@@ -3718,6 +3723,56 @@ bool is_6g_supported_device(wifi_platform_property_t *wifi_prop)
     return false;
 }
 
+static bool is_interworking_config_changed(char *vap_name, wifi_interworking_t *old_cfg,
+    wifi_interworking_t *new_cfg)
+{
+    bool is_hotspot_vap = FALSE;
+    if (strncmp((char *)vap_name, "hotspot", strlen("hotspot")) == 0) {
+        is_hotspot_vap = TRUE;
+    }
+
+    return (IS_BIN_CHANGED(&old_cfg->interworking, &new_cfg->interworking,
+            sizeof(wifi_InterworkingElement_t))
+            || (is_hotspot_vap
+                && (IS_BIN_CHANGED(&old_cfg->passpoint, &new_cfg->passpoint,
+                    sizeof(wifi_passpoint_settings_t))
+                   || IS_BIN_CHANGED(&old_cfg->anqp, &new_cfg->anqp,
+                    sizeof(wifi_anqp_settings_t))
+                   || IS_BIN_CHANGED(&old_cfg->roamingConsortium, &new_cfg->roamingConsortium,
+                    sizeof(wifi_roamingConsortiumElement_t)))));
+}
+
+static bool is_vap_preassoc_cac_config_changed(char *vap_name,
+    wifi_preassoc_control_t *old_cfg,
+    wifi_preassoc_control_t *new_cfg)
+{
+    bool is_hotspot_vap = FALSE;
+    if (strncmp((char *)vap_name, "hotspot", strlen("hotspot")) == 0) {
+        is_hotspot_vap = TRUE;
+    }
+
+    if (is_hotspot_vap
+        && (IS_STR_CHANGED(old_cfg->basic_data_transmit_rates,
+                new_cfg->basic_data_transmit_rates,
+                sizeof(old_cfg->basic_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->operational_data_transmit_rates,
+                new_cfg->operational_data_transmit_rates,
+                sizeof(old_cfg->operational_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->supported_data_transmit_rates,
+                new_cfg->supported_data_transmit_rates,
+                sizeof(old_cfg->supported_data_transmit_rates))
+            || IS_STR_CHANGED(old_cfg->minimum_advertised_mcs,
+                new_cfg->minimum_advertised_mcs,
+                sizeof(old_cfg->minimum_advertised_mcs))
+            || IS_STR_CHANGED(old_cfg->sixGOpInfoMinRate,
+                new_cfg->sixGOpInfoMinRate,
+                sizeof(old_cfg->sixGOpInfoMinRate)))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3779,8 +3834,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.vapStatsEnable) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.security, &vap_info_new->u.bss_info.security,
                 sizeof(wifi_vap_security_t)) ||
-            IS_BIN_CHANGED(&vap_info_old->u.bss_info.interworking,
-                &vap_info_new->u.bss_info.interworking, sizeof(wifi_interworking_t)) ||
+            is_interworking_config_changed(vap_info_new->vap_name,
+                &vap_info_old->u.bss_info.interworking,
+                &vap_info_new->u.bss_info.interworking) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_enable,
                 vap_info_new->u.bss_info.mac_filter_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_mode,
@@ -3812,21 +3868,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.network_initiated_greylist) ||
             IS_CHANGED(vap_info_old->u.bss_info.mcast2ucast,
                 vap_info_new->u.bss_info.mcast2ucast) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.basic_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.operational_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates,
-                vap_info_new->u.bss_info.preassoc.supported_data_transmit_rates,
-                sizeof(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs,
-                vap_info_new->u.bss_info.preassoc.minimum_advertised_mcs,
-                sizeof(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs)) ||
-            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate,
-                vap_info_new->u.bss_info.preassoc.sixGOpInfoMinRate,
-                sizeof(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate)) ||
+            is_vap_preassoc_cac_config_changed(vap_info_new->vap_name,
+                    &vap_info_old->u.bss_info.preassoc, &vap_info_new->u.bss_info.preassoc) ||
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,

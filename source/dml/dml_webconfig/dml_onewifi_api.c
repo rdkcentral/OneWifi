@@ -1470,7 +1470,10 @@ void update_dml_radio_default() {
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;
-	radio_cfg[i].AggregationMSDU = 0;
+        radio_cfg[i].AggregationMSDU = 0;
+        for (int j = 0; j < MAX_AMSDU_TID; j++) {
+            radio_cfg[i].AmsduTid[j] = FALSE;
+        }
         radio_cfg[i].AutoBlockAck = 0;
         radio_cfg[i].DeclineBARequest = 0;
         radio_cfg[i].WirelessOnOffButton = 0;
@@ -1492,6 +1495,12 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1500,6 +1509,11 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5L_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1508,6 +1522,11 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5H_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"149",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1516,6 +1535,11 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_6_BAND) {
             radio_cfg[i].MaxBitRate = 9608;
             strncpy(radio_cfg[i].ChannelsInUse,"181",sizeof(radio_cfg[i].ChannelsInUse)-1);
@@ -1525,6 +1549,12 @@ void update_dml_radio_default() {
 #else
             strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
 #endif /* CONFIG_IEEE80211BE */
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+            memset(radio_cfg[i].AmsduTid, (BOOL)1, sizeof(BOOL) * 5);
+#elif defined(_XB8_PRODUCT_REQ_)
+            radio_cfg[i].AmsduTid[0] = 1;
+            radio_cfg[i].AmsduTid[4] = 1;
+#endif
         }
     }
 }

@@ -63,6 +63,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define C_HEXINT32_LEN  sizeof("-0xFFFFFFFF")               /**< Space needed to represent a 32-bit hex integer */
 #define C_HEXINT64_LEN  sizeof("-0xFFFFFFFFFFFFFFFF")       /**< Space needed to represent a 64-bit hex integer */
 #define C_PID_LEN       C_INT64_LEN
+#define C_BCM "BCM43684"
+#define C_CGA4 "CGA4332COM"
+#define C_CGM43 "CGM4331COM"
+#define C_CGM49 "CGM4981COM"
+#define C_TG4 "TG4482A"
+#define C_WNX "WNXL11BWL"
 
 /*
  * ===========================================================================
