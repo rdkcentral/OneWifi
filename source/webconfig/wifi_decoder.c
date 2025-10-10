@@ -1063,6 +1063,41 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
         return webconfig_error_decode;
     }
 
+    decode_param_integer(radius, "EAPType", param);
+    radius_info->eap_type = param->valuedouble;
+    if ((radius_info->eap_type < 0) || (radius_info->eap_type > 254)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "Invalid radius eap_type %d, should be between 0 and 254\n",
+            radius_info->eap_type);
+        return webconfig_error_decode;
+    }
+    
+    decode_param_integer(radius, "Phase2Auth", param);
+    radius_info->phase2 = param->valuedouble;
+    if ((radius_info->phase2 < 0) || (radius_info->phase2 > 5)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "Invalid radius phase2 %d, should be between 0 and 5\n",
+            radius_info->eap_type);
+        return webconfig_error_decode;
+    }
+
+    decode_param_string(radius, "Identity", param);
+    memset(radius_info->identity, '\0', 64);
+    strncpy(radius_info->identity, param->valuestring, strlen(param->valuestring));
+    if ((strlen(radius_info->identity) <= 0) || (strlen(radius_info->identity) > 64)) {
+         wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] Invalid identity\n", __func__, __LINE__);
+         return webconfig_error_decode;
+    }
+
+    decode_param_string(radius, "Key", param);
+    memset(radius_info->key, '\0', 64);
+    strncpy(radius_info->key, param->valuestring, strlen(param->valuestring));
+    if ((strlen(radius_info->key) <= 0) || (strlen(radius_info->key) > 64)) {
+         wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] Invalid key\n", __func__, __LINE__);
+         return webconfig_error_decode;
+    }
+
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d Value of eap type %d phase 2 %d identity %s password %s\n",__func__,__LINE__,radius_info->eap_type, radius_info->phase2, radius_info->identity, radius_info->key);
     decode_param_integer(radius, "DasServerPort", param);
     radius_info->dasport = param->valuedouble;
 
@@ -2233,7 +2268,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     // BSSID
     decode_param_string(vap, "BSSID", param);
     string_mac_to_uint8_mac(vap_info->u.sta_info.bssid, param->valuestring);
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: vapname : %s bssid : %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",__FUNCTION__, __LINE__, vap_info->vap_name,
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: vapname : %s enable : %d ignite-enable : %d bssid : %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",__FUNCTION__, __LINE__, vap_info->vap_name, vap_info->u.sta_info.enabled,  vap_info->u.sta_info.ignite_enabled,
             vap_info->u.sta_info.bssid[0], vap_info->u.sta_info.bssid[1], vap_info->u.sta_info.bssid[2],
             vap_info->u.sta_info.bssid[3], vap_info->u.sta_info.bssid[4], vap_info->u.sta_info.bssid[5]);
 
@@ -2244,6 +2279,10 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     // Enabled
     decode_param_bool(vap, "Enabled", param);
     vap_info->u.sta_info.enabled = (param->type & cJSON_True) ? true:false;
+
+    // Ignite status
+    decode_param_bool(vap, "Ignite_Enabled", param);
+    vap_info->u.sta_info.ignite_enabled = (param->type & cJSON_True) ? true:false;
 
     // ConnectStatus
     decode_param_bool(vap, "ConnectStatus", param);
