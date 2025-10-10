@@ -1224,17 +1224,13 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             &map->vap_array[i].u.sta_info.security);
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
-        if (map->vap_array[i].u.sta_info.ignite_enabled == true) {
-            if (ctrl->rf_status_down == false) {
-                ext_set_conn_state(ext, connection_state_disconnected_steady, __func__, __LINE__);
-                map->vap_array[i].u.sta_info.ignite_enabled = false;
-            } else {
-                ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
-                    __LINE__);
-                wifi_util_info_print(WIFI_CTRL, "%s:%d sta is enabled starting the station vaps\n", __FUNCTION__, __LINE__);
-                schedule_connect_sm(svc);
-                ext->is_started = true;
-            }
+
+        if (ctrl->rf_status_down == true) {
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                 __LINE__);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d sta is enabled starting the station vaps\n", __FUNCTION__, __LINE__);
+            schedule_connect_sm(svc);
+            ext->is_started = true;
         }
     }
     return 0;

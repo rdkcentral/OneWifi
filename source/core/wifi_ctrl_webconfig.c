@@ -2788,7 +2788,7 @@ void start_station_vaps(bool rf_status)
                     sizeof(data->u.decoded.radios[radio_index]
                             .vaps.vap_map.vap_array[vap_array_index]
                             .u.sta_info.ssid),
-                    "Xfinity_Ignite");
+                    "Xfinity Mobile");
                 if (band == WIFI_FREQUENCY_6_BAND) {
                     data->u.decoded.radios[radio_index]
                         .vaps.vap_map.vap_array[vap_array_index]
@@ -2861,20 +2861,6 @@ void start_station_vaps(bool rf_status)
                     .vaps.vap_map.vap_array[vap_array_index]
                     .u.sta_info.security.u.radius.key);
 
-                memset(&data->u.decoded.radios[radio_index]
-                           .vaps.vap_map.vap_array[vap_array_index]
-                           .u.sta_info.security.u.radius.ip,
-                    0,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.ip));
-                memset(&data->u.decoded.radios[radio_index]
-                           .vaps.vap_map.vap_array[vap_array_index]
-                           .u.sta_info.security.u.radius.s_ip,
-                    0,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.s_ip));
             } else {
                 wifi_util_dbg_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
                 snprintf(data->u.decoded.radios[radio_index]
@@ -2911,7 +2897,24 @@ void start_station_vaps(bool rf_status)
                 data->u.decoded.radios[radio_index]
                     .vaps.vap_map.vap_array[vap_array_index]
                     .u.sta_info.enabled = false;
+		data->u.decoded.radios[radio_index]
+                    .vaps.vap_map.vap_array[vap_array_index]
+                    .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
             }
+            memset(&data->u.decoded.radios[radio_index]
+                     .vaps.vap_map.vap_array[vap_array_index]
+                     .u.sta_info.security.u.radius.ip,
+                    0,
+                    sizeof(data->u.decoded.radios[radio_index]
+                            .vaps.vap_map.vap_array[vap_array_index]
+                            .u.sta_info.security.u.radius.ip));
+            memset(&data->u.decoded.radios[radio_index]
+                           .vaps.vap_map.vap_array[vap_array_index]
+                           .u.sta_info.security.u.radius.s_ip,
+                    0,
+                    sizeof(data->u.decoded.radios[radio_index]
+                            .vaps.vap_map.vap_array[vap_array_index]
+                            .u.sta_info.security.u.radius.s_ip));
         }
     }
 
