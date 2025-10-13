@@ -708,6 +708,24 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
         vap_svc_event_none, new);
 }
 
+static void webconfig_send_wps_change_event(int tgt_vap_index, wifi_vap_info_t *vap_info_old,
+    wifi_vap_info_t *vap_info_new)
+{
+    if (!isVapPrivate(tgt_vap_index) ||
+        !IS_CHANGED(vap_info_old->u.bss_info.wpsPushButton,
+            vap_info_new->u.bss_info.wpsPushButton)) {
+
+        return;
+    }
+
+    push_event_to_ctrl_queue(&tgt_vap_index, sizeof(tgt_vap_index), wifi_event_type_command,
+        vap_info_new->u.bss_info.wpsPushButton ? wifi_event_type_command_wps :
+                                                 wifi_event_type_command_wps_cancel,
+        NULL);
+
+    vap_info_new->u.bss_info.wpsPushButton = vap_info_old->u.bss_info.wpsPushButton;
+}
+
 //We need to know that config applied due to force apply
 bool is_force_apply_true(rdk_wifi_vap_info_t *rdk_vap_info) {
     if (rdk_vap_info == NULL) {
@@ -817,6 +835,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
         // STA BSSID change is handled by event to avoid disconnection.
         webconfig_send_sta_bssid_change_event(ctrl, mgr_vap_info, vap_info);
+
+        // WPS change is handled by event to avoid extra wifi_hal_createVAP()
+        webconfig_send_wps_change_event(tgt_vap_index, mgr_vap_info, vap_info);
 
         // Ignore exists flag change because STA interfaces always enabled in HAL. This allows to
         // avoid redundant reconfiguration with STA disconnection.

@@ -1289,6 +1289,19 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
     return;
 }
 
+static int wps_event_callback(int apIndex, wifi_wps_ev_t event)
+{
+    wifi_wps_event_t wps_event = {};
+
+    wps_event.vap_index = apIndex;
+    wps_event.event = event;
+
+    push_event_to_ctrl_queue((wifi_wps_event_t *)&wps_event, sizeof(wifi_wps_event_t),
+        wifi_event_type_hal_ind, wifi_event_hal_wps_results, NULL);
+
+    return RETURN_OK;
+}
+
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
@@ -1370,6 +1383,8 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     /* Register wifi hal channel change events callback */
     wifi_chan_event_register(channel_change_callback);
+
+    wifi_wpsEvent_callback_register(wps_event_callback);
 
     ctrl->bus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
