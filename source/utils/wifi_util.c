@@ -3876,8 +3876,8 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
-bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
-    rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
+bool is_vap_param_config_changed_core(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
+    rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta, bool include_wpsPushButton)
 {
 
     if ((vap_info_old == NULL) || (vap_info_new == NULL) || (rdk_old == NULL) ||
@@ -3957,8 +3957,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             IS_CHANGED(vap_info_old->u.bss_info.wepKeyLength,
                 vap_info_new->u.bss_info.wepKeyLength) ||
             IS_CHANGED(vap_info_old->u.bss_info.bssHotspot, vap_info_new->u.bss_info.bssHotspot) ||
-            IS_CHANGED(vap_info_old->u.bss_info.wpsPushButton,
-                vap_info_new->u.bss_info.wpsPushButton) ||
+            (include_wpsPushButton && IS_CHANGED(vap_info_old->u.bss_info.wpsPushButton, vap_info_new->u.bss_info.wpsPushButton)) ||
             IS_CHANGED(vap_info_old->u.bss_info.connected_building_enabled,
                 vap_info_new->u.bss_info.connected_building_enabled) ||
             IS_CHANGED(vap_info_old->u.bss_info.mdu_enabled, vap_info_new->u.bss_info.mdu_enabled) ||
@@ -3994,6 +3993,26 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         }
     }
     return false;
+}
+
+bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
+                                 rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
+{
+    return is_vap_param_config_changed_core(vap_info_old, vap_info_new, rdk_old, rdk_new, isSta, /*include_wpsPushButton=*/true);
+}
+
+bool is_vap_param_config_changed_except_wpsPushButton(wifi_vap_info_t *vap_info_old,
+                                                      wifi_vap_info_t *vap_info_new,
+                                                      rdk_wifi_vap_info_t *rdk_old,
+                                                      rdk_wifi_vap_info_t *rdk_new,
+                                                      bool isSta)
+{
+    return is_vap_param_config_changed_core(vap_info_old, vap_info_new, rdk_old, rdk_new, isSta, /*include_wpsPushButton=*/false);
+}
+
+bool is_wpsPushButton_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
+{
+    return IS_CHANGED(vap_info_old->u.bss_info.wpsPushButton, vap_info_new->u.bss_info.wpsPushButton);
 }
 
 // Countrycode: US, Band 2.4G
