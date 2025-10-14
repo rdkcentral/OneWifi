@@ -257,9 +257,8 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
     if ((ext != NULL) && (ext->conn_state != connection_state_connected)) {
         disconnected_time++;
         connection_timeout++;
-        wifi_util_info_print(WIFI_CTRL,"%s:%d selfheal STA Connection Timeout  event publish time is set to %d minutes, disconnected_time:%d\n",
-                        __func__, __LINE__, selfheal_event_publish_time(), disconnected_time);        
-	if ((disconnected_time * STA_CONN_RETRY_TIMEOUT) > (selfheal_event_publish_time() * 60)) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d selfheal STA Connection Timeout  event publish time is set to %d minutes, disconnected_time:%d\n", __func__, __LINE__, selfheal_event_publish_time(), disconnected_time); 
+        if ((disconnected_time * STA_CONN_RETRY_TIMEOUT) > (selfheal_event_publish_time() * 60)) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d selfheal: STA connection failed for %d minutes, publish selfheal "
                 "connection timeout\n", __func__, __LINE__, selfheal_event_publish_time());
             /* publish selfheal STA Connection Timeout  device */
@@ -803,7 +802,7 @@ void start_gateway_vaps()
         wifi_vap_info->u.sta_info.ignite_enabled = value;
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d rf-status : %d ignite-enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, wifi_vap_info->u.sta_info.ignite_enabled);
     } else {
-	wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get the data for Endpoint enable check\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get the data for Endpoint enable check\n", __func__, __LINE__);
     }
     
     if (is_sta_enabled() == true) {
@@ -2186,7 +2185,7 @@ static int sta_connectivity_selfheal(void* arg)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl->rf_status_down == true) {
         wifi_util_dbg_print(WIFI_CTRL,"%s %d Selfheal disabled during ignite mode\n", __func__, __LINE__);
-	return TIMER_TASK_COMPLETE;
+        return TIMER_TASK_COMPLETE;
     }
     vap_svc_t *ext_svc;
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);

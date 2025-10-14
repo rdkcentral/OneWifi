@@ -422,13 +422,13 @@ static int process_trigger_disconnection_event_timeout(vap_svc_t *svc)
 static int validate_ip(const char *ip, int family) {
     char buf[sizeof(struct in6_addr)] = {0};
     wifi_util_info_print(WIFI_CTRL,"%s:%d IP : %s Family : %d\n", __func__, __LINE__, ip, family);
-    return inet_pton(family, ip, buf) == 1;
+    return (inet_pton(family, ip, buf) == 1);
 }
 
 int has_valid_ip(const char *iface) {
     struct ifaddrs *ifaddr, *ifa;
     char addr[INET6_ADDRSTRLEN];
-    int found = 0;
+    bool found = 0;
 
     if (getifaddrs(&ifaddr) == -1) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed in getifaddrs\n", __func__, __LINE__);
@@ -917,7 +917,7 @@ void ext_try_connecting(vap_svc_t *svc)
                 process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
         } else {
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
-                process_ext_connect_event_timeout, svc, 10000, 1, FALSE);
+                process_ext_connect_event_timeout, svc, EXT_IGNITE_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
         }
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_sta_connect_in_progress, candidate);
     } else {
@@ -1193,9 +1193,9 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
 {
     unsigned int i;
     wifi_vap_info_map_t tgt_vap_map;
-    
     vap_svc_ext_t *ext = &svc->u.ext;
     wifi_ctrl_t *ctrl = svc->ctrl;
+
     for (i = 0; i < map->num_vaps; i++) {
         memset((unsigned char *)&tgt_vap_map, 0, sizeof(tgt_vap_map));
         memcpy((unsigned char *)&tgt_vap_map.vap_array[0], (unsigned char *)&map->vap_array[i],
@@ -1600,10 +1600,11 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
 }
 
 #define MAX_STATUS_LEN 5
+#define MAX_STR_LEN    128
 
 int publish_endpoint_status_to_wan(wifi_ctrl_t *ctrl, int connection_status)
 {
-    char name[128] = { '\0' };
+    char name[MAX_STR_LEN] = { '\0' };
     bus_error_t rc = bus_error_success;
     wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__, connection_status);
     if (ctrl->rf_status_down == true) {
@@ -1646,7 +1647,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     bss_candidate_t *candidate = NULL;
     bool found_candidate = false, send_event = false;
     unsigned int i = 0, index, j = 0;
-    char cmd[128] = {0};
+    char cmd[MAX_STR_LEN] = {0};
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
     raw_data_t data;
@@ -1849,7 +1850,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Disconnect status sent successfully to the WM\n");
             }
 
-            memset(cmd, '\0', 128);
+            memset(cmd, '\0', MAX_STR_LEN);
             snprintf(cmd, sizeof(cmd), "ovs-vsctl del-port brww0 wl1");
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d cmd : %s\n", __func__, __LINE__, cmd);
             get_stubs_descriptor()->v_secure_system_fn(cmd);
