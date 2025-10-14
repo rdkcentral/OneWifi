@@ -1683,7 +1683,7 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
     strncpy(vap->u.sta_info.ssid,      vap_row->ssid,       sizeof(vap->u.sta_info.ssid));
     memcpy(vap->u.sta_info.bssid,      vap_row->bssid.mac,  sizeof(mac_address_t));
 
-    // Copy security info (mode/AKMs)
+    /*
     if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_fronthaul_akms, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
@@ -1691,9 +1691,10 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
     }
 
     vap->u.sta_info.security.mode = enum_sec;
+
     // Copy Passphrase
     strncpy(vap->u.sta_info.security.u.key.key, vap_row->mesh_sta_passphrase, sizeof(vap->u.sta_info.security.u.key.key));
-    
+    */
     return webconfig_error_none;
 }
 // translate_em_bss_to_private_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for private vaps
@@ -1800,6 +1801,7 @@ webconfig_error_t translate_em_bss_to_mesh_backhaul_vap_info(wifi_vap_info_t *va
         return webconfig_error_translate_from_easymesh;
     }
 
+    /*
     if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_backhaul_akms, (char(*)[])vap_row->backhaul_akm)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
                 (vap_row->backhaul_akm[0]) ? vap_row->backhaul_akm[0]: "NULL");
@@ -1807,7 +1809,8 @@ webconfig_error_t translate_em_bss_to_mesh_backhaul_vap_info(wifi_vap_info_t *va
     }
 
     vap->u.bss_info.security.mode = enum_sec;
-    /* strncpy(vap->u.bss_info.security.u.key.key,vap_row->backhaul_passphrase,strlen(vap->u.bss_info.security.u.key.key)); */
+    strncpy(vap->u.bss_info.security.u.key.key,vap_row->backhaul_passphrase,strlen(vap->u.bss_info.security.u.key.key));
+    */
 
     return webconfig_error_none;
 }

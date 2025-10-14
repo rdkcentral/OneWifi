@@ -240,6 +240,10 @@ bool is_device_type_xle(void)
 {
     return is_supported_gateway_device(C_WNX);
 }
+bool is_device_type_sr203(void)
+{
+    return is_supported_gateway_device("SR203");
+}
 
 int init_wifimgr()
 {

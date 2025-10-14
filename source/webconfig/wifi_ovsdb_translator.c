@@ -119,6 +119,13 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"home-ap-50", "private_ssid_5g"},
     {"bhaul-ap-50", "mesh_backhaul_5g"},
 }
+#elif defined (_HUB4_PRODUCT_REQ_)
+struct ovs_vapname_cloudvifname_map cloud_vif_map[] = {
+       {"wl0",   "private_ssid_2g"},
+       {"wl1",   "private_ssid_5g"},
+       {"bhaul-ap-24", "mesh_backhaul_2g"},
+       {"bhaul-ap-50", "mesh_backhaul_5g"},
+};
 #else
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl0",   "mesh_sta_2g"},
