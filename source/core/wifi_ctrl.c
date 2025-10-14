@@ -500,7 +500,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop,
                             wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                     wifi_util_info_print(WIFI_CTRL,
                         "%s:%d Calling switch_dfs_channel for dfs_chan:%d \n", __func__, __LINE__,
                         dfs_channel_data->dfs_channel);
@@ -513,7 +513,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop,
                             wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                 }
             }
 

@@ -46,7 +46,7 @@ struct ow_conf_vif_config_cb_arg
 
 void print_wifi_hal_radio_data(wifi_dbg_type_t log_file_type, char *prefix, unsigned int radio_index, wifi_radio_operationParam_t *radio_config)
 {
-    wifi_util_info_print(log_file_type, "%s:%d: [%s] Wifi_Radio[%d]_Config data: enable = %d\n band = %d\n autoChannelEnabled = %d\n op_class = %d\n channel = %d\n numSecondaryChannels = %d\n channelSecondary = %s\n channelWidth = %d\n variant = %d\n csa_beacon_count = %d\n countryCode = %d\n DCSEnabled = %d\n dtimPeriod = %d\n beaconInterval = %d\n operatingClass = %d\n basicDataTransmitRates = %d\n operationalDataTransmitRates = %d\n fragmentationThreshold = %d\n guardInterval = %d\n transmitPower = %d\n rtsThreshold = %d\n factoryResetSsid = %d\n radioStatsMeasuringRate = %d\n radioStatsMeasuringInterval = %d\n ctsProtection = %d\n obssCoex = %d\n stbcEnable = %d\n greenFieldEnable = %d\n userControl = %d\n adminControl = %d\n chanUtilThreshold = %d\n chanUtilSelfHealEnable = %d\n EcoPowerDown = %d DFSTimer:%d \r\n", __func__, __LINE__, prefix, radio_index, radio_config->enable, radio_config->band, radio_config->autoChannelEnabled, radio_config->op_class, radio_config->channel, radio_config->numSecondaryChannels, radio_config->channelSecondary, radio_config->channelWidth, radio_config->variant, radio_config->csa_beacon_count, radio_config->countryCode, radio_config->DCSEnabled, radio_config->dtimPeriod, radio_config->beaconInterval, radio_config->operatingClass, radio_config->basicDataTransmitRates, radio_config->operationalDataTransmitRates, radio_config->fragmentationThreshold, radio_config->guardInterval, radio_config->transmitPower, radio_config->rtsThreshold, radio_config->factoryResetSsid, radio_config->radioStatsMeasuringRate, radio_config->radioStatsMeasuringInterval, radio_config->ctsProtection, radio_config->obssCoex, radio_config->stbcEnable, radio_config->greenFieldEnable, radio_config->userControl, radio_config->adminControl, radio_config->chanUtilThreshold, radio_config->chanUtilSelfHealEnable, radio_config->EcoPowerDown, radio_config->DFSTimer);
+    wifi_util_info_print(log_file_type, "%s:%d: [%s] Wifi_Radio[%d]_Config data: enable = %d\n band = %d\n autoChannelEnabled = %d\n channel = %d\n numSecondaryChannels = %d\n channelSecondary = %s\n channelWidth = %d\n variant = %d\n csa_beacon_count = %d\n countryCode = %d\n DCSEnabled = %d\n dtimPeriod = %d\n beaconInterval = %d\n operatingClass = %d\n basicDataTransmitRates = %d\n operationalDataTransmitRates = %d\n fragmentationThreshold = %d\n guardInterval = %d\n transmitPower = %d\n rtsThreshold = %d\n factoryResetSsid = %d\n radioStatsMeasuringRate = %d\n radioStatsMeasuringInterval = %d\n ctsProtection = %d\n obssCoex = %d\n stbcEnable = %d\n greenFieldEnable = %d\n userControl = %d\n adminControl = %d\n chanUtilThreshold = %d\n chanUtilSelfHealEnable = %d\n EcoPowerDown = %d DFSTimer:%d \r\n", __func__, __LINE__, prefix, radio_index, radio_config->enable, radio_config->band, radio_config->autoChannelEnabled, radio_config->channel, radio_config->numSecondaryChannels, radio_config->channelSecondary, radio_config->channelWidth, radio_config->variant, radio_config->csa_beacon_count, radio_config->countryCode, radio_config->DCSEnabled, radio_config->dtimPeriod, radio_config->beaconInterval, radio_config->operatingClass, radio_config->basicDataTransmitRates, radio_config->operationalDataTransmitRates, radio_config->fragmentationThreshold, radio_config->guardInterval, radio_config->transmitPower, radio_config->rtsThreshold, radio_config->factoryResetSsid, radio_config->radioStatsMeasuringRate, radio_config->radioStatsMeasuringInterval, radio_config->ctsProtection, radio_config->obssCoex, radio_config->stbcEnable, radio_config->greenFieldEnable, radio_config->userControl, radio_config->adminControl, radio_config->chanUtilThreshold, radio_config->chanUtilSelfHealEnable, radio_config->EcoPowerDown, radio_config->DFSTimer);
 }
 
 void print_wifi_hal_bss_vap_data(wifi_dbg_type_t log_file_type, char *prefix,
@@ -1623,12 +1623,11 @@ bool is_radio_feat_config_changed(rdk_wifi_radio_t *old, rdk_wifi_radio_t *new)
 static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wifi_radio_operationParam_t *new)
 {
     // Compare only which are changed from Wifi_Radio_Config
-    new->op_class = old->op_class;
+    new->operatingClass = old->operatingClass;
 
     if (IS_CHANGED(old->enable,new->enable)) return true;
     if (IS_CHANGED(old->band,new->band)) return true;
     if (IS_CHANGED(old->autoChannelEnabled,new->autoChannelEnabled)) return true;
-    if (IS_CHANGED(old->op_class,new->op_class)) return true;
     if (IS_CHANGED(old->channel,new->channel)) return true;
     if (IS_CHANGED(old->numSecondaryChannels,new->numSecondaryChannels)) return true;
     if (IS_CHANGED(old->channelWidth,new->channelWidth)) return true;
@@ -1827,6 +1826,9 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 // write the value to database
 #ifndef LINUX_VM_PORT
             wifidb_update_wifi_radio_config(mgr_radio_data->vaps.radio_index, &radio_data->oper, &radio_data->feature);
+#else
+            // Update the cache in case of Linux targets
+            memcpy(&mgr_radio_data->oper, &radio_data->oper, sizeof(wifi_radio_operationParam_t));
 #endif
 
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
