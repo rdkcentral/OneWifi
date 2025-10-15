@@ -383,7 +383,7 @@ webconfig_error_t   translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_
         mac_address_from_name(radio_iface_map->interface_name,op_class_info->id.ruid.mac);
 
         op_class_info->id.type = 2;
-        op_class_info->op_class = oper_param->op_class;
+        op_class_info->op_class = oper_param->operatingClass;
         op_class_info->channel = oper_param->channel;
         op_class_info->tx_power = oper_param->transmitPower;
         op_class_info->max_tx_power = oper_param->transmitPower;
