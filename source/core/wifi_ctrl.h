@@ -111,7 +111,9 @@ extern "C" {
 #define HOME 0b0100
 #define MESH 0b1000
 #define MESH_STA 0b10000
-#define MESH_BACKHAUL 0b100000
+#define MESH_BACKHAUL_2G 0b11111
+#define MESH_BACKHAUL_5G 0b100000
+#define MESH_BACKHAUL_6G 0b100001
 #define LNF 0b1000000
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
@@ -397,6 +399,8 @@ wifi_vap_security_t * Get_wifi_object_bss_security_parameter(uint8_t vapIndex);
 wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex);
 char *get_assoc_devices_blob();
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc);
+void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int* subdoc);
+
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
 
