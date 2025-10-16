@@ -3086,11 +3086,14 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int *subdoc)
     case WIFI_FREQUENCY_2_4_BAND:
         *subdoc = webconfig_subdoc_type_vap_24G;
         break;
-    case WIFI_FREQUENCY_5_GHZ_BAND:
+    case WIFI_FREQUENCY_5_BAND:
         *subdoc = webconfig_subdoc_type_vap_5G;
         break;
-    default:
+    case WIFI_FREQUENCY_6_BAND:
         *subdoc = webconfig_subdoc_type_vap_6G;
+        break;
+    default:
+        *subdoc = webconfig_subdoc_type_unknown;
         break;
     }
 }
