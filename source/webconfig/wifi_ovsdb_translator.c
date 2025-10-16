@@ -1953,6 +1953,40 @@ webconfig_error_t translate_radio_object_to_ovsdb_radio_state_for_dml(webconfig_
     return webconfig_error_none;
 }
 
+BOOL update_secmode_for_wpa3_sta(wifi_vap_info_t *vap_info, char *mode_str, int mode_len, char *encrypt_str, int encrypt_len, bool to_ovsdb)
+{
+    int ret = false;
+    if (vap_info ==  NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL vap_info Pointer\n", __func__, __LINE__);
+        return ret;
+    }
+
+     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d to-ovsdb : %d sec-mode : %d\n", __func__, __LINE__, to_ovsdb, vap_info->u.sta_info.security.mode);
+    if (to_ovsdb) {
+        if ((vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_personal) || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_compatibility)) {
+            snprintf(mode_str, mode_len, "2");
+            snprintf(encrypt_str, encrypt_len, "WPA-PSK");
+            ret = true;
+        }
+        else if (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) {
+            snprintf(mode_str, mode_len, "2");
+            snprintf(encrypt_str, encrypt_len, "WPA-EAP");
+            ret = true;
+        }
+        else if (vap_info->u.sta_info.security.mode == wifi_security_mode_enhanced_open) {
+            snprintf(encrypt_str, encrypt_len, "OPEN");
+            ret = true;
+        }
+    } else {
+        if ((vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_personal)
+        || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_compatibility)
+        || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info->u.sta_info.security.mode == wifi_security_mode_enhanced_open)) {
+            ret = true;
+        }
+    }
+    return ret;
+}
+
 BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode_len, char *encrypt_str, int encrypt_len, bool to_ovsdb)
 {
     int ret = false;
@@ -1960,6 +1994,7 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL vap_info Pointer\n", __func__, __LINE__);
         return ret;
     }
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d to-ovsdb : %d sec-mode : %d\n", __func__, __LINE__, to_ovsdb, vap_info->u.sta_info.security.mode);
 
     if (to_ovsdb) {
         if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility)) {
@@ -2389,7 +2424,7 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi
 
             memset(str_mode, 0, sizeof(str_mode));
             memset(str_encryp, 0, sizeof(str_encryp));
-            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+            if (!update_secmode_for_wpa3_sta((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
                 wifi_security_modes_t mode_enum = vap->u.sta_info.security.mode;
                 wifi_encryption_method_t encryp_enum = vap->u.sta_info.security.encr;
                 if ((key_mgmt_conversion_legacy(&mode_enum, &encryp_enum, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
@@ -3119,7 +3154,7 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_
 
             memset(str_mode, 0, sizeof(str_mode));
             memset(str_encryp, 0, sizeof(str_encryp));
-            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+            if (!update_secmode_for_wpa3_sta((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
                 wifi_security_modes_t mode_enum = vap->u.sta_info.security.mode;
                 wifi_encryption_method_t encryp_enum = vap->u.sta_info.security.encr;
                 if ((key_mgmt_conversion_legacy(&mode_enum, &encryp_enum, 
