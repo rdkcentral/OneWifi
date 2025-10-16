@@ -3073,38 +3073,25 @@ void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc)
 
 void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int *subdoc)
 {
-    if (isVapPrivate(vap_index)) {
-        *subdoc = PRIVATE;
+    UINT radio_index = getRadioIndexFromAp(vap_index);
+    wifi_radio_operationParam_t *radioOperation = getRadioOperationParam(radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s : failed to getRadioOperationParam for radio index %d\n", __FUNCTION__,
+            radio_index);
         return;
-    } else if (isVapHotspot(vap_index) || isVapHotspotSecure(vap_index)) {
-        *subdoc = HOTSPOT;
-        return;
-    } else if (isVapXhs(vap_index)) {
-        *subdoc = HOME;
-        return;
-    } else if (isVapSTAMesh(vap_index)) {
-        *subdoc = MESH_STA;
-        return;
-    } else if (isVapMeshBackhaul(vap_index)) {
-        if (strncmp((CHAR *)getVAPName(vap_index), "mesh_backhaul_2g",
-                strlen("mesh_backhaul_2g")) == 0) {
-            *subdoc = MESH_BACKHAUL_2G;
-        } else if (strncmp((CHAR *)getVAPName(vap_index), "mesh_backhaul_5g",
-                       strlen("mesh_backhaul_5g")) == 0) {
-            *subdoc = MESH_BACKHAUL_5G;
-        } else {
-            *subdoc = MESH_BACKHAUL_6G;
-        }
-        return;
-    } else if (isVapMesh(vap_index)) {
-        *subdoc = MESH;
-        return;
-    } else if (isVapLnf(vap_index)) {
-        *subdoc = LNF;
-        return;
-    } else {
-        *subdoc = MESH_STA;
-        return;
+    }
+
+    switch (radioOperation->band) {
+    case WIFI_FREQUENCY_2_4_BAND:
+        *subdoc = webconfig_subdoc_type_vap_24G;
+        break;
+    case WIFI_FREQUENCY_5_GHZ_BAND:
+        *subdoc = webconfig_subdoc_type_vap_5G;
+        break;
+    default:
+        *subdoc = webconfig_subdoc_type_vap_6G;
+        break;
     }
 }
 

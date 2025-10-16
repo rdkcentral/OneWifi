@@ -112,9 +112,6 @@ extern "C" {
 #define MESH 0b1000
 #define MESH_STA 0b10000
 #define MESH_BACKHAUL 0b100000
-#define MESH_BACKHAUL_2G 0b11111
-#define MESH_BACKHAUL_5G 0b100000
-#define MESH_BACKHAUL_6G 0b100001
 #define LNF 0b1000000
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"

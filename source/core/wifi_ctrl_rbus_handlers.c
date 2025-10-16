@@ -3097,7 +3097,6 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
 
 bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
-    wifi_util_info_print(WIFI_CTRL, "SJY Entering %s\n", __func__);
     (void)user_data;
     unsigned int idx = 0;
     int ret;
@@ -3111,31 +3110,29 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (!name) {
-        wifi_util_error_print(WIFI_CTRL, "SJY %s:%d property name is not found\r\n", __FUNCTION__,
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
             __LINE__);
         return bus_error_invalid_input;
     }
 
     if (p_data->data_type != bus_data_type_boolean) {
-        wifi_util_error_print(WIFI_CTRL,"SJY %s:%d-%s wrong bus data_type:%x\n", __func__,
+        wifi_util_error_print(WIFI_CTRL,"%s:%d-%s wrong bus data_type:%x\n", __func__,
             __LINE__, name, p_data->data_type);
         return bus_error_invalid_input;
     }
 
     force_apply = p_data->raw_data.b;
     if (force_apply == false) {
-        wifi_util_error_print(WIFI_CTRL, "SJY %s:%d Invalid force apply option\r\n", __func__,
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid force apply option\r\n", __func__,
             __LINE__);
         return bus_error_invalid_input;
     }
 
     ret = sscanf(name, "Device.WiFi.AccessPoint.%d.ForceApply", &idx);
     if (ret == 1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
-        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d the value of idx is %d and force apply is %d\n",
-            __func__, __LINE__, idx, force_apply);
         data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
         if (data == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "SJY %s:%d Malloc failed for name %s\n", __func__,
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Malloc failed for name %s\n", __func__,
                 __LINE__, name);
             return bus_error_invalid_input;
         }
@@ -3151,12 +3148,8 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
 
         vap_array_index = convert_vap_index_to_vap_array_index(&mgr->hal_cap.wifi_prop,
             (unsigned int)idx - 1);
-        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d the value of vap_array_index is %d\n",
-            __func__, __LINE__, vap_array_index);
 
         radio_index = getRadioIndexFromAp((unsigned int)idx - 1);
-        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d the value of radio_index is %d\n",
-            __func__, __LINE__, radio_index);
 
         data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index].force_apply =
             force_apply;
@@ -3167,13 +3160,12 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
             __func__, __LINE__, subdoc_type);
 
         if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
-            wifi_util_error_print(WIFI_CTRL, "SJY %s:%d Error in encoding radio stats\n", __func__,
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding radio stats\n", __func__,
                 __LINE__);
             free(data);
             return bus_error_invalid_input;
         }
-        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d Pushing event to ctrl queue\n", __func__,
-            __LINE__);
+
         push_event_to_ctrl_queue((const cJSON *)data->u.encoded.raw,
             (strlen(data->u.encoded.raw) + 1), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_force_apply, NULL);
