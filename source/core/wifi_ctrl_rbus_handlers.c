@@ -3156,9 +3156,6 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
 
         get_subdoc_type_name_from_ap_index(idx - 1, &subdoc_type);
 
-        wifi_util_info_print(WIFI_CTRL, "SJY %s:%d the value of subdoc_type is %d\n",
-            __func__, __LINE__, subdoc_type);
-
         if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding radio stats\n", __func__,
                 __LINE__);
