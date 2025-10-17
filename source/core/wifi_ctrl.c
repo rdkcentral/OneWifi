@@ -1125,20 +1125,27 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     frame_data_t wifi_mgmt_frame;
 
     memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
-
+    wifi_mgmt_frame.frame.ap_index = ap_index;
+    memcpy(wifi_mgmt_frame.frame.sta_mac, frame->sta_mac, sizeof(mac_address_t));
+    wifi_mgmt_frame.frame.type = frame->type;
+    wifi_mgmt_frame.frame.dir = frame->dir; 
+    wifi_mgmt_frame.frame.sig_dbm = frame->sig_dbm;
+    wifi_mgmt_frame.frame.phy_rate = frame->phy_rate;
+    wifi_mgmt_frame.frame.token = frame->token;
+    wifi_mgmt_frame.frame.recv_freq = frame->recv_freq;
+    wifi_mgmt_frame.frame.len = frame->len;
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
-    memcpy(&mgmt_frame.frame, frame, sizeof(wifi_frame_t));
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }
 #else
 #if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
-int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate)
+int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate, unsigned int recv_freq)
 #else
-int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir)
+int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, unsigned int recv_freq)
 #endif
 {
     wifi_actionFrameHdr_t *paction = NULL;
@@ -1195,8 +1202,19 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_dpp_public_action_frame;
         memset(&data, 0, sizeof(wifi_monitor_data_t));
+
         data.ap_index = ap_index;
+        data.u.msg.frame.ap_index = ap_index;
+        memcpy(data.u.msg.frame.sta_mac, sta_mac, sizeof(mac_address_t));
+        data.u.msg.frame.type = type;
+        data.u.msg.frame.dir = dir;
+#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
+    mgmt_frame.frame.sig_dbm = sig_dbm;
+    mgmt_frame.frame.phy_rate = phy_rate;
+#endif
         data.u.msg.frame.len = len;
+        data.u.msg.frame.recv_freq = recv_freq;
+
         memcpy(&data.u.msg.data, frame, len);
         push_event_to_monitor_queue(&data, wifi_event_monitor_action_frame, NULL);
         paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
