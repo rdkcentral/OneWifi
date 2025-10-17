@@ -1340,6 +1340,7 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
         frame_data.frame.dir = data_ptr->frame.dir;
         frame_data.frame.sig_dbm = data_ptr->frame.sig_dbm;
         frame_data.frame.phy_rate = data_ptr->frame.phy_rate;
+        frame_data.frame.recv_freq = data_ptr->frame.recv_freq;
         frame_data.frame.data = data_ptr->frame.data;
 
         memcpy(&frame_data.data, data_ptr->data, data_ptr->frame.len);
@@ -1355,10 +1356,10 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
 #if defined(_XB7_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
-            frame_data.frame.sig_dbm, frame_data.frame.phy_rate);
+            frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);
 #else
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
-            frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir);
+            frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir, frame_data.frame.recv_freq);
 #endif
 #endif
     }
@@ -2630,6 +2631,7 @@ int events_bus_publish(wifi_event_t *evt)
     unsigned int vap_array_index;
     uint32_t len = 0;
     raw_data_t data;
+    uint8_t freq_frame_data[sizeof(wifi_frame_t) + MAX_FRAME_SZ];
 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -2706,8 +2708,16 @@ int events_bus_publish(wifi_event_t *evt)
             pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
             memset(&data, 0, sizeof(raw_data_t));
             data.data_type = bus_data_type_bytes;
-            data.raw_data.bytes = (void *)&evt->u.mon_data->u.msg.data;
-            data.raw_data_len = evt->u.mon_data->u.msg.frame.len;
+            
+            // Put wifi_frame_t at the start of the frame data
+            memset(freq_frame_data, 0, sizeof(wifi_frame_t) + MAX_FRAME_SZ);
+            memcpy(freq_frame_data, &evt->u.mon_data->u.msg.frame, sizeof(wifi_frame_t));
+            ((wifi_frame_t*)freq_frame_data)->data = NULL; // Clear pointer before sending over bus
+            memcpy(&freq_frame_data[sizeof(wifi_frame_t)], evt->u.mon_data->u.msg.data,
+                evt->u.mon_data->u.msg.frame.len);
+
+            data.raw_data.bytes = (void *)freq_frame_data;
+            data.raw_data_len = evt->u.mon_data->u.msg.frame.len + sizeof(wifi_frame_t);
 
             rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, eventName, &data);
             pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
