@@ -207,7 +207,7 @@
         </parameter>
         <parameter>
             <name>WHIX_LogInterval</name>
-            <type>int[300:3600]</type>
+            <type>int[60:3600]</type>
             <syntax>int</syntax>
             <writable>true</writable>
         </parameter>
