@@ -732,6 +732,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     vap_svc_t *svc;
     wifi_vap_info_map_t *mgr_vap_map, *p_tgt_vap_map = NULL;
     bool found_target = false;
+    bool wpsPushButtonChanged = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     char update_status[128];
     public_vaps_data_t pub;
@@ -825,8 +826,10 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
 
+        wpsPushButtonChanged = isVapPrivate(tgt_vap_index) && is_wpsPushButton_changed(mgr_vap_info, vap_info);
+
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
-        if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
+        if (is_vap_param_config_changed_except_wpsPushButton(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
                 isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info)) {
             // radio data changed apply
             wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
@@ -913,6 +916,13 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         } else {
             wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Received vap config is same for %s, not applying\n",
                         __func__, __LINE__, vap_names[i]);
+        }
+
+        if (wpsPushButtonChanged)
+        {
+            push_event_to_ctrl_queue(&tgt_vap_index, sizeof(tgt_vap_index), wifi_event_type_command,
+                vap_info->u.bss_info.wpsPushButton ? wifi_event_type_command_wps : wifi_event_type_command_wps_cancel, NULL);
+            mgr_vap_info->u.bss_info.wpsPushButton = false;
         }
     }
 

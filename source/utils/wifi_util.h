@@ -456,6 +456,12 @@ bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
 int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta);
+bool is_vap_param_config_changed_except_wpsPushButton(wifi_vap_info_t *vap_info_old,
+                                                      wifi_vap_info_t *vap_info_new,
+                                                      rdk_wifi_vap_info_t *rdk_old,
+                                                      rdk_wifi_vap_info_t *rdk_new,
+                                                      bool isSta);
+bool is_wpsPushButton_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new);
 int update_radio_operating_classes(wifi_radio_operationParam_t *oper);
 int get_partner_id(char *partner_id);
 int interfacename_from_mac(const mac_address_t *mac, char *ifname);
