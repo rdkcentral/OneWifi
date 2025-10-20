@@ -30,7 +30,7 @@ public:
     number_t  m_val[MAX_MTRX_LEN][MAX_MTRX_LEN];
     
 private:
-    void row_reduced_echelon_form(matrix_t& rref, matrix_t minor_val);
+    void row_reduced_echelon_form(matrix_t& rref, matrix_t minor);
     
 public:
     void set_row(unsigned int row, vector_t& v);
@@ -46,7 +46,7 @@ public:
     matrix_t inverse();
     matrix_t adjoint();
     number_t determinant();
-    matrix_t minor_val(unsigned int row, unsigned int col);
+    matrix_t minor(unsigned int row, unsigned int col);
     matrix_t covariance();
     matrix_t conjugate();
     matrix_t transpose();
@@ -55,6 +55,7 @@ public:
     number_t trace();
     vector_t linear(vector_t& right);
     int eigen(vector_t& vals, matrix_t& vecs);
+    int cholesky(matrix_t& l);
     vector_t eigen_vector(number_t& val);
     number_t null_space();
     matrix_t row_reduced_echelon_form();

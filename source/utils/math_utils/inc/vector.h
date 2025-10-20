@@ -38,10 +38,13 @@ public:
     void push_back(number_t val);
     vector_t derivative(void);
     void get_highest_val_index(unsigned int &index);
-	vector_t(unsigned int num, number_t n[]);
+    vector_t operator +(vector_t v);
+    vector_t operator -(vector_t v);
+    vector_t operator /(number_t n);
+    vector_t(unsigned int num, number_t n[]);
     vector_t(unsigned int num);
     vector_t();
-	~vector_t();
+    ~vector_t();
 };
 
 #endif

@@ -31,9 +31,9 @@ void matrix_t::print()
 
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
-            m_val[i][j].print();printf("\t\t");
+            m_val[i][j].print(); wifi_util_dbg_print(WIFI_LIB, "\t\t");
         }
-        printf("\n");
+        wifi_util_dbg_print(WIFI_LIB, "\n");
     }
 }
 
@@ -46,14 +46,14 @@ matrix_t matrix_t::inverse()
     unsigned int i, j;
 
     if (m_rows != m_cols) {
-        printf("%s:%d: Can not be inverted\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_LIB, "%s:%d: Can not be inverted\n", __func__, __LINE__);
         return out;
     }
 
     det = determinant();
 
     if ((det.m_re == 0) && (det.m_im == 0)) {
-        printf("%s:%d: Matrix is singular\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_LIB, "%s:%d: Matrix is singular\n", __func__, __LINE__);
         return out;
     }
     
@@ -153,10 +153,10 @@ void matrix_t::row_reduced_echelon_form(matrix_t& rref, matrix_t m)
     }
     
     //rref.print();
-    //printf("\n");
+    //wifi_util_dbg_print(WIFI_LIB, "\n");
 
     
-    row_reduced_echelon_form(rref, m.minor_val(0, 0));
+    row_reduced_echelon_form(rref, m.minor(0, 0));
     
 }
 
@@ -165,11 +165,11 @@ matrix_t matrix_t::row_reduced_echelon_form()
     matrix_t rref = *this;
     
     this->print();
-    printf("\n");
+    wifi_util_dbg_print(WIFI_LIB, "\n");
     
     row_reduced_echelon_form(rref, *this);
     rref.print();
-    printf("\n");
+    wifi_util_dbg_print(WIFI_LIB, "\n");
     
     return rref;
     
@@ -197,9 +197,9 @@ number_t matrix_t::null_space()
     }
     
     echelon.print();
-    printf("\n");
+    wifi_util_dbg_print(WIFI_LIB, "\n");
     
-    return echelon.minor_val(0, 0).null_space();
+    return echelon.minor(0, 0).null_space();
 
 }
 
@@ -208,7 +208,7 @@ vector_t matrix_t::eigen_vector(number_t& val)
     vector_t right, sol, out;
     matrix_t m;
     unsigned int i, j;
-    
+
     m.m_rows = m_rows;
     m.m_cols = m_cols;
     for (i = 0; i < m_rows; i++) {
@@ -222,7 +222,7 @@ vector_t matrix_t::eigen_vector(number_t& val)
             }
         }
     }
-    
+
     right.m_num = m.m_rows;
     for (i = 0; i < right.m_num; i++) {
         right.m_val[i] = number_t(0, 0);
@@ -231,24 +231,28 @@ vector_t matrix_t::eigen_vector(number_t& val)
     right.m_val[i - 1].m_re = 1;
 
     sol = m.linear(right);
- 
-    
+
     out.m_num = sol.m_num;
     for (i = 0; i < sol.m_num; i++) {
         out.m_val[i] = sol.m_val[i]/sol.m_val[sol.m_num - 1];
     }
 
- 
     //m = row_reduced_echelon_form();
-    
+
     return out;
 }
 
 number_t matrix_t::trace()
 {
     number_t n(0, 0);
-    for (unsigned int i = 0; i < m_rows; ++i) {
-        n = n + m_val[i][i];
+    unsigned int i, j;
+
+    for (i = 0; i < m_rows; i++) {
+        for (j = 0; j < m_cols; j++) {
+            if (i == j) {
+                n = n + m_val[i][j];
+            }
+        }
     }
 
     return n;
@@ -261,7 +265,7 @@ vector_t matrix_t::faddeev_leverrier()
     matrix_t u;
     matrix_t m;
     number_t n;
-    
+
     u.m_rows = m_rows;
     u.m_cols = m_cols;
     for (i = 0; i < m_rows; i++) {
@@ -273,12 +277,12 @@ vector_t matrix_t::faddeev_leverrier()
             }
         }
     }
-    
+
     p.m_num = m_rows + 1;
-    
+
     m = *this;
     p.m_val[0] = number_t(1, 0);
-    
+
     for (i = 1; i <= m_rows; i++) {
         //n = number_t(pow(i, -1), 0);
         n = number_t(-1.0 / i, 0);
@@ -292,13 +296,45 @@ vector_t matrix_t::faddeev_leverrier()
 
 #if 1
     for (i = 0; i < p.m_num; ++i) {
-        printf("λ^%d: ", m_cols - i);
+        wifi_util_dbg_print(WIFI_LIB, "λ^%d: ", m_cols - i);
         p.m_val[i].print();
-        printf("\n");
+        wifi_util_dbg_print(WIFI_LIB, "\n");
     }
 #endif
 
     return p;
+}
+
+int matrix_t::cholesky(matrix_t& l)
+{
+    unsigned int i, j, k;
+    number_t n, root[2];
+
+    l = matrix_t(m_rows, m_cols);
+
+    for (i = 0; i < m_rows; i++) {
+        for (j = 0; j < i + 1; j++) {
+            if (i == j) {
+                n = number_t(0, 0);
+                for (k = 0; k < j; k++) {
+                    n = n + (l.m_val[j][k] * (number_t(0, 0) - l.m_val[j][k]));
+                }
+
+                (m_val[i][j] - n).sqroot(root);
+
+                l.m_val[i][j] = root[0];
+            } else {
+                n = number_t(0, 0);
+                for (k = 0; k < j; k++) {
+                    n = n + (l.m_val[i][k] * (number_t(0, 0) - l.m_val[j][k]));
+                }
+
+                l.m_val[i][j] = (m_val[i][j] - n)/l.m_val[j][j];
+            }
+        }
+    }
+
+    return 0;
 }
 
 int matrix_t::eigen(vector_t& vals, matrix_t& vecs)
@@ -309,7 +345,7 @@ int matrix_t::eigen(vector_t& vals, matrix_t& vecs)
     if (m_rows != m_cols) {
         return -1;
     }
-    
+
     //polynomial_t(faddeev_leverrier()).resolve(vals);
     //vals.sort();
 
@@ -327,8 +363,6 @@ int matrix_t::eigen(vector_t& vals, matrix_t& vecs)
     
     for (i = 0; i < vals.m_num; i++) {
         v = eigen_vector(vals.m_val[i]);
-        //printf("Eigen value:%f %f Eigen vector:\r\n",
-            //vals.m_val[i].m_re, vals.m_val[i].m_im);
         v.print();
         vecs.set_row(i, v);
     }
@@ -343,7 +377,7 @@ matrix_t matrix_t::adjoint()
     unsigned int i, j;
 
     if (m_rows != m_cols) {
-        printf("%s:%d: Can not find inverse of matrix\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_LIB, "%s:%d: Can not find inverse of matrix\n", __func__, __LINE__);
         return out;
     }
 
@@ -351,7 +385,7 @@ matrix_t matrix_t::adjoint()
 
     for (i = 0; i < t.m_rows; i++) {
         for (j = 0; j < t.m_cols; j++) {
-            m = t.minor_val(i, j);
+            m = t.minor(i, j);
             det = m.determinant();
 
             n = {pow(-1, i + j), 0};
@@ -365,7 +399,7 @@ matrix_t matrix_t::adjoint()
     return out;
 }
 
-matrix_t matrix_t::minor_val(unsigned int row, unsigned int col)
+matrix_t matrix_t::minor(unsigned int row, unsigned int col)
 {
     unsigned int i, j, p = 0, q = 0;
     matrix_t out(0, 0);
@@ -414,7 +448,7 @@ number_t matrix_t::determinant()
     }
 
     for (j = 0; j < m_cols; j++) {
-        m = minor_val(0, j);
+        m = minor(0, j);
         temp = m.determinant();
         
         n = {pow(-1, j), 0};
@@ -430,38 +464,12 @@ number_t matrix_t::determinant()
 
 matrix_t matrix_t::covariance()
 {
-#if 0
-    //old code
-    unsigned int i, j;
-    matrix_t t(0,0), c, out(0, 0);
-    
-    if (m_rows == 1) {
-        printf("%s:%d: Cannot calculate covariance of insufficient valued matrices\n", __func__, __LINE__);
-        return out;
-    }
-    
-    c = center();
-    t = c.transpose();
-
-    out.m_rows = m_cols;
-    out.m_cols = m_cols;
-    
-    out = t*c;
-    
-    for (j = 0; j < out.m_cols; j++) {
-        for (i = 0; i < out.m_rows; i++) {
-            out.m_val[i][j].m_re /= (m_rows - 1);
-            out.m_val[i][j].m_im /= (m_rows - 1);
-        }
-    }
-    
-    return out;
-#else
     unsigned int i, j;
     matrix_t data_h, out(0, 0);
 
     if (m_rows == 1) {
-        printf("%s:%d: Cannot calculate covariance of insufficient valued matrices\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_LIB, "%s:%d: Cannot calculate covariance"
+            " of insufficient valued matrices\n", __func__, __LINE__);
         return out;
     }
 
@@ -475,9 +483,8 @@ matrix_t matrix_t::covariance()
             out.m_val[i][j].m_im /= this->m_cols;
         }
     }
-    
+
     return out;
-#endif
 }
 
 matrix_t matrix_t::center()
@@ -521,8 +528,9 @@ matrix_t matrix_t::operator *(matrix_t m)
     matrix_t out(0, 0);
 
     if (m_cols != m.m_rows) {
-        printf("%s:%d: Matrices can't be multipled, mismatch of 1st Matrix Columns: %d and 2nd Matrix Rows: %d\n", __func__, __LINE__,
-                    m_cols, m.m_rows);
+        wifi_util_error_print(WIFI_LIB, "%s:%d: Matrices can't be multipled,"
+            " mismatch of 1st Matrix Columns: %d and 2nd Matrix Rows: %d\n",
+            __func__, __LINE__, m_cols, m.m_rows);
         return out;
     }
     
@@ -566,31 +574,36 @@ matrix_t matrix_t::operator -(matrix_t m)
 {
     matrix_t out(0, 0);
     unsigned int i, j;
-    
+
     if ((m_rows != m.m_rows) || (m_cols != m.m_cols)) {
         return out;
     }
-    
+
     out.m_rows = m_rows;
     out.m_cols = m_cols;
-    
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             out.m_val[i][j] = m_val[i][j] - m.m_val[i][j];
         }
     }
-    
+
     return out;
 }
 
 void matrix_t::set_row(unsigned int row, vector_t& v)
 {
     unsigned int j;
-    
+
+    if (m_rows == 0) {
+        m_rows = 1;
+        m_cols = v.m_num;
+    }
+
     if (m_cols != v.m_num) {
         return;
     }
-    
+
     for (j = 0; j < m_cols; j++) {
         m_val[row][j] = v.m_val[j];
     }
@@ -599,11 +612,16 @@ void matrix_t::set_row(unsigned int row, vector_t& v)
 void matrix_t::set_col(unsigned int col, vector_t& v)
 {
     unsigned int i;
-    
+
+    if (m_cols == 0) {
+        m_cols = 1;
+        m_rows = v.m_num;
+    }
+
     if (m_rows != v.m_num) {
         return;
     }
-    
+
     for (i = 0; i < m_rows; i++) {
         m_val[i][col] = v.m_val[i];
     }
@@ -613,13 +631,13 @@ vector_t matrix_t::get_row(unsigned int row)
 {
     vector_t out;
     unsigned int j;
-    
+
     out.m_num = m_cols;
-    
+
     for (j = 0; j < m_cols; j++) {
         out.m_val[j] = m_val[row][j];
     }
-    
+
     return out;
 }
 
@@ -627,22 +645,23 @@ vector_t matrix_t::get_col(unsigned int col)
 {
     vector_t out;
     unsigned int i;
-    
+
     out.m_num = m_rows;
-    
+
     for (i = 0; i < m_rows; i++) {
         out.m_val[i] = m_val[i][col];
     }
+
     return out;
 }
 
 matrix_t::matrix_t(unsigned int rows, unsigned int cols, number_t n[])
 {
     unsigned int i, j, k = 0;
-    
+
     m_rows = rows;
     m_cols = cols;
-    
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             m_val[i][j] = n[k]; k++;
@@ -653,17 +672,25 @@ matrix_t::matrix_t(unsigned int rows, unsigned int cols, number_t n[])
 
 matrix_t::matrix_t(unsigned int rows, unsigned int cols)
 {
+    unsigned int i, j;
+
     m_rows = rows;
     m_cols = cols;
+
+    for (i = 0; i < m_rows; i++) {
+        for (j = 0; j < m_cols; j++) {
+            m_val[i][j] = number_t(0, 0);
+        }
+    }
 }
 
 matrix_t::matrix_t(const matrix_t& m)
 {
     unsigned int i, j;
-    
+
     m_rows = m.m_rows;
     m_cols = m.m_cols;
-    
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             m_val[i][j] = m.m_val[i][j];
@@ -674,7 +701,7 @@ matrix_t::matrix_t(const matrix_t& m)
 matrix_t::matrix_t(vector_t v, bool as_row)
 {
     unsigned int i, j;
-    
+
     if (as_row) {
         m_rows = 1;
         m_cols = v.m_num;
@@ -698,6 +725,6 @@ matrix_t::matrix_t()
 
 matrix_t::~matrix_t()
 {
-    
+
 }
 

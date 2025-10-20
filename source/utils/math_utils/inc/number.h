@@ -46,6 +46,7 @@ public:
     number_t sqrt_val(void);
     double mod_z();
     double abs_val() const;
+    number_t absolute();
     number_t exponential();
     number_t power(unsigned int n);
     bool is_zero(int n);

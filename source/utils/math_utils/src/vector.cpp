@@ -28,9 +28,9 @@ void vector_t::print()
     unsigned int i;
 
     for (i = 0; i < m_num; i++) {
-        m_val[i].print();printf("\t\t");
+        m_val[i].print(); wifi_util_dbg_print(WIFI_LIB, "\t\t");
     }
-    printf("\n");
+    wifi_util_dbg_print(WIFI_LIB, "\n");
 }
 
 void vector_t::get_highest_val_index(unsigned int &index)
@@ -66,23 +66,62 @@ vector_t vector_t::derivative(void)
     return d;
 }
 
+vector_t vector_t::operator +(vector_t v)
+{
+    vector_t out;
+    unsigned int i;
+
+    out.m_num = m_num;
+    for (i = 0; i < m_num; i++) {
+        out.m_val[i] = m_val[i] + v.m_val[i];
+    }
+
+    return out;
+}
+
+vector_t vector_t::operator -(vector_t v)
+{
+    vector_t out;
+    unsigned int i;
+
+    out.m_num = m_num;
+    for (i = 0; i < m_num; i++) {
+        out.m_val[i] = m_val[i] - v.m_val[i];
+    }
+
+    return out;
+}
+
+vector_t vector_t::operator /(number_t n)
+{
+    vector_t out;
+    unsigned int i;
+
+    out.m_num = m_num;
+    for (i = 0; i < m_num; i++) {
+        out.m_val[i] = m_val[i]/n;
+    }
+
+    return out;
+}
+
 number_t vector_t::stddev()
 {
     unsigned int i;
     number_t m(0, 0), temp(0, 0), n(0, 0), r[2], out(0, 0);
-    
+
     m = mean();
-    
+
     for (i = 0; i < m_num; i++) {
         n = m_val[i] - m;
         temp = temp + n.power(2);
     }
-    
+
     temp = temp/number_t(m_num, 0);
-    
+
     temp.sqroot(r);
     out = r[0];
-    
+
     return out;
 }
 

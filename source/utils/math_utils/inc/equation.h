@@ -36,7 +36,7 @@ public:
     equation_t operator -(equation_t n);
     
     equation_t determinant(matrix_s_t *m);
-    int minor_val(matrix_s_t *out, matrix_s_t *in, unsigned int row, unsigned int col);
+    int minor(matrix_s_t *out, matrix_s_t *in, unsigned int row, unsigned int col);
     
     void print();
     static void print_matrix_s(matrix_s_t *m);

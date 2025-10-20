@@ -87,7 +87,7 @@ int polynomial_t::laguerre_resolve(vector_t& out)
 {
     vector_t current = out;
     vector_t roots;
-  
+
     while (current.m_num > 2) {
         number_t root = find_root(current, number_t(0.5, 0.5));
         roots.push_back(root);
@@ -104,19 +104,34 @@ int polynomial_t::laguerre_resolve(vector_t& out)
     return 0;
 }
 
+int polynomial_t::cauchy_bound(bounds_t *re, bounds_t *im)
+{
+    m_args.print();
+
+    re->upper_limit = 10;
+    re->lower_limit = -10;
+    re->increments = 0.01;
+
+    im->upper_limit = 10;
+    im->lower_limit = -10;
+    im->increments = 0.01;
+
+    return 0;
+}
+
 int polynomial_t::resolve(vector_t& out)
 {
     vector_t sum(0);
     double d, least_modz;
-    //root_search_space_t sp_re = {10000, -10000, 0.0001};
-    root_search_space_t sp_re = {10, -10, 0.01};
-    root_search_space_t sp_im = {10, -10, 0.01};
+    bounds_t b_re;
+    bounds_t b_im;
     unsigned int i;
     number_t sqrt_b[2];
     number_t roots[2], possible_root;
     bool found_root = false;
-   
-    
+
+    cauchy_bound(&b_re, &b_im);
+
     if (m_args.m_num == 2) {
         out.m_val[out.m_num] = (number_t(0) - m_args.m_val[1])/m_args.m_val[0];
         out.m_num++;
@@ -138,13 +153,13 @@ int polynomial_t::resolve(vector_t& out)
     
     least_modz = pow(2, 64);
 
-    roots[0].m_re = sp_re.lower_limit;
+    roots[0].m_re = b_re.lower_limit;
 
-    while (roots[0].m_re < sp_re.upper_limit) {
+    while (roots[0].m_re < b_re.upper_limit) {
         
-        roots[0].m_im = sp_im.lower_limit;
+        roots[0].m_im = b_im.lower_limit;
         
-        while (roots[0].m_im < sp_im.upper_limit) {
+        while (roots[0].m_im < b_im.upper_limit) {
             for (i = 0; i < m_args.m_num - 1; i++) {
                 sum.m_val[i + 1] = m_args.m_val[i + 1] + (roots[0] * sum.m_val[i]);
             }
@@ -160,14 +175,14 @@ int polynomial_t::resolve(vector_t& out)
                 
             }
             
-            roots[0].m_im += sp_im.increments;
+            roots[0].m_im += b_im.increments;
         }
         
         if (found_root == true) {
             break;
         }
         
-        roots[0].m_re += sp_re.increments;
+        roots[0].m_re += b_re.increments;
     }
     
     if (found_root == false) {

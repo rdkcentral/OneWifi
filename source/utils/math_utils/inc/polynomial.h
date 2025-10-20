@@ -42,6 +42,7 @@ public:
     vector_t deflate(vector_t& poly, number_t root);
     number_t find_root(vector_t& poly, number_t x);
     int laguerre_resolve(vector_t& out);
+    int cauchy_bound(bounds_t *re, bounds_t *im);
     void print();
     
 	polynomial_t(vector_t v);

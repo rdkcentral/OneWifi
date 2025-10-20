@@ -19,13 +19,14 @@
 #ifndef BASE_H
 #define BASE_H
 
+#include "wifi_util.h"
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
 #define     MAX_LEN     128
-//#define     MAX_LEN     180
 #define     MAX_MTRX_LEN     MAX_LEN/4
 #define PI  3.14159
 
@@ -47,7 +48,7 @@ typedef struct {
     double  upper_limit;
     double  lower_limit;
     double  increments;
-} root_search_space_t;
+} bounds_t;
 
 #ifdef __cplusplus
 }

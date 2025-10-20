@@ -27,17 +27,17 @@
 void number_t::print()
 {
     if ((is_zero(m_re, 4) == true) && (is_zero(m_im, 4) == false)) {
-        printf("%0.4fi", m_im);
+        wifi_util_dbg_print(WIFI_LIB, "%0.4fi", m_im);
     } else if ((is_zero(m_re, 4) == false) && (is_zero(m_im, 4) == true)) {
-        printf("%0.4f", m_re);
+        wifi_util_dbg_print(WIFI_LIB, "%0.4f", m_re);
     } else if ((is_zero(m_re, 4) == false) && (is_zero(m_im, 4) == false)) {
         if (m_im < 0) {
-            printf("%0.4f%0.4fi", m_re, m_im);
+            wifi_util_dbg_print(WIFI_LIB, "%0.4f%0.4fi", m_re, m_im);
         } else {
-            printf("%0.4f+%0.4fi", m_re, m_im);
+            wifi_util_dbg_print(WIFI_LIB, "%0.4f+%0.4fi", m_re, m_im);
         }
     } else {
-        printf("0.0000");
+        wifi_util_dbg_print(WIFI_LIB, "0.0000");
     }
 }
 
@@ -47,6 +47,16 @@ bool number_t::is_zero(double x, int n) {
     }
     
     return fabs(x) < pow(10, -n);
+}
+
+number_t number_t::absolute()
+{
+    number_t out;
+
+    out.m_re = fabs(m_re);
+    out.m_im = fabs(m_im);
+
+    return out;
 }
 
 bool number_t::is_zero(int n)

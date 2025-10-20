@@ -27,20 +27,20 @@ void equation_t::print_matrix_s(matrix_s_t *m)
 {
     unsigned int i, j;
     
-    printf("Matrix S:\n");
+    wifi_util_dbg_print(WIFI_LIB, "Matrix S:\n");
     for (i = 0; i < m->rows; i++) {
         for (j = 0; j < m->cols; j++) {
-            printf("%s\t", m->val[i][j]);
+            wifi_util_dbg_print(WIFI_LIB, "%s\t", m->val[i][j]);
         }
-        printf("\n");
+        wifi_util_dbg_print(WIFI_LIB, "\n");
     }
-    printf("\n");
+    wifi_util_dbg_print(WIFI_LIB, "\n");
 }
 
 
 void equation_t::print()
 {
-    printf("%s\n", m_eqn);
+    wifi_util_dbg_print(WIFI_LIB, "%s\n", m_eqn);
 }
 
 vector_t equation_t::arguments()
@@ -145,7 +145,7 @@ vector_t equation_t::arguments()
     return out;
 }
 
-int equation_t::minor_val(matrix_s_t *out, matrix_s_t *in, unsigned int row, unsigned int col)
+int equation_t::minor(matrix_s_t *out, matrix_s_t *in, unsigned int row, unsigned int col)
 {
     unsigned int i, j, p = 0, q = 0;
 
@@ -196,7 +196,7 @@ equation_t equation_t::determinant(matrix_s_t *in)
     
         
     for (j = 0; j < in->cols; j++) {
-        minor_val(&m, in, 0, j);
+        minor(&m, in, 0, j);
         //print_matrix_s(&m);
         
         if (pow(-1, j) > 0) {
