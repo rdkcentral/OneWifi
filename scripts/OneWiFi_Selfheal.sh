@@ -57,7 +57,6 @@ wave_driver_restart_cnt=0
 bss_queue_full=0
 bss_queue_full_cnt=0
 conn_clients_total=0
-conn_clients_max=0
 num_clients=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
@@ -206,21 +205,18 @@ check_bss_queue_one_min()
 }
 
 onewifi_conn_clients_count() {
-conn_clients_total=0
-conn_clients_max=0
-num_clients=0
+    conn_clients_total=0
+    num_clients=0
+    radio_arr=( 1 2 )
+    
+    num_radios=`dmcli eRT retv Device.WiFi.RadioNumberOfEntries`
+    if [ "$num_radios" -eq 3 ]; then
+        radio_arr=( 1 2 17 )
+    fi
 
-    for radio in 1 2 17; do
-        num_clients=`dmcli eRT getv Device.WiFi.AccessPoint.$radio.AssociatedDeviceNumberOfEntries | grep "value:" |cut -f3 -d: | awk '{$1=$1};1'`
+    for radio in "${radio_arr[@]}"; do
+        num_clients=`dmcli eRT retv Device.WiFi.AccessPoint.$radio.AssociatedDeviceNumberOfEntries`
         conn_clients_total=$((conn_clients_total + num_clients))
-
-        if [ "$num_clients" -gt "$conn_clients_max" ]; then
-            conn_clients_max=$num_clients
-        fi
-        if [ "$conn_clients_max" -gt "$conn_clients_thrsh" ]; then
-            echo_t "OneWifi Number of clients connected ($conn_clients_max/$conn_clients_total) \
-            above threshold ($conn_clients_thrsh)\n" >> $LOG_FILE
-        fi
     done
 }
 
@@ -265,7 +261,7 @@ onewifi_mem_restart() {
         threshold1=$((threshold1 + adj))
         threshold2=$((threshold2 + adj))
         echo_t "Adjusted OneWifi mem thresholds by 30 MB up due to high client load: \
-        Total: ($conn_clients_total clients), max per AP: ($conn_clients_max)" >> $LOG_FILE
+        Number of connected clients: ($conn_clients_total clients)." >> $LOG_FILE
     fi
 
     if [ "$vmrss" -gt "$threshold2" ]; then
@@ -286,7 +282,7 @@ onewifi_mem_restart() {
         fi
     else
         echo_t "RSS Memory usage of Onewifi is within the RSS threshold values [Rss : ($vmrss kB)]" >> $LOG_FILE
-        echo_t "Max of connected clients ($conn_clients_max), total ($conn_clients_total)" >> $LOG_FILE
+        echo_t "Number of connected clients: ($conn_clients_total)" >> $LOG_FILE
     fi
 }
 
