@@ -56,6 +56,9 @@ SW_UPGRADE_DEFAULT_FILE="/tmp/sw_upgrade_private_defaults"
 wave_driver_restart_cnt=0
 bss_queue_full=0
 bss_queue_full_cnt=0
+conn_clients_total=0
+conn_clients_max=0
+num_clients=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
@@ -202,6 +205,25 @@ check_bss_queue_one_min()
     done
 }
 
+onewifi_conn_clients_count() {
+conn_clients_total=0
+conn_clients_max=0
+num_clients=0
+
+    for radio in 1 2 17; do
+        num_clients=`dmcli eRT getv Device.WiFi.AccessPoint.$radio.AssociatedDeviceNumberOfEntries | grep "value:" |cut -f3 -d: | awk '{$1=$1};1'`
+        conn_clients_total=$((conn_clients_total + num_clients))
+
+        if [ "$num_clients" -gt "$conn_clients_max" ]; then
+            conn_clients_max=$num_clients
+        fi
+        if [ "$conn_clients_max" -gt "$conn_clients_thrsh" ]; then
+            echo_t "OneWifi Number of clients connected ($conn_clients_max/$conn_clients_total) \
+            above threshold ($conn_clients_thrsh)\n" >> $LOG_FILE
+        fi
+    done
+}
+
 onewifi_mem_restart() {
     # Find the OneWifi process PID
     onewifi_pid=$(ps | grep "/usr/bin/OneWifi -subsys eRT\." | grep -v grep | awk '{print $1}')
@@ -234,7 +256,19 @@ onewifi_mem_restart() {
         return
     fi
 
-    if [ "$vmrss" -ge "$threshold2" ]; then
+    # Get number of clients (max per AP and total)
+    onewifi_conn_clients_count
+    adj=$((30720))
+
+    # Adjust threshold up, if high no of clients
+    if [ "$conn_clients_total" -gt 45 ]; then
+        threshold1=$((threshold1 + adj))
+        threshold2=$((threshold2 + adj))
+        echo_t "Adjusted OneWifi mem thresholds by 30 MB up due to high client load: \
+        Total: ($conn_clients_total clients), max per AP: ($conn_clients_max)" >> $LOG_FILE
+    fi
+
+    if [ "$vmrss" -gt "$threshold2" ]; then
         if [ "$time_since_last_restart" -ge 86400 ]; then
             echo_t "RSS Memory of Onewifi exceeds RSS threshold2 value and restarting Onewifi [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
             systemctl restart onewifi.service
@@ -242,7 +276,7 @@ onewifi_mem_restart() {
         else
             echo_t "OneWifi restart skipped for RSS threshold2 since last restart time is less than 24 hrs [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
         fi
-    elif [ "$vmrss" -ge "$threshold1" ] && [ "$m_win" -eq 1 ]; then
+    elif [ "$vmrss" -gt "$threshold1" ] && [ "$m_win" -eq 1 ]; then
         if [ "$time_since_last_restart" -ge 86400 ]; then
             echo_t "RSS Memory of Onewifi exceeds RSS threshold1 value during maintenance window and restarting Onewifi [Rss : ($vmrss kB) Threshold1 : ($threshold1 kB)]" >> $LOG_FILE
             systemctl restart onewifi.service
@@ -252,6 +286,7 @@ onewifi_mem_restart() {
         fi
     else
         echo_t "RSS Memory usage of Onewifi is within the RSS threshold values [Rss : ($vmrss kB)]" >> $LOG_FILE
+        echo_t "Max of connected clients ($conn_clients_max), total ($conn_clients_total)" >> $LOG_FILE
     fi
 }
 
