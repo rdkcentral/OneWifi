@@ -3095,6 +3095,33 @@ void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc)
     }
 }
 
+void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int *subdoc)
+{
+    UINT radio_index = getRadioIndexFromAp(vap_index);
+    wifi_radio_operationParam_t *radioOperation = getRadioOperationParam(radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s : failed to getRadioOperationParam for radio index %d\n", __FUNCTION__,
+            radio_index);
+        return;
+    }
+
+    switch (radioOperation->band) {
+    case WIFI_FREQUENCY_2_4_BAND:
+        *subdoc = webconfig_subdoc_type_vap_24G;
+        break;
+    case WIFI_FREQUENCY_5_BAND:
+        *subdoc = webconfig_subdoc_type_vap_5G;
+        break;
+    case WIFI_FREQUENCY_6_BAND:
+        *subdoc = webconfig_subdoc_type_vap_6G;
+        break;
+    default:
+        *subdoc = webconfig_subdoc_type_unknown;
+        break;
+    }
+}
+
 //Returns total number of Configured vaps for all radios
 UINT getTotalNumberVAPs()
 {
