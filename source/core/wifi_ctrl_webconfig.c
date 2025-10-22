@@ -1580,6 +1580,34 @@ int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
+static int remove_all_mac_acl_entries_from_cache_and_db(rdk_wifi_vap_info_t *current_config)
+{
+    if (current_config == NULL || current_config->acl_map == NULL) {
+        wifi_util_info_print(WIFI_MGR, "%s:%d: Current obj:%p is NULL\n", __func__, __LINE__, current_config);
+        return RETURN_ERR;
+    }
+    acl_entry_t *current_acl_entry, *temp_acl_entry;
+    mac_addr_str_t current_mac_str;
+    char macfilterkey[128] = { 0 };
+
+    current_acl_entry = hash_map_get_first(current_config->acl_map);
+    while (current_acl_entry != NULL) {
+        to_mac_str(current_acl_entry->mac, current_mac_str);
+        str_tolower(current_mac_str);
+        wifi_util_info_print(WIFI_MGR, "%s:%d: del mac:%s vap_index:%d\n",
+            __func__, __LINE__, current_mac_str, current_config->vap_index);
+        current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+        temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+        if (temp_acl_entry != NULL) {
+            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+            wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+            free(temp_acl_entry);
+        }
+    }
+
+    return RETURN_OK;
+}
+
 int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, webconfig_subdoc_type_t subdoc_type)
 {
     unsigned int radio_index, vap_index;
@@ -1652,6 +1680,9 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
 #else
 		wifi_delApAclDevices(vap_index);
 #endif
+                wifi_util_info_print(WIFI_MGR, "%s:%d: remove all mac acl entries"
+                    " from cache and db vap_index:%d\n", __func__, __LINE__, vap_index);
+                remove_all_mac_acl_entries_from_cache_and_db(current_config);
                 current_config->is_mac_filter_initialized = true;
             }
 
