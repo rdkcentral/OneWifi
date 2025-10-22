@@ -1070,25 +1070,31 @@ int start_wifi_health_monitor_thread(void)
 
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
-    scan_results_t  res;
+    scan_results_t  *res;
 
-    memset(&res, 0, sizeof(scan_results_t));
+    res = (scan_results_t *)malloc((*num) * sizeof(scan_results_t));
+    if(!res) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Failed to allocate memory for scan_results_t\n", __FUNCTION__, __LINE__);
+	return RETURN_ERR;
+    }
+    memset(res, 0, (*num) * sizeof(scan_results_t));
 
-    res.radio_index = radio_index;
+    res->radio_index = radio_index;
 
     if (*num) {
         // if number of scanned AP's is more than size of res.bss array - truncate
         if (*num > MAX_SCANNED_VAPS){
             *num = MAX_SCANNED_VAPS;
         }
-        res.num = *num;
-        memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+       res->num = *num;
+       memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
     if (is_sta_enabled()) {
-        push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind,
+       push_event_to_ctrl_queue(res, sizeof(scan_results_t), wifi_event_type_hal_ind,
             wifi_event_scan_results, NULL);
     }
     free(*bss);
+    free(res);
 
     return 0;
 }
