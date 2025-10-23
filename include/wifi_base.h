@@ -413,7 +413,7 @@ typedef struct {
     char          wps_pin[10];
 } __attribute__((__packed__)) wps_pin_config_t;
 
-#define MAX_SCANNED_VAPS       32
+#define MAX_SCANNED_VAPS       200
 
 typedef struct {
     unsigned int radio_index;
