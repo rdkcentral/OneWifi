@@ -1924,6 +1924,7 @@ int decode_802_11_frame(webconfig_consumer_t *consumer, unsigned int vap_index, 
     frame_data.frame.len = count;
     frame_data.frame.type = WIFI_MGMT_FRAME_TYPE_ACTION;
     frame_data.frame.dir = wifi_direction_uplink;
+    frame_data.frame.recv_freq = 0;
 
     rbusValue_Init(&value);
     rbusObject_Init(&rdata, NULL);
