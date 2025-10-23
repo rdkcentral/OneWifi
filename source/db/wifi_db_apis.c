@@ -6896,7 +6896,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
+#ifndef _PLATFORM_BANANAPI_R4_
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
             break;
         default:
@@ -9186,7 +9188,7 @@ int get_all_param_from_psm_and_set_into_db(void)
         is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
         is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
-        is_device_type_vbvxer5() == true || is_device_type_xle() == true) {
+        is_device_type_vbvxer5() == true || is_device_type_xle() == true || is_device_type_sr203() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;
