@@ -764,7 +764,6 @@ void start_gateway_vaps()
 {
     vap_svc_t *priv_svc, *pub_svc, *mesh_gw_svc;
     unsigned int value;
-    wifi_vap_info_t *wifi_vap_info = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -799,12 +798,10 @@ void start_gateway_vaps()
     value = false;
     if (bus_get_active_gw_parameter(WIFI_ENDPOINT_ENABLE_CHECK, &value) == RETURN_OK) {
         ctrl->rf_status_down = value;
-        wifi_vap_info->u.sta_info.ignite_enabled = value;
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d rf-status : %d ignite-enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, wifi_vap_info->u.sta_info.ignite_enabled);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d rf-status : %d \n", __func__, __LINE__, ctrl->rf_status_down);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get the data for Endpoint enable check\n", __func__, __LINE__);
     }
-    
     if (is_sta_enabled() == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
         start_extender_vaps();
