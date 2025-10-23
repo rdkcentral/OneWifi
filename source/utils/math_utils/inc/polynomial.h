@@ -21,33 +21,33 @@
 
 #include "base.h"
 #include "matrix.h"
-#include "vector.h"
 #include "number.h"
+#include "vector.h"
 
 const double TOL = 1e-12;
 const int MAX_ITER = 100;
 
 class polynomial_t {
 public:
-   	vector_t	m_args;
-    
-public:
-    polynomial_t operator *(polynomial_t n);
-    polynomial_t operator /(polynomial_t n);
-    polynomial_t operator +(polynomial_t n);
-    polynomial_t operator -(polynomial_t n);
-    int resolve(vector_t& roots);
+    vector_t m_args;
 
-    number_t eval(vector_t& poly, number_t x);
-    vector_t deflate(vector_t& poly, number_t root);
-    number_t find_root(vector_t& poly, number_t x);
-    int laguerre_resolve(vector_t& out);
+public:
+    polynomial_t operator*(polynomial_t n);
+    polynomial_t operator/(polynomial_t n);
+    polynomial_t operator+(polynomial_t n);
+    polynomial_t operator-(polynomial_t n);
+    int resolve(vector_t &roots);
+
+    number_t eval(vector_t &poly, number_t x);
+    vector_t deflate(vector_t &poly, number_t root);
+    number_t find_root(vector_t &poly, number_t x);
+    int laguerre_resolve(vector_t &out);
     int cauchy_bound(bounds_t *re, bounds_t *im);
     void print();
-    
-	polynomial_t(vector_t v);
+
+    polynomial_t(vector_t v);
     polynomial_t();
-	~polynomial_t();
+    ~polynomial_t();
 };
 
 #endif

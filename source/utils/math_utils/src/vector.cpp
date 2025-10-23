@@ -16,19 +16,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "vector.h"
+#include "number.h"
+#include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <math.h>
-#include "number.h"
-#include "vector.h"
 
 void vector_t::print()
 {
     unsigned int i;
 
     for (i = 0; i < m_num; i++) {
-        m_val[i].print(); wifi_util_dbg_print(WIFI_LIB, "\t\t");
+        m_val[i].print();
+        wifi_util_dbg_print(WIFI_LIB, "\t\t");
     }
     wifi_util_dbg_print(WIFI_LIB, "\n");
 }
@@ -66,7 +67,7 @@ vector_t vector_t::derivative(void)
     return d;
 }
 
-vector_t vector_t::operator +(vector_t v)
+vector_t vector_t::operator+(vector_t v)
 {
     vector_t out;
     unsigned int i;
@@ -79,7 +80,7 @@ vector_t vector_t::operator +(vector_t v)
     return out;
 }
 
-vector_t vector_t::operator -(vector_t v)
+vector_t vector_t::operator-(vector_t v)
 {
     vector_t out;
     unsigned int i;
@@ -92,14 +93,14 @@ vector_t vector_t::operator -(vector_t v)
     return out;
 }
 
-vector_t vector_t::operator /(number_t n)
+vector_t vector_t::operator/(number_t n)
 {
     vector_t out;
     unsigned int i;
 
     out.m_num = m_num;
     for (i = 0; i < m_num; i++) {
-        out.m_val[i] = m_val[i]/n;
+        out.m_val[i] = m_val[i] / n;
     }
 
     return out;
@@ -117,7 +118,7 @@ number_t vector_t::stddev()
         temp = temp + n.power(2);
     }
 
-    temp = temp/number_t(m_num, 0);
+    temp = temp / number_t(m_num, 0);
 
     temp.sqroot(r);
     out = r[0];
@@ -133,13 +134,13 @@ number_t vector_t::mean()
     if (m_num == 0) {
         return out;
     }
-    
+
     for (i = 0; i < m_num; i++) {
         out.m_re += m_val[i].m_re;
         out.m_im += m_val[i].m_im;
     }
-    
-    return out/number_t(m_num, 0);
+
+    return out / number_t(m_num, 0);
 }
 
 void vector_t::sort()
@@ -147,11 +148,11 @@ void vector_t::sort()
     vector_t out(0);
     unsigned int i, j;
     number_t n;
-    
+
     if (m_num == 0) {
         return;
     }
-    
+
     for (i = 0; i < m_num - 1; i++) {
         for (j = i + 1; j < m_num; j++) {
             if (m_val[i].mod_z() < m_val[j].mod_z()) {
@@ -168,34 +169,33 @@ vector_t vector_t::invert()
 {
     unsigned int i;
     vector_t out;
-    
+
     out.m_num = m_num;
-    
+
     for (i = 0; i < m_num; i++) {
         out.m_val[m_num - i - 1] = m_val[i];
     }
-    
+
     return out;
 }
 
 vector_t::vector_t(unsigned int num, number_t n[])
 {
     unsigned int i;
-    
+
     m_num = num;
-    
+
     for (i = 0; i < num; i++) {
         m_val[i] = n[i];
     }
-
 }
 
 vector_t::vector_t(unsigned int num)
 {
     unsigned int i;
-    
+
     m_num = num;
-    
+
     for (i = 0; i < MAX_LEN; i++) {
         m_val[i].m_re = 0;
         m_val[i].m_im = 0;
@@ -209,6 +209,4 @@ vector_t::vector_t()
 
 vector_t::~vector_t()
 {
-    
 }
-

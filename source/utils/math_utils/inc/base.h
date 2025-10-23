@@ -22,32 +22,31 @@
 #include "wifi_util.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-#define     MAX_LEN     128
-#define     MAX_MTRX_LEN     MAX_LEN/4
-#define PI  3.14159
+#define MAX_LEN 128
+#define MAX_MTRX_LEN MAX_LEN / 4
+#define PI 3.14159
 
 typedef char expr_t[32];
 typedef char large_expr_t[2048];
 
 typedef struct {
     unsigned int num;
-    expr_t    val[MAX_LEN];
+    expr_t val[MAX_LEN];
 } vector_s_t;
 
 typedef struct {
-    unsigned int    rows;
-    unsigned int    cols;
-    expr_t    val[MAX_MTRX_LEN][MAX_MTRX_LEN];
+    unsigned int rows;
+    unsigned int cols;
+    expr_t val[MAX_MTRX_LEN][MAX_MTRX_LEN];
 } matrix_s_t;
 
 typedef struct {
-    double  upper_limit;
-    double  lower_limit;
-    double  increments;
+    double upper_limit;
+    double lower_limit;
+    double increments;
 } bounds_t;
 
 #ifdef __cplusplus

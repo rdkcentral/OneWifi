@@ -25,11 +25,14 @@
 class vector_t {
 public:
     unsigned int m_num;
-    number_t  m_val[MAX_LEN];
-    
+    number_t m_val[MAX_LEN];
+
 public:
     void print();
-    unsigned int get_capacity() { return MAX_LEN; }
+    unsigned int get_capacity()
+    {
+        return MAX_LEN;
+    }
     vector_t invert();
     void sort();
     number_t mean();
@@ -38,9 +41,9 @@ public:
     void push_back(number_t val);
     vector_t derivative(void);
     void get_highest_val_index(unsigned int &index);
-    vector_t operator +(vector_t v);
-    vector_t operator -(vector_t v);
-    vector_t operator /(number_t n);
+    vector_t operator+(vector_t v);
+    vector_t operator-(vector_t v);
+    vector_t operator/(number_t n);
     vector_t(unsigned int num, number_t n[]);
     vector_t(unsigned int num);
     vector_t();

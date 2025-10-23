@@ -20,31 +20,31 @@
 #define EQUATION_H
 
 #include "base.h"
+#include "matrix.h"
 #include "number.h"
 #include "vector.h"
-#include "matrix.h"
 
 class equation_t {
 public:
-    large_expr_t  m_eqn;
-    
+    large_expr_t m_eqn;
+
 public:
     vector_t arguments();
-    equation_t operator *(equation_t n);
-    equation_t operator /(equation_t n);
-    equation_t operator +(equation_t n);
-    equation_t operator -(equation_t n);
-    
+    equation_t operator*(equation_t n);
+    equation_t operator/(equation_t n);
+    equation_t operator+(equation_t n);
+    equation_t operator-(equation_t n);
+
     equation_t determinant(matrix_s_t *m);
     int minor(matrix_s_t *out, matrix_s_t *in, unsigned int row, unsigned int col);
-    
+
     void print();
     static void print_matrix_s(matrix_s_t *m);
-    
+
     equation_t(const char *s);
     equation_t(vector_t v);
     equation_t();
-	~equation_t();
+    ~equation_t();
 };
 
 #endif

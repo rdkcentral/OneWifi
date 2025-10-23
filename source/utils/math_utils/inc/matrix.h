@@ -27,21 +27,21 @@ class matrix_t {
 public:
     unsigned int m_rows;
     unsigned int m_cols;
-    number_t  m_val[MAX_MTRX_LEN][MAX_MTRX_LEN];
-    
+    number_t m_val[MAX_MTRX_LEN][MAX_MTRX_LEN];
+
 private:
-    void row_reduced_echelon_form(matrix_t& rref, matrix_t minor);
-    
+    void row_reduced_echelon_form(matrix_t &rref, matrix_t minor);
+
 public:
-    void set_row(unsigned int row, vector_t& v);
-    void set_col(unsigned int col, vector_t& v);
-    
+    void set_row(unsigned int row, vector_t &v);
+    void set_col(unsigned int col, vector_t &v);
+
     vector_t get_row(unsigned int row);
     vector_t get_col(unsigned int col);
-    
-    matrix_t operator *(matrix_t m);
-    matrix_t operator +(matrix_t m);
-    matrix_t operator -(matrix_t m);
+
+    matrix_t operator*(matrix_t m);
+    matrix_t operator+(matrix_t m);
+    matrix_t operator-(matrix_t m);
 
     matrix_t inverse();
     matrix_t adjoint();
@@ -53,23 +53,22 @@ public:
     matrix_t hermitian();
     matrix_t center();
     number_t trace();
-    vector_t linear(vector_t& right);
-    int eigen(vector_t& vals, matrix_t& vecs);
-    int cholesky(matrix_t& l);
-    vector_t eigen_vector(number_t& val);
+    vector_t linear(vector_t &right);
+    int eigen(vector_t &vals, matrix_t &vecs);
+    int cholesky(matrix_t &l);
+    vector_t eigen_vector(number_t &val);
     number_t null_space();
     matrix_t row_reduced_echelon_form();
     vector_t faddeev_leverrier();
-    
-    
+
     void print();
-    
-	matrix_t(unsigned int rows, unsigned int cols, number_t n[]);
+
+    matrix_t(unsigned int rows, unsigned int cols, number_t n[]);
     matrix_t(unsigned int rows, unsigned int cols);
-    matrix_t(const matrix_t& m);
+    matrix_t(const matrix_t &m);
     matrix_t(vector_t v, bool as_row);
     matrix_t();
-	~matrix_t();
+    ~matrix_t();
 };
 
 #endif

@@ -20,23 +20,23 @@
 #define STATISTICS_H
 
 #include "base.h"
+#include "matrix.h"
 #include "number.h"
 #include "vector.h"
-#include "matrix.h"
 
 class statistics_t {
     vector_t m_data;
-    
+
 public:
     void print();
     vector_t pdf();
     number_t pdf(number_t x);
     number_t mean();
     number_t stddev();
-    
+
 public:
-    statistics_t(vector_t& v);
-	~statistics_t();
+    statistics_t(vector_t &v);
+    ~statistics_t();
 };
 
 #endif

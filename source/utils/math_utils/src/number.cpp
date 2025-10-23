@@ -16,13 +16,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "number.h"
+#include "matrix.h"
+#include "vector.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include "number.h"
-#include "vector.h"
-#include "matrix.h"
 
 void number_t::print()
 {
@@ -41,11 +41,12 @@ void number_t::print()
     }
 }
 
-bool number_t::is_zero(double x, int n) {
+bool number_t::is_zero(double x, int n)
+{
     if (n == 0) {
         return abs((int)x) == 0;
     }
-    
+
     return fabs(x) < pow(10, -n);
 }
 
@@ -64,32 +65,34 @@ bool number_t::is_zero(int n)
     return (is_zero(m_re, n)) && (is_zero(m_im, n));
 }
 
-bool number_t::operator ==(number_t n)
+bool number_t::operator==(number_t n)
 {
     return (m_re == n.m_re) && (m_im == n.m_im);
 }
 
-number_t number_t::operator *(number_t n)
+number_t number_t::operator*(number_t n)
 {
-    return number_t(m_re*n.m_re - m_im*n.m_im, m_re*n.m_im + m_im*n.m_re);
+    return number_t(m_re * n.m_re - m_im * n.m_im, m_re * n.m_im + m_im * n.m_re);
 }
 
-number_t number_t::operator /(number_t n)
+number_t number_t::operator/(number_t n)
 {
-    return number_t((m_re*n.m_re + m_im*n.m_im)/(pow(n.m_re, 2) + pow(n.m_im, 2)), (m_im*n.m_re - m_re*n.m_im)/(pow(n.m_re, 2) + pow(n.m_im, 2)));
+    return number_t((m_re * n.m_re + m_im * n.m_im) / (pow(n.m_re, 2) + pow(n.m_im, 2)),
+        (m_im * n.m_re - m_re * n.m_im) / (pow(n.m_re, 2) + pow(n.m_im, 2)));
 }
 
-number_t number_t::operator +(number_t n)
+number_t number_t::operator+(number_t n)
 {
     return number_t(m_re + n.m_re, m_im + n.m_im);
 }
 
-number_t number_t::operator -(number_t n)
+number_t number_t::operator-(number_t n)
 {
-    return number_t(m_re - n.m_re, m_im - n.m_im);;
+    return number_t(m_re - n.m_re, m_im - n.m_im);
+    ;
 }
 
-number_t number_t::operator -(void)
+number_t number_t::operator-(void)
 {
     number_t out;
     out.m_re = -m_re;
@@ -97,41 +100,41 @@ number_t number_t::operator -(void)
     return out;
 }
 
-matrix_t number_t::operator *(matrix_t m)
+matrix_t number_t::operator*(matrix_t m)
 {
     matrix_t out;
     unsigned int i, j;
-    
+
     out = m;
     for (i = 0; i < m.m_rows; i++) {
         for (j = 0; j < m.m_cols; j++) {
-            out.m_val[i][j] = (*this)*m.m_val[i][j];
+            out.m_val[i][j] = (*this) * m.m_val[i][j];
         }
     }
-    
+
     return out;
 }
 
 number_t number_t::exponential()
 {
-    return number_t(exp(m_re), 0)*number_t(cos(m_im), sin(m_im));
+    return number_t(exp(m_re), 0) * number_t(cos(m_im), sin(m_im));
 }
 
 number_t number_t::power(unsigned int n)
 {
     number_t num = *this;
     unsigned int i;
-    
+
     if (n == 0) {
         return number_t(0, 0);
     } else if (n == 1) {
         return *this;
     }
-    
+
     for (i = 1; i < n; i++) {
-        num = num*(*this);
+        num = num * (*this);
     }
-    
+
     return num;
 }
 
@@ -148,18 +151,18 @@ double number_t::abs_val() const
 void number_t::sqroot(number_t n[])
 {
     double d;
-    
+
     d = mod_z();
-    
-    n[0].m_re = sqrt((d + m_re)/2);
-    n[1].m_re = sqrt((d + m_re)/2);
-    
+
+    n[0].m_re = sqrt((d + m_re) / 2);
+    n[1].m_re = sqrt((d + m_re) / 2);
+
     if (m_im >= 0) {
-        n[0].m_im = 0.0 - sqrt((d - m_re)/2);
-        n[1].m_im = sqrt((d - m_re)/2);
+        n[0].m_im = 0.0 - sqrt((d - m_re) / 2);
+        n[1].m_im = sqrt((d - m_re) / 2);
     } else {
-        n[0].m_im = sqrt((d - m_re)/2);
-        n[1].m_im = 0.0 - sqrt((d - m_re)/2);
+        n[0].m_im = sqrt((d - m_re) / 2);
+        n[1].m_im = 0.0 - sqrt((d - m_re) / 2);
     }
 }
 
@@ -186,28 +189,28 @@ number_t::number_t(char *str)
     bool neg = false;
     large_expr_t e;
     char *tmp, *cmplx;
-    
+
     m_im = 0;
     m_re = 0;
-    
+
     if ((str != NULL) && (str[0] != 0)) {
-        
+
         memset(e, 0, sizeof(expr_t));
         strncpy(e, str, strlen(str) + 1);
         tmp = e;
-        
+
         if (*tmp == '-') {
             neg = true;
             tmp++;
         } else if (*tmp == '+') {
             tmp++;
         }
-        
+
         if ((cmplx = strchr(tmp, 'i')) != NULL) {
             *cmplx = 0;
-            m_im = (neg == true) ? -((*tmp == 0)?1:atof(tmp)):((*tmp == 0)?1:atof(tmp));
+            m_im = (neg == true) ? -((*tmp == 0) ? 1 : atof(tmp)) : ((*tmp == 0) ? 1 : atof(tmp));
         } else {
-            m_re = (neg == true) ? -((*tmp == 0)?1:atof(tmp)):((*tmp == 0)?1:atof(tmp));
+            m_re = (neg == true) ? -((*tmp == 0) ? 1 : atof(tmp)) : ((*tmp == 0) ? 1 : atof(tmp));
         }
     }
 }
@@ -220,6 +223,4 @@ number_t::number_t()
 
 number_t::~number_t()
 {
-    
 }
-
