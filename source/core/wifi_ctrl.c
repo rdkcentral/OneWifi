@@ -768,7 +768,6 @@ void start_gateway_vaps(unsigned int radio_index)
 {
     vap_svc_t *priv_svc, *pub_svc, *mesh_gw_svc;
     unsigned int value;
-    wifi_vap_info_t *wifi_vap_info = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -803,12 +802,10 @@ void start_gateway_vaps(unsigned int radio_index)
     value = false;
     if (bus_get_active_gw_parameter(WIFI_ENDPOINT_ENABLE_CHECK, &value) == RETURN_OK) {
         ctrl->rf_status_down = value;
-        wifi_vap_info->u.sta_info.ignite_enabled = value;
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d rf-status : %d ignite-enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, wifi_vap_info->u.sta_info.ignite_enabled);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d rf-status : %d \n", __func__, __LINE__, ctrl->rf_status_down);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get the data for Endpoint enable check\n", __func__, __LINE__);
     }
-    
     if (is_sta_enabled() == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
         start_extender_vaps(radio_index);
@@ -1336,6 +1333,19 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
     return;
 }
 
+static int wps_event_callback(int apIndex, wifi_wps_ev_t event)
+{
+    wifi_wps_event_t wps_event = {};
+
+    wps_event.vap_index = apIndex;
+    wps_event.event = event;
+
+    push_event_to_ctrl_queue((wifi_wps_event_t *)&wps_event, sizeof(wifi_wps_event_t),
+        wifi_event_type_hal_ind, wifi_event_hal_wps_results, NULL);
+
+    return RETURN_OK;
+}
+
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
@@ -1417,6 +1427,8 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     /* Register wifi hal channel change events callback */
     wifi_chan_event_register(channel_change_callback);
+
+    wifi_wpsEvent_callback_register(wps_event_callback);
 
     ctrl->bus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;

@@ -2241,6 +2241,7 @@ webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap,
     vap_row->btm = vap->u.bss_info.bssTransitionActivated;
     vap_row->rrm = vap->u.bss_info.nbrReportActivated;
     vap_row->wps = vap->u.bss_info.wps.enable;
+    vap_row->wps_pbc = vap->u.bss_info.wpsPushButton;
     strncpy(vap_row->wps_pbc_key_id, vap->u.bss_info.wps.pin, sizeof(vap_row->wps_pbc_key_id));
     vap_row->vlan_id = iface_map->vlan_id;
     return webconfig_error_none;
@@ -2793,6 +2794,13 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: WPS is disabled for vap\n", __func__, __LINE__);
         vap_row->wps_exists=false;
+    }
+
+    if (vap->u.bss_info.wpsPushButton) {
+        vap_row->wps_pbc = vap->u.bss_info.wpsPushButton;
+        vap_row->wps_pbc_exists = true;
+    } else {
+        vap_row->wps_pbc_exists = false;
     }
 
     if (strlen(vap->u.bss_info.wps.pin) != 0) {
@@ -3957,8 +3965,13 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
     vap->u.bss_info.bssTransitionActivated = vap_row->btm;
     vap->u.bss_info.nbrReportActivated = vap_row->rrm;
     vap->u.bss_info.wps.enable = vap_row->wps;
+    vap->u.bss_info.wpsPushButton = vap_row->wps_pbc;
     snprintf(vap->u.bss_info.wps.pin, sizeof(vap->u.bss_info.wps.pin), "%s",
         vap_row->wps_pbc_key_id);
+    if (vap->u.bss_info.wps.enable)
+        vap->u.bss_info.wps.methods |= WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
+    if (strlen(vap->u.bss_info.wps.pin))
+        vap->u.bss_info.wps.methods |= WIFI_ONBOARDINGMETHODS_PIN;
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vapIndex : %d min_hw_mode %s\n", __func__, __LINE__,
         vap->vap_index, vap_row->min_hw_mode);
     min_hw_mode_conversion(vap->vap_index, (char *)vap_row->min_hw_mode, "", "CONFIG");
