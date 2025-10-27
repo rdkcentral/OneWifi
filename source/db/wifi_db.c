@@ -127,14 +127,21 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.operatingClass = 131;
+            cfg.operatingClass = 134;
+#ifndef _PLATFORM_BANANAPI_R4_
             cfg.channel = 5;
+#else
+            cfg.channel = 37;
+#endif /* _PLATFORM_BANANAPI_R4_ */
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
 
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
+#ifndef _PLATFORM_BANANAPI_R4_
+//            cfg.operatingClass = 137;
 //            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
             break;
         default:
