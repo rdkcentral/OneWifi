@@ -163,6 +163,8 @@ dml_stats_default *get_stats_default_obj(int r_index);
 wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_channelBandwidth_t current_bw);
 UINT get_max_num_vaps_per_radio_dml(uint32_t radio_index);
 rdk_wifi_radio_t* get_dml_cache_radio_map_param(uint8_t radio_index);
+UINT get_dml_wifi7_radio_modes();
+int update_dml_apmld_info();
 
 #ifdef __cplusplus
 }

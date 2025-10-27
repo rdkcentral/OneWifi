@@ -3351,3 +3351,53 @@ static int switch_dfs_channel(void *arg)
     free(arg);
     return TIMER_TASK_COMPLETE;
 }
+
+UINT get_wifidb_wifi7_radio_modes()
+{
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    return g_wifi_mgr->hal_cap.wifi_prop.mu_info.mu_modes;
+}
+
+int get_wifidb_apmld_info()
+{
+    wifi_apmld_info_t *hal_apmld = NULL;
+    UINT APMLD_Count =0;
+    //Get the parameter values from HAL
+    wifi_hal_getApMld(&hal_apmld, &APMLD_Count);
+
+    if (APMLD_Count > 0)
+    {
+        UINT idx = 0, afIdx = 0;
+
+        wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+        g_wifi_mgr->apmld_count = APMLD_Count;
+
+        while (idx < APMLD_Count)
+        {
+            memcpy(g_wifi_mgr->apmld_info[idx].common_info.mld_addr,hal_apmld->common_info.mld_addr,6);
+            g_wifi_mgr->apmld_info[idx].affiliated_ap_number_of_entries = hal_apmld[idx].affiliated_ap_number_of_entries;
+            g_wifi_mgr->apmld_info[idx].sta_mld_num_entries =  hal_apmld[idx].sta_mld_num_entries;
+            g_wifi_mgr->apmld_info[idx].ap_mld_cfg.emlmr_enabled = hal_apmld[idx].ap_mld_cfg.emlmr_enabled;
+            g_wifi_mgr->apmld_info[idx].ap_mld_cfg.emlsr_enabled = hal_apmld[idx].ap_mld_cfg.emlsr_enabled;
+            g_wifi_mgr->apmld_info[idx].ap_mld_cfg.str_enabled = hal_apmld[idx].ap_mld_cfg.str_enabled;
+            g_wifi_mgr->apmld_info[idx].ap_mld_cfg.nstr_enabled = hal_apmld[idx].ap_mld_cfg.nstr_enabled;
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: if idx =%d: entries =%lu \n", __func__,__LINE__,idx,g_wifi_mgr->apmld_info[idx].affiliated_ap_number_of_entries);
+            for ( afIdx = 0; afIdx < g_wifi_mgr->apmld_info[idx].affiliated_ap_number_of_entries ; afIdx++)
+            {
+                strncpy(g_wifi_mgr->apmld_info[idx].affiliated_ap[afIdx].bssid, hal_apmld[idx].affiliated_ap[afIdx].bssid,
+                                sizeof(g_wifi_mgr->apmld_info[idx].affiliated_ap[afIdx].bssid));
+                g_wifi_mgr->apmld_info[idx].affiliated_ap[afIdx].link_id = hal_apmld[idx].affiliated_ap[afIdx].link_id;
+                g_wifi_mgr->apmld_info[idx].affiliated_ap[afIdx].ru_id = hal_apmld[idx].affiliated_ap[afIdx].ru_id;
+                g_wifi_mgr->apmld_info[idx].affiliated_ap[afIdx].disabled_sub_channels = hal_apmld[idx].affiliated_ap[afIdx].disabled_sub_channels;
+            }
+            idx++;
+        }
+        if (hal_apmld) {
+            free (hal_apmld);
+        }
+        hal_apmld = NULL;
+        return 0;
+    }
+    return -1;
+}
+

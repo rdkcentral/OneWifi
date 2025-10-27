@@ -14018,6 +14018,614 @@ InterworkingElement_Venue_GetParamUlongValue
 #endif // (DUAL_CORE_XB3) || (_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
 
 /***********************************************************************
+ APIs for Object:
+    WiFi.DataElements.Network.Device.{i}.Radio.{i}.
+    *  WiFi7Capabilities_Radio_GetEntryCount
+    *  WiFi7Capabilities_Radio_GetEntry
+***********************************************************************/
+/**********************************************************************
+         caller:         owner of this object
+         prototype:
+                 ULONG
+                 WiFi7Capabilities_Radio_GetEntryCount
+                         (
+                                 ANSC_HANDLE                             hInsContext
+                         );
+         description:
+                 This function is called to retrieve the count of the table.
+         argument:       ANSC_HANDLE                             hInsContext,
+                                 The instance handle;
+         return:         The count of the table
+
+**********************************************************************/
+ULONG
+WiFi7Capabilities_Radio_GetEntryCount
+         (
+                 ANSC_HANDLE                             hInsContext
+         )
+ {
+    UNREFERENCED_PARAMETER(hInsContext);
+    return get_num_radio_dml();
+ }
+
+/**********************************************************************
+        caller:         owner of this object
+        prototype:
+                ANSC_HANDLE
+                WiFi7Capabilities_Radio_GetEntry
+                        (
+                                ANSC_HANDLE                             hInsContext,
+                                ULONG                                           nIndex,
+                                ULONG*                                          pInsNumber
+                        );
+        description:
+                This function is called to retrieve the entry specified by the index.
+        argument:       ANSC_HANDLE                             hInsContext,
+                                The instance handle;
+                                ULONG                                           nIndex,
+                                The index of this entry;
+                                ULONG*                                          pInsNumber
+                                The output instance number;
+        return:         The handle to identify the entry
+**********************************************************************/
+ANSC_HANDLE
+WiFi7Capabilities_Radio_GetEntry
+        (
+                ANSC_HANDLE                             hInsContext,
+                ULONG                                           nIndex,
+                ULONG*                                          pInsNumber
+        )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
+
+    if ( nIndex < (UINT)get_num_radio_dml() )
+    {
+        wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_radio_operation_param(nIndex);
+        if (wifiRadioOperParam == NULL)
+        {
+            CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %ld not found for wifiRadioOperParam\n", __FUNCTION__, nIndex));
+            return NULL;
+        }
+        *pInsNumber = nIndex + 1;
+        g_radio_instance_num = nIndex + 1;
+        last_radio_change = AnscGetTickInSeconds();
+        return (ANSC_HANDLE)wifiRadioOperParam;
+    }
+    return NULL; /* return the handle */
+}
+/***********************************************************************
+ APIs for Object:
+    WiFi.DataElements.Network.Device.{i}.Radio.{i}.Capabilities.WiFi7APRole.
+   * WiFi7APRole_GetParamBoolValue
+***********************************************************************/
+/**********************************************************************
+    caller:     owner of this object
+    prototype:
+        BOOL
+        WiFi7APRole_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+    description:
+        This function is called to retrieve Boolean parameter value;
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+                char*                       ParamName,
+                The parameter name;
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+    return:     TRUE if succeeded.
+**********************************************************************/
+BOOL
+WiFi7APRole_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    UINT wifi7_supp_modes= 0;
+    wifi7_supp_modes = get_dml_wifi7_radio_modes();
+
+    /* check the parameter name and return the corresponding value */
+    if (strcmp(ParamName, "EMLMRSupport") == 0)
+    {
+        /* collect value */
+        *pBool = wifi7_supp_modes & COSA_DML_WIFI_MULTI_LINK_MODE_EMLMR;
+        return TRUE;
+    }
+    if (strcmp(ParamName, "EMLSRSupport") == 0)
+    {
+        /* collect value */
+        *pBool = wifi7_supp_modes & COSA_DML_WIFI_MULTI_LINK_MODE_EMLSR;
+        return TRUE;
+    }
+    if (strcmp(ParamName, "STRSupport") == 0)
+    {
+        /* collect value */
+        *pBool = wifi7_supp_modes & COSA_DML_WIFI_MULTI_LINK_MODE_STR;
+        return TRUE;
+    }
+    if (strcmp(ParamName, "NSTRSupport") == 0)
+    {
+        /* collect value */
+        *pBool = wifi7_supp_modes & COSA_DML_WIFI_MULTI_LINK_MODE_NSTR;
+        return TRUE;
+    }
+    return FALSE;
+}
+/***********************************************************************
+
+  APIs for Object:
+
+         WiFi.DataElements.Network.Device.{i}.APMLD.{i}
+
+         *      APMLD_GetEntryCount
+         *      APMLD_GetEntry
+         *      APMLD_IsUpdated
+         *      APMLD_Synchronize
+         *      APMLD_GetParamStringValue
+         *      APMLD_GetParamUlongValue
+
+ ***********************************************************************/
+
+/**********************************************************************
+         caller:         owner of this object
+         prototype:
+            APMLD_GetEntryCount
+            (
+                ANSC_HANDLE                 hInsContext
+            )
+        description:
+                 This function is called to retrieve the count of the table.
+         argument:       ANSC_HANDLE                             hInsContext,
+                                 The instance handle;
+         return:         The count of the table
+ **********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+            BOOL
+            APMLD_IsUpdated
+            (
+                ANSC_HANDLE                 hInsContext
+            )
+
+    description:
+
+        This function is checking whether the table is updated or not.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     TRUE or FALSE.
+
+**********************************************************************/
+
+BOOL
+APMLD_IsUpdated
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+       return TRUE;
+}
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+           ULONG
+           APMLD_Synchronize
+            (
+                ANSC_HANDLE                 hInsContext
+            );
+
+    description:
+
+        This function is called to synchronize the table.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     The status of the operation.
+
+**********************************************************************/
+
+ULONG
+APMLD_Synchronize
+(
+    ANSC_HANDLE                 hInsContext
+)
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    update_dml_apmld_info();
+    return ANSC_STATUS_SUCCESS;
+}
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        APMLD_GetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pValue,
+                ULONG*                      pUlSize
+            );
+
+    description:
+
+        This function is called to retrieve string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pValue,
+                The string value buffer;
+
+                ULONG*                      pUlSize
+                The buffer of length of string value;
+                Usually size of 1023 will be used.
+                If it's not big enough, put required size here and return 1;
+
+    return:     0 if succeeded;
+                1 if short of buffer size; (*pUlSize = required size)
+                -1 if not supported.
+
+**********************************************************************/
+ULONG
+APMLD_GetParamStringValue
+   (
+       ANSC_HANDLE                 hInsContext,
+       char*                       ParamName,
+       char*                       pValue,
+       ULONG*                      pUlSize
+   )
+{
+    wifi_apmld_info_t *pcfg = (wifi_apmld_info_t *)hInsContext;
+    *pUlSize = 0;
+
+    if(AnscEqualString(ParamName,"MLDMACAddress", TRUE))
+    {
+        char mac_str[18];
+        snprintf(mac_str, sizeof(mac_str),"%02x:%02x:%02x:%02x:%02x:%02x", pcfg->common_info.mld_addr[0], pcfg->common_info.mld_addr[1], pcfg->common_info.mld_addr[2],pcfg->common_info.mld_addr[3], pcfg->common_info.mld_addr[4], pcfg->common_info.mld_addr[5]);
+        AnscCopyString(pValue,mac_str);
+        *pUlSize = 18;
+        return 0;
+    }
+    return -1;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        APMLD_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                      puLong
+            );
+
+    description:
+
+        This function is called to retrieve ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG*                      puLong
+                The buffer of returned ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+APMLD_GetParamUlongValue
+   (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      puLong
+   )
+{
+    wifi_apmld_info_t *pcfg = (wifi_apmld_info_t *)hInsContext;
+    if( AnscEqualString(ParamName, "AffiliatedAPNumberOfEntries", TRUE))
+    {
+        *puLong = pcfg->affiliated_ap_number_of_entries;
+        return TRUE;
+    }
+    else if( AnscEqualString(ParamName, "STAMLDNumberOfEntries", TRUE))
+    {
+        *puLong = pcfg->sta_mld_num_entries;
+        return TRUE;
+    }
+    return FALSE;
+}
+
+ /***********************************************************************
+
+  APIs for Object:
+
+         WiFi.DataElements.Network.Device.{i}.APMLD.{i}.APMLDConfig.
+
+        *APMLDConfig_GetParamBoolValue
+
+ ***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        APMLDConfig_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+APMLDConfig_GetParamBoolValue
+        (
+                 ANSC_HANDLE                             hInsContext,
+                 char*                                   ParamName,
+                 BOOL*                                   pBool
+        )
+{
+    wifi_apmld_info_t *pcfg = (wifi_apmld_info_t *)hInsContext;
+    if( AnscEqualString(ParamName, "EMLMREnabled", TRUE))
+    {
+       *pBool = pcfg->ap_mld_cfg.emlmr_enabled;
+       return TRUE;
+    }
+    else if( AnscEqualString(ParamName, "EMLSREnabled", TRUE))
+    {
+        *pBool = pcfg->ap_mld_cfg.emlsr_enabled;
+        return TRUE;
+    }
+    else if( AnscEqualString(ParamName, "STREnabled", TRUE))
+    {
+        *pBool = pcfg->ap_mld_cfg.str_enabled;
+        return TRUE;
+    }
+    else if( AnscEqualString(ParamName, "NSTREnabled", TRUE))
+    {
+       *pBool = pcfg->ap_mld_cfg.nstr_enabled;
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/***********************************************************************
+
+  APIs for Object:
+
+         WiFi.DataElements.Network.Device.{i}.APMLD.{i}.AffiliatedAP.{i}
+
+         *      AffiliatedAP_GetEntryCount
+         *      AffiliatedAP_GetEntry
+         *      AffiliatedAP_GetParamStringValue
+         *      AffiliatedAP_GetParamUlongValue
+
+ ***********************************************************************/
+/**********************************************************************
+         caller:         owner of this object
+         prototype:
+         AffiliatedAP_GetEntryCount
+         (
+             ANSC_HANDLE                 hInsContext
+         )
+        description:
+                 This function is called to retrieve the count of the table.
+         argument:       ANSC_HANDLE                             hInsContext,
+                                 The instance handle;
+         return:         The count of the table
+ **********************************************************************/
+
+ULONG
+AffiliatedAP_GetEntryCount
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    wifi_apmld_info_t *pcfg = (wifi_apmld_info_t *)hInsContext;
+    return pcfg->affiliated_ap_number_of_entries;
+}
+
+/**********************************************************************
+        caller:         owner of this object
+        prototype:
+                ANSC_HANDLE
+                AffiliatedAP_GetEntry
+                  (
+                      ANSC_HANDLE                 hInsContext,
+                      ULONG                       nIndex,
+                      ULONG*                      pInsNumber
+                  )
+        description:
+                This function is called to retrieve the entry specified by the index.
+        argument:       ANSC_HANDLE                             hInsContext,
+                                The instance handle;
+                                ULONG                                           nIndex,
+                                The index of this entry;
+                                ULONG*                                          pInsNumber
+                                The output instance number;
+        return:         The handle to identify the entry
+**********************************************************************/
+ANSC_HANDLE
+AffiliatedAP_GetEntry
+    (
+        ANSC_HANDLE                 hInsContext,
+        ULONG                       nIndex,
+        ULONG*                      pInsNumber
+    )
+{
+    wifi_apmld_info_t *pcfg = (wifi_apmld_info_t *)hInsContext;
+    if(nIndex < pcfg->affiliated_ap_number_of_entries)
+    {
+        *pInsNumber=nIndex+1;
+        return (ANSC_HANDLE)(&pcfg->affiliated_ap[nIndex]);
+    }
+    return NULL;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        AffiliatedAP_GetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pValue,
+                ULONG*                      pUlSize
+            );
+
+    description:
+
+        This function is called to retrieve string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pValue,
+                The string value buffer;
+
+                ULONG*                      pUlSize
+                The buffer of length of string value;
+                Usually size of 1023 will be used.
+                If it's not big enough, put required size here and return 1;
+
+    return:     0 if succeeded;
+                1 if short of buffer size; (*pUlSize = required size)
+                -1 if not supported.
+
+**********************************************************************/
+
+ULONG
+AffiliatedAP_GetParamStringValue
+    (
+       ANSC_HANDLE                 hInsContext,
+       char*                       ParamName,
+       char*                       pValue,
+       ULONG*                      pUlSize
+    )
+{
+    wifi_affiliated_ap_t *pcfg = (wifi_affiliated_ap_t *)hInsContext;
+    if(AnscEqualString(ParamName,"BSSID", TRUE))
+    {
+        AnscCopyString(pValue,pcfg->bssid);
+        return 0;
+    }
+    return -1;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        AffiliatedAP_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                      puLong
+            );
+
+    description:
+
+        This function is called to retrieve ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG*                      puLong
+                The buffer of returned ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL
+AffiliatedAP_GetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      puLong
+    )
+{
+    wifi_affiliated_ap_t *pcfg = (wifi_affiliated_ap_t *)hInsContext;
+
+    if(AnscEqualString(ParamName,"LinkID", TRUE))
+    {
+        *puLong =  pcfg->link_id;
+        return TRUE;
+    }
+    else if(AnscEqualString(ParamName,"RUID", TRUE))
+    {
+        *puLong = pcfg->ru_id;
+        return TRUE;
+    }
+    else if( AnscEqualString(ParamName,"DisabledSubChannels", TRUE))
+    {
+        *puLong = pcfg->disabled_sub_channels;
+        return TRUE;
+    }
+    return FALSE;
+}
+
+
+/***********************************************************************
 
  APIs for Object:
 
