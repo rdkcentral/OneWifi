@@ -2185,6 +2185,7 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec(wifi_vap_info_t *vap,
 
     if (vap->u.bss_info.security.rekey_interval) {
         vap_row->group_rekey = vap->u.bss_info.security.rekey_interval;
+        vap_row->group_rekey_exists = true;
     } else {
         vap_row->group_rekey_exists = false;
     }
@@ -2971,6 +2972,7 @@ static webconfig_error_t translate_vap_info_to_vif_state_sec(wifi_vap_info_t *va
 
     if (vap->u.bss_info.security.rekey_interval) {
         vap_row->group_rekey = vap->u.bss_info.security.rekey_interval;
+        vap_row->group_rekey_exists = true;
     } else {
         vap_row->group_rekey_exists = false;
     }
