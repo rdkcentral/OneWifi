@@ -2980,7 +2980,6 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
         wifi_util_error_print(WIFI_CTRL, "%s bus: bus_regDataElements failed\n", __FUNCTION__);
     }
 
-    print_registered_elems(get_bus_mux_reg_cb_map(), 0);
     wifi_util_info_print(WIFI_CTRL, "%s bus: bus event register:[%s]:%s\r\n", __FUNCTION__,
         WIFI_STA_2G_VAP_CONNECT_STATUS, WIFI_STA_5G_VAP_CONNECT_STATUS);
     return;
