@@ -368,6 +368,7 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_object)
 {
     char mac_str[32];
+    char mld_mac_str[32];
 
     //VAP Name
     cJSON_AddStringToObject(vap_object, "VapName", vap_info->vap_name);
@@ -407,6 +408,22 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // Managed WiFi Phase 2 Enabled
     cJSON_AddBoolToObject(vap_object, "MDUEnabled", vap_info->u.bss_info.mdu_enabled);
+
+    // MLD Enable
+    cJSON_AddBoolToObject(vap_object, "MLD_Enable", vap_info->u.bss_info.mld_info.common_info.mld_enable);
+
+    // MLD Apply
+    cJSON_AddBoolToObject(vap_object, "MLD_Apply", vap_info->u.bss_info.mld_info.common_info.mld_apply);
+
+    // MLD_ID
+    cJSON_AddNumberToObject(vap_object, "MLD_ID", vap_info->u.bss_info.mld_info.common_info.mld_id);
+
+    // MLD_Link_ID
+    cJSON_AddNumberToObject(vap_object, "MLD_Link_ID", vap_info->u.bss_info.mld_info.common_info.mld_link_id);
+
+    // MLD_Addr
+    uint8_mac_to_string_mac((uint8_t *)vap_info->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
+    cJSON_AddStringToObject(vap_object, "MLD_Addr", mld_mac_str);
 
     // Isolation
     cJSON_AddBoolToObject(vap_object, "IsolationEnable", vap_info->u.bss_info.isolation);

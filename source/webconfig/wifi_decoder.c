@@ -1564,7 +1564,27 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         decode_param_bool(vap, "MDUEnabled", param);
         vap_info->u.bss_info.mdu_enabled = (param->type & cJSON_True) ? true : false;
     }
-    
+
+    // MLD Enable
+    decode_param_bool(vap, "MLD_Enable", param);
+    vap_info->u.bss_info.mld_info.common_info.mld_enable = (param->type & cJSON_True) ? true:false;
+
+    // MLD Apply
+    decode_param_bool(vap, "MLD_Apply", param);
+    vap_info->u.bss_info.mld_info.common_info.mld_apply = (param->type & cJSON_True) ? true:false;
+
+    // MLD_ID
+    decode_param_integer(vap, "MLD_ID", param);
+    vap_info->u.bss_info.mld_info.common_info.mld_id = param->valuedouble;
+
+    // MLD_Link_ID
+    decode_param_integer(vap, "MLD_Link_ID", param);
+    vap_info->u.bss_info.mld_info.common_info.mld_link_id = param->valuedouble;
+
+    // MLD_Addr
+    decode_param_string(vap, "MLD_Addr", param);
+    string_mac_to_uint8_mac(vap_info->u.bss_info.mld_info.common_info.mld_addr, param->valuestring);
+
     // Isolation
     decode_param_bool(vap, "IsolationEnable", param);
     vap_info->u.bss_info.isolation = (param->type & cJSON_True) ? true : false;

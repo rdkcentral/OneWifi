@@ -2188,6 +2188,36 @@ INSTMSMT_PH2 -->
                             <writable>true</writable>
                         </parameter>
                         <parameter>
+                            <name>MLD_Enable</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>MLD_ID</name>
+                            <type>unsignedInt[0:255]</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>MLD_Link_ID</name>
+                            <type>unsignedInt[0:255]</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>MLD_Addr</name>
+                            <type>string(32)</type>
+                            <syntax>string</syntax>
+                            <writable>false</writable>
+                        </parameter>
+                        <parameter>
+                            <name>MLD_Apply</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
                             <name>RetryLimit</name>
                             <type>unsignedInt[0:255]</type>
                             <syntax>uint32</syntax>
