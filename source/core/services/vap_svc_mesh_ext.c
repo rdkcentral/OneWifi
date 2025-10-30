@@ -1737,7 +1737,25 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             // change the state
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
             if (ctrl->rf_status_down == true) { 
-                wifi_hal_add_station_bridge(sta_data->interface_name,bridge_name);
+                char mac_str[32] = {'\0'};
+                uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d Bridge:%s  Using MAC-Str:%s MAC : %02x:%02x:%02x:%02x:%02x:%02x\n",
+                    __func__, __LINE__, bridge_name, mac_str, temp_vap_info->u.sta_info.mac[0],
+                    temp_vap_info->u.sta_info.mac[1], temp_vap_info->u.sta_info.mac[2],
+                    temp_vap_info->u.sta_info.mac[3], temp_vap_info->u.sta_info.mac[4],
+                    temp_vap_info->u.sta_info.mac[5]);
+                snprintf(cmd, sizeof(cmd), "ovs-vsctl set bridge %s other-config:hwaddr=%s",
+                    bridge_name, mac_str);
+                ret = get_stubs_descriptor()->v_secure_system_fn(cmd);
+                if (ret != 0) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Failed to set bridge MAC, ret=%d\n", __func__, __LINE__, ret);
+                } else {
+                    wifi_util_dbg_print(WIFI_CTRL,
+                        "%s:%d Successfully set bridge MAC to %s\n", __func__, __LINE__,
+                        mac_str);
+                }
                 snprintf(cmd, sizeof(cmd), "ip link set dev %s up", bridge_name);
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d cmd : %s\n",__func__,__LINE__, cmd);
                 get_stubs_descriptor()->v_secure_system_fn(cmd);
@@ -1859,12 +1877,6 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             } else {
                 wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Disconnect status sent successfully to the WM\n");
             }
-
-            memset(cmd, '\0', MAX_STR_LEN);
-            snprintf(cmd, sizeof(cmd), "ovs-vsctl del-port brww0 wl1");
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d cmd : %s\n", __func__, __LINE__, cmd);
-            get_stubs_descriptor()->v_secure_system_fn(cmd);
-            wifi_util_info_print(WIFI_CTRL, "%s:%d Link Deletion done\n", __func__, __LINE__);
         }
         if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
             candidate = &ext->new_bss;

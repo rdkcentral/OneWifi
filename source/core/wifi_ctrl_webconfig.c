@@ -2851,6 +2851,18 @@ void start_station_vaps(bool rf_status)
                         .vaps.vap_map.vap_array[vap_array_index]
                         .u.sta_info.security.mode = wifi_security_mode_wpa2_enterprise;
                 }
+                memset(&data->u.decoded.radios[radio_index]
+                            .vaps.vap_map.vap_array[vap_array_index].bridge_name,
+                    '\0',
+                    sizeof(data->u.decoded.radios[radio_index]
+                            .vaps.vap_map.vap_array[vap_array_index].bridge_name));
+                strncpy(data->u.decoded.radios[radio_index]
+                            .vaps.vap_map.vap_array[vap_array_index]
+                            .bridge_name,
+                    "brww0",
+                    sizeof(data->u.decoded.radios[radio_index]
+                            .vaps.vap_map.vap_array[vap_array_index]
+                            .bridge_name));
                 data->u.decoded.radios[radio_index]
                     .vaps.vap_map.vap_array[vap_array_index]
                     .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_TTLS;
@@ -2946,6 +2958,13 @@ void start_station_vaps(bool rf_status)
                                .u.sta_info.security.u.key.key,
                         "12345678");
                 }
+                memset(&data->u.decoded.radios[radio_index]
+                       .vaps.vap_map.vap_array[vap_array_index]
+                       .bridge_name,
+                '\0',
+                sizeof(data->u.decoded.radios[radio_index]
+                        .vaps.vap_map.vap_array[vap_array_index]
+                        .bridge_name));
                 data->u.decoded.radios[radio_index]
                     .vaps.vap_map.vap_array[vap_array_index]
                     .u.sta_info.ignite_enabled = false;
