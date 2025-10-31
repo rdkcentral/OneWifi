@@ -175,26 +175,35 @@ wifi_interface_name_idex_map_t *get_wifi_hal_capability_info(wifi_platform_prope
     return if_prop;
 }
 
-int update_lnf_psk_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map)
+int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map)
 {
     uint8_t j = 0;
     wifi_interface_name_idex_map_t *if_prop = NULL;
 
     for (j = 0; j < vap_map->num_vaps; j++) {
-        if (isVapLnfPsk(vap_map->vap_array[j].vap_index)) {
-            if_prop = get_wifi_hal_capability_info(svc->prop, &vap_map->vap_array[j]);
-            if (if_prop == NULL) {
-                wifi_util_error_print(WIFI_CTRL,"%s:%d: Could not find wifi hal capability info for vap_name: %s\n", __func__, __LINE__, vap_map->vap_array[j].vap_name);
-                return RETURN_ERR;
-            } else {
-                if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name, strlen(vap_map->vap_array[j].bridge_name)) != 0) {
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d: changed bridge name from :%s to %s\n", __func__, __LINE__, if_prop->bridge_name, vap_map->vap_array[j].bridge_name);
-                    strncpy(if_prop->bridge_name, vap_map->vap_array[j].bridge_name, sizeof(vap_map->vap_array[j].bridge_name));
-                }
-            }
+        if (!isVapSTAMesh(vap_map->vap_array[j].vap_index) && 
+            !isVapLnfPsk(vap_map->vap_array[j].vap_index)) {
+            continue;
+        }
+
+        if_prop = get_wifi_hal_capability_info(svc->prop, &vap_map->vap_array[j]);
+        if (if_prop == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Could not find wifi hal capability info for vap_name: %s\n",
+                __func__, __LINE__, vap_map->vap_array[j].vap_name);
+            return RETURN_ERR;
+        }
+
+        if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
+                strlen(vap_map->vap_array[j].bridge_name)) != 0) {
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d: changed bridge name from :%s to %s\n",
+                __func__, __LINE__, if_prop->bridge_name,
+                vap_map->vap_array[j].bridge_name);
+            strncpy(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
+                sizeof(vap_map->vap_array[j].bridge_name));
         }
     }
-
     return RETURN_OK;
 }
 

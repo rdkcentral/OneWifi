@@ -1188,33 +1188,6 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     return 0;
 }
 
-int update_mesh_sta_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map)
-{
-    uint8_t j = 0;
-    wifi_interface_name_idex_map_t *if_prop = NULL;
-    for (j = 0; j < vap_map->num_vaps; j++) {
-        if (isVapSTAMesh(vap_map->vap_array[j].vap_index)) {
-            if_prop = get_wifi_hal_capability_info(svc->prop, &vap_map->vap_array[j]);
-            if (if_prop == NULL) {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d: Could not find wifi hal capability info for vap_name: %s\n", __func__,
-                    __LINE__, vap_map->vap_array[j].vap_name);
-                return RETURN_ERR;
-            } else {
-                if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
-                        strlen(vap_map->vap_array[j].bridge_name)) != 0) {
-                    wifi_util_info_print(WIFI_CTRL, "%s:%d: changed bridge name from :%s to %s\n",
-                        __func__, __LINE__, if_prop->bridge_name,
-                        vap_map->vap_array[j].bridge_name);
-                    strncpy(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
-                        sizeof(vap_map->vap_array[j].bridge_name));
-                }
-            }
-        }
-    }
-    return RETURN_OK;
-}
-
 int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
@@ -1255,7 +1228,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.sta_info.security);
-        update_mesh_sta_vap_hal_prop_bridge_name(svc, tgt_vap_map);
+        update_vap_hal_prop_bridge_name(svc, tgt_vap_map);
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
 
         if (ctrl->rf_status_down == true) {
