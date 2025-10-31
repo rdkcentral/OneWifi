@@ -1798,6 +1798,7 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     if (IS_CHANGED(old->countryCode,new->countryCode)) return true;
     if (IS_CHANGED(old->operatingEnvironment,new->operatingEnvironment)) return true;
     if (IS_CHANGED(old->DCSEnabled,new->DCSEnabled)) return true;
+    if (IS_CHANGED(old->DfsEnabled,new->DfsEnabled)) return true;
     if (IS_CHANGED(old->dtimPeriod,new->dtimPeriod)) return true;
     if (IS_CHANGED(old->beaconInterval,new->beaconInterval)) return true;
     if (IS_CHANGED(old->operatingClass,new->operatingClass)) return true;
