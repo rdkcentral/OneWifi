@@ -299,7 +299,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
         update_global_cache(tgt_vap_map, tgt_rdk_vaps);
         update_acl_entries(tgt_vap_map);
 
-        update_lnf_psk_vap_hal_prop_bridge_name(svc, tgt_vap_map);
+        update_vap_hal_prop_bridge_name(svc, tgt_vap_map);
     }
 
     free(tgt_vap_map);
