@@ -1192,31 +1192,37 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
     unsigned int i;
-    wifi_vap_info_map_t tgt_vap_map;
+    wifi_vap_info_map_t *tgt_vap_map = NULL;
     vap_svc_ext_t *ext = &svc->u.ext;
     wifi_ctrl_t *ctrl = svc->ctrl;
-
+    
+    tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
+    if (tgt_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __FUNCTION__,__LINE__);
+        return -1;
+    }
+    
     for (i = 0; i < map->num_vaps; i++) {
-        memset((unsigned char *)&tgt_vap_map, 0, sizeof(tgt_vap_map));
-        memcpy((unsigned char *)&tgt_vap_map.vap_array[0], (unsigned char *)&map->vap_array[i],
+        memset((unsigned char *)tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        memcpy((unsigned char *)&tgt_vap_map->vap_array[0], (unsigned char *)&map->vap_array[i],
                     sizeof(wifi_vap_info_t));
-        tgt_vap_map.num_vaps = 1;
+        tgt_vap_map->num_vaps = 1;
 
         // avoid disabling mesh sta in extender mode
-        if (tgt_vap_map.vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
+        if (tgt_vap_map->vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
-                __LINE__, tgt_vap_map.vap_array[0].vap_index);
-            tgt_vap_map.vap_array[0].u.sta_info.enabled = true;
+                __LINE__, tgt_vap_map->vap_array[0].vap_index);
+            tgt_vap_map->vap_array[0].u.sta_info.enabled = true;
         }
 
-        if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
+        if (wifi_hal_createVAP(radio_index, tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
-        memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map.vap_array[0],
+        memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
         get_wifidb_obj()->desc.update_wifi_vap_info_fn(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
             &rdk_vap_info[i]);
@@ -1224,7 +1230,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             &map->vap_array[i].u.sta_info.security);
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
-
+        publish_endpoint_enable();
         if (ctrl->rf_status_down == true) {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
                  __LINE__);
@@ -1232,6 +1238,10 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             schedule_connect_sm(svc);
             ext->is_started = true;
         }
+    }
+    if (tgt_vap_map) {
+       free(tgt_vap_map);
+       tgt_vap_map = NULL;
     }
     return 0;
 }
@@ -1601,41 +1611,6 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
 
 #define MAX_STATUS_LEN 5
 #define MAX_STR_LEN    128
-
-int publish_endpoint_status_to_wan(wifi_ctrl_t *ctrl, int connection_status)
-{
-    char name[MAX_STR_LEN] = { '\0' };
-    bus_error_t rc = bus_error_success;
-    wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__, connection_status);
-    if (ctrl->rf_status_down == true) {
-        raw_data_t data;
-        sprintf(name, "Device.WiFi.EndPoint.1.Status");
-        memset(&data, 0, sizeof(raw_data_t));
-        data.data_type = bus_data_type_string;
-        data.raw_data.bytes = malloc(MAX_STATUS_LEN);
-        data.raw_data_len = MAX_STATUS_LEN;
-        memset(data.raw_data.bytes, '\0', MAX_STATUS_LEN);
-        if (connection_status == 2) { // connected state
-            strncpy((char *)data.raw_data.bytes, "Up", MAX_STATUS_LEN);
-        } else if ((connection_status == 1) || (connection_status == 3)) { // disconnected  or AP not found state
-            strncpy((char *)data.raw_data.bytes, "Down", MAX_STATUS_LEN);
-        }
-        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
-        if (rc != bus_error_success) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
-        if (data.raw_data.bytes) {
-            free(data.raw_data.bytes);
-            data.raw_data.bytes = NULL;
-        }
-    } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint not enabled\n", __func__, __LINE__);
-        return RETURN_OK;
-    }
-    return RETURN_OK;
-}
-
 int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 {
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -1732,7 +1707,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d cmd : %s\n",__func__,__LINE__, cmd);
                 get_stubs_descriptor()->v_secure_system_fn(cmd);
 
-                ret = publish_endpoint_status_to_wan(ctrl, sta_data->stats.connect_status);
+                ret = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
                 if (ret == RETURN_ERR) {
                     wifi_util_error_print(WIFI_CTRL,"IGNITE_RF_DOWN: Failed to publish connect status to WM\n");
                 } else {
@@ -1842,7 +1817,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         }
 
         if (ctrl->rf_status_down == true) {
-            ret = publish_endpoint_status_to_wan(ctrl, sta_data->stats.connect_status);
+            ret = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
 
             if (ret == RETURN_ERR) {
                 wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Failed to publish disconnect status to WM\n");

@@ -30,6 +30,9 @@
 #include <stdbool.h>
 #include <unistd.h>
 #define MAX_EVENT_NAME_SIZE 200
+#define MAX_STR_LEN 128
+#define MAX_STATUS_LEN 5
+
 
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
     char *eventName)
@@ -137,6 +140,10 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         return bus_error_general;
     }
     rf_status = p_data->raw_data.b;
+    if (ctrl->rf_status_down == rf_status) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d and value to set are same\n", __func__, __LINE__, ctrl->rf_status_down);
+        return rc;
+    }
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
@@ -828,7 +835,65 @@ bus_error_t get_endpoint_status(char *event_name, raw_data_t *p_data, bus_user_d
 
     return bus_error_success;
 }
+int publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status)
+{
+    char name[MAX_STR_LEN] = { '\0' };
+    bus_error_t rc = bus_error_success;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__, connection_status);
+    if (ctrl->rf_status_down == true) {
+        raw_data_t data;
+        snprintf(name, MAX_STR_LEN,WIFI_ENDPOINT_CONNECT_STATUS);
+        memset(&data, 0, sizeof(raw_data_t));
+        data.data_type = bus_data_type_string;
+        data.raw_data.bytes = malloc(MAX_STATUS_LEN);
+        data.raw_data_len = MAX_STATUS_LEN;
+        memset(data.raw_data.bytes, '\0', MAX_STATUS_LEN);
+        if (connection_status == 2) { // connected state
+            strncpy((char *)data.raw_data.bytes, "Up", MAX_STATUS_LEN);
+        } else if ((connection_status == 1) || (connection_status == 3)) { // disconnected  or AP not found state
+            strncpy((char *)data.raw_data.bytes, "Down", MAX_STATUS_LEN);
+        }
+        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
+        if (rc != bus_error_success) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (data.raw_data.bytes) {
+            free(data.raw_data.bytes);
+            data.raw_data.bytes = NULL;
+        }
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint not enabled\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+    return RETURN_OK;
+}
+int publish_endpoint_enable(void)
+{
+    char name[MAX_STR_LEN] = { '\0' };
+    bus_error_t rc = bus_error_success;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    raw_data_t data;
 
+    if ((mgr == NULL) || (ctrl == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+        return bus_error_invalid_operation;
+    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d publish_endpoint_enable value=%d\n", __func__, __LINE__, ctrl->rf_status_down);
+    snprintf(name,MAX_STR_LEN, WIFI_ENDPOINT_ENABLE_CHECK);
+    memset(&data, 0, sizeof(raw_data_t));
+    data.data_type = bus_data_type_boolean;
+    data.raw_data.b = ctrl->rf_status_down;
+    rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
+    if (rc != bus_error_success) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint Enable publish  successful\n", __func__, __LINE__);
+    }
+    return RETURN_OK;
+}
 bus_error_t webconfig_set_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;

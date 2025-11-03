@@ -1705,10 +1705,36 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             }
         }
 
-        //Update DFS RFC for 5GHz radio
+        //Update DFS RFC as disabled for 5GHz radio
         if( (WIFI_FREQUENCY_5_BAND == rcfg.band) || (WIFI_FREQUENCY_5L_BAND == rcfg.band) || (WIFI_FREQUENCY_5H_BAND == rcfg.band) ) {
-            rcfg.DfsEnabled = rfc_param->dfs_rfc;
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated default config for DFS RFC %d\n",__func__, __LINE__, rfc_param->dfs_rfc);
+            wifi_mgr_t *g_wifidb;
+            g_wifidb = get_wifimgr_obj();
+            rdk_wifi_radio_t *l_radio = NULL;
+
+            // Disable DFS and update rfc Config
+            rcfg.DfsEnabled = FALSE;
+            rfc_param->dfs_rfc = FALSE;
+            get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+
+            // No need to reset the channel and channel width, as it already done in wifidb_init_radio_config_default,
+            // But need to reset the radar Info data
+            pthread_mutex_lock(&g_wifidb->data_cache_lock);
+            l_radio = find_radio_config_by_index(i);
+            if (l_radio == NULL) {
+                    wifi_util_error_print(WIFI_DMCLI,"%s:%d radio strucutre is not present for radio %d\n",
+                                    __FUNCTION__, __LINE__, i);
+                    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+                    return FALSE;
+            }
+            l_radio->radarInfo.last_channel = 0;
+            l_radio->radarInfo.num_detected = 0;
+            l_radio->radarInfo.timestamp = 0;
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+            // Update PSM
+            wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
+            p_ccsp_desc->psm_set_value_fn(DFS_RFC_ENABLE_NAMESPACE, "false");
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated DFS RFC as %d\n",__func__, __LINE__, rfc_param->dfs_rfc);
         }
 
         memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)&rcfg,sizeof(wifi_radio_operationParam_t));
