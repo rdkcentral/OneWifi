@@ -3663,6 +3663,14 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
             }
             assoc_dev_data.dev_stats.cli_AuthenticationFailures = value_object->valuedouble;
 
+
+            value_object = cJSON_GetObjectItem(assoc_client, "ActiveNumSpatialStreams");
+            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            assoc_dev_data.dev_stats.cli_activeNumSpatialStreams = value_object->valuedouble;
+
             value_object = cJSON_GetObjectItem(assoc_client, "PacketsSent");
             if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
