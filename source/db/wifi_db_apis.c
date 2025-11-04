@@ -89,12 +89,6 @@
 #define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100042
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100043
 
-#ifdef CONFIG_NO_MLD_ONLY_PRIVATE
-#define MLD_UNIT_COUNT 8
-#else
-#define MLD_UNIT_COUNT 1
-#endif /* CONFIG_NO_MLD_ONLY_PRIVATE */
-
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
 ovsdb_table_t table_Wifi_Security_Config;
@@ -7649,7 +7643,7 @@ void wifidb_init_default_value()
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
-
+#ifdef CONFIG_IEEE80211BE
 static int get_ap_mac_by_vap_index(wifi_vap_info_map_t *hal_vap_info_map, int vap_index,  mac_address_t mac)
 {
     unsigned int j = 0;
@@ -7731,6 +7725,7 @@ static int wifidb_vap_config_update_mld_mac()
     }
     return RETURN_OK;
 }
+#endif /* CONFIG_IEEE80211BE */
 
 /************************************************************************************
  ************************************************************************************
@@ -7930,7 +7925,9 @@ void init_wifidb_data()
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
+        #ifdef CONFIG_IEEE80211BE
         wifidb_vap_config_update_mld_mac();
+        #endif
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 
