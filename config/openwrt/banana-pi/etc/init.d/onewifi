@@ -32,6 +32,12 @@ start_service() {
         touch /tmp/onewifi_bootup_completed  # Create flag to ensure it's not run again
     fi
 
+    # Create the directory for core dumps if it doesn't exist
+    mkdir -p /tmp/cores
+
+    # Set the core dump pattern for the kernel
+    sysctl -w kernel.core_pattern="/tmp/cores/core.%e.%p.%t"
+
     # Use procd to manage the OneWifi process
     procd_open_instance
     procd_set_param command /bin/sh -c "ulimit -c unlimited && exec /usr/bin/OneWifi -c"
