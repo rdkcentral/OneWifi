@@ -119,6 +119,13 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"home-ap-50", "private_ssid_5g"},
     {"bhaul-ap-50", "mesh_backhaul_5g"},
 }
+#elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+struct ovs_vapname_cloudvifname_map cloud_vif_map[] = {
+       {"wl0",   "private_ssid_2g"},
+       {"wl1",   "private_ssid_5g"},
+       {"bhaul-ap-24", "mesh_backhaul_2g"},
+       {"bhaul-ap-50", "mesh_backhaul_5g"},
+};
 #else
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl0",   "mesh_sta_2g"},
@@ -1409,6 +1416,7 @@ webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_
         }
     }
 
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: num of mac acl config:%d\n", __func__, __LINE__, row->mac_list_len);
     for (i = 0; i < row->mac_list_len; i++) {
         mac_str = (char *)row->mac_list[i];
         if (mac_str == NULL) {
@@ -1946,6 +1954,40 @@ webconfig_error_t translate_radio_object_to_ovsdb_radio_state_for_dml(webconfig_
     return webconfig_error_none;
 }
 
+BOOL update_secmode_for_wpa3_sta(wifi_vap_info_t *vap_info, char *mode_str, int mode_len, char *encrypt_str, int encrypt_len, bool to_ovsdb)
+{
+    int ret = false;
+    if (vap_info ==  NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL vap_info Pointer\n", __func__, __LINE__);
+        return ret;
+    }
+
+     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d to-ovsdb : %d sec-mode : %d\n", __func__, __LINE__, to_ovsdb, vap_info->u.sta_info.security.mode);
+    if (to_ovsdb) {
+        if ((vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_personal) || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_compatibility)) {
+            snprintf(mode_str, mode_len, "2");
+            snprintf(encrypt_str, encrypt_len, "WPA-PSK");
+            ret = true;
+        }
+        else if (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) {
+            snprintf(mode_str, mode_len, "2");
+            snprintf(encrypt_str, encrypt_len, "WPA-EAP");
+            ret = true;
+        }
+        else if (vap_info->u.sta_info.security.mode == wifi_security_mode_enhanced_open) {
+            snprintf(encrypt_str, encrypt_len, "OPEN");
+            ret = true;
+        }
+    } else {
+        if ((vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_personal)
+        || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_compatibility)
+        || (vap_info->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info->u.sta_info.security.mode == wifi_security_mode_enhanced_open)) {
+            ret = true;
+        }
+    }
+    return ret;
+}
+
 BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode_len, char *encrypt_str, int encrypt_len, bool to_ovsdb)
 {
     int ret = false;
@@ -1953,6 +1995,7 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL vap_info Pointer\n", __func__, __LINE__);
         return ret;
     }
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d to-ovsdb : %d sec-mode : %d\n", __func__, __LINE__, to_ovsdb, vap_info->u.sta_info.security.mode);
 
     if (to_ovsdb) {
         if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility)) {
@@ -2198,6 +2241,7 @@ webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap,
     vap_row->btm = vap->u.bss_info.bssTransitionActivated;
     vap_row->rrm = vap->u.bss_info.nbrReportActivated;
     vap_row->wps = vap->u.bss_info.wps.enable;
+    vap_row->wps_pbc = vap->u.bss_info.wpsPushButton;
     strncpy(vap_row->wps_pbc_key_id, vap->u.bss_info.wps.pin, sizeof(vap_row->wps_pbc_key_id));
     vap_row->vlan_id = iface_map->vlan_id;
     return webconfig_error_none;
@@ -2382,7 +2426,7 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi
 
             memset(str_mode, 0, sizeof(str_mode));
             memset(str_encryp, 0, sizeof(str_encryp));
-            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+            if (!update_secmode_for_wpa3_sta((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
                 wifi_security_modes_t mode_enum = vap->u.sta_info.security.mode;
                 wifi_encryption_method_t encryp_enum = vap->u.sta_info.security.encr;
                 if ((key_mgmt_conversion_legacy(&mode_enum, &encryp_enum, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
@@ -2752,6 +2796,13 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         vap_row->wps_exists=false;
     }
 
+    if (vap->u.bss_info.wpsPushButton) {
+        vap_row->wps_pbc = vap->u.bss_info.wpsPushButton;
+        vap_row->wps_pbc_exists = true;
+    } else {
+        vap_row->wps_pbc_exists = false;
+    }
+
     if (strlen(vap->u.bss_info.wps.pin) != 0) {
         strncpy(vap_row->wps_pbc_key_id, vap->u.bss_info.wps.pin, sizeof(vap_row->wps_pbc_key_id));
         vap_row->wps_pbc_key_id_exists = true;
@@ -3112,7 +3163,7 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_
 
             memset(str_mode, 0, sizeof(str_mode));
             memset(str_encryp, 0, sizeof(str_encryp));
-            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+            if (!update_secmode_for_wpa3_sta((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
                 wifi_security_modes_t mode_enum = vap->u.sta_info.security.mode;
                 wifi_encryption_method_t encryp_enum = vap->u.sta_info.security.encr;
                 if ((key_mgmt_conversion_legacy(&mode_enum, &encryp_enum, 
@@ -3914,8 +3965,13 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
     vap->u.bss_info.bssTransitionActivated = vap_row->btm;
     vap->u.bss_info.nbrReportActivated = vap_row->rrm;
     vap->u.bss_info.wps.enable = vap_row->wps;
+    vap->u.bss_info.wpsPushButton = vap_row->wps_pbc;
     snprintf(vap->u.bss_info.wps.pin, sizeof(vap->u.bss_info.wps.pin), "%s",
         vap_row->wps_pbc_key_id);
+    if (vap->u.bss_info.wps.enable)
+        vap->u.bss_info.wps.methods |= WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
+    if (strlen(vap->u.bss_info.wps.pin))
+        vap->u.bss_info.wps.methods |= WIFI_ONBOARDINGMETHODS_PIN;
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vapIndex : %d min_hw_mode %s\n", __func__, __LINE__,
         vap->vap_index, vap_row->min_hw_mode);
     min_hw_mode_conversion(vap->vap_index, (char *)vap_row->min_hw_mode, "", "CONFIG");

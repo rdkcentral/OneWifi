@@ -1994,6 +1994,51 @@ void process_assoc_device_event(void *data)
     }
 }
 
+static void process_wps_results_event(wifi_wps_event_t *wps_event)
+{
+#ifdef FEATURE_SUPPORT_WPS
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_vap_info_t *vap_info = NULL;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    unsigned int vap_index = wps_event->vap_index;
+    bool wps_push_button = false;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d wps event[%d] is received\n", __func__, __LINE__,
+        wps_event->event);
+
+    switch (wps_event->event) {
+    case wifi_wps_ev_pbc_active:
+        wps_push_button = true;
+        break;
+
+    case wifi_wps_ev_success:
+    case wifi_wps_ev_fail:
+    case wifi_wps_ev_pbc_timeout:
+    case wifi_wps_ev_pbc_disable:
+        wps_push_button = false;
+        break;
+    }
+
+    vap_info = get_wifidb_vap_parameters(vap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get vap info for index %d\n", __func__,
+            __LINE__, vap_index);
+        return;
+    }
+
+    rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+    if (rdk_vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vap info for index %d\n",
+            __func__, __LINE__, vap_index);
+        return;
+    }
+
+    vap_info->u.bss_info.wpsPushButton = wps_push_button;
+    get_wifidb_obj()->desc.update_wifi_vap_info_fn(vap_info->vap_name, vap_info, rdk_vap_info);
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
+#endif
+}
+
 void process_factory_reset_command(bool type)
 {
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
@@ -3687,6 +3732,10 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         process_csa_beacon_frame_event(data, len, ctrl);
         break;
 
+    case wifi_event_hal_wps_results:
+        process_wps_results_event(data);
+        break;
+
     default:
 
         wifi_util_error_print(WIFI_CTRL, "[%s]:WIFI hal handler not supported this event %s\r\n",
@@ -3811,6 +3860,10 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             num_ssid += get_list_of_lnf_psk(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
                 &vap_names[num_ssid]);
             num_ssid += get_list_of_lnf_radius(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[num_ssid]);
+            break;
+        case webconfig_subdoc_type_mesh_sta:
+            num_ssid += get_list_of_mesh_sta(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
                 &vap_names[num_ssid]);
             break;
 
