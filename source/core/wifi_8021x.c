@@ -54,7 +54,7 @@ void process_eap_data(wifi_8021x_data_t *data, wifi_8021x_t *module, bool new_ev
     gettimeofday(&tnow, NULL);
 
     if (data == NULL || data->data == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer encountered\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: NULL pointer encountered\n", __func__, __LINE__);
         return;
     }
 
