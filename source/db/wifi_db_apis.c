@@ -6941,6 +6941,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string\n", __func__, __LINE__);
         }
     }
+
+    if (wifi_hal_get_RegDomain(radio_index, &cfg.regDomain) != RETURN_OK) {
+        wifi_util_error_print(WIFI_DB, "%s:%d: unable to get regulatory domain for radio%d\n",
+            __func__, __LINE__, radio_index);
+    }
+
     cfg.countryCode = country_code_val;
     cfg.operatingEnvironment = wifi_operating_env_indoor;
     cfg.dtimPeriod = 1;
