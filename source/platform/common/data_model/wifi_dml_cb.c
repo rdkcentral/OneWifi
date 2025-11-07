@@ -4062,6 +4062,8 @@ bool associated_sta_get_param_uint_value(void *obj_ins_context, char *param_name
         *output_value = assoc_dev_data->dev_stats.cli_Disassociations;
     } else if( STR_CMP(param_name, "X_COMCAST-COM_AuthenticationFailures")) {
         *output_value = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
+    } else if( STR_CMP(param_name, "X_RDK_CapSpaStr")) {
+        *output_value = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
     } else {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
         return false;
