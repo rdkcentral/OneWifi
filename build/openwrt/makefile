@@ -32,6 +32,7 @@ include makefile.inc
 EASY_MESH_NODE = 1
 EM_APP = 1
 ONEWIFI_STA_MGR_APP_SUPPORT = 1
+ONEWIFI_EASYCONNECT_APP_SUPPORT = 1
 
 # wifi hal rules
 HAL_LIBRARY = $(INSTALLDIR)/lib/libwifihal.a
