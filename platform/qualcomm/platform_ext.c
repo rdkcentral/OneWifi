@@ -1129,6 +1129,28 @@ int platform_get_radio_caps(wifi_radio_index_t index)
     return RETURN_OK;
 }
 
+int platform_get_reg_domain(wifi_radio_index_t radioIndex, UINT *reg_domain)
+{
+    char cmd[64] = { 0 };
+    char buf[16] = { 0 };
+    int ret;
+
+    wifi_hal_dbg_print("%s:%d: radioIndex %d\n", __func__, __LINE__, radioIndex);
+
+    snprintf(cmd, sizeof(cmd), "cfg80211tool wifi%d getRegdomain | cut -d':' -f2", radioIndex);
+
+    ret = _syscmd(cmd, buf, sizeof(buf));
+    if ((ret != 0) && (strlen(buf) == 0)) {
+        wifi_hal_dbg_print("%s:%d Error", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    *reg_domain = atoi(buf);
+
+    wifi_hal_dbg_print(" %s:%d Reg domain is %d", __func__, __LINE__, *reg_domain);
+    return RETURN_OK;
+}
+
 static int qca_add_intf_to_bridge(wifi_interface_info_t *interface, bool is_mld)
 {
     char mld_ifname[32];

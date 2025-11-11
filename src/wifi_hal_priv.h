@@ -684,6 +684,7 @@ typedef int    (* platform_set_neighbor_report_t)(uint apIndex, uint add, mac_ad
 typedef int    (* platform_get_radio_phytemperature_t)(wifi_radio_index_t index, wifi_radioTemperature_t *radioPhyTemperature);
 typedef int    (* platform_set_dfs_t)(wifi_radio_index_t index, wifi_radio_operationParam_t *operationParam);
 typedef int    (* platform_get_radio_caps_t)(wifi_radio_index_t index);
+typedef int    (* platform_get_RegDomain_t)(wifi_radio_index_t index, uint *reg_domain);
 
 int wifi_hal_parse_rrm_beacon_rep(wifi_interface_info_t *interface, char *buff,
         size_t len, struct rrm_measurement_beacon_report *meas_rep);
@@ -771,6 +772,7 @@ typedef struct {
     platform_get_radio_phytemperature_t platform_get_radio_phytemperature_fn;
     platform_set_dfs_t                platform_set_dfs_fn;
     platform_get_radio_caps_t         platform_get_radio_caps_fn;
+    platform_get_RegDomain_t platform_get_RegDomain_fn;
 } wifi_driver_info_t;
 
 typedef enum bm_sta_rssi_type {
@@ -1268,6 +1270,10 @@ extern void supplicant_event(void *ctx, enum wpa_event_type event,
      union wpa_event_data *data);
 #endif
 
+#if defined(TARGET_GEMINI7_2)
+extern int platform_get_reg_domain(wifi_radio_index_t radioIndex, UINT *reg_domain);
+#endif
+
 platform_pre_init_t     	get_platform_pre_init_fn();
 platform_post_init_t    	get_platform_post_init_fn();
 platform_keypassphrase_default_t     get_platform_keypassphrase_default_fn();
@@ -1295,6 +1301,7 @@ platform_get_radio_phytemperature_t get_platform_get_radio_phytemperature_fn();
 platform_set_offload_mode_t         get_platform_set_offload_mode_fn();
 platform_set_dfs_t                  get_platform_dfs_set_fn();
 platform_get_radio_caps_t           get_platform_get_radio_caps_fn();
+platform_get_RegDomain_t get_platform_get_RegDomain_fn();
 
 INT wifi_hal_wps_event(wifi_wps_event_t data);
 INT wifi_hal_get_default_wps_pin(char *pin);
