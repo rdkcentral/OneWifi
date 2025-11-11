@@ -3272,6 +3272,43 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
      return;
 }
 
+bus_error_t test_table_removerowhandler(char const *rowName)
+{   
+    
+    wifi_util_info_print(WIFI_CTRL, "%s() called:\n\t rowName=%s\n", __func__,
+        rowName);
+    
+    return bus_error_success;
+}
+
+bus_error_t test_table_addrowhandler(char const *tableName, char const *aliasName,
+    uint32_t *instNum)
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: table Add Row Handler called. tableName=%s, aliasName=%s\n",
+        __FUNCTION__, __LINE__, tableName, aliasName);
+
+    *instNum = 1;
+
+    return bus_error_success;
+}
+
+bus_error_t get_test_func(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s bus property=%s\n", __FUNCTION__, name);
+    p_data->data_type = bus_data_type_boolean;
+    p_data->raw_data.b = true;
+    p_data->raw_data_len = 1;
+    return bus_error_success;
+}
+
+bus_error_t set_test_func(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d handler\r\n", __FUNCTION__, __LINE__);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: set Handler called: property=%s\n", __func__, __LINE__,
+        name);
+    return bus_error_success;
+}
 
 void bus_register_handlers(wifi_ctrl_t *ctrl)
 {
@@ -3297,7 +3334,7 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { get_assoc_clients_data, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
                                 { WIFI_STA_NAMESPACE, bus_element_type_table,
-                                    { NULL, NULL, events_STAtable_addrowhandler, events_STAtable_removerowhandler, eventSubHandler, NULL}, slow_speed, num_of_radio,
+                                    { NULL, NULL, events_STAtable_addrowhandler, events_STAtable_removerowhandler, eventSubHandler, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_object, false, 0, 0, 0, NULL } },
                                 { WIFI_STA_CONNECT_STATUS, bus_element_type_property,
                                     { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
@@ -3308,6 +3345,18 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_STA_CONNECTED_GW_BSSID, bus_element_type_property,
                                     { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+                                { WIFI_TEST_NAMESPACE, bus_element_type_table,
+                                    { NULL, NULL, test_table_addrowhandler, test_table_removerowhandler, NULL, NULL}, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_object, false, 0, 0, 0, NULL } },
+                                { WIFI_TEST_PARAM1_NAME, bus_element_type_property,
+                                    { get_test_func, set_test_func, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_boolean, true, 0, 0, 0, NULL } },
+                                { WIFI_TEST1_NAMESPACE, bus_element_type_table,
+                                    { NULL, NULL, test_table_addrowhandler, test_table_removerowhandler, NULL, NULL}, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_object, false, 0, 0, 0, NULL } },
+                                { WIFI_TEST1_PARAM2_NAME, bus_element_type_property,
+                                    { get_test_func, set_test_func, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_boolean, true, 0, 0, 0, NULL } },
                                 { WIFI_BUS_WIFIAPI_COMMAND, bus_element_type_method,
                                     { NULL, set_wifiapi_command, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
@@ -3430,5 +3479,41 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
 
     wifi_util_info_print(WIFI_CTRL, "%s bus: bus event register:[%s]:%s\r\n", __FUNCTION__,
         WIFI_STA_2G_VAP_CONNECT_STATUS, WIFI_STA_5G_VAP_CONNECT_STATUS);
+
+    uint32_t t_index = 0;
+    for (int index = 0; index < num_of_radio; index++) {
+        get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle, "Device.WiFi.STA.",
+            NULL, &t_index);
+        wifi_util_info_print(WIFI_CTRL, "%s table added:%s :%d\r\n", __FUNCTION__,
+            "Device.WiFi.STA.", t_index);
+    }
+
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle, "Device.WiFi.STA.{i}.test.",
+        NULL, &t_index);
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle, "Device.WiFi.STA.1.test.",
+        NULL, &t_index);
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle, "Device.WiFi.STA.2.test.",
+        NULL, &t_index);
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle, "Device.WiFi.STA.3.test.",
+	NULL, &t_index);
+    wifi_util_info_print(WIFI_CTRL, "%s table added:%s :%d\r\n", __FUNCTION__,
+        "Device.WiFi.STA.{i}.test.", 1);
+
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle,
+        "Device.WiFi.STA.{i}.test.{i}.new_table.", NULL, &t_index);
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle,
+        "Device.WiFi.STA.1.test.1.new_table.", NULL, &t_index);
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle,
+        "Device.WiFi.STA.2.test.1.new_table.", NULL, &t_index);
+    get_bus_descriptor()->bus_add_table_row_fn(&ctrl->handle,
+        "Device.WiFi.STA.3.test.1.new_table.", NULL, &t_index);
+    wifi_util_info_print(WIFI_CTRL, "%s table added:%s :%d\r\n", __FUNCTION__,
+        "Device.WiFi.STA.{i}.test.{i}.new_table.", 1);
+
+    print_registered_elems(get_bus_mux_reg_cb_map(), 0);
+
+    wifi_util_info_print(WIFI_CTRL, "%s =====bus: bus event register:[%s]:%s\r\n", __FUNCTION__,
+        WIFI_STA_2G_VAP_CONNECT_STATUS, WIFI_STA_5G_VAP_CONNECT_STATUS);
+
     return;
 }

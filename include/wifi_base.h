@@ -81,6 +81,12 @@ extern "C" {
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
+#define WIFI_TEST_NAMESPACE                "Device.WiFi.STA.{i}.test.{i}."
+#define WIFI_TEST_PARAM1_NAME              "Device.WiFi.STA.{i}.test.{i}.param1"
+
+#define WIFI_TEST1_NAMESPACE                "Device.WiFi.STA.{i}.test.{i}.new_table.{i}."
+#define WIFI_TEST1_PARAM2_NAME              "Device.WiFi.STA.{i}.test.{i}.new_table.{i}.param2"
+
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
