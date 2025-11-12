@@ -1798,15 +1798,6 @@ int is_ssid_name_valid(char *ssid_name)
     return RETURN_OK;
 }
 
-long int calculate_greylist_expiry_time(void);
-{
-    long int expiry_time = 0;
-    struct timeval tv_now;
-    gettimeofday(&tv_now, NULL);
-    expiry_time = tv_now.tv_sec + GREYLIST_TIMEOUT_IN_SECONDS;
-    return expiry_time;
-}
-
 void str_to_mac_bytes (char *key, mac_addr_t bmac) {
     unsigned int mac[6];
 
