@@ -2101,7 +2101,8 @@ bus_error_t get_sta_attribs(char *name, raw_data_t *p_data, bus_user_data_t *use
 
     } else if (strcmp(extension, "InterfaceName") == 0) {
         l_interface_name = get_interface_name_for_vap_index(vap_index, &mgr->hal_cap.wifi_prop);
-
+        if(l_interface_name == NULL)
+            return bus_error_invalid_operation;
         uint32_t bytes_size = (strlen(*l_interface_name) + 1);
         p_data->data_type = bus_data_type_string;
         p_data->raw_data.bytes = malloc(bytes_size);
