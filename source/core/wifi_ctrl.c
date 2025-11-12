@@ -1795,6 +1795,14 @@ bool check_wifi_vap_sched_timeout_active_status(wifi_ctrl_t *l_ctrl, BOOL (*cb)(
     return false;
 }
 
+bool check_wifi_multivap_sched_timeout_active_status(wifi_ctrl_t *l_ctrl, int radio_index)
+{
+    //TBD: Check all the sched handler of the VAP associated with the radio_index
+
+    // Currently returning false
+    return false;
+}
+
 void resched_data_to_ctrl_queue()
 {
     wifi_ctrl_t *l_ctrl;

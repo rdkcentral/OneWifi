@@ -1395,6 +1395,42 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
                 return webconfig_error_translate_to_easymesh;
             }
             break;
+
+        case webconfig_subdoc_type_assocdev_stats:
+            if (translate_sta_object_to_easymesh_for_assocdev_stats(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_assocdev_stats assoc_dev translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
+
+        case webconfig_subdoc_type_associated_clients:
+            if (translate_associated_clients_to_easymesh_sta_info(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_associated_clients translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
+
+        case webconfig_subdoc_type_radio:
+            if (translate_radio_object_to_easymesh_for_radio(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: webconfig_subdoc_type_dml radio_object translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
+
+          //TO-DO
+   /*     case webconfig_subdoc_type_radiodiag_stats:
+            if (translate_radiodiag_stats_to_easymesh(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_radiodiag_stats translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break; */
+
+        case webconfig_subdoc_type_vap_24G:
+        case webconfig_subdoc_type_vap_5G:
+        case webconfig_subdoc_type_vap_6G:
+            //TBD: Update the necessary datastructures of easymesh
+
         default:
             break;
     }
@@ -1461,6 +1497,20 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
                 return webconfig_error_translate_from_easymesh;
             }
             break;
+
+        case webconfig_subdoc_type_radio:
+            if (translate_radio_object_from_easymesh_to_radio(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, 
+                    "%s:%d: webconfig_subdoc_type_radio translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_from_easymesh;
+            }
+            break;
+
+        case webconfig_subdoc_type_vap_24G:
+        case webconfig_subdoc_type_vap_5G:
+        case webconfig_subdoc_type_vap_6G:
+            //TBD: Update the necessary datastructures from easymesh to OneWifi.
+
         default:
             break;
     }

@@ -369,6 +369,21 @@ int webconfig_send_steering_clients_status(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+int webconfig_send_multivap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t type)
+{
+    webconfig_subdoc_data_t data;
+
+    webconfig_init_subdoc_data(&data);
+
+    if (webconfig_encode(&ctrl->webconfig, &data, type) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__,
+            __LINE__);
+    } else {
+        webconfig_data_free(&data);
+    }
+    return RETURN_OK;
+}
+
 int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
     static int pending_state = ctrl_webconfig_state_max;
@@ -506,6 +521,30 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
         case ctrl_webconfig_state_trigger_dml_thread_data_update_pending:
             type = webconfig_subdoc_type_dml;
             webconfig_send_dml_subdoc_status(ctrl);
+            break;
+        case ctrl_webconfig_state_vap_24G_cfg_rsp_pending:
+            if (check_wifi_multivap_sched_timeout_active_status(ctrl, 0) == false) {
+                type = webconfig_subdoc_type_vap_24G;
+                webconfig_send_multivap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+            break;
+        case ctrl_webconfig_state_vap_5G_cfg_rsp_pending:
+            if (check_wifi_multivap_sched_timeout_active_status(ctrl, 1) == false) {
+                type = webconfig_subdoc_type_vap_5G;
+                webconfig_send_multivap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+            break;
+        case ctrl_webconfig_state_vap_6G_cfg_rsp_pending:
+            if (check_wifi_multivap_sched_timeout_active_status(ctrl, 2) == false) {
+                type = webconfig_subdoc_type_vap_6G;
+                webconfig_send_multivap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
             break;
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d - default pending subdoc status:0x%x\r\n", __func__, __LINE__, (ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK));
@@ -704,6 +743,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         if (found_target == false) {
+            wifi_util_error_print(WIFI_MGR,
+                "%s:%d: Could not find tgt_radio_idx:%d for vap name:%s\n", __func__, __LINE__,
+                tgt_radio_idx, vap_names[i]);
             continue;
         }
 
@@ -719,6 +761,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         if (found_target == false) {
+            wifi_util_error_print(WIFI_MGR,
+                "%s:%d: Could not find tgt_vap_index:%d for vap name:%s\n", __func__, __LINE__,
+                tgt_vap_index, vap_names[i]);
             continue;
         }
 
@@ -1469,6 +1514,77 @@ int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_de
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
+static int remove_all_mac_acl_entries_from_cache_and_db(rdk_wifi_vap_info_t *current_config)
+{
+    if (current_config == NULL || current_config->acl_map == NULL) {
+        wifi_util_info_print(WIFI_MGR, "%s:%d: Current obj:%p is NULL\n", __func__, __LINE__, current_config);
+        return RETURN_ERR;
+    }
+    acl_entry_t *current_acl_entry, *temp_acl_entry;
+    mac_addr_str_t current_mac_str;
+    char macfilterkey[128] = { 0 };
+
+    current_acl_entry = hash_map_get_first(current_config->acl_map);
+    while (current_acl_entry != NULL) {
+        to_mac_str(current_acl_entry->mac, current_mac_str);
+        str_tolower(current_mac_str);
+        wifi_util_info_print(WIFI_MGR, "%s:%d: del mac:%s vap_index:%d\n",
+            __func__, __LINE__, current_mac_str, current_config->vap_index);
+        current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+        temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+        if (temp_acl_entry != NULL) {
+            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+            wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+            free(temp_acl_entry);
+        }
+    }
+
+    return RETURN_OK;
+}
+
+int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data,
+    webconfig_subdoc_type_t doc_type)
+{
+    unsigned int num_vaps = 0;
+    char *vap_names[MAX_NUM_VAP_PER_RADIO];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    rdk_wifi_vap_map_t *mgr_vap_map = NULL;
+    int radio_index = -1;
+
+    switch (doc_type) {
+    case webconfig_subdoc_type_vap_24G:
+        radio_index = 0;
+        break;
+    case webconfig_subdoc_type_vap_5G:
+        radio_index = 1;
+        break;
+    case webconfig_subdoc_type_vap_6G:
+        radio_index = 2;
+        break;
+    default:
+        // Invalid doc_type return err
+        wifi_util_error_print(WIFI_MGR, "%s:%d Invalid doc_type:%d\n", __func__, __LINE__,
+            doc_type);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_MGR, "%s:%d Selected Radio Index:%d for doc_type:%d\n", __func__,
+        __LINE__, radio_index, doc_type);
+    mgr_vap_map = &mgr->radio_config[radio_index].vaps;
+    if (mgr_vap_map == NULL) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d Error vap_map is NULL for Radio Index:%d\n",
+            __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    // Consider all the Vap associated with the radio_index
+    for (UINT index = 0; index < mgr_vap_map->num_vaps; index++) {
+        vap_names[num_vaps] = mgr_vap_map->rdk_vap_array[index].vap_name;
+        num_vaps++;
+    }
+    return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+}
+
 int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, webconfig_subdoc_type_t subdoc_type)
 {
     unsigned int radio_index, vap_index;
@@ -1519,15 +1635,16 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                                 wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                                         __func__, __LINE__, vap_index, current_mac_str);
                                 ret = RETURN_ERR;
-                                goto free_data;
-                            }
-                            current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
-                            temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
-                            if (temp_acl_entry != NULL) {
-                                snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+                                current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                            } else {
+                                current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                                temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+                                if (temp_acl_entry != NULL) {
+                                    snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
 
-                                wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
-                                free(temp_acl_entry);
+                                    wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+                                    free(temp_acl_entry);
+                                }
                             }
                         } else {
                             current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
@@ -1540,6 +1657,9 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
 #else
 		wifi_delApAclDevices(vap_index);
 #endif
+                wifi_util_info_print(WIFI_MGR, "%s:%d: remove all mac acl entries"
+                    " from cache and db vap_index:%d\n", __func__, __LINE__, vap_index);
+                remove_all_mac_acl_entries_from_cache_and_db(current_config);
                 current_config->is_mac_filter_initialized = true;
             }
 
@@ -1559,7 +1679,6 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                                     __func__, __LINE__, vap_index, new_mac_str);
                             ret = RETURN_ERR;
-                            goto free_data;
                         }
 
                         temp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
@@ -1584,7 +1703,6 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
         }
     }
 
-free_data:
     if ((new_config != NULL) && (new_config->acl_map != NULL)) {
         new_acl_entry = hash_map_get_first(new_config->acl_map);
         while (new_acl_entry != NULL) {
@@ -1923,6 +2041,8 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
     int ret = RETURN_OK;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t  *pub_svc = NULL;
+    wifi_ctrl_webconfig_state_t conf_state_pending;
+
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: webconfig_state:%02x doc_type:%d doc_name:%s\n", 
             __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
 
@@ -2352,6 +2472,36 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected apply to dml webconfig subdoc\n", __func__, __LINE__);
             }
 #endif
+            break;
+
+        case webconfig_subdoc_type_vap_24G:
+        case webconfig_subdoc_type_vap_5G:
+        case webconfig_subdoc_type_vap_6G:
+            if (doc->type == webconfig_subdoc_type_vap_24G) {
+                conf_state_pending = ctrl_webconfig_state_vap_24G_cfg_rsp_pending;
+            } else if (doc->type == webconfig_subdoc_type_vap_5G) {
+                conf_state_pending = ctrl_webconfig_state_vap_5G_cfg_rsp_pending;
+            } else {
+                conf_state_pending = ctrl_webconfig_state_vap_6G_cfg_rsp_pending;
+            }
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & conf_state_pending) {
+                    ctrl->webconfig_state &= ~conf_state_pending;
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= conf_state_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_multivap_apply(ctrl, &data->u.decoded, doc->type);
+                }
+            }
+            // This is for captive_portal_check for private SSID when defaults modified
+            captive_portal_check();
             break;
 
         default:
