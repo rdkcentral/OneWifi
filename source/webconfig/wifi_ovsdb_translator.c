@@ -2143,6 +2143,7 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec(wifi_vap_info_t *vap,
 
     if (vap->u.bss_info.security.rekey_interval) {
         vap_row->group_rekey = vap->u.bss_info.security.rekey_interval;
+        vap_row->group_rekey_exists = true;
     } else {
         vap_row->group_rekey_exists = false;
     }
@@ -2752,6 +2753,12 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         vap_row->wps_exists=false;
     }
 
+    if (vap->u.bss_info.wpsPushButton) {
+        vap_row->wps_pbc = vap->u.bss_info.wpsPushButton;
+    }
+
+    vap_row->wps_pbc_exists = true;
+
     if (strlen(vap->u.bss_info.wps.pin) != 0) {
         strncpy(vap_row->wps_pbc_key_id, vap->u.bss_info.wps.pin, sizeof(vap_row->wps_pbc_key_id));
         vap_row->wps_pbc_key_id_exists = true;
@@ -2922,6 +2929,7 @@ static webconfig_error_t translate_vap_info_to_vif_state_sec(wifi_vap_info_t *va
 
     if (vap->u.bss_info.security.rekey_interval) {
         vap_row->group_rekey = vap->u.bss_info.security.rekey_interval;
+        vap_row->group_rekey_exists = true;
     } else {
         vap_row->group_rekey_exists = false;
     }
