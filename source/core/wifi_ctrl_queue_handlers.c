@@ -1581,7 +1581,6 @@ int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int
     acl_entry_t *acl_entry = NULL;
     acl_entry_t *temp_acl_entry = NULL;
     mac_address_t mac_addr;
-    mac_addr_str_t normalized_mac_str;
     char macfilterkey[128] = { 0 };
 
     if (mac_str == NULL) {
@@ -1711,7 +1710,7 @@ void process_greylist_mac_filter(void *data)
             }
 
             if (strstr(rdk_vap_info->vap_name, "hotspot") == NULL ||
-                !wifi_vap_map->vap_array[itrj] u.bss_info.enabled) {
+                !wifi_vap_map->vap_array[itrj].u.bss_info.enabled) {
                     wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH VAP %s not enabled\n", __func__, __LINE__, rdk_vap_info->vap_name);
                 continue;
             }
