@@ -1078,10 +1078,11 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     CosaDmlWiFiGetEnableRadiusGreylist((BOOLEAN *)&wifi_radius_greylist_status);
     push_rfc_dml_cache_to_one_wifidb(wifi_radius_greylist_status,wifi_event_type_radius_grey_list_rfc);
-    wifi_util_info_print(WIFI_DMCLI,"radiusGrey list value=%d preferpriv=%d\n",wifi_radius_greylist_status,global_wifi_config->global_parameters.prefer_private);
+    wifi_util_info_print(WIFI_CTRL,"SREESH radiusGrey list value=%d preferpriv=%d\n",wifi_radius_greylist_status,global_wifi_config->global_parameters.prefer_private);
     if (wifi_radius_greylist_status && global_wifi_config->global_parameters.prefer_private) {
         global_wifi_config->global_parameters.prefer_private = false;
         push_global_config_dml_cache_to_one_wifidb();
+        wifi_util_info_print(WIFI_CTRL,"SREESH Trying to disable the preferpriv RFC and setting it's values to false at boot time\n");
         push_prefer_private_ctrl_queue(false);
     }
 #endif

@@ -617,8 +617,8 @@ void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
     char *psmStrValue = NULL;
 
     *pbEnableRadiusGreyList = FALSE;
-    CcspTraceInfo(("[%s] Get EnableRadiusGreylist Value \n",__FUNCTION__));
-
+    CcspTraceInfo(("[%s] SREESH Get EnableRadiusGreylist Value \n",__FUNCTION__));
+    wifi_util_info_print(WIFI_CTRL, "[%s] SREESH Get EnableRadiusGreylist Value \n", __func__);
     if (PSM_Get_Record_Value2(bus_handle, g_Subsystem,
             "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RadiusGreyList.Enable",
             NULL, &psmStrValue) == CCSP_SUCCESS)
@@ -650,13 +650,15 @@ ANSC_STATUS
 CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
 
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
-    CcspTraceInfo(("[%s] Enter\n",__FUNCTION__));
+    CcspTraceInfo(("[%s] SREESH Enter\n",__FUNCTION__));
+    wifi_util_info_print(WIFI_CTRL, "[%s] SREESH Enter\n", __func__);
     char recName[256];
     static char *MacFilterMode      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterMode";
 
     if (value == TRUE)
     {
-        CcspTraceInfo(("[%s] Enabled\n",__FUNCTION__));
+        CcspTraceInfo(("[%s] SREESH Enabled\n",__FUNCTION__));
+        wifi_util_info_print(WIFI_CTRL, "[%s] SREESH Enabled\n", __func__);
         for (UINT index = 0; index < getTotalNumberVAPs(); ++index)
         {
             UINT apIndex;
@@ -672,7 +674,8 @@ CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
     }
     else
     {
-        CcspTraceInfo(("[%s] Disabled\n",__FUNCTION__));
+        CcspTraceInfo(("[%s] SREESH Disabled\n",__FUNCTION__));
+        wifi_util_info_print(WIFI_CTRL, "[%s] SREESH Disabled\n", __func__);
         for (UINT index = 0; index < getTotalNumberVAPs(); ++index)
         {
             UINT apIndex;

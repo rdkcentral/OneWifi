@@ -238,12 +238,14 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         }
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
         if (greylist_rfc || ((pcfg != NULL && pcfg->prefer_private))) {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Will be setting the mac filter mode as blacklist for vap index = %d \n",__FUNCTION__,__LINE__, p_tgt_vap_map->vap_array[0].vap_index);
 #ifdef NL80211_ACL
             wifi_hal_setApMacAddressControlMode(p_tgt_vap_map->vap_array[0].vap_index, 2);
 #else
             wifi_setApMacAddressControlMode(p_tgt_vap_map->vap_array[0].vap_index, 2);
 #endif
         } else {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Will be setting the mac filter as disabled for vap index = %d \n",__FUNCTION__,__LINE__, p_tgt_vap_map->vap_array[0].vap_index);
 #ifdef NL80211_ACL
             wifi_hal_setApMacAddressControlMode(p_tgt_vap_map->vap_array[0].vap_index, 0);
 #else
@@ -359,12 +361,14 @@ void add_mac_mode_to_public_vaps(bool mac_mode)
                 continue;
             }
             if (mac_mode) {
+                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Will be setting the mac filter mode as blacklist for vap index = %d \n",__FUNCTION__,__LINE__, rdk_vap_info->vap_index);
 #ifdef NL80211_ACL
                 wifi_hal_setApMacAddressControlMode(rdk_vap_info->vap_index, 2);
 #else
                 wifi_setApMacAddressControlMode(rdk_vap_info->vap_index, 2);
 #endif // NL80211_ACL
             } else {
+                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Will be setting the mac filter as disabled for vap index = %d \n",__FUNCTION__,__LINE__, rdk_vap_info->vap_index);
 #ifdef NL80211_ACL
                 wifi_hal_setApMacAddressControlMode(rdk_vap_info->vap_index, 0);
 #else
@@ -383,6 +387,7 @@ void process_prefer_private_rfc_event(vap_svc_event_t event, void *data)
             break;
 
         case add_macmode_to_public:
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Will be setting the mac filter mode via add_macmode_to_public value = %d \n",__FUNCTION__,__LINE__, *(int *)data);
             add_mac_mode_to_public_vaps(*(bool *)data);
             break;
 
