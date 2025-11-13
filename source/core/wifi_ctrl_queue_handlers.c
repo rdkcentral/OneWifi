@@ -1060,28 +1060,29 @@ static int initiate_kick_config_change(int vap_index, wifi_vap_info_t *vap_info,
 static void finalize_kick_config_change(int vap_index, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
-        if (rdk_vap_info->kick_device_task_counter > 0) {
+    if (rdk_vap_info->kick_device_task_counter > 0) {
         return;
     }
 
     if (rdk_vap_info->kick_device_config_change == TRUE) {
-            int filter_mode = 0;
-            if (vap_info->u.bss_info.mac_filter_enable == TRUE) {
-                filter_mode =
-                    (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) ? 2 : 1;
-            }
+        int filter_mode = 0;
+        if (vap_info->u.bss_info.mac_filter_enable == TRUE) {
+            filter_mode =
+                (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) ? 2 : 1;
+        }
 
 #ifdef NL80211_ACL
-            if (wifi_hal_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
+        if (wifi_hal_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
 #else
-            if (wifi_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
+        if (wifi_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
 #endif
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH Successfully restored ACL mode %d for vap %d\n",
-                    __func__, __LINE__, filter_mode, vap_index);
-            } else {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Failed to restore ACL mode for vap %d\n",
-                    __func__, __LINE__, vap_index);
-            }
+            wifi_util_dbg_print(WIFI_CTRL,
+                "%s:%d SREESH Successfully restored ACL mode %d for vap %d\n", __func__, __LINE__,
+                filter_mode, vap_index);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Failed to restore ACL mode for vap %d\n",
+                __func__, __LINE__, vap_index);
+        }
         rdk_vap_info->kick_device_config_change = FALSE;
     }
 }
