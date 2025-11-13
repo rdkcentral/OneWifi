@@ -475,6 +475,15 @@ void free_raw_data_struct(raw_data_t *p_data)
             __LINE__, p_data->data_type, p_data->raw_data.bytes);
         free(p_data->raw_data.bytes);
         p_data->raw_data.bytes = NULL;
+    } else if (p_data->data_type == bus_data_type_property && p_data->raw_data.bytes != NULL) {
+        bus_data_prop_t *current, *data_prop = (bus_data_prop_t *)p_data->raw_data.bytes;
+        while (data_prop != NULL) {
+            current = data_prop;
+            data_prop = data_prop->next_data;
+            free_raw_data_struct(&current->value);
+            free(current);
+        }
+        p_data->raw_data.bytes = NULL;
     }
 }
 
@@ -559,6 +568,40 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
         case bus_data_type_boolean:
             rbusValue_SetBoolean(value, bus_data->raw_data.b);
         break;
+        case bus_data_type_property: {
+            bus_data_prop_t *data_prop = (bus_data_prop_t *)bus_data->raw_data.bytes;
+            while (data_prop != NULL) {
+                raw_data_t *prop_value;
+                prop_value = &data_prop->value;
+                if (prop_value == NULL) {
+                    data_prop = data_prop->next_data;
+                    continue;
+                }
+                switch (prop_value->data_type) {
+                    case bus_data_type_boolean:
+                        rbusProperty_AppendBoolean(property, data_prop->name, prop_value->raw_data.b);
+                        break;
+                    case bus_data_type_bytes:
+                        rbusProperty_AppendBytes(property, data_prop->name,
+                            (uint8_t *)prop_value->raw_data.bytes, prop_value->raw_data_len);
+                        break;
+                    case bus_data_type_int32:
+                        rbusProperty_AppendInt32(property, data_prop->name, prop_value->raw_data.i32);
+                        break;
+                    case bus_data_type_string:
+                        rbusProperty_AppendString(property, data_prop->name, (char *)prop_value->raw_data.bytes);
+                        break;
+                    case bus_data_type_uint32:
+                        rbusProperty_AppendUInt32(property, data_prop->name, prop_value->raw_data.u32);
+                        break;
+                    default:
+                        wifi_util_error_print(WIFI_BUS,"%s Rbus:%s value type not supported =%d\n",
+                            __FUNCTION__, event_name, prop_value->data_type);
+                        break;
+                }
+                data_prop = data_prop->next_data;
+            }
+        } break;
         case bus_data_type_object:
             wifi_util_error_print(WIFI_BUS,"%s Rbus:%s value type not supported =%d\n",__FUNCTION__, event_name, bus_data->data_type);
         break;
@@ -1318,7 +1361,7 @@ bus_error_t bus_unreg_data_elements(bus_handle_t *handle, uint32_t num_of_elemen
 
     rbus_dataElements = calloc(1, num_of_element * sizeof(rbusDataElement_t));
     if (rbus_dataElements == NULL) {
-        wifi_util_error_print(WIFI_BUS, "%s:%d bus: bus_reg_data_elements() calloc is failed\n",
+        wifi_util_error_print(WIFI_BUS, "%s:%d bus: bus_unreg_data_elements() calloc is failed\n",
             __func__, __LINE__);
         return bus_error_out_of_resources;
     }
