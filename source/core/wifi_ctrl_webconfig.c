@@ -996,6 +996,11 @@ int webconfig_stats_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
 
     wifi_util_dbg_print(WIFI_CTRL,"%s %d \n", __func__, __LINE__);
 
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d data is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     mgr_cfg_map = mgr->stats_config_map;
     dec_cfg_map = data->stats_config_map;
 
@@ -1056,7 +1061,7 @@ int webconfig_stats_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     }
 
   free_data:
-    if ((data != NULL) && (dec_cfg_map != NULL)) {
+    if (dec_cfg_map != NULL) {
         wifi_util_dbg_print(WIFI_CTRL,"%s %d Freeing Decoded Data \n", __func__, __LINE__);
         dec_stats_config = hash_map_get_first(dec_cfg_map);
         while (dec_stats_config != NULL) {
