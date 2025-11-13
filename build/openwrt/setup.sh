@@ -7,7 +7,7 @@ HOSTAP_SRC_DIR="$HOSTAP_DIR/source"
 HOSTAP_PATCH_DIR="$HOSTAP_DIR/meta-cmf-bananapi/meta-rdk-mtk-bpir4/recipes-ccsp/rdk-wifi-libhostap/files/2.11"
 RDK_WIFI_HAL_DIR="$(pwd)/../rdk-wifi-hal"
 KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches/openwrt"
-UPSTREAM_HOSTAP_URL="git://w1.fi/hostap.git"
+UPSTREAM_HOSTAP_URL="https://git.w1.fi/hostap.git"
 SRCREV_2_11="96e48a05aa0a82e91e3cab75506297e433e253d0"
 
 #git clone other wifi related components
