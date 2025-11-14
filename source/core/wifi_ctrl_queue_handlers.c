@@ -1857,6 +1857,55 @@ void process_disassoc_device_event(void *data)
     pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
 }
 
+void check_and_remove_mac_on_other_vaps(rdk_wifi_vap_info_t *rdk_vap_info, assoc_dev_data_t *assoc_data) {
+    mac_addr_str_t mac_str_my;
+    assoc_dev_data_t *temp_assoc_dev_data = NULL;
+    ULONG old_count = 0, new_count = 0;
+    wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
+    unsigned int itr = 0;
+    mac_addr_str_t mac_str;
+
+    for (itr = 0; itr < getNumberRadios(); itr++) {
+        if ((int)itr == assoc_data->ap_index)
+            continue;
+
+        rdk_vap_info = get_wifidb_rdk_vap_info(itr);
+        if (rdk_vap_info == NULL) {
+            continue;
+        }
+        memset(mac_str, 0, sizeof(mac_str));
+        to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
+
+        pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+        if (rdk_vap_info->associated_devices_map !=  NULL) {
+            old_count = hash_map_count(rdk_vap_info->associated_devices_map);
+
+            temp_assoc_dev_data = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
+            if (temp_assoc_dev_data != NULL) {
+                temp_assoc_dev_data->client_state = client_state_disconnected;
+                if (add_client_diff_assoclist(&rdk_vap_info->associated_devices_diff_map, mac_str, temp_assoc_dev_data) == RETURN_ERR) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to update diff assoclist for vap %d mac_str : %s\n", __func__, __LINE__, rdk_vap_info->vap_index, mac_str_my);
+                    free(temp_assoc_dev_data);
+                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                    return;
+                }
+                p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
+                temp_assoc_dev_data->dev_stats.cli_Active = false;
+                lm_notify_disassoc(temp_assoc_dev_data, rdk_vap_info->vap_index);
+                free(temp_assoc_dev_data);
+            }
+            if (old_count > 0)
+                new_count = old_count - 1;
+            if (((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index)))){
+                if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index, new_count, old_count) != RETURN_OK) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
+                }
+            }
+        }
+        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+    }
+}
+
 void process_assoc_device_event(void *data)
 {
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
@@ -1895,6 +1944,10 @@ void process_assoc_device_event(void *data)
     memset(mac_str, 0, sizeof(mac_str));
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
     str_tolower(mac_str);
+
+    //check and remove mac_str from other vaps if device is steering
+    check_and_remove_mac_on_other_vaps(rdk_vap_info, assoc_data);
+
     tmp_assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
     if (tmp_assoc_dev_data == NULL) {
         old_count = hash_map_count(rdk_vap_info->associated_devices_map);
