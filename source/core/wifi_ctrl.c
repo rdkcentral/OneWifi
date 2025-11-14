@@ -1060,27 +1060,38 @@ int start_wifi_health_monitor_thread(void)
 
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
-    scan_results_t  res;
-
-    memset(&res, 0, sizeof(scan_results_t));
-
-    res.radio_index = radio_index;
+    scan_results_t  *res;
 
     if (*num) {
         // if number of scanned AP's is more than size of res.bss array - truncate
         if (*num > MAX_SCANNED_VAPS){
             *num = MAX_SCANNED_VAPS;
         }
-        res.num = *num;
-        memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
+
+    res = (scan_results_t *)calloc(1, sizeof(scan_results_t));
+    if(!res) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Failed to allocate memory for scan_results_t\n", __FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    res->radio_index = radio_index;
+    res->num = *num;
+    memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+
     if (is_sta_enabled()) {
-        push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind,
-            wifi_event_scan_results, NULL);
+        if(push_event_to_ctrl_queue(res, sizeof(scan_results_t), wifi_event_type_hal_ind,
+            wifi_event_scan_results, NULL) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to push scan_results to queue\n", __FUNCTION__, __LINE__);
+            free(*bss);
+            free(res);
+            return RETURN_ERR;
+        }
     }
     free(*bss);
+    free(res);
 
-    return 0;
+    return RETURN_OK;
 }
 
 void sta_connection_handler(const char *vif_name, wifi_bss_info_t *bss_info, wifi_station_stats_t *sta)
