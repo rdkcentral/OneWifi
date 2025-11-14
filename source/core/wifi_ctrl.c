@@ -608,6 +608,11 @@ bool check_for_greylisted_mac_filter(void)
 
 void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 {
+    if (name == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: name is NULL\n", __func__, __LINE__);
+        return;
+    }
+
     int rc = bus_error_success;
     unsigned int total_slept = 0;
     char *pTmp = NULL;
@@ -628,7 +633,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         /* Initially assign this to em_node mode to start with */
         *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
         while (colocated_mode == -1) {
-            /* sleep for 1 second and re-read the wifi_hal_getHalCapability till we get 
+            /* sleep for 1 second and re-read the wifi_hal_getHalCapability till we get
                a valid colocated_mode */
             sleep(1);
             total_slept++;
@@ -717,10 +722,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
             *ret_val = 0;
         }
 
-        /* Ensure no corruption and name string is still valid */
-        if (name) {
-            get_bus_descriptor()->bus_data_free_fn(&data);
-        }
+        get_bus_descriptor()->bus_data_free_fn(&data);
     }
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus_data_get_fn for %s: value:%d\n", __func__, __LINE__,
         name, *ret_val);
