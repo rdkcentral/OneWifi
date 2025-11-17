@@ -1035,6 +1035,19 @@ bool  IsClientConnected(rdk_wifi_vap_info_t* rdk_vap_info, char *check_mac)
     return false;
 }
 
+static bool is_greylist_enabled(int vap_index)
+{
+    wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_info && rfc_info->radiusgreylist_rfc && isVapHotspot(vap_index)) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Greylist RFC is enabled & VAP = %d\n",
+            __func__, __LINE__, vap_index);
+        return true;
+    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Greylist RFC is disabled & VAP = %d\n",
+        __func__, __LINE__, vap_index);
+    return false;
+}
+
 static int initiate_kick_config_change(int vap_index, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
@@ -1065,32 +1078,83 @@ static void finalize_kick_config_change(int vap_index, wifi_vap_info_t *vap_info
     }
 
     if (rdk_vap_info->kick_device_config_change == TRUE) {
-        int filter_mode = 0;
-        if (vap_info->u.bss_info.mac_filter_enable == TRUE) {
-            filter_mode =
-                (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) ? 2 : 1;
-        }
+        // Only change MAC filter mode when greylist is NOT enabled for Hotspots
+        if (!is_greylist_enabled(vap_index)) {
+            int filter_mode = 0;
+            if (vap_info->u.bss_info.mac_filter_enable == TRUE) {
+                filter_mode =
+                    (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) ? 2 : 1;
+            }
 
 #ifdef NL80211_ACL
         if (wifi_hal_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
 #else
         if (wifi_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
 #endif
-            wifi_util_dbg_print(WIFI_CTRL,
-                "%s:%d SREESH Successfully restored ACL mode %d for vap %d\n", __func__, __LINE__,
-                filter_mode, vap_index);
+
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH Successfully restored ACL mode %d for vap %d\n",
+                    __func__, __LINE__, filter_mode, vap_index);
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Failed to restore ACL mode for vap %d\n",
+                    __func__, __LINE__, vap_index);
+            }
         } else {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Failed to restore ACL mode for vap %d\n",
+            wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Skipping MAC filter mode change - greylist is enabled for vap %d\n",
                 __func__, __LINE__, vap_index);
         }
         rdk_vap_info->kick_device_config_change = FALSE;
     }
 }
 
+
+static bool is_mac_greylisted(int vap_index, char *mac_str)
+{
+    rdk_wifi_vap_info_t *l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
+    acl_entry_t *acl_entry = NULL;
+    mac_address_t mac_addr;
+    
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH Entering function for vap_index = %d\n", __func__, __LINE__, vap_index);
+    
+    if (!l_rdk_vap_array || !l_rdk_vap_array->acl_map) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d l_rdk_vap_array is NULL or acl_map is NULL\n", __func__, __LINE__);
+        return false;
+    }
+
+    to_mac_bytes(mac_str, mac_addr);
+    acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
+    
+    while (acl_entry != NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH Iterating over ACL entries\n", __func__, __LINE__);
+        
+        if (acl_entry->mac != NULL &&
+            memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
+            acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
+            
+            mac_addr_str_t key = {'\0'};
+            to_mac_str(acl_entry->mac, key);  // Call function first
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH Found a matching ACL entry %s\n", __func__, __LINE__, key);
+            return true;
+        }
+        acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
+    }
+    
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH No matching ACL entry found\n", __func__, __LINE__);
+    return false;
+}
+
 static int handle_acl_operation(int vap_index, char *mac_str, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, bool is_add_operation)
 {
     bool success = false;
+
+    // For delete operations, check if MAC is greylisted
+    if (!is_add_operation && is_greylist_enabled(vap_index) &&
+        is_mac_greylisted(vap_index, mac_str)) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Skipping removal of greylisted MAC %s for vap %d\n",
+            __func__, __LINE__, mac_str, vap_index);
+        return RETURN_OK; // Consider this a successful operation since we're protecting greylisted
+                          // entries
+    }
 
     if (rdk_vap_info->kick_device_config_change == TRUE) {
         if (is_add_operation) {
