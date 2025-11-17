@@ -54,8 +54,8 @@ struct scheduler * scheduler_init(void)
 
         sched->high_priority_timer_list = queue_create();
         if (sched->high_priority_timer_list == NULL) {
-            free(sched);
             pthread_mutex_destroy(&sched->lock);
+            free(sched);
             return NULL;
         }
         sched->num_hp_tasks = 0;
@@ -63,9 +63,9 @@ struct scheduler * scheduler_init(void)
 
         sched->timer_list = queue_create();
         if (sched->timer_list == NULL) {
-            queue_destroy(sched->timer_list);
-            free(sched);
+            queue_destroy(sched->high_priority_timer_list);
             pthread_mutex_destroy(&sched->lock);
+            free(sched);
             return NULL;
         }
         sched->num_tasks = 0;
