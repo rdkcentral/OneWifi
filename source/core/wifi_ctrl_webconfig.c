@@ -1321,6 +1321,11 @@ int webconfig_steering_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
     wifi_util_dbg_print(WIFI_MGR,"%s %d \n", __func__, __LINE__);
 
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_MGR,"%s:%d: data is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     mgr_cfg_map = mgr->steering_config_map;
     dec_cfg_map = data->steering_config_map;
 
@@ -1378,7 +1383,7 @@ int webconfig_steering_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
     }
   free_data:
-    if ((data != NULL) && (dec_cfg_map != NULL)) {
+    if (dec_cfg_map != NULL) {
         wifi_util_dbg_print(WIFI_MGR,"%s %d Freeing Decoded Data \n", __func__, __LINE__);
         dec_steer_config = hash_map_get_first(dec_cfg_map);
         while (dec_steer_config != NULL) {
