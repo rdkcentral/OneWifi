@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         platform:
@@ -17,6 +17,8 @@ jobs:
             makefile_path: "build/linux/rpi/makefile"
           - name: "Banana Pi R4 - MLO"
             makefile_path: "build/linux/bpi/makefile"
+          - name: "Platform Mock Unittests"
+            makefile_path: "build/linux/mockplatform/makefile"
       fail-fast: false
 
     name: Build for ${{ matrix.platform.name }}
@@ -69,7 +71,9 @@ jobs:
                                 golang \
                                 pkg-config \
                                 libperl-dev \
-                                libjson-c-dev
+                                libjson-c-dev \
+                                libgtest-dev \
+                                libgmock-dev
 
         # Steps for ucode installation required for hostapd compilation
         git clone https://github.com/jow-/ucode.git ucode
