@@ -504,7 +504,8 @@ vapsetup:
 # - additional source files covering the gtest main, tests, and platform mocks
 # - replace wifi_mgr.o with wifi_mgr_nomain.o -- identical except that the main function is stripped out
 GTEST_SOURCES = $(ONE_WIFI_HOME)/source/test/gtest_main.cpp \
-				$(ONE_WIFI_HOME)/source/test/wifi_ctrl_webconfig_test.cpp \
+				$(ONE_WIFI_HOME)/source/test/wifi_ctrl_webconfig_test.cpp 
+
 PLATFORM_MOCK_SOURCES = $(ONE_WIFI_HOME)/source/test/platform_mocks.c
 
 GTEST_OBJECTS = $(GTEST_SOURCES:.cpp=.o)
