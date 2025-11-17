@@ -67,7 +67,7 @@ bus_element_type_t convert_rbus_to_bus_elem_type(rbusElementType_t rbus_elem_typ
 
 rbusElementType_t convert_bus_to_rbus_elem_type(bus_element_type_t bus_elem_type)
 {
-    rbusElementType_t  rbus_elem_type;
+    rbusElementType_t  rbus_elem_type = 0;
 
     switch(bus_elem_type) {
         case bus_element_type_property:
@@ -83,7 +83,6 @@ rbusElementType_t convert_bus_to_rbus_elem_type(bus_element_type_t bus_elem_type
             rbus_elem_type = RBUS_ELEMENT_TYPE_METHOD;
         break;
         default:
-            rbus_elem_type = RBUS_ELEMENT_TYPE_PROPERTY;
             wifi_util_error_print(WIFI_BUS, "%s:%d unsupported bus element type:%d\r\n", __func__, __LINE__, bus_elem_type);
         break;
     }
