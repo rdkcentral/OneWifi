@@ -295,6 +295,10 @@ bool wifi_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
             return false;
         }
     } else if (STR_CMP(param_name, "2G80211axEnable")) {
+#if defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
+        // For HUB4 2G 11ax is not supported.
+        return false;
+#endif
 #ifndef ALWAYS_ENABLE_AX_2G
         wifi_rfc_dml_parameters_t *p_rfc_cfg = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
         DM_CHECK_NULL_WITH_RC(p_rfc_cfg, false);

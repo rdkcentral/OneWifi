@@ -2623,28 +2623,44 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
     #define MASK_BITSET(x, bit) ((x) &= ~(bit))
 
     if (radio_band == WIFI_FREQUENCY_2_4_BAND) {
-        // Mask hw variant b,g,n,ax bit
+#if defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
+        // Mask hw variant b,g,n, and (conditionally) ax bit for HUB4 (excluding SR213)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_B);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_G);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
-#if !defined (_PP203X_PRODUCT_REQ_)
+#else
+        // Mask hw variant b,g,n bit for other products
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_B);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_G);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
+#if !defined(_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
+#endif
 #endif
 #ifdef CONFIG_IEEE80211BE
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
 #endif /* CONFIG_IEEE80211BE */
-        if(wifi_hw_mode != 0) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
+        if (wifi_hw_mode != 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__,
+                __LINE__, wifi_hw_mode);
             return RETURN_ERR;
         }
-    } else if ((radio_band == WIFI_FREQUENCY_5_BAND) || (radio_band == WIFI_FREQUENCY_5L_BAND) || (radio_band == WIFI_FREQUENCY_5H_BAND)) {
+    } else if ((radio_band == WIFI_FREQUENCY_5_BAND) || (radio_band == WIFI_FREQUENCY_5L_BAND) ||
+        (radio_band == WIFI_FREQUENCY_5H_BAND)) {
+#if defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_A);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_H);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AC);
+#else
         // Mask hw variant a,n,h,ac,ax,be bits
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_A);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_H);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AC);
-#if !defined (_PP203X_PRODUCT_REQ_)
+#if !defined(_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
+#endif
 #endif
 #ifdef CONFIG_IEEE80211BE
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);

@@ -1161,6 +1161,12 @@ WiFi_SetParamBoolValue
     }
     if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
     {
+
+#if defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+        // For HUB4 2G 11ax is not supported.
+        return FALSE;
+#endif
+
 #ifndef ALWAYS_ENABLE_AX_2G
         if(bValue != rfc_pcfg->twoG80211axEnable_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_twoG80211axEnable_rfc);

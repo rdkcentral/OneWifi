@@ -2328,6 +2328,11 @@ void process_twoG80211axEnable_rfc(bool type)
     wifi_radio_feature_param_t *radio_feat_params = NULL;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
 
+#if defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
+    wifi_util_error_print(WIFI_CTRL, "%s:%d Device dint support AX feature\n", __func__, __LINE__);
+    // For HUB4 2G 11ax is not supported.
+    return;
+#endif
     wifi_util_info_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
