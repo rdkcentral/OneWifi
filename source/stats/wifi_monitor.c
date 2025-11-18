@@ -2775,7 +2775,6 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     unsigned int mac_addr[MAC_ADDR_LEN];
     mac_address_t grey_list_mac;
     bool is_sta_active;
-    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH ap_index:%d src_mac:%s dest_mac:%s type:%d reason:%d\n", __func__, __LINE__, ap_index, src_mac, dest_mac, type, reason);
     if (src_mac == NULL || dest_mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
         return -1;
@@ -2790,8 +2789,6 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
         str_to_mac_bytes(src_mac, grey_list_mac);
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
         wifi_util_dbg_print(WIFI_MON," sending Greylist mac to  ctrl queue %s\n",src_mac);
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Greylist reject has happened for STA MAC = %s for ap index = %d\n",__FUNCTION__,__LINE__,src_mac, ap_index);
-        //push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
         long long int expiry_time = get_current_time_in_sec() + GREYLIST_TIMEOUT_IN_SECONDS;
         add_acl_entry_to_vap(src_mac, ap_index, reason, expiry_time, true);
     }
@@ -2822,7 +2819,7 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     assoc_data.ap_index = ap_index;
     assoc_data.reason = reason;
 
-    wifi_util_info_print(WIFI_MON, "%s:%d:SREESH Device diaassociated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
+    wifi_util_info_print(WIFI_MON, "%s:%d:Device diaassociated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
           __func__, __LINE__, ap_index,
           assoc_data.dev_stats.cli_MACAddress[0], assoc_data.dev_stats.cli_MACAddress[1], assoc_data.dev_stats.cli_MACAddress[2],
           assoc_data.dev_stats.cli_MACAddress[3], assoc_data.dev_stats.cli_MACAddress[4], assoc_data.dev_stats.cli_MACAddress[5]);
@@ -2970,8 +2967,6 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
         greylist_data.reason = reason;
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
         wifi_util_dbg_print(WIFI_MON,"Sending Greylist mac to ctrl queue %s\n",src_mac);
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Greylisted Mac %s for ap index %d\n",__FUNCTION__,__LINE__, src_mac, ap_index);
-        //push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
         long long int expiry_time = get_current_time_in_sec() + GREYLIST_TIMEOUT_IN_SECONDS;
         add_acl_entry_to_vap(src_mac, ap_index, reason, expiry_time, true);
     }

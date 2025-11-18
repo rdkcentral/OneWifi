@@ -1817,6 +1817,57 @@ void str_to_mac_bytes (char *key, mac_addr_t bmac) {
 
 }
 
+bool is_greylist_enabled(int vap_index)
+{
+    wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_info && rfc_info->radiusgreylist_rfc && isVapHotspot(vap_index)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Greylist RFC is enabled & VAP = %d\n",
+            __func__, __LINE__, vap_index);
+        return true;
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Greylist RFC is disabled & VAP = %d\n",
+        __func__, __LINE__, vap_index);
+    return false;
+}
+
+bool is_mac_greylisted(int vap_index, char *mac_str)
+{
+    rdk_wifi_vap_info_t *l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
+    acl_entry_t *acl_entry = NULL;
+    mac_address_t mac_addr;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Entering function for vap_index = %d\n", __func__,
+        __LINE__, vap_index);
+
+    if (!l_rdk_vap_array || !l_rdk_vap_array->acl_map) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d l_rdk_vap_array is NULL or acl_map is NULL\n",
+            __func__, __LINE__);
+        return false;
+    }
+
+    to_mac_bytes(mac_str, mac_addr);
+    acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
+
+    while (acl_entry != NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Iterating over ACL entries\n", __func__, __LINE__);
+
+        if (acl_entry->mac != NULL &&
+            memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
+            acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
+
+            mac_addr_str_t key = { '\0' };
+            to_mac_str(acl_entry->mac, key); // Call function first
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Found a matching ACL entry %s\n", __func__,
+                __LINE__, key);
+            return true;
+        }
+        acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d No matching ACL entry found\n", __func__, __LINE__);
+    return false;
+}
+
 int get_cm_mac_address(char *mac)
 {
     FILE *f;

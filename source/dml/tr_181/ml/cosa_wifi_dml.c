@@ -1069,11 +1069,10 @@ WiFi_SetParamBoolValue
     {
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
         if(bValue != rfc_pcfg->radiusgreylist_rfc) {
-            wifi_util_info_print(WIFI_CTRL,"SREESH invoked the greylist_rfc push to db\n");
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_radius_grey_list_rfc);
         }
         if(bValue && global_wifi_config->global_parameters.prefer_private) {
-            wifi_util_info_print(WIFI_DMCLI,"SREESH prefer_private is set to false when radiusgreylist is enabled\n");
+            wifi_util_info_print(WIFI_DMCLI,"prefer_private is set to false when radiusgreylist is enabled\n");
             global_wifi_config->global_parameters.prefer_private = false;
             push_global_config_dml_cache_to_one_wifidb();
             push_prefer_private_ctrl_queue(false);
