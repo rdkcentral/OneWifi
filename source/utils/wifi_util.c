@@ -1868,6 +1868,114 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
     return false;
 }
 
+void finalize_acl_addition(const char *mac_str, int reason)
+{
+    char log_buf[1024] = { 0 };
+    char time_str[20] = { 0 };
+    time_t now;
+    struct tm *time_info;
+    const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
+
+    get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Updated webconfig state for client %s\n", __func__,
+        __LINE__, mac_str);
+
+    time(&now);
+    time_info = localtime(&now);
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", time_info);
+
+    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
+        snprintf(log_buf, sizeof(log_buf), "%s Client added to grey list from RADIUS:%s\n",
+            time_str, mac_str);
+    } else {
+        snprintf(log_buf, sizeof(log_buf), "%s Client added to ACL (reason %d):%s\n", time_str,
+            reason, mac_str);
+    }
+
+    write_to_file(wifi_health_log, log_buf);
+    wifi_util_dbg_print(WIFI_CTRL, "%s", log_buf);
+}
+
+int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int expiry_time,
+    bool update_dml_and_wifi_health)
+{
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    acl_entry_t *acl_entry = NULL;
+    acl_entry_t *temp_acl_entry = NULL;
+    mac_address_t mac_addr;
+    char macfilterkey[128] = { 0 };
+
+    if (mac_str == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid MAC string\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+    if (rdk_vap_info == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d VAP info is NULL for index %d\n", __func__, __LINE__,
+            vap_index);
+        return RETURN_ERR;
+    }
+
+    if (rdk_vap_info->acl_map == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Creating ACL map for vap_index %d\n", __func__,
+            __LINE__, vap_index);
+        rdk_vap_info->acl_map = hash_map_create();
+        if (rdk_vap_info->acl_map == NULL) {
+            return RETURN_ERR;
+        }
+    }
+
+    str_tolower(mac_str);
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d Adding MAC %s expiry time %lld reason %d  vap_index %d to ACL map\n", __func__,
+        __LINE__, mac_str, expiry_time, reason, vap_index);
+    temp_acl_entry = hash_map_get(rdk_vap_info->acl_map, mac_str);
+    if (temp_acl_entry != NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d MAC %s already present in ACL map\n", __func__,
+            __LINE__, mac_str);
+        return RETURN_ERR;
+    }
+
+    str_to_mac_bytes(mac_str, mac_addr);
+
+    acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+    if (acl_entry == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Failed to allocate ACL entry\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memcpy(acl_entry->mac, mac_addr, sizeof(mac_address_t));
+    acl_entry->reason = reason;
+    acl_entry->expiry_time = expiry_time;
+
+#ifdef NL80211_ACL
+    if (wifi_hal_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#else
+    if (wifi_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#endif
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_addApAclDevice failed. vap_index %d, MAC %s\n",
+            __func__, __LINE__, vap_index, mac_str);
+        free(acl_entry);
+        return RETURN_ERR;
+    }
+
+    hash_map_put(rdk_vap_info->acl_map, strdup(mac_str), acl_entry);
+
+    snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, mac_str);
+    get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, acl_entry, true);
+
+    wifi_util_dbg_print(WIFI_CTRL,
+        "%s:%d Successfully added ACL entry for MAC %s on vap_index %d\n", __func__, __LINE__,
+        mac_str, vap_index);
+
+    if (update_dml_and_wifi_health) {
+        finalize_acl_addition(mac_str, reason);
+    }
+
+    return RETURN_OK;
+}
+
 int get_cm_mac_address(char *mac)
 {
     FILE *f;

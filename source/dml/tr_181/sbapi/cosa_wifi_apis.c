@@ -618,6 +618,7 @@ void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
 
     *pbEnableRadiusGreyList = FALSE;
     CcspTraceInfo(("[%s] Get EnableRadiusGreylist Value \n",__FUNCTION__));
+
     if (PSM_Get_Record_Value2(bus_handle, g_Subsystem,
             "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RadiusGreyList.Enable",
             NULL, &psmStrValue) == CCSP_SUCCESS)

@@ -2775,6 +2775,7 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     unsigned int mac_addr[MAC_ADDR_LEN];
     mac_address_t grey_list_mac;
     bool is_sta_active;
+
     if (src_mac == NULL || dest_mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
         return -1;

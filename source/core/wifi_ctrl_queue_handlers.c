@@ -128,7 +128,7 @@ const char* wifi_hotspot_action_to_string(wifi_hotspot_action_t action) {
 
 int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_private)
 {
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Enter \n", __FUNCTION__, __LINE__);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d  Enter \n", __FUNCTION__, __LINE__);
     acl_entry_t *tmp_acl_entry = NULL, *acl_entry = NULL;
     rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
     unsigned int itr = 0, itrj = 0;
@@ -149,7 +149,6 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
             if ((vap_svc_is_public(vap_index) == false)) {
                 continue;
             }
-            wifi_util_info_print(WIFI_CTRL,"%s:%d For Hotspot VAP = %d\n",__FUNCTION__,__LINE__,vap_index);
             l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
             if (l_rdk_vap_array->acl_map != NULL) {
@@ -160,7 +159,6 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
                         ((acl_entry->expiry_time <= tv_now.tv_sec) || remove_all_greylist_entry))) {
 
                         to_mac_str(acl_entry->mac, mac_str);
-                        wifi_util_info_print(WIFI_CTRL,"%s:%d Reason for the reject = %d and calling deleteApAclDevice for mac = %s\n",__FUNCTION__,__LINE__, acl_entry->reason, mac_str);
 #ifdef NL80211_ACL
                         ret = wifi_hal_delApAclDevice(l_rdk_vap_array->vap_index, mac_str);
 #else
@@ -168,7 +166,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 #endif
                         if (ret != RETURN_OK) {
 
-                            wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
+                            wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                              __func__, __LINE__, l_rdk_vap_array->vap_index, mac_str);
                             ret = RETURN_ERR;
                         }
@@ -178,7 +176,6 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
                             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_rdk_vap_array->vap_name, mac_str);
                             get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, tmp_acl_entry, false);
                             free(tmp_acl_entry);
-                            wifi_util_info_print(WIFI_CTRL,"%s:%d After deleting the entry for mac %s\n", __FUNCTION__, __LINE__, mac_str);
                     }
                     else {
                        acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
@@ -1162,7 +1159,7 @@ static int handle_acl_operation(int vap_index, char *mac_str, wifi_vap_info_t *v
 
         if (!success) {
             const char *operation = is_add_operation ? "add" : "del";
-            wifi_util_error_print(WIFI_CTRL, "%s:%d %s ApAclDevice failed for vap %d, mac %s\n",
+            wifi_util_error_print(WIFI_CTRL, "%s:%d %sApAclDevice failed for vap %d, mac %s\n",
                 __func__, __LINE__, operation, vap_index, mac_str);
             return RETURN_ERR;
         }
@@ -2273,10 +2270,11 @@ void process_prefer_private_rfc(bool type)
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
     if (!type) {
-        wifi_util_info_print(WIFI_CTRL,"Prefer private is set to false\n");
+        wifi_util_dbg_print(WIFI_CTRL,"Prefer private is set to false\n");
         remove_xfinity_acl_entries(false,true);
     }
     if (!type &&  rfc_param->radiusgreylist_rfc) {
+        wifi_util_dbg_print(WIFI_CTRL,"RadiusGreylist is enabled hence not setting macmode\n");
         return ;
     }
     pub_svc = get_svc_by_type(&p_wifi_mgr->ctrl, vap_svc_type_public);
