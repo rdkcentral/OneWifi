@@ -149,6 +149,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
             if ((vap_svc_is_public(vap_index) == false)) {
                 continue;
             }
+
             l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
             if (l_rdk_vap_array->acl_map != NULL) {
