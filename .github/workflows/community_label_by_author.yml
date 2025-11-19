@@ -1,0 +1,52 @@
+name: 'Label as community contribution based on Defined Authors'
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  label_pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read        # Required to read the JSON file
+      pull-requests: write  # Required to apply labels to the PR
+
+    steps:
+      - name: Checkout Code
+        # This is mandatory to access the .github/community_authors.json file
+        uses: actions/checkout@v4
+
+      - name: Read Author List and Apply Labels
+        uses: actions/github-script@v7
+        id: labeler
+        with:
+          # Use the repository's token to run in the context of the repository, not the PR author
+          token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Read and parse the JSON file
+            const authorsPath = path.join(process.env.GITHUB_WORKSPACE, '.github', 'community_authors.json');
+            const data = JSON.parse(fs.readFileSync(authorsPath, 'utf8'));
+
+            const communityUsers = data.community_users;
+            const prAuthor = context.payload.pull_request.user.login;
+            
+            // Define the labels to apply
+            const labelsToAdd = ['community contribution'];
+
+            //Check if the author is in the list
+            if (communityUsers.includes(prAuthor)) {
+              console.log(`Author ${prAuthor} is a community user. Applying labels.`);
+
+              // Apply labels using the GitHub API
+              await github.rest.issues.addLabels({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: labelsToAdd
+              });
+            } else {
+              console.log(`Author ${prAuthor} is not in the internal user list. Skipping.`);
+            }
