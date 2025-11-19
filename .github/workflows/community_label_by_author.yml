@@ -1,4 +1,4 @@
-name: 'Label as community contribution based on Defined Authors'
+name: 'Labeler'
 
 on:
   pull_request_target:
