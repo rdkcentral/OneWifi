@@ -1509,6 +1509,12 @@
 									}
 								},
 								{
+									"X_RDK_CapSpaStr": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
 									"MACAddress": {
 										"type": "macaddr_t",
 										"writable": false

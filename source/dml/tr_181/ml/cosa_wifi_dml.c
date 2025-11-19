@@ -16636,6 +16636,13 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "X_RDK_CapSpaStr", TRUE))
+    {
+        /* collect value */
+        *puLong = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
+        free(assoc_dev_data);
+        return TRUE;
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     free(assoc_dev_data);

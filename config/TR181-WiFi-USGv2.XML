@@ -3362,6 +3362,11 @@ INSTMSMT_PH2 -->
                             	    <type>unsignedInt</type>
                             	    <syntax>uint32</syntax>
                         	</parameter>
+                        	<parameter>
+                            	    <name>X_RDK_CapSpaStr</name>
+                            	    <type>unsignedInt[0:8]</type>
+                            	    <syntax>uint32</syntax>
+                        	</parameter>
                             </parameters>
 
 			<objects>
