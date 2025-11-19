@@ -622,6 +622,10 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
          }
          return;
       }
+    if (dev_array == NULL) {
+        snprintf(result_buf, result_buf_size, "Error: dev_array is NULL\n");
+        return;
+    }
 		char* to_sta_key(uint8_t *mac_address, sta_key_t sta_key) {
     snprintf(sta_key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
              mac_address[0], mac_address[1], mac_address[2],
@@ -660,11 +664,11 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
               dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
               dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
               dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
+      }
       if (dev_array != NULL) {
         free(dev_array);
         dev_array = NULL;
     }
-      }
 }
 
 void process_wifiapi_command(char *command, unsigned int len)
