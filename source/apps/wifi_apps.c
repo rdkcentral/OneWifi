@@ -442,6 +442,15 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+//#ifdef ONEWIFI_UAHF_APP_SUPPORT
+    { // co to robi
+        wifi_app_inst_uahf, 0, 0
+        true, true,         //drugie moze na false?
+        "UserAssistedHandOver",
+        uahf_init, NULL, uahf_deinit,
+        NULL, uahf_update
+    },
+//#endif //ONEWIFI_UAHF_APP_SUPPORT
 };
 
 wifi_app_descriptor_t* get_app_desc(int *size){

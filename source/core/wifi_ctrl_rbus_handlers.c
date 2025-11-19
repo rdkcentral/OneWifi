@@ -147,7 +147,19 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
+    wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] RF-Status : %d, enabled station vaps\n", __func__, __LINE__, ctrl->rf_status_down);
 
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *uahf_app = NULL;
+    if (ctrl != NULL) {
+        apps_mgr = &ctrl->apps_mgr;
+        uahf_app = (wifi_app_t *)get_app_by_inst(apps_mgr, wifi_app_inst_uahf);
+        if (uahf_app != NULL) {
+            uahf_app->desc.update_fn(uahf_app);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] started the server\n", __func__, __LINE__);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] error, uahf-app = NULL\n", __func__, __LINE__);
+        }
     return rc;
 
 }
