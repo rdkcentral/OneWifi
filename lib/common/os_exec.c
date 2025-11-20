@@ -59,7 +59,7 @@ bool os_cmd_exec_xv(char **buffer, int *len, int *exit_code, int flags, char *fm
     char    *cmd2 = NULL;
     char    *command = cmd1;
     int     cmdlen;
-    FILE    *fp;
+    FILE    *fp = NULL;
     int     ret = 0;
     int     xcode = 0;
     char    *buf = NULL;
@@ -141,6 +141,7 @@ bool os_cmd_exec_xv(char **buffer, int *len, int *exit_code, int flags, char *fm
     // close
     errno = 0;
     xcode = pclose(fp);
+    fp = NULL;
     if (xcode < 0) goto error;
     if (exit_code) *exit_code = xcode;
     if (!(flags & OS_CMD_FLAG_ANY_EXIT_CODE)) {
@@ -159,6 +160,7 @@ error:
     }
     LOG_SEVERITY(errlevel, "exit=%d err=%d(%s) '%s'", xcode, errno, strerror(errno), command);
     if (buf) free(buf);
+    if (fp) pclose(fp);
     return false;
 }
 
