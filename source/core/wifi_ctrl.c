@@ -1104,7 +1104,7 @@ void sta_connection_handler(const char *vif_name, wifi_bss_info_t *bss_info, wif
 
     memcpy(&sta_data.stats, sta, sizeof(wifi_station_stats_t));
     memcpy(&sta_data.bss_info, bss_info, sizeof(wifi_bss_info_t));
-    strncpy(sta_data.interface_name, vif_name, sizeof(wifi_interface_name_t));
+    snprintf(sta_data.interface_name, sizeof(wifi_interface_name_t), "%s", vif_name);
 
     push_event_to_ctrl_queue((rdk_sta_data_t *)&sta_data, sizeof(rdk_sta_data_t), wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status, NULL);
     wifi_util_dbg_print(WIFI_CTRL,"%s: STA data is pushed to the ctrl queue: sta_data.interface_name=%s\n",__FUNCTION__, sta_data.interface_name);
@@ -2198,6 +2198,13 @@ static int bus_check_and_subscribe_events(void* arg)
     wifi_ctrl_t *ctrl = NULL;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+#if defined (ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
+    ctrl->mesh_status_subscribed = true;
+    ctrl->device_tunnel_status_subscribed = true;
+    ctrl->device_mode_subscribed = true;
+    ctrl->mesh_keep_out_chans_subscribed = true;
+#endif
 
     if ((ctrl->bus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||

@@ -2090,8 +2090,10 @@ int decode_pcap(webconfig_consumer_t *consumer, unsigned int vap_index, char *fi
 
         } **/
         if(frames_parsed >end_frame)
-           return 0;
-
+        {
+            fclose(fp);
+            return 0;
+        }
     }
 
     fclose(fp);
