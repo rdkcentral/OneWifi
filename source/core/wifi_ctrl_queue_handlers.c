@@ -3137,8 +3137,8 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,
                 "%s:%d: Failed to push channel status map to monitor queue\n", __func__, __LINE__);
-            free(data);
         }
+        free(data);
     }
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);

@@ -381,6 +381,7 @@ int get_dwell_time()
             return dwell_time;
         }
         fscanf(fp, "%d", &dwell_time);
+        fclose(fp);
     }
     return dwell_time;
 }

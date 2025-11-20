@@ -1197,7 +1197,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
             temp_mac_entry = hash_map_get(psm_mac_map, mcfg_mac);
             if (temp_mac_entry != NULL) {
                 if (strlen(mcfg->device_name) != 0) {
-                    strncpy(temp_mac_entry->device_name, mcfg->device_name, strlen(mcfg->device_name) + 1);
+                    snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d mac entry already present\r\n",__func__, __LINE__);
                 return;
@@ -1210,9 +1210,9 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
                     return;
                 }
                 temp_mac_entry->data_index = (mac_psm_data->data_index + 1);
-                strncpy(temp_mac_entry->mac, mcfg->mac, strlen(mcfg->mac) + 1);
+                snprintf(temp_mac_entry->mac, sizeof(temp_mac_entry->mac), "%s", mcfg->mac);
                 if (strlen(mcfg->device_name) != 0) {
-                    strncpy(temp_mac_entry->device_name, mcfg->device_name, strlen(mcfg->device_name) + 1);
+                    snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
                 hash_map_put(psm_mac_map, mcfg_mac, temp_mac_entry);
                 count = hash_map_count(psm_mac_map);
@@ -1232,7 +1232,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
             temp_mac_entry = hash_map_get(psm_mac_map, mcfg->mac);
             if (temp_mac_entry != NULL) {
                 if (strlen(mcfg->device_name) != 0) {
-                    strncpy(temp_mac_entry->device_name, mcfg->device_name, strlen(mcfg->device_name) + 1);
+                    snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d mac entry already present\r\n",__func__, __LINE__);
                 return;
@@ -1245,9 +1245,9 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
                     return;
                 }
                 temp_mac_entry->data_index = 1;
-                strncpy(temp_mac_entry->mac, mcfg->mac, strlen(mcfg->mac) + 1);
+                snprintf(temp_mac_entry->mac, sizeof(temp_mac_entry->mac), "%s", mcfg->mac);
                 if (strlen(mcfg->device_name) != 0) {
-                    strncpy(temp_mac_entry->device_name, mcfg->device_name, strlen(mcfg->device_name) + 1);
+                    snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
                 hash_map_put(psm_mac_map, strdup(mcfg->mac), temp_mac_entry);
                 count = hash_map_count(psm_mac_map);
