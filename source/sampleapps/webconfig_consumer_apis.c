@@ -1961,7 +1961,7 @@ int decode_pcap(webconfig_consumer_t *consumer, unsigned int vap_index, char *fi
     bool is_mgmt_frame = false;
     wifi_mgmtFrameType_t    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_INVALID;
 
-    frame_data_t frame_data;
+    frame_data_t frame_data = { 0 };
 
     rbusEvent_t event;
     rbusObject_t rdata;

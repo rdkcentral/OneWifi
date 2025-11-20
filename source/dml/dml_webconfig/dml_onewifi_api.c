@@ -1491,12 +1491,13 @@ void update_dml_radio_default() {
         radio_cfg[i].MCS = 0;
         radio_cfg[i].DFSTimer = 30;
         if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_2_4_BAND) {
-            radio_cfg[i].MaxBitRate = 1147;
             strncpy(radio_cfg[i].ChannelsInUse,"1",sizeof(radio_cfg[i].ChannelsInUse)-1);
 #ifdef CONFIG_IEEE80211BE
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 1377;
 #else
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 1147;
 #endif /* CONFIG_IEEE80211BE */
 
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
@@ -1505,12 +1506,13 @@ void update_dml_radio_default() {
             radio_cfg[i].AmsduTid[0] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5_BAND) {
-            radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
 #ifdef CONFIG_IEEE80211BE
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 5765;
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
@@ -1518,12 +1520,13 @@ void update_dml_radio_default() {
             radio_cfg[i].AmsduTid[0] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5L_BAND) {
-            radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
 #ifdef CONFIG_IEEE80211BE
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 5765;
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
@@ -1531,12 +1534,13 @@ void update_dml_radio_default() {
             radio_cfg[i].AmsduTid[0] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5H_BAND) {
-            radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"149",sizeof(radio_cfg[i].ChannelsInUse)-1);
 #ifdef CONFIG_IEEE80211BE
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 5765;
 #else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
@@ -1544,13 +1548,13 @@ void update_dml_radio_default() {
             radio_cfg[i].AmsduTid[0] = 1;
 #endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_6_BAND) {
-            radio_cfg[i].MaxBitRate = 9608;
             strncpy(radio_cfg[i].ChannelsInUse,"181",sizeof(radio_cfg[i].ChannelsInUse)-1);
 #ifdef CONFIG_IEEE80211BE
             strncpy(radio_cfg[i].SupportedStandards,"ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
-            radio_cfg[i].MaxBitRate = 9608; //TODO: what is the rate for 11be? where it's using?
+            radio_cfg[i].MaxBitRate = 11529;
 #else
             strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 9608;
 #endif /* CONFIG_IEEE80211BE */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, (BOOL)1, sizeof(BOOL) * 5);

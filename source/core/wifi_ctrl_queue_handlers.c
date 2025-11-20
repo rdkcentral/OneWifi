@@ -803,7 +803,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info;
+    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info = { 0 };
     wifi_platform_property_t *wifi_prop = (&(get_wifimgr_obj())->hal_cap.wifi_prop);
     uint8_t num_radios = getNumberRadios();
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
@@ -1600,6 +1600,7 @@ void process_greylist_mac_filter(void *data)
 #endif
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                    __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
+                free(acl_entry);
                 return;
             }
 
@@ -2595,7 +2596,7 @@ static void update_wifi_vap_config(int device_mode)
     for (unsigned int i = 0; i < getTotalNumberVAPs(); i++) {
         vap_index = VAP_INDEX(wifi_mgr->hal_cap, i);
         vap_info = get_wifidb_vap_parameters(vap_index);
-        if (rdk_vap_info == NULL) {
+        if (vap_info == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get vap info for index %d\n",
                 __func__, __LINE__, vap_index);
             return;
@@ -2755,6 +2756,8 @@ int dfs_nop_start_timer(void *args)
     char radarDetected_temp[128];
     strncpy(radarDetected_temp, radio_params->radarDetected, sizeof(radarDetected_temp));
 
+    radarDetected_temp[sizeof(radarDetected_temp) - 1] = '\0';
+
     if( !strcmp(radarDetected_temp, " ") || radarDetected_temp == NULL ) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d No radar detected \n", __func__, __LINE__);
         return RETURN_ERR;
@@ -2839,6 +2842,8 @@ int dfs_nop_finish_timer(void *args)
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(RADIO_INDEX_DFS);
     memset(&radio_channel_param, 0, sizeof(radio_channel_param));
     strncpy(radarDetected_temp, radio_params->radarDetected, sizeof(radarDetected_temp));
+
+    radarDetected_temp[sizeof(radarDetected_temp) - 1] = '\0';
 
     radar_detected_ch_time = strtok_r(radarDetected_temp, ";", &str_re);
     while(radar_detected_ch_time != NULL) {
@@ -3008,7 +3013,8 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                     if( !strcmp(radio_params->radarDetected, " ") ) {
                         snprintf(radio_params->radarDetected, sizeof(radio_params->radarDetected), "%d,%x,%lld", l_radio->radarInfo.last_channel, ch_chg->channelWidth, l_radio->radarInfo.timestamp);
                     } else {
-                        snprintf(radio_params->radarDetected + strlen(radio_params->radarDetected), sizeof(radio_params->radarDetected), ";%d,%x,%lld", l_radio->radarInfo.last_channel, ch_chg->channelWidth, l_radio->radarInfo.timestamp);
+                        int len = strlen(radio_params->radarDetected);
+                        snprintf(radio_params->radarDetected + len, sizeof(radio_params->radarDetected) - len, ";%d,%x,%lld", l_radio->radarInfo.last_channel, ch_chg->channelWidth, l_radio->radarInfo.timestamp);
                     }
                     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 }
@@ -3046,6 +3052,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                     unsigned int ch_temp;
 
                     strncpy(radarDetected_temp, radio_params->radarDetected, sizeof(radarDetected_temp));
+                    radarDetected_temp[sizeof(radarDetected_temp) - 1] = '\0';
 
                     radar_detected_ch_time = strtok_r(radarDetected_temp, ";", &str_re);
                     while(radar_detected_ch_time != NULL) {
