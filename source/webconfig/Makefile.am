@@ -74,6 +74,8 @@ if EM_APP_SUPPORT
 libwifi_webconfig_la_SOURCES += wifi_webconfig_em_channel_stats.c wifi_webconfig_em_sta_link_metrics.c wifi_webconfig_em_ap_metrics_report.c
 libwifi_webconfig_la_CFLAGS += $(EM_APP_FLAG)
 endif
+libwifi_webconfig_la_CFLAGS += -I$(top_srcdir)/source/apps/uahf
+libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/apps/uahf
 
 if WITH_EASYMESH
 libwifi_webconfig_la_SOURCES += wifi_easymesh_translator.c

@@ -67,6 +67,9 @@ libwifi_utils_la_CFLAGS =  $(SYSTEMD_CFLAGS)
 libwifi_utils_la_CFLAGS += $(DML_ENABLE_FLAG)
 libwifi_utils_la_SOURCES = wifi_validator.c
 libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
+libwifi_utils_la_CFLAGS += -I$(top_srcdir)/source/apps/uahf
+libwifi_utils_la_CPPFLAGS += -I$(top_srcdir)/source/apps/uahf
+
 
 
 libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -static
