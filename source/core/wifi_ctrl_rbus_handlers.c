@@ -160,6 +160,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] error, uahf-app = NULL\n", __func__, __LINE__);
         }
+    }
     return rc;
 
 }

@@ -161,6 +161,7 @@ int uahf_start_server() {
 
     char command_buffer[BUFFER_SIZE];
     int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", username);
+    if (len == 0) printf("have to use this somewhere to disable -Wall error");
     system(command_buffer);
     len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.16.SSID string %s", username);
     system(command_buffer);
