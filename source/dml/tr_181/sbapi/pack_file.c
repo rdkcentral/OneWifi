@@ -82,6 +82,7 @@ struct pack_hdr *pack_files(char *files[], uint32_t nfile)
         if (fstat(fileno(fp), &buf) != 0) {
             fprintf(stderr, "%s: fstat() error\n", __FUNCTION__);
             free(pkthdr);
+            fclose(fp);
             return NULL;
         }
         filhdr->size = buf.st_size;
@@ -91,6 +92,7 @@ struct pack_hdr *pack_files(char *files[], uint32_t nfile)
         if ((pkthdr = realloc(pkthdr, pkthdr->totsize)) == NULL) {
             fprintf(stderr, "%s: no memory\n", __FUNCTION__);
             free(old_pkthdr);
+            fclose(fp);
             return NULL;
         }
 

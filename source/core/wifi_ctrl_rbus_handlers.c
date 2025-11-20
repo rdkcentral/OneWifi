@@ -1314,14 +1314,16 @@ char *get_assoc_devices_blob()
 
     webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients);
 
-    str = (char *)calloc(strlen(pdata->u.encoded.raw) + 1, sizeof(char));
+    size_t len = strlen(pdata->u.encoded.raw);
+    str = (char *)calloc(len + 1, sizeof(char));
     if (str == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
         free(pdata);
         return NULL;
     }
 
-    memcpy(str, pdata->u.encoded.raw, strlen(pdata->u.encoded.raw));
+    memcpy(str, pdata->u.encoded.raw, len);
+    str[len] = '\0';
 
     webconfig_data_free(pdata);
     free(pdata);
@@ -1684,9 +1686,10 @@ static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data, void 
             event_name, p_data->data_type);
         return;
     }
-    char *json_schema = (char*)malloc((p_data->raw_data_len + 1)*sizeof(char));
-    strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
-    json_schema[p_data->raw_data_len] = '\0';
+    char *json_schema = (char *)p_data->raw_data.bytes;
+    if (json_schema == NULL) {
+        return;
+    }
     wifi_util_info_print(WIFI_CTRL, "%s:%d Received bus ACS Keep-Out json_schema: %s \n", __func__, __LINE__, json_schema);
     push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1),wifi_event_type_webconfig,wifi_event_webconfig_data_to_hal_apply,NULL);
 }
