@@ -1555,7 +1555,7 @@ json_t *ovsdb_json_exec(char *method, json_t *params)
     }
 
     ssize_t nrd;
-    nrd = read(db, buf, sizeof(buf));
+    nrd = read(db, buf, sizeof(buf) - 1);
     if (nrd < 0)
     {
         goto error;
@@ -1569,7 +1569,7 @@ json_t *ovsdb_json_exec(char *method, json_t *params)
 
 error:
     if (str != NULL) free(str);
-    if (db > 0) ovsdb_close(db);
+    if (db >= 0) ovsdb_close(db);
 
     return jres;
 }
