@@ -2285,8 +2285,8 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
     int         frame_len;
     int rc = 0;
     bool af_family = TRUE;
-    char        src_ip_str[IP_STR_LEN];
-    char        cli_ip_str[IP_STR_LEN];
+    char        src_ip_str[IP_STR_LEN] = { 0 };
+    char        cli_ip_str[IP_STR_LEN] = { 0 };
 
     if(mac == NULL ) {
         wifi_util_error_print(WIFI_MON, "%s: Mac is NULL\n",__func__);

@@ -211,7 +211,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
 {
     uint8_t num_of_radios;
     uint8_t i, j;
-    bool enabled[MAX_NUM_VAP_PER_RADIO];
+    bool enabled[MAX_NUM_VAP_PER_RADIO] = { false };
     rdk_wifi_vap_info_t tgt_rdk_vaps[MAX_NUM_VAP_PER_RADIO], *rdk_vaps;
     wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_map_t *tgt_vap_map = (wifi_vap_info_map_t*)calloc(1, sizeof(wifi_vap_info_map_t));
