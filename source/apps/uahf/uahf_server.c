@@ -4,7 +4,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-
+#include "wifi_ctrl.h"
+#include "wifi_hal.h"
+#include "wifi_mgr.h"
+#include "wifi_util.h"
 #define PORT 9191
 #define BUFFER_SIZE 4096
 
@@ -75,12 +78,13 @@ void send_html_page(int client_fd, int showThanks)
     write(client_fd, page, strlen(page));
 }
 
-int uahf_start_server() {
+int uahf_start_server(wifi_app_t *app) {
+    uahf_data_t *d = GET_UAHF(app); // Access your specific data
     int server_fd, client_fd;
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
     char buffer[BUFFER_SIZE];
-    char username[200] = {0}, password[200] = {0};
+    char username_local[200] = {0}, password_local[200] = {0};
     char decoded[400];
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -141,6 +145,8 @@ int uahf_start_server() {
                 url_decode(password, decoded);
                 strcpy(password, decoded);
 
+              strncpy(d->username, username_local, sizeof(d->username)-1);
+              strncpy(d->password, password_local, sizeof(d->password)-1);
                 printf("User submitted: %s / %s\n", username, password);
             }
 
@@ -154,11 +160,18 @@ int uahf_start_server() {
                 "\r\n";
 
             write(client_fd, redirect, strlen(redirect));
+
+        // --- 2. EXIT LOOP CONDITION ---
+        // If we successfully captured data, we break the loop 
+        // so the function returns and the worker thread can finish.
+            if (strlen(d->username) > 0) {
+                break; 
+            }
         }
 
         close(client_fd);
     }
-
+/*
     char command_buffer[BUFFER_SIZE];
     int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", username);
     if (len == 0) printf("have to use this somewhere to disable -Wall error");
@@ -180,7 +193,7 @@ int uahf_start_server() {
     system(command_buffer);
 
     system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true");
-    
+    */
     return 0;
 }
 

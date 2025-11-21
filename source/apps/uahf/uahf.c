@@ -11,15 +11,120 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-int uahf_update(wifi_app_t *app)
-{
-    //launch_server
-    uahf_start_server();
+void* uahf_worker_task(void* arg) {
+    wifi_app_t* app = (wifi_app_t*)arg;
+    uahf_data_t* d = GET_UAHF(app);
+
+    // 1. Run the server directly (BLOCKING)
+    // This will sit here until the user submits the form and the loop breaks
+    uahf_start_server(app);
+
+    // 2. Update State (Critical Section)
+    pthread_mutex_lock(&app->lock);
+
+    d->worker_running = false;
+    d->worker_done = true; // Signal main thread that data is in d->username/password
+    pthread_mutex_unlock(&app->lock);
+
+    wifi_util_error_print(WIFI_APPS, "UAHF Result: User=%s, Pass=%s\n", 
+                                 d->username, d->password);
+
+  // Pass to AppMgr or other logic
+  // process_login(d->username, d->password);
+#define BUFFER_SIZE 4096
+    char command_buffer[BUFFER_SIZE];
+    int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", username);
+    if (len == 0) printf("have to use this somewhere to disable -Wall error");
+    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 15\n", __func__, __LINE__);
+
+    system(command_buffer);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf :  called set ssid for vap 15\n", __func__, __LINE__);
+
+    len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.16.SSID string %s", username);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 16\n", __func__, __LINE__);
+
+    system(command_buffer);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set ssid for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 24\n", __func__, __LINE__);
+
+    len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.24.SSID string %s", username);
+    system(command_buffer);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf :  called set ssid for vap 24\n", __func__, __LINE__);
+
+    len = snprintf( command_buffer, BUFFER_SIZE,
+            "dmcli eRT setv Device.WiFi.AccessPoint.15.Security.KeyPassphrase string %s", password);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 15\n", __func__, __LINE__);
+
+    system(command_buffer);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk  for vap 15\n", __func__, __LINE__);
+
+    len = snprintf( command_buffer, BUFFER_SIZE,
+            "dmcli eRT setv Device.WiFi.AccessPoint.16.Security.KeyPassphrase string %s", password);
+
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 16\n", __func__, __LINE__);
+
+    system(command_buffer);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 16\n", __func__, __LINE__);
+
+    len = snprintf( command_buffer, BUFFER_SIZE,
+            "dmcli eRT setv Device.WiFi.AccessPoint.24.Security.KeyPassphrase string %s", password);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 24\n", __func__, __LINE__);
+
+    system(command_buffer);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 24, call apply\n", __func__, __LINE__);
+
+    system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true");
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called apply ap settings\n", __func__, __LINE__);
+
+
+    return NULL;
+}
+
+int uahf_update(wifi_app_t *app) {
+    uahf_data_t* d = GET_UAHF(app);
+
+    // --- Trigger Server ---
+    if (!d->worker_running && !d->worker_done) {
+        pthread_mutex_lock(&app->lock);
+        pthread_mutex_lock(&app->lock);
+        
+        // Clear old data just in case
+        memset(d->username, 0, sizeof(d->username));
+        memset(d->password, 0, sizeof(d->password));
+        
+        d->worker_running = true;
+
+        if (pthread_create(&d->worker_tid, NULL, uahf_worker_task, app) == 0) {
+            pthread_detach(d->worker_tid);
+        } else {
+            d->worker_running = false;
+        }
+        pthread_mutex_unlock(&app->lock);
+
+    }
+    // --- Process Results --
+    // dead cpde for now
+    if (d->worker_done) {
+        pthread_mutex_lock(&app->lock);
+        if (d->worker_done) {
+            
+            // SUCCESS: Data is now available directly in the struct
+            wifi_util_error_print(WIFI_APPS, "UAHF Result: User=%s, Pass=%s\n", 
+                                 d->username, d->password);
+
+
+            d->worker_done = false; 
+        }
+        pthread_mutex_unlock(&app->lock);
+    }
+
     return RETURN_OK;
 }
 
 int uahf_init(wifi_app_t *app, unsigned int create_flag)
 {
+
+    memset(&app->data.u.uahf_data, 0, sizeof(uahf_data_t));
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
@@ -32,3 +137,14 @@ int uahf_deinit(wifi_app_t *app)
 {
     return RETURN_OK;
 }
+
+/*
+int my_app_deinit(wifi_app_t* app) {
+    MyHttpState* state = GET_STATE(app);
+    if (state->worker_running) {
+        // In a real app, you'd kill the thread or wait.
+        // For a demo, a small sleep or warning is sufficient.
+        printf("Warning: App closing while worker is active.\n");
+    }
+    return 0;
+    */
