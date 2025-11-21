@@ -83,28 +83,31 @@ static void convert_dbus_message_to_raw_data(raw_data_t *data, int type, char *v
 {
     wifi_util_dbg_print(WIFI_BUS, "Enter %s:%d:type=%d\n", __func__, __LINE__, type);
     switch (type) {
-        case bus_data_type_boolean:
-            bool enabled;
-            if (strcmp("true", val) == 0)
-                enabled = 1;
-            else
-                enabled = 0;
-            data->raw_data.b = enabled;
+    case bus_data_type_boolean: {
+        bool enabled;
+        if (strcmp("true", val) == 0)
+            enabled = 1;
+        else
+            enabled = 0;
+        data->raw_data.b = enabled;
+        break;
+    }
+
+    case bus_data_type_string:
+    case bus_data_type_bytes:
+        data->raw_data_len = strlen(val);
         break;
 
-        case bus_data_type_string:
-        case bus_data_type_bytes:
-            data->raw_data_len = strlen(val);
+    case bus_data_type_uint32: {
+        int value = 0;
+        sscanf((const char *)val, "%d", &value);
+        data->raw_data.u32 = (uint32_t)value;
         break;
+    }
 
-        case bus_data_type_uint32:
-            int value = 0;
-            sscanf((const char *)val, "%d", &value);
-            data->raw_data.u32 = (uint32_t)value;
-        break;
-
-        default:
-            wifi_util_error_print(WIFI_BUS, "%s:%d: bus: Invalid data_type for .\n", __func__, __LINE__);
+    default:
+        wifi_util_error_print(WIFI_BUS, "%s:%d: bus: Invalid data_type for .\n", __func__,
+            __LINE__);
         break;
     }
     data->data_type = type;
@@ -724,54 +727,55 @@ DBusHandlerResult signal_handler(DBusConnection *connection, DBusMessage *msg, v
     int type = 0;
     int msg_type = dbus_message_get_type(msg);
     switch (msg_type) {
-        case DBUS_MESSAGE_TYPE_SIGNAL:
-            const char *signal = dbus_message_get_member(msg);
-            if (strcmp(signal, "OneWifi") == 0) {
-                if (dbus_message_iter_init(msg, &args)) {
-                    if (dbus_message_iter_get_arg_type(&args) == DBUS_TYPE_STRING) {
-                        dbus_message_iter_get_basic(&args, &event_name);
-                        wifi_util_info_print(WIFI_BUS, "Received string 1: %s\n", event_name);
-                        dbus_message_iter_next(&args);
-                        if (dbus_message_iter_get_arg_type(&args) == DBUS_TYPE_INT32) {
-                            dbus_message_iter_get_basic(&args, &type);
-                            wifi_util_info_print(WIFI_BUS, "Received type: %d\n", type);
-                        }
-                        dbus_message_iter_next(&args);
-                        if (dbus_message_iter_get_arg_type(&args) == DBUS_TYPE_STRING) {
-                            dbus_message_iter_get_basic(&args, &sigValue);
-                            wifi_util_info_print(WIFI_BUS, "Received string 2: \n");
-                        }
+    case DBUS_MESSAGE_TYPE_SIGNAL: {
+        const char *signal = dbus_message_get_member(msg);
+        if (strcmp(signal, "OneWifi") == 0) {
+            if (dbus_message_iter_init(msg, &args)) {
+                if (dbus_message_iter_get_arg_type(&args) == DBUS_TYPE_STRING) {
+                    dbus_message_iter_get_basic(&args, &event_name);
+                    wifi_util_info_print(WIFI_BUS, "Received string 1: %s\n", event_name);
+                    dbus_message_iter_next(&args);
+                    if (dbus_message_iter_get_arg_type(&args) == DBUS_TYPE_INT32) {
+                        dbus_message_iter_get_basic(&args, &type);
+                        wifi_util_info_print(WIFI_BUS, "Received type: %d\n", type);
                     }
-                }
-            } else if (strcmp(signal, "TunnelStatus") == 0) {
-                if (dbus_message_iter_init(msg, &args)) {
+                    dbus_message_iter_next(&args);
                     if (dbus_message_iter_get_arg_type(&args) == DBUS_TYPE_STRING) {
                         dbus_message_iter_get_basic(&args, &sigValue);
-                        event_name = "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus";
-                        wifi_util_info_print(WIFI_BUS, "Received string: %s\n", sigValue);
-                        type = ccsp_string;
+                        wifi_util_info_print(WIFI_BUS, "Received string 2: \n");
                     }
                 }
             }
-            if ((event_name != NULL) && (sigValue != NULL)) {
-                wifi_util_info_print(WIFI_BUS, "Received an event =%s\n", event_name);
-                handle_signal_message(connection, event_name, type, sigValue);
-                return DBUS_HANDLER_RESULT_HANDLED;
+        } else if (strcmp(signal, "TunnelStatus") == 0) {
+            if (dbus_message_iter_init(msg, &args)) {
+                if (dbus_message_iter_get_arg_type(&args) == DBUS_TYPE_STRING) {
+                    dbus_message_iter_get_basic(&args, &sigValue);
+                    event_name = "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus";
+                    wifi_util_info_print(WIFI_BUS, "Received string: %s\n", sigValue);
+                    type = ccsp_string;
+                }
             }
+        }
+        if ((event_name != NULL) && (sigValue != NULL)) {
+            wifi_util_info_print(WIFI_BUS, "Received an event =%s\n", event_name);
+            handle_signal_message(connection, event_name, type, sigValue);
+            return DBUS_HANDLER_RESULT_HANDLED;
+        }
+        break;
+    }
+
+    case DBUS_MESSAGE_TYPE_METHOD_CALL:
+        wifi_util_info_print(WIFI_BUS, "Got method handler\n");
         break;
 
-        case DBUS_MESSAGE_TYPE_METHOD_CALL:
-            wifi_util_info_print(WIFI_BUS, "Got method handler\n");
-        break;
-
-        default:
-            wifi_util_info_print(WIFI_BUS, "In default case\n");
+    default:
+        wifi_util_info_print(WIFI_BUS, "In default case\n");
         break;
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static void *server_loop_thread(void *)
+static void *server_loop_thread(void *arg)
 {
     bus_handle_t *handle;
     int rc = 0;
@@ -1602,23 +1606,25 @@ static bus_error_t bus_event_publish(bus_handle_t *handle, char const *name, raw
     dbus_message_append_args(message, DBUS_TYPE_INT32, &tmp, DBUS_TYPE_INVALID);
 
     switch (data->data_type) {
-        case bus_data_type_boolean:
-            const char *bool_str = data->raw_data.b ? "true" : "false";
-            dbus_message_append_args(message, DBUS_TYPE_STRING, &bool_str, DBUS_TYPE_INVALID);
+    case bus_data_type_boolean: {
+        const char *bool_str = data->raw_data.b ? "true" : "false";
+        dbus_message_append_args(message, DBUS_TYPE_STRING, &bool_str, DBUS_TYPE_INVALID);
         break;
-        case bus_data_type_string:
-        case bus_data_type_bytes:
-            char *str = (char *)data->raw_data.bytes;
-            dbus_message_append_args(message, DBUS_TYPE_STRING, &str, DBUS_TYPE_INVALID);
+    }
+    case bus_data_type_string:
+    case bus_data_type_bytes: {
+        char *str = (char *)data->raw_data.bytes;
+        dbus_message_append_args(message, DBUS_TYPE_STRING, &str, DBUS_TYPE_INVALID);
         break;
-        case bus_data_type_uint32:
-            int_str = (char *)malloc(12);
-            sprintf(int_str, "%u", data->raw_data.u32);
-            dbus_message_append_args(message, DBUS_TYPE_STRING, &int_str, DBUS_TYPE_INVALID);
+    }
+    case bus_data_type_uint32:
+        int_str = (char *)malloc(12);
+        sprintf(int_str, "%u", data->raw_data.u32);
+        dbus_message_append_args(message, DBUS_TYPE_STRING, &int_str, DBUS_TYPE_INVALID);
         break;
-        default:
-            wifi_util_error_print(WIFI_BUS, "%s:%d: bus: Invalid data_type:%d for name:%s.\n", __func__,
-                __LINE__, data->data_type, name);
+    default:
+        wifi_util_error_print(WIFI_BUS, "%s:%d: bus: Invalid data_type:%d for name:%s.\n", __func__,
+            __LINE__, data->data_type, name);
         break;
     };
 
