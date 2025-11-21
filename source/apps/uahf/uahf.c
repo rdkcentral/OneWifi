@@ -26,55 +26,55 @@ void* uahf_worker_task(void* arg) {
     d->worker_done = true; // Signal main thread that data is in d->username/password
     pthread_mutex_unlock(&app->lock);
 
-    wifi_util_error_print(WIFI_APPS, "UAHF Result: User=%s, Pass=%s\n", 
+    wifi_util_error_print(WIFI_CTRL, "UAHF Result: User=%s, Pass=%s\n", 
                                  d->username, d->password);
 
   // Pass to AppMgr or other logic
   // process_login(d->username, d->password);
 #define BUFFER_SIZE 4096
     char command_buffer[BUFFER_SIZE];
-    int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", username);
+    int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", d->username);
     if (len == 0) printf("have to use this somewhere to disable -Wall error");
-    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 15\n", __func__, __LINE__);
+    wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set ssid for vap 15\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf :  called set ssid for vap 15\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf :  called set ssid for vap 15\n", __func__, __LINE__);
 
-    len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.16.SSID string %s", username);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 16\n", __func__, __LINE__);
+    len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.16.SSID string %s", d->username);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set ssid for vap 16\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set ssid for vap 16\n", __func__, __LINE__);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 24\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set ssid for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set ssid for vap 24\n", __func__, __LINE__);
 
-    len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.24.SSID string %s", username);
+    len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.24.SSID string %s", d->username);
     system(command_buffer);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf :  called set ssid for vap 24\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf :  called set ssid for vap 24\n", __func__, __LINE__);
 
     len = snprintf( command_buffer, BUFFER_SIZE,
-            "dmcli eRT setv Device.WiFi.AccessPoint.15.Security.KeyPassphrase string %s", password);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 15\n", __func__, __LINE__);
+            "dmcli eRT setv Device.WiFi.AccessPoint.15.Security.KeyPassphrase string %s", d->password);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set psk for vap 15\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk  for vap 15\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk  for vap 15\n", __func__, __LINE__);
 
     len = snprintf( command_buffer, BUFFER_SIZE,
-            "dmcli eRT setv Device.WiFi.AccessPoint.16.Security.KeyPassphrase string %s", password);
+            "dmcli eRT setv Device.WiFi.AccessPoint.16.Security.KeyPassphrase string %s", d->password);
 
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set psk for vap 16\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk for vap 16\n", __func__, __LINE__);
 
     len = snprintf( command_buffer, BUFFER_SIZE,
-            "dmcli eRT setv Device.WiFi.AccessPoint.24.Security.KeyPassphrase string %s", password);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 24\n", __func__, __LINE__);
+            "dmcli eRT setv Device.WiFi.AccessPoint.24.Security.KeyPassphrase string %s", d->password);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set psk for vap 24\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 24, call apply\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk for vap 24, call apply\n", __func__, __LINE__);
 
     system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true");
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called apply ap settings\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called apply ap settings\n", __func__, __LINE__);
 
 
     return NULL;

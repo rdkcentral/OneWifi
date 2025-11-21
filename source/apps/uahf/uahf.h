@@ -11,11 +11,11 @@ typedef struct {
     bool worker_running;
     bool worker_done;
 
-    // Data Buffers
-    char input_cmd_data[1024];   // Data going INTO the system command
-    char output_server_data[2048]; // Data coming OUT of the server
+    // Result Data
+    char username[200]; // To store captured username
+    char password[200]; // To store captured password
 } uahf_data_t;
-
+#define GET_UAHF(app) (&((app)->data.u.uahf_data))
 //typedef struct wifi_app wifi_app_t;
 
 #endif

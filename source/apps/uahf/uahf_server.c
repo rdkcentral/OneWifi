@@ -79,7 +79,7 @@ void send_html_page(int client_fd, int showThanks)
 }
 
 int uahf_start_server(wifi_app_t *app) {
-    uahf_data_t *d = GET_UAHF(app); // Access your specific data
+    uahf_data_t *d = (uahf_data_t *)GET_UAHF(app); // Access your specific data
     int server_fd, client_fd;
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
@@ -102,7 +102,7 @@ int uahf_start_server(wifi_app_t *app) {
     }
 
     listen(server_fd, 3);
-    printf("Server running on port %d...\n", PORT);
+    fprintf(stderr,"Server running on port %d...\n", PORT);
 
     while (1) {
         client_fd = accept(server_fd, (struct sockaddr *)&addr, &addrlen);
@@ -122,6 +122,8 @@ int uahf_start_server(wifi_app_t *app) {
                 showThanks = 1;
 
             send_html_page(client_fd, showThanks);
+            if (showThanks)
+                break;
         }
 
         // ---- POST Request ----
@@ -136,21 +138,21 @@ int uahf_start_server(wifi_app_t *app) {
             char *p = strstr(body, "password=");
 
             if (u && p) {
-                sscanf(u, "username=%199[^&]", username);
-                sscanf(p, "password=%199[^&]", password);
+                sscanf(u, "username=%199[^&]", username_local);
+                sscanf(p, "password=%199[^&]", password_local);
 
-                url_decode(username, decoded);
-                strcpy(username, decoded);
+                url_decode(username_local, decoded);
+                strcpy(username_local, decoded);
 
-                url_decode(password, decoded);
-                strcpy(password, decoded);
+                url_decode(password_local, decoded);
+                strcpy(password_local, decoded);
 
-              strncpy(d->username, username_local, sizeof(d->username)-1);
-              strncpy(d->password, password_local, sizeof(d->password)-1);
-                printf("User submitted: %s / %s\n", username, password);
+              strncpy(d->username, username_local, 100);
+              strncpy(d->password, password_local, 100);
+                fprintf(stderr,"User submitted: %s / %s\n", username_local, password_local);
             }
 
-            printf("POST received - redirecting with thank you note...\n");
+            fprintf(stderr, "POST received - redirecting with thank you note...\n");
 
             // Redirect to same page with thank-you flag
             const char *redirect =
@@ -160,13 +162,6 @@ int uahf_start_server(wifi_app_t *app) {
                 "\r\n";
 
             write(client_fd, redirect, strlen(redirect));
-
-        // --- 2. EXIT LOOP CONDITION ---
-        // If we successfully captured data, we break the loop 
-        // so the function returns and the worker thread can finish.
-            if (strlen(d->username) > 0) {
-                break; 
-            }
         }
 
         close(client_fd);
