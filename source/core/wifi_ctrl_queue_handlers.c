@@ -1763,7 +1763,7 @@ int add_client_diff_assoclist(hash_map_t **diff_map, char *mac,  assoc_dev_data_
 }
 
 
-void process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
+int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
                             mac_addr_str_t mac_str,
                             assoc_dev_data_t *removed_dev,
                             wifi_mgr_t *p_wifi_mgr,
@@ -1787,6 +1787,7 @@ void process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
             wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
         }
     }
+	return RETURN_OK;
 }
 
 void process_disassoc_device_event(void *data)
