@@ -71,10 +71,11 @@ wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk for vap 16\n", __
 wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set psk for vap 24\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk for vap 24, call apply\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk for vap 24, call start ext vaps\n", __func__, __LINE__);
 
-    system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true");
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called apply ap settings\n", __func__, __LINE__);
+//    system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true");
+    start_extender_vaps();
+wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called start extender vaps\n", __func__, __LINE__);
 
 
     return NULL;
