@@ -1239,6 +1239,18 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             ext->is_started = true;
         }
     }
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *uahf_app = NULL;
+    if (ctrl != NULL) {
+        apps_mgr = &ctrl->apps_mgr;
+        uahf_app = (wifi_app_t *)get_app_by_inst(apps_mgr, wifi_app_inst_uahf);
+        if (uahf_app != NULL) {
+            uahf_app->desc.update_fn(uahf_app);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] started the server\n", __func__, __LINE__);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] error, uahf-app = NULL\n", __func__, __LINE__);
+        }
+    }    
     if (tgt_vap_map) {
        free(tgt_vap_map);
        tgt_vap_map = NULL;

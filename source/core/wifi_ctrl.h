@@ -322,6 +322,7 @@ void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
 bool is_db_consolidated();
 bool is_db_backup_required();
 bool is_devtype_pod();
+void start_extender_vaps(void);
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);
