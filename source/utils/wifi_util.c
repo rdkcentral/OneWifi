@@ -2524,6 +2524,11 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
         {161, 165, 169, 173, 177, 181, 185, 189},
         {193, 197, 201, 205, 209, 213, 217, 221}
     };
+    int channels_6g_320_mhz[3][16] = {
+        { 33,  37,  41,  45,  49,  53,  57,  61,  65,  69,  73,  77,  81,  85,  89,  93  },
+        { 97,  101, 105, 109, 113, 117, 121, 125, 129, 133, 137, 141, 145, 149, 153, 157 },
+        { 161, 165, 169, 173, 177, 181, 185, 189, 193, 197, 201, 205, 209, 213, 217, 221 }
+    };
 
     int found_idx = -1;
     
@@ -2703,7 +2708,27 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
             } else {
                 return -1;
             }
-        
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_320MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_6g_320_mhz); i++) {
+                for (int j = 0; j < 16; j++) {
+                    if (primary_channel == channels_6g_320_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 16; i++) {
+                    channel_list[i] = channels_6g_320_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
         }
     }
 
