@@ -2301,7 +2301,7 @@ int blaster_deinit(wifi_app_t *app)
         pthread_cancel(app->data.u.blaster.g_active_msmt.worker_thread_id);
     }
     pthread_cond_destroy(&app->data.u.blaster.g_active_msmt.cv);
-    queue_destroy(app->data.u.blaster.g_active_msmt.worker_queue);
+    queue_destroy_with_data_free(app->data.u.blaster.g_active_msmt.worker_queue, free);
     pthread_mutex_destroy(&app->data.u.blaster.g_active_msmt.worker_lock);
     push_blaster_config_event_to_monitor_queue(mon_stats_request_state_stop);
     pthread_mutex_destroy(&app->data.u.blaster.g_active_msmt.lock);

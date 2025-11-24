@@ -510,7 +510,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         }
         free(mac_addr);
     }
-    queue_destroy(disconnect_event_queue);
+    queue_destroy_with_data_free(disconnect_event_queue, free);
 
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_sec = tv_now.tv_sec;
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_nsec = tv_now.tv_nsec;

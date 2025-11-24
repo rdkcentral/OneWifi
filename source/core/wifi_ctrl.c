@@ -56,15 +56,15 @@ void start_wifi_sched_timer(unsigned int, struct wifi_ctrl *ctrl, wifi_scheduler
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     if(ctrl->vif_apply_pending_queue != NULL) {
-        queue_destroy(ctrl->vif_apply_pending_queue);
+        queue_destroy_with_data_free(ctrl->vif_apply_pending_queue, free);
     }
 
     if(ctrl->queue != NULL) {
-        queue_destroy(ctrl->queue);
+        queue_destroy_with_data_free(ctrl->queue, free);
     }
 
     if(ctrl->events_bus_data.events_bus_queue != NULL) {
-        queue_destroy(ctrl->events_bus_data.events_bus_queue);
+        queue_destroy_with_data_free(ctrl->events_bus_data.events_bus_queue, free);
     }
 
     /*Deinitialize the scheduler*/

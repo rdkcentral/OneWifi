@@ -3870,7 +3870,7 @@ int free_event_webconfig_data(webconfig_subdoc_type_t type, webconfig_subdoc_dec
         wifi_util_info_print(WIFI_CTRL, "%s:%d decoded csi queue:%p\n", __func__, __LINE__,
             data->csi_data_queue);
         if (data->csi_data_queue != NULL) {
-            queue_destroy(data->csi_data_queue);
+            queue_destroy_with_data_free(data->csi_data_queue, free);
             data->csi_data_queue = NULL;
         }
         break;

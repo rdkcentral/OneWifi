@@ -143,11 +143,38 @@ uint32_t queue_count    (queue_t *q)
 void    queue_destroy   (queue_t *q)
 {
     element_t    *e, *tmp;
+    if (q == NULL) {
+        return;
+    }
     e = q->head;
     while (e != NULL) {
         tmp = e->next;
-        if (e->data != NULL) {
-            free(e->data);
+        /* Do not free e->data here; ownership of payloads is
+         * caller-managed. This avoids double-free / use-after-free
+         * when callers already free payloads (e.g. hash_map_cleanup).
+         */
+        free(e);
+        e = tmp;
+    }
+    free(q);
+}
+
+/*
+ * Destroy queue and free each element's data with the provided callback.
+ * The callback should free the payload (e.g. free) or perform appropriate cleanup.
+ */
+void queue_destroy_with_data_free(queue_t *q, void (*free_cb)(void *))
+{
+    element_t *e, *tmp;
+
+    if (q == NULL) {
+        return;
+    }
+    e = q->head;
+    while (e != NULL) {
+        tmp = e->next;
+        if (e->data != NULL && free_cb != NULL) {
+            free_cb(e->data);
         }
         free(e);
         e = tmp;
@@ -385,7 +412,7 @@ void  hash_map_destroy    (hash_map_t *map)
 {
     if (map != NULL) {
         hash_map_cleanup(map);
-        queue_destroy(map->queue);
+        queue_destroy_with_data_free(map->queue, free);
         free(map);
     }
 }

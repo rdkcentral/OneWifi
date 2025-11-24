@@ -1281,7 +1281,7 @@ int levl_deinit(wifi_app_t *app)
     pthread_mutex_unlock(&app->data.u.levl.lock);
     pthread_mutex_destroy(&app->data.u.levl.lock);
     if (app->queue != NULL) {
-        queue_destroy(app->queue);
+        queue_destroy_with_data_free(app->queue, free);
     }
 
     return RETURN_OK;

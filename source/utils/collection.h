@@ -57,6 +57,13 @@ void        *queue_pop        (queue_t *q);
 void        *queue_remove      (queue_t *q, uint32_t n);
 void        *queue_peek     (queue_t *q, uint32_t n);
 uint32_t     queue_count        (queue_t *q);
+/*
+ * Destroy queue and free each element's data with the provided callback.
+ * If `free_cb` is NULL, payloads are not freed. Ownership of payload
+ * memory is caller-defined; use this function when you want the queue
+ * destroy to also free payloads (e.g., pass `free`).
+ */
+void queue_destroy_with_data_free(queue_t *q, void (*free_cb)(void *));
 // hash map operations, currently hash map is flat there are no buckets
 hash_map_t     *hash_map_create    (void);
 void         hash_map_destroy    (hash_map_t *map);

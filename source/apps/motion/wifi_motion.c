@@ -658,10 +658,10 @@ queue_t *update_csi_local_queue_from_motion_queue()
     for (itr=0; itr<queue_count(csi_queue); itr++) {
         tmp_csi_data = (csi_data_t *)queue_peek(csi_queue, itr);
         if (tmp_csi_data != NULL) {
-            csi_data_t *to_queue = (csi_data_t *)malloc(sizeof(csi_data_t));
+                csi_data_t *to_queue = (csi_data_t *)malloc(sizeof(csi_data_t));
             if (to_queue == NULL) {
                 wifi_util_error_print(WIFI_APPS, "%s %d: malloc failed for itr : %d\n", __FUNCTION__, __LINE__, itr);
-                queue_destroy(local_csi_queue);
+                queue_destroy_with_data_free(local_csi_queue, free);
                 return NULL;
             }
             memcpy(to_queue, tmp_csi_data, sizeof(csi_data_t));
@@ -694,7 +694,7 @@ bus_error_t csi_table_addrowhandler(char const* tableName, char const* aliasName
     csi_data = (csi_data_t *)malloc(sizeof(csi_data_t));
     if (csi_data == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer\n", __func__, __LINE__);
-        queue_destroy(local_csi_queue);
+        queue_destroy_with_data_free(local_csi_queue, free);
         return bus_error_general;
     }
     memset(csi_data, 0, sizeof(csi_data_t));
@@ -702,7 +702,7 @@ bus_error_t csi_table_addrowhandler(char const* tableName, char const* aliasName
 
     queue_push(local_csi_queue, csi_data);
     push_csi_data_dml_to_ctrl_queue(local_csi_queue);
-    queue_destroy(local_csi_queue);
+    queue_destroy_with_data_free(local_csi_queue, free);
 
     wifi_util_dbg_print(WIFI_APPS, "%s(): exit\n", __FUNCTION__);
     return bus_error_success;
@@ -737,7 +737,7 @@ bus_error_t csi_table_removerowhandler(char const *rowName)
     }
 
     push_csi_data_dml_to_ctrl_queue(local_csi_queue);
-    queue_destroy(local_csi_queue);
+    queue_destroy_with_data_free(local_csi_queue, free);
 
     return bus_error_success;
 }
@@ -782,23 +782,23 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
 
         if (csi_data == NULL) {
             wifi_util_error_print(WIFI_APPS,"%s:%d Could not find entry\n", __func__, __LINE__);
-            queue_destroy(local_csi_queue);
+            queue_destroy_with_data_free(local_csi_queue, free);
             return bus_error_general;
         }
         if (strcmp(parameter, "ClientMaclist") == 0) {
             char *pTmp = NULL;
 
-            if (p_data->data_type != bus_data_type_string) {
+                if (p_data->data_type != bus_data_type_string) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d-%s bus wrong data_type:%02x\n", __func__, __LINE__, name, p_data->data_type);
-                queue_destroy(local_csi_queue);
+                queue_destroy_with_data_free(local_csi_queue, free);
                 return bus_error_invalid_input;
             }
 
             pTmp = (char *)p_data->raw_data.bytes;
 
-            if (pTmp == NULL) {
+                if (pTmp == NULL) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d-%s wrong bus data:%02x\n", __func__, __LINE__, name, p_data->data_type);
-                queue_destroy(local_csi_queue);
+                queue_destroy_with_data_free(local_csi_queue, free);
                 return bus_error_invalid_input;
             } else {
                 char *str, *cptr, *str_dup;
@@ -808,7 +808,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
                 str_dup = strdup(pTmp);
                 if (str_dup == NULL) {
                     wifi_util_error_print(WIFI_APPS,"%s:%d strdup failed\n", __func__, __LINE__);
-                    queue_destroy(local_csi_queue);
+                    queue_destroy_with_data_free(local_csi_queue, free);
                     return bus_error_general;
                 }
                 itr = 0;
@@ -817,12 +817,12 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
                     str_to_mac_bytes(str, l_client_list[itr]);
                     str = strtok_r(NULL, ",", &cptr);
                     itr++;
-                    if (itr > MAX_NUM_CSI_CLIENTS) {
+                        if (itr > MAX_NUM_CSI_CLIENTS) {
                         wifi_util_error_print(WIFI_APPS,"%s:%d client list is big %d\n", __func__, __LINE__, itr);
                         if (str_dup) {
                             free(str_dup);
                         }
-                        queue_destroy(local_csi_queue);
+                        queue_destroy_with_data_free(local_csi_queue, free);
                         return bus_error_general;
                     }
                 }
@@ -854,7 +854,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
                                         if (str_dup) {
                                             free(str_dup);
                                         }
-                                        queue_destroy(local_csi_queue);
+                                        queue_destroy_with_data_free(local_csi_queue, free);
                                         return bus_error_general;
                                     } else {
                                         memcpy(unique_mac_list[num_unique_mac-1], csi_client_list[j], sizeof(mac_address_t));
@@ -880,7 +880,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
             if (p_data->data_type != bus_data_type_boolean) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' wrong bus data_type:%02x\n",
                    __func__, __LINE__, name, p_data->data_type);
-                queue_destroy(local_csi_queue);
+                queue_destroy_with_data_free(local_csi_queue, free);
                 return bus_error_invalid_input;
             } else {
                 enabled = p_data->raw_data.b;
@@ -908,7 +908,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
                                         num_unique_mac++;
                                         if (num_unique_mac > MAX_NUM_CSI_CLIENTS) {
                                             wifi_util_error_print(WIFI_APPS,"%s %d MAX_NUM_CSI_CLIENTS reached\n", __func__, __LINE__);
-                                            queue_destroy(local_csi_queue);
+                                            queue_destroy_with_data_free(local_csi_queue, free);
                                             return bus_error_general;
                                         } else {
                                             memcpy(unique_mac_list[num_unique_mac-1], tmp_csi_data->csi_client_list[j], sizeof(mac_address_t));
@@ -926,10 +926,10 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
         if (apply) {
             push_csi_data_dml_to_ctrl_queue(local_csi_queue);
         }
-        queue_destroy(local_csi_queue);
+        queue_destroy_with_data_free(local_csi_queue, free);
         return bus_error_success;
     }
-    queue_destroy(local_csi_queue);
+    queue_destroy_with_data_free(local_csi_queue, free);
     return bus_error_invalid_input;
 }
 

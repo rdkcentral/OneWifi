@@ -330,7 +330,7 @@ void deinit_wifi_data_plane()
 {
        deinit_8021x(&g_data_plane_module.module_8021x);
        if (g_data_plane_module.queue != NULL) {
-       queue_destroy(g_data_plane_module.queue);
+    queue_destroy_with_data_free(g_data_plane_module.queue, free);
        }
 
     pthread_mutex_destroy(&g_data_plane_module.lock);
