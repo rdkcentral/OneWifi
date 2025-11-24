@@ -671,6 +671,42 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_vap_6G].translate_to_subdoc = translate_to_multivap_subdoc;
     config->subdocs[webconfig_subdoc_type_vap_6G].translate_from_subdoc = translate_from_multivap_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_radio_24G].type = webconfig_subdoc_type_radio_24G;
+    strcpy(config->subdocs[webconfig_subdoc_type_radio_24G].name, "radio_2.4G");
+    config->subdocs[webconfig_subdoc_type_radio_24G].major = 1;
+    config->subdocs[webconfig_subdoc_type_radio_24G].minor = 1;
+    config->subdocs[webconfig_subdoc_type_radio_24G].init_subdoc = init_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_24G].init_subdoc(&config->subdocs[webconfig_subdoc_type_radio_24G]);
+    config->subdocs[webconfig_subdoc_type_radio_24G].access_check_subdoc = access_check_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_24G].encode_subdoc = encode_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_24G].decode_subdoc = decode_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_24G].translate_to_subdoc = translate_to_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_24G].translate_from_subdoc = translate_from_single_radio_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_radio_5G].type = webconfig_subdoc_type_radio_5G;
+    strcpy(config->subdocs[webconfig_subdoc_type_radio_5G].name, "radio_5G");
+    config->subdocs[webconfig_subdoc_type_radio_5G].major = 1;
+    config->subdocs[webconfig_subdoc_type_radio_5G].minor = 1;
+    config->subdocs[webconfig_subdoc_type_radio_5G].init_subdoc = init_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_5G].init_subdoc(&config->subdocs[webconfig_subdoc_type_radio_5G]);
+    config->subdocs[webconfig_subdoc_type_radio_5G].access_check_subdoc = access_check_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_5G].encode_subdoc = encode_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_5G].decode_subdoc = decode_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_5G].translate_to_subdoc = translate_to_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_5G].translate_from_subdoc = translate_from_single_radio_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_radio_6G].type = webconfig_subdoc_type_radio_6G;
+    strcpy(config->subdocs[webconfig_subdoc_type_radio_6G].name, "radio_5G");
+    config->subdocs[webconfig_subdoc_type_radio_6G].major = 1;
+    config->subdocs[webconfig_subdoc_type_radio_6G].minor = 1;
+    config->subdocs[webconfig_subdoc_type_radio_6G].init_subdoc = init_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_6G].init_subdoc(&config->subdocs[webconfig_subdoc_type_radio_6G]);
+    config->subdocs[webconfig_subdoc_type_radio_6G].access_check_subdoc = access_check_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_6G].encode_subdoc = encode_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_6G].decode_subdoc = decode_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_6G].translate_to_subdoc = translate_to_single_radio_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_6G].translate_from_subdoc = translate_from_single_radio_subdoc;
+
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;
 

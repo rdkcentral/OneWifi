@@ -185,7 +185,6 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     }
     memset((unsigned char *)p_tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
     p_tgt_created_vap_map->num_vaps = 0;
-    wifi_mgr_t *g_wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (rfc_info) {
         greylist_rfc = rfc_info->radiusgreylist_rfc;
@@ -227,10 +226,6 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
 #endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
-        if (is_6g_supported_device(&g_wifi_mgr->hal_cap.wifi_prop) && p_tgt_vap_map->vap_array[0].u.bss_info.enabled) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d 6g supported device  %s is enabled  nbrReport is activated\n", __func__,__LINE__,p_tgt_vap_map->vap_array[0].vap_name);
-            p_tgt_vap_map->vap_array[0].u.bss_info.nbrReportActivated = true;
-        }
         if (wifi_hal_createVAP(radio_index, p_tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);

@@ -7563,9 +7563,14 @@ void wifidb_init_default_value()
         }
         wifidb_init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
         wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
-        wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
-        wifidb_init_postassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.postassoc);
-
+        if (isVapHotspot(vap_index)) {
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d: Updating preassoc and postassoc only for hotspot vaps\n", __func__,
+                __LINE__);
+            wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
+            wifidb_init_postassoc_conn_ctrl_config_default(vap_index,
+                &vapInfo->u.bss_info.postassoc);
+        }
       //As wifidb_init_vap_config_default() does memcpy of wifi_vap_info_t structure
       //so here we are restoring the interface mac into wifi_vap_info_t from temporary array
         if (isVapSTAMesh(vap_index) == TRUE) {
