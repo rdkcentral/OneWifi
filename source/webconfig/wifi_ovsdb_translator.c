@@ -5404,7 +5404,7 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_dml(webco
             return webconfig_error_translate_from_ovsdb;
 
         }
-        convert_radio_index_to_radio_name(radio_index, decoded_params->radios[radio_index].name);
+
         presence_mask |= (1 << radio_index);
     }
 
@@ -5547,7 +5547,6 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_radio(web
 
         oper_param = &radio->oper;
 
-        convert_radio_index_to_radio_name(radio_index, radio->name);
         if (translate_radio_object_from_ovsdb(row, oper_param, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to translate ovsdb to radio_object for %d\n", __func__, __LINE__, radio_index);
             return webconfig_error_translate_from_ovsdb;

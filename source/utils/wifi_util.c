@@ -1716,11 +1716,13 @@ int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, 
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        if ((strcmp(auto_channel_string, "auto")) || (strcmp(auto_channel_string, "cloud")) || (strcmp(auto_channel_string, "acs"))) {
+        if ((strcmp(auto_channel_string, "auto") == 0) || (strcmp(auto_channel_string, "cloud") == 0) || (strcmp(auto_channel_string, "acs") == 0)) {
             *auto_channel_bool = true;
             return RETURN_OK;
-        } else if (strcmp(auto_channel_string, "manual")) {
+        } else if (strcmp(auto_channel_string, "manual") == 0) {
             *auto_channel_bool = false;
+            return RETURN_OK;
+        } else if (strcmp(auto_channel_string, "") == 0) {
             return RETURN_OK;
         }
     } else if (conv_type == ENUM_TO_STRING) {
