@@ -3897,8 +3897,8 @@ webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wif
     unsigned int mqtt_len = 0;
     mqtt_len = strlen(blaster_mqtt_topic);
     memset(blaster_info, 0, sizeof(active_msmt_t));
-    strncpy((char *)blaster_info->PlanId, blaster_row->plan_id, strlen(blaster_row->plan_id));
-    blaster_info->PlanId[strlen((char *)blaster_info->PlanId)] = '\0';
+    snprintf((char *)blaster_info->PlanId, sizeof(blaster_info->PlanId), "%s", blaster_row->plan_id);
+
     blaster_info->ActiveMsmtNumberOfSamples = blaster_row->blast_sample_count;
     blaster_info->ActiveMsmtSampleDuration = blaster_row->blast_duration;
     blaster_info->ActiveMsmtPktSize = blaster_row->blast_packet_size;
@@ -3908,8 +3908,7 @@ webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wif
         blaster_info->Step[i].StepId = atoi(blaster_row->step_id_and_dest_keys[i]);
         char mac_str_without_colon[MAC_ADDRESS_LENGTH] = {'\0'};
         remove_colon_from_mac(blaster_row->step_id_and_dest[i], mac_str_without_colon);
-        strncpy((char *)blaster_info->Step[i].DestMac, mac_str_without_colon, MAC_ADDRESS_LENGTH);
-        blaster_info->Step[i].DestMac[MAC_ADDRESS_LENGTH - 1] = '\0';
+        snprintf((char *)blaster_info->Step[i].DestMac, MAC_ADDRESS_LENGTH, "%s", mac_str_without_colon);
     }
 
     blaster_info->ActiveMsmtEnable = true;
@@ -3921,8 +3920,7 @@ webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wif
     }
     else {
         if ((mqtt_len > 0) && (mqtt_len <= MAX_MQTT_TOPIC_LEN)) {
-            strncpy((char *)blaster_info->blaster_mqtt_topic, blaster_mqtt_topic, mqtt_len);
-            blaster_info->blaster_mqtt_topic[strlen((char *)blaster_info->blaster_mqtt_topic)] = '\0';
+            snprintf((char *)blaster_info->blaster_mqtt_topic, mqtt_len, "%s", blaster_mqtt_topic);
         }    
     }
     return webconfig_error_none;
