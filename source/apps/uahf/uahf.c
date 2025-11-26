@@ -15,16 +15,19 @@ void* uahf_worker_task(void* arg) {
     wifi_app_t* app = (wifi_app_t*)arg;
     uahf_data_t* d = GET_UAHF(app);
 
+    wifi_util_error_print(WIFI_CTRL, "UAHF: starting server in detached thread\n");
+
     // 1. Run the server directly (BLOCKING)
     // This will sit here until the user submits the form and the loop breaks
     uahf_start_server(app);
+    wifi_util_error_print(WIFI_CTRL, "UAHF: server exited in detached thread\n");
 
     // 2. Update State (Critical Section)
-    pthread_mutex_lock(&app->lock);
+    pthread_mutex_lock(&d->app_lock);
 
     d->worker_running = false;
     d->worker_done = true; // Signal main thread that data is in d->username/password
-    pthread_mutex_unlock(&app->lock);
+    pthread_mutex_unlock(&d->app_lock);
 
     wifi_util_error_print(WIFI_CTRL, "UAHF Result: User=%s, Pass=%s\n", 
                                  d->username, d->password);
@@ -85,26 +88,42 @@ wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called start extender vaps\n", _
 
 int uahf_update(wifi_app_t *app) {
     uahf_data_t* d = GET_UAHF(app);
+    wifi_util_error_print(WIFI_APPS, "%s:%d: Init uahf-update\n", __func__, __LINE__);
 
     // --- Trigger Server ---
     if (!d->worker_running && !d->worker_done) {
-        pthread_mutex_lock(&app->lock);
-        pthread_mutex_lock(&app->lock);
+        pthread_mutex_lock(&d->app_lock);
         
         // Clear old data just in case
         memset(d->username, 0, sizeof(d->username));
         memset(d->password, 0, sizeof(d->password));
         
-        d->worker_running = true;
+        if (!d->worker_running) {
+            d->worker_running = true;
 
-        if (pthread_create(&d->worker_tid, NULL, uahf_worker_task, app) == 0) {
-            pthread_detach(d->worker_tid);
-        } else {
-            d->worker_running = false;
+            // --- SPAWN THREAD (NON-BLOCKING) ---
+            // We create a separate thread to handle the blocking server.
+            // pthread_create returns immediately.
+            
+            pthread_attr_t attr;
+            pthread_attr_init(&attr);
+            pthread_attr_setstacksize(&attr, 128 * 1024); 
+    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf:about to spawn a thread with server\n", __func__, __LINE__);
+
+            if (pthread_create(&d->worker_tid, &attr, uahf_worker_task, app) == 0) {
+                pthread_detach(d->worker_tid); // Fire and forget
+        wifi_util_error_print(WIFI_APPS, "%s:%d: uahf: started thread with server\n", __func__, __LINE__);
+
+            } else {
+                d->worker_running = false;
+            }
+            pthread_attr_destroy(&attr);
         }
-        pthread_mutex_unlock(&app->lock);
+        pthread_mutex_unlock(&d->app_lock);
 
     }
+    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf spawned a thread succ\n", __func__, __LINE__);
+
     // --- Process Results --
     // dead cpde for now
     if (d->worker_done) {
@@ -120,6 +139,7 @@ int uahf_update(wifi_app_t *app) {
         }
         pthread_mutex_unlock(&app->lock);
     }
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf: exit\n", __func__, __LINE__);
 
     return RETURN_OK;
 }
@@ -128,6 +148,8 @@ int uahf_init(wifi_app_t *app, unsigned int create_flag)
 {
 
     memset(&app->data.u.uahf_data, 0, sizeof(uahf_data_t));
+    pthread_mutex_init(&app->data.u.uahf_data.lock, NULL);
+
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }

@@ -7,6 +7,7 @@
 typedef struct {
     void *data;
 // Thread Management
+    pthread_mutex_t  app_lock;
     pthread_t worker_tid;
     bool worker_running;
     bool worker_done;

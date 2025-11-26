@@ -79,30 +79,49 @@ void send_html_page(int client_fd, int showThanks)
 }
 
 int uahf_start_server(wifi_app_t *app) {
-    uahf_data_t *d = (uahf_data_t *)GET_UAHF(app); // Access your specific data
+    uahf_data_t *d = /*(uahf_data_t *)*/GET_UAHF(app); // Access your specific data
     int server_fd, client_fd;
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
-    char buffer[BUFFER_SIZE];
-    char username_local[200] = {0}, password_local[200] = {0};
-    char decoded[400];
+    char *buffer = NULL; // Use heap to save stack
+    char decoded[200]; 
+    char username_local[200] = {0};
+    char password_local[200] = {0};
 
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == -1) {
-        perror("socket failed");
-        exit(1);
+    // Allocate buffer on heap to prevent stack overflow in small threads
+    buffer = (char*)malloc(4096);
+    if (!buffer) {
+        wifi_util_error_print(WIFI_APPS, "UAHF: OOM for buffer\n");
+        return -1;
     }
 
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(PORT);
-    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        perror("bind failed");
-        exit(1);
+    // --- Socket Setup ---
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        // perror("socket failed"); 
+        free(buffer);
+        return -1;
+    }
+//added, might not be needed
+    // Use SO_REUSEADDR only
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        close(server_fd);
+        free(buffer);
+        return -1;
+    }
+//added, might not be needed
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(8080);
+
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        wifi_util_error_print(WIFI_APPS, "UAHF: Bind failed. Check Port 8080 usage.\n");
+        close(server_fd);
+        free(buffer);
+        return -1;
     }
 
     listen(server_fd, 3);
-    fprintf(stderr,"Server running on port %d...\n", PORT);
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server started on port  %d...\n", PORT);
 
     while (1) {
         client_fd = accept(server_fd, (struct sockaddr *)&addr, &addrlen);
@@ -122,8 +141,11 @@ int uahf_start_server(wifi_app_t *app) {
                 showThanks = 1;
 
             send_html_page(client_fd, showThanks);
-            if (showThanks)
-                break;
+        // --- Exit Condition ---
+        	if (strlen(username_local) > 0) {
+		        close(client_fd);
+                break; 
+               }
         }
 
         // ---- POST Request ----
@@ -147,9 +169,13 @@ int uahf_start_server(wifi_app_t *app) {
                 url_decode(password_local, decoded);
                 strcpy(password_local, decoded);
 
-              strncpy(d->username, username_local, 100);
-              strncpy(d->password, password_local, 100);
-                fprintf(stderr,"User submitted: %s / %s\n", username_local, password_local);
+            wifi_util_info_print(WIFI_APPS, "Captured: %s / %s\n", username_local, password_local);
+
+            // --- CRITICAL SECTION: Save Data ---
+            pthread_mutex_lock(&app->lock);
+            strncpy(d->username, username_local, sizeof(d->username)-1);
+            strncpy(d->password, password_local, sizeof(d->password)-1);
+            pthread_mutex_unlock(&app->lock);
             }
 
             fprintf(stderr, "POST received - redirecting with thank you note...\n");
@@ -163,9 +189,10 @@ int uahf_start_server(wifi_app_t *app) {
 
             write(client_fd, redirect, strlen(redirect));
         }
-
-        close(client_fd);
     }
+    close(server_fd);
+    free(buffer);
+
 /*
     char command_buffer[BUFFER_SIZE];
     int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", username);
