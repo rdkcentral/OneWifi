@@ -1006,13 +1006,13 @@ int convert_radio_name_to_radio_index(char *name)
 int convert_radio_index_to_radio_name(int index, char *name)
 {
     if (index == 0) {
-        strncpy(name,"radio1",RADIO_NAME_LEN);
+        strncpy(name,"radio1",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 1) {
-        strncpy(name,"radio2",RADIO_NAME_LEN);
+        strncpy(name,"radio2",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 2) {
-        strncpy(name,"radio3",RADIO_NAME_LEN);
+        strncpy(name,"radio3",RADIO_NAME_LENGTH);
         return 0;
     }
 
