@@ -127,7 +127,7 @@ int uahf_update(wifi_app_t *app) {
     // --- Process Results --
     // dead cpde for now
     if (d->worker_done) {
-        pthread_mutex_lock(&app->lock);
+        pthread_mutex_lock(&d->app_lock);
         if (d->worker_done) {
             
             // SUCCESS: Data is now available directly in the struct
@@ -137,7 +137,7 @@ int uahf_update(wifi_app_t *app) {
 
             d->worker_done = false; 
         }
-        pthread_mutex_unlock(&app->lock);
+        pthread_mutex_unlock(&d->app_lock);
     }
 wifi_util_error_print(WIFI_APPS, "%s:%d: uahf: exit\n", __func__, __LINE__);
 
@@ -148,7 +148,7 @@ int uahf_init(wifi_app_t *app, unsigned int create_flag)
 {
 
     memset(&app->data.u.uahf_data, 0, sizeof(uahf_data_t));
-    pthread_mutex_init(&app->data.u.uahf_data.lock, NULL);
+    pthread_mutex_init(&app->data.u.uahf_data.app_lock, NULL);
 
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;

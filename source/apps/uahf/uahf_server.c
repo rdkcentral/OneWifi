@@ -101,19 +101,11 @@ int uahf_start_server(wifi_app_t *app) {
         free(buffer);
         return -1;
     }
-//added, might not be needed
-    // Use SO_REUSEADDR only
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-        close(server_fd);
-        free(buffer);
-        return -1;
-    }
-//added, might not be needed
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(8080);
 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(PORT);
+    if (bind(server_fd, (struct sockaddr *)&addr, addrlen) < 0) {
         wifi_util_error_print(WIFI_APPS, "UAHF: Bind failed. Check Port 8080 usage.\n");
         close(server_fd);
         free(buffer);
@@ -172,10 +164,10 @@ int uahf_start_server(wifi_app_t *app) {
             wifi_util_info_print(WIFI_APPS, "Captured: %s / %s\n", username_local, password_local);
 
             // --- CRITICAL SECTION: Save Data ---
-            pthread_mutex_lock(&app->lock);
+            pthread_mutex_lock(&d->app_lock);
             strncpy(d->username, username_local, sizeof(d->username)-1);
             strncpy(d->password, password_local, sizeof(d->password)-1);
-            pthread_mutex_unlock(&app->lock);
+            pthread_mutex_unlock(&d->app_lock);
             }
 
             fprintf(stderr, "POST received - redirecting with thank you note...\n");
