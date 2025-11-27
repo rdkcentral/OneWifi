@@ -87,6 +87,7 @@ int uahf_start_server(wifi_app_t *app) {
     char decoded[200]; 
     char username_local[200] = {0};
     char password_local[200] = {0};
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
     // Allocate buffer on heap to prevent stack overflow in small threads
     buffer = (char*)malloc(4096);
@@ -96,17 +97,18 @@ int uahf_start_server(wifi_app_t *app) {
     }
 
     // --- Socket Setup ---
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        // perror("socket failed"); 
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        wifi_util_error_print(WIFI_APPS, "%d: UAHF: SOcket failed. .\n", __LINE__);
         free(buffer);
         return -1;
     }
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(PORT);
-    if (bind(server_fd, (struct sockaddr *)&addr, addrlen) < 0) {
-        wifi_util_error_print(WIFI_APPS, "UAHF: Bind failed. Check Port 8080 usage.\n");
+    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        wifi_util_error_print(WIFI_APPS, "UAHF: Bind failed. Check Port %d usage.\n", PORT);
         close(server_fd);
         free(buffer);
         return -1;
@@ -114,6 +116,7 @@ int uahf_start_server(wifi_app_t *app) {
 
     listen(server_fd, 3);
     wifi_util_info_print(WIFI_APPS, "UAHF: Server started on port  %d...\n", PORT);
+wifi_util_info_print(WIFI_APPS, "UAHF: strname length %d...\n", strlen(username_local));
 
     while (1) {
         client_fd = accept(server_fd, (struct sockaddr *)&addr, &addrlen);
@@ -121,27 +124,32 @@ int uahf_start_server(wifi_app_t *app) {
             perror("accept");
             continue;
         }
-
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
         memset(buffer, 0, BUFFER_SIZE);
         read(client_fd, buffer, BUFFER_SIZE);
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
         // ---- GET Request ----
         if (strncmp(buffer, "GET", 3) == 0) {
             int showThanks = 0;
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
             if (strstr(buffer, "thanks=1"))
                 showThanks = 1;
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
             send_html_page(client_fd, showThanks);
         // --- Exit Condition ---
-        	if (strlen(username_local) > 0) {
+        	if (strlen(username_local) > 0 && showThanks) {
 		        close(client_fd);
                 break; 
                }
-        }
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
+        }
         // ---- POST Request ----
         else if (strncmp(buffer, "POST", 4) == 0) {
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
             // Extract POST body (optional)
             char *body = strstr(buffer, "\r\n\r\n");
@@ -150,10 +158,12 @@ int uahf_start_server(wifi_app_t *app) {
 
             char *u = strstr(body, "username=");
             char *p = strstr(body, "password=");
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
             if (u && p) {
                 sscanf(u, "username=%199[^&]", username_local);
                 sscanf(p, "password=%199[^&]", password_local);
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
                 url_decode(username_local, decoded);
                 strcpy(username_local, decoded);
@@ -170,7 +180,7 @@ int uahf_start_server(wifi_app_t *app) {
             pthread_mutex_unlock(&d->app_lock);
             }
 
-            fprintf(stderr, "POST received - redirecting with thank you note...\n");
+            wifi_util_info_print(WIFI_APPS, "uahf:POST received - redirecting with thank you note...\n");
 
             // Redirect to same page with thank-you flag
             const char *redirect =
@@ -178,10 +188,13 @@ int uahf_start_server(wifi_app_t *app) {
                 "Location: /?thanks=1\r\n"
                 "Content-Length: 0\r\n"
                 "\r\n";
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
             write(client_fd, redirect, strlen(redirect));
         }
     }
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+
     close(server_fd);
     free(buffer);
 
