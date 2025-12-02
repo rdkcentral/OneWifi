@@ -1,4 +1,23 @@
 #!/bin/sh
+####################################################################################
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
+#
+#  Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##################################################################################
+
 source /etc/log_timestamp.sh
 source /lib/rdk/t2Shared_api.sh
 source /usr/ccsp/tad/corrective_action.sh
@@ -6,6 +25,9 @@ check_count=0
 vap_2g_down=0
 vap_5g_down=0
 vap_6g_down=0
+lnf_vap_2g_down=0
+lnf_vap_5g_down=0
+lnf_vap_6g_down=0
 pre_timestamp=0
 cur_timestamp=0
 radio_2g_instance=1
@@ -14,6 +36,9 @@ radio_6g_instance=3
 private_2g_instance=1
 private_5g_instance=2
 private_6g_instance=17
+lnf_2g_instance=7
+lnf_5g_instance=8
+lnf_6g_instance=20
 hal_indication="/tmp/hal_initialize_failed"
 prev_reboot_timestamp=0
 cur_reboot_timestamp=0
@@ -37,9 +62,15 @@ SW_UPGRADE_DEFAULT_FILE="/tmp/sw_upgrade_private_defaults"
 wave_driver_restart_cnt=0
 bss_queue_full=0
 bss_queue_full_cnt=0
+conn_clients_total=0
+num_clients=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
+CGA4="CGA4332COM"
+CGM43="CGM4331COM"
+CGM49="CGM4981COM"
+TG4="TG4482A"
 
 onewifi_restart_wifi()
 {
@@ -55,6 +86,8 @@ vap_restart()
     dmcli eRT setv Device.WiFi.AccessPoint.$2.ForceApply bool true > /dev/null
     echo_t "$1  self heal executed" >> $LOG_FILE
 }
+
+
 
 print_wifi_2g_txprobe_cnt()
 {
@@ -179,6 +212,22 @@ check_bss_queue_one_min()
     done
 }
 
+onewifi_conn_clients_count() {
+    conn_clients_total=0
+    num_clients=0
+    radio_arr=( 1 2 )
+    
+    num_radios=`dmcli eRT retv Device.WiFi.RadioNumberOfEntries`
+    if [ "$num_radios" -eq 3 ]; then
+        radio_arr=( 1 2 17 )
+    fi
+
+    for radio in "${radio_arr[@]}"; do
+        num_clients=`dmcli eRT retv Device.WiFi.AccessPoint.$radio.AssociatedDeviceNumberOfEntries`
+        conn_clients_total=$((conn_clients_total + num_clients))
+    done
+}
+
 onewifi_mem_restart() {
     # Find the OneWifi process PID
     onewifi_pid=$(ps | grep "/usr/bin/OneWifi -subsys eRT\." | grep -v grep | awk '{print $1}')
@@ -211,7 +260,19 @@ onewifi_mem_restart() {
         return
     fi
 
-    if [ "$vmrss" -ge "$threshold2" ]; then
+    # Get number of clients (max per AP and total)
+    onewifi_conn_clients_count
+    adj=$((30720))
+
+    # Adjust threshold up, if high no of clients
+    if [ "$conn_clients_total" -gt 45 ]; then
+        threshold1=$((threshold1 + adj))
+        threshold2=$((threshold2 + adj))
+        echo_t "Adjusted OneWifi mem thresholds by 30 MB up due to high client load: \
+        Number of connected clients: ($conn_clients_total clients)." >> $LOG_FILE
+    fi
+
+    if [ "$vmrss" -gt "$threshold2" ]; then
         if [ "$time_since_last_restart" -ge 86400 ]; then
             echo_t "RSS Memory of Onewifi exceeds RSS threshold2 value and restarting Onewifi [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
             systemctl restart onewifi.service
@@ -219,7 +280,7 @@ onewifi_mem_restart() {
         else
             echo_t "OneWifi restart skipped for RSS threshold2 since last restart time is less than 24 hrs [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
         fi
-    elif [ "$vmrss" -ge "$threshold1" ] && [ "$m_win" -eq 1 ]; then
+    elif [ "$vmrss" -gt "$threshold1" ] && [ "$m_win" -eq 1 ]; then
         if [ "$time_since_last_restart" -ge 86400 ]; then
             echo_t "RSS Memory of Onewifi exceeds RSS threshold1 value during maintenance window and restarting Onewifi [Rss : ($vmrss kB) Threshold1 : ($threshold1 kB)]" >> $LOG_FILE
             systemctl restart onewifi.service
@@ -229,12 +290,13 @@ onewifi_mem_restart() {
         fi
     else
         echo_t "RSS Memory usage of Onewifi is within the RSS threshold values [Rss : ($vmrss kB)]" >> $LOG_FILE
+        echo_t "Number of connected clients: ($conn_clients_total)" >> $LOG_FILE
     fi
 }
 
 while true
 do
-    if [ "$MODEL_NUM" == "TG4482A" ]; then
+    if [ "$MODEL_NUM" == "$TG4" ]; then
         #CMXB7 onewifi selfheal for Both BSS TX queues full, dropping the frame
         echo_t "Executing Onewifi selfheal for CMXB7" >> $LOG_FILE
         mw=0
@@ -270,11 +332,18 @@ do
             #echo_t "cur_timestamp = $cur_timestamp" >> $LOG_FILE
             if [ "$MODEL_NUM" == "SR213" ]; then
                 eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
-                eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                eco_mode_6g="false"
+            elif [ "$MODEL_NUM" == "SCER11BEL" ]  || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
+                eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                eco_mode_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
             else
                 eco_mode_2g="false"
                 eco_mode_5g="false"
+                eco_mode_6g="false"
             fi
+
             if [ $eco_mode_2g == "false" ]; then
                 radio_status_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
                 if [ $radio_status_2g == "true" ]; then
@@ -305,8 +374,33 @@ do
                             vap_2g_down=0
                         fi
                     fi
+                    status_lnf_2g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_2g_instance.Status | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                    if [ "$status_lnf_2g" == "Up" ] || [ "$status_lnf_2g" == "Enabled" ] || [ "$status_lnf_2g" == "true" ]; then
+                        if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
+                            ssid_lnf_2g=`wl -i wl0.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                            if [ "$ssid_lnf_2g" == "00:00:00:00:00:00" ]; then
+                                if [ $lnf_vap_2g_down == 1 ]; then
+                                    time_diff=`expr $cur_timestamp - $pre_timestamp`
+                                    if [ $time_diff -ge 43200 ]; then
+                                        onewifi_restart_wifi
+                                        pre_timestamp="`date +"%s"` $1"
+                                        lnf_vap_2g_down=0
+                                        continue
+                                    else
+                                        vap_restart "lnf_2g" $lnf_2g_instance
+                                    fi
+                                else
+                                    vap_restart "lnf_2g" $lnf_2g_instance
+                                    lnf_vap_2g_down=1
+                                fi
+                            else
+                                lnf_vap_2g_down=0
+                            fi
+                        fi
+                    fi
                 fi
             fi
+
             if [ $eco_mode_5g == "false" ]; then
                 radio_status_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
                 if [ $radio_status_5g == "true" ]; then
@@ -337,40 +431,90 @@ do
                             vap_5g_down=0
                         fi
                     fi
+                    status_lnf_5g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_5g_instance.Status | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                    if [ "$status_lnf_5g" == "Up" ] || [ "$status_lnf_5g" == "Enabled" ] || [ "$status_lnf_5g" == "true" ]; then
+                        if ! ovs-vsctl list-ifaces br106 | grep -q "wl1.4"; then
+                            ssid_lnf_5g=`wl -i wl1.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                            if [ "$ssid_lnf_5g" == "00:00:00:00:00:00" ]; then
+                                if [ $lnf_vap_5g_down == 1 ]; then
+                                    time_diff=`expr $cur_timestamp - $pre_timestamp`
+                                    if [ $time_diff -ge 43200 ]; then
+                                        onewifi_restart_wifi
+                                        pre_timestamp="`date +"%s"` $1"
+                                        lnf_vap_5g_down=0
+                                        continue
+                                    else
+                                        vap_restart "lnf_5g" $lnf_5g_instance
+                                    fi
+                                else
+                                    vap_restart "lnf_5g" $lnf_5g_instance
+                                    lnf_vap_5g_down=1
+                                fi
+                            else
+                                lnf_vap_5g_down=0
+                            fi
+                        fi
+                    fi
                 fi
             fi
 
-            if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
-                radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
-                if [ $radio_status_6g == "true" ]; then
-                    status_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
-                    if [ $status_6g == "true" ]; then
-                        bss_status="`wl -i wl2.1 bss`"
-                        if [ "$bss_status" == "down" ]; then
-                            if [ $vap_6g_down == 1 ]; then
-                                time_diff=`expr $cur_timestamp - $pre_timestamp`
-                                echo_t "time_diff = $time_diff" >> $LOG_FILE
-                                if [ $time_diff -ge 43200 ]; then
-                                    onewifi_restart_wifi
-                                    pre_timestamp="`date +"%s"` $1"
-                                    vap_6g_down=0
-                                    continue
+            if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
+                if [ $eco_mode_6g == "false" ]; then
+                    radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                    if [ $radio_status_6g == "true" ]; then
+                        status_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                        if [ $status_6g == "true" ]; then
+                            bss_status="`wl -i wl2.1 bss`"
+                            if [ "$bss_status" == "down" ]; then
+                                if [ $vap_6g_down == 1 ]; then
+                                    time_diff=`expr $cur_timestamp - $pre_timestamp`
+                                    echo_t "time_diff = $time_diff" >> $LOG_FILE
+                                    if [ $time_diff -ge 43200 ]; then
+                                        onewifi_restart_wifi
+                                        pre_timestamp="`date +"%s"` $1"
+                                        vap_6g_down=0
+                                        continue
+                                    else
+                                        vap_restart "private_6g" $private_6g_instance
+                                    fi
                                 else
                                     vap_restart "private_6g" $private_6g_instance
+                                    vap_6g_down=1
                                 fi
                             else
-                                vap_restart "private_6g" $private_6g_instance
-                                vap_6g_down=1
+                                vap_6g_down=0
                             fi
-                        else
-                            vap_6g_down=0
+                        fi
+                        status_lnf_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_6g_instance.Status | grep "value:" | cut -f2- -d:| cut -f2- -d:`
+                        if [ "$status_lnf_6g" == "Up" ] || [ "$status_lnf_6g" == "Enabled" ] || [ "$status_lnf_6g" == "true" ]; then
+                            if ! ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
+                                ssid_lnf_6g=`wl -i wl2.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                                if [ "$ssid_lnf_6g" == "00:00:00:00:00:00" ]; then
+                                    if [ $lnf_vap_6g_down == 1 ]; then
+                                        time_diff=`expr $cur_timestamp - $pre_timestamp`
+                                        if [ $time_diff -ge 43200 ]; then
+                                            onewifi_restart_wifi
+                                            pre_timestamp="`date +"%s"` $1"
+                                            lnf_vap_6g_down=0
+                                            continue
+                                        else
+                                            vap_restart "lnf_6g" $lnf_6g_instance
+                                        fi
+                                    else
+                                        vap_restart "lnf_6g" $lnf_6g_instance
+                                        lnf_vap_6g_down=1
+                                    fi
+                                else
+                                    lnf_vap_6g_down=0
+                                fi
+                            fi
                         fi
                     fi
                 fi
             fi
 
         #we need to use this changes for only TechXB7 device.
-        if [ "$MODEL_NUM" == "CGM4331COM" -o "$MODEL_NUM" == "CGA4332COM" ]; then
+        if [ "$MODEL_NUM" == "$CGM43" -o "$MODEL_NUM" == "$CGA4" ]; then
             check_wifi_2g_stuck_status
             check_wifi_5g_stuck_status
         fi
