@@ -163,6 +163,15 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
         return -1;
     }
 
+    /* Ownership contract:
+     * - On success the map takes ownership of both `key` and `data`.
+     * - On failure the caller retains ownership and is responsible for
+     *   freeing `key` and `data` as appropriate.
+     *
+     * Important: do NOT free caller-owned pointers here on failure; some
+     * callers expect to handle cleanup themselves and freeing here caused
+     * double-free/use-after-free in cleanup paths.
+     */
     map->itr = NULL;
     e = (hash_element_t *)malloc(sizeof(hash_element_t));
     if (e == NULL) {
@@ -173,12 +182,8 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
     e->data = data;
 
     if (queue_push(map->queue, e) < 0) {
-        free(key);
-        key = NULL;
-        if (e->data != NULL) {
-            free(e->data);
-            e->data = NULL;
-        }
+        /* Do not free `key` or `data` here - caller retains ownership on
+         * failure. Only free the element struct we allocated for the push. */
         free(e);
         return -1;
     }

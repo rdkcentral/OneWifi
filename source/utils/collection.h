@@ -58,6 +58,11 @@ void        *queue_remove      (queue_t *q, uint32_t n);
 void        *queue_peek     (queue_t *q, uint32_t n);
 uint32_t     queue_count        (queue_t *q);
 // hash map operations, currently hash map is flat there are no buckets
+// Ownership notes:
+// - On successful insertion (`hash_map_put`) the map takes ownership of the
+//   provided `key` and `data` pointers and will free them during cleanup.
+// - If `hash_map_put` fails, the caller retains ownership and is responsible
+//   for freeing the passed pointers.
 hash_map_t     *hash_map_create    (void);
 void         hash_map_destroy    (hash_map_t *map);
 void         hash_map_cleanup    (hash_map_t *map);
