@@ -185,6 +185,50 @@ check_bss_queue_one_min()
     done
 }
 
+check_lnf_status()
+{
+    radio_status_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.Enable | grep "value:" | awk '{print $NF}'`
+    if [ "$radio_status_2g" == "true" ]; then
+        if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
+            status_lnf_2g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_2g_instance.Enable | grep "value:" | awk '{print $NF}'`
+            if [ "$status_lnf_2g" == "true" ]; then
+                ssid_lnf_2g=`wl -i wl0.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                if [ "$ssid_lnf_2g" == "00:00:00:00:00:00" ]; then
+                    vap_restart "lnf_2g" $lnf_2g_instance
+                fi
+            fi
+        fi
+    fi
+
+    radio_status_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.Enable | grep "value:" | awk '{print $NF}'`
+    if [ "$radio_status_5g" == "true" ]; then
+        if ! ovs-vsctl list-ifaces br106 | grep -q "wl1.4"; then
+            status_lnf_5g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_5g_instance.Enable | grep "value:" | awk '{print $NF}'`
+            if [ "$status_lnf_5g" == "true" ]; then
+                ssid_lnf_5g=`wl -i wl1.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                if [ "$ssid_lnf_5g" == "00:00:00:00:00:00" ]; then
+                    vap_restart "lnf_5g" $lnf_5g_instance
+                fi
+            fi
+        fi
+    fi
+
+    if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
+        radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | awk '{print $NF}'`
+        if [ "$radio_status_6g" == "true" ]; then
+            if ! ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
+                status_lnf_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_6g_instance.Enable | grep "value:" | awk '{print $NF}'`
+                if [ "$status_lnf_6g" == "true" ]; then
+                    ssid_lnf_6g=`wl -i wl2.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                    if [ "$ssid_lnf_6g" == "00:00:00:00:00:00" ]; then
+                        vap_restart "lnf_6g" $lnf_6g_instance
+                    fi
+                fi
+            fi
+        fi
+    fi
+}
+
 onewifi_mem_restart() {
     # Find the OneWifi process PID
     onewifi_pid=$(ps | grep "/usr/bin/OneWifi -subsys eRT\." | grep -v grep | awk '{print $1}')
@@ -311,30 +355,6 @@ do
                             vap_2g_down=0
                         fi
                     fi
-                    if ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
-                        status_lnf_2g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
-                        if ["$status_lnf_2g" == "true" ]; then
-                            ssid_lnf_2g=`wl -i wl0.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
-                            if [ "$ssid_lnf_2g" == "00:00:00:00:00:00" ]; then
-                                if [ $lnf_vap_2g_down == 1 ]; then
-                                    time_diff=`expr $cur_timestamp - $pre_timestamp`
-                                    if [ $time_diff -ge 43200 ]; then
-                                        onewifi_restart_wifi
-                                        pre_timestamp="`date +"%s"` $1"
-                                        lnf_vap_2g_down=0
-                                        continue
-                                    else
-                                        vap_restart "lnf_2g" $lnf_2g_instance
-                                    fi
-                                else
-                                    vap_restart "lnf_2g" $lnf_2g_instance
-                                    lnf_vap_2g_down=1
-                                fi
-                            else
-                                lnf_vap_2g_down=0
-                            fi
-                        fi
-                    fi
                 fi
             fi
             if [ $eco_mode_5g == "false" ]; then
@@ -367,30 +387,6 @@ do
                             vap_5g_down=0
                         fi
                     fi
-                    if ovs-vsctl list-ifaces br106 | grep -q "wl1.4"; then
-                        status_lnf_5g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_5g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
-                        if [ "$status_lnf_5g" == "true" ]; then
-                            ssid_lnf_5g=`wl -i wl1.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
-                            if [ "$ssid_lnf_5g" == "00:00:00:00:00:00" ]; then
-                                if [ $lnf_vap_5g_down == 1 ]; then
-                                    time_diff=`expr $cur_timestamp - $pre_timestamp`
-                                    if [ $time_diff -ge 43200 ]; then
-                                        onewifi_restart_wifi
-                                        pre_timestamp="`date +"%s"` $1"
-                                        lnf_vap_5g_down=0
-                                        continue
-                                    else
-                                        vap_restart "lnf_5g" $lnf_5g_instance
-                                    fi
-                                else
-                                    vap_restart "lnf_5g" $lnf_5g_instance
-                                    lnf_vap_5g_down=1
-                                fi
-                            else
-                                lnf_vap_5g_down=0
-                            fi
-                        fi
-                    fi
                 fi
             fi
 
@@ -418,30 +414,6 @@ do
                             fi
                         else
                             vap_6g_down=0
-                        fi
-                    fi
-                    if ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
-                        status_lnf_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
-                        if [ "$status_lnf_6g" == "true" ]; then
-                            ssid_lnf_6g=`wl -i wl2.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
-                            if [ "$ssid_lnf_6g" == "00:00:00:00:00:00" ]; then
-                                if [ $lnf_vap_6g_down == 1 ]; then
-                                    time_diff=`expr $cur_timestamp - $pre_timestamp`
-                                    if [ $time_diff -ge 43200 ]; then
-                                        onewifi_restart_wifi
-                                        pre_timestamp="`date +"%s"` $1"
-                                        lnf_vap_6g_down=0
-                                        continue
-                                    else
-                                        vap_restart "lnf_6g" $lnf_6g_instance
-                                    fi
-                                else
-                                    vap_restart "lnf_6g" $lnf_6g_instance
-                                    lnf_vap_6g_down=1
-                                fi
-                            else
-                                lnf_vap_6g_down=0
-                            fi
                         fi
                     fi
                 fi
@@ -497,6 +469,7 @@ do
 
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
+    check_lnf_status
     sleep 5m
     ((check_count++))
 done
