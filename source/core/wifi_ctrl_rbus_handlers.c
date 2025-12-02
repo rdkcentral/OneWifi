@@ -2789,7 +2789,7 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
         data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index].force_apply =
             force_apply;
 
-        get_subdoc_type_name_from_ap_index(idx - 1, &subdoc_type);
+        get_subdoc_name_from_vap_index(idx - 1, &subdoc_type);
 
         if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding radio stats\n", __func__,
