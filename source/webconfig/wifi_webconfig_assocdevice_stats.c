@@ -200,8 +200,6 @@ webconfig_error_t decode_associated_device_stats_subdoc(webconfig_t *config, web
     if (decode_assocdev_stats_object(assoc_st, json) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to decode stats config\n", __func__, __LINE__);
         cJSON_Delete(json);
-        free((*assoc_st)->stat_pointer);
-        free(*assoc_st);
         return webconfig_error_invalid_subdoc;
     }
 
