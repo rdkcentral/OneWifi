@@ -311,7 +311,7 @@ do
                             vap_2g_down=0
                         fi
                     fi
-                    if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
+                    if ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
                         status_lnf_2g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                         if ["$status_lnf_2g" == "true" ]; then
                             ssid_lnf_2g=`wl -i wl0.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
@@ -367,7 +367,7 @@ do
                             vap_5g_down=0
                         fi
                     fi
-                    if ! ovs-vsctl list-ifaces br106 | grep -q "wl1.4"; then
+                    if ovs-vsctl list-ifaces br106 | grep -q "wl1.4"; then
                         status_lnf_5g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_5g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                         if [ "$status_lnf_5g" == "true" ]; then
                             ssid_lnf_5g=`wl -i wl1.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
@@ -420,7 +420,7 @@ do
                             vap_6g_down=0
                         fi
                     fi
-                    if ! ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
+                    if ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
                         status_lnf_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                         if [ "$status_lnf_6g" == "true" ]; then
                             ssid_lnf_6g=`wl -i wl2.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
