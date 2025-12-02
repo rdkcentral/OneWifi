@@ -814,17 +814,17 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
                 itr = 0;
                 str = strtok_r(str_dup, ",", &cptr);
                 while (str != NULL) {
-                    str_to_mac_bytes(str, l_client_list[itr]);
-                    str = strtok_r(NULL, ",", &cptr);
-                    itr++;
-                    if (itr > MAX_NUM_CSI_CLIENTS) {
-                        wifi_util_error_print(WIFI_APPS,"%s:%d client list is big %d\n", __func__, __LINE__, itr);
+                    if (itr >= MAX_NUM_CSI_CLIENTS) {
+                        wifi_util_error_print(WIFI_APPS, "%s:%d client list is big %d\n", __func__, __LINE__, itr);
                         if (str_dup) {
                             free(str_dup);
                         }
                         queue_destroy(local_csi_queue);
                         return bus_error_general;
                     }
+                    str_to_mac_bytes(str, l_client_list[itr]);
+                    itr++;
+                    str = strtok_r(NULL, ",", &cptr);
                 }
                 if (memcmp(csi_data->csi_client_list, l_client_list,  MAX_NUM_CSI_CLIENTS*sizeof(mac_address_t)) != 0) {
                     //check new configuration did not exceed the max number of csi clients
