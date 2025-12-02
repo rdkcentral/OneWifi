@@ -193,7 +193,7 @@ static void deviceConnectHandler(rbusHandle_t handle, rbusEvent_t const *event,
     rbusEventSubscription_t *subscription)
 {
     rbusValue_t value;
-    int vap, len;
+    int vap = 0, len = 0;
     uint8_t const *data_ptr;
     mac_address_t sta_mac;
 
@@ -224,7 +224,7 @@ static void deviceDisonnectHandler(rbusHandle_t handle, rbusEvent_t const *event
     rbusEventSubscription_t *subscription)
 {
     rbusValue_t value;
-    int vap, len;
+    int vap = 0, len = 0;
     uint8_t const *data_ptr;
     mac_address_t sta_mac;
 
@@ -1048,7 +1048,7 @@ static void termSignalHandler(int sig)
 
 int main(int argc, char *argv[])
 {
-    struct sigaction new_action;
+    struct sigaction new_action = { 0 };
     char name[RBUS_MAX_NAME_LENGTH];
     int i, j;
     int rc = RBUS_ERROR_SUCCESS;
