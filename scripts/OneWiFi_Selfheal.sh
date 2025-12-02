@@ -6,9 +6,6 @@ check_count=0
 vap_2g_down=0
 vap_5g_down=0
 vap_6g_down=0
-lnf_vap_2g_down=0
-lnf_vap_5g_down=0
-lnf_vap_6g_down=0
 pre_timestamp=0
 cur_timestamp=0
 radio_2g_instance=1
@@ -194,7 +191,7 @@ check_lnf_status()
             if [ "$status_lnf_2g" == "true" ]; then
                 ssid_lnf_2g=`wl -i wl0.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
                 if [ "$ssid_lnf_2g" == "00:00:00:00:00:00" ]; then
-                    vap_restart "lnf_2g" $lnf_2g_instance
+                    wl -i wl0.4 bss up
                 fi
             fi
         fi
@@ -207,7 +204,7 @@ check_lnf_status()
             if [ "$status_lnf_5g" == "true" ]; then
                 ssid_lnf_5g=`wl -i wl1.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
                 if [ "$ssid_lnf_5g" == "00:00:00:00:00:00" ]; then
-                    vap_restart "lnf_5g" $lnf_5g_instance
+                    wl -i wl1.4 bss up
                 fi
             fi
         fi
@@ -221,7 +218,7 @@ check_lnf_status()
                 if [ "$status_lnf_6g" == "true" ]; then
                     ssid_lnf_6g=`wl -i wl2.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
                     if [ "$ssid_lnf_6g" == "00:00:00:00:00:00" ]; then
-                        vap_restart "lnf_6g" $lnf_6g_instance
+                        wl -i wl2.4 bss up
                     fi
                 fi
             fi
