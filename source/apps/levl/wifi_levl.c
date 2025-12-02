@@ -571,8 +571,8 @@ void levl_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data)
     int buffer_size = CSI_HEADER_SIZE + sizeof(wifi_csi_data_t);
     if (wifi_app->data.u.levl.csi_over_fifo == false) {
         strncpy(eventName, "Device.WiFi.X_RDK_CSI_LEVL.data", sizeof(eventName) - 1);
-        // Publish using new API
-        get_bus_descriptor()->bus_raw_event_publish_fn(&wifi_app->handle, eventName, csi_dev_data->header, buffer_size);
+        // Publish using new API: pass the whole packed struct pointer (header + csi)
+        get_bus_descriptor()->bus_raw_event_publish_fn(&wifi_app->handle, eventName, (void *)csi_dev_data, buffer_size);
     } else {
         if (wifi_app->data.u.levl.csi_fd < 0) {
             wifi_app->data.u.levl.csi_fd = open(CSI_LEVL_PIPE, O_WRONLY);
@@ -582,12 +582,10 @@ void levl_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data)
                 return;
             }
         }
-        if ((write(wifi_app->data.u.levl.csi_fd, header, buffer_size) < 0)) {
+        if ((write(wifi_app->data.u.levl.csi_fd, (void *)csi_dev_data, buffer_size) < 0)) {
             wifi_util_error_print(WIFI_APPS, "%s:%d Messed up write error is %s\n", __func__,
                 __LINE__, strerror(errno));
             return;
-        }
-    }
 
     return;
 }
