@@ -184,12 +184,12 @@ check_bss_queue_one_min()
 
 check_lnf_status()
 {
-    radio_status_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.Enable | grep "value:" | awk '{print $NF}'`
+    radio_status_2g=`dmcli eRT retv Device.WiFi.Radio.$radio_2g_instance.Enable`
     if [ "$radio_status_2g" == "true" ]; then
         if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
-            status_lnf_2g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_2g_instance.Enable | grep "value:" | awk '{print $NF}'`
+            status_lnf_2g=`dmcli eRT retv Device.WiFi.AccessPoint.$lnf_2g_instance.Enable`
             if [ "$status_lnf_2g" == "true" ]; then
-                ssid_lnf_2g=`wl -i wl0.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                ssid_lnf_2g=`wl -i wl0.4 bssid`
                 if [ "$ssid_lnf_2g" == "00:00:00:00:00:00" ]; then
                     wl -i wl0.4 bss up
                 fi
@@ -197,12 +197,12 @@ check_lnf_status()
         fi
     fi
 
-    radio_status_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.Enable | grep "value:" | awk '{print $NF}'`
+    radio_status_5g=`dmcli eRT retv Device.WiFi.Radio.$radio_5g_instance.Enable`
     if [ "$radio_status_5g" == "true" ]; then
         if ! ovs-vsctl list-ifaces br106 | grep -q "wl1.4"; then
-            status_lnf_5g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_5g_instance.Enable | grep "value:" | awk '{print $NF}'`
+            status_lnf_5g=`dmcli eRT retv Device.WiFi.AccessPoint.$lnf_5g_instance.Enable`
             if [ "$status_lnf_5g" == "true" ]; then
-                ssid_lnf_5g=`wl -i wl1.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                ssid_lnf_5g=`wl -i wl1.4 bssid`
                 if [ "$ssid_lnf_5g" == "00:00:00:00:00:00" ]; then
                     wl -i wl1.4 bss up
                 fi
@@ -210,13 +210,13 @@ check_lnf_status()
         fi
     fi
 
-    if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
-        radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | awk '{print $NF}'`
+    if [ "$MODEL_NUM" == "CGM4981COM" ]; then
+        radio_status_6g=`dmcli eRT retv Device.WiFi.Radio.$radio_6g_instance.Enable`
         if [ "$radio_status_6g" == "true" ]; then
             if ! ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
-                status_lnf_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$lnf_6g_instance.Enable | grep "value:" | awk '{print $NF}'`
+                status_lnf_6g=`dmcli eRT retv Device.WiFi.AccessPoint.$lnf_6g_instance.Enable`
                 if [ "$status_lnf_6g" == "true" ]; then
-                    ssid_lnf_6g=`wl -i wl2.4 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                    ssid_lnf_6g=`wl -i wl2.4 bssid`
                     if [ "$ssid_lnf_6g" == "00:00:00:00:00:00" ]; then
                         wl -i wl2.4 bss up
                     fi
@@ -466,7 +466,9 @@ do
 
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
-    check_lnf_status
+    if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM4331COM" ]; then
+        check_lnf_status
+    fi
     sleep 5m
     ((check_count++))
 done
