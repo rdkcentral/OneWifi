@@ -210,7 +210,7 @@ check_lnf_status()
         fi
     fi
 
-    if [ "$MODEL_NUM" == "CGM4981COM" ]; then
+    if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ]; then
         radio_status_6g=`dmcli eRT retv Device.WiFi.Radio.$radio_6g_instance.Enable`
         if [ "$radio_status_6g" == "true" ]; then
             if ! ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
@@ -466,7 +466,7 @@ do
 
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
-    if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM4331COM" ]; then
+    if [ "$MODEL_NUM" != "SR213" ] && [ "$MODEL_NUM" != "GR-EXT02A-CTS" ] && [ "$MODEL_NUM" != "SR203" ]; then
         check_lnf_status
     fi
     sleep 5m
