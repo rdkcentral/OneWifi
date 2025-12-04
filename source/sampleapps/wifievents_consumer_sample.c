@@ -445,6 +445,25 @@ void client_csi_data_json_elem_add(cJSON *sta_obj, wifi_csi_data_t *csi,
     json_add_wifi_csi_matrix_info(obj, csi);
 }
 
+int get_csi_data_interval(void)
+{
+    if (g_csi_interval) {
+        return g_csi_interval;
+    } else {
+        return DEFAULT_CSI_INTERVAL;
+    }
+}
+
+void add_or_update_number(cJSON *obj, const char *key, double value)
+{
+    cJSON *item = cJSON_GetObjectItem(obj, key);
+    if (item == NULL) {
+        cJSON_AddNumberToObject(obj, key, value);
+    } else {
+        item->valuedouble = value;
+    }
+}
+
 void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
 {
     if (g_num_of_samples == -1) {
@@ -464,6 +483,9 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
         VERIFY_NULL_CHECK(p_csi_json_obj->json_csi_obj);
         cJSON_AddItemToObject(p_csi_json_obj->main_json_obj, "CSI", p_csi_json_obj->json_csi_obj);
     }
+
+    add_or_update_number(p_csi_json_obj->json_csi_obj, "csi_sampling_interval_ms",
+        get_csi_data_interval());
 
     if (p_csi_json_obj->json_sounding_devices == NULL) {
         p_csi_json_obj->json_sounding_devices = cJSON_CreateArray();
