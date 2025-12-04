@@ -741,17 +741,17 @@ void CosaDmlWiFiGetFromPSM(void)
             snprintf(recName, sizeof(recName), ApMFPConfig, instance_number);
             str = PSM_Get_Record_Status(recName, strValue, sizeof(strValue));
             if (str != NULL) {
-                strcpy(psm_vap_param->mfp, str);
+                snprintf(psm_vap_param->mfp, sizeof(psm_vap_param->mfp), "%s", str);
                 wifi_util_dbg_print(WIFI_PSM,"cfg->mfp is %s and str is %s\n", psm_vap_param->mfp, str);
             } else {
                 char instanceNumStr[32];
                 memset(instanceNumStr, 0, sizeof(instanceNumStr));
                 _ansc_itoa(bss_cfg->security.mfp, instanceNumStr, 10);
-                strcpy(psm_vap_param->mfp, instanceNumStr);
+                snprintf(psm_vap_param->mfp, sizeof(psm_vap_param->mfp), "%s", instanceNumStr);
                 wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, instanceNumStr, psm_vap_param->mfp);
             }
 
-            strcpy(psm_vap_param->beacon_rate_ctl, bss_cfg->beaconRateCtl);
+            snprintf(psm_vap_param->beacon_rate_ctl, sizeof(psm_vap_param->beacon_rate_ctl), "%s", bss_cfg->beaconRateCtl);
             wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value for BeaconRateCtl: %d : %d\r\n", __func__, __LINE__, bss_cfg->beaconRateCtl, psm_vap_param->beacon_rate_ctl);
 
             if (!isVapHotspot(instance_number - 1)) {
@@ -917,14 +917,14 @@ void CosaDmlWiFiGetFromPSM(void)
     memset(strValue, 0, sizeof(strValue));
     str = PSM_Get_Record_Status(TR181_WIFIREGION_Code, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(psm_global_param->wifi_region_code, str);
+        snprintf(psm_global_param->wifi_region_code, sizeof(psm_global_param->wifi_region_code), "%s", str);
         wifi_util_dbg_print(WIFI_PSM,"cfg->wifi_region_code is %s and str is %s \n", psm_global_param->wifi_region_code, str);
     } else {
-        strcpy(psm_global_param->wifi_region_code, global_cfg.wifi_region_code);
+        snprintf(psm_global_param->wifi_region_code, sizeof(psm_global_param->wifi_region_code), "%s", global_cfg.wifi_region_code);
         wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, global_cfg.wifi_region_code, psm_global_param->wifi_region_code);
     }
 
-    strcpy(psm_global_param->wps_pin, global_cfg.wps_pin);
+    snprintf(psm_global_param->wps_pin, sizeof(psm_global_param->wps_pin), "%s", global_cfg.wps_pin);
     wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value for WpsPin: %d : %d\r\n", __func__, __LINE__, global_cfg.wps_pin, psm_global_param->wps_pin);
 }
 
