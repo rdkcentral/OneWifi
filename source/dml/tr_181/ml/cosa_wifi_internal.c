@@ -1118,66 +1118,50 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
 **********************************************************************/
 
 ANSC_STATUS
-CosaWifiInitialize
-    (
-        ANSC_HANDLE                 hThisObject
-    )
+CosaWifiInitialize(ANSC_HANDLE hThisObject)
 {
-    ANSC_STATUS                     returnStatus        = ANSC_STATUS_SUCCESS;
-    PCOSA_DATAMODEL_WIFI            pMyObject           = (PCOSA_DATAMODEL_WIFI)hThisObject;
-    PPOAM_IREP_FOLDER_OBJECT        pPoamIrepFoCOSA     = (PPOAM_IREP_FOLDER_OBJECT )NULL;
-    PPOAM_IREP_FOLDER_OBJECT        pPoamIrepFoWifi     = (PPOAM_IREP_FOLDER_OBJECT )NULL;
-    /*PPOAM_COSAWIFIDM_OBJECT*/ANSC_HANDLE         pPoamWiFiDm         = (/*PPOAM_COSAWIFIDM_OBJECT*/ANSC_HANDLE  )NULL;
-    /*PSLAP_COSAWIFIDM_OBJECT*/ANSC_HANDLE         pSlapWifiDm         = (/*PSLAP_COSAWIFIDM_OBJECT*/ANSC_HANDLE  )NULL;
+    ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
+    PCOSA_DATAMODEL_WIFI pMyObject = (PCOSA_DATAMODEL_WIFI)hThisObject;
+    PPOAM_IREP_FOLDER_OBJECT pPoamIrepFoCOSA = (PPOAM_IREP_FOLDER_OBJECT)NULL;
+    PPOAM_IREP_FOLDER_OBJECT pPoamIrepFoWifi = (PPOAM_IREP_FOLDER_OBJECT)NULL;
+    /*PPOAM_COSAWIFIDM_OBJECT*/ ANSC_HANDLE pPoamWiFiDm =
+        (/*PPOAM_COSAWIFIDM_OBJECT*/ ANSC_HANDLE)NULL;
+    /*PSLAP_COSAWIFIDM_OBJECT*/ ANSC_HANDLE pSlapWifiDm =
+        (/*PSLAP_COSAWIFIDM_OBJECT*/ ANSC_HANDLE)NULL;
     webconfig_dml_t *webconfig_dml;
 
-    CcspWifiTrace(("RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi initialize. \n"));
+    CcspWifiTrace(
+        ("RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi initialize. \n"));
 
     pMyObject->hPoamWiFiDm = (ANSC_HANDLE)pPoamWiFiDm;
     pMyObject->hSlapWiFiDm = (ANSC_HANDLE)pSlapWifiDm;
 
     /* Initiation all functions */
-    
+
     /*Read configuration*/
     pMyObject->hIrepFolderCOSA = g_GetRegistryRootFolder(g_pDslhDmlAgent);
     pPoamIrepFoCOSA = (PPOAM_IREP_FOLDER_OBJECT)pMyObject->hIrepFolderCOSA;
 
-    if ( !pPoamIrepFoCOSA )
-    {
+    if (!pPoamIrepFoCOSA) {
         returnStatus = ANSC_STATUS_FAILURE;
-        CcspTraceWarning(("CosaWifiInitialize - hIrepFolderCOSA failed\n"));
-
-        goto  EXIT;
+        CcspWifiTrace(("RDK_LOG_WARN, CosaWifiInitialize - hIrepFolderCOSA failed\n"));
+        goto EXIT;
     }
 
     /*Get Wifi entry*/
-    pPoamIrepFoWifi = 
-        (PPOAM_IREP_FOLDER_OBJECT)pPoamIrepFoCOSA->GetFolder
-            (
-                (ANSC_HANDLE)pPoamIrepFoCOSA,
-                COSA_IREP_FOLDER_NAME_WIFI
-            );
+    pPoamIrepFoWifi = (PPOAM_IREP_FOLDER_OBJECT)pPoamIrepFoCOSA->GetFolder(
+        (ANSC_HANDLE)pPoamIrepFoCOSA, COSA_IREP_FOLDER_NAME_WIFI);
 
-    if ( !pPoamIrepFoWifi )
-    {
-        pPoamIrepFoWifi =
-            pPoamIrepFoCOSA->AddFolder
-                (
-                    (ANSC_HANDLE)pPoamIrepFoCOSA,
-                    COSA_IREP_FOLDER_NAME_WIFI,
-                    0
-                );
+    if (!pPoamIrepFoWifi) {
+        pPoamIrepFoWifi = pPoamIrepFoCOSA->AddFolder((ANSC_HANDLE)pPoamIrepFoCOSA,
+            COSA_IREP_FOLDER_NAME_WIFI, 0);
     }
 
-    if ( !pPoamIrepFoWifi )
-    {
+    if (!pPoamIrepFoWifi) {
         returnStatus = ANSC_STATUS_FAILURE;
-        CcspTraceWarning(("CosaWifiInitialize - pPoamIrepFoWifi failed\n"));
-
-        goto  EXIT;
-    }
-    else
-    {
+        CcspWifiTrace(("RDK_LOG_WARN, CosaWifiInitialize - pPoamIrepFoWifi failed\n"));
+        goto EXIT;
+    } else {
         pMyObject->hIrepFolderWifi = (ANSC_HANDLE)pPoamIrepFoWifi;
     }
 
@@ -1186,9 +1170,10 @@ CosaWifiInitialize
 
     get_all_param_from_psm_and_set_into_db();
 
-    webconfig_dml = (webconfig_dml_t *)get_webconfig_dml(); 
-    if(webconfig_dml == NULL){
-        wifi_util_dbg_print(WIFI_DMCLI, "%s: get_webconfig_dml return NULLL pointer\n", __FUNCTION__);
+    webconfig_dml = (webconfig_dml_t *)get_webconfig_dml();
+    if (webconfig_dml == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s: get_webconfig_dml return NULLL pointer\n",
+            __FUNCTION__);
         return -1;
     }
 
@@ -1197,9 +1182,11 @@ CosaWifiInitialize
         return -1;
     }
 
-    wifi_util_dbg_print(WIFI_DMCLI, "%s: DML cahce %s\n", __FUNCTION__,webconfig_dml->radios[0].vaps.vap_map.vap_array[0].u.bss_info.ssid);
-    CcspWifiTrace(("RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi initialization complete. \n"));
-    get_stubs_descriptor()->t2_event_d_fn("WIFI_INFO_CosaWifiinit",1);
+    wifi_util_dbg_print(WIFI_DMCLI, "%s: DML cahce %s\n", __FUNCTION__,
+        webconfig_dml->radios[0].vaps.vap_map.vap_array[0].u.bss_info.ssid);
+    CcspWifiTrace(("RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi "
+                   "initialization complete. \n"));
+    get_stubs_descriptor()->t2_event_d_fn("WIFI_INFO_CosaWifiinit", 1);
 
     set_dml_init_status(true);
     getParamWifiRegionUpdateSource();
@@ -1210,9 +1197,8 @@ CosaWifiInitialize
 #endif // NEWPLATFORM_PORT
 
 EXIT:
-        CcspTraceWarning(("CosaWifiInitialize - returnStatus %ld\n", returnStatus));
-
-	return returnStatus;
+    CcspWifiTrace(("RDK_LOG_WARN, CosaWifiInitialize - returnStatus %lu\n", returnStatus));
+    return returnStatus;
 }
 
 /**********************************************************************
