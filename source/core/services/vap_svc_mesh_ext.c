@@ -516,6 +516,7 @@ void ext_start_scan(vap_svc_t *svc)
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     INT num_channels;
     INT channels_list[MAX_CHANNELS];
+    INT mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -550,6 +551,10 @@ void ext_start_scan(vap_svc_t *svc)
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
             radio_index);
 
+        if (ext->is_on_channel) {
+            mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
+        }
+
         radio_oper_param = get_wifidb_radio_map(radio_index);
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
@@ -560,10 +565,10 @@ void ext_start_scan(vap_svc_t *svc)
                sizeof(*channels_list) * num_channels);
         channels.num_channels = num_channels;
 
-        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time,
-            channels.num_channels, channels.channels_list);
+        wifi_hal_startScan(radio_index, mode, dwell_time, channels.num_channels,
+            channels.channels_list);
     }
-
+    ext->is_on_channel = false;
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_timeout_handler_id,
                 process_scan_result_timeout, svc,
                 EXT_SCAN_RESULT_TIMEOUT, 1, FALSE);
@@ -740,6 +745,9 @@ void ext_try_connecting(vap_svc_t *svc)
     unsigned int i, vap_index, radio_index;
     bss_candidate_t         *candidate;
     mac_addr_str_t bssid_str;
+    bss_candidate_t *temp = NULL;
+    bss_candidate_t *new_bss = NULL;
+    bss_candidate_t *last_connected_bss = NULL;
     bool found_at_least_one_candidate = false;
     wifi_ctrl_t *ctrl;
 
@@ -758,13 +766,39 @@ void ext_try_connecting(vap_svc_t *svc)
         candidate = ext->candidates_list.scan_list;
 
         for (i = 0; i < ext->candidates_list.scan_count; i++) {
-            if ((candidate->conn_attempt == connection_attempt_wait) && (candidate->conn_retry_attempt < STA_MAX_CONNECT_ATTEMPT)) {
-                candidate->conn_retry_attempt++;
-                found_at_least_one_candidate = true;
+            if (temp == NULL && (candidate->conn_attempt == connection_attempt_wait) &&
+                (candidate->conn_retry_attempt < STA_MAX_CONNECT_ATTEMPT)) {
+                temp = candidate;
+            }
+            if (new_bss == NULL &&
+                !memcmp(candidate->external_ap.bssid, ext->new_bss.external_ap.bssid,
+                    sizeof(candidate->external_ap.bssid))) {
+                new_bss = candidate;
                 break;
+            } else if (last_connected_bss == NULL &&
+                !memcmp(candidate->external_ap.bssid, ext->last_connected_bss.external_ap.bssid,
+                    sizeof(candidate->external_ap.bssid))) {
+                last_connected_bss = candidate;
             }
 
             candidate++;
+        }
+        if (new_bss || last_connected_bss || temp) {
+            if (new_bss) {
+                candidate = new_bss;
+                candidate->conn_retry_attempt = 1;
+                candidate->conn_attempt = connection_attempt_wait;
+                memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
+            } else if (last_connected_bss) {
+                candidate = last_connected_bss;
+                candidate->conn_retry_attempt = 1;
+                candidate->conn_attempt = connection_attempt_wait;
+                memset(&ext->last_connected_bss, 0, sizeof(bss_candidate_t));
+            } else if (temp) {
+                candidate = temp;
+                candidate->conn_retry_attempt++;
+            }
+            found_at_least_one_candidate = true;
         }
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - conn_state : %s\n", __func__, __LINE__,
@@ -1056,19 +1090,17 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->ext_connect_algo_processor_id = 0;
     }
 
-    ext_set_conn_state(ext, connection_state_connection_to_nb_in_progress, __func__,
-        __LINE__);
-
     // If BSSID changed on the same band need to initiate disconnection before connection to avoid
     // HAL error. On different band try to connect to new BSSID before disconnection.
+    // disconnect will be executed if new bssid is found in the scan results
     if (ext->connected_vap_index == vap_info->vap_index) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n",
-            __func__, __LINE__, ext->connected_vap_index);
-        if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index: %d\n",
-                __func__, __LINE__, ext->connected_vap_index);
-        }
-        return 0;
+        ext_set_conn_state(ext, connection_state_connected_scan_list, __func__, __LINE__);
+    } else {
+        ext->is_radio_ignored = true;
+        ext->ignored_radio_index = get_radio_index_for_vap_index(svc->prop,
+            ext->connected_vap_index);
+        ext->is_on_channel = true;
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
     }
 
     schedule_connect_sm(svc);
@@ -1651,9 +1683,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
             candidate = &ext->new_bss;
             found_candidate = true;
-        } else if ((ext->conn_state == connection_state_connection_to_lcb_in_progress) ||
-                (ext->conn_state == connection_state_connected)) {
-
+        } else if ((ext->conn_state == connection_state_connection_to_lcb_in_progress)) {
             if (ext->is_radio_ignored == true) {
                 candidate = NULL;
                 found_candidate = false;
@@ -1681,6 +1711,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             ext_set_conn_state(ext, connection_state_connection_in_progress, __func__, __LINE__);
             candidate = ext->candidates_list.scan_list;
             found_candidate = true;
+        } else if ((ext->conn_state == connection_state_connected)) {
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                __LINE__);
         }
     }
 
@@ -1711,19 +1744,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         if ((found_candidate == false && (ext->conn_state != connection_state_connected)) ||
                 ((found_candidate == true) && (candidate->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT))) {
             // fallback to last connected bssid if new bssid fails
-            if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
-                // clear new bssid since it is not used for reconnection
-                memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
-
-                // connection to new bssid is done before disconnection so the last bssid
-                // still can be connected
-                if (!is_connected_to_bssid(ext)) {
-                    ext_set_conn_state(ext, connection_state_connection_to_lcb_in_progress,
-                        __func__, __LINE__);
-                    candidate = &ext->last_connected_bss;
-                } else {
-                    ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
-                }
+            if (ext->conn_state == connection_state_connection_to_nb_in_progress &&
+                is_connected_to_bssid(ext)) {
+                ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
             } else {
                 candidate->conn_attempt = connection_attempt_failed;
                 ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
@@ -1740,8 +1763,10 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     } else if((found_candidate == false) && (ext->conn_state != connection_state_connected)) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d candidate null connection state: %s\r\n",
             __func__, __LINE__, ext_conn_state_to_str(ext->conn_state));
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-
+        if (ext->conn_state != connection_state_disconnected_scan_list_none) {
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                __LINE__);
+        }
         schedule_connect_sm(svc);
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate null connection state: %s\r\n", __func__,
