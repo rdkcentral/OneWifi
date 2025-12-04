@@ -79,6 +79,7 @@ extern "C" {
 #define WIFI_COLLECT_STATS_ASSOC_DEVICE_STATS          "Device.WiFi.CollectStats.AccessPoint.{i}.AssociatedDeviceStats"
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
+#define WIFI_PRIVATE_HOTSPOT_CLIENT_IP                 "Device.VAP.X_RDK_IpAddr" //added only for poc purpose
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
 #ifdef CONFIG_IEEE80211BE

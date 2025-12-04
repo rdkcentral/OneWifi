@@ -1623,6 +1623,43 @@ static void wifi_sta_5g_status_handler(char *event_name, raw_data_t *p_data, voi
 }
 #endif
 
+static void handlePrivateHotspotClientDisconnect(char *event_name, raw_data_t *p_data, void *userData)
+{
+    (void)userData;
+    char *pTmp = NULL;
+    char mac[64] = {0};
+    int index = 0;
+    char tmp_str[120];
+       
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+    
+    pTmp = (char *)p_data->raw_data.bytes;
+
+    if((strcmp(event_name, WIFI_PRIVATE_HOTSPOT_CLIENT_IP) != 0) || (pTmp == NULL)) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->data_type);
+        return;
+    }
+    // Find the position of the underscore
+    char *tmp = strchr(pTmp, '_');
+    if (tmp != NULL) {
+        // Copy MAC (characters before '_')
+        size_t mac_len = tmp - pTmp;
+        strncpy(mac, pTmp, mac_len);
+        mac[mac_len] = '\0';
+
+        // Convert index (characters after '_') to integer
+        index = atoi(tmp + 1);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid  format:\n", __func__, __LINE__);
+        return;
+
+    }
+    memset(tmp_str, 0, sizeof(tmp_str));
+    snprintf(tmp_str, sizeof(tmp_str), "%d-%s-0", (index-1),mac);
+    push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
+}
+
 #if defined(RDKB_EXTENDER_ENABLED)
 static void eth_bh_status_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
@@ -2003,6 +2040,17 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 #endif
+    if(ctrl->privateHotspotIPSubscribed == false) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_PRIVATE_HOTSPOT_CLIENT_IP,handlePrivateHotspotClientDisconnect, NULL, 
+            0) != bus_error_success) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
+                    __FUNCTION__, __LINE__, WIFI_PRIVATE_HOTSPOT_CLIENT_IP);
+        } else {
+            ctrl->privateHotspotIPSubscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                __FUNCTION__, __LINE__, WIFI_PRIVATE_HOTSPOT_CLIENT_IP);
+        }
+    }
 }
 
 bus_error_t get_sta_connection_timeout(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
