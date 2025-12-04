@@ -377,7 +377,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
         csi->no_of_mac = 0;
     }
 
-    strncpy(mac_list, r_mac_list, MAX_CSI_CLIENTMACLIST_STR);
+    snprintf(mac_list, MAX_CSI_CLIENTMACLIST_STR, "%s", r_mac_list);
     rest = mac_list;
     if (strlen(mac_list) > 0)  {
         gettimeofday(&t_now, NULL);
