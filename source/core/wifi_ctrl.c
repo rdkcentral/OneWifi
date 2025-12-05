@@ -608,6 +608,11 @@ bool check_for_greylisted_mac_filter(void)
 
 void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 {
+    if (name == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: name is NULL\n", __func__, __LINE__);
+        return;
+    }
+
     int rc = bus_error_success;
     unsigned int total_slept = 0;
     char *pTmp = NULL;
@@ -718,8 +723,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         }
 
         /* Ensure no corruption and name string is still valid */
-        if (name) {
-            get_bus_descriptor()->bus_data_free_fn(&data);
+        get_bus_descriptor()->bus_data_free_fn(&data);
         }
     }
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus_data_get_fn for %s: value:%d\n", __func__, __LINE__,
@@ -783,7 +787,6 @@ void start_gateway_vaps()
     value = false;
     // start public if tunnel is up
     bus_get_vap_init_parameter(WIFI_DEVICE_TUNNEL_STATUS, &value);
-    if (value == true) {
         set_wifi_public_vap_enable_status();
         pub_svc->start_fn(pub_svc, WIFI_ALL_RADIO_INDICES, NULL);
     }
