@@ -61,10 +61,10 @@ typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 #define MAX_SCAN_RESULT_WAIT                   2
 // max connection algoritham timeout 4 minutes
 #define MAX_CONNECTION_ALGO_TIMEOUT            4 * 60
-#define EXT_CONNECT_ALGO_PROCESSOR_INTERVAL    1000
+#define EXT_CONNECT_ALGO_PROCESSOR_INTERVAL    20000
 
-#define EXT_SCAN_RESULT_TIMEOUT                4000
-#define EXT_SCAN_RESULT_WAIT_TIMEOUT           4000
+#define EXT_SCAN_RESULT_TIMEOUT                9000
+#define EXT_SCAN_RESULT_WAIT_TIMEOUT           9000
 #define EXT_CONN_STATUS_IND_TIMEOUT            5000
 #define EXT_IGNITE_CONN_STATUS_IND_TIMEOUT     10000
 #ifndef EXT_CSA_WAIT_TIMEOUT
