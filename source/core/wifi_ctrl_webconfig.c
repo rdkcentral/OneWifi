@@ -836,8 +836,7 @@ static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_nam
 
         mld_conf = &vap_info->u.bss_info.mld_info.common_info;
 
-        /* Initialize mld_mac with VAP's BSSID */
-        memcpy(mld_conf->mld_addr, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
+        memcpy(mld_conf->mld_addr, mgr_vap_info->u.bss_info.mld_info.common_info.mld_addr, sizeof(mac_address_t));
 
         if (mld_conf->mld_enable && mld_conf->mld_id < MLD_UNIT_COUNT && mld_conf->mld_link_id < MAX_NUM_MLD_LINKS) {
             if (mld_id == 255)
