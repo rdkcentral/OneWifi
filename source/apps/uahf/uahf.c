@@ -15,12 +15,12 @@ void* uahf_worker_task(void* arg) {
     wifi_app_t* app = (wifi_app_t*)arg;
     uahf_data_t* d = GET_UAHF(app);
 
-    wifi_util_error_print(WIFI_CTRL, "UAHF: starting server in detached thread\n");
+    wifi_util_error_print(WIFI_APPS, "UAHF: starting server in detached thread\n");
 
     // 1. Run the server directly (BLOCKING)
     // This will sit here until the user submits the form and the loop breaks
     uahf_start_server(app);
-    wifi_util_error_print(WIFI_CTRL, "UAHF: server exited in detached thread\n");
+    wifi_util_error_print(WIFI_APPS, "UAHF: server exited from detached thread\n");
 
     // 2. Update State (Critical Section)
     pthread_mutex_lock(&d->app_lock);
@@ -35,53 +35,58 @@ void* uahf_worker_task(void* arg) {
   // Pass to AppMgr or other logic
   // process_login(d->username, d->password);
 #define BUFFER_SIZE 4096
-    char command_buffer[BUFFER_SIZE];
+    /*char command_buffer[BUFFER_SIZE];
     int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", d->username);
     if (len == 0) printf("have to use this somewhere to disable -Wall error");
-    wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set ssid for vap 15\n", __func__, __LINE__);
+    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 15\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf :  called set ssid for vap 15\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf :  called set ssid for vap 15\n", __func__, __LINE__);
 
     len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.16.SSID string %s", d->username);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set ssid for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 16\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set ssid for vap 16\n", __func__, __LINE__);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set ssid for vap 24\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set ssid for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set ssid for vap 24\n", __func__, __LINE__);
 
     len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.24.SSID string %s", d->username);
     system(command_buffer);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf :  called set ssid for vap 24\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf :  called set ssid for vap 24\n", __func__, __LINE__);
 
     len = snprintf( command_buffer, BUFFER_SIZE,
             "dmcli eRT setv Device.WiFi.AccessPoint.15.Security.KeyPassphrase string %s", d->password);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set psk for vap 15\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 15\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk  for vap 15\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk  for vap 15\n", __func__, __LINE__);
 
     len = snprintf( command_buffer, BUFFER_SIZE,
             "dmcli eRT setv Device.WiFi.AccessPoint.16.Security.KeyPassphrase string %s", d->password);
 
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set psk for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : will call set psk for vap 16, with %s \n", __func__, __LINE__, d->password);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 16\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: cmd: %s\n", __func__, __LINE__, command_buffer);
 
     len = snprintf( command_buffer, BUFFER_SIZE,
             "dmcli eRT setv Device.WiFi.AccessPoint.24.Security.KeyPassphrase string %s", d->password);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : about to call set psk for vap 24\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : about to call set psk for vap 24\n", __func__, __LINE__);
 
     system(command_buffer);
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called set psk for vap 24, call start ext vaps\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 24, call start ext vaps\n", __func__, __LINE__);
 
-    system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true");
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : will be called start extender vaps\n", __func__, __LINE__);
+    system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true"); */
+//wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : will call start extender vaps\n", __func__, __LINE__);
 
-    start_extender_vaps();
-wifi_util_error_print(WIFI_CTRL, "%s:%d: uahf : called start extender vaps\n", __func__, __LINE__);
+   // start_extender_vaps();
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called start extender vaps\n", __func__, __LINE__);
 
+wifi_util_error_print(WIFI_APPS, "%s:%d: will called start uahf vaps\n", __func__, __LINE__);
+
+start_uahf_vaps(TRUE, d->username, d->password);
+wifi_util_error_print(WIFI_APPS, "%s:%d: called start uahf vaps\n", __func__, __LINE__);
 
     return NULL;
 }
@@ -92,6 +97,8 @@ int uahf_update(wifi_app_t *app) {
 
     // --- Trigger Server ---
     if (!d->worker_running && !d->worker_done) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: wILL try to create thread\n", __func__, __LINE__);
+
         pthread_mutex_lock(&d->app_lock);
         
         // Clear old data just in case
@@ -108,7 +115,7 @@ int uahf_update(wifi_app_t *app) {
             pthread_attr_t attr;
             pthread_attr_init(&attr);
             pthread_attr_setstacksize(&attr, 128 * 1024); 
-    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf:about to spawn a thread with server\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_APPS, "%s:%d: uahf:about to spawn a thread with server\n", __func__, __LINE__);
 
             if (pthread_create(&d->worker_tid, &attr, uahf_worker_task, app) == 0) {
                 pthread_detach(d->worker_tid); // Fire and forget
@@ -122,7 +129,7 @@ int uahf_update(wifi_app_t *app) {
         pthread_mutex_unlock(&d->app_lock);
 
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf spawned a thread succ\n", __func__, __LINE__);
+//    wifi_util_error_print(WIFI_APPS, "%s:%d: uahf after  spawning a thread block\n", __func__, __LINE__);
 
     // --- Process Results --
     // dead cpde for now
@@ -135,11 +142,11 @@ int uahf_update(wifi_app_t *app) {
                                  d->username, d->password);
 
 
-            d->worker_done = false; 
+            d->worker_done = true; //for now we leave it here,so that it isn't restarted several times. 
         }
         pthread_mutex_unlock(&d->app_lock);
     }
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf: exit\n", __func__, __LINE__);
+//wifi_util_error_print(WIFI_APPS, "%s:%d: uahf: exit\n", __func__, __LINE__);
 
     return RETURN_OK;
 }

@@ -261,7 +261,12 @@ static void schedule_connect_sm(vap_svc_t *svc)
     }
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
-        process_ext_connect_algorithm, svc, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
+        process_ext_connect_algorithm, svc, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, TRUE);
+
+/*int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
+                                int (*cb)(void *arg), void *arg, unsigned int interval_ms,
+                                unsigned int repetitions, bool start_immediately)
+*/
 }
 
 void ext_incomplete_scan_list(vap_svc_t *svc)
@@ -271,6 +276,8 @@ void ext_incomplete_scan_list(vap_svc_t *svc)
     ext->wait_scan_result++;
     if (ext->wait_scan_result > MAX_SCAN_RESULT_WAIT) {
         ext->wait_scan_result = 0;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d scan result inscomplete!!\n", __func__, __LINE__);
+
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
         ext->scanned_radios = 0;
         schedule_connect_sm(svc);
@@ -564,12 +571,12 @@ int process_udhcp_ip_check(vap_svc_t *svc)
 void cancel_scan_result_timer(wifi_ctrl_t *l_ctrl, vap_svc_ext_t *l_ext)
 {
     if (l_ext->ext_scan_result_timeout_handler_id != 0) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d - cancel wifi start scan timer\r\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d - cancel wifi start scan timer\r\n", __func__, __LINE__);
         scheduler_cancel_timer_task(l_ctrl->sched, l_ext->ext_scan_result_timeout_handler_id);
         l_ext->ext_scan_result_timeout_handler_id = 0;
     }
     if (l_ext->ext_connected_scan_result_timeout_handler_id != 0) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d - cancel wifi start scan timer\r\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d - cancel wifi start scan timer\r\n", __func__, __LINE__);
         scheduler_cancel_timer_task(l_ctrl->sched, l_ext->ext_connected_scan_result_timeout_handler_id);
         l_ext->ext_connected_scan_result_timeout_handler_id = 0;
     }
@@ -592,13 +599,13 @@ void ext_start_scan(vap_svc_t *svc)
     ext = &svc->u.ext;
 
     if (ext->conn_state != connection_state_disconnected_scan_list_none) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi_scan completed, current state: %s\r\n",__func__,
+        wifi_util_info_print(WIFI_CTRL,"%s:%d wifi_scan completed, current state: %s\r\n",__func__,
             __LINE__, ext_conn_state_to_str(ext->conn_state));
         return;
     }
 
     cancel_scan_result_timer(ctrl, ext);
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Enter......\r\n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d Enter......\r\n",__func__, __LINE__);
     // first free up scan list
     if (ext->candidates_list.scan_list != NULL) {
         ext->candidates_list.scan_count = 0;
@@ -626,6 +633,8 @@ void ext_start_scan(vap_svc_t *svc)
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
                 radio_oper_param->DfsEnabled) != RETURN_OK) {
+                        wifi_util_info_print(WIFI_CTRL, "%s:%d ---- \n", __func__, __LINE__);
+
             continue;
         }
         (void)memcpy(channels.channels_list, channels_list,
@@ -634,14 +643,17 @@ void ext_start_scan(vap_svc_t *svc)
 
         if (get_sta_ssid_from_radio_config_by_radio_index(radio_index, ssid)) {
             // Didn't find a STA for this radio index
+                wifi_util_info_print(WIFI_CTRL, "%s:%d ---- \n", __func__, __LINE__);
+
             continue;
         }
         if (strlen(ssid) == 0) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d ---- \n", __func__, __LINE__);
             // SSID is wildcard SSID
             continue;
         }
 
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
             radio_index);
         wifi_hal_startScan(radio_index, mode, dwell_time, channels.num_channels,
             channels.channels_list);
@@ -694,7 +706,7 @@ void ext_connected_scan(vap_svc_t *svc)
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointer\n", __func__, __LINE__);
         return;
     }
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Enter \n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d Enter \n", __func__, __LINE__);
 
     vap_svc_ext_t *ext;
     wifi_ctrl_t *ctrl;
@@ -713,7 +725,7 @@ void ext_connected_scan(vap_svc_t *svc)
             ext->candidates_list.scan_list = NULL;
         }
 
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d start Scan on radio index %d channel %d\n", __func__, __LINE__, radio_index, ext->go_to_channel);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d start Scan on radio index %d channel %d\n", __func__, __LINE__, radio_index, ext->go_to_channel);
         wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time, 1, &ext->go_to_channel); 
     }
     
@@ -830,6 +842,8 @@ void ext_try_connecting(vap_svc_t *svc)
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Enter!\n", __func__, __LINE__);
+
 
     if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
         candidate = &ext->new_bss;
@@ -841,6 +855,7 @@ void ext_try_connecting(vap_svc_t *svc)
         candidate->conn_retry_attempt++;
     } else if (ext->conn_state == connection_state_connection_in_progress) {
         candidate = ext->candidates_list.scan_list;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d ---- \n", __func__, __LINE__);
 
         for (i = 0; i < ext->candidates_list.scan_count; i++) {
             if (temp == NULL && (candidate->conn_attempt == connection_attempt_wait) &&
@@ -861,6 +876,8 @@ void ext_try_connecting(vap_svc_t *svc)
             candidate++;
         }
         if (new_bss || last_connected_bss || temp) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d ---- \n", __func__, __LINE__);
+
             if (new_bss) {
                 candidate = new_bss;
                 candidate->conn_retry_attempt = 1;
@@ -878,7 +895,7 @@ void ext_try_connecting(vap_svc_t *svc)
             found_at_least_one_candidate = true;
         }
     } else {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - conn_state : %s\n", __func__, __LINE__,
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: assert - conn_state : %s\n", __func__, __LINE__,
             ext_conn_state_to_str(ext->conn_state));
         // should not come here in any states other than connection_state_connection_in_progress
         assert((ext->conn_state != connection_state_connection_in_progress) ||
@@ -931,7 +948,7 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
     vap_svc_ext_t   *ext;
     ext = &svc->u.ext;
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d process connection state: %s\r\n", __func__, __LINE__,
+    wifi_util_info_print(WIFI_CTRL, "%s:%d process connection state: %s\r\n", __func__, __LINE__,
         ext_conn_state_to_str(ext->conn_state));
 
     ext->ext_connect_algo_processor_id = 0;
@@ -1102,6 +1119,7 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     candidate = &ext->new_bss;
 
     uint8_mac_to_string_mac(vap_info->u.sta_info.bssid, bssid_str);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d  enter \n", __func__, __LINE__);
 
     // Support only connected/wait_for_csa/connected_scan_list -> nb_in_progress state change
     if (ext->conn_state != connection_state_connected &&
@@ -1239,7 +1257,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             ext->is_started = true;
         }
     }
-    wifi_apps_mgr_t *apps_mgr = NULL;
+ /*   wifi_apps_mgr_t *apps_mgr = NULL;
     wifi_app_t *uahf_app = NULL;
     if (ctrl != NULL) {
         apps_mgr = &ctrl->apps_mgr;
@@ -1250,7 +1268,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] error, uahf-app = NULL\n", __func__, __LINE__);
         }
-    }    
+    }    */
     if (tgt_vap_map) {
        free(tgt_vap_map);
        tgt_vap_map = NULL;
@@ -1264,6 +1282,7 @@ int process_ext_webconfig_set_data(vap_svc_t *svc, void *arg)
     bss_candidate_t         *candidate;
     vap_svc_ext_t *ext = &svc->u.ext;
     unsigned int connected_radio_index = 0;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d enter \n", __func__, __LINE__);
 
     if (radio_oper_param == NULL) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -1346,7 +1365,7 @@ static void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
 
 int process_ext_exec_timeout(vap_svc_t *svc, void *arg)
 {
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d exec timeout\n", __func__, __LINE__);
+    wifi_util_error_print(WIFI_CTRL, "%s:%d exec timeout\n", __func__, __LINE__);
 
     schedule_connect_sm(svc);
 
@@ -1360,7 +1379,7 @@ int scan_result_wait_timeout(vap_svc_t *svc)
     ext->ext_scan_result_wait_timeout_handler_id = 0;
 
     if (ext->conn_state == connection_state_disconnected_scan_list_in_progress) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d - received only %u radio scan results\r\n", __func__,
+        wifi_util_error_print(WIFI_CTRL,"%s:%d - received only %u radio scan results\r\n", __func__,
             __LINE__, ext->scanned_radios);
 
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
@@ -1401,7 +1420,7 @@ void process_ext_connected_scan_results(vap_svc_t *svc, void *arg)
     }
 
     if ((num == 0) || (bss == NULL)) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d No AP in the go to channel \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d No AP in the go to channel \n", __func__, __LINE__);
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
         schedule_connect_sm(svc);
         return;

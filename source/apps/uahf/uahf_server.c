@@ -65,6 +65,7 @@ void send_html_page(int client_fd, int showThanks)
         strcat(page,
             "<div class='note'>Thank you for providing the details!</div>");
     }
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
     strcat(page,
         "<h3>Please enter your login details</h3>"
@@ -74,8 +75,11 @@ void send_html_page(int client_fd, int showThanks)
         "<input type='submit' value='Login'>"
         "</form>"
         "</body></html>");
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
     write(client_fd, page, strlen(page));
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+
 }
 
 int uahf_start_server(wifi_app_t *app) {
@@ -83,23 +87,25 @@ int uahf_start_server(wifi_app_t *app) {
     int server_fd, client_fd;
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
-    char *buffer = NULL; // Use heap to save stack
+    //char *buffer = NULL; // Use heap to save stack
     char decoded[200]; 
     char username_local[200] = {0};
     char password_local[200] = {0};
     wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
     // Allocate buffer on heap to prevent stack overflow in small threads
-    buffer = (char*)malloc(4096);
-    if (!buffer) {
+    //buffer = (char*)malloc(BUFFER_SIZE);
+       char buffer[BUFFER_SIZE];
+
+   /* if (!buffer) {
         wifi_util_error_print(WIFI_APPS, "UAHF: OOM for buffer\n");
         return -1;
-    }
+    }*/
 
     // --- Socket Setup ---
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         wifi_util_error_print(WIFI_APPS, "%d: UAHF: SOcket failed. .\n", __LINE__);
-        free(buffer);
+      //  free(buffer);
         return -1;
     }
     wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
@@ -110,7 +116,7 @@ int uahf_start_server(wifi_app_t *app) {
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         wifi_util_error_print(WIFI_APPS, "UAHF: Bind failed. Check Port %d usage.\n", PORT);
         close(server_fd);
-        free(buffer);
+       // free(buffer);
         return -1;
     }
 
@@ -121,35 +127,50 @@ wifi_util_info_print(WIFI_APPS, "UAHF: strname length %d...\n", strlen(username_
     while (1) {
         client_fd = accept(server_fd, (struct sockaddr *)&addr, &addrlen);
         if (client_fd < 0) {
-            perror("accept");
+            wifi_util_info_print(WIFI_APPS, "UAHF: Server clientfd <0, skip loop! %d...\n", __LINE__);
             continue;
         }
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+        wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+
+        // --- FIX: SET READ TIMEOUT ---
+        // Prevents browser pre-connections (which send no data) from hanging the server
+        struct timeval tv;
+        tv.tv_sec = 2;  // 2 Second timeout
+        tv.tv_usec = 0;
+        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+
         memset(buffer, 0, BUFFER_SIZE);
-        read(client_fd, buffer, BUFFER_SIZE);
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+        
+        // --- FIX: CHECK READ RETURN VALUE ---
+        // If bytes <= 0, it means timeout or disconnect. Don't process.
+        ssize_t bytes_read = read(client_fd, buffer, BUFFER_SIZE - 1); 
+   
+//        read(client_fd, buffer, BUFFER_SIZE);
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server  read bytes %d , at line %d...\n", bytes_read, __LINE__);
+        if (bytes_read > 0) {
+            buffer[bytes_read] = '\0'; // Safety null terminate
 
         // ---- GET Request ----
         if (strncmp(buffer, "GET", 3) == 0) {
             int showThanks = 0;
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+            wifi_util_info_print(WIFI_APPS, "UAHF: Serving GET %d...\n", __LINE__);
 
-            if (strstr(buffer, "thanks=1"))
+            if (strstr(buffer, "thanks=1")) {
                 showThanks = 1;
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
-
+                wifi_util_info_print(WIFI_APPS, "UAHF: Server %d..., show thanks %d\n", __LINE__, showThanks);
+            }
             send_html_page(client_fd, showThanks);
         // --- Exit Condition ---
         	if (strlen(username_local) > 0 && showThanks) {
+                wifi_util_info_print(WIFI_APPS, "UAHF: Exit condition met, break from loop. Server %d...\n", __LINE__);
 		        close(client_fd);
                 break; 
                }
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
-
+            wifi_util_info_print(WIFI_APPS, "UAHF: Server ending GET %d...\n", __LINE__);
         }
         // ---- POST Request ----
         else if (strncmp(buffer, "POST", 4) == 0) {
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+            wifi_util_info_print(WIFI_APPS, "UAHF: Server Handling POST %d...\n", __LINE__);
 
             // Extract POST body (optional)
             char *body = strstr(buffer, "\r\n\r\n");
@@ -178,6 +199,8 @@ wifi_util_info_print(WIFI_APPS, "UAHF: strname length %d...\n", strlen(username_
             strncpy(d->username, username_local, sizeof(d->username)-1);
             strncpy(d->password, password_local, sizeof(d->password)-1);
             pthread_mutex_unlock(&d->app_lock);
+            wifi_util_info_print(WIFI_APPS, "Successfully updated thread struct\n");
+
             }
 
             wifi_util_info_print(WIFI_APPS, "uahf:POST received - redirecting with thank you note...\n");
@@ -188,15 +211,20 @@ wifi_util_info_print(WIFI_APPS, "UAHF: strname length %d...\n", strlen(username_
                 "Location: /?thanks=1\r\n"
                 "Content-Length: 0\r\n"
                 "\r\n";
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
+            wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
 
             write(client_fd, redirect, strlen(redirect));
         }
+            } else {
+            wifi_util_info_print(WIFI_APPS, "UAHF: Read timeout or empty. Dropping connection.\n");
+        }
+            close(client_fd);
+        wifi_util_info_print(WIFI_APPS, "UAHF: Closed client_fd. Looping... %d...\n", __LINE__);
     }
-    wifi_util_info_print(WIFI_APPS, "UAHF: Server %d...\n", __LINE__);
-
+    
+    wifi_util_info_print(WIFI_APPS, "UAHF: Server shutdown %d...\n", __LINE__);
     close(server_fd);
-    free(buffer);
+   // free(buffer);
 
 /*
     char command_buffer[BUFFER_SIZE];
