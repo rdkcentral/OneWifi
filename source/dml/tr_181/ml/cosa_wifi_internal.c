@@ -300,7 +300,7 @@ void CosaDmlWiFiGetFromPSM(void)
     hash_map_t *psm_mac_map;
     wifi_radio_operationParam_t radio_cfg;
     wifi_radio_feature_param_t radio_feat_cfg;
-    wifi_vap_info_t vap_config;
+    wifi_vap_info_t *vap_config = NULL;
     wifi_front_haul_bss_t *bss_cfg;
     wifi_global_param_t global_cfg;
     UINT vap_index;
@@ -564,7 +564,8 @@ void CosaDmlWiFiGetFromPSM(void)
                 continue;
             }
 
-            bss_cfg = &vap_config.u.bss_info;
+            vap_config = (wifi_vap_info_t *)get_wifidb_vap_parameters(vap_index);
+            bss_cfg = &vap_config->u.bss_info;
             psm_vap_param = get_vap_psm_obj(vap_index);
             if (psm_vap_param == NULL) {
                 wifi_util_dbg_print(WIFI_PSM,"%s:%d psm vap param NULL vap_index:%d\r\n", __func__, __LINE__, (instance_number - 1));
