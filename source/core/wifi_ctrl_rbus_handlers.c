@@ -146,8 +146,8 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     }
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RFStatus : %d\n", __func__, __LINE__, ctrl->rf_status_down);
-    start_station_vaps(rf_status);
-    wifi_util_error_print(WIFI_CTRL, "%s:%d [MCPOC] RF-Status : %d, enable station vaps by default\n", __func__, __LINE__, ctrl->rf_status_down);
+   // start_station_vaps(rf_status);
+    wifi_util_error_print(WIFI_CTRL, "%s:%d [MCPOC] RF-Status : %d, start-station vaps moved to thread\n", __func__, __LINE__, ctrl->rf_status_down);
 
     wifi_util_error_print(WIFI_CTRL, "%s:%d [MCPOC] RF-Status : will start http server too!\n", __func__, __LINE__);
 

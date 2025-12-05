@@ -405,7 +405,7 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int* subdoc);
 void start_uahf_vaps(bool rf_status, const char *hotspotSsid, const char *hotspotPsk);
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
-void start_station_vaps(bool enable);
+void start_station_vaps(bool enable, const char *hotspotSsid, const char *hotspotPsk);
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
 int publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);

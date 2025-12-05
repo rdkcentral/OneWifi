@@ -33,7 +33,24 @@ void* uahf_worker_task(void* arg) {
                                  d->username, d->password);
 
   // Pass to AppMgr or other logic
-  // process_login(d->username, d->password);
+    // process_login(d->username, d->password);
+
+
+  /* reviewed options to apply data gotten from the server:
+   * 1. dmcli (doesnt seem to work - ignored with start_station_Vaps);, without vaps doesnt start
+   *    precondition - update  Security_SetParamStringValue in cosa_wifi_dml.c
+   *    Due to checking security_mode_support_radius() (likely set by ignite in start_extender_Vaps) on vaps,
+   *    it prevents saving a passphrase. Cooment "return FALSE"; 
+   * 2. copy-paster start_station_vaps; done with start_uahf_vaps() method;
+   *    Once errors were fixed and logic slightly improved it triggers SIGSEGV crash while working on first vap (mesh_Sta_2g);
+   *
+   * 3. manually reconfigure station vaps;
+   *    a) removing hardcodes from start_station_vaps,esp. disabling radius
+   *    b) forget about start_station_vaps 
+   * 4. start vaps properly configured from the beginning (commenting start_station_vaps or replacing them);
+   * 
+*/
+
 #define BUFFER_SIZE 4096
     /*char command_buffer[BUFFER_SIZE];
     int len = snprintf( command_buffer, BUFFER_SIZE, "dmcli eRT setv Device.WiFi.SSID.15.SSID string %s", d->username);
@@ -81,12 +98,12 @@ wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 24, call 
 //wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : will call start extender vaps\n", __func__, __LINE__);
 
    // start_extender_vaps();
-wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called start extender vaps\n", __func__, __LINE__);
+//wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called start extender vaps\n", __func__, __LINE__);
 
-wifi_util_error_print(WIFI_APPS, "%s:%d: will called start uahf vaps\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: will called start station vaps\n", __func__, __LINE__);
 
-start_uahf_vaps(TRUE, d->username, d->password);
-wifi_util_error_print(WIFI_APPS, "%s:%d: called start uahf vaps\n", __func__, __LINE__);
+start_station_vaps(TRUE, d->username, d->password);
+wifi_util_error_print(WIFI_APPS, "%s:%d: called start station vaps, exit\n", __func__, __LINE__);
 
     return NULL;
 }
