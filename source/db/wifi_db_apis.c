@@ -7454,7 +7454,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     memset(temp, 0, sizeof(temp));
     if (wifi_hal_get_default_country_code(temp) < 0) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to get default country code setting a USI\n", __func__, __LINE__);
-        strncpy(cfg.wifi_region_code, "USI",sizeof(cfg.wifi_region_code)-1);
+        snprintf(cfg.wifi_region_code, sizeof(cfg.wifi_region_code), "USI");
     } else {
         snprintf(cfg.wifi_region_code, sizeof(cfg.wifi_region_code), "%sI", temp);
     }

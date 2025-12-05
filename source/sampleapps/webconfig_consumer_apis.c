@@ -1892,7 +1892,7 @@ int decode_802_11_frame(webconfig_consumer_t *consumer, unsigned int vap_index, 
     rbusObject_t rdata;
     rbusValue_t value;
     int rc;
-    frame_data_t frame_data;
+    frame_data_t frame_data = { 0 };
     FILE *fp = NULL;
     char tmp_buff[MAX_FRAME_SZ], *tmp;
     unsigned int count = 0, nlen = 0, pos = 0;
@@ -1904,13 +1904,12 @@ int decode_802_11_frame(webconfig_consumer_t *consumer, unsigned int vap_index, 
     }
 
     memset(tmp_buff, 0, MAX_FRAME_SZ);
-    memset(frame_data.frame.data, 0, MAX_FRAME_SZ);
     while ((tmp = fgets(tmp_buff, MAX_FRAME_SZ, fp)) != NULL) {
         nlen = strlen(tmp);
         pos = 2;
         while (pos <= (nlen - 1)) {
             tmp_buff[pos] = 0;
-            sscanf(tmp, "%02hhx", (uint8_t *)&frame_data.frame.data[count]);
+            sscanf(tmp, "%02hhx", (uint8_t *)&frame_data.data[count]);
             count++; pos += 3; tmp += 3;
         }
         memset(tmp_buff, 0, MAX_FRAME_SZ);

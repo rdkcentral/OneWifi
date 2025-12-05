@@ -1653,7 +1653,7 @@ void process_wifi_host_sync()
                 continue;
             }
 
-            if (hosts.count > LM_MAX_HOSTS_NUM) {
+            if (hosts.count >= LM_MAX_HOSTS_NUM) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d has reached LM_MAX_HOSTS_NUM\n", __func__, __LINE__);
                 break;
             }
