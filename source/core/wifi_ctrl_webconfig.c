@@ -1262,6 +1262,11 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
 
     wifi_util_dbg_print(WIFI_MGR,"%s %d \n", __func__, __LINE__);
 
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_MGR,"%s:%d data is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     mgr_cfg_map = mgr->vif_neighbors_map;
     dec_cfg_map = data->vif_neighbors_map;
 
@@ -1319,7 +1324,7 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
         }
     }
   free_data:
-    if ((data != NULL) && (dec_cfg_map != NULL)) {
+    if (dec_cfg_map != NULL) {
         wifi_util_dbg_print(WIFI_MGR,"%s %d Freeing Decoded Data \n", __func__, __LINE__);
         dec_vif_neighbors = hash_map_get_first(dec_cfg_map);
         while (dec_vif_neighbors != NULL) {
