@@ -660,11 +660,11 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
               dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
               dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
               dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
+      }
       if (dev_array != NULL) {
         free(dev_array);
         dev_array = NULL;
     }
-      }
 }
 
 void process_wifiapi_command(char *command, unsigned int len)
