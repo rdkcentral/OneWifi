@@ -3808,6 +3808,34 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
+#ifdef CONFIG_IEEE80211BE
+static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
+{
+    if ((vap_info_old == NULL) || (vap_info_new == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: input args are NULL vap_info_old : %p vap_info_new : %p\n", __func__, __LINE__,
+            vap_info_old, vap_info_new);
+        return false;
+    }
+    if (vap_info_old->u.bss_info.mld_info.common_info.mld_enable ||
+        vap_info_new->u.bss_info.mld_info.common_info.mld_enable) {
+        if (IS_BIN_CHANGED(&vap_info_old->u.bss_info.mld_info.common_info.mld_addr,
+                &vap_info_new->u.bss_info.mld_info.common_info.mld_addr,
+                sizeof(vap_info_old->u.bss_info.mld_info.common_info.mld_addr))) {
+            mac_addr_str_t old_mld_mac_str = { 0 };
+            mac_addr_str_t new_mld_mac_str = { 0 };
+
+            to_mac_str(vap_info_old->u.bss_info.mld_info.common_info.mld_addr, old_mld_mac_str);
+            to_mac_str(vap_info_new->u.bss_info.mld_info.common_info.mld_addr, new_mld_mac_str);
+            wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: MLD address changed old: %s ,new: %s\n",
+                __func__, __LINE__, old_mld_mac_str, new_mld_mac_str);
+            return true;
+        }
+    }
+    return false;
+}
+#endif /* CONFIG_IEEE80211BE */
+
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3913,9 +3941,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-            IS_BIN_CHANGED(&vap_info_old->u.bss_info.mld_info.common_info.mld_addr,
-                &vap_info_new->u.bss_info.mld_info.common_info.mld_addr,
-                sizeof(vap_info_old->u.bss_info.mld_info.common_info.mld_addr)) ||
+#ifdef CONFIG_IEEE80211BE
+            is_mld_addr_changed(vap_info_old, vap_info_new) ||
+#endif /* CONFIG_IEEE80211BE */
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,
