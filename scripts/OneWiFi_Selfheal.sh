@@ -33,7 +33,9 @@ radio_6g_instance=3
 private_2g_instance=1
 private_5g_instance=2
 private_6g_instance=17
-
+lnf_2g_instance=7
+lnf_5g_instance=8
+lnf_6g_instance=20
 hal_indication="/tmp/hal_initialize_failed"
 prev_reboot_timestamp=0
 cur_reboot_timestamp=0
