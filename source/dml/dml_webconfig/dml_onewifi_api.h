@@ -35,6 +35,17 @@ typedef struct {
 } acl_data_t;
 
 typedef struct {
+    wifi_vap_info_t *mld_vaps[MAX_NUM_RADIOS];
+    UINT mld_vap_count;
+} mld_group_t;
+
+typedef struct {
+    mld_group_t mld_groups[MLD_UNIT_COUNT];
+    UINT mld_group_count;
+} apmld_map_t;
+
+
+typedef struct {
     webconfig_t		webconfig;
     wifi_global_config_t    config;
     wifi_hal_capability_t   hal_cap;
@@ -46,6 +57,7 @@ typedef struct {
     bus_handle_t         handle;
     instant_measurement_config_t harvester;
     queue_t    *csi_data_queue;
+    apmld_map_t apmld_map;
 } webconfig_dml_t;
 
 typedef struct {
@@ -121,6 +133,12 @@ hash_map_t** get_dml_acl_hash_map(unsigned int radio_index, unsigned int vap_ind
 queue_t** get_dml_acl_new_entry_queue(unsigned int radio_index, unsigned int vap_index);
 void** get_acl_vap_context();
 UINT get_num_radio_dml();
+void update_apmld_map();
+UINT get_num_apmld_dml();
+mld_group_t* get_dml_apmld_group(uint8_t apmld_index);
+UINT get_total_num_affiliated_ap_dml(mld_group_t *mld_group);
+unsigned long get_mld_associated_devices_count(mld_group_t *mld_group);
+assoc_dev_data_t *get_mld_associated_device(mld_group_t *mld_group, unsigned int dev_index);
 UINT get_total_num_vap_dml();
 void get_associated_devices_data(unsigned int radio_index);
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info);
