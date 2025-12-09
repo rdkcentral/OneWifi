@@ -251,7 +251,7 @@ check_lnf_status()
         fi
     fi
 
-    if [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "$CGM601TCOM" ] || [ "$MODEL_NUM" == "$SG417DBCT" ] || [ "$MODEL_NUM" == "$SCER11BEL" ] || [ "$MODEL_NUM" == "$SCXF11BFL" ]; then
+    if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
         radio_status_6g=`dmcli eRT retv Device.WiFi.Radio.$radio_6g_instance.Enable`
         if [ "$radio_status_6g" == "true" ]; then
             if ! ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
