@@ -158,7 +158,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         uahf_app = (wifi_app_t *)get_app_by_inst(apps_mgr, wifi_app_inst_uahf);
         if (uahf_app != NULL) {
             uahf_app->desc.update_fn(uahf_app);
-            wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] called uahf to start the http server\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] called uahf to start the http server (if needed)\n", __func__, __LINE__);
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d [MC-POC] error, uahf-app = NULL\n", __func__, __LINE__);
         }
@@ -3058,7 +3058,7 @@ int events_bus_publish(wifi_event_t *evt)
             pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
             memset(&data, 0, sizeof(raw_data_t));
             data.data_type = bus_data_type_bytes;
-            
+
             // Put wifi_frame_t at the start of the frame data
             memset(freq_frame_data, 0, sizeof(wifi_frame_t) + MAX_FRAME_SZ);
             memcpy(freq_frame_data, &evt->u.mon_data->u.msg.frame, sizeof(wifi_frame_t));
@@ -3112,7 +3112,7 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, raw_data_t *i
     }
 
     memcpy(&mac_addr, pTmp, len);
-    wifi_util_dbg_print(WIFI_CTRL, "%s %d mac : %s ifname : %s\n", __func__, __LINE__, mac_addr.mac_addr, mac_addr.if_name); 
+    wifi_util_dbg_print(WIFI_CTRL, "%s %d mac : %s ifname : %s\n", __func__, __LINE__, mac_addr.mac_addr, mac_addr.if_name);
     memset(&tmp_data, 0, sizeof(tmp_data));
     prop = (wifi_platform_property_t *)get_wifi_hal_cap_prop();
     convert_ifname_to_vapname(prop, mac_addr.if_name, vapname, sizeof(vapname));

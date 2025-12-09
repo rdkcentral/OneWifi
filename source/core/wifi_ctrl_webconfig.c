@@ -3148,7 +3148,7 @@ void start_station_vaps(bool rf_status, const char *hotspotSsid, const char *hot
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Ups\n", __func__, __LINE__);            
             continue;
         }
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Working on vap:%s\n", __func__, __LINE__, vap_names[i]);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Working on vap:%s,index%d, vapNums:%d\n", __func__, __LINE__, vap_names[i], vap_index, num_vaps);
         status = get_vap_and_radio_index_from_vap_instance(&data->u.decoded.hal_cap.wifi_prop,
             vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if (status == RETURN_ERR) {
@@ -3181,6 +3181,11 @@ void start_station_vaps(bool rf_status, const char *hotspotSsid, const char *hot
                         .u.sta_info.security.mode = wifi_security_mode_wpa_wpa2_personal;   //wpa2-psk, not radius
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s: setting sec mode to wpa2-psk\n", __func__);
                 }
+        // set scanning period
+                data->u.decoded.radios[radio_index]
+                        .vaps.vap_map.vap_array[vap_array_index]
+                        .u.sta_info.scan_params.period = 0;
+
                 memset(&data->u.decoded.radios[radio_index]
                             .vaps.vap_map.vap_array[vap_array_index].bridge_name,
                     '\0',
@@ -3341,6 +3346,23 @@ void start_station_vaps(bool rf_status, const char *hotspotSsid, const char *hot
         */}
     }
 
+/* decode_mesh_decode_mesh_sta_object(cJSON *vap)
+ //wifi_vap_info_t   vap_info
+    decode_param_string(vap, "BSSID", param);
+    string_mac_to_uint8_mac(vap_info->u.sta_info.bssid, param->valuestring);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: vapname : %s enable : %d ignite-enable : %d bssid : %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",__FUNCTION__, __LINE__, vap_info->vap_name, vap_info->u.sta_info.enabled,  vap_info->u.sta_info.ignite_enabled,
+            vap_info->u.sta_info.bssid[0], vap_info->u.sta_info.bssid[1], vap_info->u.sta_info.bssid[2],
+            vap_info->u.sta_info.bssid[3], vap_info->u.sta_info.bssid[4], vap_info->u.sta_info.bssid[5]);
+
+    // MAC
+    decode_param_string(vap, "MAC", param);
+    string_mac_to_uint8_mac(vap_info->u.sta_info.mac, param->valuestring);
+
+    // Enabled
+    decode_param_bool(vap, "Enabled", param);
+    vap_info->u.sta_info.enabled = (param->type & cJSON_True) ? true:false;
+
+*/
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) ==
         webconfig_error_none) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success, pushing event to queue\n", __FUNCTION__, __LINE__);
