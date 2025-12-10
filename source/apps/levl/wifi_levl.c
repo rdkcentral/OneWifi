@@ -114,11 +114,11 @@ static int schedule_from_pending_map(wifi_app_t *wifi_app)
             memcpy(mac_addr, levl_sc_data->mac_addr, sizeof(mac_address_t));
             levl_sc_data = hash_map_remove(p_map, mac_str);
             if (levl_sc_data != NULL) {
+                //schedule for sounding
+                schedule_mac_for_sounding(ap_index, mac_addr, levl_sc_data->duration, levl_sc_data->interval);
                 free(levl_sc_data);
             }
 
-            //schedule for sounding
-            schedule_mac_for_sounding(ap_index, mac_addr, levl_sc_data->duration, levl_sc_data->interval);
             break;
         }
     }
