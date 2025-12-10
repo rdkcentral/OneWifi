@@ -353,6 +353,11 @@ char *to_mac_str(mac_address_t mac, mac_addr_str_t key);
 int is_ssid_name_valid(char *ssid_name);
 void str_to_mac_bytes(char *key, mac_addr_t bmac);
 int get_cm_mac_address(char *mac);
+int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int expiry_time,
+    bool update_dml_and_wifi_health);
+bool is_greylist_enabled(int vap_index);
+bool is_mac_greylisted(int vap_index, char *mac_str);
+void finalize_acl_addition(const char *mac_str, int reason);
 int get_ssid_from_device_mac(char *ssid);
 wifi_interface_name_t *get_interface_name_for_vap_index(unsigned int vap_index,
     wifi_platform_property_t *wifi_prop);
