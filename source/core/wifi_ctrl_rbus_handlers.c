@@ -476,6 +476,9 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)data->raw;
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_DOC_DATA_NORTH initiated %d\n", __func__,
+            __LINE__);
+
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_DOC_DATA_NORTH,
         &rdata);
     if (rc != bus_error_success) {
@@ -2980,7 +2983,6 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
         wifi_util_error_print(WIFI_CTRL, "%s bus: bus_regDataElements failed\n", __FUNCTION__);
     }
 
-    print_registered_elems(get_bus_mux_reg_cb_map(), 0);
     wifi_util_info_print(WIFI_CTRL, "%s bus: bus event register:[%s]:%s\r\n", __FUNCTION__,
         WIFI_STA_2G_VAP_CONNECT_STATUS, WIFI_STA_5G_VAP_CONNECT_STATUS);
     return;

@@ -1244,12 +1244,12 @@ INT WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_lengt
 
     mainEntry = cJSON_AddObjectToObject(passPointCfg,"WANMetrics");
 
-    cJSON_AddNumberToObject(mainEntry,"WANInfo",g_interworking_data[apIns].passpoint.wanMetricsInfo.wanInfo); 
-    cJSON_AddNumberToObject(mainEntry,"DownlinkSpeed",g_interworking_data[apIns].passpoint.wanMetricsInfo.downLinkSpeed); 
-    cJSON_AddNumberToObject(mainEntry,"UplinkSpeed",g_interworking_data[apIns].passpoint.wanMetricsInfo.upLinkSpeed);
-    cJSON_AddNumberToObject(mainEntry,"DownlinkLoad",g_interworking_data[apIns].passpoint.wanMetricsInfo.downLinkLoad); 
-    cJSON_AddNumberToObject(mainEntry,"UplinkLoad",g_interworking_data[apIns].passpoint.wanMetricsInfo.upLinkLoad); 
-    cJSON_AddNumberToObject(mainEntry,"LMD",g_interworking_data[apIns].passpoint.wanMetricsInfo.lmd); 
+    cJSON_AddNumberToObject(mainEntry,"WANInfo",pCfg->passpoint.wanMetricsInfo.wanInfo); 
+    cJSON_AddNumberToObject(mainEntry,"DownlinkSpeed",pCfg->passpoint.wanMetricsInfo.downLinkSpeed); 
+    cJSON_AddNumberToObject(mainEntry,"UplinkSpeed",pCfg->passpoint.wanMetricsInfo.upLinkSpeed);
+    cJSON_AddNumberToObject(mainEntry,"DownlinkLoad",pCfg->passpoint.wanMetricsInfo.downLinkLoad); 
+    cJSON_AddNumberToObject(mainEntry,"UplinkLoad",pCfg->passpoint.wanMetricsInfo.upLinkLoad);
+    cJSON_AddNumberToObject(mainEntry,"LMD",pCfg->passpoint.wanMetricsInfo.lmd); 
 
 #if 0
     //cJSON_PrintPreallocated(passPointCfg, (char *)&pCfg->IEEE80211uCfg.PasspointCfg.WANMetrics, sizeof(pCfg->IEEE80211uCfg.PasspointCfg.WANMetrics),false); //ONE_WIFI TBD -N
@@ -1280,9 +1280,7 @@ void WiFi_GetHS2Stats(uint8_t vapIndex)
 	return;
     }
 
-    memset(&pCfg->anqp.passpointStats, 0, sizeof(pCfg->anqp.passpointStats));//ONE_WIFI
-
-    cJSON *passPointStats = cJSON_Parse((char*)g_interworking_data[apIns].anqp.passpointStats);
+    cJSON *passPointStats = cJSON_Parse((const char *) pCfg->anqp.passpointStats);
     if (NULL == passPointStats) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to parse JSON\n");
         return;

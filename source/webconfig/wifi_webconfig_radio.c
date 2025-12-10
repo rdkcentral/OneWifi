@@ -28,6 +28,9 @@
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 
+extern webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radio_object);
+extern webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *radio);
+
 webconfig_subdoc_object_t   radio_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version" },
     { webconfig_subdoc_object_type_subdoc, "SubDocName" },
@@ -220,6 +223,228 @@ webconfig_error_t decode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data
 
     }
     params->num_radios = size;
+
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
+    cJSON_Delete(json);
+    return webconfig_error_none;
+}
+
+webconfig_error_t init_single_radio_subdoc(webconfig_subdoc_t *doc)
+{
+    doc->num_objects = sizeof(radio_objects) / sizeof(webconfig_subdoc_object_t);
+    memcpy((unsigned char *)doc->objects, (unsigned char *)&radio_objects, sizeof(radio_objects));
+    return webconfig_error_none;
+}
+
+webconfig_error_t access_check_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+{
+    return webconfig_error_none;
+}
+
+webconfig_error_t translate_from_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+{
+    if (((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) ==
+            webconfig_data_descriptor_translate_to_ovsdb) ||
+        ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) ==
+            webconfig_data_descriptor_translate_to_easymesh)) {
+        if (config->proto_desc.translate_to(data->type, data) !=
+            webconfig_error_none) {
+            if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) ==
+                webconfig_data_descriptor_translate_to_ovsdb) {
+                return webconfig_error_translate_to_ovsdb;
+            } else {
+                return webconfig_error_translate_to_easymesh;
+            }
+        }
+    } else if ((data->descriptor & webconfig_data_descriptor_translate_to_tr181) ==
+        webconfig_data_descriptor_translate_to_tr181) {
+
+    } else {
+        // no translation required
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t translate_to_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+{
+    if (((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) ==
+            webconfig_data_descriptor_translate_from_ovsdb) ||
+        ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) ==
+            webconfig_data_descriptor_translate_from_easymesh)) {
+        if (config->proto_desc.translate_from(data->type, data) !=
+            webconfig_error_none) {
+            if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) ==
+                webconfig_data_descriptor_translate_from_ovsdb) {
+                return webconfig_error_translate_from_ovsdb;
+            } else {
+                return webconfig_error_translate_from_easymesh;
+            }
+        }
+    } else if ((data->descriptor & webconfig_data_descriptor_translate_from_tr181) ==
+        webconfig_data_descriptor_translate_from_tr181) {
+    } else {
+        // no translation required
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+{
+    cJSON *json;
+    cJSON *obj, *obj_array;
+    rdk_wifi_radio_t *radio;
+    webconfig_subdoc_decoded_data_t *params;
+    char *str;
+    int radio_index = -1;
+
+    params = &data->u.decoded;
+    json = cJSON_CreateObject();
+    data->u.encoded.json = json;
+
+    cJSON_AddStringToObject(json, "Version", "1.0");
+
+    switch (data->type) {
+    case webconfig_subdoc_type_radio_24G:
+        cJSON_AddStringToObject(json, "SubDocName", "radio_2.4G");
+        radio_index = 0;
+        break;
+    case webconfig_subdoc_type_radio_5G:
+        cJSON_AddStringToObject(json, "SubDocName", "radio_5G");
+        radio_index = 1;
+        break;
+    case webconfig_subdoc_type_radio_6G:
+        cJSON_AddStringToObject(json, "SubDocName", "radio_6G");
+        radio_index = 2;
+        break;
+    default:
+        // Invalid type, set Radio index to -1
+        radio_index = -1;
+        break;
+    }
+
+    if (radio_index < 0 || radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d radio index:%d not correct.\n", __func__,
+            __LINE__, radio_index);
+        cJSON_Delete(json);
+        return webconfig_error_encode;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Radio Index:%d\n", __func__, __LINE__, radio_index);
+
+    // encode a single radio object
+    obj_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(json, "WifiRadioConfig", obj_array);
+
+    radio = &params->radios[radio_index];
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToArray(obj_array, obj);
+
+    if (encode_radio_object(radio, obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radio object\n", __func__,
+            __LINE__);
+        cJSON_Delete(json);
+        return webconfig_error_encode;
+    }
+
+    str = cJSON_Print(json);
+
+    data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
+    if (data->u.encoded.raw == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory.\n", __func__,
+            __LINE__);
+        cJSON_free(str);
+        cJSON_Delete(json);
+        return webconfig_error_encode;
+    }
+
+    memcpy(data->u.encoded.raw, str, strlen(str));
+    cJSON_free(str);
+    cJSON_Delete(json);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_t *doc;
+    cJSON *obj_radios;
+    cJSON *obj, *obj_radio;
+    unsigned int i, size, radio_index = 0;
+    cJSON *json = data->u.encoded.json;
+    webconfig_subdoc_decoded_data_t *params;
+
+    params = &data->u.decoded;
+    doc = &config->subdocs[data->type];
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__,
+        data->u.encoded.raw);
+
+    for (i = 0; i < doc->num_objects; i++) {
+        if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: object:%s not present, validation failed\n", __func__, __LINE__,
+                doc->objects[i].name);
+            cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+            return webconfig_error_invalid_subdoc;
+        }
+    }
+
+    // decode radio objects
+    obj_radios = cJSON_GetObjectItem(json, "WifiRadioConfig");
+    if (cJSON_IsArray(obj_radios) == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present\n", __func__,
+            __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    size = cJSON_GetArraySize(obj_radios);
+    if (size != 1) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of radio objects: %d\n",
+            __func__, __LINE__, size);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    obj_radio = cJSON_GetArrayItem(obj_radios, 0);
+    // check presence of the radio name
+    if ((obj = cJSON_GetObjectItem(obj_radio, "RadioName")) == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio name not present, exiting\n", __func__,
+            __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    if (convert_radio_name_to_index(&radio_index, cJSON_GetStringValue(obj)) != 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio index not found, exiting\n", __func__,
+            __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    if (radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio index:%u exceeds MAX:%u\n", __func__,
+            __LINE__, radio_index, MAX_NUM_RADIOS);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Decoding Radio at Radio index:%u\n", __func__, __LINE__,
+        radio_index);
+
+     if (decode_radio_object(obj_radio, &params->radios[radio_index]) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio object validation failed\n", __func__,
+            __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        return webconfig_error_decode;
+    }
 
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     cJSON_Delete(json);

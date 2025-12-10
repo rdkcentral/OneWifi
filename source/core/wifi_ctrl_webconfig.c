@@ -369,10 +369,27 @@ int webconfig_send_steering_clients_status(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+int webconfig_send_multivap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t type)
+{
+    webconfig_subdoc_data_t data;
+
+    webconfig_init_subdoc_data(&data);
+
+    if (webconfig_encode(&ctrl->webconfig, &data, type) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__,
+            __LINE__);
+    } else {
+        webconfig_data_free(&data);
+    }
+    return RETURN_OK;
+}
+
 int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
     static int pending_state = ctrl_webconfig_state_max;
     webconfig_subdoc_type_t type = webconfig_subdoc_type_unknown;
+    int radio_index = -1;
+    int state;
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
     if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
@@ -507,6 +524,54 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             type = webconfig_subdoc_type_dml;
             webconfig_send_dml_subdoc_status(ctrl);
             break;
+        case ctrl_webconfig_state_vap_24G_cfg_rsp_pending:
+            if (check_wifi_multivap_sched_timeout_active_status(ctrl, 0) == false) {
+                type = webconfig_subdoc_type_vap_24G;
+                webconfig_send_multivap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+            break;
+        case ctrl_webconfig_state_vap_5G_cfg_rsp_pending:
+            if (check_wifi_multivap_sched_timeout_active_status(ctrl, 1) == false) {
+                type = webconfig_subdoc_type_vap_5G;
+                webconfig_send_multivap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+            break;
+        case ctrl_webconfig_state_vap_6G_cfg_rsp_pending:
+            if (check_wifi_multivap_sched_timeout_active_status(ctrl, 2) == false) {
+                type = webconfig_subdoc_type_vap_6G;
+                webconfig_send_multivap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+            break;
+        case ctrl_webconfig_state_radio_24G_rsp_pending:
+        case ctrl_webconfig_state_radio_5G_rsp_pending:
+        case ctrl_webconfig_state_radio_6G_rsp_pending:
+            state = (ctrl->webconfig_state & pending_state);
+            if (state == ctrl_webconfig_state_radio_24G_rsp_pending) {
+                radio_index = 0;
+                type = webconfig_subdoc_type_radio_24G;
+            } else if (state == ctrl_webconfig_state_radio_5G_rsp_pending) {
+                radio_index = 1;
+                type = webconfig_subdoc_type_radio_5G;
+            } else {
+                radio_index = 2;
+                type = webconfig_subdoc_type_radio_6G;
+            }
+            if (check_wifi_radio_sched_timeout_active_status_of_radio_index(ctrl, radio_index) ==
+                    false &&
+                check_wifi_csa_sched_timeout_active_status_of_radio_index(ctrl, radio_index) ==
+                    false) {
+                webconfig_send_radio_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+            break;
+
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d - default pending subdoc status:0x%x\r\n", __func__, __LINE__, (ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK));
             break;
@@ -644,6 +709,24 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
         vap_svc_event_none, new);
 }
 
+static void webconfig_send_wps_change_event(int tgt_vap_index, wifi_vap_info_t *vap_info_old,
+    wifi_vap_info_t *vap_info_new)
+{
+    if (!isVapPrivate(tgt_vap_index) ||
+        !IS_CHANGED(vap_info_old->u.bss_info.wpsPushButton,
+            vap_info_new->u.bss_info.wpsPushButton)) {
+
+        return;
+    }
+
+    push_event_to_ctrl_queue(&tgt_vap_index, sizeof(tgt_vap_index), wifi_event_type_command,
+        vap_info_new->u.bss_info.wpsPushButton ? wifi_event_type_command_wps :
+                                                 wifi_event_type_command_wps_cancel,
+        NULL);
+
+    vap_info_new->u.bss_info.wpsPushButton = vap_info_old->u.bss_info.wpsPushButton;
+}
+
 //We need to know that config applied due to force apply
 bool is_force_apply_true(rdk_wifi_vap_info_t *rdk_vap_info) {
     if (rdk_vap_info == NULL) {
@@ -704,6 +787,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         if (found_target == false) {
+            wifi_util_error_print(WIFI_MGR,
+                "%s:%d: Could not find tgt_radio_idx:%d for vap name:%s\n", __func__, __LINE__,
+                tgt_radio_idx, vap_names[i]);
             continue;
         }
 
@@ -719,6 +805,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         if (found_target == false) {
+            wifi_util_error_print(WIFI_MGR,
+                "%s:%d: Could not find tgt_vap_index:%d for vap name:%s\n", __func__, __LINE__,
+                tgt_vap_index, vap_names[i]);
             continue;
         }
 
@@ -748,13 +837,14 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         // STA BSSID change is handled by event to avoid disconnection.
         webconfig_send_sta_bssid_change_event(ctrl, mgr_vap_info, vap_info);
 
+        // WPS change is handled by event to avoid extra wifi_hal_createVAP()
+        webconfig_send_wps_change_event(tgt_vap_index, mgr_vap_info, vap_info);
+
         // Ignore exists flag change because STA interfaces always enabled in HAL. This allows to
         // avoid redundant reconfiguration with STA disconnection.
         // For pods, STA is just like any other AP interface, deletion is allowed.
-        if (ctrl->dev_type != dev_subtype_pod) {
-            if (isVapSTAMesh(tgt_vap_index)) {
-                mgr_rdk_vap_info->exists = rdk_vap_info->exists;
-            }
+        if (ctrl->network_mode == rdk_dev_mode_type_ext && isVapSTAMesh(tgt_vap_index)) {
+            mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
@@ -1469,6 +1559,77 @@ int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_de
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
+static int remove_all_mac_acl_entries_from_cache_and_db(rdk_wifi_vap_info_t *current_config)
+{
+    if (current_config == NULL || current_config->acl_map == NULL) {
+        wifi_util_info_print(WIFI_MGR, "%s:%d: Current obj:%p is NULL\n", __func__, __LINE__, current_config);
+        return RETURN_ERR;
+    }
+    acl_entry_t *current_acl_entry, *temp_acl_entry;
+    mac_addr_str_t current_mac_str;
+    char macfilterkey[128] = { 0 };
+
+    current_acl_entry = hash_map_get_first(current_config->acl_map);
+    while (current_acl_entry != NULL) {
+        to_mac_str(current_acl_entry->mac, current_mac_str);
+        str_tolower(current_mac_str);
+        wifi_util_info_print(WIFI_MGR, "%s:%d: del mac:%s vap_index:%d\n",
+            __func__, __LINE__, current_mac_str, current_config->vap_index);
+        current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+        temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+        if (temp_acl_entry != NULL) {
+            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+            wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+            free(temp_acl_entry);
+        }
+    }
+
+    return RETURN_OK;
+}
+
+int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data,
+    webconfig_subdoc_type_t doc_type)
+{
+    unsigned int num_vaps = 0;
+    char *vap_names[MAX_NUM_VAP_PER_RADIO];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    rdk_wifi_vap_map_t *mgr_vap_map = NULL;
+    int radio_index = -1;
+
+    switch (doc_type) {
+    case webconfig_subdoc_type_vap_24G:
+        radio_index = 0;
+        break;
+    case webconfig_subdoc_type_vap_5G:
+        radio_index = 1;
+        break;
+    case webconfig_subdoc_type_vap_6G:
+        radio_index = 2;
+        break;
+    default:
+        // Invalid doc_type return err
+        wifi_util_error_print(WIFI_MGR, "%s:%d Invalid doc_type:%d\n", __func__, __LINE__,
+            doc_type);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_MGR, "%s:%d Selected Radio Index:%d for doc_type:%d\n", __func__,
+        __LINE__, radio_index, doc_type);
+    mgr_vap_map = &mgr->radio_config[radio_index].vaps;
+    if (mgr_vap_map == NULL) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d Error vap_map is NULL for Radio Index:%d\n",
+            __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    // Consider all the Vap associated with the radio_index
+    for (UINT index = 0; index < mgr_vap_map->num_vaps; index++) {
+        vap_names[num_vaps] = mgr_vap_map->rdk_vap_array[index].vap_name;
+        num_vaps++;
+    }
+    return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+}
+
 int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, webconfig_subdoc_type_t subdoc_type)
 {
     unsigned int radio_index, vap_index;
@@ -1519,15 +1680,16 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                                 wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                                         __func__, __LINE__, vap_index, current_mac_str);
                                 ret = RETURN_ERR;
-                                goto free_data;
-                            }
-                            current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
-                            temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
-                            if (temp_acl_entry != NULL) {
-                                snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+                                current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                            } else {
+                                current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                                temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+                                if (temp_acl_entry != NULL) {
+                                    snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
 
-                                wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
-                                free(temp_acl_entry);
+                                    wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+                                    free(temp_acl_entry);
+                                }
                             }
                         } else {
                             current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
@@ -1540,6 +1702,9 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
 #else
 		wifi_delApAclDevices(vap_index);
 #endif
+                wifi_util_info_print(WIFI_MGR, "%s:%d: remove all mac acl entries"
+                    " from cache and db vap_index:%d\n", __func__, __LINE__, vap_index);
+                remove_all_mac_acl_entries_from_cache_and_db(current_config);
                 current_config->is_mac_filter_initialized = true;
             }
 
@@ -1559,7 +1724,6 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                                     __func__, __LINE__, vap_index, new_mac_str);
                             ret = RETURN_ERR;
-                            goto free_data;
                         }
 
                         temp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
@@ -1584,7 +1748,6 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
         }
     }
 
-free_data:
     if ((new_config != NULL) && (new_config->acl_map != NULL)) {
         new_acl_entry = hash_map_get_first(new_config->acl_map);
         while (new_acl_entry != NULL) {
@@ -1636,6 +1799,7 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     if (IS_CHANGED(old->countryCode,new->countryCode)) return true;
     if (IS_CHANGED(old->operatingEnvironment,new->operatingEnvironment)) return true;
     if (IS_CHANGED(old->DCSEnabled,new->DCSEnabled)) return true;
+    if (IS_CHANGED(old->DfsEnabled,new->DfsEnabled)) return true;
     if (IS_CHANGED(old->dtimPeriod,new->dtimPeriod)) return true;
     if (IS_CHANGED(old->beaconInterval,new->beaconInterval)) return true;
     if (IS_CHANGED(old->operatingClass,new->operatingClass)) return true;
@@ -1854,6 +2018,180 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     return RETURN_OK;
 }
 
+int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data,
+    webconfig_subdoc_type_t doc_type)
+{
+    unsigned int j;
+    rdk_wifi_radio_t *radio_data, *mgr_radio_data;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    bool found_radio_index = false;
+    int ret;
+    int is_changed = 0;
+    bool is_radio_6g_modified = false;
+    vap_svc_t *pub_svc = NULL;
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
+    bool old_ecomode = false;
+    bool new_ecomode = false;
+#endif
+    int radio_index = -1;
+
+    switch (doc_type) {
+    case webconfig_subdoc_type_radio_24G:
+        radio_index = 0;
+        break;
+    case webconfig_subdoc_type_radio_5G:
+        radio_index = 1;
+        break;
+    case webconfig_subdoc_type_radio_6G:
+        radio_index = 2;
+        break;
+    default:
+        // Invalid doc_type return err
+        wifi_util_error_print(WIFI_MGR, "%s:%d Invalid doc_type:%d\n", __func__, __LINE__,
+            doc_type);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_MGR, "%s:%d Selected Radio Index:%d for doc_type:%d\n", __func__,
+        __LINE__, radio_index, doc_type);
+
+    // apply the radio and vap data
+    radio_data = &data->radios[radio_index];
+
+    for (j = 0; j < getNumberRadios(); j++) {
+        mgr_radio_data = &mgr->radio_config[j];
+        if (mgr_radio_data->vaps.radio_index == radio_data->vaps.radio_index) {
+            found_radio_index = true;
+            break;
+        }
+    }
+
+    if (found_radio_index == false) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d Radio with index:%d for doc_type:%d not found\n",
+            __func__, __LINE__, radio_index, doc_type);
+        return RETURN_ERR;
+    }
+
+    if (is_radio_band_5G(radio_data->oper.band) &&
+        is_radio_feat_config_changed(mgr_radio_data, radio_data)) {
+        // Not required currently for 2.4GHz, can be added later for 5GH and 6G after support is
+        // added
+        is_changed = 1;
+        wifi_util_dbg_print(WIFI_MGR, "%s:%d Tscan:%lu, Nscan:%lu, Tidle:%lu \n", __func__,
+            __LINE__, radio_data->feature.OffChanTscanInMsec, radio_data->feature.OffChanNscanInSec,
+            radio_data->feature.OffChanTidleInSec);
+    }
+
+    if ((is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true)) {
+        // radio data changed apply
+        is_changed = 1;
+        if (IS_CHANGED(mgr_radio_data->oper.enable, radio_data->oper.enable) &&
+            is_6g_supported_device(&mgr->hal_cap.wifi_prop)) {
+            wifi_util_info_print(WIFI_MGR,
+                "Radio enable field is modified from mgr_radio_data->oper->enable=%d and "
+                "radio_data->oper->enable=%d\n",
+                mgr_radio_data->oper.enable, radio_data->oper.enable);
+            is_radio_6g_modified = true;
+        }
+        wifi_util_info_print(WIFI_MGR,
+            "%s:%d: Change detected in received radio config, applying new configuration for "
+            "radio: %s\n",
+            __func__, __LINE__, radio_data->name);
+        radio_param_config_changed_event_logging(&mgr_radio_data->oper, &radio_data->oper,
+            radio_data->name);
+        print_wifi_hal_radio_data(WIFI_WEBCONFIG, "old", radio_index, &mgr_radio_data->oper);
+        print_wifi_hal_radio_data(WIFI_WEBCONFIG, "New", radio_index, &radio_data->oper);
+
+        // Optimizer will try to change, channel on current STA along with parent change, So it
+        // shouldn't skip for pods.
+        if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+            vap_svc_t *ext_svc;
+            ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+            if (ext_svc != NULL) {
+                vap_svc_ext_t *ext;
+                ext = &ext_svc->u.ext;
+                unsigned int connected_radio_index = 0;
+                connected_radio_index = get_radio_index_for_vap_index(ext_svc->prop,
+                    ext->connected_vap_index);
+                if ((ext->conn_state == connection_state_connected) &&
+                    (connected_radio_index == mgr_radio_data->vaps.radio_index) &&
+                    (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
+                    start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
+                    ext_svc->event_fn(ext_svc, wifi_event_type_webconfig,
+                        wifi_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
+                    // driver does not change channel in STA connected state therefore skip
+                    // wifi_hal_setRadioOperatingParameters and update channel on disconnection/CSA
+                    return RETURN_OK;
+                }
+            }
+        }
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
+        // Save the ECO mode state before update to the DB
+        old_ecomode = mgr_radio_data->oper.EcoPowerDown;
+        new_ecomode = radio_data->oper.EcoPowerDown;
+        if (old_ecomode != new_ecomode) {
+            radio_data->oper.enable = ((new_ecomode) ? false : true);
+            wifi_util_info_print(WIFI_MGR,
+                "%s:%d:Changing radio enable status:radio_data->oper.enable= %d\n", __func__,
+                __LINE__, radio_data->oper.enable);
+        }
+#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",
+            __FUNCTION__);
+
+        if (wifi_radio_operationParam_validation(&mgr->hal_cap, &radio_data->oper) != RETURN_OK) {
+            wifi_util_error_print(WIFI_MGR, "%s:%d: failed to validate %s parameters\n", __func__,
+                __LINE__, radio_data->name);
+            return RETURN_ERR;
+        }
+
+        ret = wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index,
+            &radio_data->oper);
+
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        wifi_util_dbg_print(WIFI_MGR, "%s:%d: config applied.\n", __func__, __LINE__);
+
+        start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
+
+        if (is_csa_sched_timer_trigger(mgr_radio_data->oper, radio_data->oper) == true) {
+            start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
+        }
+    }
+
+    if (is_changed) {
+        // write the value to database
+#ifndef LINUX_VM_PORT
+        wifidb_update_wifi_radio_config(mgr_radio_data->vaps.radio_index, &radio_data->oper,
+            &radio_data->feature);
+#endif
+
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
+        // Upload the telemetry marker and reboot the device
+        // only if there is a change in the DM Device.WiFi.Radio.{i}.X_RDK_EcoPowerDown
+        wifi_util_info_print(WIFI_MGR, "%s:%d: oldEco = %d  newEco = %d\n", __func__, __LINE__,
+            old_ecomode, new_ecomode);
+        if (old_ecomode != new_ecomode) {
+            // write the value to database and reboot
+            ecomode_telemetry_update_and_reboot(radio_index, new_ecomode);
+        }
+#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+        if (is_radio_6g_modified) {
+            pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
+            if (pub_svc->event_fn != NULL) {
+                pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
+                    vap_svc_event_none, NULL);
+            }
+        }
+    } else {
+        wifi_util_info_print(WIFI_MGR,
+            "%s:%d: Received radio config for radio %u is same, not applying\n", __func__, __LINE__,
+            mgr_radio_data->vaps.radio_index);
+    }
+    return RETURN_OK;
+}
 
 int push_data_to_apply_pending_queue(webconfig_subdoc_data_t *data)
 {
@@ -1923,6 +2261,9 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
     int ret = RETURN_OK;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t  *pub_svc = NULL;
+    wifi_ctrl_webconfig_state_t conf_state_pending;
+    wifi_ctrl_webconfig_state_t radio_state_pending;
+
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: webconfig_state:%02x doc_type:%d doc_name:%s\n", 
             __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
 
@@ -2353,6 +2694,65 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             }
 #endif
             break;
+
+        case webconfig_subdoc_type_vap_24G:
+        case webconfig_subdoc_type_vap_5G:
+        case webconfig_subdoc_type_vap_6G:
+            if (doc->type == webconfig_subdoc_type_vap_24G) {
+                conf_state_pending = ctrl_webconfig_state_vap_24G_cfg_rsp_pending;
+            } else if (doc->type == webconfig_subdoc_type_vap_5G) {
+                conf_state_pending = ctrl_webconfig_state_vap_5G_cfg_rsp_pending;
+            } else {
+                conf_state_pending = ctrl_webconfig_state_vap_6G_cfg_rsp_pending;
+            }
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & conf_state_pending) {
+                    ctrl->webconfig_state &= ~conf_state_pending;
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= conf_state_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_multivap_apply(ctrl, &data->u.decoded, doc->type);
+                }
+            }
+            // This is for captive_portal_check for private SSID when defaults modified
+            captive_portal_check();
+            break;
+
+        case webconfig_subdoc_type_radio_24G:
+        case webconfig_subdoc_type_radio_5G:
+        case webconfig_subdoc_type_radio_6G:
+            if (doc->type == webconfig_subdoc_type_radio_24G) {
+                radio_state_pending = ctrl_webconfig_state_radio_24G_rsp_pending;
+            } else if (doc->type == webconfig_subdoc_type_radio_5G) {
+                radio_state_pending = ctrl_webconfig_state_radio_5G_rsp_pending;
+            } else {
+                radio_state_pending = ctrl_webconfig_state_radio_6G_rsp_pending;
+            }
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & radio_state_pending) {
+                    ctrl->webconfig_state &= ~radio_state_pending;
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= radio_state_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_single_radio_apply(ctrl, &data->u.decoded, doc->type);
+
+                }
+            }
+        break;
 
         default:
             break;

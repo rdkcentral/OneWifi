@@ -141,10 +141,16 @@ typedef enum {
     ctrl_webconfig_state_blaster_cfg_complete_rsp_pending = 0x40000,
     ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending = 0x80000,
     ctrl_webconfig_state_trigger_dml_thread_data_update_pending = 0x100000,
-    ctrl_webconfig_state_max = 0x200000
+    ctrl_webconfig_state_vap_24G_cfg_rsp_pending = 0x200000,
+    ctrl_webconfig_state_vap_5G_cfg_rsp_pending = 0x400000,
+    ctrl_webconfig_state_vap_6G_cfg_rsp_pending = 0x800000,
+    ctrl_webconfig_state_radio_24G_rsp_pending = 0x1000000,
+    ctrl_webconfig_state_radio_5G_rsp_pending = 0x2000000,
+    ctrl_webconfig_state_radio_6G_rsp_pending = 0x4000000,
+    ctrl_webconfig_state_max = 0x8000000
 } wifi_ctrl_webconfig_state_t;
 
-#define CTRL_WEBCONFIG_STATE_MASK   0x1fffff
+#define CTRL_WEBCONFIG_STATE_MASK 0xfffffff
 
 typedef struct {
         char mac_addr[MAC_STR_LEN];
