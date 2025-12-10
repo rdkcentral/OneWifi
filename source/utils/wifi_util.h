@@ -135,6 +135,8 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 
 #define PARTNER_ID_LEN 64
 
+#define RADIO_NAME_LENGTH 16
+
 #define MIN_MAC_LEN 12
 #define MAC_ADDR_LEN 6
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
