@@ -526,7 +526,7 @@ void mlog(log_severity_t sev,
         return;
     }
 
-    if (module > LOG_MODULE_ID_LAST) module = LOG_MODULE_ID_MISC;
+    if (module >= LOG_MODULE_ID_LAST) module = LOG_MODULE_ID_MISC;
 
     if (!log_any_sink_match(sev, module)) {
         return;

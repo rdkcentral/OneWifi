@@ -48,7 +48,7 @@ void process_eap_data(wifi_8021x_data_t *data, wifi_8021x_t *module, bool new_ev
     wifi_eap_frame_t *eap, *prev_eap;
     wifi_8021x_data_t *prev_data;
     mac_addr_str_t mac_str;
-    char direction[32], msg[32];
+    char direction[32] = "", msg[32] = "";
     struct timeval tnow;
 
     gettimeofday(&tnow, NULL);
