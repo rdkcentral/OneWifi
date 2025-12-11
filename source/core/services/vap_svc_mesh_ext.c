@@ -1621,7 +1621,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     wifi_ctrl_t *ctrl;
     bss_candidate_t *candidate = NULL;
     bool found_candidate = false, send_event = false;
-    unsigned int i = 0, index, j = 0;
+    unsigned int i = 0, j = 0;
+    int index;
     char cmd[MAX_STR_LEN] = {0};
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
@@ -1643,6 +1644,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
     /* first update the internal cache */
     index = get_radio_index_for_vap_index(svc->prop, sta_data->stats.vap_index);
+    if (index == RETURN_ERR)
+        return RETURN_ERR;
     wifi_util_info_print(WIFI_CTRL,"%s:%d - radio index %d, VAP index %d connect_status : %s\n",
         __func__, __LINE__, index, sta_data->stats.vap_index,
         ext_conn_status_to_str(sta_data->stats.connect_status));

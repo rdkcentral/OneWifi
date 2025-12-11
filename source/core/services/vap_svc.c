@@ -200,8 +200,8 @@ int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map
                 "%s:%d: changed bridge name from :%s to %s\n",
                 __func__, __LINE__, if_prop->bridge_name,
                 vap_map->vap_array[j].bridge_name);
-            strncpy(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
-                sizeof(vap_map->vap_array[j].bridge_name));
+            snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s",
+                vap_map->vap_array[j].bridge_name);
         }
     }
     return RETURN_OK;
