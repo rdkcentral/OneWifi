@@ -1112,34 +1112,46 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
     unsigned int i;
-    wifi_vap_info_map_t tgt_vap_map;
+    wifi_vap_info_map_t *tgt_vap_map = NULL;
+
+    tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
+
+    if (tgt_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __FUNCTION__,__LINE__);
+        return -1;
+    }
 
     for (i = 0; i < map->num_vaps; i++) {
-        memset((unsigned char *)&tgt_vap_map, 0, sizeof(tgt_vap_map));
-        memcpy((unsigned char *)&tgt_vap_map.vap_array[0], (unsigned char *)&map->vap_array[i],
+        memset((unsigned char *)tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        memcpy((unsigned char *)&tgt_vap_map->vap_array[0], (unsigned char *)&map->vap_array[i],
                     sizeof(wifi_vap_info_t));
-        tgt_vap_map.num_vaps = 1;
+        tgt_vap_map->num_vaps = 1;
 
         // avoid disabling mesh sta in extender mode
-        if (tgt_vap_map.vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
+        if (tgt_vap_map->vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
-                __LINE__, tgt_vap_map.vap_array[0].vap_index);
-            tgt_vap_map.vap_array[0].u.sta_info.enabled = true;
+                __LINE__, tgt_vap_map->vap_array[0].vap_index);
+            tgt_vap_map->vap_array[0].u.sta_info.enabled = true;
         }
 
-        if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
+        if (wifi_hal_createVAP(radio_index, tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
-        memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map.vap_array[0],
+        memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
         get_wifidb_obj()->desc.update_wifi_vap_info_fn(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.sta_info.security);
+    }
+
+    if (tgt_vap_map) {
+       free(tgt_vap_map);
+       tgt_vap_map = NULL;
     }
 
     return 0;
