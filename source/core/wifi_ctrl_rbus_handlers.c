@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <limits.h>
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
 #define MAX_STATUS_LEN 5
@@ -3275,7 +3276,12 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
 
         vap_array_index = convert_vap_index_to_vap_array_index(&mgr->hal_cap.wifi_prop,
             (unsigned int)idx - 1);
-
+        if (vap_array_index == UINT_MAX) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap_radio_index\n", __func__,
+                __LINE__);
+            free(data);
+            return bus_error_invalid_input;
+        }
         radio_index = getRadioIndexFromAp((unsigned int)idx - 1);
 
         data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index].force_apply =
