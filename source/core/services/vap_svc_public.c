@@ -37,20 +37,14 @@ bool vap_svc_is_public(unsigned int vap_index)
 int vap_svc_public_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     // for public just create vaps
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_start(svc);
-    }
-
-    return 0;
+    return vap_svc_start(svc, radio_index);
 }
 
 int vap_svc_public_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_stop(svc);
-    }
-    return 0;
+    return vap_svc_stop(svc, radio_index);
 }
+
 void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
 {
     unsigned int itr = 0, itrj = 0;

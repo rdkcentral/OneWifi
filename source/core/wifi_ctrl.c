@@ -436,7 +436,7 @@ unsigned int dfs_fallback_channel(wifi_platform_property_t *wifi_prop, wifi_freq
     return channel;
 }
 
-int start_radios(rdk_dev_mode_type_t mode)
+int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
 {
     wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
     int ret = RETURN_OK;
@@ -460,6 +460,10 @@ int start_radios(rdk_dev_mode_type_t mode)
     }
 
     for (index = 0; index < num_of_radios; index++) {
+        if (radio_index != WIFI_ALL_RADIO_INDICES && radio_index != index) {
+            continue;
+        }
+
         wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
         if (wifi_radio_oper_param == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:wrong index for radio map: %d\n",__FUNCTION__, index);
@@ -752,17 +756,17 @@ int bus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
     return RETURN_OK;
 }
 
-void start_extender_vaps(void)
+void start_extender_vaps(unsigned int radio_index)
 {
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    ext_svc->start_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
+    ext_svc->start_fn(ext_svc, radio_index, NULL);
 }
 
-void start_gateway_vaps()
+void start_gateway_vaps(unsigned int radio_index)
 {
     vap_svc_t *priv_svc, *pub_svc, *mesh_gw_svc;
     unsigned int value;
@@ -774,12 +778,12 @@ void start_gateway_vaps()
     mesh_gw_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_gw);
 
     // start private
-    priv_svc->start_fn(priv_svc, WIFI_ALL_RADIO_INDICES, NULL);
+    priv_svc->start_fn(priv_svc, radio_index, NULL);
 
     // start mesh gateway if mesh is enabled
     value = get_wifi_mesh_vap_enable_status();
     if (value == true) {
-        mesh_gw_svc->start_fn(mesh_gw_svc, WIFI_ALL_RADIO_INDICES, NULL);
+        mesh_gw_svc->start_fn(mesh_gw_svc, radio_index, NULL);
     }
 
     value = false;
@@ -787,7 +791,7 @@ void start_gateway_vaps()
     bus_get_vap_init_parameter(WIFI_DEVICE_TUNNEL_STATUS, &value);
     if (value == true) {
         set_wifi_public_vap_enable_status();
-        pub_svc->start_fn(pub_svc, WIFI_ALL_RADIO_INDICES, NULL);
+        pub_svc->start_fn(pub_svc, radio_index, NULL);
     }
 
     value = false;
@@ -799,11 +803,11 @@ void start_gateway_vaps()
     
     if (is_sta_enabled() == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
-        start_extender_vaps();
+        start_extender_vaps(radio_index);
     }
 }
 
-void stop_gateway_vaps()
+void stop_gateway_vaps(unsigned int radio_index)
 {
     vap_svc_t *priv_svc, *pub_svc, *mesh_gw_svc;
     wifi_ctrl_t *ctrl;
@@ -814,19 +818,19 @@ void stop_gateway_vaps()
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
     mesh_gw_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_gw);
 
-    priv_svc->stop_fn(priv_svc, WIFI_ALL_RADIO_INDICES, NULL);
-    pub_svc->stop_fn(pub_svc, WIFI_ALL_RADIO_INDICES, NULL);
-    mesh_gw_svc->stop_fn(mesh_gw_svc, WIFI_ALL_RADIO_INDICES, NULL);	
+    priv_svc->stop_fn(priv_svc, radio_index, NULL);
+    pub_svc->stop_fn(pub_svc, radio_index, NULL);
+    mesh_gw_svc->stop_fn(mesh_gw_svc, radio_index, NULL);
 }
 
-void stop_extender_vaps(void)
+void stop_extender_vaps(unsigned int radio_index)
 {
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;	
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    ext_svc->stop_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
+    ext_svc->stop_fn(ext_svc, radio_index, NULL);
 }
 
 int start_wifi_services(void)
@@ -837,8 +841,10 @@ int start_wifi_services(void)
 
     if (ctrl->network_mode == rdk_dev_mode_type_gw) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start gw vaps\n",__func__, __LINE__);
-        start_radios(rdk_dev_mode_type_gw);
-        start_gateway_vaps();
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            start_radios(rdk_dev_mode_type_gw, radio_index);
+            start_gateway_vaps(radio_index);
+        }
         captive_portal_check();
 #if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && \
         (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
@@ -848,21 +854,27 @@ int start_wifi_services(void)
 #endif
 
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-        start_radios(rdk_dev_mode_type_ext);
-        if (is_sta_enabled()) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
-            start_extender_vaps();
-        } else {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d mesh sta disabled\n",__func__, __LINE__);
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            start_radios(rdk_dev_mode_type_ext, radio_index);
+            if (is_sta_enabled()) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n", __func__, __LINE__);
+                start_extender_vaps(radio_index);
+            } else {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d mesh sta disabled\n", __func__, __LINE__);
+            }
         }
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_node) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start em_mode\n",__func__, __LINE__);
-        start_radios(rdk_dev_mode_type_gw);
-        start_extender_vaps();
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            start_radios(rdk_dev_mode_type_gw, radio_index);
+            start_extender_vaps(radio_index);
+        }
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
-        start_radios(rdk_dev_mode_type_gw);
-        start_gateway_vaps();
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            start_radios(rdk_dev_mode_type_gw, radio_index);
+            start_gateway_vaps(radio_index);
+        }
     }
 
     return RETURN_OK;
