@@ -97,13 +97,16 @@ wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called set psk for vap 24, call 
     system("dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true"); */
 //wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : will call start extender vaps\n", __func__, __LINE__);
 
-   // start_extender_vaps();
-//wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called start extender vaps\n", __func__, __LINE__);
 
-wifi_util_error_print(WIFI_APPS, "%s:%d: will called start station vaps\n", __func__, __LINE__);
+wifi_util_error_print(WIFI_APPS, "%s:%d: will call start station vaps\n", __func__, __LINE__);
 
 start_station_vaps(TRUE, d->username, d->password);
 wifi_util_error_print(WIFI_APPS, "%s:%d: called start station vaps, exit\n", __func__, __LINE__);
+
+    start_extender_vaps();
+wifi_util_error_print(WIFI_APPS, "%s:%d: uahf : called start extender vaps\n", __func__, __LINE__);
+
+
 
     return NULL;
 }

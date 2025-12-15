@@ -681,7 +681,7 @@ void ext_process_scan_list(vap_svc_t *svc)
         }
         schedule_connect_sm(svc);
     } else {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi connection already in process state\n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d wifi connection already in process state\n",__func__, __LINE__);
     }
 }
 
@@ -1365,7 +1365,7 @@ static void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
 
 int process_ext_exec_timeout(vap_svc_t *svc, void *arg)
 {
-    wifi_util_error_print(WIFI_CTRL, "%s:%d exec timeout\n", __func__, __LINE__);
+    wifi_util_error_print(WIFI_CTRL, "%s:%d --- \n", __func__, __LINE__);
 
     schedule_connect_sm(svc);
 
@@ -1377,6 +1377,8 @@ int scan_result_wait_timeout(vap_svc_t *svc)
     vap_svc_ext_t *ext = &svc->u.ext;
 
     ext->ext_scan_result_wait_timeout_handler_id = 0;
+
+    wifi_util_error_print(WIFI_CTRL, "%s:%d --\n", __func__, __LINE__);
 
     if (ext->conn_state == connection_state_disconnected_scan_list_in_progress) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d - received only %u radio scan results\r\n", __func__,
