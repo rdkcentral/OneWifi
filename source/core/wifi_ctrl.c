@@ -2146,6 +2146,13 @@ static int bus_check_and_subscribe_events(void* arg)
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
+#if defined (ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
+    ctrl->mesh_status_subscribed = true;
+    ctrl->device_tunnel_status_subscribed = true;
+    ctrl->device_mode_subscribed = true;
+    ctrl->mesh_keep_out_chans_subscribed = true;
+#endif
+
     if ((ctrl->bus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
         (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
