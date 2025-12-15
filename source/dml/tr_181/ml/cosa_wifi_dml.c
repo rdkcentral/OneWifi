@@ -8593,7 +8593,7 @@ Security_GetParamStringValue
     {
         int result;
         result=strcmp((char *)&pcfg->u.radius.ip,"");
-        if(result)
+        if((iscntrl(result) == 0) && result)
         {
             AnscCopyString(pValue, (char *)&pcfg->u.radius.ip);
         }
