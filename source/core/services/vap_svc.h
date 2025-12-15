@@ -136,6 +136,7 @@ typedef struct {
     int                    ext_udhcp_disconnect_event_timeout_handler_id;
     int                    ext_trigger_disconnection_timeout_handler_id;
     bool                   is_started;
+    bool                   is_vap_started[MAX_NUM_RADIOS];
 }__attribute__((packed)) vap_svc_ext_t;
 
 typedef struct vap_svc {
