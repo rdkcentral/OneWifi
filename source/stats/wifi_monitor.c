@@ -158,7 +158,7 @@ extern void* bus_handle;
 //#define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
 
 //#define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
-#define Min_LogInterval 300 //5 minutes
+#define Min_LogInterval 60 //1 minute
 #define Max_LogInterval 3600 //60 minutes
 #define Min_Chan_Util_LogInterval 5 //5 seconds
 
@@ -2079,6 +2079,8 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
 
     if(mac == NULL || ip == NULL || interface == NULL) {
         wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, mac, ip, interface);
+        if (fd >= 0)
+            close(fd);
         return -1;
     }
     if (fd < 0 ) {
@@ -2285,8 +2287,8 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
     int         frame_len;
     int rc = 0;
     bool af_family = TRUE;
-    char        src_ip_str[IP_STR_LEN];
-    char        cli_ip_str[IP_STR_LEN];
+    char        src_ip_str[IP_STR_LEN] = { 0 };
+    char        cli_ip_str[IP_STR_LEN] = { 0 };
 
     if(mac == NULL ) {
         wifi_util_error_print(WIFI_MON, "%s: Mac is NULL\n",__func__);
@@ -2309,7 +2311,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         } else {
             if(isValidIpAddress(cli_ip_str, af_family)) {
                 *client_ip_age = 0;
-                strncpy(client_ip, cli_ip_str, IP_STR_LEN);
+                snprintf(client_ip, IP_STR_LEN, "%s", cli_ip_str);
                 wifi_util_info_print(WIFI_MON, "%s Returned ipv4 client address is %s interface %s \n",__func__,  cli_ip_str, cli_interface_str );
             } else {
                 wifi_util_error_print(WIFI_MON, "%s Was not a valid client ip string\n", __func__);
@@ -2324,7 +2326,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
                 return;
             } else {
                 if(isValidIpAddress(src_ip_str, af_family)) {
-                    strncpy(vap_ip, src_ip_str, IP_STR_LEN);
+                    snprintf(vap_ip, IP_STR_LEN, "%s", src_ip_str);
                     wifi_util_info_print(WIFI_MON, "%s Returned interface ip addr is %s\n", __func__,src_ip_str);
                 } else {
                     wifi_util_error_print(WIFI_MON, "%s Was not a valid client ip string\n", __func__);
@@ -2333,8 +2335,8 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
             }
         }
     } else {
-        strncpy(src_ip_str, vap_ip, IP_STR_LEN);
-        strncpy(cli_ip_str, client_ip, IP_STR_LEN);
+        snprintf(src_ip_str, IP_STR_LEN, "%s", vap_ip);
+        snprintf(cli_ip_str, IP_STR_LEN, "%s", client_ip);
     }
     //build a layer 3 packet , tcp ping
     if(af_family) {
@@ -3767,10 +3769,10 @@ long get_sys_uptime()
      gettimeofday(&polling_time, NULL);
 
      if ((fp = fopen("/tmp/upload", "r")) == NULL) {
-     /* Minimum LOG Interval we can set is 300 sec, just verify every 5 mins any change in the LogInterval
+     /* Minimum LOG Interval we can set is 60 sec, just verify every 1 min any change in the LogInterval
         if any change in log_interval do the calculation and dump the VAP status */
           time_gap = polling_time.tv_sec - lastpolledtime;
-          if ( time_gap >= 300 )
+          if ( time_gap >= 60 )
           {
                logInterval=readLogInterval();
                lastpolledtime = polling_time.tv_sec;
