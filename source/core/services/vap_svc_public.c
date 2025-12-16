@@ -162,6 +162,7 @@ int update_managementFramePower(void *arg) {
 int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
+    int ret;
     bool enabled;
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map, *p_tgt_created_vap_map;
@@ -226,10 +227,13 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
 #endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
-        if (wifi_hal_createVAP(radio_index, p_tgt_vap_map) != RETURN_OK) {
+        ret = wifi_hal_createVAP(radio_index, p_tgt_vap_map);
+        if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
-            continue;
+            free(p_tgt_vap_map);
+            free(p_tgt_created_vap_map);
+            return ret;
         }
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
         if (greylist_rfc || ((pcfg != NULL && pcfg->prefer_private))) {
