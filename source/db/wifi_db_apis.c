@@ -8979,10 +8979,11 @@ int get_all_param_from_psm_and_set_into_db(void)
     **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
-        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
-        is_device_type_scxer10() == true || is_device_type_sr213() == true ||
-        is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
-        is_device_type_vbvxer5() == true || is_device_type_xle() == true) {
+        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true ||
+        is_device_type_sercommxb10() == true || is_device_type_scxer10() == true ||
+        is_device_type_sr213() == true || is_device_type_cmxb7() == true ||
+        is_device_type_cbr2() == true || is_device_type_vbvxer5() == true ||
+        is_device_type_xle() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;
@@ -9072,12 +9073,11 @@ int get_all_param_from_psm_and_set_into_db(void)
         }
         if ((strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) == 0) ||
             (strncmp(last_reboot_reason, "WPS-Factory-Reset", strlen("WPS-Factory-Reset")) == 0) ||
-            (strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0) || (strncmp(last_reboot_reason, "FirmwareDownloadAndFactoryReset",
-            strlen("FirmwareDownloadAndFactoryReset")) == 0)) {
-            wifi_util_info_print(WIFI_MGR, "SJY %s FactoryReset is triggered \n", __func__);
+            (strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0) ||
+            (strncmp(last_reboot_reason, "FirmwareDownloadAndFactoryReset",
+                 strlen("FirmwareDownloadAndFactoryReset")) == 0)) {
             create_onewifi_factory_reset_flag();
             create_onewifi_factory_reset_reboot_flag();
-            wifi_util_info_print(WIFI_MGR, "%s FactoryReset is done \n", __func__);
         }
     }
 
