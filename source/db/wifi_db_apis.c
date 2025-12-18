@@ -9201,7 +9201,8 @@ int get_all_param_from_psm_and_set_into_db(void)
         is_device_type_sercommxb10() == true || is_device_type_scxer10() == true ||
         is_device_type_sr213() == true || is_device_type_cmxb7() == true ||
         is_device_type_cbr2() == true || is_device_type_vbvxer5() == true ||
-        is_device_type_xle() == true || is_device_type_sr203() == true) {
+        is_device_type_xle() == true || is_device_type_sr203() == true ||
+        is_device_type_scxf10() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;
