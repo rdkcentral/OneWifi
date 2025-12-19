@@ -3178,7 +3178,7 @@ void start_station_vaps(bool rf_status, const char *hotspotSsid, const char *hot
                 } else {
                     data->u.decoded.radios[radio_index]
                         .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.mode = wifi_security_mode_wpa2_personal;   //wpa2-psk, not radius
+                        .u.sta_info.security.mode = wifi_security_mode_wpa_wpa2_personal;   //wpa2-psk, not radius
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s: setting sec mode to wpa2-psk\n", __func__);
                 }
         // set scanning period

@@ -446,7 +446,7 @@ int has_valid_ip(const char *iface) {
         if (!ifa->ifa_addr)
             continue;
 
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d ifa-name : %s iface : %s\n", __func__, __LINE__, ifa->ifa_name, iface);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d ifa-name : %s iface : %s\n", __func__, __LINE__, ifa->ifa_name, iface);
         if (strcmp(ifa->ifa_name, iface) != 0)
             continue;
 
@@ -494,12 +494,13 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status value : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     if (ctrl->rf_status_down == false) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
         memset(value, '\0', sizeof(value));
         memset(value, '\0', sizeof(file_name));
         memset(command, '\0', sizeof(command));
         interface_name = get_interface_name_for_vap_index(ext->connected_vap_index, svc->prop);
         if ((interface_name == NULL) && (ip_check_count < EXT_UDHCP_IP_CHECK_NUM)) {
-            wifi_util_dbg_print(WIFI_CTRL,
+            wifi_util_error_print(WIFI_CTRL,
                 "%s:%d Unable to fetch proper Interface name for connected index%d\n", __func__,
                 __LINE__, ext->connected_vap_index);
             ip_check_count++;
@@ -509,15 +510,21 @@ int process_udhcp_ip_check(vap_svc_t *svc)
         snprintf(command, sizeof(command), "grep \"ip=\" %s | cut -d '=' -f 2", file_name);
         if ((ip_check_count < EXT_UDHCP_IP_CHECK_NUM) &&
             (ext->conn_state == connection_state_connected)) {
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
             if (access(file_name, F_OK) == 0) {
                 fp = popen(command, "r");
                 if (fp != NULL) {
+                        wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
                     fgets(value, sizeof(value), fp);
                     len = strlen(value);
                     if (len > 0) {
                         value[len - 1] = '\0';
                         if ((inet_pton(AF_INET, value, &(sa.sin_addr)) == 1) ||
                             (inet_pton(AF_INET6, value, &(sa.sin_addr)) == 1)) {
+                                wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
                             scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
                             ext->ext_udhcp_ip_check_id = 0;
                             ip_check_count = 0;
@@ -534,15 +541,22 @@ int process_udhcp_ip_check(vap_svc_t *svc)
             (ext->conn_state == connection_state_connected)) {
             char iface[32] = "brww0";
             if (has_valid_ip(iface)) {
-                wifi_util_info_print(WIFI_CTRL, "IGNTE_RF_DOWN: Received Valid IP address on brww0 interface\n");
+                wifi_util_error_print(WIFI_CTRL, "IGNTE_RF_DOWN: Received Valid IP address on brww0 interface\n");
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
                 ext->ext_udhcp_ip_check_id = 0;
                 ip_check_count = 0;
                 return 0;
             } else {
                 wifi_util_error_print(WIFI_CTRL, "IGNTE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
+                wifi_util_error_print(WIFI_CTRL, "IGNTE_RF_DOWN: Acting like nothing happened\n");
+                scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+                ext->ext_udhcp_ip_check_id = 0;
+                ip_check_count = 0;
+                return 0;
             }
         }
+        wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
     }
 
     if (ip_check_count >= EXT_UDHCP_IP_CHECK_NUM) {
@@ -1716,6 +1730,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         if ((ext->conn_state == connection_state_connection_in_progress) ||
             (ext->conn_state == connection_state_connection_to_lcb_in_progress) ||
             (ext->conn_state == connection_state_connection_to_nb_in_progress)) {
+                wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
             int radio_freq_band = 0;
             // copy the bss info to lcb
             memset(&ext->last_connected_bss, 0, sizeof(bss_candidate_t));
@@ -1727,17 +1743,19 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
             convert_radio_index_to_freq_band(svc->prop, index, &radio_freq_band);
             ext->last_connected_bss.radio_freq_band = (wifi_freq_bands_t)radio_freq_band;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d - connected radio_band:%d\r\n", __func__, __LINE__, ext->last_connected_bss.radio_freq_band);
+            wifi_util_error_print(WIFI_CTRL,"%s:%d - connected radio_band:%d\r\n", __func__, __LINE__, ext->last_connected_bss.radio_freq_band);
 
             // copy the bss bssid info to global chache
             memcpy (temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(temp_vap_info->u.sta_info.bssid));
 
             // change the state
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
-            if (ctrl->rf_status_down == true) { 
+            if (ctrl->rf_status_down == true) {
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
                 char mac_str[32] = {'\0'};
                 uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
-                wifi_util_dbg_print(WIFI_CTRL,
+                wifi_util_error_print(WIFI_CTRL,
                     "%s:%d Bridge:%s  Using MAC-Str:%s MAC : %02x:%02x:%02x:%02x:%02x:%02x\n",
                     __func__, __LINE__, bridge_name, mac_str, temp_vap_info->u.sta_info.mac[0],
                     temp_vap_info->u.sta_info.mac[1], temp_vap_info->u.sta_info.mac[2],
@@ -1754,6 +1772,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                         "%s:%d Successfully set bridge MAC to %s\n", __func__, __LINE__,
                         mac_str);
                 }
+                      wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+  
                 snprintf(cmd, sizeof(cmd), "ip link set dev %s up", bridge_name);
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d cmd : %s\n",__func__,__LINE__, cmd);
                 get_stubs_descriptor()->v_secure_system_fn(cmd);
@@ -1769,6 +1789,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
             if (ext->ext_udhcp_ip_check_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
                 ext->ext_udhcp_ip_check_id = 0;
             }
 
@@ -1783,6 +1805,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             }
 
             if (ctrl->network_mode != rdk_dev_mode_type_em_node) {
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
                 scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
                     process_udhcp_ip_check, svc, EXT_UDHCP_IP_CHECK_INTERVAL,
                     EXT_UDHCP_IP_CHECK_NUM + 1, FALSE);
@@ -1794,6 +1818,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(index);
             radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
             if (radio_params != NULL) {
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d ---- \r\n",__func__, __LINE__);
+
                 if ((radio_params->channel != sta_data->stats.channel) || (radio_params->channelWidth != sta_data->stats.channelWidth)) {
                     pthread_mutex_lock(&mgr->data_cache_lock);
                     radio_params->channel = sta_data->stats.channel;
