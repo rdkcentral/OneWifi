@@ -306,9 +306,6 @@ if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL
                 if [ "$wifiDynamicProfile" == "1" ]; then   # Only create brlan115 onboarding bridge with interface wl0.4 if wifiDynamicProfile is already set to 1 (mesh onboarding)
                     sysevent set multinet-up 19             # Trigger to initialise brlan115 onboarding bridge
                 fi
-            else
-                sysevent set multinet-down 18           # Trigger to remove br412 bridge
-                sysevent set multinet-down 19           # Trigger to remove brlan115 onboarding bridge
             fi
         fi
     else
