@@ -249,6 +249,7 @@ int init_wifimgr()
     }
     struct stat sb;
     char db_file[128];
+    int hal_initialized = RETURN_ERR;
    
     // channel change flag initialized as false
     memset(g_wifi_mgr.channel_change_in_progress, 0, sizeof(g_wifi_mgr.channel_change_in_progress));
