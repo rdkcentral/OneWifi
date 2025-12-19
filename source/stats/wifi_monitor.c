@@ -2811,8 +2811,8 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
         str_to_mac_bytes(src_mac, grey_list_mac);
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
         wifi_util_dbg_print(WIFI_MON," sending Greylist mac to  ctrl queue %s\n",src_mac);
-        push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
-
+        long long int expiry_time = get_current_time_in_sec() + GREYLIST_TIMEOUT_IN_SECONDS;
+        add_acl_entry_to_vap(src_mac, ap_index, reason, expiry_time, true);
     }
 
     is_sta_active = active_sta_connection_status(ap_index, src_mac);
@@ -2989,8 +2989,8 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
         greylist_data.reason = reason;
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
         wifi_util_dbg_print(WIFI_MON,"Sending Greylist mac to ctrl queue %s\n",src_mac);
-        push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
-
+        long long int expiry_time = get_current_time_in_sec() + GREYLIST_TIMEOUT_IN_SECONDS;
+        add_acl_entry_to_vap(src_mac, ap_index, reason, expiry_time, true);
     }
 
     is_sta_active = active_sta_connection_status(ap_index, src_mac);
