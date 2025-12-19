@@ -185,6 +185,7 @@ typedef struct {
     bool radio_presence[MAX_NUM_RADIOS];
     bool is_blaster_running;
     hash_map_t  *clctr_subscriber_map; //clctr_subscription_t
+    wifi_channelMap_t channel_map[MAX_NUM_RADIOS][MAX_CHANNELS];
 } wifi_monitor_t;
 
 typedef struct {

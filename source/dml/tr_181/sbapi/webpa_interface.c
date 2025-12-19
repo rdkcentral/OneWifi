@@ -58,6 +58,10 @@ void print_b64_endcoded_buffer(unsigned char *data, unsigned int size)
     decodesize = b64_get_encoded_buffer_size(size);
     b64buffer = malloc(decodesize * sizeof(uint8_t));
     b64_encode((uint8_t *)data, size, b64buffer);
+    if (b64buffer == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "\nB64 encode failed\n");
+        return;
+    }
 
     wifi_util_dbg_print(WIFI_MON, "\nAVro serialized data\n");
     for (k = 0; k < size; k++) {
@@ -284,6 +288,7 @@ int initparodusTask()
                 backoffRetryTime = (int)pow(2, c) - 1;
             } else {
                 // give up trying to initialize parodus
+                free(parodus_url);
                 return -1;
             }
             ret = libparodus_init(&webpa_interface.client_instance, &cfg1);
@@ -297,6 +302,7 @@ int initparodusTask()
                 c++;
             }
         }
+        free(parodus_url);
     }
 
     webpa_interface.thread_exit = false;

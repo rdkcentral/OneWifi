@@ -368,6 +368,7 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_object)
 {
     char mac_str[32];
+    char mld_mac_str[32];
 
     //VAP Name
     cJSON_AddStringToObject(vap_object, "VapName", vap_info->vap_name);
@@ -407,6 +408,22 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // Managed WiFi Phase 2 Enabled
     cJSON_AddBoolToObject(vap_object, "MDUEnabled", vap_info->u.bss_info.mdu_enabled);
+
+    // MLD Enable
+    cJSON_AddBoolToObject(vap_object, "MLD_Enable", vap_info->u.bss_info.mld_info.common_info.mld_enable);
+
+    // MLD Apply
+    cJSON_AddBoolToObject(vap_object, "MLD_Apply", vap_info->u.bss_info.mld_info.common_info.mld_apply);
+
+    // MLD_ID
+    cJSON_AddNumberToObject(vap_object, "MLD_ID", vap_info->u.bss_info.mld_info.common_info.mld_id);
+
+    // MLD_Link_ID
+    cJSON_AddNumberToObject(vap_object, "MLD_Link_ID", vap_info->u.bss_info.mld_info.common_info.mld_link_id);
+
+    // MLD_Addr
+    uint8_mac_to_string_mac((uint8_t *)vap_info->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
+    cJSON_AddStringToObject(vap_object, "MLD_Addr", mld_mac_str);
 
     // Isolation
     cJSON_AddBoolToObject(vap_object, "IsolationEnable", vap_info->u.bss_info.isolation);
@@ -1670,7 +1687,7 @@ webconfig_error_t encode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame
 
 webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array, assoclist_type_t assoclist_type)
 {
-    bool print_assoc_client = false;
+    bool print_assoc_client = false, include_frame_data = false;
     pthread_mutex_t *associated_devices_lock;
 
     if ((rdk_vap_info == NULL) || (assoc_array == NULL)) {
@@ -1713,10 +1730,12 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
         assoc_dev_data = hash_map_get_first(devices_map);
         while (assoc_dev_data != NULL) {
             print_assoc_client = false;
+            include_frame_data = false;
             if (assoclist_type == assoclist_type_full) {
                 print_assoc_client = true;
             } else if ((assoclist_type == assoclist_type_add) && (assoc_dev_data->client_state == client_state_connected)) {
                 print_assoc_client = true;
+                include_frame_data = true;
             } else if ((assoclist_type == assoclist_type_remove) && (assoc_dev_data->client_state == client_state_disconnected)) {
                 print_assoc_client = true;
             }
@@ -1759,10 +1778,12 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "FailedRetransCount", assoc_dev_data->dev_stats.cli_FailedRetransCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "RetryCount", assoc_dev_data->dev_stats.cli_RetryCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "MultipleRetryCount", assoc_dev_data->dev_stats.cli_MultipleRetryCount);
-                if (encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
-                    webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Encode frame data failed for client %s\n",
-                        __func__, __LINE__, mac_string);
+                if (include_frame_data == true &&
+                    encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
+                        webconfig_error_none) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,
+                        "%s:%d Encode frame data failed for client %s\n", __func__, __LINE__,
+                        mac_string);
                 }
             }
             assoc_dev_data = hash_map_get_next(devices_map, assoc_dev_data);

@@ -500,7 +500,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop,
                             wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                     wifi_util_info_print(WIFI_CTRL,
                         "%s:%d Calling switch_dfs_channel for dfs_chan:%d \n", __func__, __LINE__,
                         dfs_channel_data->dfs_channel);
@@ -513,7 +513,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop,
                             wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                 }
             }
 
@@ -1091,7 +1091,7 @@ void sta_connection_handler(const char *vif_name, wifi_bss_info_t *bss_info, wif
 
     memcpy(&sta_data.stats, sta, sizeof(wifi_station_stats_t));
     memcpy(&sta_data.bss_info, bss_info, sizeof(wifi_bss_info_t));
-    strncpy(sta_data.interface_name, vif_name, sizeof(wifi_interface_name_t));
+    snprintf(sta_data.interface_name, sizeof(wifi_interface_name_t), "%s", vif_name);
 
     push_event_to_ctrl_queue((rdk_sta_data_t *)&sta_data, sizeof(rdk_sta_data_t), wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status, NULL);
     wifi_util_dbg_print(WIFI_CTRL,"%s: STA data is pushed to the ctrl queue: sta_data.interface_name=%s\n",__FUNCTION__, sta_data.interface_name);
@@ -1281,6 +1281,19 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
     return;
 }
 
+static int wps_event_callback(int apIndex, wifi_wps_ev_t event)
+{
+    wifi_wps_event_t wps_event = {};
+
+    wps_event.vap_index = apIndex;
+    wps_event.event = event;
+
+    push_event_to_ctrl_queue((wifi_wps_event_t *)&wps_event, sizeof(wifi_wps_event_t),
+        wifi_event_type_hal_ind, wifi_event_hal_wps_results, NULL);
+
+    return RETURN_OK;
+}
+
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
@@ -1362,6 +1375,8 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     /* Register wifi hal channel change events callback */
     wifi_chan_event_register(channel_change_callback);
+
+    wifi_wpsEvent_callback_register(wps_event_callback);
 
     ctrl->bus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
@@ -1781,6 +1796,37 @@ bool check_wifi_radio_sched_timeout_active_status(wifi_ctrl_t *l_ctrl)
     return false;
 }
 
+bool check_wifi_csa_sched_timeout_active_status_of_radio_index(wifi_ctrl_t *l_ctrl, int radio_index)
+{
+    wifi_scheduler_id_t *sched_id = &l_ctrl->wifi_sched_id;
+
+    if (radio_index < 0 || radio_index >= (int)getNumberRadios()) {
+        // Invalid index
+        return false;
+    }
+
+    if (sched_id->wifi_csa_sched_handler_id[radio_index] != 0) {
+        return true;
+    }
+    return false;
+}
+
+bool check_wifi_radio_sched_timeout_active_status_of_radio_index(wifi_ctrl_t *l_ctrl,
+    int radio_index)
+{
+    wifi_scheduler_id_t *sched_id = &l_ctrl->wifi_sched_id;
+
+    if (radio_index < 0 || radio_index >= (int)getNumberRadios()) {
+        // Invalid index
+        return false;
+    }
+
+    if (sched_id->wifi_radio_sched_handler_id[radio_index] != 0) {
+        return true;
+    }
+    return false;
+}
+
 bool check_wifi_vap_sched_timeout_active_status(wifi_ctrl_t *l_ctrl, BOOL (*cb)(UINT apIndex))
 {
     unsigned int index = 0;
@@ -1792,6 +1838,14 @@ bool check_wifi_vap_sched_timeout_active_status(wifi_ctrl_t *l_ctrl, BOOL (*cb)(
         }
     }
 
+    return false;
+}
+
+bool check_wifi_multivap_sched_timeout_active_status(wifi_ctrl_t *l_ctrl, int radio_index)
+{
+    //TBD: Check all the sched handler of the VAP associated with the radio_index
+
+    // Currently returning false
     return false;
 }
 
@@ -2091,6 +2145,13 @@ static int bus_check_and_subscribe_events(void* arg)
     wifi_ctrl_t *ctrl = NULL;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+#if defined (ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
+    ctrl->mesh_status_subscribed = true;
+    ctrl->device_tunnel_status_subscribed = true;
+    ctrl->device_mode_subscribed = true;
+    ctrl->mesh_keep_out_chans_subscribed = true;
+#endif
 
     if ((ctrl->bus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||

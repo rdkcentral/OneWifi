@@ -83,12 +83,20 @@
 #define ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG 100035
 #define ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT 100036
 #define ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG 100038
-#define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100039
 #define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
 #define ONEWIFI_DB_VERSION_STATS_FLAG 100037
 #define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100040
 #define DEFAULT_WHIX_CHUTILITY_LOGINTERVAL 900
 #define DEFAULT_WHIX_LOGINTERVAL 3600
+
+#define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100042
+#define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100043
+
+#ifdef CONFIG_NO_MLD_ONLY_PRIVATE
+#define MLD_UNIT_COUNT 8
+#else
+#define MLD_UNIT_COUNT 1
+#endif /* CONFIG_NO_MLD_ONLY_PRIVATE */
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -1032,6 +1040,10 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->mac_filter_enable = new_rec->mac_filter_enabled;
             l_bss_param_cfg->mac_filter_mode = new_rec->mac_filter_mode;
             l_bss_param_cfg->wmm_enabled = new_rec->wmm_enabled;
+            l_bss_param_cfg->mld_info.common_info.mld_enable = new_rec->mld_enable;
+            l_bss_param_cfg->mld_info.common_info.mld_id = new_rec->mld_id;
+            l_bss_param_cfg->mld_info.common_info.mld_link_id = new_rec->mld_link_id;
+            l_bss_param_cfg->mld_info.common_info.mld_apply = new_rec->mld_apply;
             if (strlen(new_rec->anqp_parameters) != 0) {
                 strncpy((char *)l_bss_param_cfg->interworking.anqp.anqpParameters,new_rec->anqp_parameters,(sizeof(l_bss_param_cfg->interworking.anqp.anqpParameters)-1));
             }
@@ -1227,9 +1239,9 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.vlan_cfg_version = new_rec->vlan_cfg_version;
 #ifdef FEATURE_SUPPORT_WPS
         if (strlen(new_rec->wps_pin) != 0) {
-            strncpy(g_wifidb->global_config.global_parameters.wps_pin,new_rec->wps_pin,sizeof(g_wifidb->global_config.global_parameters.wps_pin)-1);
+            snprintf(g_wifidb->global_config.global_parameters.wps_pin, sizeof(g_wifidb->global_config.global_parameters.wps_pin), "%s", new_rec->wps_pin);
         } else {
-            strcpy(g_wifidb->global_config.global_parameters.wps_pin, DEFAULT_WPS_PIN);
+            snprintf(g_wifidb->global_config.global_parameters.wps_pin, sizeof(g_wifidb->global_config.global_parameters.wps_pin), "%s", DEFAULT_WPS_PIN);
         }
 #endif
         g_wifidb->global_config.global_parameters.bandsteering_enable = new_rec->bandsteering_enable;
@@ -1263,26 +1275,22 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.force_disable_radio_status = new_rec->force_disable_radio_status;
         g_wifidb->global_config.global_parameters.fixed_wmm_params = new_rec->fixed_wmm_params;
         if (strlen(new_rec->wifi_region_code) != 0) {
-            strncpy(g_wifidb->global_config.global_parameters.wifi_region_code,new_rec->wifi_region_code,sizeof(g_wifidb->global_config.global_parameters.wifi_region_code)-1);
+            snprintf(g_wifidb->global_config.global_parameters.wifi_region_code, sizeof(g_wifidb->global_config.global_parameters.wifi_region_code), "%s", new_rec->wifi_region_code);
         }
         g_wifidb->global_config.global_parameters.diagnostic_enable = new_rec->diagnostic_enable;
         g_wifidb->global_config.global_parameters.validate_ssid = new_rec->validate_ssid;
         g_wifidb->global_config.global_parameters.device_network_mode = new_rec->device_network_mode;
         if (strlen(new_rec->normalized_rssi_list) != 0) {
-            strncpy(g_wifidb->global_config.global_parameters.normalized_rssi_list,new_rec->normalized_rssi_list,sizeof(g_wifidb->global_config.global_parameters.normalized_rssi_list)-1);
-            g_wifidb->global_config.global_parameters.normalized_rssi_list[sizeof(g_wifidb->global_config.global_parameters.normalized_rssi_list)-1] = '\0';
+            snprintf(g_wifidb->global_config.global_parameters.normalized_rssi_list, sizeof(g_wifidb->global_config.global_parameters.normalized_rssi_list), "%s", new_rec->normalized_rssi_list);
         }
         if (strlen(new_rec->snr_list) != 0) {
-            strncpy(g_wifidb->global_config.global_parameters.snr_list,new_rec->snr_list,sizeof(g_wifidb->global_config.global_parameters.snr_list)-1);
-            g_wifidb->global_config.global_parameters.snr_list[sizeof(g_wifidb->global_config.global_parameters.snr_list)-1] = '\0';
+            snprintf(g_wifidb->global_config.global_parameters.snr_list, sizeof(g_wifidb->global_config.global_parameters.snr_list), "%s", new_rec->snr_list);
         }
         if (strlen(new_rec->cli_stat_list) != 0) {
-            strncpy(g_wifidb->global_config.global_parameters.cli_stat_list,new_rec->cli_stat_list,sizeof(g_wifidb->global_config.global_parameters.cli_stat_list)-1);
-            g_wifidb->global_config.global_parameters.cli_stat_list[sizeof(g_wifidb->global_config.global_parameters.cli_stat_list)-1] = '\0';
+            snprintf(g_wifidb->global_config.global_parameters.cli_stat_list, sizeof(g_wifidb->global_config.global_parameters.cli_stat_list), "%s", new_rec->cli_stat_list);
         }
         if (strlen(new_rec->txrx_rate_list) != 0) {
-            strncpy(g_wifidb->global_config.global_parameters.txrx_rate_list,new_rec->txrx_rate_list,sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1);
-            g_wifidb->global_config.global_parameters.txrx_rate_list[sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1] = '\0';
+            snprintf(g_wifidb->global_config.global_parameters.txrx_rate_list, sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list), "%s", new_rec->txrx_rate_list);
         }
 
         g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_enable =
@@ -1549,18 +1557,28 @@ void callback_Wifi_Preassoc_Control_Config(ovsdb_update_monitor_t *mon,
             return;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        strcpy(l_preassoc_ctrl_cfg->rssi_up_threshold, new_rec->rssi_up_threshold);
-        strcpy(l_preassoc_ctrl_cfg->snr_threshold, new_rec->snr_threshold);
-        strcpy(l_preassoc_ctrl_cfg->cu_threshold, new_rec->cu_threshold);
-        strcpy(l_preassoc_ctrl_cfg->basic_data_transmit_rates, new_rec->basic_data_transmit_rates);
-        strcpy(l_preassoc_ctrl_cfg->operational_data_transmit_rates, new_rec->operational_data_transmit_rates);
-        strcpy(l_preassoc_ctrl_cfg->supported_data_transmit_rates, new_rec->supported_data_transmit_rates);
-        strcpy(l_preassoc_ctrl_cfg->minimum_advertised_mcs, new_rec->minimum_advertised_mcs);
-        strcpy(l_preassoc_ctrl_cfg->sixGOpInfoMinRate, new_rec->sixGOpInfoMinRate);
+        snprintf(l_preassoc_ctrl_cfg->rssi_up_threshold, sizeof(l_preassoc_ctrl_cfg->rssi_up_threshold), "%s", new_rec->rssi_up_threshold);
+
+        snprintf(l_preassoc_ctrl_cfg->snr_threshold, sizeof(l_preassoc_ctrl_cfg->snr_threshold), "%s", new_rec->snr_threshold);
+
+        snprintf(l_preassoc_ctrl_cfg->cu_threshold, sizeof(l_preassoc_ctrl_cfg->cu_threshold), "%s", new_rec->cu_threshold);
+
+        snprintf(l_preassoc_ctrl_cfg->basic_data_transmit_rates, sizeof(l_preassoc_ctrl_cfg->basic_data_transmit_rates), "%s", new_rec->basic_data_transmit_rates);
+
+        snprintf(l_preassoc_ctrl_cfg->operational_data_transmit_rates, sizeof(l_preassoc_ctrl_cfg->operational_data_transmit_rates), "%s", new_rec->operational_data_transmit_rates);
+
+        snprintf(l_preassoc_ctrl_cfg->supported_data_transmit_rates, sizeof(l_preassoc_ctrl_cfg->supported_data_transmit_rates), "%s", new_rec->supported_data_transmit_rates);
+
+        snprintf(l_preassoc_ctrl_cfg->minimum_advertised_mcs, sizeof(l_preassoc_ctrl_cfg->minimum_advertised_mcs), "%s", new_rec->minimum_advertised_mcs);
+
+        snprintf(l_preassoc_ctrl_cfg->sixGOpInfoMinRate, sizeof(l_preassoc_ctrl_cfg->sixGOpInfoMinRate), "%s", new_rec->sixGOpInfoMinRate);
+
         l_preassoc_ctrl_cfg->time_ms = new_rec->time_ms;
         l_preassoc_ctrl_cfg->min_num_mgmt_frames = new_rec->min_num_mgmt_frames;
-        strcpy(l_preassoc_ctrl_cfg->tcm_exp_weightage, new_rec->tcm_exp_weightage);
-        strcpy(l_preassoc_ctrl_cfg->tcm_gradient_threshold, new_rec->tcm_gradient_threshold);
+
+        snprintf(l_preassoc_ctrl_cfg->tcm_exp_weightage, sizeof(l_preassoc_ctrl_cfg->tcm_exp_weightage), "%s", new_rec->tcm_exp_weightage);
+
+        snprintf(l_preassoc_ctrl_cfg->tcm_gradient_threshold, sizeof(l_preassoc_ctrl_cfg->tcm_gradient_threshold), "%s", new_rec->tcm_gradient_threshold);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Preassoc_Control_Config table vap_name=%s rssi_up_threshold=%s snr_threshold=%s cu_threshold=%s basic_data_transmit_rates=%s operational_data_transmit_rates=%s supported_data_transmit_rates=%s minimum_advertised_mcs=%s tcm_timeout:%d tcm_min_mgmt_frames:%d tcmexp:%s tcmgradient:%s \n",__func__, __LINE__,new_rec->vap_name,new_rec->rssi_up_threshold,new_rec->snr_threshold,new_rec->cu_threshold,new_rec->basic_data_transmit_rates,new_rec->operational_data_transmit_rates,new_rec->supported_data_transmit_rates,new_rec->minimum_advertised_mcs,new_rec->time_ms,new_rec->min_num_mgmt_frames,new_rec->tcm_exp_weightage,new_rec->tcm_gradient_threshold);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
@@ -1641,11 +1659,15 @@ void callback_Wifi_Postassoc_Control_Config(ovsdb_update_monitor_t *mon,
             return;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        strcpy(l_postassoc_ctrl_cfg->rssi_up_threshold, new_rec->rssi_up_threshold);
-        strcpy(l_postassoc_ctrl_cfg->sampling_interval, new_rec->sampling_interval);
-        strcpy(l_postassoc_ctrl_cfg->snr_threshold, new_rec->snr_threshold);
-        strcpy(l_postassoc_ctrl_cfg->sampling_count, new_rec->sampling_count);
-        strcpy(l_postassoc_ctrl_cfg->cu_threshold, new_rec->cu_threshold);
+        snprintf(l_postassoc_ctrl_cfg->rssi_up_threshold, sizeof(l_postassoc_ctrl_cfg->rssi_up_threshold), "%s", new_rec->rssi_up_threshold);
+
+        snprintf(l_postassoc_ctrl_cfg->sampling_interval, sizeof(l_postassoc_ctrl_cfg->sampling_interval), "%s", new_rec->sampling_interval);
+
+        snprintf(l_postassoc_ctrl_cfg->snr_threshold, sizeof(l_postassoc_ctrl_cfg->snr_threshold), "%s", new_rec->snr_threshold);
+
+        snprintf(l_postassoc_ctrl_cfg->sampling_count, sizeof(l_postassoc_ctrl_cfg->sampling_count), "%s", new_rec->sampling_count);
+
+        snprintf(l_postassoc_ctrl_cfg->cu_threshold, sizeof(l_postassoc_ctrl_cfg->cu_threshold), "%s", new_rec->cu_threshold);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Postassoc_Control_Config table vap_name=%s rssi_up_threshold=%s,sampling_interval=%s,snr_threshold=%s,sampling_count=%s,cu_threshold=%s\n",__func__, __LINE__,new_rec->vap_name,new_rec->rssi_up_threshold,new_rec->sampling_interval,new_rec->snr_threshold,new_rec->sampling_count,new_rec->cu_threshold);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
@@ -2770,6 +2792,11 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.mbo_enabled = config->u.bss_info.mbo_enabled;
         cfg.interop_ctrl = config->u.bss_info.interop_ctrl;
         cfg.inum_sta = config->u.bss_info.inum_sta;
+        cfg.mld_enable = config->u.bss_info.mld_info.common_info.mld_enable;
+        cfg.mld_id = config->u.bss_info.mld_info.common_info.mld_id;
+        cfg.mld_link_id = config->u.bss_info.mld_info.common_info.mld_link_id;
+        cfg.mld_apply = config->u.bss_info.mld_info.common_info.mld_apply;
+
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d: VAP Config update data cfg.radio_name=%s cfg.vap_name=%s cfg.ssid=%s "
             "cfg.enabled=%d cfg.advertisement=%d cfg.isolation_enabled=%d "
@@ -2781,7 +2808,8 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             "cfg.bss_hotspot=%d cfg.wps_push_button=%d cfg.wps_config_methods=%d "
             "cfg.wps_enabled=%d cfg.beacon_rate_ctl=%s cfg.mfp_config=%s "
             "network_initiated_greylist=%d exists=%d hostap_mgt_frame_ctrl=%d mbo_enabled=%d "
-            "interop_ctrl:%d inum_sta:%d\n",
+            "interop_ctrl:%d inum_sta:%d "
+            "mld_enable=%d mld_id=%d mld_link_id=%d mld_apply=%d\n",
             __func__, __LINE__, cfg.radio_name, cfg.vap_name, cfg.ssid, cfg.enabled,
             cfg.ssid_advertisement_enabled, cfg.isolation_enabled, cfg.mgmt_power_control,
             cfg.bss_max_sta, cfg.bss_transition_activated, cfg.nbr_report_activated,
@@ -2791,7 +2819,8 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             cfg.wep_key_length, cfg.bss_hotspot, cfg.wps_push_button, cfg.wps_config_methods,
             cfg.wps_enabled, cfg.beacon_rate_ctl, cfg.mfp_config, cfg.network_initiated_greylist,
             cfg.exists, cfg.hostap_mgt_frame_ctrl, cfg.mbo_enabled,
-            cfg.interop_ctrl, cfg.inum_sta);
+            cfg.interop_ctrl, cfg.inum_sta,
+            cfg.mld_enable, cfg.mld_id, cfg.mld_link_id, cfg.mld_apply);
     }
     if(onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_VAP_Config,&cfg,false,filter_vap,SCHEMA_TABLE(Wifi_Radio_Config),(onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Radio_Config,radio_name),radio_name)),SCHEMA_COLUMN(Wifi_Radio_Config,vap_configs)) == false)
     {
@@ -4805,7 +4834,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_WNXL11BWL_PRODUCT_REQ_)
+    defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
                 config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
                 wifi_util_info_print(WIFI_DB,
@@ -4817,7 +4846,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_WNXL11BWL_PRODUCT_REQ_)
+       // defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_STATS_FLAG) {
@@ -4852,7 +4881,20 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
             if (sec->wpa3_transition_disable != false) {
                 sec->wpa3_transition_disable = false;
-                wifi_util_dbg_print(WIFI_DB, "%s:%d force change wpa3 transition disable state to false\r\n", __func__, __LINE__);
+                int ret = wifidb_update_wifi_security_config(config->vap_array[i].vap_name, sec);
+                wifi_util_info_print(WIFI_DB, "%s:%d force change wpa3 transition"
+                    " disable state to false for vap:%s ret:%d\r\n", __func__, __LINE__,
+                    config->vap_array[i].vap_name, ret);
+            }
+        }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG) {
+            wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
+                __func__, __LINE__, g_wifidb->db_version);
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 0;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
+                config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                     &rdk_config[i]);
             }
@@ -5731,25 +5773,25 @@ int ovsdb_get_radio_params(unsigned int radio_index, wifi_radio_operationParam_t
 {
     if (radio_index == 0) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_G;
     } else if (radio_index == 1) {
         params->band = WIFI_FREQUENCY_5_BAND;
-        params->op_class = 1;
+        params->operatingClass = 1;
         params->channel = 36;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_A;
     } else if (radio_index == 2) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
     } else if (radio_index == 3) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
@@ -6185,6 +6227,10 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             config->u.bss_info.interop_ctrl = pcfg->interop_ctrl;
             config->u.bss_info.inum_sta = pcfg->inum_sta;
             config->u.bss_info.mbo_enabled = pcfg->mbo_enabled;
+            config->u.bss_info.mld_info.common_info.mld_enable = pcfg->mld_enable;
+            config->u.bss_info.mld_info.common_info.mld_id = pcfg->mld_id;
+            config->u.bss_info.mld_info.common_info.mld_link_id = pcfg->mld_link_id;
+            config->u.bss_info.mld_info.common_info.mld_apply = pcfg->mld_apply;
         }
     }
     free(pcfg);
@@ -6366,8 +6412,8 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         memset(tmp_mac_str, 0, sizeof(tmp_mac_str));
         to_mac_str(config->mac, tmp_mac_str);
         str_tolower(tmp_mac_str);
-        strncpy(l_mac_entry.device_name, config->device_name, sizeof(l_mac_entry.device_name)-1);
-        strncpy(l_mac_entry.mac, tmp_mac_str, sizeof(l_mac_entry.mac)-1);
+        snprintf(l_mac_entry.device_name, sizeof(l_mac_entry.device_name), "%s", config->device_name);
+        snprintf(l_mac_entry.mac, sizeof(l_mac_entry.mac), "%s", tmp_mac_str);
 #if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
@@ -6393,12 +6439,12 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
 
         to_mac_str(config->mac, tmp_mac_str);
         str_tolower(tmp_mac_str);
-        strncpy(cfg_mac.device_mac, tmp_mac_str, sizeof(cfg_mac.device_mac)-1);
-        strncpy(cfg_mac.device_name, config->device_name, sizeof(cfg_mac.device_name)-1);
+        snprintf(cfg_mac.device_mac, sizeof(cfg_mac.device_mac), "%s", tmp_mac_str);
+        snprintf(cfg_mac.device_name, sizeof(cfg_mac.device_name), "%s", config->device_name);
         cfg_mac.reason = config->reason;
         cfg_mac.expiry_time = config->expiry_time;
         //concat for macfilter_key.
-        strncpy(cfg_mac.macfilter_key, macfilter_key, sizeof(cfg_mac.macfilter_key));
+        snprintf(cfg_mac.macfilter_key, sizeof(cfg_mac.macfilter_key), "%s", macfilter_key);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: updating table wifi_macfilter_config table entry is device_mac %s, device_name %s,macfilter_key %s reason %d and expiry_time %d\n", __func__, __LINE__, cfg_mac.device_mac, cfg_mac.device_name, cfg_mac.macfilter_key,cfg_mac.reason,cfg_mac.expiry_time);
 
         l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
@@ -6412,8 +6458,8 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
             return -1;
         }
         l_mac_entry.acl_map = l_rdk_vap_array->acl_map;
-        strncpy(l_mac_entry.device_name, cfg_mac.device_name, sizeof(l_mac_entry.device_name)-1);
-        strncpy(l_mac_entry.mac, cfg_mac.device_mac, sizeof(l_mac_entry.mac)-1);
+        snprintf(l_mac_entry.device_name, sizeof(l_mac_entry.device_name), "%s", cfg_mac.device_name);
+        snprintf(l_mac_entry.mac, sizeof(l_mac_entry.mac), "%s", cfg_mac.device_mac);
 #if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
@@ -6769,7 +6815,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
-            cfg.op_class = 12;
             cfg.operatingClass = 81;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
@@ -6781,13 +6826,17 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #if defined (NEWPLATFORM_PORT) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
+
+#if defined(CONFIG_IEEE80211BE) && (defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_))
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
@@ -6797,6 +6846,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg.DfsEnabled = true;
+#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+	    cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
+	    cfg.DfsEnabled = true;
 #else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
@@ -6806,7 +6858,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5H_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
@@ -6823,7 +6874,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.op_class = 131;
             cfg.operatingClass = 131;
             cfg.channel = 5;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
@@ -6866,6 +6916,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string\n", __func__, __LINE__);
         }
     }
+
+    if (wifi_hal_get_RegDomain(radio_index, &cfg.regDomain) != RETURN_OK) {
+        wifi_util_error_print(WIFI_DB, "%s:%d: unable to get regulatory domain for radio%d\n",
+            __func__, __LINE__, radio_index);
+    }
+
     cfg.countryCode = country_code_val;
     cfg.operatingEnvironment = wifi_operating_env_indoor;
     cfg.dtimPeriod = 1;
@@ -7166,6 +7222,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
         cfg.vap_mode = wifi_vap_mode_ap;
+        /*TODO: Are values correct? */
+        cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
+        cfg.u.bss_info.mld_info.common_info.mld_id = 255;
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
+        cfg.u.bss_info.mld_info.common_info.mld_apply = 1;
+        memset(&cfg.u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg.u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
 #ifdef FEATURE_SUPPORT_WPS
@@ -7225,7 +7287,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_WNXL11BWL_PRODUCT_REQ_)
+    defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         if (!isVapSTAMesh(vap_index)) {
             cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
             wifi_util_info_print(WIFI_DB, "%s:%d vap_index:%d hostap_mgt_frame_ctrl:%d\n", __func__,
@@ -7233,7 +7295,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_WNXL11BWL_PRODUCT_REQ_)
+       // defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         cfg.u.bss_info.interop_ctrl = false;
         cfg.u.bss_info.inum_sta = 0;
         wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d interop_ctrl:%d inum_sta:%d \n", __func__,
@@ -7525,9 +7587,14 @@ void wifidb_init_default_value()
         }
         wifidb_init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
         wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
-        wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
-        wifidb_init_postassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.postassoc);
-
+        if (isVapHotspot(vap_index)) {
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d: Updating preassoc and postassoc only for hotspot vaps\n", __func__,
+                __LINE__);
+            wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
+            wifidb_init_postassoc_conn_ctrl_config_default(vap_index,
+                &vapInfo->u.bss_info.postassoc);
+        }
       //As wifidb_init_vap_config_default() does memcpy of wifi_vap_info_t structure
       //so here we are restoring the interface mac into wifi_vap_info_t from temporary array
         if (isVapSTAMesh(vap_index) == TRUE) {
@@ -7543,6 +7610,88 @@ void wifidb_init_default_value()
     wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
+}
+
+static int get_ap_mac_by_vap_index(wifi_vap_info_map_t *hal_vap_info_map, int vap_index,  mac_address_t mac)
+{
+    unsigned int j = 0;
+
+    for (j = 0; j < hal_vap_info_map->num_vaps; j++) {
+        if ((int)hal_vap_info_map->vap_array[j].vap_index == vap_index) {
+            memcpy(mac, hal_vap_info_map->vap_array[j].u.bss_info.bssid, sizeof(mac_address_t));
+            return RETURN_OK;
+        }
+    }
+    wifi_util_error_print(WIFI_DB, "%s:%d vap_info not found for vap_index value: %d\n"
+        ,__FUNCTION__, __LINE__, vap_index);
+    return RETURN_ERR;
+}
+
+static int wifidb_vap_config_update_mld_mac()
+{
+    wifi_vap_info_map_t  hal_vap_info_map;
+    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
+    mac_address_t mlo_mac = {0};
+    mac_address_t zero_mac = {0};
+    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = {0};
+    unsigned int r_idx=0;
+    unsigned int i = 0;
+    unsigned int k = 0;
+    int ret = RETURN_OK;
+
+    for (i = 0; i < MLD_UNIT_COUNT; i++) {
+        memset(mld_addr_map, 0, sizeof(mld_addr_map));
+        memset(mlo_mac, 0, sizeof(mac_address_t));
+
+        wifi_util_info_print(WIFI_DB, "%s:%d: Updating MLO MAC for mld_unit %d\r\n", __func__, __LINE__, i);
+
+        for (r_idx=0; r_idx < getNumberRadios(); r_idx++) {
+            memset(&hal_vap_info_map, 0, sizeof(hal_vap_info_map));
+            /* wifi_hal_getRadioVapInfoMap is used  to get the macaddress of wireless interfaces */
+            ret = wifi_hal_getRadioVapInfoMap(r_idx, &hal_vap_info_map);
+            if (ret != RETURN_OK) {
+                wifi_util_error_print(WIFI_DB, "%s:%d wifi_hal_getRadioVapInfoMap failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
+                return ret;
+            }
+            /* vap map with loaded DB - find the main mlo vap */
+            mgr_vap_info_map = get_wifidb_vap_map(r_idx);
+            if (mgr_vap_info_map == NULL) {
+                wifi_util_error_print(WIFI_DB, "%s:%d get_wifidb_vap_map failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
+                return RETURN_ERR;
+            }
+            for (k = 0; k < mgr_vap_info_map->num_vaps; k++) {
+                wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
+                wifi_mld_common_info_t *mld_info = NULL;
+
+                if (isVapSTAMesh(vap_config->vap_index)) {
+                    continue;
+                }
+
+                mld_info = &vap_config->u.bss_info.mld_info.common_info;
+                if (i == 0) { /* Initialise all vap's mld_mac with interface mac */
+                    get_ap_mac_by_vap_index(&hal_vap_info_map, vap_config->vap_index, mld_info->mld_addr);
+                }
+
+                if (mld_info->mld_enable && mld_info->mld_id == i) {
+                    mld_addr_map[r_idx] = mld_info->mld_addr; /* store mld_addr ptr to be updated later */
+                    if(mld_info->mld_link_id == 0) { /* check if the link is main MLO link */
+                        get_ap_mac_by_vap_index(&hal_vap_info_map, vap_config->vap_index, mlo_mac);
+                    }
+                }
+            }
+        }
+
+        if (memcmp(mlo_mac, zero_mac, sizeof(mac_address_t)) == 0) {
+            continue;
+        }
+
+        for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
+            if (mld_addr_map[r_idx] != NULL) {
+                memcpy(mld_addr_map[r_idx], mlo_mac, sizeof(mac_address_t));
+            }
+        }
+    }
+    return RETURN_OK;
 }
 
 /************************************************************************************
@@ -7743,6 +7892,7 @@ void init_wifidb_data()
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
+        wifidb_vap_config_update_mld_mac();
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 
@@ -8547,6 +8697,7 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
             continue;
         }
 
+        memset(temp_psm_mac_param, 0, sizeof(acl_entry_t));
         memset(recName, 0, sizeof(recName));
         memset(strValue, 0, sizeof(strValue));
         snprintf(recName, sizeof(recName), MacFilterDevice, instance_number, index);

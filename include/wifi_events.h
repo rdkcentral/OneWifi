@@ -105,6 +105,7 @@ typedef enum {
     wifi_event_radius_eap_failure,
     wifi_event_radius_fallback_and_failover,
     wifi_event_type_csi_data,
+    wifi_event_hal_wps_results,
     wifi_event_hal_max,
 
     // Commands
@@ -185,6 +186,7 @@ typedef enum {
     wifi_event_monitor_set_subscribe,
     wifi_event_monitor_auth_req,
     wifi_event_monitor_update_interop_interval,
+    wifi_event_monitor_channel_status,
     wifi_event_monitor_max,
 
     // Tunnel

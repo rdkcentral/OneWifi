@@ -128,6 +128,12 @@ typedef enum {
     webconfig_subdoc_type_assocdev_stats,
     webconfig_subdoc_type_radiodiag_stats,
     webconfig_subdoc_type_radio_temperature,
+    webconfig_subdoc_type_vap_24G,
+    webconfig_subdoc_type_vap_5G,
+    webconfig_subdoc_type_vap_6G,
+    webconfig_subdoc_type_radio_24G,
+    webconfig_subdoc_type_radio_5G,
+    webconfig_subdoc_type_radio_6G,
     webconfig_subdoc_type_memwraptool,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
@@ -316,6 +322,11 @@ webconfig_error_t webconfig_encode(webconfig_t *config, webconfig_subdoc_data_t 
 webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t *data, const char *str);
 webconfig_error_t webconfig_data_free(webconfig_subdoc_data_t *data);
 
+// decode api sets for hotspot
+webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_interworking_t *interworking_info);
+webconfig_error_t decode_cac_object(wifi_vap_info_t *vap_info, cJSON *obj_array);
+webconfig_error_t decode_ipv4_address(char *ip);
+webconfig_error_t decode_ipv6_address(char *ip);
 
 // internal to webconfig
 webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -588,6 +599,22 @@ webconfig_error_t       decode_radio_temperature_stats_subdoc(webconfig_t *confi
 webconfig_error_t       encode_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Vap_24G, Vap_5G and Vap_6G
+webconfig_error_t       init_multivap_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Per Radio Config for 2.4G, 5G and 6G
+webconfig_error_t       init_single_radio_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 #ifdef __cplusplus
 }
 #endif

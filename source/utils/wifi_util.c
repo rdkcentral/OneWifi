@@ -983,13 +983,13 @@ int convert_radio_name_to_radio_index(char *name)
 int convert_radio_index_to_radio_name(int index, char *name)
 {
     if (index == 0) {
-        strncpy(name,"radio1",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio1",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 1) {
-        strncpy(name,"radio2",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio2",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 2) {
-        strncpy(name,"radio3",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio3",RADIO_NAME_LENGTH);
         return 0;
     }
 
@@ -1693,11 +1693,13 @@ int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, 
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        if ((strcmp(auto_channel_string, "auto")) || (strcmp(auto_channel_string, "cloud")) || (strcmp(auto_channel_string, "acs"))) {
+        if ((strcmp(auto_channel_string, "auto") == 0) || (strcmp(auto_channel_string, "cloud") == 0) || (strcmp(auto_channel_string, "acs") == 0)) {
             *auto_channel_bool = true;
             return RETURN_OK;
-        } else if (strcmp(auto_channel_string, "manual")) {
+        } else if (strcmp(auto_channel_string, "manual") == 0) {
             *auto_channel_bool = false;
+            return RETURN_OK;
+        } else if (strcmp(auto_channel_string, "") == 0) {
             return RETURN_OK;
         }
     } else if (conv_type == ENUM_TO_STRING) {
@@ -3870,6 +3872,14 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mcast2ucast) ||
             is_vap_preassoc_cac_config_changed(vap_info_new->vap_name,
                     &vap_info_old->u.bss_info.preassoc, &vap_info_new->u.bss_info.preassoc) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_enable,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,
