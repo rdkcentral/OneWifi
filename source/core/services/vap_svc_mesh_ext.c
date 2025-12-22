@@ -1196,6 +1196,9 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     // HAL error. On different band try to connect to new BSSID before disconnection.
     // disconnect will be executed if new bssid is found in the scan results
     if (ext->connected_vap_index == vap_info->vap_index) {
+        if (ext->conn_state != connection_state_connected_wait_for_csa) {
+            ext->go_to_channel = channel;
+        }
         ext_set_conn_state(ext, connection_state_connected_scan_list, __func__, __LINE__);
     } else {
         ext->is_radio_ignored = true;
