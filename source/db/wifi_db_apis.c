@@ -6834,10 +6834,15 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
 
-#if defined(CONFIG_IEEE80211BE) && (defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_))
+#if defined(CONFIG_IEEE80211BE)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant |= WIFI_80211_VARIANT_BE;
-            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
-#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+#endif
+#if defined(_PLATFORM_BANANAPI_R4_)
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ; 
+#endif  /* defined(_PLATFORM_BANANAPI_R4_) */
+#endif /* defined(CONFIG_IEEE80211BE) */
+
 
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
