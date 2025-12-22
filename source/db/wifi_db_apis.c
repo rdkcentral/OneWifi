@@ -7666,7 +7666,7 @@ static int get_ap_mac_by_vap_index(wifi_vap_info_map_t *hal_vap_info_map, int va
 
 static int wifidb_vap_config_update_mld_mac()
 {
-    wifi_vap_info_map_t  hal_vap_info_map;
+    wifi_vap_info_map_t  *hal_vap_info_map = NULL;
     wifi_vap_info_map_t *mgr_vap_info_map = NULL;
     mac_address_t mlo_mac = {0};
     mac_address_t zero_mac = {0};
@@ -7676,6 +7676,12 @@ static int wifidb_vap_config_update_mld_mac()
     unsigned int k = 0;
     int ret = RETURN_OK;
 
+    hal_vap_info_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (hal_vap_info_map == NULL) {
+        wifi_util_error_print(WIFI_DB, "%s:%d Failed to allocate memory for hal_vap_info_map\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
     for (i = 0; i < MLD_UNIT_COUNT; i++) {
         memset(mld_addr_map, 0, sizeof(mld_addr_map));
         memset(mlo_mac, 0, sizeof(mac_address_t));
@@ -7683,17 +7689,21 @@ static int wifidb_vap_config_update_mld_mac()
         wifi_util_info_print(WIFI_DB, "%s:%d: Updating MLO MAC for mld_unit %d\r\n", __func__, __LINE__, i);
 
         for (r_idx=0; r_idx < getNumberRadios(); r_idx++) {
-            memset(&hal_vap_info_map, 0, sizeof(hal_vap_info_map));
+            memset(hal_vap_info_map, 0, sizeof(wifi_vap_info_map_t));
             /* wifi_hal_getRadioVapInfoMap is used  to get the macaddress of wireless interfaces */
-            ret = wifi_hal_getRadioVapInfoMap(r_idx, &hal_vap_info_map);
+            ret = wifi_hal_getRadioVapInfoMap(r_idx, hal_vap_info_map);
             if (ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_DB, "%s:%d wifi_hal_getRadioVapInfoMap failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
+                free(hal_vap_info_map);
+                hal_vap_info_map = NULL;
                 return ret;
             }
             /* vap map with loaded DB - find the main mlo vap */
             mgr_vap_info_map = get_wifidb_vap_map(r_idx);
             if (mgr_vap_info_map == NULL) {
                 wifi_util_error_print(WIFI_DB, "%s:%d get_wifidb_vap_map failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
+                free(hal_vap_info_map);
+                hal_vap_info_map = NULL;
                 return RETURN_ERR;
             }
             for (k = 0; k < mgr_vap_info_map->num_vaps; k++) {
@@ -7706,13 +7716,13 @@ static int wifidb_vap_config_update_mld_mac()
 
                 mld_info = &vap_config->u.bss_info.mld_info.common_info;
                 if (i == 0) { /* Initialise all vap's mld_mac with interface mac */
-                    get_ap_mac_by_vap_index(&hal_vap_info_map, vap_config->vap_index, mld_info->mld_addr);
+                    get_ap_mac_by_vap_index(hal_vap_info_map, vap_config->vap_index, mld_info->mld_addr);
                 }
 
                 if (mld_info->mld_enable && mld_info->mld_id == i) {
                     mld_addr_map[r_idx] = mld_info->mld_addr; /* store mld_addr ptr to be updated later */
                     if(mld_info->mld_link_id == 0) { /* check if the link is main MLO link */
-                        get_ap_mac_by_vap_index(&hal_vap_info_map, vap_config->vap_index, mlo_mac);
+                        get_ap_mac_by_vap_index(hal_vap_info_map, vap_config->vap_index, mlo_mac);
                     }
                 }
             }
@@ -7728,6 +7738,8 @@ static int wifidb_vap_config_update_mld_mac()
             }
         }
     }
+    free(hal_vap_info_map);
+    hal_vap_info_map = NULL;
     return RETURN_OK;
 }
 #endif /* CONFIG_IEEE80211BE */
