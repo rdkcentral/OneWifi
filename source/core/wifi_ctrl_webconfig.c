@@ -201,6 +201,7 @@ int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable
 free_data:
     if (tmp_vap_map) {
         free(tmp_vap_map);
+        tmp_vap_map = NULL;
     }
 
     return ret;
