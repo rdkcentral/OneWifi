@@ -69,7 +69,7 @@ secBhaulEnable=`syscfg get SecureBackhaul_Enable`
 wifiDynamicProfile=`sysevent get wifiDynamicProfile` # 0 - LnF, 1 - mesh onboarding
 
 if [ "x$ovs_enable" = "xtrue" ] || [ "x$bridgeUtilEnable" = "xtrue" ] ; then
-	if [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] ||  [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] ||  [ "$MODEL_NUM" == "SCXF11BFL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR300" ] || [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "$WNX" ] || [ "$MODEL_NUM" == "$TG4" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
+	if [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] ||  [ "$MODEL_NUM" == "SCXF11BFL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR300" ] || [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "$WNX" ] || [ "$MODEL_NUM" == "$TG4" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ]; then
 	  USE_BRIDGEUTILS=1
 	fi
 fi
