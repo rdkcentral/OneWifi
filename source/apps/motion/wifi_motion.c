@@ -377,7 +377,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
         csi->no_of_mac = 0;
     }
 
-    strncpy(mac_list, r_mac_list, MAX_CSI_CLIENTMACLIST_STR);
+    snprintf(mac_list, MAX_CSI_CLIENTMACLIST_STR, "%s", r_mac_list);
     rest = mac_list;
     if (strlen(mac_list) > 0)  {
         gettimeofday(&t_now, NULL);
@@ -817,7 +817,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
                     str_to_mac_bytes(str, l_client_list[itr]);
                     str = strtok_r(NULL, ",", &cptr);
                     itr++;
-                    if (itr > MAX_NUM_CSI_CLIENTS) {
+                    if (itr >= MAX_NUM_CSI_CLIENTS) {
                         wifi_util_error_print(WIFI_APPS,"%s:%d client list is big %d\n", __func__, __LINE__, itr);
                         if (str_dup) {
                             free(str_dup);

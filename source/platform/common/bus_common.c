@@ -432,13 +432,18 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
 
         if(token && next_node && next_node->parent && next_node->parent->type == bus_element_type_table)
         {
-            if(!isWildcard && !strcmp(token,"*"))
-            {
+            bus_callback_table_t *user_cb = NULL;
+            bus_mux_reg_node_data_t *reg_node_data = next_node->parent->node_elem_data;
+
+            if (reg_node_data != NULL) {
+                user_cb = &reg_node_data->cb_table;
+            }
+
+            if (!isWildcard && !strcmp(token,"*")) {
                 isWildcard = true;
             }
 
-            if(isWildcard)
-            {
+            if (isWildcard || (user_cb && user_cb->get_handler)) {
                 token = "{i}";
             }
         }
