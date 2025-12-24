@@ -54,7 +54,7 @@ void set_dml_init_status(bool status)
         wifi_mgr->wifidml.dml_init_status.condition = status;
         pthread_cond_signal(&wifi_mgr->wifidml.dml_init_status.cv);
         pthread_mutex_unlock(&wifi_mgr->lock);
-        wifi_util_info_print(WIFI_MGR, "%s Marking DML Init Complete. Start Wifi Ctrli\n", __FUNCTION__, status);
+        wifi_util_info_print(WIFI_MGR, "%s Marking DML Init Complete. Start Wifi Ctrl status %d\n", __FUNCTION__, status);
     }
 }
 

@@ -910,8 +910,8 @@ int early_validate_interworking(const cJSON *interworking, pErr execRetVal)
     validate_param_bool(interworking, "InterworkingEnable", param);
     validate_param_integer(interworking, "AccessNetworkType", param);
     if (param->valuedouble > 5) {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for AccessNetworkType=%d\n",
-            __func__, __LINE__, param->valuedouble);
+        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for AccessNetworkType=%u\n",
+            __func__, __LINE__,(unsigned int) param->valuedouble);
         strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
     }
@@ -2058,7 +2058,7 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
 	// HwMode
 	validate_param_integer(wifi, "HwMode", param);
         if (validate_wifi_hw_variant(wifi_radio_info->band, param->valuedouble) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio hardware mode [%d] configuration\n", param->valuedouble);
+            wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio hardware mode [%u] configuration\n", (unsigned int)param->valuedouble);
             strncpy(execRetVal->ErrorMsg, "Invalid wifi radio hardware mode config",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }

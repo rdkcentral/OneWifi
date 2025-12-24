@@ -60,8 +60,7 @@ int copy_neighbor_ap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void 
         return RETURN_ERR;
     }
     if (p_elem->mon_stats_config == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
-                __func__,__LINE__, p_elem, mon_cache);
+        wifi_util_error_print(WIFI_MON, "%s:%d p_elem->mon_stats_config NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
     args = &(p_elem->mon_stats_config->args);
