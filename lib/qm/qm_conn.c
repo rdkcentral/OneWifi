@@ -53,7 +53,9 @@ bool qm_conn_server(int *pfd)
     char *path = QM_SOCK_FILENAME;
     int fd;
 
-    mkdir(QM_SOCK_DIR, 0755);
+    if (0 != mkdir(QM_SOCK_DIR, 0755)) {
+        LOG(ERR, " failied to create dir %s", QM_SOCK_DIR);
+    }
     errno = 0; // ignore dir exist error
 
     *pfd = -1;
@@ -105,7 +107,9 @@ bool qm_conn_client(int *pfd)
     struct sockaddr_un addr;
     char *path = QM_SOCK_FILENAME;
     int fd;
-    mkdir(QM_SOCK_DIR, 0755);
+    if (mkdir(QM_SOCK_DIR, 0755) != 0) {
+        LOG(ERR, "Failed to create dir %s", QM_SOCK_DIR);
+    }
 
     *pfd = -1;
 

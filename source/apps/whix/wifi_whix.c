@@ -2239,7 +2239,7 @@ static void rejected_client_stats(void *args)
 
     for (int ap_index = 0; ap_index < (int)getTotalNumberVAPs(); ap_index++) {
         vap_index = VAP_INDEX(mgr->hal_cap, ap_index);
-        wifi_util_dbg_print(WIFI_APPS, "Value of ap_index %d and vap_index is %d\n", __func__,
+        wifi_util_dbg_print(WIFI_APPS, "%s Value of ap_index %d and vap_index is %d\n", __func__,
             ap_index, vap_index);
         rejected_client_stat_t *ap_params = &whix_obj->rejected_client_stats[vap_index];
 

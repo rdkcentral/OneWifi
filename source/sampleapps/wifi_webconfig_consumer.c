@@ -379,7 +379,10 @@ void sig_handler(int sig)
 }
 void cleanup_function()
 {
-    remove(CONSUMER_APP_FILE);
+    if (remove(CONSUMER_APP_FILE) == 0)
+    {
+        printf("%s:%d Deleted file  : %s\n",__FUNCTION__, __LINE__, CONSUMER_APP_FILE); 
+    }
 }
 int main (int argc, char *argv[])
 {

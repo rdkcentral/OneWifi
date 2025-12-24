@@ -293,7 +293,6 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     char *str;
     probe_req_elem_t *elem, *tmp;
     char namespace[50];
-
     frame = (struct ieee80211_mgmt *)msg->data;
     str = to_mac_str(frame->sa, mac_str);
     if (str == NULL) {
@@ -317,7 +316,6 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     } else {
         // prob request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, elem->msg_data.frame.ap_index+1);
-        pthread_mutex_unlock(&app->data.u.levl.lock);
         mgmt_frame_bus_send(&app->handle, namespace, &elem->msg_data);
 
         // assoc request bus send
@@ -325,7 +323,6 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         mgmt_frame_bus_send(&app->handle, namespace, msg);
 
         // remove prob request
-        pthread_mutex_lock(&app->data.u.levl.lock);
         tmp = elem;
         frame = (struct ieee80211_mgmt *)tmp->msg_data.data;
         str = to_mac_str((unsigned char *)frame->sa, mac_str);
@@ -661,7 +658,6 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
         return;
     }
-
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *) data;
     levl_sched_data_t *levl_sc_data = NULL;
     hash_map_t *p_map = NULL, *curr_map = NULL;
@@ -711,9 +707,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         wifi_util_error_print(WIFI_APPS,"%s:%d Disabling Sounding for MAC %02x:...:%02x\n", __func__, __LINE__,
                 assoc_data->dev_stats.cli_MACAddress[0],assoc_data->dev_stats.cli_MACAddress[5]);
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, assoc_data->ap_index, assoc_data->dev_stats.cli_MACAddress, wifi_app_inst_levl);
-        pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
         levl_csi_status_publish(&wifi_app->handle, assoc_data->dev_stats.cli_MACAddress, 0);
-        pthread_mutex_lock(&wifi_app->data.u.levl.lock);
     }
 
     levl_sc_data = (levl_sched_data_t *)hash_map_remove(curr_map, mac_str);
@@ -1831,7 +1825,9 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
                                levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0, FALSE);
 
     //Create FIFO for the csi.
-    mkfifo(CSI_LEVL_PIPE, 0777);
+    if (mkfifo(CSI_LEVL_PIPE, 0777) != 0) {
+        return RETURN_ERR;
+    }
     app->data.u.levl.csi_fd = -1;
  
     rc = get_bus_descriptor()->bus_open_fn(&app->handle, component_name);

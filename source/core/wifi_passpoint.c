@@ -598,7 +598,7 @@ INT WiFi_SaveGasCfg(char *buffer, int len)
     } 
  
     FILE *fPasspointGasCfg = fopen(WIFI_PASSPOINT_GAS_CFG_FILE, "w");
-    if(0 == fwrite(buffer, len,1, fPasspointGasCfg)){
+    if((fPasspointGasCfg) != NULL && (0 == fwrite(buffer, len,1, fPasspointGasCfg))){
         fclose(fPasspointGasCfg);
         return RETURN_ERR;
     }else{
@@ -956,7 +956,7 @@ INT WiFi_SaveANQPCfg(uint8_t vapIndex)
 
     sprintf(cfgFile,"%s.%d",WIFI_PASSPOINT_ANQP_CFG_FILE,apIns);
     FILE *fPasspointAnqpCfg = fopen(cfgFile, "w");
-    if(0 == fwrite(buffer, len,1, fPasspointAnqpCfg)){
+    if((fPasspointAnqpCfg != NULL) && (0 == fwrite(buffer, len,1, fPasspointAnqpCfg))){
         fclose(fPasspointAnqpCfg);
         return RETURN_ERR;
     }else{
@@ -1204,7 +1204,7 @@ INT WiFi_SaveHS2Cfg(uint8_t vapIndex)
     
     sprintf(cfgFile,"%s.%d",WIFI_PASSPOINT_HS2_CFG_FILE,apIns);
     FILE *fPasspointCfg = fopen(cfgFile, "w");
-    if(0 == fwrite(buffer, len,1, fPasspointCfg)){
+    if((fPasspointCfg != NULL) && (0 == fwrite(buffer, len,1, fPasspointCfg))){
         fclose(fPasspointCfg);
         return RETURN_ERR;
     }else{

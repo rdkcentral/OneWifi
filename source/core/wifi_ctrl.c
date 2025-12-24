@@ -413,9 +413,10 @@ unsigned int get_Uptime(void)
     system(cmd);
     fp = fopen(FILE_SYSTEM_UPTIME, "r");
     if (fp != NULL) {
-        fscanf(fp, "%u", &upSecs);
-        wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
-        fclose(fp);
+        if (fscanf(fp, "%u", &upSecs) != EOF){
+            wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
+            fclose(fp);
+	}
     }
     return upSecs;
 }
@@ -590,7 +591,7 @@ bool check_for_greylisted_mac_filter(void)
                     vap_index = wifi_vap_map->vap_array[itrj].vap_index;
                     l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-                    if (l_rdk_vap_array->acl_map != NULL) {
+                    if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map == NULL)) {
                         acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
                         while(acl_entry != NULL) {
                             if (acl_entry->mac != NULL && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
@@ -691,7 +692,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
         if (data.data_type != bus_data_type_uint32) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
                 name, data.data_type, rc);
             return;
         }
@@ -705,7 +706,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         if (data.data_type != bus_data_type_string) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
                 name, data.data_type, rc);
             return;
         }
@@ -713,7 +714,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         pTmp = (char *)data.raw_data.bytes;
         if (pTmp == NULL) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus: Unable to get value in event:%s\n",
-                __func__, __LINE__);
+                __func__, __LINE__,name);
             return;
         }
         if (strcmp(pTmp, "Up") == 0) {

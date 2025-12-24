@@ -524,7 +524,7 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     rdata.raw_data.bytes = (void *)data->raw;
     rdata.raw_data_len = strlen(data->raw) + 1;
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_DOC_DATA_NORTH initiated %d\n", __func__,
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_DOC_DATA_NORTH initiated \n", __func__,
             __LINE__);
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_DOC_DATA_NORTH,
@@ -1066,8 +1066,10 @@ bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_use
 
     data.u.decoded.num_radios = getNumberRadios();
     data.u.decoded.assoclist_notifier_type = assoclist_notifier_full;
-    webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients);
-
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
+        webconfig_data_free(&data);
+        return bus_error_general;
+    }
     uint32_t str_size = strlen(data.u.encoded.raw) + 1;
     p_data->data_type = bus_data_type_string;
     p_data->raw_data.bytes = malloc(str_size);
@@ -1109,7 +1111,10 @@ bus_error_t get_null_subdoc_data(char *name, raw_data_t *p_data, bus_user_data_t
         sizeof(wifi_hal_capability_t));
 
     data.u.decoded.num_radios = getNumberRadios();
-    webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_null);
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_null) != webconfig_error_none) {
+        webconfig_data_free(&data);
+	return bus_error_general;
+    }
 
     uint32_t str_size = strlen(data.u.encoded.raw) + 1;
     p_data->data_type = bus_data_type_string;
@@ -1312,7 +1317,10 @@ char *get_assoc_devices_blob()
     pdata->u.decoded.num_radios = getNumberRadios();
     pdata->u.decoded.assoclist_notifier_type = assoclist_notifier_full;
 
-    webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients);
+    if (webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
+        free(pdata);
+	return NULL;
+    }
 
     size_t len = strlen(pdata->u.encoded.raw);
     str = (char *)calloc(len + 1, sizeof(char));
@@ -1761,7 +1769,7 @@ void update_speedtest_tout_value()
     rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data);
     if (data.data_type != bus_data_type_uint32) {
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
             LAST_REBOOT_REASON_NAMESPACE, data.data_type, rc);
         return;
     }
@@ -2591,47 +2599,49 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
     ret = sscanf(name, "Device.WiFi.AccessPoint.%d.Security.ConnectedRadiusEndpoint", &idx);
     if (ret == 1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
         wifi_front_haul_bss_t *vap_bss =  Get_wifi_object_bss_parameter(idx - 1);
-        if(vap_bss->enabled && (isVapHotspotSecure5g(idx - 1) || isVapHotspotSecure6g(idx - 1) || isVapHotspotOpen5g(idx - 1) || isVapHotspotOpen6g(idx - 1))){
+	if (vap_bss != NULL) {
+           if(vap_bss->enabled && (isVapHotspotSecure5g(idx - 1) || isVapHotspotSecure6g(idx - 1) || isVapHotspotOpen5g(idx - 1) || isVapHotspotOpen6g(idx - 1))){
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-            str_len = strlen((char*)vap_bss->security.u.radius.connectedendpoint) + 1;
-            p_data->data_type = bus_data_type_string;
-            p_data->raw_data.bytes = malloc(str_len);
-            if (p_data->raw_data.bytes == NULL) {
-                wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
-                __LINE__, str_len);
-             return bus_error_out_of_resources;
-            }
-            strcpy((char *)p_data->raw_data.bytes, (char*)vap_bss->security.u.radius.connectedendpoint);
-            p_data->raw_data_len = str_len;
+                str_len = strlen((char*)vap_bss->security.u.radius.connectedendpoint) + 1;
+                p_data->data_type = bus_data_type_string;
+                p_data->raw_data.bytes = malloc(str_len);
+                if (p_data->raw_data.bytes == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+                    __LINE__, str_len);
+                 return bus_error_out_of_resources;
+                }
+                strcpy((char *)p_data->raw_data.bytes, (char*)vap_bss->security.u.radius.connectedendpoint);
+                p_data->raw_data_len = str_len;
 #else
-            char temp_str[45] = {0};
-            getIpStringFromAdrress(temp_str,&vap_bss->security.u.radius.connectedendpoint);
-            str_len = strlen(temp_str)+1;
-            p_data->data_type = bus_data_type_string;
-            p_data->raw_data.bytes = malloc(str_len);
-            if (p_data->raw_data.bytes == NULL) {
-                wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
-                __LINE__, str_len);
-             return bus_error_out_of_resources;
-            }
-            strncpy((char *)p_data->raw_data.bytes, temp_str,sizeof(temp_str)-1);
-            p_data->raw_data_len = str_len;
+                char temp_str[45] = {0};
+                getIpStringFromAdrress(temp_str,&vap_bss->security.u.radius.connectedendpoint);
+                str_len = strlen(temp_str)+1;
+                p_data->data_type = bus_data_type_string;
+                p_data->raw_data.bytes = malloc(str_len);
+                if (p_data->raw_data.bytes == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+                    __LINE__, str_len);
+                 return bus_error_out_of_resources;
+                }
+                strncpy((char *)p_data->raw_data.bytes, temp_str,sizeof(temp_str)-1);
+                p_data->raw_data_len = str_len;
 #endif
-        }
-        else
-        {
-            str_len = strlen("0.0.0.0") + 1;
-            p_data->data_type = bus_data_type_string;
-            p_data->raw_data.bytes = malloc(str_len);
-            if (p_data->raw_data.bytes == NULL) {
-                wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
-                __LINE__, str_len);
-             return bus_error_out_of_resources;
             }
-            strncpy((char *)p_data->raw_data.bytes, "0.0.0.0", str_len);
-            p_data->raw_data_len = str_len;
+            else
+            {
+                str_len = strlen("0.0.0.0") + 1;
+                p_data->data_type = bus_data_type_string;
+                p_data->raw_data.bytes = malloc(str_len);
+                if (p_data->raw_data.bytes == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+                    __LINE__, str_len);
+                 return bus_error_out_of_resources;
+                }
+                strncpy((char *)p_data->raw_data.bytes, "0.0.0.0", str_len);
+                p_data->raw_data_len = str_len;
+            }
+          }
         }
-    }
     wifi_util_dbg_print(WIFI_CTRL, "%s(): exit\n", __FUNCTION__);
     return bus_error_success;
 }

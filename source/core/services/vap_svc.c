@@ -233,7 +233,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
     for (i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         rdk_vaps = get_wifidb_rdk_vaps(i);
-        if (vap_map == NULL) {
+        if ((vap_map == NULL) || (rdk_vaps == NULL)) {
             wifi_util_error_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
             free(tgt_vap_map);
             return -1;
