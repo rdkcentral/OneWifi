@@ -33,6 +33,9 @@ radio_6g_instance=3
 private_2g_instance=1
 private_5g_instance=2
 private_6g_instance=17
+lnf_2g_instance=7
+lnf_5g_instance=8
+lnf_6g_instance=20
 hal_indication="/tmp/hal_initialize_failed"
 prev_reboot_timestamp=0
 cur_reboot_timestamp=0
@@ -218,6 +221,50 @@ onewifi_conn_clients_count() {
         num_clients=`dmcli eRT retv Device.WiFi.AccessPoint.$radio.AssociatedDeviceNumberOfEntries`
         conn_clients_total=$((conn_clients_total + num_clients))
     done
+}
+
+check_lnf_status()
+{
+    radio_status_2g=`dmcli eRT retv Device.WiFi.Radio.$radio_2g_instance.Enable`
+    if [ "$radio_status_2g" == "true" ]; then
+        if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
+            status_lnf_2g=`dmcli eRT retv Device.WiFi.AccessPoint.$lnf_2g_instance.Enable`
+            if [ "$status_lnf_2g" == "true" ]; then
+                ssid_lnf_2g=`wl -i wl0.4 bssid`
+                if [ "$ssid_lnf_2g" == "00:00:00:00:00:00" ]; then
+                    wl -i wl0.4 bss up
+                fi
+            fi
+        fi
+    fi
+
+    radio_status_5g=`dmcli eRT retv Device.WiFi.Radio.$radio_5g_instance.Enable`
+    if [ "$radio_status_5g" == "true" ]; then
+        if ! ovs-vsctl list-ifaces br106 | grep -q "wl1.4"; then
+            status_lnf_5g=`dmcli eRT retv Device.WiFi.AccessPoint.$lnf_5g_instance.Enable`
+            if [ "$status_lnf_5g" == "true" ]; then
+                ssid_lnf_5g=`wl -i wl1.4 bssid`
+                if [ "$ssid_lnf_5g" == "00:00:00:00:00:00" ]; then
+                    wl -i wl1.4 bss up
+                fi
+            fi
+        fi
+    fi
+
+    if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
+        radio_status_6g=`dmcli eRT retv Device.WiFi.Radio.$radio_6g_instance.Enable`
+        if [ "$radio_status_6g" == "true" ]; then
+            if ! ovs-vsctl list-ifaces br106 | grep -q "wl2.4"; then
+                status_lnf_6g=`dmcli eRT retv Device.WiFi.AccessPoint.$lnf_6g_instance.Enable`
+                if [ "$status_lnf_6g" == "true" ]; then
+                    ssid_lnf_6g=`wl -i wl2.4 bssid`
+                    if [ "$ssid_lnf_6g" == "00:00:00:00:00:00" ]; then
+                        wl -i wl2.4 bss up
+                    fi
+                fi
+            fi
+        fi
+    fi
 }
 
 onewifi_mem_restart() {
@@ -482,6 +529,9 @@ do
 
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
+    if [ "$MODEL_NUM" != "SR213" ] && [ "$MODEL_NUM" != "GR-EXT02A-CTS" ] && [ "$MODEL_NUM" != "SR203" ] && [ "$MODEL_NUM" != "$TG4" ]; then
+        check_lnf_status
+    fi
     sleep 5m
     ((check_count++))
 done
