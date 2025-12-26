@@ -1294,7 +1294,10 @@ int process_ext_webconfig_set_data(vap_svc_t *svc, void *arg)
         return 0;
     }
 
-    convert_freq_band_to_radio_index(candidate->radio_freq_band, (int *)&connected_radio_index);
+    if (convert_freq_band_to_radio_index(candidate->radio_freq_band, (int *)&connected_radio_index) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d error converting freq to band \n", __func__, __LINE__);
+        return 0;
+    }
     ext->go_to_channel = radio_oper_param->channel;
     ext->go_to_channel_width = radio_oper_param->channelWidth;
     ext_set_conn_state(ext, connection_state_connected_wait_for_csa, __func__, __LINE__);

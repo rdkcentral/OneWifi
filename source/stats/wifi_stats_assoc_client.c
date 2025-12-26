@@ -164,7 +164,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int disconnected_time;
-
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
             __LINE__, c_elem);
@@ -497,20 +496,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         free(dev_array);
         dev_array = NULL;
     }
-    pthread_mutex_unlock(&mon_data->data_lock);
-
-    while (queue_count(disconnect_event_queue) > 0) {
-        mac_addr = (unsigned char *)queue_pop(disconnect_event_queue);
-        if (mac_addr != NULL) {
-            wifi_util_info_print(WIFI_MON,
-                "[%s:%d] Sending disconnect event for mac %02x:%02x:%02x:%02x:%02x:%02x to ctrl\n",
-                __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
-                mac_addr[4], mac_addr[5]);
-            send_wifi_disconnect_event_to_ctrl(mac_addr, args->vap_index);
-        }
-        free(mac_addr);
-    }
-    queue_destroy(disconnect_event_queue);
 
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_sec = tv_now.tv_sec;
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_nsec = tv_now.tv_nsec;
@@ -519,9 +504,21 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_associated_device_stats)) {
         void *assoc_data = NULL;
         unsigned int dev_count = 0;
-        pthread_mutex_lock(&mon_data->data_lock);
         process_assoc_dev_stats(args, sta_map, &assoc_data, &dev_count);
         pthread_mutex_unlock(&mon_data->data_lock);
+
+        while (queue_count(disconnect_event_queue) > 0) {
+            mac_addr = (unsigned char *)queue_pop(disconnect_event_queue);
+            if (mac_addr != NULL) {
+                wifi_util_info_print(WIFI_MON,
+                    "[%s:%d] Sending disconnect event for mac %02x:%02x:%02x:%02x:%02x:%02x to ctrl\n",
+                    __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+                    mac_addr[4], mac_addr[5]);
+                send_wifi_disconnect_event_to_ctrl(mac_addr, args->vap_index);
+            }
+            free(mac_addr);
+        }
+        queue_destroy(disconnect_event_queue);
         if (dev_count == 0) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d device count is %d\n", __func__, __LINE__,
                 dev_count);
@@ -553,6 +550,21 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
         free(assoc_data);
         free(collect_stats);
+    } else {
+        pthread_mutex_unlock(&mon_data->data_lock);
+
+        while (queue_count(disconnect_event_queue) > 0) {
+            mac_addr = (unsigned char *)queue_pop(disconnect_event_queue);
+            if (mac_addr != NULL) {
+                wifi_util_info_print(WIFI_MON,
+                    "[%s:%d] Sending disconnect event for mac %02x:%02x:%02x:%02x:%02x:%02x to ctrl\n",
+                    __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+                    mac_addr[4], mac_addr[5]);
+                send_wifi_disconnect_event_to_ctrl(mac_addr, args->vap_index);
+            }
+            free(mac_addr);
+        }
+        queue_destroy(disconnect_event_queue);
     }
     return RETURN_OK;
 }
