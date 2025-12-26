@@ -911,7 +911,7 @@ int early_validate_interworking(const cJSON *interworking, pErr execRetVal)
     validate_param_integer(interworking, "AccessNetworkType", param);
     if (param->valuedouble > 5) {
         wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for AccessNetworkType=%u\n",
-            __func__, __LINE__,(unsigned int) param->valuedouble);
+            __func__, __LINE__, (unsigned int) param->valuedouble);
         strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
     }

@@ -12577,7 +12577,7 @@ WPS_SetParamIntValue
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d assert - Unable to get VAP info for instance_number:%d\n",
                 __FUNCTION__, __LINE__, instance_number);
             return FALSE;
-	}
+        }
         if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }

@@ -476,7 +476,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
 
         if (strlen(param->valuestring) == 0) {
-            wifi_util_info_print(WIFI_CTRL, "%s: RadiusServerIPAddr is NULL\n ", __func__);
+            wifi_util_info_print(WIFI_CTRL, "%s: RadiusServerIPAddr is NULL\n ");
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "RadiusServerIPAddr is NULL",
                     sizeof(execRetVal->ErrorMsg) - 1);

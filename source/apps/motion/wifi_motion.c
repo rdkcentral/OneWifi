@@ -788,7 +788,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
         qcount = queue_count(local_csi_queue);
         for (itr=0; itr<qcount; itr++) {
             csi_data = queue_peek(local_csi_queue, itr);
-            if ((csi_data == NULL) || (csi_data->csi_session_num == idx)) {
+            if (csi_data->csi_session_num == idx) {
                 break;
             }
         }

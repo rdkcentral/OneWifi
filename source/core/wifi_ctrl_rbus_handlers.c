@@ -1113,7 +1113,7 @@ bus_error_t get_null_subdoc_data(char *name, raw_data_t *p_data, bus_user_data_t
     data.u.decoded.num_radios = getNumberRadios();
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_null) != webconfig_error_none) {
         webconfig_data_free(&data);
-	return bus_error_general;
+        return bus_error_general;
     }
 
     uint32_t str_size = strlen(data.u.encoded.raw) + 1;
@@ -1319,7 +1319,7 @@ char *get_assoc_devices_blob()
 
     if (webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
         free(pdata);
-	return NULL;
+        return NULL;
     }
 
     size_t len = strlen(pdata->u.encoded.raw);
