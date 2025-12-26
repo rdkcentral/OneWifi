@@ -766,7 +766,7 @@ int readRemoteIP(char *sIP, int size,char *sName)
 
                 // grab URL from string
                 urlPtr = strstr(buf, "=");
-                if (urlPtr != NULL){
+                if (urlPtr != NULL) {
                     urlPtr++;
                 }
                 strncpy(sIP, urlPtr, size);
