@@ -887,9 +887,7 @@ void ext_try_connecting(vap_svc_t *svc)
 
     if (found_at_least_one_candidate == true) {
         if (candidate != NULL) {
-            if ((convert_freq_band_to_radio_index(candidate->radio_freq_band, (int *)&radio_index)) == RETURN_ERR) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: freq to band conversion failed\n", __func__, __LINE__);
-            }
+            convert_freq_band_to_radio_index(candidate->radio_freq_band, (int *)&radio_index);
         } else {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate param NULL\n", __func__, __LINE__);
         }

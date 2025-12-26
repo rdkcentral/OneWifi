@@ -7536,7 +7536,7 @@ void wifidb_init_default_value()
         l_radio_cfg = get_wifidb_radio_map(r_index);
         if(l_radio_cfg == NULL)
         {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_map \n",__func__, __LINE__,r_index);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_map \n",__func__, __LINE__, r_index);
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }

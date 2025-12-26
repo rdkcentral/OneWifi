@@ -1825,9 +1825,7 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
                                levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0, FALSE);
 
     //Create FIFO for the csi.
-    if (mkfifo(CSI_LEVL_PIPE, 0777) != 0) {
-        return RETURN_ERR;
-    }
+    mkfifo(CSI_LEVL_PIPE, 0777);
     app->data.u.levl.csi_fd = -1;
  
     rc = get_bus_descriptor()->bus_open_fn(&app->handle, component_name);
