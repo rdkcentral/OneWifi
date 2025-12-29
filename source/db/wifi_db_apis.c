@@ -243,7 +243,9 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->dfs_rfc = new_rec->dfs_rfc;
         rfc_param->wpa3_rfc = new_rec->wpa3_rfc;
         rfc_param->levl_enabled_rfc = new_rec->levl_enabled_rfc;
+#ifndef ALWAYS_ENABLE_AX_2G
         rfc_param->twoG80211axEnable_rfc = new_rec->twoG80211axEnable_rfc;
+#endif
         rfc_param->hotspot_open_2g_last_enabled = new_rec->hotspot_open_2g_last_enabled;
         rfc_param->hotspot_open_5g_last_enabled = new_rec->hotspot_open_5g_last_enabled;
         rfc_param->hotspot_open_6g_last_enabled = new_rec->hotspot_open_6g_last_enabled;
@@ -6832,9 +6834,15 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
 
-#if defined(CONFIG_IEEE80211BE) && (defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_))
+#if defined(CONFIG_IEEE80211BE)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+#endif
+#if defined(_PLATFORM_BANANAPI_R4_)
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ; 
+#endif  /* defined(_PLATFORM_BANANAPI_R4_) */
+#endif /* defined(CONFIG_IEEE80211BE) */
+
 
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
@@ -7323,7 +7331,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_SR213_PRODUCT_REQ_) || \ defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+       // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 
         cfg.u.bss_info.interop_ctrl = false;
         cfg.u.bss_info.inum_sta = 0;
@@ -9194,10 +9202,12 @@ int get_all_param_from_psm_and_set_into_db(void)
     **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
-        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
-        is_device_type_scxer10() == true || is_device_type_sr213() == true ||
-        is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
-        is_device_type_vbvxer5() == true || is_device_type_xle() == true || is_device_type_sr203() == true) {
+        is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true ||
+        is_device_type_sercommxb10() == true || is_device_type_scxer10() == true ||
+        is_device_type_sr213() == true || is_device_type_cmxb7() == true ||
+        is_device_type_cbr2() == true || is_device_type_vbvxer5() == true ||
+        is_device_type_xle() == true || is_device_type_sr203() == true ||
+        is_device_type_scxf10() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;
@@ -9287,7 +9297,9 @@ int get_all_param_from_psm_and_set_into_db(void)
         }
         if ((strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) == 0) ||
             (strncmp(last_reboot_reason, "WPS-Factory-Reset", strlen("WPS-Factory-Reset")) == 0) ||
-            (strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0)) {
+            (strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0) ||
+            (strncmp(last_reboot_reason, "FirmwareDownloadAndFactoryReset",
+                 strlen("FirmwareDownloadAndFactoryReset")) == 0)) {
             create_onewifi_factory_reset_flag();
             create_onewifi_factory_reset_reboot_flag();
             wifi_util_info_print(WIFI_MGR, "%s FactoryReset is done \n", __func__);
