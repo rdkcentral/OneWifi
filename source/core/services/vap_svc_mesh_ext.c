@@ -699,6 +699,7 @@ int proces_ext_fallback_parent_event_timeout(vap_svc_t *svc)
                 __LINE__);
         schedule_connect_sm(svc);
     }
+    return 0;
 }
 
 void ext_connected_scan(vap_svc_t *svc)
