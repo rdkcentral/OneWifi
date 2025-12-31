@@ -2600,7 +2600,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
     if (ret == 1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
         wifi_front_haul_bss_t *vap_bss =  Get_wifi_object_bss_parameter(idx - 1);
         if (vap_bss != NULL) {
-           if(vap_bss->enabled && (isVapHotspotSecure5g(idx - 1) || isVapHotspotSecure6g(idx - 1) || isVapHotspotOpen5g(idx - 1) || isVapHotspotOpen6g(idx - 1))){
+           if (vap_bss->enabled && (isVapHotspotSecure5g(idx - 1) || isVapHotspotSecure6g(idx - 1) || isVapHotspotOpen5g(idx - 1) || isVapHotspotOpen6g(idx - 1))){
 #ifndef WIFI_HAL_VERSION_3_PHASE2
                 str_len = strlen((char*)vap_bss->security.u.radius.connectedendpoint) + 1;
                 p_data->data_type = bus_data_type_string;
@@ -2608,7 +2608,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
                 if (p_data->raw_data.bytes == NULL) {
                     wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                     __LINE__, str_len);
-                 return bus_error_out_of_resources;
+                    return bus_error_out_of_resources;
                 }
                 strcpy((char *)p_data->raw_data.bytes, (char*)vap_bss->security.u.radius.connectedendpoint);
                 p_data->raw_data_len = str_len;
@@ -2621,7 +2621,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
                 if (p_data->raw_data.bytes == NULL) {
                     wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                     __LINE__, str_len);
-                 return bus_error_out_of_resources;
+                    return bus_error_out_of_resources;
                 }
                 strncpy((char *)p_data->raw_data.bytes, temp_str,sizeof(temp_str)-1);
                 p_data->raw_data_len = str_len;

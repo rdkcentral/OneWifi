@@ -983,7 +983,7 @@ INT WiFi_SaveANQPCfg(uint8_t vapIndex)
 =======
     if (fPasspointAnqpCfg == NULL) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration file.\n");
-	return RETURN_ERR;
+        return RETURN_ERR;
     }
     if (0 == fwrite(buffer, len,1, fPasspointAnqpCfg)) {
         fclose(fPasspointAnqpCfg);
