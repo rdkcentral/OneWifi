@@ -220,7 +220,7 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", csi_session_number);
     if (mkfifo(fifo_path, 0777) != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Unable to create FIFO path \n", __func__, __LINE__);
-	free(csi);
+        free(csi);
         return NULL;
     }
 
@@ -739,7 +739,7 @@ bus_error_t csi_table_removerowhandler(char const *rowName)
     qcount = queue_count(local_csi_queue);
     for (itr=0; itr<qcount; itr++) {
         tmp_csi_data = queue_peek(local_csi_queue, itr);
-	if (tmp_csi_data != NULL) {
+        if (tmp_csi_data != NULL) {
             if (tmp_csi_data->csi_session_num == (unsigned long) idx) {
                 tmp_csi_data = queue_remove(local_csi_queue, itr);
                 if (tmp_csi_data) {

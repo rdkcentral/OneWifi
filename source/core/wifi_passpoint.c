@@ -605,7 +605,7 @@ INT WiFi_SaveGasCfg(char *buffer, int len)
 =======
     if (fPasspointGasCfg == NULL) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration file\n");
-	return RETURN_ERR;
+        return RETURN_ERR;
     }
     if (0 == fwrite(buffer, len,1, fPasspointGasCfg)) {
         fclose(fPasspointGasCfg);
