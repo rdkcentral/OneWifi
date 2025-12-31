@@ -75,7 +75,7 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
     if (band == WIFI_FREQUENCY_2_4_BAND) {
         if (convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &rIdx) == 0){
             wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to convert freq to band\n", __FUNCTION__, __LINE__);
-	    return -1;
+            return -1;
 	}
         hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE));
     } else {

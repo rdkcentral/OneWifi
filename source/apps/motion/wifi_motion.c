@@ -139,7 +139,7 @@ static void csi_disable_client(csi_session_t *r_csi)
     }
     app = get_app_by_inst(apps_mgr, wifi_app_inst_motion);
     if (app == NULL) {
-	wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d assert - NULL Pointer \n", __func__, __LINE__);
         return;
     }
     queue_t *csi_queue = get_csi_session_queue();
@@ -219,6 +219,8 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     //Create FIFO fr the session.
     snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", csi_session_number);
     if (mkfifo(fifo_path, 0777) != 0) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Unable to create FIFO path \n", __func__, __LINE__);
+	free(csi);
         return NULL;
     }
 
@@ -285,7 +287,7 @@ static void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_motion);
     if (app == NULL) {
-        wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d assert - NULL Pointer \n", __func__, __LINE__);
         return;
      }
     count = queue_count(csi_queue);
@@ -788,7 +790,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
         qcount = queue_count(local_csi_queue);
         for (itr=0; itr<qcount; itr++) {
             csi_data = queue_peek(local_csi_queue, itr);
-            if (csi_data->csi_session_num == idx) {
+            if ((csi_data != NULL) && (csi_data->csi_session_num == idx)) {
                 break;
             }
         }

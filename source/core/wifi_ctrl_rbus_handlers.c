@@ -2599,7 +2599,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
     ret = sscanf(name, "Device.WiFi.AccessPoint.%d.Security.ConnectedRadiusEndpoint", &idx);
     if (ret == 1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
         wifi_front_haul_bss_t *vap_bss =  Get_wifi_object_bss_parameter(idx - 1);
-	if (vap_bss != NULL) {
+        if (vap_bss != NULL) {
            if(vap_bss->enabled && (isVapHotspotSecure5g(idx - 1) || isVapHotspotSecure6g(idx - 1) || isVapHotspotOpen5g(idx - 1) || isVapHotspotOpen6g(idx - 1))){
 #ifndef WIFI_HAL_VERSION_3_PHASE2
                 str_len = strlen((char*)vap_bss->security.u.radius.connectedendpoint) + 1;

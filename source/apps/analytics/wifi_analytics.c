@@ -876,7 +876,7 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         break;
 
     case wifi_event_type_rsn_override_rfc:
-	wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d\r\n",
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d\r\n",
             __func__, __LINE__, (int)val);
         break;
 

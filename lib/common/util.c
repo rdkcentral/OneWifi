@@ -624,16 +624,12 @@ void create_onewifi_factory_reset_flag()
 
 void remove_onewifi_factory_reset_flag()
 {
-    if (remove(ONEWIFI_FR_FLAG) == 0) {
-        LOG(TRACE, "Deleted %s\n", ONEWIFI_FR_FLAG);
-    }
+    (void)remove(ONEWIFI_FR_FLAG);
 }
 
 void remove_onewifi_migration_flag()
 {
-    if (remove(ONEWIFI_MIGRATION_FLAG) == 0) {
-        LOG(TRACE, "Deleted %s\n", ONEWIFI_MIGRATION_FLAG);
-    }
+    (void)remove(ONEWIFI_MIGRATION_FLAG);
 }
 
 /*
@@ -648,9 +644,7 @@ void create_onewifi_factory_reset_reboot_flag() {
 }
 
 void remove_onewifi_factory_reset_reboot_flag() {
-    if (remove(ONEWIFI_FR_REBOOT_FLAG) == 0) {
-        LOG(TRACE, "Deleted %s\n", ONEWIFI_FR_REBOOT_FLAG);
-    }
+    (void)remove(ONEWIFI_FR_REBOOT_FLAG);
 }
 
 void create_onewifi_fr_wifidb_reset_done_flag() {
