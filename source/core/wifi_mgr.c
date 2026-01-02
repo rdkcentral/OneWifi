@@ -241,6 +241,11 @@ bool is_device_type_xle(void)
     return is_supported_gateway_device(C_WNX);
 }
 
+bool is_device_type_scxf10(void)
+{
+    return is_supported_gateway_device("SCXF11BFL");
+}
+
 int init_wifimgr()
 {
     if (!get_stubs_descriptor()->drop_root_fn()) {
