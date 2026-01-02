@@ -252,7 +252,9 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->dfs_rfc = new_rec->dfs_rfc;
         rfc_param->wpa3_rfc = new_rec->wpa3_rfc;
         rfc_param->levl_enabled_rfc = new_rec->levl_enabled_rfc;
+#ifndef ALWAYS_ENABLE_AX_2G
         rfc_param->twoG80211axEnable_rfc = new_rec->twoG80211axEnable_rfc;
+#endif
         rfc_param->hotspot_open_2g_last_enabled = new_rec->hotspot_open_2g_last_enabled;
         rfc_param->hotspot_open_5g_last_enabled = new_rec->hotspot_open_5g_last_enabled;
         rfc_param->hotspot_open_6g_last_enabled = new_rec->hotspot_open_6g_last_enabled;
@@ -6967,7 +6969,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         cfg.amsduTid[j] = FALSE;
     }
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     if (cfg.band == WIFI_FREQUENCY_6_BAND) {
         for (int i = 0; i < 5; i++)
         {
@@ -9166,7 +9168,8 @@ int get_all_param_from_psm_and_set_into_db(void)
         is_device_type_vbvxb10() == true || is_device_type_vbvxb9() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
         is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
-        is_device_type_vbvxer5() == true || is_device_type_xle() == true) {
+        is_device_type_vbvxer5() == true || is_device_type_xle() == true ||
+        is_device_type_scxf10() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;
