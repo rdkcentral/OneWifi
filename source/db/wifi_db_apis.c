@@ -6852,7 +6852,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         case WIFI_FREQUENCY_5L_BAND:
             cfg.operatingClass = 128;
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
-            cfg.beaconInterval = 200;
+            cfg.beaconInterval = 100;
 #endif
             if (ctrl->network_mode == rdk_dev_mode_type_em_node)
                 cfg.channel = 36;
