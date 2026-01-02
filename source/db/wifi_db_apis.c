@@ -6845,7 +6845,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 
 
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
-            cfg.beaconInterval = 200;
+            cfg.beaconInterval = 100;
 #endif
             break;
         case WIFI_FREQUENCY_5_BAND:
