@@ -946,7 +946,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
 #else
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif
