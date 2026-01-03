@@ -688,6 +688,17 @@ int process_connected_scan_result_timeout(vap_svc_t *svc)
     return 0;
 }
 
+int proces_ext_fallback_parent_event_timeout(vap_svc_t *svc)
+{
+    vap_svc_ext_t *ext = &svc->u.ext;
+    ext->ext_fallback_parent_event_timeout_handler_id = 0;
+    if (ext->conn_state == connection_state_connected) {
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        schedule_connect_sm(svc);
+    }
+    return 0;
+}
+
 void ext_connected_scan(vap_svc_t *svc)
 {
     if (svc == NULL) {
@@ -1133,6 +1144,11 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
             "vap: %s, bssid: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state),
             vap_info->vap_name, bssid_str);
         return 0;
+    }
+
+    if (ext->ext_fallback_parent_event_timeout_handler_id) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_fallback_parent_event_timeout_handler_id);
+        ext->ext_fallback_parent_event_timeout_handler_id = 0;
     }
 
     // Clear old bssid
@@ -1904,8 +1920,10 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             candidate = ext->candidates_list.scan_list;
             found_candidate = true;
         } else if ((ext->conn_state == connection_state_connected)) {
-            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
-                __LINE__);
+            scheduler_add_timer_task(ctrl->sched, FALSE,
+                &ext->ext_fallback_parent_event_timeout_handler_id,
+                proces_ext_fallback_parent_event_timeout, svc, EXT_FALLBACK_PARENT_CONFIG_TIMEOUT,
+                1, FALSE);
         }
     }
 
