@@ -598,13 +598,29 @@ INT WiFi_SaveGasCfg(char *buffer, int len)
     } 
  
     FILE *fPasspointGasCfg = fopen(WIFI_PASSPOINT_GAS_CFG_FILE, "w");
-    if(0 == fwrite(buffer, len,1, fPasspointGasCfg)){
+<<<<<<< HEAD
+    if(fPasspointGasCfg == NULL){
+       wifi_util_dbg_print(WIFI_PASSPOINT, "Error opening Passpoint Configuration file\n");
+       return RETURN_ERR;
+=======
+    if (fPasspointGasCfg == NULL) {
+        wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration file\n");
+        return RETURN_ERR;
+    }
+    if (0 == fwrite(buffer, len,1, fPasspointGasCfg)) {
         fclose(fPasspointGasCfg);
         return RETURN_ERR;
     }else{
         fclose(fPasspointGasCfg);
         return RETURN_OK;
+>>>>>>> 55a4b23 (latest comments addressed along with intends)
     }
+    if(0 == fwrite(buffer, len, 1, fPasspointGasCfg)){
+       fclose(fPasspointGasCfg);
+       return RETURN_ERR;
+    }
+    fclose(fPasspointGasCfg);
+    return RETURN_OK;
 }
 
 void WiFi_GetGasConfig(char *pString)
@@ -940,7 +956,7 @@ INT WiFi_SaveANQPCfg(uint8_t vapIndex)
     }
  
     passPointDir = opendir(WIFI_PASSPOINT_DIR);
-    if(passPointDir){
+    if (passPointDir) {
         closedir(passPointDir);
     }else if(ENOENT == errno){
         if(0 != mkdir(WIFI_PASSPOINT_DIR, 0777)){
@@ -956,13 +972,29 @@ INT WiFi_SaveANQPCfg(uint8_t vapIndex)
 
     sprintf(cfgFile,"%s.%d",WIFI_PASSPOINT_ANQP_CFG_FILE,apIns);
     FILE *fPasspointAnqpCfg = fopen(cfgFile, "w");
-    if(0 == fwrite(buffer, len,1, fPasspointAnqpCfg)){
+<<<<<<< HEAD
+    if(fPasspointAnqpCfg == NULL){
+        wifi_util_dbg_print(WIFI_PASSPOINT, "Error opening Passpoint Configuration file.\n");
+	return RETURN_ERR;
+    }
+    if (0 == fwrite(buffer, len, 1, fPasspointAnqpCfg)) {
         fclose(fPasspointAnqpCfg);
         return RETURN_ERR;
-    }else{
+=======
+    if (fPasspointAnqpCfg == NULL) {
+        wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration file.\n");
+        return RETURN_ERR;
+    }
+    if (0 == fwrite(buffer, len,1, fPasspointAnqpCfg)) {
+        fclose(fPasspointAnqpCfg);
+        return RETURN_ERR;
+    } else {
         fclose(fPasspointAnqpCfg);
         return RETURN_OK;
+>>>>>>> 55a4b23 (latest comments addressed along with intends)
     }
+    fclose(fPasspointAnqpCfg);
+    return RETURN_OK;
 }
 
 #if 0
@@ -1204,13 +1236,16 @@ INT WiFi_SaveHS2Cfg(uint8_t vapIndex)
     
     sprintf(cfgFile,"%s.%d",WIFI_PASSPOINT_HS2_CFG_FILE,apIns);
     FILE *fPasspointCfg = fopen(cfgFile, "w");
-    if(0 == fwrite(buffer, len,1, fPasspointCfg)){
+    if(fPasspointCfg == NULL){
+        wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration file.\n");
+        return RETURN_ERR;
+    }
+    if(0 == fwrite(buffer, len, 1, fPasspointCfg)){
         fclose(fPasspointCfg);
         return RETURN_ERR;
-    }else{
-        fclose(fPasspointCfg);
-        return RETURN_OK;
     }
+    fclose(fPasspointCfg);
+    return RETURN_OK;
 }
 
 INT WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_length)

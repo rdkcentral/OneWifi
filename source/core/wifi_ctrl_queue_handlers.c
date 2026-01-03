@@ -2353,6 +2353,11 @@ void process_wpa3_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP\n",
+            __func__, __LINE__);
+            return;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {

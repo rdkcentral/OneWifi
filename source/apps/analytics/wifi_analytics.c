@@ -780,6 +780,10 @@ int hal_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *a
 
 int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
+    bool val = false;
+    if (arg != NULL) {
+        val = *(bool *)arg;
+    }
     switch (sub_type) {
     case wifi_event_type_active_gw_check:
         analytics_event_active_gw_check(apps, arg);
@@ -872,7 +876,8 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         break;
 
     case wifi_event_type_rsn_override_rfc:
-        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d \r\n", __func__, __LINE__, (bool *)arg);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d\r\n",
+            __func__, __LINE__, (int)val);
         break;
 
     default:

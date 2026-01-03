@@ -763,13 +763,15 @@ int readRemoteIP(char *sIP, int size,char *sName)
             // Look for ARM_ARPING_IP or ATOM_ARPING_IP
             if (strstr(buf, sName) != NULL) {
                 buf[strcspn(buf, "\r\n")] = 0; // Strip off any carriage returns
-
                 // grab URL from string
                 urlPtr = strstr(buf, "=");
+                if (urlPtr == NULL){
+                    return -1;
+                }
                 urlPtr++;
                 strncpy(sIP, urlPtr, size);
-              ret=0;
-              break;
+                ret=0;
+                break;
             }
         }
 
