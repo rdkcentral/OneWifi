@@ -103,6 +103,220 @@ int g_disable_csi_log = 0;
 int g_rbus_direct_enabled = 0;
 int g_num_of_samples = -1;
 int g_sample_counter = 0;
+char g_csi_cfg_clients_mac[256];
+char g_gw_str_mac[32];
+
+long long int get_cur_time_in_sec(void)
+{
+    struct timeval tv_now = { 0 };
+    gettimeofday(&tv_now, NULL);
+
+    return (long long int)tv_now.tv_sec;
+}
+
+void remove_colons(char *str)
+{
+    char *src = str, *dst = str;
+
+    while (*src) {
+        if (*src != ':') {
+            *dst++ = *src;
+        }
+        src++;
+    }
+    *dst = '\0';
+}
+
+int get_cm_mac_addr(char *mac, unsigned int mac_size)
+{
+    FILE *f;
+    char ptr[32];
+    char *cmd = "deviceinfo.sh -cmac";
+
+    if (mac == NULL || mac_size == 0) {
+        return -1;
+    }
+
+    memset(ptr, 0, sizeof(ptr));
+
+    f = popen(cmd, "r");
+    if (f == NULL) {
+        return -1;
+    }
+
+    if (fgets(ptr, sizeof(ptr), f) == NULL) {
+        pclose(f);
+        return -1;
+    }
+
+    pclose(f);
+
+    ptr[strcspn(ptr, "\n")] = '\0';
+
+    remove_colons(ptr);
+
+    snprintf(mac, mac_size, "%s", ptr);
+
+    printf("device cm mac: %s\r\n", mac);
+
+    return 0;
+}
+
+int execute_system_command_with_status(const char *cmd,
+                                       char *cmd_output,
+                                       size_t output_size,
+                                       int *exit_status)
+{
+    FILE *fp;
+    char buffer[256];
+    size_t len = 0;
+
+    if (!cmd || !cmd_output || output_size == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    fp = popen(cmd, "r");
+    if (!fp) {
+        perror("popen failed");
+        return -1;
+    } else {
+        printf("cmd:%s send success\r\n", cmd);
+    }
+
+    cmd_output[0] = '\0';
+
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        size_t buf_len = strlen(buffer);
+        if (len + buf_len < output_size - 1) {
+            memcpy(cmd_output + len, buffer, buf_len);
+            len += buf_len;
+            cmd_output[len] = '\0';
+        } else {
+            break;
+        }
+    }
+
+    int status = pclose(fp);
+    if (exit_status) {
+        if (WIFEXITED(status))
+            *exit_status = WEXITSTATUS(status);
+        else
+            *exit_status = -1;
+    }
+
+    return 0;
+}
+
+int get_server_password(char *output_key, size_t output_len)
+{
+    if (!output_key || output_len == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+#if defined (_XB7_PRODUCT_REQ_)
+    if (execute_system_command_with_status(
+            "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"",
+            output_key,
+            output_len,
+            NULL) != 0)
+    {
+        return -1;
+    }
+#else
+    if (system("GetConfigFile /tmp/.cfgDynamicSExpki") != 0) {
+        perror("Failed to generate certificate password");
+        return -1;
+    } else {
+        printf("command:\"GetConfigFile /tmp/.cfgDynamicSExpki\" execute success\r\n");
+    }
+
+    if (execute_system_command_with_status(
+            "cat /tmp/.cfgDynamicSExpki",
+            output_key,
+            output_len,
+            NULL) != 0)
+    {
+        return -1;
+    }
+#endif
+
+    output_key[strcspn(output_key, "\r\n")] = '\0';
+    printf("Key value:%s\r\n", output_key);
+
+    return 0;
+}
+
+int upload_file_to_cloud(const char *file_name)
+{
+    static char password[256] = { 0 };
+    char curl_cmd[1024];
+    char curl_output[1024];
+    int curl_exit_code;
+
+#if defined (_XB7_PRODUCT_REQ_)
+    const char *cert_file_name = "/nvram/certs/devicecert_1.pk12";
+#else
+    const char *cert_file_name = "/nvram/certs/devicecert_2.pk12";
+#endif
+
+    if (!file_name) {
+        fprintf(stderr, "Invalid file name\n");
+        return -1;
+    }
+
+    if (strlen(password) == 0) {
+        if (get_server_password(password, sizeof(password)) != 0) {
+            fprintf(stderr, "Failed to get server password\n");
+            return -1;
+        }
+    }
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+        snprintf(curl_cmd, sizeof(curl_cmd),
+            "curl -s "
+            "--cert-type P12 "
+            "--cert %s:%s "
+            "-F \"data=@%s\" "
+            "https://devprimary.vbautobot.comcast.com:6002/post_csi_file",
+            cert_file_name,
+            password,
+            file_name);
+
+        if (execute_system_command_with_status(
+                curl_cmd,
+                curl_output,
+                sizeof(curl_output),
+                &curl_exit_code) != 0)
+        {
+            fprintf(stderr, "Failed to execute curl\n");
+            return -1;
+        }
+
+        printf("Curl Output:\n%s\n", curl_output);
+
+        if (curl_exit_code == 0) {
+            printf("Upload successful\n");
+            return 0;
+        }
+
+        if (curl_exit_code == 58 && attempt == 0) {
+            printf("PKCS12 password invalid, regenerating and retrying once...\n");
+
+            memset(password, 0, sizeof(password));
+            if (get_server_password(password, sizeof(password)) != 0) {
+                fprintf(stderr, "Failed to regenerate password\n");
+                return -1;
+            }
+            continue;
+        }
+
+        fprintf(stderr, "Upload failed (curl exit code %d)\n", curl_exit_code);
+    }
+
+    return -1;
+}
 
 static void wifievents_get_device_vaps()
 {
@@ -512,18 +726,27 @@ void save_json_data_to_file(void)
             return;
         }
 
-        p_csi_json_obj->json_dump_fptr = fopen("/tmp/csi_samples.json", "a+");
+        char file_name[64] = { 0 };
+        long long int timestamp = get_cur_time_in_sec();
+
+        snprintf(file_name, sizeof(file_name), "/tmp/csi_samples_%s_%llu.json",
+            g_gw_str_mac, timestamp);
+
+        p_csi_json_obj->json_dump_fptr = fopen(file_name, "a+");
         if (p_csi_json_obj->json_dump_fptr == NULL) {
-            printf("%s Failed to open file\n", __func__);
+            printf("%s Failed to open file:%s\n", __func__, file_name);
             goto file_error;
         }
 
         if (fputs(json_string, p_csi_json_obj->json_dump_fptr) == EOF) {
-            perror("Failed to write to /tmp/csi_samples.json");
+            perror("Failed to write to csi json file");
             goto file_error;
         }
         fputc('\n', p_csi_json_obj->json_dump_fptr);
 
+        if (upload_file_to_cloud(file_name) == 0) {
+            remove(file_name);
+        }
     file_error:
         if (p_csi_json_obj->json_dump_fptr != NULL) {
             fclose(p_csi_json_obj->json_dump_fptr);
@@ -908,13 +1131,56 @@ static void freeSubscription(rbusEventSubscription_t *sub)
     }
 }
 
+bool is_valid_mac(const char *mac)
+{
+    int i;
+
+    if (strlen(mac) != 17)
+        return false;
+
+    for (i = 0; i < 17; i++) {
+        if ((i + 1) % 3 == 0) {
+            if (mac[i] != ':') {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool validate_mac_list(const char *input)
+{
+    char buffer[256];
+    char *token;
+
+    strncpy(buffer, input, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    token = strtok(buffer, ",");
+
+    while (token != NULL) {
+        // Trim leading spaces
+        while (*token == ' ')
+            token++;
+
+        if (!is_valid_mac(token)) {
+            printf("Invalid MAC address found: %s\n", token);
+            return false;
+        }
+
+        token = strtok(NULL, ",");
+    }
+
+    return true;
+}
+
 static bool parseArguments(int argc, char **argv)
 {
     int c;
     bool ret = true;
     char *p;
 
-    while ((c = getopt(argc, argv, "he:s:v:i:c:f:n:")) != -1) {
+    while ((c = getopt(argc, argv, "he:s:v:i:c:f:n:m:")) != -1) {
         switch (c) {
         case 'h':
             printf("HELP :  wifi_events_consumer -e [numbers] - default all events\n"
@@ -935,6 +1201,7 @@ static bool parseArguments(int argc, char **argv)
                    "-c [client diag interval] - default %dms\n"
                    "-f [debug file name] - default /tmp/wifiEventConsumer\n"
                    "-n [number of samples]"
+                   "-m [All client MAC addresses separated by commas]"
                    "Example: wifi_events_consumer -e 1,2,3,7 -s 1 -v 1,2,13,14\n"
                    "touch /nvram/wifiEventsAppCSILogDisable to disable CSI detail log\n"
                    "touch /nvram/wifiEventsAppCSIRBUSDirect to enable RBUS Direct for CSI data\n",
@@ -991,6 +1258,13 @@ static bool parseArguments(int argc, char **argv)
             g_num_of_samples = atoi(optarg);
             printf(" number of samples to be collected : %d\n", g_num_of_samples);
             break;
+        case 'm':
+            if (!optarg || (validate_mac_list(optarg) == false)) {
+                printf("%s:%d Failed to parse csi mac list:%s\n", __func__, __LINE__, optarg);
+                ret = false;
+            }
+            snprintf(g_csi_cfg_clients_mac, sizeof(g_csi_cfg_clients_mac), "%s", optarg);
+            break;
         case '?':
             printf("Supposed to get an argument for this option or invalid option\n");
             exit(0);
@@ -1046,6 +1320,48 @@ static void termSignalHandler(int sig)
     exit(0);
 }
 
+int set_rbus_csi_sta_maclist(rbusHandle_t bus_handle, int csi_session_index, char *sta_mac)
+{
+    char name[64] = { 0 };
+    int rc = RBUS_ERROR_SUCCESS;
+
+    snprintf(name, sizeof(name), "Device.WiFi.X_RDK_CSI.%d.ClientMaclist", csi_session_index);
+
+    rc = rbus_setStr(bus_handle, name, sta_mac);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        printf("%s:%d: bus:%s bus set string:%s Failed %d\n", __func__,
+            __LINE__, name, sta_mac, rc);
+        return RETURN_ERR;
+    } else {
+        printf("%s:%d: bus:%s bus set string:%s success\n", __func__,
+            __LINE__, name, sta_mac);
+    }
+
+    return rc;
+}
+
+rbusError_t rbus_set_bool_value(rbusHandle_t p_rbus_handle, int csi_session_index, bool bool_value)
+{
+    char name[64] = { 0 };
+    rbusError_t rc = RBUS_ERROR_SUCCESS;
+    rbusValue_t value;
+
+    rbusValue_Init(&value);
+
+    rbusValue_SetBoolean(value, bool_value);
+
+    snprintf(name, sizeof(name), "Device.WiFi.X_RDK_CSI.%d.Enable", csi_session_index);
+
+    rc = rbus_set(p_rbus_handle, name, value, NULL);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        printf("%s:%d bus: rbus_set() failed:%d for name:%s\n",
+          __func__, __LINE__, rc, name);
+    }
+    rbusValue_Release(value);
+
+    return rc;
+}
+
 int main(int argc, char *argv[])
 {
     struct sigaction new_action = { 0 };
@@ -1059,6 +1375,8 @@ int main(int argc, char *argv[])
     /* Add pid to rbus component name */
     g_pid = getpid();
     snprintf(g_component_name, RBUS_MAX_NAME_LENGTH, "%s%d", "WifiEventConsumer", g_pid);
+
+    get_cm_mac_addr(g_gw_str_mac, sizeof(g_gw_str_mac));
 
     rc = rbus_open(&g_handle, g_component_name);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -1126,6 +1444,12 @@ int main(int argc, char *argv[])
         if (rc != RBUS_ERROR_SUCCESS) {
             printf("Failed to add CSI\n");
             goto exit;
+        }
+        if (strlen(g_csi_cfg_clients_mac) != 0) {
+            usleep(500 * 1000);
+            set_rbus_csi_sta_maclist(g_handle, g_csi_index, g_csi_cfg_clients_mac);
+            usleep(500 * 1000);
+            rbus_set_bool_value(g_handle, g_csi_index, true);
         }
     }
 
