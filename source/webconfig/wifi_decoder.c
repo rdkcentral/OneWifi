@@ -3367,6 +3367,7 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
 {
 
     mac_address_t mac;
+    mac_address_t mlo_mac;
     cJSON *obj_vap;
     cJSON *obj_array, *assoc_client, *value_object;
     char *tmp_string;
@@ -3477,6 +3478,26 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
             snprintf(tmp_mac_key, sizeof(tmp_mac_key), "%s", tmp_string);
             str_to_mac_bytes(tmp_string, mac);
             memcpy(assoc_dev_data.dev_stats.cli_MACAddress, mac, 6);
+
+            value_object = cJSON_GetObjectItem(assoc_client, "MLDAddr");
+            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            tmp_string = cJSON_GetStringValue(value_object);
+            if (tmp_string == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            str_to_mac_bytes(tmp_string, mlo_mac);
+            memcpy(assoc_dev_data.dev_stats.cli_MLDAddr, mlo_mac, 6);
+
+            value_object = cJSON_GetObjectItem(assoc_client, "MLDEnable");
+            if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            assoc_dev_data.dev_stats.cli_MLDEnable = (value_object->type & cJSON_True) ? true:false;
 
             if (assoclist_type == assoclist_type_remove) {
                 assoc_dev_data.client_state = client_state_disconnected;
