@@ -9258,14 +9258,15 @@ Security_SetParamStringValue
              /* save update to backup */
             if (security_mode_support_radius(l_security_cfg->mode))
             {
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
-                return FALSE;
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
+             //   return FALSE;
             }
 
              rc = strcpy_s((char*)l_security_cfg->u.key.key, sizeof(l_security_cfg->u.key.key), pString);
              if(rc != EOK)
              {
                  ERR_CHK(rc);
+                  wifi_util_error_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
                  return FALSE;
              }
              set_dml_cache_vap_config_changed(instance_number - 1);
@@ -9282,13 +9283,14 @@ Security_SetParamStringValue
 
         if (security_mode_support_radius(l_security_cfg->mode))
         {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
-            return FALSE;
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
+            //return FALSE;
         }
 
         rc = strcpy_s((char*)l_security_cfg->u.key.key, sizeof(l_security_cfg->u.key.key), pString);
         if(rc != EOK)
         {
+             wifi_util_error_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
              ERR_CHK(rc);
              return FALSE;
         }

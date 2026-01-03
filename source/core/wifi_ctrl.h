@@ -322,6 +322,7 @@ void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
 bool is_db_consolidated();
 bool is_db_backup_required();
 bool is_devtype_pod();
+void start_extender_vaps(void);
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);
@@ -401,10 +402,10 @@ wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex);
 char *get_assoc_devices_blob();
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc);
 void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int* subdoc);
-
+void start_uahf_vaps(bool rf_status, const char *hotspotSsid, const char *hotspotPsk);
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
-void start_station_vaps(bool enable);
+void start_station_vaps(bool enable, const char *hotspotSsid, const char *hotspotPsk);
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
 int publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);

@@ -1614,6 +1614,7 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
 
     //VAP Mode
     cJSON_AddNumberToObject(vap_obj, "VapMode", vap_info->vap_mode);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d VapName:%s, vapMode %d\n",__FUNCTION__, __LINE__, vap_info->vap_name, vap_info->vap_mode);
 
     // Radio Index
     cJSON_AddNumberToObject(vap_obj, "RadioIndex", vap_info->radio_index);
@@ -1621,9 +1622,12 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     // Exists
     cJSON_AddBoolToObject(vap_obj, "Exists", rdk_vap_info->exists);
 
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d  radioIndex:%d  exists:%d\n",__FUNCTION__, __LINE__, vap_info->radio_index, rdk_vap_info->exists);
+
     // SSID
     cJSON_AddStringToObject(vap_obj, "SSID", vap_info->u.sta_info.ssid);
 
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d ssid:%s \n",__FUNCTION__, __LINE__, vap_info->u.sta_info.ssid);
     // BSSID
     uint8_mac_to_string_mac((uint8_t *)vap_info->u.sta_info.bssid, mac_str);
     cJSON_AddStringToObject(vap_obj, "BSSID", mac_str);
@@ -1637,14 +1641,15 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     
     // Ignite Status
     cJSON_AddBoolToObject(vap_obj, "Ignite_Enabled", vap_info->u.sta_info.ignite_enabled);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d  enabled:%d ignite:%d\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.enabled, vap_info->u.sta_info.ignite_enabled);
 
     //ConnectStatus
     if (vap_info->u.sta_info.conn_status == wifi_connection_status_connected) {
         cJSON_AddBoolToObject(vap_obj, "ConnectStatus", true);
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d conn_status:%d true\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d conn_status:%d true\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
     } else {
         cJSON_AddBoolToObject(vap_obj, "ConnectStatus", false);
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d conn_status:%d false\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d conn_status:%d false\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
     }
 
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;

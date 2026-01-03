@@ -2231,9 +2231,16 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     const cJSON  *param, *security, *scan;
     int radio_index = -1;
     int band = -1;
+    char *str;
     //VAP Name
     decode_param_string(vap, "VapName", param);
     strcpy(vap_info->vap_name, param->valuestring);
+
+
+    str = cJSON_Print(vap);
+    json_param_obscure(str, "Passphrase");
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, str);
+    cJSON_free(str);
 
     vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
     if ((int)vap_info->vap_index < 0) {
@@ -2249,10 +2256,13 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     decode_param_integer(vap, "VapMode", param);
     vap_info->vap_mode = param->valuedouble;
 
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d VapName:%s, vapMode %d\n",__FUNCTION__, __LINE__, vap_info->vap_name, vap_info->vap_mode);
+
     // Exists
     decode_param_bool(vap, "Exists", param);
     rdk_vap_info->exists = (param->type & cJSON_True) ? true : false;
 
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d  radioIndex:%d  exists:%d\n",__FUNCTION__, __LINE__, vap_info->radio_index, rdk_vap_info->exists);
     //Bridge Name
     param = cJSON_GetObjectItem(vap, "BridgeName");
     if ((param != NULL) && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
@@ -2264,11 +2274,13 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     // SSID
     decode_param_allow_empty_string(vap, "SSID", param);
     strcpy(vap_info->u.sta_info.ssid, param->valuestring);
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d ssid:%s \n",__FUNCTION__, __LINE__, vap_info->u.sta_info.ssid);
 
     // BSSID
+ //wifi_vap_info_t   vap_info
     decode_param_string(vap, "BSSID", param);
     string_mac_to_uint8_mac(vap_info->u.sta_info.bssid, param->valuestring);
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: vapname : %s enable : %d ignite-enable : %d bssid : %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",__FUNCTION__, __LINE__, vap_info->vap_name, vap_info->u.sta_info.enabled,  vap_info->u.sta_info.ignite_enabled,
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vapname : %s enable : %d ignite-enable : %d bssid : %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",__FUNCTION__, __LINE__, vap_info->vap_name, vap_info->u.sta_info.enabled,  vap_info->u.sta_info.ignite_enabled,
             vap_info->u.sta_info.bssid[0], vap_info->u.sta_info.bssid[1], vap_info->u.sta_info.bssid[2],
             vap_info->u.sta_info.bssid[3], vap_info->u.sta_info.bssid[4], vap_info->u.sta_info.bssid[5]);
 
@@ -2278,17 +2290,21 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
 
     // Enabled
     decode_param_bool(vap, "Enabled", param);
-    vap_info->u.sta_info.enabled = (param->type & cJSON_True) ? true:false;
+    vap_info->u.sta_info.enabled = true; //(param->type & cJSON_True) ? true:false;
 
     // Ignite status
     decode_param_bool(vap, "Ignite_Enabled", param);
-    vap_info->u.sta_info.ignite_enabled = (param->type & cJSON_True) ? true:false;
+    vap_info->u.sta_info.ignite_enabled = true; //(param->type & cJSON_True) ? true:false;
 
     // ConnectStatus
     decode_param_bool(vap, "ConnectStatus", param);
     vap_info->u.sta_info.conn_status = (param->type & cJSON_True) ? wifi_connection_status_connected:wifi_connection_status_disconnected;
 
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d connected:%d \n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
+
     radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+         int   tgt_vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
+
     if (radio_index < 0) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
         return webconfig_error_decode;
@@ -2303,8 +2319,10 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     if (decode_security_object(security, &vap_info->u.sta_info.security, band, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
-    }
+    } else {
 
+       print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Decoded security:", tgt_vap_index, &vap_info->u.sta_info.security);
+    }
     decode_param_object(vap, "ScanParameters", scan);
     if (decode_scan_params_object(scan, &vap_info->u.sta_info.scan_params) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Scan parameters objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
