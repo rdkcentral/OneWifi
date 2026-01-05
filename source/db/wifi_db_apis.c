@@ -9259,7 +9259,9 @@ int get_all_param_from_psm_and_set_into_db(void)
         }
         if ((strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) == 0) ||
             (strncmp(last_reboot_reason, "WPS-Factory-Reset", strlen("WPS-Factory-Reset")) == 0) ||
-            (strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0)) {
+            (strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0) ||
+            (strncmp(last_reboot_reason, "FirmwareDownloadAndFactoryReset",
+                 strlen("FirmwareDownloadAndFactoryReset")) == 0)) {
             create_onewifi_factory_reset_flag();
             create_onewifi_factory_reset_reboot_flag();
             wifi_util_info_print(WIFI_MGR, "%s FactoryReset is done \n", __func__);
