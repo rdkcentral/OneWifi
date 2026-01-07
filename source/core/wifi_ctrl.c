@@ -631,7 +631,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     get_wifidb_obj()->desc.get_wifi_global_param_fn(&global_param);
     // set all default return values first
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+#if defined EASY_MESH_NODE
         wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
         int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
         /* Initially assign this to em_node mode to start with */
@@ -669,7 +669,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
 
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+#if defined EASY_MESH_NODE
    if (ctrl->network_mode == rdk_dev_mode_type_em_node ) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Don't need to proceed for DML fetch for RemoteAgent case, NetworkMode: %d\n",
                 __func__, __LINE__, ctrl->network_mode);
@@ -1689,7 +1689,7 @@ int init_wireless_interface_mac()
                         wifi_vap_info->u.bss_info.bssid[4],
                         wifi_vap_info->u.bss_info.bssid[5]
                         );
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+#if defined EASY_MESH_NODE
                 // For fronthaul interfaces, update the mld info
                 wifi_vap_info->u.bss_info.mld_info.common_info.mld_enable = hal_vap_info_map.vap_array[j].u.bss_info.mld_info.common_info.mld_enable;
                 memcpy(wifi_vap_info->u.bss_info.mld_info.common_info.mld_addr, hal_vap_info_map.vap_array[j].u.bss_info.mld_info.common_info.mld_addr, sizeof(wifi_vap_info->u.bss_info.mld_info.common_info.mld_addr));
