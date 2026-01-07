@@ -151,6 +151,7 @@ typedef enum {
     wifi_event_type_xfinity_rrm,
     wifi_event_type_collect_stats,
     wifi_event_type_tcm_rfc,
+    wifi_event_type_send_action_frame,
     wifi_event_type_rsn_override_rfc,
     wifi_event_command_max,
 
@@ -184,6 +185,7 @@ typedef enum {
     wifi_event_monitor_get_radiodiag_stats,
     wifi_event_monitor_get_radio_temperature,
     wifi_event_monitor_set_subscribe,
+    wifi_event_monitor_action_frame,
     wifi_event_monitor_auth_req,
     wifi_event_monitor_update_interop_interval,
     wifi_event_monitor_channel_status,
