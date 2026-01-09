@@ -346,11 +346,8 @@ void init_wifi_db_param(void)
 
 int start_wifimgr()
 {
-#ifdef ONEWIFI_DML_SUPPORT
     get_wifidml_obj()->desc.start_dml_fn();
-#else
-    init_wifi_db_param();
-#endif
+
     wifi_ctrl_t *ctrl =  NULL;
     int WIFI_APPS_NUM;
     wifi_app_descriptor_t *app_desc = get_app_desc(&WIFI_APPS_NUM);
