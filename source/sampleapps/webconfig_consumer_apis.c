@@ -534,13 +534,18 @@ void handle_webconfig_subdoc_test_result(webconfig_subdoc_type_t subdoc_type, we
 void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char *str, unsigned int len, consumer_event_subtype_t subtype)
 {
     webconfig_t *config = NULL;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_subdoc_type_t subdoc_type;
     webconfig_error_t ret = webconfig_error_none;
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memset(&subdoc_type, 0, sizeof(webconfig_subdoc_type_t));
     config = &consumer->webconfig;
 
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     printf( "%s:%d:webconfig initializ:%d\n", __func__, __LINE__, config->initializer);
     switch (subtype) {
         case consumer_event_webconfig_set_data:
@@ -551,19 +556,18 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
             } else {
                 printf( "%s:%d:webconfig_decode\n", __func__, __LINE__);
 
-                memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-                memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+                memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-                ret = webconfig_decode(&consumer->webconfig, &data, str);
+                ret = webconfig_decode(&consumer->webconfig, data, str);
                 if (ret == webconfig_error_none)
-                    subdoc_type = data.type;
+                    subdoc_type = data->type;
             }
 
             if (ret == webconfig_error_none ) {
                 printf( "%s:%d:webconfig initializ:%d subdoc_type : %d\n", __func__, __LINE__, config->initializer, subdoc_type);
 
                 dump_subdoc(str, subdoc_type);
-                sample_app_cache_update(consumer, &data);
+                sample_app_cache_update(consumer, data);
                 handle_webconfig_subdoc_test_result(subdoc_type, consumer);
 
                 if (enable_ovsdb == true) {
@@ -572,7 +576,7 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
 
-            webconfig_data_free(&data);
+            webconfig_data_free(data);
         break;
         case consumer_event_webconfig_get_data:
             //printf("%s:%d: Received webconfig subdoc:\n%s\n ... decoding and translating\n", __func__, __LINE__, str);
@@ -581,12 +585,11 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
             } else {
                 printf( "%s:%d:webconfig_decode\n", __func__, __LINE__);
 
-                memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-                memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+                memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-                ret = webconfig_decode(&consumer->webconfig, &data, str);
+                ret = webconfig_decode(&consumer->webconfig, data, str);
                 if (ret == webconfig_error_none)
-                    subdoc_type = data.type;
+                    subdoc_type = data->type;
             }
 
             if (ret == webconfig_error_none ) {
@@ -613,16 +616,17 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                     break;
 
                     default:
-                        printf("%s:%d: Unknown webconfig subdoc type:%d\n", __func__, __LINE__, data.type);
+                        printf("%s:%d: Unknown webconfig subdoc type:%d\n", __func__, __LINE__, data->type);
                     break;
                 }
             } else {
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
 
-            webconfig_data_free(&data);
+            webconfig_data_free(data);
         break;
     }
+    free(data);
 }
 
 webconfig_error_t webconfig_parse_json_to_struct(webconfig_t *config, webconfig_subdoc_data_t *data)
@@ -1799,10 +1803,9 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
     const char *str;
     int len = 0;
     int rc = RBUS_ERROR_SUCCESS;
-    webconfig_consumer_t l_consumer;
-    webconfig_subdoc_data_t data;
+    webconfig_consumer_t *l_consumer = NULL;
+    webconfig_subdoc_data_t *data = NULL;
     const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DML_DATA};
-    memset(&l_consumer, 0, sizeof(l_consumer));
 
     rc = rbus_get(consumer->rbus_handle, paramNames[0], &value);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -1817,11 +1820,25 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
         return -1;
     }
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    rc = recv_data_decode(consumer, &data, str);
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+
+    l_consumer = (webconfig_consumer_t *)malloc(sizeof(webconfig_consumer_t));
+    if (l_consumer == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        free(data);
+        return -1;
+    }
+    memset(l_consumer, 0, sizeof(webconfig_consumer_t));
+
+    rc = recv_data_decode(consumer, data, str);
     if (rc == 0) {
-        memcpy((unsigned char *)&l_consumer.config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
-        *device_network_mode = l_consumer.config.global_parameters.device_network_mode;
+        memcpy((unsigned char *)&l_consumer->config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+        *device_network_mode = l_consumer->config.global_parameters.device_network_mode;
         printf("%s:%d: get device network mode:%d\n", __func__, __LINE__, *device_network_mode);
     } else {
         printf("%s:%d: use default value\r\n", __func__, __LINE__);
@@ -1829,7 +1846,9 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
     }
 
     rbusValue_Release(value);
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    free(l_consumer);
 
     return 0;
 }

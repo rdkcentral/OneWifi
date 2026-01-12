@@ -554,7 +554,7 @@ webconfig_error_t webconfig_dml_apply(webconfig_dml_t *consumer, webconfig_subdo
 void get_associated_devices_data(unsigned int radio_index)
 {
     int itr=0, itrj=0;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
     assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
     char key[64] = {0};
@@ -564,15 +564,21 @@ void get_associated_devices_data(unsigned int radio_index)
         wifi_util_error_print(WIFI_DMCLI,"%s %d Null pointer get_assoc_devices_blob string\n", __func__, __LINE__);
         return;
     }
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&webconfig_dml.config,  sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap,(unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-    data.u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&webconfig_dml.config,  sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap,(unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data->u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
 
-    if (webconfig_decode(&webconfig_dml.webconfig, &data, str) != webconfig_error_none) {
+    if (webconfig_decode(&webconfig_dml.webconfig, data, str) != webconfig_error_none) {
         wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_decode returned error\n", __func__, __LINE__);
         free(str);
+        free(data);
         return;
     }
     pthread_mutex_lock(&webconfig_dml.assoc_dev_lock);
@@ -593,13 +599,14 @@ void get_associated_devices_data(unsigned int radio_index)
                 }
                 hash_map_destroy(*assoc_dev_map);
             }
-            *assoc_dev_map = data.u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_map;
+            *assoc_dev_map = data->u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_map;
         }
     }
     pthread_mutex_unlock(&webconfig_dml.assoc_dev_lock);
 
     free(str);
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
 }
 
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
@@ -714,7 +721,7 @@ int init(webconfig_dml_t *consumer)
     const char *paramNames[] = { WIFI_WEBCONFIG_INIT_DML_DATA }, *str;
     bus_error_t rc = bus_error_success;
     unsigned int len, itr = 0, itrj = 0;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *dbg_str;
     raw_data_t raw_data;
 
@@ -789,25 +796,30 @@ int init(webconfig_dml_t *consumer)
     }
 
     // setup the raw data
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.descriptor = 0;
-    data.descriptor |= webconfig_data_descriptor_encoded;
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    data->descriptor = 0;
+    data->descriptor |= webconfig_data_descriptor_encoded;
 
     // tell webconfig to decode
-    if (webconfig_decode(&consumer->webconfig, &data, str) == webconfig_error_none) {
+    if (webconfig_decode(&consumer->webconfig, data, str) == webconfig_error_none) {
         wifi_util_info_print(WIFI_DMCLI, "%s %d webconfig_decode success \n", __FUNCTION__,
             __LINE__);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s %d webconfig_decode fail \n", __FUNCTION__, __LINE__);
         get_bus_descriptor()->bus_data_free_fn(&raw_data);
-
+        free(data);
         return 0;
     }
 
-    memcpy((unsigned char *)&consumer->radios, (unsigned char *)&data.u.decoded.radios, data.u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&consumer->config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&consumer->hal_cap, (unsigned char *)&data.u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
-    consumer->hal_cap.wifi_prop.numRadios = data.u.decoded.num_radios;
+    memcpy((unsigned char *)&consumer->radios, (unsigned char *)&data->u.decoded.radios, data->u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&consumer->config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&consumer->hal_cap, (unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
+    consumer->hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
     consumer->harvester.b_inst_client_enabled=consumer->config.global_parameters.inst_wifi_client_enabled;
     consumer->harvester.u_inst_client_reporting_period=consumer->config.global_parameters.inst_wifi_client_reporting_period;
     consumer->harvester.u_inst_client_def_reporting_period=consumer->config.global_parameters.inst_wifi_client_def_reporting_period;
@@ -829,7 +841,8 @@ int init(webconfig_dml_t *consumer)
     sync_dml_sta_assoc_table_entries();
 #endif
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
 
     get_bus_descriptor()->bus_data_free_fn(&raw_data);
 
