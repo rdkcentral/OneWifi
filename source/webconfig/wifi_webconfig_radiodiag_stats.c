@@ -167,8 +167,6 @@ webconfig_error_t decode_radio_radiodiag_stats_subdoc(webconfig_t *config, webco
     if (decode_radiodiag_stats_object(diag_st, json) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to decode stats config\n", __func__, __LINE__);
         cJSON_Delete(json);
-        free((*diag_st)->stat_pointer);
-        free(*diag_st);
         return webconfig_error_invalid_subdoc;
     }
 

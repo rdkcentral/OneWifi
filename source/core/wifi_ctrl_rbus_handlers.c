@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <limits.h>
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
 #define MAX_STATUS_LEN 5
@@ -1605,7 +1606,7 @@ static void wps_test_event_receive_handler(char *event_name, raw_data_t *p_data,
     }
 }
 
-#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
+#if defined(EASY_MESH_NODE)
 static void wifi_sta_2g_status_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
     (void)userData;
@@ -1976,7 +1977,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
-#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
+#if defined(EASY_MESH_NODE)
     if (ctrl->wifi_sta_2g_status_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_STA_2G_VAP_CONNECT_STATUS, wifi_sta_2g_status_handler, NULL,
                 0) != bus_error_success) {
@@ -3227,7 +3228,12 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
 
         vap_array_index = convert_vap_index_to_vap_array_index(&mgr->hal_cap.wifi_prop,
             (unsigned int)idx - 1);
-
+        if (vap_array_index == UINT_MAX) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap_radio_index\n", __func__,
+                __LINE__);
+            free(data);
+            return bus_error_invalid_input;
+        }
         radio_index = getRadioIndexFromAp((unsigned int)idx - 1);
 
         data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index].force_apply =
