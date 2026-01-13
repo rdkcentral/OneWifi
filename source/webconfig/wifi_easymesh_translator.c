@@ -71,6 +71,29 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
         }
 }
 
+unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
+{
+    switch (authtype) {
+        case EM_AUTH_WPAPSK:
+            return wifi_security_mode_wpa_personal;
+
+        case EM_AUTH_WPA2PSK:
+            return wifi_security_mode_wpa2_personal;
+
+        case EM_AUTH_WPA:
+            return wifi_security_mode_wpa_enterprise;
+
+        case EM_AUTH_WPA3_PERSONAL:
+            return wifi_security_mode_wpa3_personal;
+
+        case EM_AUTH_WPA3_TRANSITION:
+            return wifi_security_mode_wpa3_transition;
+
+        default:
+            return wifi_security_mode_wpa3_personal;
+    }
+}
+
 // webconfig_easymesh_decode() will convert the onewifi structures to easymesh structures
 webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str,
         webconfig_external_easymesh_t *data,
@@ -2083,14 +2106,9 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                         "%s:%d: vap_mode:%d ssid=%s sec_mode=%d\n", __func__, __LINE__,
                         vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
                     if (vap->vap_mode == wifi_vap_mode_ap) {
-                        // TODO(RDKBACCL-1296): Skipping mesh_backhaul security mode changes due to
-                        // connectivity issue - keeping it WPA2-Personal.
-                        if (!is_vap_mesh_backhaul(wifi_prop, vap->vap_index)) {
-                            vap->u.bss_info.security.mode = radio_config->authtype[k];
-                            if (vap->u.bss_info.security.mode ==
-                                wifi_security_mode_wpa3_transition) {
-                                vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                            }
+                        vap->u.bss_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
+                        if(vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+                            vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                         }
                         strncpy(vap->u.bss_info.ssid, radio_config->ssid[k],
                             sizeof(vap->u.bss_info.ssid) - 1);
@@ -2098,12 +2116,10 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                             sizeof(vap->u.bss_info.security.u.key.key) - 1);
                         vap->u.bss_info.enabled = radio_config->enable[k];
                     } else if (vap->vap_mode == wifi_vap_mode_sta) {
-                        // TODO(RDKBACCL-1296): Skipping mesh_sta security mode changes due to
-                        // connectivity issue - keeping it WPA2-Personal.
-                        /* vap->u.sta_info.security.mode = radio_config->authtype[k];
-                         if(vap->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) {
-                             vap->u.sta_info.security.mfp = wifi_mfp_cfg_optional;
-                         } */
+                        vap->u.sta_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
+                        if(vap->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) {
+                            vap->u.sta_info.security.mfp = wifi_mfp_cfg_optional;
+                        }
                         strncpy(vap->u.sta_info.ssid, radio_config->ssid[k],
                             sizeof(vap->u.sta_info.ssid) - 1);
                         strncpy(vap->u.sta_info.security.u.key.key, radio_config->password[k],
