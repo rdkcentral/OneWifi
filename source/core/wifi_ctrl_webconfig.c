@@ -822,7 +822,7 @@ wifi_vap_info_t *get_vap_info_from_radio(char *vap_name)
     return mgr_vap_info;
 }
 
-static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
+static void update_mld_group(webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
     unsigned int i;
     wifi_vap_info_t *mgr_vap_info, *vap_info;
@@ -830,9 +830,17 @@ static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_nam
     mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     mac_address_t mlo_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     mac_addr_str_t mac_str = { 0 };
-    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = {0};
-    unsigned char mld_id = 255;
+    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = { 0 };
+    unsigned char mld_id = UNDEFINED_MLD_ID;
+    wifi_mld_common_info_t *mld_map[MAX_NUM_RADIOS] = { 0 };
+    unsigned int mld_vap_count = 0;
+    bool disable_mld = false;
 
+    if (size > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d: size %d exceeds MAX_NUM_RADIOS %d\n",
+            __func__, __LINE__, size, MAX_NUM_RADIOS);
+        return;
+    }
     for (i = 0; i < size; i++) {
 
         vap_info = get_vap_info_from_webconfig(data, vap_names[i]);
@@ -857,18 +865,41 @@ static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_nam
         /* Initialize mld_mac with VAP's BSSID */
         memcpy(mld_conf->mld_addr, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
 
-        if (mld_conf->mld_enable && mld_conf->mld_id < MLD_UNIT_COUNT && mld_conf->mld_link_id < MAX_NUM_MLD_LINKS) {
-            if (mld_id == 255)
+        if (mld_conf->mld_id < MLD_UNIT_COUNT && mld_conf->mld_link_id < MAX_NUM_MLD_LINKS) {
+            if (mld_id == UNDEFINED_MLD_ID)
                 mld_id = mld_conf->mld_id;
             if (mld_id != mld_conf->mld_id) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: vap name:%s is not part of mld unit %d. VAP's mld_id %d\n",
                     __func__, __LINE__, vap_names[i], mld_id, mld_conf->mld_id);
                 continue;
             }
-            mld_addr_map[i] = mld_conf->mld_addr;
-            if (mld_conf->mld_link_id == 0) {
-                memcpy(mlo_mac, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
+            if (mld_conf->mld_enable) {
+                mld_vap_count++;
+                mld_addr_map[i] = mld_conf->mld_addr;
+                mld_map[i] = mld_conf;
+                if (mld_conf->mld_link_id == 0) {
+                    memcpy(mlo_mac, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
+                }
+            } else {
+                if (mld_conf->mld_link_id == 0) {
+                    wifi_util_info_print(WIFI_MGR, "%s:%d: Main link is disabled -> Disable whole MLO group\n",__func__, __LINE__);
+                    disable_mld = true;
+                }
             }
+        }
+    }
+    if (mld_vap_count > 0) {
+        if (disable_mld || mld_vap_count < 2) {
+            /* Disable MLD when main link is disabled or less than 2 VAPs are mld enabled */
+            for (i = 0; i < size; i++) {
+                if (mld_map[i] != NULL) {
+                    mld_map[i]->mld_enable = false;
+                    wifi_util_info_print(WIFI_MGR,
+                        "%s:%d: Disabling mld for vap name:%s - disable_mld %d mld_vap_count %d\n",
+                        __func__, __LINE__, vap_names[i], disable_mld, mld_vap_count);
+                }
+            }
+            return;
         }
     }
 
@@ -904,7 +935,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     int ret = 0;
 
 #ifdef CONFIG_IEEE80211BE
-    update_mld_mac(data, vap_names, size);
+    update_mld_group(data, vap_names, size);
 #endif
     for (i = 0; i < size; i++) {
 
