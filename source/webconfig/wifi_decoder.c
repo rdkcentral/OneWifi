@@ -1091,7 +1091,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     decode_param_string(radius, "Key", param);
     memset(radius_info->key, '\0', 64);
-    strncpy(radius_info->key, param->valuestring, strlen(param->valuestring));
+    snprintf(radius_info->key, sizeof(radius_info->key), "%s", param->valuestring);
     if ((strlen(radius_info->key) <= 0) || (strlen(radius_info->key) > 64)) {
          wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] Invalid key\n", __func__, __LINE__);
          return webconfig_error_decode;
@@ -1102,7 +1102,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     radius_info->dasport = param->valuedouble;
 
     decode_param_string(radius, "DasSecret", param);
-    strcpy(radius_info->daskey, param->valuestring);
+    snprintf(radius_info->daskey, sizeof(radius_info->daskey), "%s", param->valuestring);
 
     //max_auth_attempts
     decode_param_integer(radius, "MaxAuthAttempts", param);
