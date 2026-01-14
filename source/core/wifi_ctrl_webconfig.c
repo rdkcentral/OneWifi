@@ -760,7 +760,7 @@ bool is_force_apply_true(rdk_wifi_vap_info_t *rdk_vap_info) {
 }
 
 
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 wifi_vap_info_t *get_vap_info_from_webconfig(webconfig_subdoc_decoded_data_t *data, char *vap_name)
 {
     unsigned int j, k;
@@ -916,7 +916,7 @@ static void update_mld_group(webconfig_subdoc_decoded_data_t *data, char **vap_n
         }
     }
 }
-#endif // CONFIG_IEEE80211BE
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
@@ -934,9 +934,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
     int ret = 0;
 
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
     update_mld_group(data, vap_names, size);
-#endif
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     for (i = 0; i < size; i++) {
 
         if ((svc = get_svc_by_name(ctrl, vap_names[i])) == NULL) {
