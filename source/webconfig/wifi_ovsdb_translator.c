@@ -2702,8 +2702,8 @@ int set_translator_state_security_key_value(
         const char *key,
         const char *value)
 {
-    strcpy(vstate->security_keys[*index], key);
-    strcpy(vstate->security[*index], value);
+    snprintf(vstate->security_keys[*index], sizeof(vstate->security_keys[*index]), "%s", key);
+    snprintf(vstate->security[*index], sizeof(vstate->security[*index]), "%s", value);
 
     *index += 1;
     vstate->security_len = *index;
@@ -2717,8 +2717,8 @@ int set_translator_config_security_key_value(
         const char *key,
         const char *value)
 {
-    strcpy(vconfig->security_keys[*index], key);
-    strcpy(vconfig->security[*index], value);
+    snprintf(vconfig->security_keys[*index], sizeof(vconfig->security_keys[*index]), "%s", key);
+    snprintf(vconfig->security[*index], sizeof(vconfig->security[*index]), "%s", value);
 
     *index += 1;
     vconfig->security_len = *index;
