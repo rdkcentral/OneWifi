@@ -472,7 +472,7 @@ void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
 
     wifi_util_dbg_print(WIFI_DMCLI,"bus event callback Event is %s\r\n",eventName);
     pTmp = p_data->raw_data.bytes;
@@ -481,33 +481,42 @@ void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
         return;
     }
 
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+
     // setup the raw data
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.descriptor = 0;
-    data.descriptor = webconfig_data_descriptor_encoded |
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    data->descriptor = 0;
+    data->descriptor = webconfig_data_descriptor_encoded |
         webconfig_data_descriptor_translate_to_tr181;
 
     // wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__,
-    // data.u.encoded.raw);
+    // data->u.encoded.raw);
     wifi_util_info_print(WIFI_DMCLI, "%s:%d: hal capability update\r\n", __func__, __LINE__);
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap,
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap,
         sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
+    data->u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
 
     // tell webconfig to decode
-    if (webconfig_decode(&webconfig_dml.webconfig, &data, pTmp) == webconfig_error_none) {
+    if (webconfig_decode(&webconfig_dml.webconfig, data, pTmp) == webconfig_error_none) {
         wifi_util_info_print(WIFI_DMCLI, "%s %d webconfig_decode success \n", __FUNCTION__,
             __LINE__);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s %d webconfig_decode fail \n", __FUNCTION__, __LINE__);
+        free(data);
+        data = NULL;
         return;
     }
 
-    dml_cache_update(&data);
+    dml_cache_update(data);
 
-    webconfig_data_free(&data);
-
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
     return;
 }
 
@@ -1012,14 +1021,19 @@ int get_radioIndex_from_vapIndex(unsigned int vap_index, unsigned int *radio_ind
 int push_global_config_dml_cache_to_one_wifidb()
 {
     wifi_util_dbg_print(WIFI_DMCLI, "%s:  Need to implement \n", __FUNCTION__);
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&webconfig_dml.config, sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&webconfig_dml.config, sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_wifi_config) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_wifi_config) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_dbg_print(WIFI_DMCLI, "%s:  GlobalConfig DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1030,7 +1044,9 @@ int push_global_config_dml_cache_to_one_wifidb()
     wifi_util_dbg_print(WIFI_DMCLI, "%s:  Global DML cache pushed to queue \n", __FUNCTION__);
     g_update_wifi_region = FALSE;
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1066,7 +1082,7 @@ int push_kick_assoc_to_ctrl_queue(int vap_index)
 
 int push_radio_dml_cache_to_one_wifidb()
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
 
     if(is_radio_config_changed == FALSE)
@@ -1074,14 +1090,20 @@ int push_radio_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s: No Radio DML Modified Return success  \n", __FUNCTION__);
         return RETURN_OK;
     }
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = get_num_radio_dml();
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_radio) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    data->u.decoded.num_radios = get_num_radio_dml();
+
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_radio) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Radio DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1092,25 +1114,31 @@ int push_radio_dml_cache_to_one_wifidb()
     wifi_util_error_print(WIFI_DMCLI, "%s:  Radio DML cache pushed to queue \n", __FUNCTION__);
     is_radio_config_changed = FALSE;
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
 
 int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
+    data->u.decoded.num_radios = get_num_radio_dml();
 
-    data.u.decoded.num_radios = get_num_radio_dml();
-
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_mac_filter) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_mac_filter) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1119,8 +1147,9 @@ int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  ACL DML cache pushed to queue \n", __FUNCTION__);
-
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1311,7 +1340,7 @@ int push_vap_dml_cache_to_one_wifidb()
 
 int push_blaster_config_dml_to_ctrl_queue()
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
     int ret = 0;
     bus_handle_t handle;
@@ -1343,23 +1372,30 @@ int push_blaster_config_dml_to_ctrl_queue()
             telemetry_buf = NULL;
         }
     }
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     snprintf((char *)&webconfig_dml.blaster.t_header.traceParent, sizeof(webconfig_dml.blaster.t_header.traceParent), "%s", traceParent);
     snprintf((char *)&webconfig_dml.blaster.t_header.traceState, sizeof(webconfig_dml.blaster.t_header.traceState), "%s", traceState);
-    memcpy((unsigned char *)&data.u.decoded.blaster, (unsigned char *)&webconfig_dml.blaster, sizeof(active_msmt_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: After getting the trace context in data_u_decoded_blaster traceparent:%s, tracestate:%s\n", __func__, __LINE__,data.u.decoded.blaster.t_header.traceParent, data.u.decoded.blaster.t_header.traceState);
-    data.u.decoded.num_radios = get_num_radio_dml();
+    memcpy((unsigned char *)&data->u.decoded.blaster, (unsigned char *)&webconfig_dml.blaster, sizeof(active_msmt_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:After getting the trace context in data_u_decoded_blaster traceparent:%s, tracestate:%s\n", __func__, __LINE__,data->u.decoded.blaster.t_header.traceParent, data->u.decoded.blaster.t_header.traceState);
+    data->u.decoded.num_radios = get_num_radio_dml();
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_blaster) == webconfig_error_none) {
-        str = data.u.encoded.raw;
-        wifi_util_info_print(WIFI_DMCLI, "%s:  Blaster subdoc encoded successfully  \n", __FUNCTION__);
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_blaster) == webconfig_error_none) {
+        str = data->u.encoded.raw;
+        wifi_util_info_print(WIFI_DMCLI, "%s:Blaster subdoc encoded successfully\n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1386,14 +1422,19 @@ instant_measurement_config_t* get_dml_harvester(void)
 int push_harvester_dml_cache_to_one_wifidb()
 {
     if(webconfig_dml.harvester.b_inst_client_enabled == true){
-        webconfig_subdoc_data_t data;
+        webconfig_subdoc_data_t *data = NULL;
         char *str = NULL;
-        memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-        memcpy((unsigned char *)&data.u.decoded.harvester, (unsigned char *)&webconfig_dml.harvester, sizeof(instant_measurement_config_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+        data = malloc(sizeof(webconfig_subdoc_data_t));
+        if (!data) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        memset(data, 0, sizeof(webconfig_subdoc_data_t));
+        memcpy((unsigned char *)&data->u.decoded.harvester, (unsigned char *)&webconfig_dml.harvester, sizeof(instant_measurement_config_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
-            str = data.u.encoded.raw;
+        if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
+            str = data->u.encoded.raw;
             wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache encoded successfully  \n", __FUNCTION__);
             push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
         } else {
@@ -1412,7 +1453,9 @@ int push_harvester_dml_cache_to_one_wifidb()
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[2], webconfig_dml.config.global_parameters.inst_wifi_client_mac[3], 
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[4], webconfig_dml.config.global_parameters.inst_wifi_client_mac[5]);
 
-        webconfig_data_free(&data);
+        webconfig_data_free(data);
+        free(data);
+        data = NULL;
     }
     return RETURN_OK;
 }
