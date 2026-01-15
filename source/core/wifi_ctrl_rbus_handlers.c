@@ -647,6 +647,66 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    int vap_index;
+    wifi_back_haul_sta_t *sta_info;
+    wifi_platform_property_t *wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
+    mac_address_t zero_mac;
+    char ifname[100] = {0};
+    int ret = 0;
+    mac_addr_str_t mac_str;
+
+    memset(zero_mac, 0, sizeof(mac_address_t));
+    /*
+      In case of Easymesh mode few checks should be done before the dml subdoc is sent.
+       1) Check al_mac address is non-zero and colocated_mode is either 0 or 1. If any of
+          them incorrect, return bus_error.
+       2) If colocated_mode is 0 then check whether configured al_mac has a valid interface
+          and if it is a interface in interface map should be a sta interface and should be
+          in connected state.
+    */
+    if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
+        /* check 1 */
+        if (memcmp(wifi_prop->al_1905_mac, zero_mac, sizeof(mac_address_t)) == 0 ||
+            wifi_prop->colocated_mode == -1) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d FATAL Error al_mac:%s or colocated_mode:%d incorrect\n", __func__, __LINE__,
+                to_mac_str(wifi_prop->al_1905_mac, mac_str), wifi_prop->colocated_mode);
+            return bus_error_access_not_allowed;
+        }
+        /* check 2 */
+        if (wifi_prop->colocated_mode == 0) {
+            /* colocated_mode 0 check ifname is sta and connected*/
+            ret = interfacename_from_mac((const mac_address_t *)wifi_prop->al_1905_mac, ifname);
+            if (ret != 0) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d FATAL Error Interface not found for al_mac:%s\n", __func__, __LINE__,
+                    to_mac_str(wifi_prop->al_1905_mac, mac_str));
+                return bus_error_access_not_allowed;
+            }
+            vap_index = convert_ifname_to_vap_index(wifi_prop, ifname);
+            if (vap_index != -1) {
+                sta_info = get_wifi_object_sta_parameter(vap_index);
+                if (sta_info == NULL || sta_info->conn_status != wifi_connection_status_connected) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Error backhaul interface:%p is not sta interface or not connected, "
+                        "conn_status:%d\n",
+                        __func__, __LINE__, sta_info,
+                        (sta_info == NULL) ? 0 : sta_info->conn_status);
+                    return bus_error_access_not_allowed;
+                }
+            } else {
+                /* check the interface name before treating it as error */
+                if (strncmp(ifname, "eth", strlen("eth")) != 0 &&
+                    strncmp(ifname, "lo", strlen("lo")) != 0) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Error ifname:%s is not ethernet or loopback interface.\n", __func__,
+                        __LINE__, ifname);
+                    return bus_error_access_not_allowed;
+                }
+            }
+        }
+    }
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
@@ -667,7 +727,7 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     p_data->data_type = bus_data_type_string;
     p_data->raw_data.bytes = malloc(str_size);
     if (p_data->raw_data.bytes == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+        wifi_util_error_print(WIFI_CTRL, "%s:%d memory allocation is failed:%d\r\n", __func__,
             __LINE__, str_size);
         return bus_error_out_of_resources;
     }
@@ -1340,6 +1400,7 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
         frame_data.frame.dir = data_ptr->frame.dir;
         frame_data.frame.sig_dbm = data_ptr->frame.sig_dbm;
         frame_data.frame.phy_rate = data_ptr->frame.phy_rate;
+        frame_data.frame.recv_freq = data_ptr->frame.recv_freq;
         frame_data.frame.data = data_ptr->frame.data;
 
         memcpy(&frame_data.data, data_ptr->data, data_ptr->frame.len);
@@ -1355,10 +1416,10 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
 #if defined(_XB7_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
-            frame_data.frame.sig_dbm, frame_data.frame.phy_rate);
+            frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);
 #else
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
-            frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir);
+            frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir, frame_data.frame.recv_freq);
 #endif
 #endif
     }
@@ -2201,6 +2262,21 @@ bus_error_t eventSubHandler(char *eventName, bus_event_sub_action_t action,
                 data = NULL;
             }
             break;
+        case wifi_event_monitor_action_frame:
+            idx = event->idx;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d action=%s\n eventName=%s idx %d\n", __func__,
+                __LINE__, action == bus_event_action_subscribe ? "subscribe" : "unsubscribe",
+                eventName, idx);
+            if (action == bus_event_action_subscribe) {
+                event->num_subscribers++;
+                event->subscribed = TRUE;
+            } else {
+                event->num_subscribers--;
+                if (event->num_subscribers == 0) {
+                    event->subscribed = FALSE;
+                }
+            }
+            break;
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s(): Invalid event type\n", __FUNCTION__);
             break;
@@ -2366,6 +2442,16 @@ bus_error_t ap_table_addrowhandler(char const *tableName, char const *aliasName,
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.Security.ConnectedRadiusEndpoint", *instNum);
         event->idx = vap_index;
         event->type =  wifi_event_radius_fallback_and_failover;
+        event->subscribed = FALSE;
+        event->num_subscribers = 0;
+        queue_push(ctrl->events_bus_data.events_bus_queue, event);
+    }
+
+    event = (event_bus_element_t *)malloc(sizeof(event_bus_element_t));
+    if (event != NULL) {
+        sprintf(event->name, "Device.WiFi.AccessPoint.%d.RawFrame.Mgmt.Action.Rx", *instNum);
+        event->idx = vap_index;
+        event->type = wifi_event_monitor_action_frame;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(ctrl->events_bus_data.events_bus_queue, event);
@@ -2605,6 +2691,7 @@ int events_bus_publish(wifi_event_t *evt)
     unsigned int vap_array_index;
     uint32_t len = 0;
     raw_data_t data;
+    uint8_t freq_frame_data[sizeof(wifi_frame_t) + MAX_FRAME_SZ];
 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -2662,6 +2749,35 @@ int events_bus_publish(wifi_event_t *evt)
             data.data_type = bus_data_type_bytes;
             data.raw_data.bytes = evt->u.mon_data->u.dev.sta_mac;
             data.raw_data_len = sizeof(evt->u.mon_data->u.dev.sta_mac);
+
+            rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, eventName, &data);
+            pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
+            if (rc != bus_error_success) {
+                wifi_util_error_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event failed: %d\n",
+                    __FUNCTION__, rc);
+            } else {
+                wifi_util_dbg_print(WIFI_CTRL, "%s(): Event - %s %s \n", __FUNCTION__,
+                    wifi_event_subtype_to_string(evt->sub_type), eventName);
+            }
+        }
+        break;
+    case wifi_event_monitor_action_frame:
+        sprintf(eventName, "Device.WiFi.AccessPoint.%d.RawFrame.Mgmt.Action.Rx",
+            evt->u.mon_data->ap_index + 1);
+        if (events_getSubscribed(eventName) == TRUE) {
+            pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
+            memset(&data, 0, sizeof(raw_data_t));
+            data.data_type = bus_data_type_bytes;
+            
+            // Put wifi_frame_t at the start of the frame data
+            memset(freq_frame_data, 0, sizeof(wifi_frame_t) + MAX_FRAME_SZ);
+            memcpy(freq_frame_data, &evt->u.mon_data->u.msg.frame, sizeof(wifi_frame_t));
+            ((wifi_frame_t*)freq_frame_data)->data = NULL; // Clear pointer before sending over bus
+            memcpy(&freq_frame_data[sizeof(wifi_frame_t)], evt->u.mon_data->u.msg.data,
+                evt->u.mon_data->u.msg.frame.len);
+
+            data.raw_data.bytes = (void *)freq_frame_data;
+            data.raw_data_len = evt->u.mon_data->u.msg.frame.len + sizeof(wifi_frame_t);
 
             rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, eventName, &data);
             pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
@@ -2761,6 +2877,40 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, raw_data_t *i
     return bus_error_success;
 }
 
+bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    unsigned int len = 0;
+    char *pTmp = NULL;
+    unsigned int idx = 0;
+    int ret;
+    unsigned int num_of_radios = getNumberRadios();
+
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_element_name_missing;
+    }
+
+    pTmp = (char *)p_data->raw_data.bytes;
+    if ((p_data->data_type != bus_data_type_bytes) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
+            p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    ret = sscanf(name, "Device.WiFi.AccessPoint.%d.RawFrame.Mgmt.Action.Tx", &idx);
+    if (ret != 1 || idx < 0 || idx > num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid index : %s\r\n", __func__, __LINE__, name);
+        return bus_error_invalid_event;
+    }
+
+    len = p_data->raw_data_len;
+    push_event_to_ctrl_queue((char *)pTmp, len, wifi_event_type_command,
+        wifi_event_type_send_action_frame, NULL);
+
+    return bus_error_success;
+}
 
 bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
@@ -2930,6 +3080,12 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_ACCESSPOINT_FORCE_APPLY, bus_element_type_method,
                                     { NULL, set_force_vap_apply, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_boolean, true, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_RAWFRAME_MGMT_ACTION_RX, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, eventSubHandler, NULL}, high_speed, ZERO_TABLE,
+                                    { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_RAWFRAME_MGMT_ACTION_TX, bus_element_type_method,
+                                    { NULL, send_action_frame, NULL, NULL, NULL, NULL}, high_speed, ZERO_TABLE,
+                                    { bus_data_type_bytes, true, 0, 0, 0, NULL } },
                                 { ACCESSPOINT_ASSOC_REQ_EVENT, bus_element_type_method,
                                     { NULL, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
