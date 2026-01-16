@@ -209,63 +209,95 @@ free_data:
 
 int webconfig_send_wifi_config_status(wifi_ctrl_t *ctrl)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    memset(&data,0,sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_wifi_config) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(&data);
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:Failed to allocate memory\n", __FUNCTION__, __LINE__);
+        return RETURN_ERR;
     }
 
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_wifi_config) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    } else {
+        webconfig_data_free(data);
+    }
+
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
 int webconfig_send_radio_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t type)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
 
-    webconfig_init_subdoc_data(&data);
-
-    if (webconfig_encode(&ctrl->webconfig, &data, type) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(&data);
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:Failed to allocate memory\n", __FUNCTION__, __LINE__);
+        return RETURN_ERR;
     }
 
+    webconfig_init_subdoc_data(data);
+
+    if (webconfig_encode(&ctrl->webconfig, data, type) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    } else {
+        webconfig_data_free(data);
+    }
+
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
 int webconfig_send_vap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t type)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
 
-    webconfig_init_subdoc_data(&data);
-
-    if (webconfig_encode(&ctrl->webconfig, &data, type) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(&data);
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:Failed to allocate memory\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
     }
 
+    webconfig_init_subdoc_data(data);
+
+    if (webconfig_encode(&ctrl->webconfig, data, type) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    } else {
+        webconfig_data_free(data);
+    }
+
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
 int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
 
-    webconfig_init_subdoc_data(&data);
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(&data);
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:Failed to allocate memory\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
     }
 
+    webconfig_init_subdoc_data(data);
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    } else {
+        webconfig_data_free(data);
+    }
+
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
@@ -322,37 +354,57 @@ int  webconfig_free_vap_object_diff_assoc_client_entries(webconfig_subdoc_data_t
 
 int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
 {
-    webconfig_subdoc_data_t data;
-    webconfig_init_subdoc_data(&data);
-    data.u.decoded.assoclist_notifier_type = assoclist_notifier_diff;
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
+    webconfig_subdoc_data_t *data = NULL;
+
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory for webconfig_subdoc_data_t\n",
+                __FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    webconfig_init_subdoc_data(data);
+    data->u.decoded.assoclist_notifier_type = assoclist_notifier_diff;
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
-    webconfig_free_vap_object_diff_assoc_client_entries(&data);
-    webconfig_data_free(&data);
+    webconfig_free_vap_object_diff_assoc_client_entries(data);
+    webconfig_data_free(data);
 
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl)
 {
-    webconfig_subdoc_data_t data;
-    webconfig_init_subdoc_data(&data);
-    data.u.decoded.assoclist_notifier_type = assoclist_notifier_full;
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) !=
+    webconfig_subdoc_data_t *data = NULL;
+
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory for webconfig_subdoc_data_t\n",
+                __FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    webconfig_init_subdoc_data(data);
+    data->u.decoded.assoclist_notifier_type = assoclist_notifier_full;
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_associated_clients) !=
         webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__,
             __LINE__);
     }
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
 
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
 /* This function is responsible for encoding the data and trigger bus call */
 int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     if ((mgr == NULL) || (ctrl == NULL)) {
@@ -360,44 +412,72 @@ int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
         return RETURN_ERR;
     }
 
-    memset(&data,0,sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.blaster, (unsigned char *)&mgr->blaster_config_global, sizeof(active_msmt_t));
-
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_blaster) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(&data);
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory for webconfig_subdoc_data_t\n",
+                __FUNCTION__, __LINE__);
+        return RETURN_ERR;
     }
 
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.blaster, (unsigned char *)&mgr->blaster_config_global, sizeof(active_msmt_t));
+
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_blaster) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    } else {
+        webconfig_data_free(data);
+    }
+
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
 int webconfig_send_steering_clients_status(wifi_ctrl_t *ctrl)
 {
-    webconfig_subdoc_data_t data;
-    webconfig_init_subdoc_data(&data);
+    webconfig_subdoc_data_t *data = NULL;
 
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_steering_clients) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(&data);
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory for webconfig_subdoc_data_t\n",
+                __FUNCTION__, __LINE__);
+        return RETURN_ERR;
     }
 
+    webconfig_init_subdoc_data(data);
+
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_steering_clients) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    } else {
+        webconfig_data_free(data);
+    }
+
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
 int webconfig_send_multivap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t type)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
 
-    webconfig_init_subdoc_data(&data);
-
-    if (webconfig_encode(&ctrl->webconfig, &data, type) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__,
-            __LINE__);
-    } else {
-        webconfig_data_free(&data);
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory for webconfig_subdoc_data_t\n",
+                __FUNCTION__, __LINE__);
+        return RETURN_ERR;
     }
+
+    webconfig_init_subdoc_data(data);
+
+    if (webconfig_encode(&ctrl->webconfig, data, type) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%dFailed webconfig_encode\n", __FUNCTION__, __LINE__);
+    } else {
+        webconfig_data_free(data);
+    }
+
+    free(data);
+    data = NULL;
     return RETURN_OK;
 }
 
@@ -760,7 +840,7 @@ bool is_force_apply_true(rdk_wifi_vap_info_t *rdk_vap_info) {
 }
 
 
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 wifi_vap_info_t *get_vap_info_from_webconfig(webconfig_subdoc_decoded_data_t *data, char *vap_name)
 {
     unsigned int j, k;
@@ -822,7 +902,7 @@ wifi_vap_info_t *get_vap_info_from_radio(char *vap_name)
     return mgr_vap_info;
 }
 
-static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
+static void update_mld_group(webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
     unsigned int i;
     wifi_vap_info_t *mgr_vap_info, *vap_info;
@@ -830,9 +910,17 @@ static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_nam
     mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     mac_address_t mlo_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     mac_addr_str_t mac_str = { 0 };
-    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = {0};
-    unsigned char mld_id = 255;
+    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = { 0 };
+    unsigned char mld_id = UNDEFINED_MLD_ID;
+    wifi_mld_common_info_t *mld_map[MAX_NUM_RADIOS] = { 0 };
+    unsigned int mld_vap_count = 0;
+    bool disable_mld = false;
 
+    if (size > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d: size %d exceeds MAX_NUM_RADIOS %d\n",
+            __func__, __LINE__, size, MAX_NUM_RADIOS);
+        return;
+    }
     for (i = 0; i < size; i++) {
 
         vap_info = get_vap_info_from_webconfig(data, vap_names[i]);
@@ -857,18 +945,41 @@ static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_nam
         /* Initialize mld_mac with VAP's BSSID */
         memcpy(mld_conf->mld_addr, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
 
-        if (mld_conf->mld_enable && mld_conf->mld_id < MLD_UNIT_COUNT && mld_conf->mld_link_id < MAX_NUM_MLD_LINKS) {
-            if (mld_id == 255)
+        if (mld_conf->mld_id < MLD_UNIT_COUNT && mld_conf->mld_link_id < MAX_NUM_MLD_LINKS) {
+            if (mld_id == UNDEFINED_MLD_ID)
                 mld_id = mld_conf->mld_id;
             if (mld_id != mld_conf->mld_id) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: vap name:%s is not part of mld unit %d. VAP's mld_id %d\n",
                     __func__, __LINE__, vap_names[i], mld_id, mld_conf->mld_id);
                 continue;
             }
-            mld_addr_map[i] = mld_conf->mld_addr;
-            if (mld_conf->mld_link_id == 0) {
-                memcpy(mlo_mac, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
+            if (mld_conf->mld_enable) {
+                mld_vap_count++;
+                mld_addr_map[i] = mld_conf->mld_addr;
+                mld_map[i] = mld_conf;
+                if (mld_conf->mld_link_id == 0) {
+                    memcpy(mlo_mac, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
+                }
+            } else {
+                if (mld_conf->mld_link_id == 0) {
+                    wifi_util_info_print(WIFI_MGR, "%s:%d: Main link is disabled -> Disable whole MLO group\n",__func__, __LINE__);
+                    disable_mld = true;
+                }
             }
+        }
+    }
+    if (mld_vap_count > 0) {
+        if (disable_mld || mld_vap_count < 2) {
+            /* Disable MLD when main link is disabled or less than 2 VAPs are mld enabled */
+            for (i = 0; i < size; i++) {
+                if (mld_map[i] != NULL) {
+                    mld_map[i]->mld_enable = false;
+                    wifi_util_info_print(WIFI_MGR,
+                        "%s:%d: Disabling mld for vap name:%s - disable_mld %d mld_vap_count %d\n",
+                        __func__, __LINE__, vap_names[i], disable_mld, mld_vap_count);
+                }
+            }
+            return;
         }
     }
 
@@ -885,7 +996,7 @@ static void update_mld_mac(webconfig_subdoc_decoded_data_t *data, char **vap_nam
         }
     }
 }
-#endif // CONFIG_IEEE80211BE
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
@@ -903,9 +1014,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
     int ret = 0;
 
-#ifdef CONFIG_IEEE80211BE
-    update_mld_mac(data, vap_names, size);
-#endif
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_group(data, vap_names, size);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     for (i = 0; i < size; i++) {
 
         if ((svc = get_svc_by_name(ctrl, vap_names[i])) == NULL) {
