@@ -942,20 +942,28 @@ vap_stats_flag_changed(unsigned int ap_index, client_stats_enable_t *flag)
  */
 int wifi_stats_flag_change(int ap_index, bool enable, int type)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = ap_index;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
 
-    data.u.flag.type = type;
-    data.u.flag.enable = enable;
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = ap_index;
+
+    data->u.flag.type = type;
+    data->u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed apIndex=%d enable=%d type=%d\n",
             __func__, __LINE__, ap_index, enable, type);
 
-    push_event_to_monitor_queue(&data, wifi_event_monitor_stats_flag_change, NULL);
+    push_event_to_monitor_queue(data, wifi_event_monitor_stats_flag_change, NULL);
 
+    free(data);
+    data=NULL;
     return 0;
 }
 
@@ -967,18 +975,26 @@ int wifi_stats_flag_change(int ap_index, bool enable, int type)
  */
 int radio_stats_flag_change(int radio_index, bool enable)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = radio_index;	//Radio_Index = 0, 1
-    data.u.flag.enable = enable;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = radio_index;	//Radio_Index = 0, 1
+    data->u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed radioIndex=%d enable=%d\n",
             __func__, __LINE__, radio_index, enable);
 
-    push_event_to_monitor_queue(&data, wifi_event_monitor_radio_stats_flag_change, NULL);
+    push_event_to_monitor_queue(data, wifi_event_monitor_radio_stats_flag_change, NULL);
 
+    free(data);
+    data=NULL;
     return 0;
 }
 
@@ -990,18 +1006,25 @@ int radio_stats_flag_change(int radio_index, bool enable)
  */
 int vap_stats_flag_change(int ap_index, bool enable)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = ap_index;	//vap_Index
-    data.u.flag.enable = enable;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = ap_index;	//vap_Index
+    data->u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed vapIndex=%d enable=%d \n",
             __func__, __LINE__, ap_index, enable);
-    push_event_to_monitor_queue(&data, wifi_event_monitor_vap_stats_flag_change, NULL);
+    push_event_to_monitor_queue(data, wifi_event_monitor_vap_stats_flag_change, NULL);
 
-
+    free(data);
+    data=NULL;
     return 0;
 }
 
@@ -2502,7 +2525,7 @@ static int clientdiag_sheduler_enable(int ap_index)
 
 int diagdata_set_interval(int interval, unsigned int ap_idx)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
     unsigned int vap_array_index;
     int ret = RETURN_ERR;
 
@@ -2517,11 +2540,19 @@ int diagdata_set_interval(int interval, unsigned int ap_idx)
     wifi_util_dbg_print(WIFI_MON, "%s: ap_idx %d configuring inteval %d\n", __func__, ap_idx, interval);
     pthread_mutex_unlock(&g_events_monitor.lock);
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = ap_idx;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
-    ret = push_event_to_monitor_queue(&data, wifi_event_monitor_clientdiag_update_config, NULL);
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = ap_idx;
+
+    ret = push_event_to_monitor_queue(data, wifi_event_monitor_clientdiag_update_config, NULL);
+    free(data);
+    data = NULL;
     if (ret == RETURN_ERR) {
         wifi_util_error_print(WIFI_MON, "%s:%d Error in sending request to monitor queue\n", __func__, __LINE__);
         return RETURN_ERR;
