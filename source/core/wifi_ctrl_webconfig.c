@@ -29,7 +29,7 @@
 #include "wifi_util.h"
 #include <cjson/cJSON.h>
 #include "scheduler.h"
-#include "base64.h"
+#include <trower-base64/base64.h>
 #include <unistd.h>
 #include <pthread.h>
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE

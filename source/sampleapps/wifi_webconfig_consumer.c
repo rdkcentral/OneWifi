@@ -28,7 +28,7 @@
 #include "scheduler.h"
 #include <unistd.h>
 #include <pthread.h>
-#include <rbus.h>
+#include <rbus/rbus.h>
 #include <libgen.h>
 #include "wifi_webconfig_consumer.h"
 #define CONSUMER_APP_FILE "/tmp/wifi_webconfig_consumer_app"
