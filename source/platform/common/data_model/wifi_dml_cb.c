@@ -4260,13 +4260,8 @@ bool wps_get_param_string_value(void *obj_ins_context, char *param_name, scratch
     } else if (STR_CMP(param_name, "ConfigMethodsEnabled")) {
         char buff[128] = {0};
 
-        if (get_wifi_wps_method_string_from_int(pcfg->u.bss_info.wps.methods, buff) != 0) {
-            set_output_string(output_value, buff);
-        } else {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d wps method:%d str value not found\n", __func__,
-                __LINE__, p_dm_vap_default->wps_methods);
-            return false;
-        }
+        get_wifi_wps_method_string_from_int(pcfg->u.bss_info.wps.methods, buff);
+        set_output_string(output_value, buff);
     } else if (STR_CMP(param_name, "X_CISCO_COM_Pin")) {
         set_output_string(output_value, p_dm_vap_default->wps_pin);
     } else if (STR_CMP(param_name, "X_CISCO_COM_ClientPin")) {
