@@ -293,7 +293,6 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     char *str;
     probe_req_elem_t *elem, *tmp;
     char namespace[50];
-
     frame = (struct ieee80211_mgmt *)msg->data;
     str = to_mac_str(frame->sa, mac_str);
     if (str == NULL) {
@@ -661,7 +660,6 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
         return;
     }
-
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *) data;
     levl_sched_data_t *levl_sc_data = NULL;
     hash_map_t *p_map = NULL, *curr_map = NULL;

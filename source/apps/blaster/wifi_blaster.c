@@ -1489,7 +1489,7 @@ void WiFiBlastClient(void)
             active_msmt_log_message(BLASTER_DEBUG_LOG, "\n=========START THE TEST=========\n");
             active_msmt_log_message(BLASTER_INFO_LOG, "Blaster test is initiated for Dest mac [%s]\n", macStr);;
             active_msmt_log_message(BLASTER_INFO_LOG, "Interface [%s], Send Duration: [%d msecs], Packet Size: [%d bytes], Sample count: [%d]\n",
-                    interface_name, GetActiveMsmtSampleDuration(), GetActiveMsmtPktSize(), GetActiveMsmtNumberOfSamples());
+                    (char *)interface_name, GetActiveMsmtSampleDuration(), GetActiveMsmtPktSize(), GetActiveMsmtNumberOfSamples());
 
             /* start blasting the packets to calculate the throughput */
             pkt_gen_blast_client(macStr, interface_name);
