@@ -472,7 +472,7 @@ elem_node_map_t *get_bus_node_info(elem_node_map_t *cb_root, char *name)
         return NULL;
     }
 
-    strcpy(recv_name, name);
+    snprintf(recv_name, sizeof(recv_name), "%s", name);
 
     node_elem = retrieve_instance_elem_node(cb_root, recv_name);
     if (node_elem != NULL) {
