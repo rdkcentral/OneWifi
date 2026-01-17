@@ -3908,7 +3908,12 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,
                 vap_info_new->u.bss_info.mbo_enabled) ||
             IS_CHANGED(vap_info_old->u.bss_info.interop_ctrl,
-                vap_info_new->u.bss_info.interop_ctrl)) {
+                vap_info_new->u.bss_info.interop_ctrl) ||
+            IS_CHANGED(vap_info_old->u.bss_info.vendor_elements_len,
+                vap_info_new->u.bss_info.vendor_elements_len) ||
+            IS_BIN_CHANGED(vap_info_old->u.bss_info.vendor_elements,
+                vap_info_new->u.bss_info.vendor_elements,
+                sizeof(vap_info_old->u.bss_info.vendor_elements))) {
             return true;
         }
     }
