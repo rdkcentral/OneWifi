@@ -25,7 +25,9 @@
 #include <limits.h>
 #include "scheduler.h"
 #include "timespec_macro.h"
-
+#include "wifi_ctrl.h"
+#include "wifi_mgr.h"
+#include "wifi_util.h"
 struct timer_task {
     int id;                             /* identifier - used to delete */
     struct timespec timeout;            /* Next timeout */
@@ -129,13 +131,16 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
         unsigned int *num_tasks;
         unsigned int *index;
     } sched_queue;
+    wifi_util_info_print(WIFI_CTRL,"%s:%d Enter!\n", __func__, __LINE__);
 
     if (sched == NULL || cb == NULL) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d --\n", __func__, __LINE__);
         return -1;
     }
     tt = (struct timer_task *) malloc(sizeof(struct timer_task));
     if (tt == NULL)
     {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d --,ups\n", __func__, __LINE__);
         return -1;
     }
     timespecclear(&(tt->timeout));
@@ -149,15 +154,21 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     tt->arg = arg;
 
     if (start_immediately) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d --\n", __func__, __LINE__);
+        
         clock_gettime(CLOCK_MONOTONIC, &(tt->timeout));
     }
 
     pthread_mutex_lock(&sched->lock);
     if (high_prio) {
+      wifi_util_info_print(WIFI_CTRL,"%s:%d --, hp index %d, hp num tasks %d\n", __func__, __LINE__, &sched->hp_index, &sched->num_hp_tasks);
+
         sched_queue.timer_list = sched->high_priority_timer_list;
         sched_queue.num_tasks = &sched->num_hp_tasks;
         sched_queue.index = &sched->hp_index;
     } else {
+      wifi_util_info_print(WIFI_CTRL,"%s:%d --, index %d, num tasks %d\n", __func__, __LINE__, &sched->index, &sched->num_tasks);
+
         sched_queue.timer_list = sched->timer_list;
         sched_queue.num_tasks = &sched->num_tasks;
         sched_queue.index = &sched->index;
@@ -165,6 +176,7 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
 
     tt->id = scheduler_get_new_id(sched);
     if (tt->id == -1) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d --upss\n", __func__, __LINE__);        
 	free(tt);
 	pthread_mutex_unlock(&sched->lock);
 	return -1;
@@ -180,6 +192,7 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     if (id != NULL) {
         *id = tt->id;
     }
+
     return 0;
 }
 

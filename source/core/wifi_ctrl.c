@@ -283,8 +283,9 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 bool is_sta_enabled(void)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d and rf_status_down=%d\r\n",
-       __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check,  ctrl->rf_status_down);
+    wifi_util_error_print(WIFI_CTRL,"[%s:%d] dev mode:%d active_gw_ck:%d and rf_status_down=%d,ethbhaul:%d\r\n",
+       __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check,  ctrl->rf_status_down, ctrl->eth_bh_status);
+
    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
               ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true || 
               ctrl->rf_status_down == true ) &&  ctrl->eth_bh_status == false);
@@ -1075,6 +1076,7 @@ int start_wifi_health_monitor_thread(void)
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
     scan_results_t  *res;
+   wifi_util_dbg_print(WIFI_CTRL,"%s %d  Scan resCB, init\n", __func__, __LINE__);
 
     if (*num) {
         // if number of scanned AP's is more than size of res.bss array - truncate
@@ -1101,6 +1103,7 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
             free(res);
             return RETURN_ERR;
         }
+       wifi_util_dbg_print(WIFI_CTRL,"%s %d  STA enabled, sent event\n", __func__, __LINE__);
     }
     free(*bss);
     free(res);
@@ -1115,6 +1118,7 @@ void sta_connection_handler(const char *vif_name, wifi_bss_info_t *bss_info, wif
         wifi_util_dbg_print(WIFI_CTRL,"%s: vif_name is Invalid\n",__FUNCTION__);
         return;
     }
+   wifi_util_dbg_print(WIFI_CTRL,"%s %d  inside\n", __func__, __LINE__);
 
     memcpy(&sta_data.stats, sta, sizeof(wifi_station_stats_t));
     memcpy(&sta_data.bss_info, bss_info, sizeof(wifi_bss_info_t));
@@ -2288,6 +2292,8 @@ static int sta_connectivity_selfheal(void* arg)
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     if (is_sta_enabled()) {
         // check sta connectivity selfheal
+        wifi_util_dbg_print(WIFI_CTRL,"%s %d Selfheal handle\n", __func__, __LINE__);
+
         sta_selfheal_handing(ctrl, ext_svc);
     }
     return TIMER_TASK_COMPLETE;

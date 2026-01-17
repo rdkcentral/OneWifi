@@ -117,6 +117,7 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
 
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     if (is_sta_enabled()) {
+       wifi_util_info_print(WIFI_CTRL,"%s %d  Scan resCB, init\n", __func__, __LINE__);
         ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_scan_results, vap_svc_event_none, results);
     }
 }
@@ -1021,6 +1022,8 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
 
     if(is_sta_enabled()) {
+           wifi_util_dbg_print(WIFI_CTRL,"%s %d  sta conn statevent_Fn() call\n", __func__, __LINE__);
+
         ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status, vap_svc_event_none, sta_data);
     }
 }
@@ -2849,6 +2852,8 @@ static void update_wifi_vap_config(int device_mode)
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
     if (device_mode != rdk_dev_mode_type_ext) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d  not rdk_dev_mode_type_ext, exit %d\n",
+                __func__, __LINE__);
         return;
     }
 
@@ -2869,6 +2874,9 @@ static void update_wifi_vap_config(int device_mode)
 
         // Enable STA interfaces in extender mode
         if (isVapSTAMesh(vap_index)) {
+           wifi_util_error_print(WIFI_CTRL, "%s:%d  truly the VapStaMesh, call update_wifi_vap_info_fn\n",
+                __func__, __LINE__);
+
             rdk_vap_info->exists = true;
             get_wifidb_obj()->desc.update_wifi_vap_info_fn(vap_info->vap_name, vap_info, rdk_vap_info);
         }
