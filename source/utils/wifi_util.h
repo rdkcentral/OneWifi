@@ -136,6 +136,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 #define PARTNER_ID_LEN 64
 
 #define RADIO_NAME_LENGTH 16
+#define MAX_SEC_LEN 64
 
 #define MIN_MAC_LEN 12
 #define MAC_ADDR_LEN 6
@@ -348,8 +349,8 @@ bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info,
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
     wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp,
     int encryp_len, unsigned int conv_type);
-int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len,
-    int sec_len2, unsigned int conv_type, int *len);
+int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN]);
 int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len);
 char *to_mac_str(mac_address_t mac, mac_addr_str_t key);
 int is_ssid_name_valid(char *ssid_name);
@@ -455,6 +456,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
 int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
 int get_partner_id(char *partner_id);
 int update_radio_operating_classes(wifi_radio_operationParam_t *oper);
+int interfacename_from_mac(const mac_address_t *mac, char *ifname);
+int mac_address_from_name(const char *ifname, mac_address_t mac);
 #ifdef __cplusplus
 }
 #endif
