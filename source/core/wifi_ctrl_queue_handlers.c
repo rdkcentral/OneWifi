@@ -1119,7 +1119,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
         return false;
     }
 
-    to_mac_bytes(mac_str, mac_addr);
+    str_to_mac_bytes(mac_str, mac_addr);
     acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
     while (acl_entry != NULL) {
