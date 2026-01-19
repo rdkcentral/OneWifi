@@ -450,7 +450,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
 			cJSON_Delete(passPointStats);
                         return webconfig_error_eap_length;
                     }
-                    strcpy((char*)authStr,subParam_1->valuestring);
+                    snprintf((char*)authStr, sizeof(authStr), "%s", subParam_1->valuestring);
 
                     //Covert the incoming string to HEX
                     for(i = 0; i < authStrLen; i++){
@@ -802,7 +802,7 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
     interworking_info->interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
 
     decode_param_string(interworking, "HESSID", param);
-    strcpy(interworking_info->interworking.hessid, param->valuestring);
+    snprintf(interworking_info->interworking.hessid, sizeof(interworking_info->interworking.hessid), "%s", param->valuestring);
     if (WiFi_IsValidMacAddr(interworking_info->interworking.hessid) != TRUE) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for HESSID\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
@@ -1016,7 +1016,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     radius_info->port = param->valuedouble;
 
     decode_param_string(radius, "RadiusSecret", param);
-    strcpy(radius_info->key, param->valuestring);
+    snprintf(radius_info->key, sizeof(radius_info->key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "SecondaryRadiusServerIPAddr", param);
     if (strlen(param->valuestring) == 0) {
@@ -1046,7 +1046,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     decode_param_integer(radius, "SecondaryRadiusServerPort", param);
     radius_info->s_port = param->valuedouble;
     decode_param_string(radius, "SecondaryRadiusSecret", param);
-    strcpy(radius_info->s_key, param->valuestring);
+    snprintf(radius_info->s_key, sizeof(radius_info->s_key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "DasServerIPAddr", param);
     if (strlen(param->valuestring) == 0) {
@@ -1067,7 +1067,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     radius_info->dasport = param->valuedouble;
 
     decode_param_string(radius, "DasSecret", param);
-    strcpy(radius_info->daskey, param->valuestring);
+    snprintf(radius_info->daskey, sizeof(radius_info->daskey), "%s", param->valuestring);
 
     //max_auth_attempts
     decode_param_integer(radius, "MaxAuthAttempts", param);
@@ -2208,7 +2208,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     int band = -1;
     //VAP Name
     decode_param_string(vap, "VapName", param);
-    strcpy(vap_info->vap_name, param->valuestring);
+    snprintf( vap_info->vap_name, sizeof(vap_info->vap_name), "%s", param->valuestring);
 
     vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
     if ((int)vap_info->vap_index < 0) {
@@ -2238,7 +2238,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
 
     // SSID
     decode_param_allow_empty_string(vap, "SSID", param);
-    strcpy(vap_info->u.sta_info.ssid, param->valuestring);
+    snprintf(vap_info->u.sta_info.ssid, sizeof(vap_info->u.sta_info.ssid), "%s", param->valuestring);
 
     // BSSID
     decode_param_string(vap, "BSSID", param);
@@ -2661,7 +2661,7 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
         // VapName
         memset(vap_map->rdk_vap_array[i].vap_name, 0, sizeof(vap_map->rdk_vap_array[i].vap_name));
         decode_param_string(obj, "VapName", param);
-        strcpy((char *)vap_map->rdk_vap_array[i].vap_name, param->valuestring);
+        snprintf((char *)vap_map->rdk_vap_array[i].vap_name, sizeof(vap_map->rdk_vap_array[i].vap_name), "%s", param->valuestring);
 
         // VapIndex
         decode_param_integer(obj, "VapIndex", param);
