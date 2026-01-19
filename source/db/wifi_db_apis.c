@@ -7648,7 +7648,7 @@ void wifidb_init_default_value()
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 static int get_ap_mac_by_vap_index(wifi_vap_info_map_t *hal_vap_info_map, int vap_index,  mac_address_t mac)
 {
     unsigned int j = 0;
@@ -7742,7 +7742,7 @@ static int wifidb_vap_config_update_mld_mac()
     hal_vap_info_map = NULL;
     return RETURN_OK;
 }
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 /************************************************************************************
  ************************************************************************************
@@ -7942,9 +7942,9 @@ void init_wifidb_data()
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
-        #ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
         wifidb_vap_config_update_mld_mac();
-        #endif
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 
