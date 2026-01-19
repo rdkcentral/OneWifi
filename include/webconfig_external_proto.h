@@ -21,15 +21,19 @@
 #define EXTERNAL_PROTO_H
 #include <webconfig_external_proto_ovsdb.h>
 #include <webconfig_external_proto_tr181.h>
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+#if defined EASY_MESH_NODE
 #include <webconfig_external_proto_easymesh.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 typedef struct {
     union {
         webconfig_external_ovsdb_t ovsdb;
         webconfig_external_tr181_t tr181;
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+#if defined EASY_MESH_NODE
         webconfig_external_easymesh_t easymesh;
 #endif
     }u;
@@ -53,7 +57,7 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config,
 
 webconfig_error_t webconfig_convert_ifname_to_subdoc_type(const char *ifname, webconfig_subdoc_type_t *type);
 
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+#if defined EASY_MESH_NODE
 // external api sets for easymesh agent, encode takes webconfig object, easymesh structure
 // and subdocument type as input, encoded string (4th argument) is output
 webconfig_error_t webconfig_easymesh_encode(webconfig_t *config,
@@ -69,5 +73,8 @@ webconfig_error_t webconfig_easymesh_decode(webconfig_t *config,
                 webconfig_external_easymesh_t *out,
                 webconfig_subdoc_type_t *type);
 
+#endif
+#ifdef __cplusplus
+}
 #endif
 #endif //EXTERNAL_PROTO_H
