@@ -129,7 +129,7 @@ CosaUtilGetIfAddr
     struct ifreq            ifr;
     int                     fd = 0;
 
-    strcpy(ifr.ifr_name, netdev);
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", netdev);
 
     if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0)
     {
@@ -264,7 +264,7 @@ CosaUtilGetLowerLayers
 
     while ((pTableStringToken = AnscTcUnlinkToken(pTableListTokenChain)))
     {
-        if ( pTableStringToken->Name )
+        if ( pTableStringToken->Name[0] != '\0' )
         {
             if ( AnscEqualString(pTableStringToken->Name, "Device.Ethernet.Interface.", TRUE ) )
             {
@@ -527,7 +527,7 @@ CosaUtilGetFullPathNameByKeyword
 
     while ((pTableStringToken = AnscTcUnlinkToken(pTableListTokenChain)))
     {
-        if ( pTableStringToken->Name )
+        if ( pTableStringToken->Name[0] != '\0' )
         {
             /* Get the string XXXNumberOfEntries */
             pString2 = (PUCHAR)&pTableStringToken->Name[0];
