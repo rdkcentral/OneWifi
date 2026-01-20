@@ -375,6 +375,8 @@ int main(int argc, char *argv[])
     bool run_daemon = true;
     int  idx = 0;
 
+    printf("test 1234\r\n");
+    printf("test ----\r\n");
     for (idx = 1; idx < argc; idx++) {
         if (strcmp(argv[idx], "-c" ) == 0) {
             run_daemon = false;
