@@ -695,7 +695,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
         if (data.data_type != bus_data_type_uint32) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
                 name, data.data_type, rc);
             return;
         }
@@ -709,7 +709,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         if (data.data_type != bus_data_type_string) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
                 name, data.data_type, rc);
             return;
         }
@@ -717,7 +717,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         pTmp = (char *)data.raw_data.bytes;
         if (pTmp == NULL) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus: Unable to get value in event:%s\n",
-                __func__, __LINE__);
+                __func__, __LINE__, name);
             return;
         }
         if (strcmp(pTmp, "Up") == 0) {
