@@ -31,7 +31,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_passpoint.h"
 #include "wifi_stubs.h"
-
+#include "run_qmgr.h"
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
 #define MAX_VAP_INDEX 24
 
@@ -2727,6 +2727,31 @@ void process_csi_analytics_rfc(bool type)
     return;
 }
 
+void process_link_quality_rfc(bool type)
+{
+    char *path = "/www/data";
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+
+    rfc_param->link_quality_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+        rfc_param->link_quality_rfc);
+    if( rfc_param->link_quality_rfc) {
+        run_web_server();
+        wifi_util_error_print(WIFI_CTRL, "After run_web_server %s:%d\n", __func__, __LINE__);
+    } else {
+        stop_web_server(path);
+        wifi_util_error_print(WIFI_CTRL, "After stop_web_server %s:%d\n", __func__, __LINE__);
+    }
+    return;
+}
+
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -3920,6 +3945,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
         break;
+    case wifi_event_type_link_quality_rfc:
+        process_link_quality_rfc(*(bool *)data);
+        break;
+ 
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
     case wifi_event_type_udhcp_ip_fail:

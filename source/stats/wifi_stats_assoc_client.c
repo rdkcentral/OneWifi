@@ -29,6 +29,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "timespec_macro.h"
+#include "wifi_linkquality.h"
 
 #define MAC_ARG(arg) \
     arg[0], \
@@ -164,6 +165,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int disconnected_time;
+    linkquality_data_t *link_data = NULL;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
@@ -188,7 +191,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     if (mon_data->radio_presence[radio] == false) {
         wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n", __func__,
             __LINE__, radio);
-        return RETURN_OK;
+        //return RETURN_OK;
     }
 
     bss_param = Get_wifi_object_bss_parameter(args->vap_index);
@@ -230,9 +233,13 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         }
         return RETURN_ERR;
     }
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: diag result: number of devs: %d\n", __func__, __LINE__,
-        num_devs);
+    if (num_devs) {
+        link_data =(linkquality_data_t *) malloc (num_devs * sizeof(linkquality_data_t));
+    }
+    if (link_data == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: diag result: number of devs: %d\n", __func__, __LINE__,
+         num_devs);
+    }
     for (i = 0; i < num_devs; i++) {
         wifi_util_dbg_print(WIFI_MON,
             "cli_MACAddress: %s\ncli_MLDAddr: %s\ncli_MLDEnable: %d\ncli_AuthenticationState: %d\n"
@@ -264,8 +271,22 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
             dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
             dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
-    }
+            if (link_data) {
+                memset(&link_data[i], 0, sizeof(linkquality_data_t));
+                link_data[i].size = num_devs;
+                to_sta_key(dev_array[i].cli_MACAddress, link_data[i].stats.mac_str);
+                link_data[i].stats.snr = dev_array[i].cli_SNR;
+                link_data[i].stats.phy = dev_array[i].cli_LastDataDownlinkRate;
+                link_data[i].stats.max_phy = dev_array[i].cli_MaxDownlinkRate;
+                link_data[i].stats.per = ((double)dev_array[i].cli_ErrorsSent/(double)dev_array[i].cli_PacketsSent) * 100;
+                wifi_util_dbg_print(WIFI_MON,"cli_SNR: %d,cli_PacketsSent: %lu,cli_ErrorsSent: %lu,cli_LastDataDownlinkRate: %d  per = %.2f cli_MaxDownlinkRate=%d\n",
+                    dev_array[i].cli_SNR,dev_array[i].cli_PacketsSent,dev_array[i].cli_ErrorsSent,dev_array[i].cli_LastDataDownlinkRate,link_data[i].stats.per,link_data[i].stats.max_phy);
+            }
 
+    } 
+    if(link_data && num_devs != 0) {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, link_data, num_devs);
+    }
     events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
     pthread_mutex_lock(&mon_data->data_lock);
     if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {
@@ -467,7 +488,17 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 __LINE__, to_sta_key(tmp_sta->sta_mac, sta_key), args->vap_index);
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
-                to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
+            to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
+            link_data =(linkquality_data_t *) malloc (sizeof(linkquality_data_t));
+            if (link_data != NULL) {
+                memset(link_data, 0, sizeof(linkquality_data_t));
+                to_sta_key(tmp_sta->dev_stats.cli_MACAddress, link_data->stats.mac_str);
+                wifi_util_dbg_print(WIFI_MON, "%s:%d: diag client disassociated  sta mac=%s:\n", __func__, __LINE__,link_data->stats.mac_str);
+            }
+            apps_mgr_link_quality_event(&ctrl->apps_mgr,wifi_event_type_hal_ind, wifi_event_exec_timeout, link_data, 0);
+            if (link_data) {
+                free(link_data);
+            }
             if (send_disconnect_event == 1) {
                 mac_addr = (unsigned char *)malloc(sizeof(mac_address_t));
                 if (mac_addr != NULL) {

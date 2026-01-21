@@ -17,7 +17,7 @@ define Package/easymesh/description
   A simple EasyMesh utility package.
 endef
 
-TARGET_CFLAGS+= -ggdb3 -O0 -static -nostdinc++ -nodefaultlibs -Wl,--stack,2097152
+TARGET_CFLAGS+= -ggdb3 -O0 -static -Wl,--stack,2097152
 TARGET_LDFLAGS+= -lgcc -lc -luClibc++
 
 ifdef CONFIG_ENABLE_OTS_EXTERNAL_AGENT 

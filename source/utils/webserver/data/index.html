@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  body { font-family: Arial, sans-serif; margin:0; padding:0; }
+  h1 { text-align: center; }
+  h2 { text-align: center; }
+  p { text-align: center; }
+
+  /* Charts Container */
+  .charts-container {
+    padding: 10px;
+    margin-bottom: 30px;
+  }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+  }
+
+  /* Alarms Container */
+  .alarms-container {
+    border: 2px solid #333;
+    padding: 10px;
+    position: relative;
+  }
+
+  #alarmDot {
+    display: none;
+    height: 10px;
+    width: 10px;
+    background-color: red;
+    border-radius: 50%;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+  }
+
+  table {
+    font-family: Arial, Helvetica, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 30px;
+  }
+
+  td, th {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+
+  tr:nth-child(even) { background-color: #f2f2f2; }
+  tr:hover { background-color: #ddd; }
+
+  th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #F0F8F5;
+    color: black;
+  }
+
+</style>
+<script src="https://cdn.plot.ly/plotly-2.31.1.min.js"></script>
+</head>
+
+<body>
+  <h1>Wi-Fi Telemetry — Link Quality, Connection Affinity & Alarms</h1>
+
+  <!-- Charts -->
+  <div class="charts-container">
+    <h2>Link Quality</h2>
+    <div id="LeftGridContainer" class="charts-grid"></div>
+  </div>
+
+  <!-- Alarms -->
+  <div class="alarms-container">
+    <h2>
+      Alarms
+      <span id="alarmDot"></span>
+    </h2>
+    <table id="Alarms">
+      <tr>
+        <th>Device</th>
+        <th>Description</th>
+        <th>Time</th>
+      </tr>
+    </table>
+  </div>
+
+  <script type="module">
+    import { renderLinkQualityChart, renderAlarms } from './lq.js';
+
+    function clearUI() {
+      const leftGridContainer = document.getElementById('LeftGridContainer');
+      leftGridContainer.innerHTML = '';
+      document.getElementById("Alarms").innerHTML = `
+        <tr>
+          <th>Device</th>
+          <th>Description</th>
+          <th>Time</th>
+        </tr>`;
+      document.getElementById("alarmDot").style.display = 'none';
+    }
+
+    async function fetchDataToRender() {
+      try {
+        const url = `${window.location.origin}/telemetry.json`;
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) { clearUI(); return; }
+
+        const text = await response.text();
+        if (!text.trim()) { clearUI(); return; }
+
+        const data = JSON.parse(text);
+        if (!data.Devices || data.Devices.length === 0) { clearUI(); return; }
+
+        renderLinkQualityChart(data);
+        renderAlarms(data);
+
+      } catch (e) {
+        console.error(e);
+        clearUI();
+      }
+    }
+
+    fetchDataToRender();
+    setInterval(fetchDataToRender, 2000);
+  </script>
+</body>
+</html>
+
