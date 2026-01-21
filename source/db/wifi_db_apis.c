@@ -5530,168 +5530,313 @@ int rdk_wifi_vap_security_update_from_index(int wlanIndex, wifi_vap_security_t *
 int rdk_wifi_SetRapidReconnectThresholdValue(int wlanIndex, int rapidReconnThresholdValue)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
-    vap_map.u.bss_info.rapidReconnThreshold = rapidReconnThresholdValue;
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    vap_map->u.bss_info.rapidReconnThreshold = rapidReconnThresholdValue;
     rdk_wifi_dbg_print(1, "wifidb vap info set rapidReconnThresholdValue %d\n", rapidReconnThresholdValue);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_GetRapidReconnectThresholdValue(int wlanIndex, int *rapidReconnThresholdValue)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
-	return ret;
+        free(vap_map);
+        vap_map = NULL;
+        return ret;
     }
-    *rapidReconnThresholdValue = vap_map.u.bss_info.rapidReconnThreshold;
+    *rapidReconnThresholdValue = vap_map->u.bss_info.rapidReconnThreshold;
     rdk_wifi_dbg_print(1, "wifidb vap info get rapidReconnThresholdValue %d\n", *rapidReconnThresholdValue);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_SetRapidReconnectEnable(int wlanIndex, bool reconnectCountEnable)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
-    vap_map.u.bss_info.rapidReconnectEnable = reconnectCountEnable;
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    vap_map->u.bss_info.rapidReconnectEnable = reconnectCountEnable;
     rdk_wifi_dbg_print(1, "wifidb vap info set reconnectEnable %d\n", reconnectCountEnable);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_GetRapidReconnectEnable(int wlanIndex, bool *reconnectCountEnable)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
-	return ret;
+        free(vap_map);
+        vap_map = NULL;
+        return ret;
     }
-    *reconnectCountEnable = vap_map.u.bss_info.rapidReconnectEnable;
+    *reconnectCountEnable = vap_map->u.bss_info.rapidReconnectEnable;
     rdk_wifi_dbg_print(1, "wifidb vap info get reconnectEnable %d\n", *reconnectCountEnable);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_SetNeighborReportActivated(int wlanIndex, bool bNeighborReportActivated)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
-    vap_map.u.bss_info.nbrReportActivated = bNeighborReportActivated;
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    vap_map->u.bss_info.nbrReportActivated = bNeighborReportActivated;
     rdk_wifi_dbg_print(1, "wifidb vap info set nbrReportActivated %d\n", bNeighborReportActivated);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_GetNeighborReportActivated(int wlanIndex, bool *bNeighborReportActivated)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
-	return ret;
+        free(vap_map);
+        vap_map = NULL;
+        return ret;
     }
-    *bNeighborReportActivated = vap_map.u.bss_info.nbrReportActivated;
+    *bNeighborReportActivated = vap_map->u.bss_info.nbrReportActivated;
     rdk_wifi_dbg_print(1, "wifidb vap info get nbrReportActivated %d\n", *bNeighborReportActivated);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_ApSetStatsEnable(int wlanIndex, bool bValue)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
-    vap_map.u.bss_info.vapStatsEnable = bValue;
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    
+    vap_map->u.bss_info.vapStatsEnable = bValue;
     rdk_wifi_dbg_print(1, "wifidb vap info set vapStatsEnable %d\n", bValue);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_ApGetStatsEnable(int wlanIndex, bool *bValue)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
-	return ret;
+        free(vap_map);
+        vap_map = NULL;
+        return ret;
     }
-    *bValue = vap_map.u.bss_info.vapStatsEnable;
+    *bValue = vap_map->u.bss_info.vapStatsEnable;
     rdk_wifi_dbg_print(1, "wifidb vap info get vapStatsEnable %d\n", *bValue);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_setBSSTransitionActivated(int wlanIndex, bool BSSTransitionActivated)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
-    vap_map.u.bss_info.bssTransitionActivated = BSSTransitionActivated;
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    vap_map->u.bss_info.bssTransitionActivated = BSSTransitionActivated;
     rdk_wifi_dbg_print(1, "wifidb vap info set BSSTransitionActivated %d\n", BSSTransitionActivated);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_getBSSTransitionActivated(int wlanIndex, bool *BSSTransitionActivated)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
-	return ret;
+        free(vap_map);
+        vap_map = NULL;
+        return ret;
     }
-    *BSSTransitionActivated = vap_map.u.bss_info.bssTransitionActivated;
+    *BSSTransitionActivated = vap_map->u.bss_info.bssTransitionActivated;
     rdk_wifi_dbg_print(1, "wifidb vap info get BSSTransitionActivated %d\n", *BSSTransitionActivated);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_GetApMacFilterMode(int wlanIndex, int *mode)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
-	return ret;
+        free(vap_map);
+        vap_map = NULL;
+        return ret;
     }
-    *mode = vap_map.u.bss_info.mac_filter_mode;
+    *mode = vap_map->u.bss_info.mac_filter_mode;
     rdk_wifi_dbg_print(1, "wifidb vap info get mac_filter_mode %d\n", *mode);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
 int rdk_wifi_SetApMacFilterMode(int wlanIndex, int mode)
 {
     int ret = RETURN_OK;
-    wifi_vap_info_t vap_map;
+    wifi_vap_info_t *vap_map = NULL;
     rdk_wifi_vap_info_t rdk_vap_info;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
-    vap_map.u.bss_info.mac_filter_mode = mode;
+    
+    vap_map = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_map == NULL) {
+        rdk_wifi_dbg_print(1, "Failed to allocate memory %s\n", __FUNCTION__);
+        return RETURN_ERR;
+    }
+    memset(vap_map, 0, sizeof(wifi_vap_info_t));
+    
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    vap_map->u.bss_info.mac_filter_mode = mode;
     rdk_wifi_dbg_print(1, "wifidb vap info set mac_filter_mode %d\n", mode);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, vap_map, &rdk_vap_info);
+    
+    free(vap_map);
+    vap_map = NULL;
     return ret;
 }
 
@@ -9067,13 +9212,20 @@ int wifi_db_update_radio_config()
 int wifi_db_update_vap_config()
 {
 #ifndef NEWPLATFORM_PORT
-    wifi_vap_info_t vap_cfg;
+    wifi_vap_info_t *vap_cfg = NULL;
     rdk_wifi_vap_info_t rdk_vap_cfg;
     int retval;
     unsigned int mac_index_list[128];
     unsigned int total_mac_list;
     char strValue[256] = {0};
     wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    vap_cfg = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_cfg == NULL) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(vap_cfg, 0, sizeof(wifi_vap_info_t));
 
     memset(mac_index_list, 0, sizeof(mac_index_list));
 
@@ -9082,33 +9234,35 @@ int wifi_db_update_vap_config()
         unsigned int vap_index;
 
         vap_index = VAP_INDEX(mgr->hal_cap, index);
-        get_vap_params_from_psm(vap_index, &vap_cfg, &rdk_vap_cfg);
+        get_vap_params_from_psm(vap_index, vap_cfg, &rdk_vap_cfg);
 
         if (!isVapHotspot(vap_index) && !isVapSTAMesh(vap_index)) {
             if (get_total_mac_list_from_psm((vap_index + 1), &total_mac_list, strValue) == RETURN_OK) {
                 mac_list_entry_update_data(strValue, mac_index_list);
-                get_psm_mac_list_entry((vap_index + 1), vap_cfg.vap_name, total_mac_list, mac_index_list);
+                get_psm_mac_list_entry((vap_index + 1), vap_cfg->vap_name, total_mac_list, mac_index_list);
             }
         }
 
-        retval = get_wifidb_obj()->desc.update_wifi_vap_info_fn(vap_cfg.vap_name, &vap_cfg, &rdk_vap_cfg);
+        retval = get_wifidb_obj()->desc.update_wifi_vap_info_fn(vap_cfg->vap_name, vap_cfg, &rdk_vap_cfg);
         if (retval != 0) {
             wifi_util_error_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
         } else {
             wifi_util_info_print(WIFI_MGR,"%s:%d: Successfully updated vap config in wifidb \r\n",__func__, __LINE__);
         }
 
-        if (isVapSTAMesh(vap_cfg.vap_index)) {
-            retval = get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_cfg.vap_name, &vap_cfg.u.sta_info.security);
+        if (isVapSTAMesh(vap_cfg->vap_index)) {
+            retval = get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_cfg->vap_name, &vap_cfg->u.sta_info.security);
         } else {
-            retval = get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_cfg.vap_name, &vap_cfg.u.bss_info.security);
+            retval = get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_cfg->vap_name, &vap_cfg->u.bss_info.security);
         }
         if (retval != 0) {
-            wifi_util_error_print(WIFI_MGR,"%s:%d: Failed to update vap_%s security config in wifi db\n",__func__, __LINE__, vap_cfg.vap_name);
+            wifi_util_error_print(WIFI_MGR,"%s:%d: Failed to update vap_%s security config in wifi db\n",__func__, __LINE__, vap_cfg->vap_name);
         } else {
-            wifi_util_info_print(WIFI_MGR,"%s:%d: Successfully updated security vap_%s config in wifidb \r\n",__func__, __LINE__, vap_cfg.vap_name);
+            wifi_util_info_print(WIFI_MGR,"%s:%d: Successfully updated security vap_%s config in wifidb \r\n",__func__, __LINE__, vap_cfg->vap_name);
         }
     }
+    free(vap_cfg);
+    vap_cfg= NULL;
 #endif // NEWPLATFORM_PORT
     return RETURN_OK;
 }
