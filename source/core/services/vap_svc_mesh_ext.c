@@ -688,6 +688,17 @@ int process_connected_scan_result_timeout(vap_svc_t *svc)
     return 0;
 }
 
+int proces_ext_fallback_parent_event_timeout(vap_svc_t *svc)
+{
+    vap_svc_ext_t *ext = &svc->u.ext;
+    ext->ext_fallback_parent_event_timeout_handler_id = 0;
+    if (ext->conn_state == connection_state_connected) {
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        schedule_connect_sm(svc);
+    }
+    return 0;
+}
+
 void ext_connected_scan(vap_svc_t *svc)
 {
     if (svc == NULL) {
@@ -1027,13 +1038,23 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service start\n", __func__, __LINE__);
 
+    if (radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d failed to start mesh service: wrong radio index %d\n", __func__, __LINE__,
+            radio_index);
+        return -1;
+    }
+
+    /* create STA vap's and install acl filters */
+    if (!ext->is_vap_started[radio_index]) {
+        vap_svc_start(svc, radio_index);
+        ext->is_vap_started[radio_index] = true;
+    }
+
     if (ext->is_started == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already started\n", __func__, __LINE__);
         return 0;
     }
-
-    /* create STA vap's and install acl filters */
-    vap_svc_start(svc);
 
     // initialize all extender specific structures
     memset(ext, 0, sizeof(vap_svc_ext_t));
@@ -1075,15 +1096,27 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service stop\n", __func__, __LINE__);
 
-    if (ext->is_started == false) {
+    if (ext->is_started) {
+        vap_svc_mesh_ext_disconnect(svc);
+        cancel_all_running_timer(svc);
+        vap_svc_mesh_ext_clear_variable(svc);
+        ext->is_started = false;
+    } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already stopped\n", __func__, __LINE__);
-        return 0;
     }
-    vap_svc_mesh_ext_disconnect(svc);
-    cancel_all_running_timer(svc);
-    vap_svc_stop(svc);
-    vap_svc_mesh_ext_clear_variable(svc);
-    ext->is_started = false;
+
+    if (radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d failed to stop mesh service: wrong radio index %d\n", __func__, __LINE__,
+            radio_index);
+        return -1;
+    }
+
+    if (ext->is_vap_started[radio_index]) {
+        vap_svc_stop(svc, radio_index);
+        ext->is_vap_started[radio_index] = false;
+    }
+
     return 0;
 }
 
@@ -1111,6 +1144,11 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
             "vap: %s, bssid: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state),
             vap_info->vap_name, bssid_str);
         return 0;
+    }
+
+    if (ext->ext_fallback_parent_event_timeout_handler_id) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_fallback_parent_event_timeout_handler_id);
+        ext->ext_fallback_parent_event_timeout_handler_id = 0;
     }
 
     // Clear old bssid
@@ -1174,6 +1212,9 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     // HAL error. On different band try to connect to new BSSID before disconnection.
     // disconnect will be executed if new bssid is found in the scan results
     if (ext->connected_vap_index == vap_info->vap_index) {
+        if (ext->conn_state != connection_state_connected_wait_for_csa) {
+            ext->go_to_channel = channel;
+        }
         ext_set_conn_state(ext, connection_state_connected_scan_list, __func__, __LINE__);
     } else {
         ext->is_radio_ignored = true;
@@ -1621,7 +1662,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     wifi_ctrl_t *ctrl;
     bss_candidate_t *candidate = NULL;
     bool found_candidate = false, send_event = false;
-    unsigned int i = 0, index, j = 0;
+    unsigned int i = 0, j = 0;
+    int index;
     char cmd[MAX_STR_LEN] = {0};
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
@@ -1643,6 +1685,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
     /* first update the internal cache */
     index = get_radio_index_for_vap_index(svc->prop, sta_data->stats.vap_index);
+    if (index == RETURN_ERR)
+        return RETURN_ERR;
     wifi_util_info_print(WIFI_CTRL,"%s:%d - radio index %d, VAP index %d connect_status : %s\n",
         __func__, __LINE__, index, sta_data->stats.vap_index,
         ext_conn_status_to_str(sta_data->stats.connect_status));
@@ -1876,8 +1920,10 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             candidate = ext->candidates_list.scan_list;
             found_candidate = true;
         } else if ((ext->conn_state == connection_state_connected)) {
-            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
-                __LINE__);
+            scheduler_add_timer_task(ctrl->sched, FALSE,
+                &ext->ext_fallback_parent_event_timeout_handler_id,
+                proces_ext_fallback_parent_event_timeout, svc, EXT_FALLBACK_PARENT_CONFIG_TIMEOUT,
+                1, FALSE);
         }
     }
 

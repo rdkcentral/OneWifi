@@ -3878,7 +3878,7 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
 {
     if ((vap_info_old == NULL) || (vap_info_new == NULL)) {
@@ -3904,7 +3904,7 @@ static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *
     }
     return false;
 }
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
@@ -4011,9 +4011,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
             is_mld_addr_changed(vap_info_old, vap_info_new) ||
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.interop_ctrl,
@@ -4038,30 +4038,30 @@ static const wifi_operating_classes_t us_24G[] = {
 
 // Countrycode: US, Band 5G
 static const wifi_operating_classes_t us_5G[] = {
-    { 115, -30, 0, {}           },
-    { 116, -30, 0, {}           },
-    { 117, -30, 0, {}           },
-    { 118, -30, 0, {}           },
-    { 119, -30, 0, {}           },
-    { 120, -30, 0, {}           },
-    { 121, -30, 0, {}           },
-    { 122, -30, 0, {}           },
-    { 123, -30, 0, {}           },
-    { 124, -30, 0, {}           },
-    { 125, -30, 2, { 169, 173 } },
-    { 126, -30, 0, {}           },
-    { 127, -30, 1, { 169 }      },
+    { 115, -30, 0, {}      	     },
+    { 116, -30, 0, {}                },
+    { 117, -30, 0, {}                },
+    { 118, -30, 0, {}                },
+    { 119, -30, 0, {}                },
+    { 120, -30, 0, {}                },
+    { 121, -30, 0, {}                },
+    { 122, -30, 0, {}                },
+    { 123, -30, 0, {}                },
+    { 124, -30, 0, {}                },
+    { 125, -30, 3, { 169, 173, 177 } },
+    { 126, -30, 2, { 165, 173 }      },
+    { 127, -30, 2, { 169, 177 }      },
     // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
     // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
     // are operable.
-    { 128, -30, 0, {}           },
+    { 128, -30, 1, { 171 }           }, 
     // Revisit Below Operating Class as singleAP.json example indicates nonOperable as
     // [50] but as per Table E-1 the channel is operable.
-    { 129, -30, 0, {}           },
+    { 129, -30, 1, { 163 }           },
     // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
     // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
     // are operable.
-    { 130, -30, 0, {}           },
+    { 130, -30, 7, { 42, 58, 106, 122, 138, 155, 171 }           },
 };
 
 // Countrycode: US, Band 6G
@@ -4069,7 +4069,7 @@ static const wifi_operating_classes_t us_6G[] = {
     { 131, 23,  0, {}      },
     { 132, 23,  0, {}      },
     { 133, 23,  0, {}      },
-    { 134, 23,  1, { 169 } },
+    { 134, 23,  0, {} 	   },
     { 135, -30, 0, {}      },
     { 136, 23,  0, {}      },
 };

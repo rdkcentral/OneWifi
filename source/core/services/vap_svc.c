@@ -200,14 +200,14 @@ int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map
                 "%s:%d: changed bridge name from :%s to %s\n",
                 __func__, __LINE__, if_prop->bridge_name,
                 vap_map->vap_array[j].bridge_name);
-            strncpy(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
-                sizeof(vap_map->vap_array[j].bridge_name));
+            snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s",
+                vap_map->vap_array[j].bridge_name);
         }
     }
     return RETURN_OK;
 }
 
-int vap_svc_start_stop(vap_svc_t *svc, bool enable)
+int vap_svc_start_stop(vap_svc_t *svc, unsigned int radio_index, bool enable)
 {
     uint8_t num_of_radios;
     uint8_t i, j;
@@ -231,6 +231,10 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
     memset(tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
 
     for (i = 0; i < num_of_radios; i++) {
+        if (radio_index != WIFI_ALL_RADIO_INDICES && i != radio_index) {
+            continue;
+        }
+
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         rdk_vaps = get_wifidb_rdk_vaps(i);
         if (vap_map == NULL) {
@@ -308,14 +312,14 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
 
 }
 
-int vap_svc_stop(vap_svc_t *svc)
+int vap_svc_stop(vap_svc_t *svc, unsigned int radio_index)
 {
-    return vap_svc_start_stop(svc, false);
+    return vap_svc_start_stop(svc, radio_index, false);
 }
 
-int vap_svc_start(vap_svc_t *svc)
+int vap_svc_start(vap_svc_t *svc, unsigned int radio_index)
 {
-    return vap_svc_start_stop(svc, true);
+    return vap_svc_start_stop(svc, radio_index, true);
 }
 
 vap_svc_t *get_svc_by_type(wifi_ctrl_t *ct, vap_svc_type_t type)

@@ -450,7 +450,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
 			cJSON_Delete(passPointStats);
                         return webconfig_error_eap_length;
                     }
-                    strcpy((char*)authStr,subParam_1->valuestring);
+                    snprintf((char*)authStr, sizeof(authStr), "%s", subParam_1->valuestring);
 
                     //Covert the incoming string to HEX
                     for(i = 0; i < authStrLen; i++){
@@ -802,7 +802,7 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
     interworking_info->interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
 
     decode_param_string(interworking, "HESSID", param);
-    strcpy(interworking_info->interworking.hessid, param->valuestring);
+    snprintf(interworking_info->interworking.hessid, sizeof(interworking_info->interworking.hessid), "%s", param->valuestring);
     if (WiFi_IsValidMacAddr(interworking_info->interworking.hessid) != TRUE) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for HESSID\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
@@ -1016,7 +1016,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     radius_info->port = param->valuedouble;
 
     decode_param_string(radius, "RadiusSecret", param);
-    strcpy(radius_info->key, param->valuestring);
+    snprintf(radius_info->key, sizeof(radius_info->key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "SecondaryRadiusServerIPAddr", param);
     if (strlen(param->valuestring) == 0) {
@@ -1046,7 +1046,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     decode_param_integer(radius, "SecondaryRadiusServerPort", param);
     radius_info->s_port = param->valuedouble;
     decode_param_string(radius, "SecondaryRadiusSecret", param);
-    strcpy(radius_info->s_key, param->valuestring);
+    snprintf(radius_info->s_key, sizeof(radius_info->s_key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "DasServerIPAddr", param);
     if (strlen(param->valuestring) == 0) {
@@ -1083,7 +1083,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     decode_param_string(radius, "Identity", param);
     memset(radius_info->identity, '\0', 64);
-    strncpy(radius_info->identity, param->valuestring, strlen(param->valuestring));
+    snprintf(radius_info->identity, sizeof(radius_info->identity), "%s", param->valuestring);
     if ((strlen(radius_info->identity) <= 0) || (strlen(radius_info->identity) > 64)) {
          wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] Invalid identity\n", __func__, __LINE__);
          return webconfig_error_decode;
@@ -1091,7 +1091,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     decode_param_string(radius, "Key", param);
     memset(radius_info->key, '\0', 64);
-    strncpy(radius_info->key, param->valuestring, strlen(param->valuestring));
+    snprintf(radius_info->key, sizeof(radius_info->key), "%s", param->valuestring);
     if ((strlen(radius_info->key) <= 0) || (strlen(radius_info->key) > 64)) {
          wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] Invalid key\n", __func__, __LINE__);
          return webconfig_error_decode;
@@ -1102,7 +1102,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     radius_info->dasport = param->valuedouble;
 
     decode_param_string(radius, "DasSecret", param);
-    strcpy(radius_info->daskey, param->valuestring);
+    snprintf(radius_info->daskey, sizeof(radius_info->daskey), "%s", param->valuestring);
 
     //max_auth_attempts
     decode_param_integer(radius, "MaxAuthAttempts", param);
@@ -2233,7 +2233,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     int band = -1;
     //VAP Name
     decode_param_string(vap, "VapName", param);
-    strcpy(vap_info->vap_name, param->valuestring);
+    snprintf( vap_info->vap_name, sizeof(vap_info->vap_name), "%s", param->valuestring);
 
     vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
     if ((int)vap_info->vap_index < 0) {
@@ -2263,7 +2263,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
 
     // SSID
     decode_param_allow_empty_string(vap, "SSID", param);
-    strcpy(vap_info->u.sta_info.ssid, param->valuestring);
+    snprintf(vap_info->u.sta_info.ssid, sizeof(vap_info->u.sta_info.ssid), "%s", param->valuestring);
 
     // BSSID
     decode_param_string(vap, "BSSID", param);
@@ -2378,7 +2378,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
 #ifndef EASY_MESH_NODE
     // WpsPin
     decode_param_string(global_cfg, "WpsPin", param);
-    strcpy(global_info->wps_pin, param->valuestring);
+    snprintf(global_info->wps_pin, sizeof(global_info->wps_pin), "%s", param->valuestring);
 #endif
 
     // BandsteeringEnable
@@ -2477,7 +2477,8 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
 #ifndef EASY_MESH_NODE
     //WifiRegionCode
     decode_param_string(global_cfg, "WifiRegionCode", param);
-    strcpy(global_info->wifi_region_code, param->valuestring);
+    snprintf(global_info->wifi_region_code,
+             sizeof(global_info->wifi_region_code), "%s", param->valuestring);
 
     // DiagnosticEnable
     decode_param_bool(global_cfg, "DiagnosticEnable", param);
@@ -2493,21 +2494,20 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
 
     //NormalizedRssiList
     decode_param_string(global_cfg, "NormalizedRssiList", param);
-    strncpy(global_info->normalized_rssi_list, param->valuestring, sizeof(global_info->normalized_rssi_list));
+    snprintf(global_info->normalized_rssi_list,
+             sizeof(global_info->normalized_rssi_list), "%s", param->valuestring);
 
     //SNRList
     decode_param_string(global_cfg, "SNRList", param);
-    strncpy(global_info->snr_list, param->valuestring, sizeof(global_info->snr_list));
-
+    snprintf(global_info->snr_list, sizeof(global_info->snr_list), "%s", param->valuestring);
 
     //CliStatList
     decode_param_string(global_cfg, "CliStatList", param);
-    strncpy(global_info->cli_stat_list, param->valuestring, sizeof(global_info->cli_stat_list));
-
+    snprintf(global_info->cli_stat_list, sizeof(global_info->cli_stat_list), "%s", param->valuestring);
 
     //TxRxRateList
     decode_param_string(global_cfg, "TxRxRateList", param);
-    strncpy(global_info->txrx_rate_list, param->valuestring, sizeof(global_info->txrx_rate_list));
+    snprintf(global_info->txrx_rate_list, sizeof(global_info->txrx_rate_list), "%s", param->valuestring);
 #endif
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"wifi global Parameters decode successfully\n");
@@ -2692,7 +2692,7 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
         // VapName
         memset(vap_map->rdk_vap_array[i].vap_name, 0, sizeof(vap_map->rdk_vap_array[i].vap_name));
         decode_param_string(obj, "VapName", param);
-        strcpy((char *)vap_map->rdk_vap_array[i].vap_name, param->valuestring);
+        snprintf((char *)vap_map->rdk_vap_array[i].vap_name, sizeof(vap_map->rdk_vap_array[i].vap_name), "%s", param->valuestring);
 
         // VapIndex
         decode_param_integer(obj, "VapIndex", param);
@@ -3495,8 +3495,8 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
-            strncpy(assoc_dev_data.conn_security.wpa_key_mgmt, tmp_string, sizeof(assoc_dev_data.conn_security.wpa_key_mgmt));
-
+            snprintf(assoc_dev_data.conn_security.wpa_key_mgmt,
+                     sizeof(assoc_dev_data.conn_security.wpa_key_mgmt), "%s", tmp_string);
 
             value_object = cJSON_GetObjectItem(assoc_client, "PairwiseCipher");
             if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
@@ -3509,8 +3509,8 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
-            strncpy(assoc_dev_data.conn_security.pairwise_cipher, tmp_string, sizeof(assoc_dev_data.conn_security.pairwise_cipher));
-
+            snprintf(assoc_dev_data.conn_security.pairwise_cipher,
+                     sizeof(assoc_dev_data.conn_security.pairwise_cipher), "%s", tmp_string);
 
             value_object = cJSON_GetObjectItem(assoc_client, "AuthenticationState");
             if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
@@ -5035,10 +5035,12 @@ webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response
     radio_chan_data_t *chan_data = NULL;
     wifi_neighborScanMode_t scan_mode;
 
-    if (json == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+    if (json == NULL || chan_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || chan_stats is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
+
+    *chan_stats = NULL;
 
     radio_stats_arr = cJSON_GetObjectItem(json, "RadioChannelStats");
     if ((radio_stats_arr == NULL) && (cJSON_IsObject(radio_stats_arr) == false)) {
@@ -5059,12 +5061,16 @@ webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response
     decode_param_string(json, "ScanMode", param);
     if (scan_mode_type_conversion(&scan_mode, param->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param->valuestring);
+        free(*chan_stats);
+        *chan_stats = NULL;
         return webconfig_error_decode;
     }
     (*chan_stats)->args.scan_mode = scan_mode;
 
     chan_data = (radio_chan_data_t*) malloc(sizeof(radio_chan_data_t) * size);
     if (chan_data == NULL) {
+        free(*chan_stats);
+        *chan_stats = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
@@ -5073,6 +5079,9 @@ webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response
         radio_stats = cJSON_GetArrayItem(radio_stats_arr, count);
         if (radio_stats == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
+            free(chan_data);
+            free(*chan_stats);
+            *chan_stats = NULL;
             return webconfig_error_decode;
         }
 
@@ -5127,10 +5136,12 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
     wifi_neighbor_ap2_t *neighbor_stats_data = NULL;
     wifi_neighborScanMode_t scan_mode;
 
-    if (json == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+    if (json == NULL || chan_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || chan_stats is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
+
+    *chan_stats = NULL;
 
     neighbor_stats_arr = cJSON_GetObjectItem(json, "NeighborStats");
     if ((neighbor_stats_arr == NULL) && (cJSON_IsObject(neighbor_stats_arr) == false)) {
@@ -5150,6 +5161,8 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
 
     decode_param_string(json, "ScanMode", param);
     if (scan_mode_type_conversion(&scan_mode, param->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
+        free(*chan_stats);
+        *chan_stats = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param->valuestring);
         return webconfig_error_decode;
     }
@@ -5164,6 +5177,7 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
         neighbor_stats_data = (wifi_neighbor_ap2_t*) malloc(sizeof(wifi_neighbor_ap2_t) * size);
         if (neighbor_stats_data == NULL) {
             free(*chan_stats);
+            *chan_stats = NULL;
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
             return webconfig_error_decode;
         }
@@ -5173,6 +5187,9 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
         neighbor_stats = cJSON_GetArrayItem(neighbor_stats_arr, count);
         if (neighbor_stats == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
+            free(neighbor_stats_data);
+            free(*chan_stats);
+            *chan_stats = NULL;
             return webconfig_error_decode;
         }
 
@@ -5371,10 +5388,12 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     int size = 0;
     wifi_associated_dev3_t *client_stats_data = NULL;
 
-    if (json == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: cjson object is NULL\n", __func__, __LINE__);
+    if (json == NULL || assoc_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: cjson || assoc_stats is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
+
+    *assoc_stats = NULL;
 
     assoc_stats_arr = cJSON_GetObjectItem(json, "AssociatedDeviceStats");
     if ((assoc_stats_arr == NULL) && (cJSON_IsObject(assoc_stats_arr) == false)) {
@@ -5398,6 +5417,8 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     if (size == 0) {
         (*assoc_stats)->stat_pointer = NULL;
         (*assoc_stats)->stat_array_size = 0;
+        free(*assoc_stats);
+        *assoc_stats = NULL;
         wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Associated Device stats array size is %d\n",
             __func__, __LINE__, (*assoc_stats)->stat_array_size);
         return webconfig_error_none;
@@ -5405,6 +5426,7 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
         client_stats_data = (wifi_associated_dev3_t *)malloc(sizeof(wifi_associated_dev3_t) * size);
         if (client_stats_data == NULL) {
             free(*assoc_stats);
+            *assoc_stats = NULL;
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__,
                 __LINE__);
             return webconfig_error_decode;
@@ -5414,6 +5436,9 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     for (int count = 0; count < size; count++) {
         assoc_data = cJSON_GetArrayItem(assoc_stats_arr, count);
         if (assoc_data == NULL) {
+            free(client_stats_data);
+            free(*assoc_stats);
+            *assoc_stats = NULL;
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__,
                 __LINE__, count);
             return webconfig_error_decode;
@@ -5544,11 +5569,12 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
     int size = 0;
     radio_data_t *diagnostic_data = NULL;
 
-    if (json == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+    if (json == NULL || diag_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || diag_stats is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
+    *diag_stats = NULL;
     diag_stats_arr = cJSON_GetObjectItem(json, "RadioDiagnosticStats");
     if ((diag_stats_arr == NULL) && (cJSON_IsObject(diag_stats_arr) == false)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__, __LINE__);
@@ -5567,6 +5593,8 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
 
     diagnostic_data = (radio_data_t*) malloc(sizeof(radio_data_t) * size);
     if (diagnostic_data == NULL) {
+        free(*diag_stats);
+        *diag_stats = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
@@ -5574,6 +5602,9 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
     for (int count = 0; count < size; count++) {
         diag_data = cJSON_GetArrayItem(diag_stats_arr, count);
         if (diag_data == NULL) {
+            free(diagnostic_data);
+            free(*diag_stats);
+            *diag_stats = NULL;
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
             return webconfig_error_decode;
         }
@@ -5658,11 +5689,12 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
     int size = 0;
     radio_data_t *temperature_data = NULL;
 
-    if (json == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+    if (json == NULL || temp_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || temp_stats is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
+    *temp_stats = NULL;
     temp_stats_arr = cJSON_GetObjectItem(json, "RadioTemperatureStats");
     if ((temp_stats_arr == NULL) && (cJSON_IsObject(temp_stats_arr) == false)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__, __LINE__);
@@ -5681,6 +5713,8 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
 
     temperature_data = (radio_data_t*) malloc(sizeof(radio_data_t) * size);
     if (temperature_data == NULL) {
+        free(*temp_stats);
+        *temp_stats = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
@@ -5688,6 +5722,9 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
     for (int count = 0; count < size; count++) {
         temp_data = cJSON_GetArrayItem(temp_stats_arr, count);
         if (temp_data == NULL) {
+            free(temperature_data);
+            free(*temp_stats);
+            *temp_stats = NULL;
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
             return webconfig_error_decode;
         }

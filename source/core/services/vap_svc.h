@@ -73,6 +73,7 @@ typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 #define EXT_DISCONNECTION_IND_TIMEOUT          5000
 #define EXT_UDHCP_IP_CHECK_INTERVAL            60000
 #define EXT_UDHCP_IP_CHECK_NUM                 3
+#define EXT_FALLBACK_PARENT_CONFIG_TIMEOUT     3000
 
 typedef enum {
     connection_attempt_wait,
@@ -135,7 +136,9 @@ typedef struct {
     int                    ext_udhcp_ip_check_id;
     int                    ext_udhcp_disconnect_event_timeout_handler_id;
     int                    ext_trigger_disconnection_timeout_handler_id;
+    int                    ext_fallback_parent_event_timeout_handler_id;
     bool                   is_started;
+    bool                   is_vap_started[MAX_NUM_RADIOS];
 }__attribute__((packed)) vap_svc_ext_t;
 
 typedef struct vap_svc {

@@ -232,21 +232,35 @@ void process_probe_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 
 void process_auth_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
-    wifi_monitor_data_t data;
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    memcpy(&data.u.msg, msg, sizeof(frame_data_t));
-    data.id = msg_id++;
-    push_event_to_monitor_queue(&data,wifi_event_monitor_auth_req,NULL);
+    wifi_monitor_data_t *data = NULL;
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    memcpy(&data->u.msg, msg, sizeof(frame_data_t));
+    data->id = msg_id++;
+    push_event_to_monitor_queue(data, wifi_event_monitor_auth_req, NULL);
+    free(data);
+    data = NULL;
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
 }
 
 void process_assoc_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
-    wifi_monitor_data_t data;
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    memcpy(&data.u.msg, msg, sizeof(frame_data_t));
-    data.id = msg_id++;
-    push_event_to_monitor_queue(&data,wifi_event_monitor_assoc_req,NULL);
+    wifi_monitor_data_t *data = NULL;
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    memcpy(&data->u.msg, msg, sizeof(frame_data_t));
+    data->id = msg_id++;
+    push_event_to_monitor_queue(data, wifi_event_monitor_assoc_req, NULL);
+    free(data);
+    data = NULL;
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d rssi:%d phy_rate:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm, msg->frame.phy_rate);
 }
 
@@ -809,6 +823,14 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
+    wifi_vap_info_map_t *tmp_vap_map = NULL;
+
+    tmp_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (tmp_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory for tmp_vap_map\n",
+            __func__, __LINE__);
+        return;
+    }
 
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
         wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
@@ -820,11 +842,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
             if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
                 continue;
             }
-            
-            wifi_vap_info_map_t tmp_vap_map;
-            memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
-            tmp_vap_map.num_vaps = 1;
-            memcpy((unsigned char *)&tmp_vap_map.vap_array[0], (unsigned char *)&wifi_vap_map->vap_array[j], sizeof(wifi_vap_info_t));
+
             rdk_vap_info = get_wifidb_rdk_vap_info(wifi_vap_map->vap_array[j].vap_index);
             if (rdk_vap_info == NULL) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
@@ -832,8 +850,12 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                 continue;
             }
 
+            memset((unsigned char *)tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
+            tmp_vap_map->num_vaps = 1;
+            memcpy((unsigned char *)&tmp_vap_map->vap_array[0], (unsigned char *)&wifi_vap_map->vap_array[j], sizeof(wifi_vap_info_t));
+
             if(param ==  hotspot_vap_disable) {
-                tmp_vap_map.vap_array[0].u.bss_info.enabled = false;
+                tmp_vap_map->vap_array[0].u.bss_info.enabled = false;
             }
             if (param == hotspot_vap_enable ) {
                 if (rfc_param) {
@@ -844,40 +866,40 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
                     sec_6g_enabled = rfc_param->hotspot_secure_6g_last_enabled;
                 }
-                wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
+                wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map->vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
 
-                if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
-                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                if ((strcmp(tmp_vap_map->vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
+                    tmp_vap_map->vap_array[0].u.bss_info.enabled = true;
 
-                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
-                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map->vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
+                    tmp_vap_map->vap_array[0].u.bss_info.enabled = true;
 
-                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_6g") == 0) && open_6g_enabled)
-                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map->vap_array[0].vap_name,"hotspot_open_6g") == 0) && open_6g_enabled)
+                    tmp_vap_map->vap_array[0].u.bss_info.enabled = true;
 
-                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
-                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map->vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
+                    tmp_vap_map->vap_array[0].u.bss_info.enabled = true;
 
-                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
-                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map->vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
+                    tmp_vap_map->vap_array[0].u.bss_info.enabled = true;
 
-                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_6g") == 0) && sec_6g_enabled)
-                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map->vap_array[0].vap_name,"hotspot_secure_6g") == 0) && sec_6g_enabled)
+                    tmp_vap_map->vap_array[0].u.bss_info.enabled = true;
 
-                wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
+                wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map->vap_array[0].u.bss_info.enabled);
             }
 
             if (isVapHotspotSecure5g(wifi_vap_map->vap_array[j].vap_index))
             {
-                memcpy((unsigned char *)&hotspot_5g_vap_info, (unsigned char *)&tmp_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
+                memcpy((unsigned char *)&hotspot_5g_vap_info, (unsigned char *)&tmp_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
             }
-            if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map, rdk_vap_info) != RETURN_OK) {
+            if(pub_svc->update_fn(pub_svc,radio_indx, tmp_vap_map, rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to create vaps\n", __func__,__LINE__);
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, false);
                }
             } else {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d Able to create vaps. vap_enable %d and vap_name = %s\n", __func__,__LINE__, param, tmp_vap_map.vap_array[0].vap_name);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Able to create vaps. vap_enable %d and vap_name = %s\n", __func__,__LINE__, param, tmp_vap_map->vap_array[0].vap_name);
                 get_wifidb_obj()->desc.print_fn("%s:%d radio_index:%d create vap %s successful\n", __func__,__LINE__, radio_indx, wifi_vap_map->vap_array[j].vap_name);
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, true);
@@ -885,11 +907,15 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                 if (!lnf_vap_info)
                 {
                     wifi_util_info_print(WIFI_CTRL, "%s:%d lnf_vap_info is NULL for radio index = %d\n", __func__,__LINE__,radio_indx);
+                    free(tmp_vap_map);
+                    tmp_vap_map = NULL;
                     return;
                 }
-                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && should_process_hotspot_config_change(lnf_vap_info, &tmp_vap_map.vap_array[0])) {
-                    if (update_vap_params_to_hal_and_db(lnf_vap_info, tmp_vap_map.vap_array[0].u.bss_info.enabled) == -1) {
+                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && should_process_hotspot_config_change(lnf_vap_info, &tmp_vap_map->vap_array[0])) {
+                    if (update_vap_params_to_hal_and_db(lnf_vap_info, tmp_vap_map->vap_array[0].u.bss_info.enabled) == -1) {
                         wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
+                        free(tmp_vap_map);
+                        tmp_vap_map = NULL;
                         return;
                     }
                     wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, wifi_hotspot_action_to_string(param));
@@ -897,7 +923,9 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
             }
         }
     }
-
+    free(tmp_vap_map);
+    tmp_vap_map = NULL;
+    
     if (is_6g_supported_device(wifi_prop) && param != hotspot_vap_param_update) {
         wifi_util_info_print(WIFI_CTRL,"6g supported device enable rrm\n");
         if (pub_svc->event_fn != NULL) {
@@ -1024,12 +1052,12 @@ void process_active_gw_check_command(bool active_gw_check)
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop xfinity vaps\n", __func__, __LINE__);
         process_xfinity_vaps(hotspot_vap_disable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-        start_extender_vaps();
+        start_extender_vaps(WIFI_ALL_RADIO_INDICES);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start xfinity vaps\n", __func__, __LINE__);
         process_xfinity_vaps(hotspot_vap_enable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-        stop_extender_vaps();
+        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
@@ -1064,6 +1092,57 @@ bool  IsClientConnected(rdk_wifi_vap_info_t* rdk_vap_info, char *check_mac)
     return false;
 }
 
+bool is_greylist_enabled(int vap_index)
+{
+    wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_info && rfc_info->radiusgreylist_rfc && isVapHotspot(vap_index)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Greylist RFC is enabled & VAP = %d\n",
+            __func__, __LINE__, vap_index);
+        return true;
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Greylist RFC is disabled & VAP = %d\n",
+        __func__, __LINE__, vap_index);
+    return false;
+}
+
+bool is_mac_greylisted(int vap_index, char *mac_str)
+{
+    rdk_wifi_vap_info_t *l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
+    acl_entry_t *acl_entry = NULL;
+    mac_address_t mac_addr;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Entering function for vap_index = %d\n", __func__,
+        __LINE__, vap_index);
+
+    if (!l_rdk_vap_array || !l_rdk_vap_array->acl_map) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d l_rdk_vap_array is NULL or acl_map is NULL\n",
+            __func__, __LINE__);
+        return false;
+    }
+
+    str_to_mac_bytes(mac_str, mac_addr);
+    acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
+
+    while (acl_entry != NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Iterating over ACL entries\n", __func__, __LINE__);
+
+        if (acl_entry->mac != NULL &&
+            memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
+            acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
+
+            mac_addr_str_t key = { '\0' };
+            to_mac_str(acl_entry->mac, key); // Call function first
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Found a matching ACL entry %s\n", __func__,
+                __LINE__, key);
+            return true;
+        }
+        acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d No matching ACL entry found\n", __func__, __LINE__);
+    return false;
+}
+
 static int initiate_kick_config_change(int vap_index, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
@@ -1094,24 +1173,33 @@ static void finalize_kick_config_change(int vap_index, wifi_vap_info_t *vap_info
     }
 
     if (rdk_vap_info->kick_device_config_change == TRUE) {
-        int filter_mode = 0;
-        if (vap_info->u.bss_info.mac_filter_enable == TRUE) {
-            filter_mode =
-                (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) ? 2 : 1;
-        }
+        // Only change MAC filter mode when greylist is NOT enabled for Hotspots
+        if (!is_greylist_enabled(vap_index)) {
+            int filter_mode = 0;
+            if (vap_info->u.bss_info.mac_filter_enable == TRUE) {
+                filter_mode =
+                    (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) ? 2 :
+                                                                                                1;
+            }
 
 #ifdef NL80211_ACL
-        if (wifi_hal_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
+            if (wifi_hal_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
 #else
-        if (wifi_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
+            if (wifi_setApMacAddressControlMode(vap_index, filter_mode) == RETURN_OK) {
 #endif
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Successfully restored ACL mode %d for vap %d\n",
-                __func__, __LINE__, filter_mode, vap_index);
+
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d Successfully restored ACL mode %d for vap %d\n", __func__, __LINE__,
+                    filter_mode, vap_index);
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to restore ACL mode for vap %d\n",
+                    __func__, __LINE__, vap_index);
+            }
         } else {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to restore ACL mode for vap %d\n",
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d Skipping MAC filter mode change - greylist is enabled for vap %d\n",
                 __func__, __LINE__, vap_index);
         }
-
         rdk_vap_info->kick_device_config_change = FALSE;
     }
 }
@@ -1120,6 +1208,15 @@ static int handle_acl_operation(int vap_index, char *mac_str, wifi_vap_info_t *v
     rdk_wifi_vap_info_t *rdk_vap_info, bool is_add_operation)
 {
     bool success = false;
+
+    // For delete operations, check if MAC is greylisted
+    if (!is_add_operation && is_greylist_enabled(vap_index) &&
+        is_mac_greylisted(vap_index, mac_str)) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Skipping removal of greylisted MAC %s for vap %d\n",
+            __func__, __LINE__, mac_str, vap_index);
+        return RETURN_OK; // Consider this a successful operation since we're protecting greylisted
+                          // entries
+    }
 
     if (rdk_vap_info->kick_device_config_change == TRUE) {
         if (is_add_operation) {
@@ -1512,118 +1609,190 @@ cleanup_all:
     }
 }
 
+void finalize_acl_addition(const char *mac_str, int reason)
+{
+    char log_buf[1024] = { 0 };
+    char time_str[20] = { 0 };
+    time_t now;
+    struct tm *time_info;
+    const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
+
+    get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Updated webconfig state for client %s\n", __func__,
+        __LINE__, mac_str);
+
+    time(&now);
+    time_info = localtime(&now);
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", time_info);
+
+    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
+        snprintf(log_buf, sizeof(log_buf), "%s Client added to grey list from RADIUS:%s\n",
+            time_str, mac_str);
+    } else {
+        snprintf(log_buf, sizeof(log_buf), "%s Client added to ACL (reason %d):%s\n", time_str,
+            reason, mac_str);
+    }
+
+    write_to_file(wifi_health_log, log_buf);
+    wifi_util_dbg_print(WIFI_CTRL, "%s", log_buf);
+}
+
+int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int expiry_time,
+    bool update_dml_and_wifi_health)
+{
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    acl_entry_t *acl_entry = NULL;
+    acl_entry_t *temp_acl_entry = NULL;
+    mac_address_t mac_addr;
+    char macfilterkey[128] = { 0 };
+
+    if (mac_str == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid MAC string\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+    if (rdk_vap_info == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d VAP info is NULL for index %d\n", __func__, __LINE__,
+            vap_index);
+        return RETURN_ERR;
+    }
+
+    if (rdk_vap_info->acl_map == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Creating ACL map for vap_index %d\n", __func__,
+            __LINE__, vap_index);
+        rdk_vap_info->acl_map = hash_map_create();
+        if (rdk_vap_info->acl_map == NULL) {
+            return RETURN_ERR;
+        }
+    }
+
+    str_tolower(mac_str);
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d Adding MAC %s expiry time %lld reason %d  vap_index %d to ACL map\n", __func__,
+        __LINE__, mac_str, expiry_time, reason, vap_index);
+    temp_acl_entry = hash_map_get(rdk_vap_info->acl_map, mac_str);
+    if (temp_acl_entry != NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d MAC %s already present in ACL map\n", __func__,
+            __LINE__, mac_str);
+        return RETURN_ERR;
+    }
+
+    str_to_mac_bytes(mac_str, mac_addr);
+
+    acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+    if (acl_entry == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Failed to allocate ACL entry\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memcpy(acl_entry->mac, mac_addr, sizeof(mac_address_t));
+    acl_entry->reason = reason;
+    acl_entry->expiry_time = expiry_time;
+
+#ifdef NL80211_ACL
+    if (wifi_hal_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#else
+    if (wifi_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#endif
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_addApAclDevice failed. vap_index %d, MAC %s\n",
+            __func__, __LINE__, vap_index, mac_str);
+        free(acl_entry);
+        return RETURN_ERR;
+    }
+
+    hash_map_put(rdk_vap_info->acl_map, strdup(mac_str), acl_entry);
+
+    snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, mac_str);
+    get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, acl_entry, true);
+
+    wifi_util_dbg_print(WIFI_CTRL,
+        "%s:%d Successfully added ACL entry for MAC %s on vap_index %d\n", __func__, __LINE__,
+        mac_str, vap_index);
+
+    if (update_dml_and_wifi_health) {
+        finalize_acl_addition(mac_str, reason);
+    }
+
+    return RETURN_OK;
+}
+
 void process_greylist_mac_filter(void *data)
 {
-    long int  expiry_time = 0;
+    long int expiry_time = 0;
     struct timeval tv_now;
     unsigned int itr = 0, itrj = 0;
     int reason = 0;
     int vap_index = 0;
-    const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
-    char log_buf[1024] = {0};
-    char time_str[20] = {0};
-    time_t now;
-    struct tm *time_info;
-    bool greylist_client_added = false;
-
-    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
-    mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    acl_entry_t *acl_entry = NULL;
-    acl_entry_t *temp_acl_entry = NULL;
     mac_address_t new_mac;
     mac_addr_str_t new_mac_str;
-    char macfilterkey[128];
+    mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     wifi_vap_info_map_t *wifi_vap_map = NULL;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    bool greylist_client_added = false;
+    int result;
 
-    memset(macfilterkey, 0, sizeof(macfilterkey));
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Enter\n", __FUNCTION__, __LINE__);
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Enter \n", __FUNCTION__, __LINE__);
-    greylist_data_t *grey_data = (greylist_data_t *) data;
+    greylist_data_t *grey_data = (greylist_data_t *)data;
     reason = grey_data->reason;
 
-    wifi_util_dbg_print(WIFI_CTRL,"Disassociation reason is %d\n",reason);
-    if (reason != WLAN_RADIUS_GREYLIST_REJECT){
-        wifi_util_dbg_print(WIFI_CTRL,"This Not a Greylisted disassoc device\n");
+    wifi_util_dbg_print(WIFI_CTRL, "Disassociation reason is %d\n", reason);
+
+    if (reason != WLAN_RADIUS_GREYLIST_REJECT) {
+        wifi_util_dbg_print(WIFI_CTRL, "This Not a Greylisted disassoc device\n");
         return;
     }
 
     memcpy(new_mac, grey_data->sta_mac, sizeof(mac_address_t));
+
+    if (memcmp(new_mac, zero_mac, sizeof(mac_address_t)) == 0) {
+        wifi_util_dbg_print(WIFI_CTRL, "GreyList new_mac is zero mac\n");
+        return;
+    }
+
     gettimeofday(&tv_now, NULL);
     expiry_time = tv_now.tv_sec + GREYLIST_TIMEOUT_IN_SECONDS;
-    wifi_util_dbg_print(WIFI_CTRL," time now %d and expiry_time %d\n",tv_now.tv_sec,expiry_time);
+    wifi_util_dbg_print(WIFI_CTRL, "time now %ld and expiry_time %ld\n", tv_now.tv_sec,
+        expiry_time);
+
+    to_mac_str(new_mac, new_mac_str);
+    str_tolower(new_mac_str);
+    wifi_util_dbg_print(WIFI_CTRL, "new_mac_str %s\n", new_mac_str);
 
     for (itr = 0; itr < getNumberRadios(); itr++) {
         wifi_vap_map = get_wifidb_vap_map(itr);
+
         for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
             vap_index = wifi_vap_map->vap_array[itrj].vap_index;
             rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
 
             if (rdk_vap_info == NULL) {
-                 return;
-            }
-
-            if ((strstr(rdk_vap_info->vap_name, "hotspot") == NULL)) {
                 continue;
             }
 
-            if (rdk_vap_info->acl_map == NULL) {
-                wifi_util_dbg_print(WIFI_CTRL,"GreyList acl_map is NULL\n");
-                rdk_vap_info->acl_map = hash_map_create();
+            if (strstr(rdk_vap_info->vap_name, "hotspot") == NULL ||
+                !wifi_vap_map->vap_array[itrj].u.bss_info.enabled) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d VAP %s not enabled\n", __func__, __LINE__,
+                    rdk_vap_info->vap_name);
+                continue;
             }
 
-            if (memcmp(new_mac, zero_mac, sizeof(mac_address_t)) == 0){
-                wifi_util_dbg_print(WIFI_CTRL,"GreyList new_mac is zero mac \n");
-                return ;
+            result = add_acl_entry_to_vap(new_mac_str, vap_index, reason, expiry_time, false);
+
+            if (result == RETURN_OK) {
+                greylist_client_added = true;
+            } else {
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d Failed to add ACL entry for MAC %s on vap_index %d, error code: %d\n",
+                    __func__, __LINE__, new_mac_str, vap_index, result);
             }
-
-            to_mac_str(new_mac, new_mac_str);
-            str_tolower(new_mac_str);
-            wifi_util_dbg_print(WIFI_CTRL,"new_mac_str %s\n",new_mac_str);
-            temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,new_mac_str);
-
-            if (temp_acl_entry != NULL) {
-                wifi_util_dbg_print(WIFI_CTRL,"Mac is already present in macfilter \n");
-                return;
-            }
-
-            acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
-            memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
-            to_mac_str(acl_entry->mac, new_mac_str);
-            str_tolower(new_mac_str);
-            acl_entry->reason = WLAN_RADIUS_GREYLIST_REJECT;
-            acl_entry->expiry_time = expiry_time;
-
-#ifdef NL80211_ACL
-            if (wifi_hal_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
-#else
-            if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
-#endif
-                wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
-                   __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
-                free(acl_entry);
-                return;
-            }
-
-            hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
-
-            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
-            get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, acl_entry, true);
-            greylist_client_added = true;
         }
     }
 
-    get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
-
-    //Add time and Mac address to wifihealth.txt
     if (greylist_client_added) {
-        time(&now);
-        time_info = localtime(&now);
-        to_mac_str(new_mac, new_mac_str);
-        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", time_info);
-        sprintf(log_buf,"%s Client added to grey list from RADIUS:%s\n",time_str,new_mac_str);
-        write_to_file(wifi_health_log, log_buf);
-        wifi_util_dbg_print(WIFI_CTRL,"%s",log_buf);
-   }
+        finalize_acl_addition(new_mac_str, reason);
+    }
 }
 
 void process_wifi_host_sync()
@@ -1653,7 +1822,7 @@ void process_wifi_host_sync()
                 continue;
             }
 
-            if (hosts.count > LM_MAX_HOSTS_NUM) {
+            if (hosts.count >= LM_MAX_HOSTS_NUM) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d has reached LM_MAX_HOSTS_NUM\n", __func__, __LINE__);
                 break;
             }
@@ -2196,7 +2365,7 @@ void process_wpa3_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    wifi_vap_info_map_t tgt_vap_map;
+    wifi_vap_info_map_t *tgt_vap_map = NULL;
     wifi_vap_info_t *vapInfo = NULL;
     wifi_radio_operationParam_t *radio_params = NULL;
     vap_svc_t *svc;
@@ -2204,6 +2373,12 @@ void process_wpa3_rfc(bool type)
     UINT apIndex = 0, ret;
     rdk_wifi_vap_info_t *rdk_vap_info;
     char update_status[128];
+
+    tgt_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (tgt_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory for tgt_vap_map\n",__FUNCTION__, __LINE__);
+        return;
+    }
 
     rfc_param->wpa3_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
@@ -2253,16 +2428,16 @@ void process_wpa3_rfc(bool type)
             }
         }
 
-        memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
-        tgt_vap_map.num_vaps = 1;
-        memcpy(&tgt_vap_map.vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
+        memset(tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        tgt_vap_map->num_vaps = 1;
+        memcpy(&tgt_vap_map->vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
         rdk_vap_info = get_wifidb_rdk_vap_info(apIndex);
         if (rdk_vap_info == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
                 __func__, __LINE__, apIndex);
             continue;
         }
-        ret = svc->update_fn(svc, rIdx, &tgt_vap_map, rdk_vap_info);
+        ret = svc->update_fn(svc, rIdx, tgt_vap_map, rdk_vap_info);
         memset(update_status, 0, sizeof(update_status));
         snprintf(update_status, sizeof(update_status), "%s %s", vapInfo->vap_name, (ret == RETURN_OK)?"success":"fail");
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
@@ -2273,6 +2448,8 @@ void process_wpa3_rfc(bool type)
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
         }
     }
+    free(tgt_vap_map);
+    tgt_vap_map = NULL;
 }
 
 void process_dfs_rfc(bool type)
@@ -2715,17 +2892,17 @@ void process_device_mode_command_event(int device_mode)
         if (device_mode == rdk_dev_mode_type_ext) {
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-                start_extender_vaps();
+                start_extender_vaps(WIFI_ALL_RADIO_INDICES);
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
         } else if (device_mode == rdk_dev_mode_type_gw) {
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-                stop_extender_vaps();
+                stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
             }
             wifi_util_info_print(WIFI_CTRL, "%s:%d: start gw vaps\n", __func__, __LINE__);
-            start_gateway_vaps();
+            start_gateway_vaps(WIFI_ALL_RADIO_INDICES);
         }
     }
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
@@ -3276,17 +3453,24 @@ int get_neighbor_scan_results(void *arg)
 void process_acs_keep_out_channels_event(const char* json_data)
 {
     unsigned int numOfRadios = getNumberRadios();
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wifi_radio_operationParam_t *radio_oper = NULL;
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    decode_acs_keep_out_json(json_data,numOfRadios,&data);
+
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+
+    decode_acs_keep_out_json(json_data,numOfRadios, data);
     for(unsigned int i=0;i<numOfRadios;i++)
     {
         radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
         if(radio_oper)
         {
-            radio_oper->acs_keep_out_reset = data.u.decoded.radios[i].oper.acs_keep_out_reset;
-            memcpy(radio_oper->channels_per_bandwidth, data.u.decoded.radios[i].oper.channels_per_bandwidth,sizeof(data.u.decoded.radios[i].oper.channels_per_bandwidth));
+            radio_oper->acs_keep_out_reset = data->u.decoded.radios[i].oper.acs_keep_out_reset;
+            memcpy(radio_oper->channels_per_bandwidth, data->u.decoded.radios[i].oper.channels_per_bandwidth, sizeof(data->u.decoded.radios[i].oper.channels_per_bandwidth));
             if(radio_oper->acs_keep_out_reset)
             {
                 wifi_hal_set_acs_keep_out_chans(NULL,i);
@@ -3298,6 +3482,8 @@ void process_acs_keep_out_channels_event(const char* json_data)
             }
         }
     }
+    free(data);
+    data = NULL;
 }
 
 void process_neighbor_scan_command_event()
@@ -3416,10 +3602,10 @@ static void process_eth_bh_status_command(bool eth_bh_status)
 
     if (is_enabled == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-        start_extender_vaps();
+        start_extender_vaps(WIFI_ALL_RADIO_INDICES);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-        stop_extender_vaps();
+        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
@@ -3459,10 +3645,8 @@ static void process_monitor_init_command(void)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
-                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-            }
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);
+            push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
         }
     }
     free(data);
@@ -3502,13 +3686,19 @@ void process_rsn_override_rfc(bool type)
 {
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
     vap_svc_t *svc;
-    wifi_vap_info_map_t tgt_vap_map;
+    wifi_vap_info_map_t *tgt_vap_map = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_radio_operationParam_t *radio_params = NULL;
     UINT apIndex = 0, ret;
     rdk_wifi_vap_info_t *rdk_vap_info;
     wifi_vap_info_t *vapInfo = NULL;
     char update_status[128], old_sec_mode[32], new_sec_mode[32];
+
+    tgt_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (tgt_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory for tgt_vap_map\n",__FUNCTION__, __LINE__);
+        return;
+    }
 
     rfc_param->wpa3_compatibility_enable = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
@@ -3571,16 +3761,16 @@ void process_rsn_override_rfc(bool type)
             notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
         }
 
-        memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
-        tgt_vap_map.num_vaps = 1;
-        memcpy(&tgt_vap_map.vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
+        memset(tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        tgt_vap_map->num_vaps = 1;
+        memcpy(&tgt_vap_map->vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
         rdk_vap_info = get_wifidb_rdk_vap_info(apIndex);
         if (rdk_vap_info == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
                 __func__, __LINE__, apIndex);
             continue;
         }
-        ret = svc->update_fn(svc, rIdx, &tgt_vap_map, rdk_vap_info);
+        ret = svc->update_fn(svc, rIdx, tgt_vap_map, rdk_vap_info);
         memset(update_status, 0, sizeof(update_status));
         snprintf(update_status, sizeof(update_status), "%s %s", vapInfo->vap_name, (ret == RETURN_OK)?"success":"fail");
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
@@ -3591,6 +3781,8 @@ void process_rsn_override_rfc(bool type)
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
         }
     }
+    free(tgt_vap_map);
+    tgt_vap_map = NULL;
 }
 
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
@@ -3900,7 +4092,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     wifi_event_subtype_t subtype)
 {
     webconfig_t *config;
-    webconfig_subdoc_data_t data = { 0 };
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_event_t *wifi_event = NULL;
     config = &ctrl->webconfig;
@@ -3909,6 +4101,13 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     unsigned int num_ssid = 0;
     cJSON *json = NULL;
 
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+
     switch (subtype) {
     case wifi_event_webconfig_set_data:
     case wifi_event_webconfig_set_data_dml:
@@ -3916,10 +4115,12 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     case wifi_event_webconfig_set_data_ovsm:
     case wifi_event_webconfig_data_resched_to_ctrl_queue:
     case wifi_event_webconfig_set_data_force_apply:
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
 
         if (raw == NULL) {
+            free(data);
+            data = NULL;
             return;
         }
 
@@ -3961,54 +4162,54 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         }
 
         if (num_ssid != 0) {
-            update_subdoc_data(&data, num_ssid, vap_names);
+            update_subdoc_data(data, num_ssid, vap_names);
         }
 
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
-        webconfig_decode(config, &data, raw);
+        webconfig_decode(config, data, raw);
         wifi_event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
         if (wifi_event != NULL) {
             memset(wifi_event, 0, sizeof(wifi_event_t));
             wifi_event->event_type = wifi_event_type_webconfig;
             wifi_event->sub_type = subtype;
-            wifi_event->u.webconfig_data = &data;
+            wifi_event->u.webconfig_data = data;
             apps_mgr_event(&ctrl->apps_mgr, wifi_event);
-            free_webconfig_msg_payload(subtype, &data);
+            free_webconfig_msg_payload(subtype, data);
             if (wifi_event != NULL) {
                 free(wifi_event);
             }
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d NULL event pointer\n", __func__, __LINE__);
         }
-        webconfig_data_free(&data);
+        webconfig_data_free(data);
         break;
 
     case wifi_event_webconfig_set_data_tunnel:
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
-        webconfig_decode(config, &data, raw);
+        webconfig_decode(config, data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
-        webconfig_data_free(&data);
+        webconfig_data_free(data);
         break;
 
     case wifi_event_webconfig_get_data:
         // copy the global config
-        memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
+        memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config,
             sizeof(wifi_global_config_t));
 
         // copy the radios and vaps data
-        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
+        memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config,
             getNumberRadios() * sizeof(rdk_wifi_radio_t));
 
         // copy HAL Cap data
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
-        data.u.decoded.num_radios = getNumberRadios();
+        data->u.decoded.num_radios = getNumberRadios();
 
         // tell webconfig to encode
-        webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
-        webconfig_data_free(&data);
+        webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+        webconfig_data_free(data);
         break;
 
     case wifi_event_webconfig_data_req_from_dml:
@@ -4026,6 +4227,9 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             wifi_event_subtype_to_string(subtype));
         break;
     }
+
+    free(data);
+    data = NULL;
 }
 
 void handle_wifiapi_event(void *data, unsigned int len, wifi_event_subtype_t subtype)

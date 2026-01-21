@@ -68,7 +68,7 @@ struct ovs_vapname_cloudvifname_map {
 };
 
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_) || \
-    defined (_SCER11BEL_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || \
+    defined (_SCER11BEL_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || \
     defined (_SCXF11BFL_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
@@ -800,9 +800,6 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
     int vapIndex = 0;
     unsigned int radioIndx = 256; // some impossible values
     unsigned int vapArrayIndx = 256;
-    char wps_pin[128] = {0};
-    char password[128] = {0};
-    char ssid[128] = {0};
     wifi_radio_operationParam_t  *oper_param;
     int band = 0;
 
@@ -954,11 +951,9 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif
             }
-            memset(ssid, 0, sizeof(ssid));
-            strcpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name);
-            memset(password, 0, sizeof(password));
+            strncpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name, sizeof(default_vap_info->u.bss_info.ssid) - 1);
+            default_vap_info->u.bss_info.ssid[sizeof(default_vap_info->u.bss_info.ssid) - 1] = '\0';
             strcpy(default_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
-            memset(wps_pin, 0, sizeof(wps_pin));
             strcpy(default_vap_info->u.bss_info.wps.pin, INVALID_KEY);
             default_vap_info->u.bss_info.showSsid = true;
             default_vap_info->u.bss_info.mbo_enabled = false;
@@ -968,9 +963,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             default_vap_info->u.bss_info.rapidReconnectEnable = false;
             default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa_personal;
             default_vap_info->u.bss_info.showSsid = false;
-            memset(ssid, 0, sizeof(ssid));
             strcpy(default_vap_info->u.bss_info.ssid, "we.connect.yellowstone");
-            memset(password, 0, sizeof(password));
             strcpy(default_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
@@ -989,20 +982,19 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             strcpy(default_vap_info->u.bss_info.security.u.radius.key, INVALID_KEY);
             strcpy(default_vap_info->u.bss_info.security.u.radius.s_key, INVALID_KEY);
 
-            strcpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name);
+            strncpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name, sizeof(default_vap_info->u.bss_info.ssid) - 1);
+            default_vap_info->u.bss_info.ssid[sizeof(default_vap_info->u.bss_info.ssid) - 1] = '\0';
             default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
         }   else if(is_vap_lnf_psk(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-            memset(ssid, 0, sizeof(ssid));
-            strcpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name);
-            memset(password, 0, sizeof(password));
+            strncpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name, sizeof(default_vap_info->u.bss_info.ssid) - 1);
+            default_vap_info->u.bss_info.ssid[sizeof(default_vap_info->u.bss_info.ssid) - 1] = '\0';
             strcpy(default_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
             default_vap_info->u.bss_info.showSsid = false;
         }   else if(is_vap_xhs(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-            memset(ssid, 0, sizeof(ssid));
-            strcpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name);
-            memset(password, 0, sizeof(password));
+            strncpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name, sizeof(default_vap_info->u.bss_info.ssid) - 1);
+            default_vap_info->u.bss_info.ssid[sizeof(default_vap_info->u.bss_info.ssid) - 1] = '\0';
             strcpy(default_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
             default_vap_info->u.bss_info.showSsid = false;
             if (band == WIFI_FREQUENCY_6_BAND) {
@@ -2710,8 +2702,8 @@ int set_translator_state_security_key_value(
         const char *key,
         const char *value)
 {
-    strcpy(vstate->security_keys[*index], key);
-    strcpy(vstate->security[*index], value);
+    snprintf(vstate->security_keys[*index], sizeof(vstate->security_keys[*index]), "%s", key);
+    snprintf(vstate->security[*index], sizeof(vstate->security[*index]), "%s", value);
 
     *index += 1;
     vstate->security_len = *index;
@@ -2725,8 +2717,8 @@ int set_translator_config_security_key_value(
         const char *key,
         const char *value)
 {
-    strcpy(vconfig->security_keys[*index], key);
-    strcpy(vconfig->security[*index], value);
+    snprintf(vconfig->security_keys[*index], sizeof(vconfig->security_keys[*index]), "%s", key);
+    snprintf(vconfig->security[*index], sizeof(vconfig->security[*index]), "%s", value);
 
     *index += 1;
     vconfig->security_len = *index;
@@ -3897,8 +3889,8 @@ webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wif
     unsigned int mqtt_len = 0;
     mqtt_len = strlen(blaster_mqtt_topic);
     memset(blaster_info, 0, sizeof(active_msmt_t));
-    strncpy((char *)blaster_info->PlanId, blaster_row->plan_id, strlen(blaster_row->plan_id));
-    blaster_info->PlanId[strlen((char *)blaster_info->PlanId)] = '\0';
+    snprintf((char *)blaster_info->PlanId, sizeof(blaster_info->PlanId), "%s", blaster_row->plan_id);
+
     blaster_info->ActiveMsmtNumberOfSamples = blaster_row->blast_sample_count;
     blaster_info->ActiveMsmtSampleDuration = blaster_row->blast_duration;
     blaster_info->ActiveMsmtPktSize = blaster_row->blast_packet_size;
@@ -3908,8 +3900,7 @@ webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wif
         blaster_info->Step[i].StepId = atoi(blaster_row->step_id_and_dest_keys[i]);
         char mac_str_without_colon[MAC_ADDRESS_LENGTH] = {'\0'};
         remove_colon_from_mac(blaster_row->step_id_and_dest[i], mac_str_without_colon);
-        strncpy((char *)blaster_info->Step[i].DestMac, mac_str_without_colon, MAC_ADDRESS_LENGTH);
-        blaster_info->Step[i].DestMac[MAC_ADDRESS_LENGTH - 1] = '\0';
+        snprintf((char *)blaster_info->Step[i].DestMac, MAC_ADDRESS_LENGTH, "%s", mac_str_without_colon);
     }
 
     blaster_info->ActiveMsmtEnable = true;
@@ -3921,8 +3912,7 @@ webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wif
     }
     else {
         if ((mqtt_len > 0) && (mqtt_len <= MAX_MQTT_TOPIC_LEN)) {
-            strncpy((char *)blaster_info->blaster_mqtt_topic, blaster_mqtt_topic, mqtt_len);
-            blaster_info->blaster_mqtt_topic[strlen((char *)blaster_info->blaster_mqtt_topic)] = '\0';
+            snprintf((char *)blaster_info->blaster_mqtt_topic, mqtt_len, "%s", blaster_mqtt_topic);
         }    
     }
     return webconfig_error_none;
