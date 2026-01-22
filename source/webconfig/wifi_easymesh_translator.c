@@ -335,11 +335,11 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_radio_info->enabled = oper_param->enable;
 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
-            em_radio_info->band = 0;
+            em_radio_info->band = em_freq_band_24;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
-            em_radio_info->band = 1;
+            em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
-            em_radio_info->band = 2;
+            em_radio_info->band = em_freq_band_6;
         }
         
         radio_iface_map = NULL;
@@ -444,11 +444,11 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_radio_info->enabled = oper_param->enable;
         //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
-            em_radio_info->band = 0;
+            em_radio_info->band = em_freq_band_24;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
-            em_radio_info->band = 1;
+            em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
-            em_radio_info->band = 2;
+            em_radio_info->band = em_freq_band_6;
         }
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
