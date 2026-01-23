@@ -1192,6 +1192,19 @@ typedef struct {
     radio_metrics_policy_t radio_metrics_policy[EM_MAX_RADIO_POLICY];
 } radio_metrics_policies_t;
 
+#define EM_MAX_SSID_LEN 33
+typedef struct {
+    unsigned char  ssid_len;
+    char  ssid[EM_MAX_SSID_LEN];
+    unsigned short vlan_id;
+} traffic_sep_policy_ssid_t;
+
+#define EM_MAX_TRAFFIC_SEP_POLICY 5
+typedef struct {
+    unsigned char  ssids_num;
+    traffic_sep_policy_ssid_t  ssids[EM_MAX_TRAFFIC_SEP_POLICY];
+} traffic_sep_policy_t;
+
 typedef struct {
     ap_metrics_policy_t ap_metric_policy;
     steering_disallowed_policy_t local_steering_dslw_policy;
@@ -1199,6 +1212,7 @@ typedef struct {
     backhaul_bss_config_policy_t backhaul_bss_config_policy;
     channel_scan_reporting_policy_t channel_scan_reporting_policy;
     radio_metrics_policies_t radio_metrics_policies;
+    traffic_sep_policy_t traffic_separation_policy;
 } em_config_t;
 
 typedef struct {
