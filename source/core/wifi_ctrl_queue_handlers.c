@@ -1120,7 +1120,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
         return false;
     }
 
-    to_mac_bytes(mac_str, mac_addr);
+    str_to_mac_bytes(mac_str, mac_addr);
     acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
     while (acl_entry != NULL) {
@@ -3655,10 +3655,8 @@ static void process_monitor_init_command(void)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
-                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-            }
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);
+            push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
         }
     }
     free(data);
