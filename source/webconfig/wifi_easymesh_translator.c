@@ -180,9 +180,9 @@ void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_securit
     strncpy(device_info->exec_env,"testEnv",strlen("testEnv"));
     memset(device_info->primary_device_type,'\0',sizeof(device_info->primary_device_type));
     memset(device_info->secondary_device_type,'\0',sizeof(device_info->secondary_device_type));
-    device_info->traffic_sep_cap = false;
+    device_info->traffic_sep_cap = true;
     device_info->report_unsuccess_assocs = false;
-    device_info->traffic_sep_allowed = false;
+    device_info->traffic_sep_allowed = true;
     device_info->svc_prio_allowed = false;
     device_info->sta_steer_state = false;
     device_info->coord_cac_allowed = false;
@@ -2715,6 +2715,26 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 7) & 1;
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_status =
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 5) & 1;
+    }
+
+    // Traffic Separation policy
+    policy_cfg->traffic_separation_policy.ssids_num = em_policy_cfg->traffic_separation_policy.ssids_num;
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] Traffic Separation policy ssids_num=%d\n", __func__, __LINE__,
+            em_policy_cfg->traffic_separation_policy.ssids_num);
+    for ( int i = 0; i < policy_cfg->traffic_separation_policy.ssids_num; i++) {
+        int len = em_policy_cfg->traffic_separation_policy.ssids[i].ssid_len;
+        memcpy(policy_cfg->traffic_separation_policy.ssids[i].ssid,
+                em_policy_cfg->traffic_separation_policy.ssids[i].ssid, len);
+
+        policy_cfg->traffic_separation_policy.ssids[i].ssid[len] = '\0';
+        policy_cfg->traffic_separation_policy.ssids[i].ssid_len = len;
+
+        policy_cfg->traffic_separation_policy.ssids[i].vlan_id = em_policy_cfg->traffic_separation_policy.ssids[i].vlan_id;
+
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d [TRAFFIC_SEP] SSID %s Len : %d VLAN %d\n", __func__, __LINE__,
+                policy_cfg->traffic_separation_policy.ssids[i].ssid,
+                policy_cfg->traffic_separation_policy.ssids[i].ssid_len,
+                policy_cfg->traffic_separation_policy.ssids[i].vlan_id);
     }
 
     return webconfig_error_none;
