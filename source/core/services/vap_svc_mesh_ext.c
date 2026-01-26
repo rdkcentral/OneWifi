@@ -1125,10 +1125,10 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
 
     uint8_mac_to_string_mac(vap_info->u.sta_info.bssid, bssid_str);
 
-    // Support only connected/wait_for_csa/connected_scan_list -> nb_in_progress state change
-    if (ext->conn_state != connection_state_connected &&
-        ext->conn_state != connection_state_connected_wait_for_csa &&
-        ext->conn_state != connection_state_connected_scan_list) {
+    // Do not support for connection_*_in_progress state
+    if (ext->conn_state == connection_state_connection_in_progress ||
+        ext->conn_state == connection_state_connection_to_lcb_in_progress ||
+        ext->conn_state == connection_state_connection_to_nb_in_progress) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d skip sta bssid change event: connection state: %s,"
             "vap: %s, bssid: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state),
             vap_info->vap_name, bssid_str);
@@ -1190,6 +1190,17 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     if (ext->ext_connect_algo_processor_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
         ext->ext_connect_algo_processor_id = 0;
+    }
+
+    // In disconnected / scanning states we only cache the provided BSSID in new_bss.
+    // Do NOT change the current state here, because the state machine is already
+    // progressing through scan -> connection_in_progress.
+    // When entering connection_in_progress, ext_try_connecting() will prioritize new_bss.
+    if (ext->conn_state == connection_state_disconnected_scan_list_none ||
+        ext->conn_state == connection_state_disconnected_scan_list_in_progress ||
+        ext->conn_state == connection_state_disconnected_scan_list_all ||
+        ext->conn_state == connection_state_disconnection_in_progress) {
+        return 0;
     }
 
     // If BSSID changed on the same band need to initiate disconnection before connection to avoid
