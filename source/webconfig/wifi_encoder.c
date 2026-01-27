@@ -107,6 +107,82 @@ webconfig_error_t encode_radio_curr_operating_classes(const wifi_radio_operation
     return webconfig_error_none;
 }
 
+/* Encode radio capabilities to JSON */
+webconfig_error_t encode_radio_capability(const rdk_wifi_radio_capability_t *radio_cap, cJSON *radio_object)
+{
+    cJSON *cap_obj;
+
+    if (radio_cap == NULL || radio_object == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    cap_obj = cJSON_CreateObject();
+    if (cap_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to create radio capability object\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddItemToObject(radio_object, "RadioCapability", cap_obj);
+
+    /* WiFi6 (HE) capabilities */
+#ifdef CONFIG_IEEE80211AX
+    cJSON_AddBoolToObject(cap_obj, "WiFi6Supported", radio_cap->he_cap.wifi6_supported);
+    
+    cJSON *he_phy_cap_array = cJSON_CreateArray();
+    for (int i = 0; i < 11; i++) {
+	cJSON_AddItemToArray(he_phy_cap_array, cJSON_CreateNumber(radio_cap->he_cap.phy_cap[i]));
+    }
+    cJSON_AddItemToObject(cap_obj, "HEPHYCap", he_phy_cap_array);
+
+    cJSON *he_mac_cap_array = cJSON_CreateArray();
+    for (int i = 0; i < 6; i++) {
+	cJSON_AddItemToArray(he_mac_cap_array, cJSON_CreateNumber(radio_cap->he_cap.mac_cap[i]));
+    }
+    cJSON_AddItemToObject(cap_obj, "HEMACCap", he_mac_cap_array);
+
+    cJSON *he_mcs_nss_array = cJSON_CreateArray();
+    for (int i = 0; i < 12; i++) {
+	cJSON_AddItemToArray(he_mcs_nss_array, cJSON_CreateNumber(radio_cap->he_cap.mcs_nss_set[i]));
+    }
+    cJSON_AddItemToObject(cap_obj, "HEMCSNSSSet", he_mcs_nss_array);
+
+    cJSON *he_ppet_array = cJSON_CreateArray();
+    for (int i = 0; i < 25; i++) {
+	cJSON_AddItemToArray(he_ppet_array, cJSON_CreateNumber(radio_cap->he_cap.ppet[i]));
+    }
+    cJSON_AddItemToObject(cap_obj, "HEPPET", he_ppet_array);
+
+    //cJSON_AddNumberToObject(cap_obj, "HE6GHzCapa", radio_cap->6ghz_capa);
+#endif /* CONFIG_IEEE80211AX */
+
+    /* WiFi7 (EHT) capabilities */
+#ifdef CONFIG_IEEE80211BE
+    cJSON_AddBoolToObject(cap_obj, "WiFi7Supported", radio_cap->eht_cap.wifi7_supported);
+
+    cJSON_AddNumberToObject(cap_obj, "EHTMACCap", radio_cap->eht_cap.mac_cap);
+
+    cJSON *eht_phy_cap_array = cJSON_CreateArray();
+    for (int i = 0; i < 9; i++) {
+	cJSON_AddItemToArray(eht_phy_cap_array, cJSON_CreateNumber(radio_cap->eht_cap.phy_cap[i]));
+    }
+    cJSON_AddItemToObject(cap_obj, "EHTPHYCap", eht_phy_cap_array);
+
+    cJSON *eht_mcs_array = cJSON_CreateArray();
+    for (int i = 0; i < 9; i++) {
+	cJSON_AddItemToArray(eht_mcs_array, cJSON_CreateNumber(radio_cap->eht_cap.mcs[i]));
+    }
+    cJSON_AddItemToObject(cap_obj, "EHTMCS", eht_mcs_array);
+
+    cJSON *eht_ppet_array = cJSON_CreateArray();
+    for (int i = 0; i < 62; i++) {
+	cJSON_AddItemToArray(eht_ppet_array, cJSON_CreateNumber(radio_cap->eht_cap.ppet[i]));
+    }
+    cJSON_AddItemToObject(cap_obj, "EHTPPET", eht_ppet_array);
+#endif /* CONFIG_IEEE80211BE */
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radio_object)
 {
     const wifi_radio_operationParam_t *radio_info;
@@ -359,6 +435,12 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     if (encode_radio_curr_operating_classes(radio_info, radio_object) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,
             "%s:%d Radio current operation class encoding failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    // Radio Capabilities
+    if (encode_radio_capability(&radio->radio_capability, radio_object) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio capability encoding failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
     return webconfig_error_none;

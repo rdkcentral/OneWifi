@@ -47,6 +47,7 @@ typedef void (*ext_proto_update_ap_mld_info_t)(void *data_model, em_ap_mld_info_
 typedef void (*ext_proto_update_bsta_mld_info_t)(void *data_model, em_bsta_mld_info_t *bsta_mld_info);
 typedef void (*ext_proto_update_assoc_sta_mld_info_t)(void *data_model, em_assoc_sta_mld_info_t *assoc_sta_mld_info);
 typedef em_ap_mld_info_t * (*ext_proto_get_ap_mld_frm_bssid_t)(void *data_model, mac_address_t bss_id);
+typedef void * (*ext_proto_get_radio_cap_t)(void *data_model, mac_address_t ruid);
 
 typedef struct {
     void *data_model; /* agent data model dm_easy_mesh_t */
@@ -75,7 +76,8 @@ typedef struct {
     ext_proto_update_ap_mld_info_t update_ap_mld_info;
     ext_proto_update_bsta_mld_info_t update_bsta_mld_info;
     ext_proto_update_assoc_sta_mld_info_t update_assoc_sta_mld_info;
-    ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid; 
+    ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid;
+    ext_proto_get_radio_cap_t get_radio_cap;
 } webconfig_external_easymesh_t;
 
 void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model, void *m2ctrl_vapconfig, void *policy_config,
@@ -89,7 +91,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_info_with_mac,
         ext_proto_put_scan_results_t put_scan_results, ext_proto_update_ap_mld_info_t update_ap_mld_info,
         ext_proto_update_bsta_mld_info_t update_bsta_mld_info, ext_proto_update_assoc_sta_mld_info_t update_assoc_sta_mld_info,
-        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid);
+        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid, ext_proto_get_radio_cap_t get_radio_cap);
 
 #ifdef __cplusplus
 }
