@@ -36,20 +36,12 @@ bool vap_svc_is_private(unsigned int vap_index)
 
 int vap_svc_private_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-    // for private just create vaps and install acl filters
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_start(svc);
-    }
-
-    return 0;
+    return vap_svc_start(svc, radio_index);
 }
 
 int vap_svc_private_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_stop(svc);
-    }
-    return 0;
+    return vap_svc_stop(svc, radio_index);
 }
 
 static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
@@ -157,18 +149,24 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                                                 radio_index, map->vap_array[i].vap_index);
         get_wifidb_obj()->desc.print_fn("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
         if (isVapLnfPsk(p_tgt_vap_map->vap_array[0].vap_index)) {
-            update_lnf_psk_vap_hal_prop_bridge_name(svc, p_tgt_vap_map);
+            update_vap_hal_prop_bridge_name(svc, p_tgt_vap_map);
             // Since DB persistence not supported as of now for MDU LnF, copying it to here. To be moved in future.
-            wifi_vap_info_t* lnf_vap_info = NULL;
-            lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(p_tgt_vap_map->vap_array[0].vap_index);
+            wifi_vap_info_t *lnf_vap_info = NULL;
+            lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(
+                p_tgt_vap_map->vap_array[0].vap_index);
             if (lnf_vap_info == NULL) {
-                wifi_util_error_print(WIFI_CTRL,"%s:%d LnF VAP info not found for vap_index=%d\n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
+                wifi_util_error_print(WIFI_CTRL, "%s:%d LnF VAP info not found for vap_index=%d\n",
+                    __FUNCTION__, __LINE__, map->vap_array[i].vap_index);
                 return -1;
             }
             if (lnf_vap_info->u.bss_info.mdu_enabled) {
-                memcpy((unsigned char *)&lnf_vap_info->u.bss_info.security.repurposed_radius, (unsigned char *)&p_tgt_vap_map->vap_array[0].u.bss_info.security.repurposed_radius, sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
+                memcpy((unsigned char *)&lnf_vap_info->u.bss_info.security.repurposed_radius,
+                    (unsigned char *)&p_tgt_vap_map->vap_array[0]
+                        .u.bss_info.security.repurposed_radius,
+                    sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
             } else {
-                memset((unsigned char *)&lnf_vap_info->u.bss_info.security.repurposed_radius, 0, sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
+                memset((unsigned char *)&lnf_vap_info->u.bss_info.security.repurposed_radius, 0,
+                    sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
             }
         }
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],

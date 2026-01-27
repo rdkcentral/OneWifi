@@ -5021,7 +5021,7 @@ AMSDU_TID_GetEntry(ANSC_HANDLE hInsContext, ULONG nIndex, ULONG *pInsNumber)
 
 BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_)
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;
@@ -5104,7 +5104,7 @@ BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL 
 
 BOOL AMSDU_TID_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_)
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;
@@ -10695,7 +10695,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.preassoc.rssi_up_threshold, "disabled", sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold));
+            snprintf(vapInfo->u.bss_info.preassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             return TRUE;
         }
@@ -10713,7 +10713,7 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.preassoc.rssi_up_threshold, pString, sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold));
+        snprintf(vapInfo->u.bss_info.preassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -10725,7 +10725,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.preassoc.snr_threshold, "disabled", sizeof(vapInfo->u.bss_info.preassoc.snr_threshold));
+            snprintf(vapInfo->u.bss_info.preassoc.snr_threshold, sizeof(vapInfo->u.bss_info.preassoc.snr_threshold), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             return TRUE;
         }
@@ -10743,7 +10743,7 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.preassoc.snr_threshold, pString, sizeof(vapInfo->u.bss_info.preassoc.snr_threshold));
+        snprintf(vapInfo->u.bss_info.preassoc.snr_threshold, sizeof(vapInfo->u.bss_info.preassoc.snr_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -10756,7 +10756,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.preassoc.cu_threshold, "disabled", sizeof(vapInfo->u.bss_info.preassoc.cu_threshold));
+            snprintf(vapInfo->u.bss_info.preassoc.cu_threshold, sizeof(vapInfo->u.bss_info.preassoc.cu_threshold), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             return TRUE;
         }
@@ -10774,7 +10774,7 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.preassoc.cu_threshold, pString, sizeof(vapInfo->u.bss_info.preassoc.cu_threshold));
+        snprintf(vapInfo->u.bss_info.preassoc.cu_threshold, sizeof(vapInfo->u.bss_info.preassoc.cu_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -10788,7 +10788,7 @@ PreAssocDeny_SetParamStringValue
         }
           
         if (strcmp(pString, "disabled") == 0) {
-          strncpy(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, "disabled", sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates));
+          snprintf(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates), "%s", "disabled");
           set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
@@ -10799,7 +10799,7 @@ PreAssocDeny_SetParamStringValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Invalid value\n", __FUNCTION__,__LINE__,pString);
             return FALSE;
           }
-          strncpy(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, pString, sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates));
+          snprintf(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates), "%s", pString);
           set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
@@ -10817,7 +10817,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, "disabled", sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates));
+            snprintf(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
@@ -10829,7 +10829,7 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
           }
 
-          strncpy(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, pString, sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates));
+          snprintf(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates), "%s", pString);
           set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
@@ -10845,7 +10845,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, "disabled", sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates));
+            snprintf(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
@@ -10857,7 +10857,7 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
           }
 
-          strncpy(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, pString, sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates));
+          snprintf(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates), "%s", pString);
           set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
@@ -10873,7 +10873,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, "disabled", sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs));
+            snprintf(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
@@ -10891,7 +10891,7 @@ PreAssocDeny_SetParamStringValue
           return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, pString, sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs));
+        snprintf(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
@@ -10905,12 +10905,12 @@ PreAssocDeny_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, "disabled", sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate));
+            snprintf(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
-        strncpy(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, pString, sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate));
+        snprintf(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
@@ -10929,7 +10929,7 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.preassoc.tcm_exp_weightage, pString, sizeof(vapInfo->u.bss_info.preassoc.tcm_exp_weightage));
+        snprintf(vapInfo->u.bss_info.preassoc.tcm_exp_weightage, sizeof(vapInfo->u.bss_info.preassoc.tcm_exp_weightage), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
@@ -10941,7 +10941,7 @@ PreAssocDeny_SetParamStringValue
             return TRUE;
         }
 
-        strncpy(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold, pString, sizeof(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold));
+        snprintf(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold, sizeof(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
@@ -11513,7 +11513,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.postassoc.rssi_up_threshold, "disabled", sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold));
+            snprintf(vapInfo->u.bss_info.postassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             return TRUE;
         }
@@ -11531,7 +11531,7 @@ PostAssocDisc_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.postassoc.rssi_up_threshold, pString, sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold));
+        snprintf(vapInfo->u.bss_info.postassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -11555,7 +11555,7 @@ PostAssocDisc_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.postassoc.sampling_interval, pString, sizeof(vapInfo->u.bss_info.postassoc.sampling_interval));
+        snprintf(vapInfo->u.bss_info.postassoc.sampling_interval, sizeof(vapInfo->u.bss_info.postassoc.sampling_interval), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -11567,7 +11567,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.postassoc.snr_threshold, "disabled", sizeof(vapInfo->u.bss_info.postassoc.snr_threshold));
+            snprintf(vapInfo->u.bss_info.postassoc.snr_threshold, sizeof(vapInfo->u.bss_info.postassoc.snr_threshold), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             return TRUE;
         }
@@ -11585,7 +11585,7 @@ PostAssocDisc_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.postassoc.snr_threshold, pString, sizeof(vapInfo->u.bss_info.postassoc.snr_threshold));
+        snprintf(vapInfo->u.bss_info.postassoc.snr_threshold, sizeof(vapInfo->u.bss_info.postassoc.snr_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -11609,7 +11609,7 @@ PostAssocDisc_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.postassoc.sampling_count, pString, sizeof(vapInfo->u.bss_info.postassoc.sampling_count));
+        snprintf(vapInfo->u.bss_info.postassoc.sampling_count, sizeof(vapInfo->u.bss_info.postassoc.sampling_count), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -11621,7 +11621,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         if (strcmp(pString, "disabled") == 0) {
-            strncpy(vapInfo->u.bss_info.postassoc.cu_threshold, "disabled", sizeof(vapInfo->u.bss_info.postassoc.cu_threshold));
+            snprintf(vapInfo->u.bss_info.postassoc.cu_threshold, sizeof(vapInfo->u.bss_info.postassoc.cu_threshold), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
             return TRUE;
         }
@@ -11639,7 +11639,7 @@ PostAssocDisc_SetParamStringValue
             return FALSE;
         }
 
-        strncpy(vapInfo->u.bss_info.postassoc.cu_threshold, pString, sizeof(vapInfo->u.bss_info.postassoc.cu_threshold));
+        snprintf(vapInfo->u.bss_info.postassoc.cu_threshold, sizeof(vapInfo->u.bss_info.postassoc.cu_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
         return TRUE;
     }
@@ -16641,6 +16641,13 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "X_RDK_CapSpaStr", TRUE))
+    {
+        /* collect value */
+        *puLong = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
+        free(assoc_dev_data);
+        return TRUE;
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     free(assoc_dev_data);

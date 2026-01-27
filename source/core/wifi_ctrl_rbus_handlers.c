@@ -29,7 +29,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <limits.h>
 #define MAX_EVENT_NAME_SIZE 200
+#define MAX_STR_LEN 128
+#define MAX_STATUS_LEN 5
+
 
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
     char *eventName)
@@ -137,6 +141,10 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         return bus_error_general;
     }
     rf_status = p_data->raw_data.b;
+    if (ctrl->rf_status_down == rf_status) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d and value to set are same\n", __func__, __LINE__, ctrl->rf_status_down);
+        return rc;
+    }
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
@@ -608,7 +616,7 @@ int set_managed_guest_interfaces(char *interface_name, int radio_index)
 bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     unsigned int num_of_radios = getNumberRadios();
@@ -620,6 +628,13 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
             __LINE__);
         return bus_error_invalid_operation;
     }
+    
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:Failed to allocate memory\n", __FUNCTION__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+    
     if (ctrl->network_mode == rdk_dev_mode_type_gw) {
         if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT)) {
             if ((is_acs_channel_updated(num_of_radios) == false) ||
@@ -628,12 +643,16 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
                 wifi_util_info_print(WIFI_CTRL,
                     "%s:%d: sync_retries=%d wifidb and global radio config not updated\n",
                     __FUNCTION__, __LINE__, sync_retries);
+                free(data);
+                data = NULL;
                 return bus_error_invalid_operation;
             }
         }
 
         if((ctrl->rf_status_down == true) && !is_sta_set) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d: station is in configuring state\n", __FUNCTION__, __LINE__);
+            free(data);
+            data = NULL;
             return bus_error_invalid_operation;
         }
         wifi_util_info_print(WIFI_CTRL,
@@ -645,70 +664,78 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
             }
         }
         sync_retries = MAX_ACSD_SYNC_TIME_WAIT;
-        memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
+        memset(data, 0, sizeof(webconfig_subdoc_data_t));
+        memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config,
             num_of_radios * sizeof(rdk_wifi_radio_t));
-	memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
+	    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config,
 			sizeof(wifi_global_config_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
-        data.u.decoded.num_radios = num_of_radios;
+        data->u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
-	webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+	    webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
 
-        uint32_t str_size = (strlen(data.u.encoded.raw) + 1);
+        uint32_t str_size = (strlen(data->u.encoded.raw) + 1);
         p_data->data_type = bus_data_type_string;
         p_data->raw_data.bytes = malloc(str_size);
         if (p_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                 __LINE__, str_size);
+            free(data);
+            data = NULL;
             return bus_error_out_of_resources;
         }
-        strncpy((char *)p_data->raw_data.bytes, data.u.encoded.raw, str_size);
+        strncpy((char *)p_data->raw_data.bytes, data->u.encoded.raw, str_size);
         p_data->raw_data_len = str_size;
 
-        webconfig_data_free(&data);
+        webconfig_data_free(data);
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {
             wifi_util_dbg_print(WIFI_CTRL, "%s wifidb and cache are not synced!\n", __FUNCTION__);
+            free(data);
+            data = NULL;
             return bus_error_invalid_operation;
         }
-        memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
+        memset(data, 0, sizeof(webconfig_subdoc_data_t));
+        memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config,
             num_of_radios * sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
-        data.u.decoded.num_radios = num_of_radios;
+        data->u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
 	if (ctrl->dev_type != dev_subtype_pod) {
-		memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
+		memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config,
 				sizeof(wifi_global_config_t));
-		webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+		webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
 	} else {
-		webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mesh_sta);
+		webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta);
 	}
 
-        uint32_t str_size = (strlen(data.u.encoded.raw) + 1);
+        uint32_t str_size = (strlen(data->u.encoded.raw) + 1);
         p_data->data_type = bus_data_type_string;
         p_data->raw_data.bytes = malloc(str_size);
         if (p_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                 __LINE__, str_size);
+            free(data);
+            data = NULL;
             return bus_error_out_of_resources;
         }
-        strncpy((char *)p_data->raw_data.bytes, data.u.encoded.raw, str_size);
+        strncpy((char *)p_data->raw_data.bytes, data->u.encoded.raw, str_size);
         p_data->raw_data_len = str_size;
 
-        webconfig_data_free(&data);
+        webconfig_data_free(data);
     }
 
+    free(data);
+    data = NULL;
     return bus_error_success;
 }
 
 bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     int vap_index;
@@ -770,33 +797,45 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
         }
     }
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:Failed to allocate memory\n", __FUNCTION__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config,
         getNumberRadios() * sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
+    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config,
         sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
         sizeof(wifi_hal_capability_t));
-    data.u.decoded.num_radios = getNumberRadios();
+    data->u.decoded.num_radios = getNumberRadios();
     // tell webconfig to encode
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml) !=
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) !=
         webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
+        free(data);
+        data = NULL;
         return bus_error_general;
     }
 
-    uint32_t str_size = strlen(data.u.encoded.raw) + 1;
+    uint32_t str_size = strlen(data->u.encoded.raw) + 1;
     p_data->data_type = bus_data_type_string;
     p_data->raw_data.bytes = malloc(str_size);
     if (p_data->raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d memory allocation is failed:%d\r\n", __func__,
             __LINE__, str_size);
+        free(data);
+        data = NULL;
         return bus_error_out_of_resources;
     }
-    strncpy(p_data->raw_data.bytes, data.u.encoded.raw, str_size);
+    strncpy(p_data->raw_data.bytes, data->u.encoded.raw, str_size);
     p_data->raw_data_len = str_size;
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
     return bus_error_success;
 }
 
@@ -846,7 +885,65 @@ bus_error_t get_endpoint_status(char *event_name, raw_data_t *p_data, bus_user_d
 
     return bus_error_success;
 }
+int publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status)
+{
+    char name[MAX_STR_LEN] = { '\0' };
+    bus_error_t rc = bus_error_success;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__, connection_status);
+    if (ctrl->rf_status_down == true) {
+        raw_data_t data;
+        snprintf(name, MAX_STR_LEN,WIFI_ENDPOINT_CONNECT_STATUS);
+        memset(&data, 0, sizeof(raw_data_t));
+        data.data_type = bus_data_type_string;
+        data.raw_data.bytes = malloc(MAX_STATUS_LEN);
+        data.raw_data_len = MAX_STATUS_LEN;
+        memset(data.raw_data.bytes, '\0', MAX_STATUS_LEN);
+        if (connection_status == 2) { // connected state
+            strncpy((char *)data.raw_data.bytes, "Up", MAX_STATUS_LEN);
+        } else if ((connection_status == 1) || (connection_status == 3)) { // disconnected  or AP not found state
+            strncpy((char *)data.raw_data.bytes, "Down", MAX_STATUS_LEN);
+        }
+        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
+        if (rc != bus_error_success) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (data.raw_data.bytes) {
+            free(data.raw_data.bytes);
+            data.raw_data.bytes = NULL;
+        }
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint not enabled\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+    return RETURN_OK;
+}
+int publish_endpoint_enable(void)
+{
+    char name[MAX_STR_LEN] = { '\0' };
+    bus_error_t rc = bus_error_success;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    raw_data_t data;
 
+    if ((mgr == NULL) || (ctrl == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+        return bus_error_invalid_operation;
+    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d publish_endpoint_enable value=%d\n", __func__, __LINE__, ctrl->rf_status_down);
+    snprintf(name,MAX_STR_LEN, WIFI_ENDPOINT_ENABLE_CHECK);
+    memset(&data, 0, sizeof(raw_data_t));
+    data.data_type = bus_data_type_boolean;
+    data.raw_data.b = ctrl->rf_status_down;
+    rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
+    if (rc != bus_error_success) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint Enable publish  successful\n", __func__, __LINE__);
+    }
+    return RETURN_OK;
+}
 bus_error_t webconfig_set_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -979,7 +1076,7 @@ static void hotspotTunnelHandler(char *event_name, raw_data_t *p_data, void *use
 bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     assoc_dev_data_t *assoc_dev_data;
     int itr, itrj;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -1010,29 +1107,38 @@ bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_use
         }
     }
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config,
         getNumberRadios() * sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
         sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = getNumberRadios();
-    data.u.decoded.assoclist_notifier_type = assoclist_notifier_full;
-    webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients);
+    data->u.decoded.num_radios = getNumberRadios();
+    data->u.decoded.assoclist_notifier_type = assoclist_notifier_full;
+    webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_associated_clients);
 
-    uint32_t str_size = strlen(data.u.encoded.raw) + 1;
+    uint32_t str_size = strlen(data->u.encoded.raw) + 1;
     p_data->data_type = bus_data_type_string;
     p_data->raw_data.bytes = malloc(str_size);
     if (p_data->raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
             __LINE__, str_size);
+        free(data);
+        data = NULL;
         return bus_error_out_of_resources;
     }
-    strncpy((char *)p_data->raw_data.bytes, data.u.encoded.raw, str_size);
+    strncpy((char *)p_data->raw_data.bytes, data->u.encoded.raw, str_size);
     p_data->raw_data_len = str_size;
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return bus_error_success;
 }
@@ -1040,7 +1146,7 @@ bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_use
 bus_error_t get_null_subdoc_data(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -1056,26 +1162,35 @@ bus_error_t get_null_subdoc_data(char *name, raw_data_t *p_data, bus_user_data_t
         return bus_error_invalid_input;
     }
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
         sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = getNumberRadios();
-    webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_null);
+    data->u.decoded.num_radios = getNumberRadios();
+    webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_null);
 
-    uint32_t str_size = strlen(data.u.encoded.raw) + 1;
+    uint32_t str_size = strlen(data->u.encoded.raw) + 1;
     p_data->data_type = bus_data_type_string;
     p_data->raw_data.bytes = malloc(str_size);
     if (p_data->raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
             __LINE__, str_size);
+        free(data);
+        data = NULL;
         return bus_error_out_of_resources;
     }
-    strncpy(p_data->raw_data.bytes, data.u.encoded.raw, str_size);
+    strncpy(p_data->raw_data.bytes, data->u.encoded.raw, str_size);
     p_data->raw_data_len = str_size;
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return bus_error_success;
 }
@@ -1267,14 +1382,16 @@ char *get_assoc_devices_blob()
 
     webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients);
 
-    str = (char *)calloc(strlen(pdata->u.encoded.raw) + 1, sizeof(char));
+    size_t len = strlen(pdata->u.encoded.raw);
+    str = (char *)calloc(len + 1, sizeof(char));
     if (str == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
         free(pdata);
         return NULL;
     }
 
-    memcpy(str, pdata->u.encoded.raw, strlen(pdata->u.encoded.raw));
+    memcpy(str, pdata->u.encoded.raw, len);
+    str[len] = '\0';
 
     webconfig_data_free(pdata);
     free(pdata);
@@ -1285,7 +1402,7 @@ char *get_assoc_devices_blob()
 bus_error_t get_acl_device_data(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -1301,26 +1418,33 @@ bus_error_t get_acl_device_data(char *name, raw_data_t *p_data, bus_user_data_t 
         return bus_error_invalid_input;
     }
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config,
         getNumberRadios() * sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
         sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = getNumberRadios();
+    data->u.decoded.num_radios = getNumberRadios();
 
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mac_filter) ==
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mac_filter) ==
         webconfig_error_none) {
 
-        uint32_t str_size = strlen(data.u.encoded.raw) + 1;
+        uint32_t str_size = strlen(data->u.encoded.raw) + 1;
         p_data->data_type = bus_data_type_string;
         p_data->raw_data.bytes = malloc(str_size);
         if (p_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                 __LINE__, str_size);
+            free(data);
+            data = NULL;
             return bus_error_out_of_resources;
         }
-        strncpy(p_data->raw_data.bytes, data.u.encoded.raw, str_size);
+        strncpy(p_data->raw_data.bytes, data->u.encoded.raw, str_size);
         p_data->raw_data_len = str_size;
 
         wifi_util_info_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n",
@@ -1329,7 +1453,9 @@ bus_error_t get_acl_device_data(char *name, raw_data_t *p_data, bus_user_data_t 
         wifi_util_error_print(WIFI_DMCLI, "%s: ACL DML cache encode failed  \n", __FUNCTION__);
     }
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return bus_error_success;
 }
@@ -1503,6 +1629,7 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
         frame_data.frame.dir = data_ptr->frame.dir;
         frame_data.frame.sig_dbm = data_ptr->frame.sig_dbm;
         frame_data.frame.phy_rate = data_ptr->frame.phy_rate;
+        frame_data.frame.recv_freq = data_ptr->frame.recv_freq;
         frame_data.frame.data = data_ptr->frame.data;
 
         memcpy(&frame_data.data, data_ptr->data, data_ptr->frame.len);
@@ -1518,10 +1645,10 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
 #if defined(_XB7_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
-            frame_data.frame.sig_dbm, frame_data.frame.phy_rate);
+            frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);
 #else
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
-            frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir);
+            frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir, frame_data.frame.recv_freq);
 #endif
 #endif
     }
@@ -1555,7 +1682,7 @@ static void wps_test_event_receive_handler(char *event_name, raw_data_t *p_data,
     }
 }
 
-#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
+#if defined(EASY_MESH_NODE)
 static void wifi_sta_2g_status_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
     (void)userData;
@@ -1636,9 +1763,10 @@ static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data, void 
             event_name, p_data->data_type);
         return;
     }
-    char *json_schema = (char*)malloc((p_data->raw_data_len + 1)*sizeof(char));
-    strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
-    json_schema[p_data->raw_data_len] = '\0';
+    char *json_schema = (char *)p_data->raw_data.bytes;
+    if (json_schema == NULL) {
+        return;
+    }
     wifi_util_info_print(WIFI_CTRL, "%s:%d Received bus ACS Keep-Out json_schema: %s \n", __func__, __LINE__, json_schema);
     push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1),wifi_event_type_webconfig,wifi_event_webconfig_data_to_hal_apply,NULL);
 }
@@ -1925,7 +2053,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
-#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
+#if defined(EASY_MESH_NODE)
     if (ctrl->wifi_sta_2g_status_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_STA_2G_VAP_CONNECT_STATUS, wifi_sta_2g_status_handler, NULL,
                 0) != bus_error_success) {
@@ -2053,7 +2181,8 @@ bus_error_t get_sta_attribs(char *name, raw_data_t *p_data, bus_user_data_t *use
 
     } else if (strcmp(extension, "InterfaceName") == 0) {
         l_interface_name = get_interface_name_for_vap_index(vap_index, &mgr->hal_cap.wifi_prop);
-
+        if(l_interface_name == NULL)
+            return bus_error_invalid_operation;
         uint32_t bytes_size = (strlen(*l_interface_name) + 1);
         p_data->data_type = bus_data_type_string;
         p_data->raw_data.bytes = malloc(bytes_size);
@@ -2949,6 +3078,7 @@ int events_bus_publish(wifi_event_t *evt)
     unsigned int vap_array_index;
     uint32_t len = 0;
     raw_data_t data;
+    uint8_t freq_frame_data[sizeof(wifi_frame_t) + MAX_FRAME_SZ];
 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -3025,8 +3155,16 @@ int events_bus_publish(wifi_event_t *evt)
             pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
             memset(&data, 0, sizeof(raw_data_t));
             data.data_type = bus_data_type_bytes;
-            data.raw_data.bytes = (void *)&evt->u.mon_data->u.msg.data;
-            data.raw_data_len = evt->u.mon_data->u.msg.frame.len;
+            
+            // Put wifi_frame_t at the start of the frame data
+            memset(freq_frame_data, 0, sizeof(wifi_frame_t) + MAX_FRAME_SZ);
+            memcpy(freq_frame_data, &evt->u.mon_data->u.msg.frame, sizeof(wifi_frame_t));
+            ((wifi_frame_t*)freq_frame_data)->data = NULL; // Clear pointer before sending over bus
+            memcpy(&freq_frame_data[sizeof(wifi_frame_t)], evt->u.mon_data->u.msg.data,
+                evt->u.mon_data->u.msg.frame.len);
+
+            data.raw_data.bytes = (void *)freq_frame_data;
+            data.raw_data_len = evt->u.mon_data->u.msg.frame.len + sizeof(wifi_frame_t);
 
             rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, eventName, &data);
             pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
@@ -3214,13 +3352,18 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
 
         vap_array_index = convert_vap_index_to_vap_array_index(&mgr->hal_cap.wifi_prop,
             (unsigned int)idx - 1);
-
+        if (vap_array_index == UINT_MAX) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap_radio_index\n", __func__,
+                __LINE__);
+            free(data);
+            return bus_error_invalid_input;
+        }
         radio_index = getRadioIndexFromAp((unsigned int)idx - 1);
 
         data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index].force_apply =
             force_apply;
 
-        get_subdoc_name_from_vap_index(idx - 1, &subdoc_type);
+        get_subdoc_type_name_from_ap_index(idx - 1, &subdoc_type);
 
         if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding radio stats\n", __func__,

@@ -1006,13 +1006,13 @@ int convert_radio_name_to_radio_index(char *name)
 int convert_radio_index_to_radio_name(int index, char *name)
 {
     if (index == 0) {
-        strncpy(name,"radio1",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio1",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 1) {
-        strncpy(name,"radio2",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio2",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 2) {
-        strncpy(name,"radio3",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio3",RADIO_NAME_LENGTH);
         return 0;
     }
 
@@ -1716,11 +1716,13 @@ int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, 
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        if ((strcmp(auto_channel_string, "auto")) || (strcmp(auto_channel_string, "cloud")) || (strcmp(auto_channel_string, "acs"))) {
+        if ((strcmp(auto_channel_string, "auto") == 0) || (strcmp(auto_channel_string, "cloud") == 0) || (strcmp(auto_channel_string, "acs") == 0)) {
             *auto_channel_bool = true;
             return RETURN_OK;
-        } else if (strcmp(auto_channel_string, "manual")) {
+        } else if (strcmp(auto_channel_string, "manual") == 0) {
             *auto_channel_bool = false;
+            return RETURN_OK;
+        } else if (strcmp(auto_channel_string, "") == 0) {
             return RETURN_OK;
         }
     } else if (conv_type == ENUM_TO_STRING) {
@@ -3876,6 +3878,34 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
+{
+    if ((vap_info_old == NULL) || (vap_info_new == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: input args are NULL vap_info_old : %p vap_info_new : %p\n", __func__, __LINE__,
+            vap_info_old, vap_info_new);
+        return false;
+    }
+    if (vap_info_old->u.bss_info.mld_info.common_info.mld_enable ||
+        vap_info_new->u.bss_info.mld_info.common_info.mld_enable) {
+        if (IS_BIN_CHANGED(&vap_info_old->u.bss_info.mld_info.common_info.mld_addr,
+                &vap_info_new->u.bss_info.mld_info.common_info.mld_addr,
+                sizeof(vap_info_old->u.bss_info.mld_info.common_info.mld_addr))) {
+            mac_addr_str_t old_mld_mac_str = { 0 };
+            mac_addr_str_t new_mld_mac_str = { 0 };
+
+            to_mac_str(vap_info_old->u.bss_info.mld_info.common_info.mld_addr, old_mld_mac_str);
+            to_mac_str(vap_info_new->u.bss_info.mld_info.common_info.mld_addr, new_mld_mac_str);
+            wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: MLD address changed old: %s ,new: %s\n",
+                __func__, __LINE__, old_mld_mac_str, new_mld_mac_str);
+            return true;
+        }
+    }
+    return false;
+}
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
+
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3981,6 +4011,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+            is_mld_addr_changed(vap_info_old, vap_info_new) ||
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.interop_ctrl,
@@ -4005,30 +4038,30 @@ static const wifi_operating_classes_t us_24G[] = {
 
 // Countrycode: US, Band 5G
 static const wifi_operating_classes_t us_5G[] = {
-    { 115, -30, 0, {}           },
-    { 116, -30, 0, {}           },
-    { 117, -30, 0, {}           },
-    { 118, -30, 0, {}           },
-    { 119, -30, 0, {}           },
-    { 120, -30, 0, {}           },
-    { 121, -30, 0, {}           },
-    { 122, -30, 0, {}           },
-    { 123, -30, 0, {}           },
-    { 124, -30, 0, {}           },
-    { 125, -30, 2, { 169, 173 } },
-    { 126, -30, 0, {}           },
-    { 127, -30, 1, { 169 }      },
+    { 115, -30, 0, {}      	     },
+    { 116, -30, 0, {}                },
+    { 117, -30, 0, {}                },
+    { 118, -30, 0, {}                },
+    { 119, -30, 0, {}                },
+    { 120, -30, 0, {}                },
+    { 121, -30, 0, {}                },
+    { 122, -30, 0, {}                },
+    { 123, -30, 0, {}                },
+    { 124, -30, 0, {}                },
+    { 125, -30, 3, { 169, 173, 177 } },
+    { 126, -30, 2, { 165, 173 }      },
+    { 127, -30, 2, { 169, 177 }      },
     // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
     // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
     // are operable.
-    { 128, -30, 0, {}           },
+    { 128, -30, 1, { 171 }           }, 
     // Revisit Below Operating Class as singleAP.json example indicates nonOperable as
     // [50] but as per Table E-1 the channel is operable.
-    { 129, -30, 0, {}           },
+    { 129, -30, 1, { 163 }           },
     // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
     // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
     // are operable.
-    { 130, -30, 0, {}           },
+    { 130, -30, 7, { 42, 58, 106, 122, 138, 155, 171 }           },
 };
 
 // Countrycode: US, Band 6G
@@ -4036,7 +4069,7 @@ static const wifi_operating_classes_t us_6G[] = {
     { 131, 23,  0, {}      },
     { 132, 23,  0, {}      },
     { 133, 23,  0, {}      },
-    { 134, 23,  1, { 169 } },
+    { 134, 23,  0, {} 	   },
     { 135, -30, 0, {}      },
     { 136, 23,  0, {}      },
 };

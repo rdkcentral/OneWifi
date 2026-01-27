@@ -971,7 +971,7 @@ void devnull(int fd)
     int nfd;
 
     nfd = open("/dev/null", O_RDWR);
-    if (fd < 0)
+    if (nfd < 0)
     {
         LOG(WARNING, "Unable to open '/dev/null'.");
         return;

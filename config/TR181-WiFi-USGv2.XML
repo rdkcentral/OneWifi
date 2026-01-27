@@ -207,7 +207,7 @@
         </parameter>
         <parameter>
             <name>WHIX_LogInterval</name>
-            <type>int[300:3600]</type>
+            <type>int[60:3600]</type>
             <syntax>int</syntax>
             <writable>true</writable>
         </parameter>
@@ -3360,6 +3360,11 @@ INSTMSMT_PH2 -->
                        		<parameter>
                             	    <name>X_COMCAST-COM_AuthenticationFailures</name>
                             	    <type>unsignedInt</type>
+                            	    <syntax>uint32</syntax>
+                        	</parameter>
+                        	<parameter>
+                            	    <name>X_RDK_CapSpaStr</name>
+                            	    <type>unsignedInt[0:8]</type>
                             	    <syntax>uint32</syntax>
                         	</parameter>
                             </parameters>

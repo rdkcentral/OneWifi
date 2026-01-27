@@ -122,7 +122,7 @@ static elem_node_map_t *insert_table_row(elem_node_map_t *table_root, char *node
                     snprintf(buff, sizeof(buff), "%s", node_name);
                 }
                 wifi_util_dbg_print(WIFI_BUS,"Full name [%s]\r\n", buff);
-                strncpy(temp_node->full_name, buff, strlen(buff) + 1);
+                snprintf(temp_node->full_name, sizeof(temp_node->full_name), "%s", buff);
                 strncpy(temp_node->name, node_name, strlen(node_name) + 1);
                 current_node->nextSibling = temp_node;
                 current_node = temp_node;
@@ -281,7 +281,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
                 else
                 {
                     snprintf(buff, sizeof(buff), "%s.%s", current_node->full_name, token);
-                    strncpy(temp_node->full_name, buff, strlen(buff) + 1);
+                    snprintf(temp_node->full_name, sizeof(temp_node->full_name), "%s", buff);
                 }
                 strncpy(temp_node->name, token, strlen(token) + 1);
                 current_node->child = temp_node;
@@ -321,7 +321,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
                         snprintf(buff, sizeof(buff), "%s", token);
                     }
                     wifi_util_dbg_print(WIFI_BUS,"Full name [%s]\n", buff);
-                    strncpy(temp_node->full_name, buff, strlen(buff) + 1);
+                    snprintf(temp_node->full_name, sizeof(temp_node->full_name), "%s", buff);
                     strncpy(temp_node->name, token, strlen(token) + 1);
                     current_node->nextSibling = temp_node;
                     current_node = temp_node;
@@ -347,7 +347,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
             rowTemplate->parent = current_node;
             strncpy(rowTemplate->name, "{i}", strlen("{i}") + 1);
             snprintf(buff, sizeof(buff), "%s.%s", current_node->full_name, rowTemplate->name);
-            strncpy(rowTemplate->full_name, buff, strlen(buff) + 1);
+            snprintf(rowTemplate->full_name, sizeof(rowTemplate->full_name), "%s", buff);
             current_node->child = rowTemplate;
 
             //bus_add_table_row(current_node, elem->num_of_table_row);
@@ -432,13 +432,18 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
 
         if(token && next_node && next_node->parent && next_node->parent->type == bus_element_type_table)
         {
-            if(!isWildcard && !strcmp(token,"*"))
-            {
+            bus_callback_table_t *user_cb = NULL;
+            bus_mux_reg_node_data_t *reg_node_data = next_node->parent->node_elem_data;
+
+            if (reg_node_data != NULL) {
+                user_cb = &reg_node_data->cb_table;
+            }
+
+            if (!isWildcard && !strcmp(token,"*")) {
                 isWildcard = true;
             }
 
-            if(isWildcard)
-            {
+            if (isWildcard || (user_cb && user_cb->get_handler)) {
                 token = "{i}";
             }
         }
@@ -467,7 +472,7 @@ elem_node_map_t *get_bus_node_info(elem_node_map_t *cb_root, char *name)
         return NULL;
     }
 
-    strcpy(recv_name, name);
+    snprintf(recv_name, sizeof(recv_name), "%s", name);
 
     node_elem = retrieve_instance_elem_node(cb_root, recv_name);
     if (node_elem != NULL) {

@@ -48,10 +48,15 @@ void process_eap_data(wifi_8021x_data_t *data, wifi_8021x_t *module, bool new_ev
     wifi_eap_frame_t *eap, *prev_eap;
     wifi_8021x_data_t *prev_data;
     mac_addr_str_t mac_str;
-    char direction[32], msg[32];
+    char direction[32] = "", msg[32] = "";
     struct timeval tnow;
 
     gettimeofday(&tnow, NULL);
+
+    if (data == NULL || data->data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: NULL pointer encountered\n", __func__, __LINE__);
+        return;
+    }
 
     eap = (wifi_eap_frame_t *)data->data;
 
@@ -67,10 +72,8 @@ void process_eap_data(wifi_8021x_data_t *data, wifi_8021x_t *module, bool new_ev
 
             wifi_util_dbg_print(WIFI_MON, "%s:%d: Removing from hash and deleting\n", __func__, __LINE__);
             hash_map_remove(module->bssid[data->vap].sta_map, mac_str);
-            if (data->data != NULL)
-                free(data->data);
-            if (data != NULL)
-                free(data);
+            free(data->data);
+            free(data);
         }
 
         return;

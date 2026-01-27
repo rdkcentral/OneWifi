@@ -103,6 +103,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
             cfg.variant |= WIFI_80211_VARIANT_BE;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
 #endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
             break;
         case WIFI_FREQUENCY_5_BAND:
@@ -110,7 +111,11 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.operatingClass = 128;
             cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+#if defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+            cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
+#else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
+#endif
 
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
@@ -127,14 +132,21 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.operatingClass = 131;
+            cfg.operatingClass = 134;
+#ifndef _PLATFORM_BANANAPI_R4_
             cfg.channel = 5;
+#else
+            cfg.channel = 37;
+#endif /* _PLATFORM_BANANAPI_R4_ */
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
 
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
+#ifndef _PLATFORM_BANANAPI_R4_
+//            cfg.operatingClass = 137;
 //            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
             break;
         default:
@@ -208,7 +220,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         cfg.amsduTid[j] = FALSE;
     }
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     if (cfg.band == WIFI_FREQUENCY_6_BAND) {
         for (int j = 0; j < 5; j++) {
             cfg.amsduTid[j] = TRUE;
@@ -334,8 +346,15 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
             cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
         } else {
-                cfg.u.sta_info.security.mfp = wifi_mfp_cfg_disabled;
-                cfg.u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+#if defined(_PLATFORM_BANANAPI_R4_)
+            cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+            cfg.u.sta_info.security.wpa3_transition_disable = false;
+            cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
+            cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
+#else
+            cfg.u.sta_info.security.mfp = wifi_mfp_cfg_disabled;
+            cfg.u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+#endif // _PLATFORM_BANANAPI_R4_
         }
         cfg.u.sta_info.security.encr = wifi_encryption_aes;
         cfg.u.sta_info.enabled = false;
@@ -441,10 +460,10 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
 #if defined(_PLATFORM_BANANAPI_R4_)
-                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
-                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
 #else
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif // _PLATFORM_BANANAPI_R4_
@@ -458,7 +477,14 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
+#if defined(_PLATFORM_BANANAPI_R4_)
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+#else
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+#endif //_PLATFORM_BANANAPI_R4_
             }
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
             cfg.u.bss_info.bssHotspot = false;

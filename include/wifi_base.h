@@ -82,6 +82,22 @@ extern "C" {
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
+#ifdef CONFIG_IEEE80211BE
+
+#ifndef MAX_NUM_MLD_LINKS
+#define MAX_NUM_MLD_LINKS 15
+#endif /*MAX_NUM_MLD_LINKS*/
+
+#define UNDEFINED_MLD_ID 255
+
+#ifdef CONFIG_NO_MLD_ONLY_PRIVATE
+#define MLD_UNIT_COUNT 8
+#else
+#define MLD_UNIT_COUNT 1
+#endif /* CONFIG_NO_MLD_ONLY_PRIVATE */
+
+#endif /* CONFIG_IEEE80211BE */
+
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
@@ -421,7 +437,7 @@ typedef struct {
     char          wps_pin[10];
 } __attribute__((__packed__)) wps_pin_config_t;
 
-#define MAX_SCANNED_VAPS       32
+#define MAX_SCANNED_VAPS       200
 
 typedef struct {
     unsigned int radio_index;

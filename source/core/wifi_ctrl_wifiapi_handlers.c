@@ -622,6 +622,10 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
          }
          return;
       }
+    if (dev_array == NULL) {
+        snprintf(result_buf, result_buf_size, "Error: dev_array is NULL\n");
+        return;
+    }
 		char* to_sta_key(uint8_t *mac_address, sta_key_t sta_key) {
     snprintf(sta_key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
              mac_address[0], mac_address[1], mac_address[2],
@@ -660,11 +664,11 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
               dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
               dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
               dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
+      }
       if (dev_array != NULL) {
         free(dev_array);
         dev_array = NULL;
     }
-      }
 }
 
 void process_wifiapi_command(char *command, unsigned int len)
@@ -678,7 +682,7 @@ void process_wifiapi_command(char *command, unsigned int len)
     static char buff[10024];
 
     webconfig_t *config;
-    webconfig_subdoc_data_t data = {0};
+    webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     FILE *json_file;
@@ -699,6 +703,13 @@ void process_wifiapi_command(char *command, unsigned int len)
         num_args++;
         str = strtok_r(NULL, " ", &saveptr);
     }
+
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
     for (i=0; i < (sizeof(wifi_api_list)/sizeof(struct hal_api_info)); i++) {
         if (strcmp(args[0], wifi_api_list[i].name) == 0) {
@@ -751,32 +762,33 @@ void process_wifiapi_command(char *command, unsigned int len)
         //webconfig decode
         config = &ctrl->webconfig;
 
-        if (webconfig_decode(config, &data, raw) == webconfig_error_none) {
-            if (data.type != webconfig_subdoc_type_wifiapiradio) {
-                sprintf(buff, "%s: invalid configuration format. type %d", args[0], data.type);
+        if (webconfig_decode(config, data, raw) == webconfig_error_none) {
+            if (data->type != webconfig_subdoc_type_wifiapiradio) {
+                sprintf(buff, "%s: invalid configuration format. type %d", args[0], data->type);
                 goto publish;
             }
         } else {
             sprintf(buff, "%s: invalid configuration format", args[0]);
             goto publish;
         }
-        if (data.u.decoded.radios[radio_index].name[0] == '\0') {
+        if (data->u.decoded.radios[radio_index].name[0] == '\0') {
             sprintf(buff, "%s: radio name in the configuration does not match radio index", args[0]);
             goto publish;
         }
         //validation and check for changes?
         //call hal_api
-        ret = wifi_hal_setRadioOperatingParameters(radio_index, &(data.u.decoded.radios[radio_index].oper));
+        ret = wifi_hal_setRadioOperatingParameters(radio_index, &(data->u.decoded.radios[radio_index].oper));
         if (ret != RETURN_OK) {
             sprintf(buff, "%s: wifi_hal_setRadioOperatingParameters failed", args[0]);
             goto publish;
         }
         //update db/global memory
 #ifndef LINUX_VM_PORT
-        get_wifidb_obj()->desc.update_radio_cfg_fn(radio_index, &(data.u.decoded.radios[radio_index].oper), &(data.u.decoded.radios[radio_index].feature));
+        get_wifidb_obj()->desc.update_radio_cfg_fn(radio_index, &(data->u.decoded.radios[radio_index].oper),
+            &(data->u.decoded.radios[radio_index].feature));
 #endif
         //update result
-        wifiapi_printradioconfig(buff, sizeof(buff), &(data.u.decoded.radios[radio_index].oper));
+        wifiapi_printradioconfig(buff, sizeof(buff), &(data->u.decoded.radios[radio_index].oper));
 
 
     } else if (strcmp(args[0], "wifi_getRadioOperatingParameters")==0) {
@@ -787,12 +799,12 @@ void process_wifiapi_command(char *command, unsigned int len)
             goto publish;
         }
         //call hal_api
-        //ret = wifi_hal_getRadioOperatingParameters(radio_index, &data.u.decoded.radios[radio_index]);
+        //ret = wifi_hal_getRadioOperatingParameters(radio_index, &data->u.decoded.radios[radio_index]);
         //if (ret != RETURN_OK) {
         //    sprintf(buff, "%s: wifi_hal_getRadioOperatingParameters failed", args[0]);
         //}
         //update result
-        //wifiapi_printradioconfig(buff, sizeof(buff), &(data.u.decoded.radios[radio_index].oper));
+        //wifiapi_printradioconfig(buff, sizeof(buff), &(data->u.decoded.radios[radio_index].oper));
         wifiapi_printradioconfig(buff, sizeof(buff), &(mgr->radio_config[radio_index].oper));
 
     } else if (strcmp(args[0], "wifi_createVAP")==0) {
@@ -829,16 +841,16 @@ void process_wifiapi_command(char *command, unsigned int len)
         //webconfig decode
         config = &ctrl->webconfig;
 
-        if (webconfig_decode(config, &data, raw) == webconfig_error_none) {
-            if (data.type != webconfig_subdoc_type_wifiapivap) {
-                sprintf(buff, "%s: invalid configuration format. type %d", args[0], data.type);
+        if (webconfig_decode(config, data, raw) == webconfig_error_none) {
+            if (data->type != webconfig_subdoc_type_wifiapivap) {
+                sprintf(buff, "%s: invalid configuration format. type %d", args[0], data->type);
                 goto publish;
             }
         } else {
             sprintf(buff, "%s: invalid configuration format", args[0]);
             goto publish;
         }
-        radio = &data.u.decoded.radios[radio_index];
+        radio = &data->u.decoded.radios[radio_index];
         vap_map = &radio->vaps.vap_map;
         vap_info = &vap_map->vap_array[0];
         if (vap_info->vap_name[0] == '\0') {
@@ -995,6 +1007,8 @@ publish:
     if (raw != NULL) {
         free(raw);
     }
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
     return;
 }
