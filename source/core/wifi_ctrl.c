@@ -84,15 +84,22 @@ static int wifi_radio_set_enable(bool status)
     int ret = RETURN_OK;
     uint8_t index = 0;
     uint8_t num_of_radios = getNumberRadios();
-    wifi_radio_operationParam_t temp_wifi_radio_oper_param;
+    wifi_radio_operationParam_t *temp_wifi_radio_oper_param = NULL;
 
-    memset(&temp_wifi_radio_oper_param, 0, sizeof(temp_wifi_radio_oper_param));
+    temp_wifi_radio_oper_param = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (temp_wifi_radio_oper_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(temp_wifi_radio_oper_param, 0, sizeof(wifi_radio_operationParam_t));
 
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d num_of_radios:%d\n", __func__, __LINE__, num_of_radios);
     for (index = 0; index < num_of_radios; index++) {
         wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
         if (wifi_radio_oper_param == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d wrong index for radio map: %d\n", __func__, __LINE__, index);
+            free(temp_wifi_radio_oper_param);
+            temp_wifi_radio_oper_param = NULL;
             return RETURN_ERR;
         }
 
@@ -102,10 +109,10 @@ static int wifi_radio_set_enable(bool status)
             continue;
         }
 
-        memcpy(&temp_wifi_radio_oper_param, wifi_radio_oper_param, sizeof(wifi_radio_operationParam_t));
-        temp_wifi_radio_oper_param.enable = status;
+        memcpy(temp_wifi_radio_oper_param, wifi_radio_oper_param, sizeof(wifi_radio_operationParam_t));
+        temp_wifi_radio_oper_param->enable = status;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d index: %d radio enable status:%d\n", __func__, __LINE__, index, status);
-        ret = wifi_hal_setRadioOperatingParameters(index, &temp_wifi_radio_oper_param);
+        ret = wifi_hal_setRadioOperatingParameters(index, temp_wifi_radio_oper_param);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio parameter set failure: radio_index:%d\n", __func__, __LINE__, index);
         } else {
@@ -114,6 +121,8 @@ static int wifi_radio_set_enable(bool status)
 
     }
 
+    free(temp_wifi_radio_oper_param);
+    temp_wifi_radio_oper_param = NULL;
     return ret;
 }
 
