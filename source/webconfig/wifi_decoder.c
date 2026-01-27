@@ -3878,16 +3878,16 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: -90 to -50\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val > -50 || val < -95) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->rssi_up_threshold, param->valuestring);
+        snprintf((char *)preassoc_info->rssi_up_threshold, sizeof(preassoc_info->rssi_up_threshold), "%s", param->valuestring);
     }
 
     // SnrThreshold
@@ -3900,16 +3900,16 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->snr_threshold, param->valuestring);
+        snprintf((char *)preassoc_info->snr_threshold, sizeof(preassoc_info->snr_threshold), "%s", param->valuestring);
     }
 
      // CuThreshold
@@ -3922,16 +3922,16 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 0 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->cu_threshold, param->valuestring);
+        snprintf((char *)preassoc_info->cu_threshold, sizeof(preassoc_info->cu_threshold), "%s", param->valuestring);
     }
 
     // basic_data_transmit_rate
@@ -3944,11 +3944,11 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->basic_data_transmit_rates, param->valuestring);
+        snprintf((char *)preassoc_info->basic_data_transmit_rates, sizeof(preassoc_info->basic_data_transmit_rates), "%s", param->valuestring);
     }
 
      // operational_data_transmit_rate
@@ -3957,7 +3957,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
     if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
         strcpy((char *)preassoc_info->operational_data_transmit_rates, "disabled");
     } else {
-        strcpy((char *)preassoc_info->operational_data_transmit_rates, param->valuestring);
+        snprintf((char *)preassoc_info->operational_data_transmit_rates, sizeof(preassoc_info->operational_data_transmit_rates), "%s", param->valuestring);
     }
 
      // supported_data_transmit_rate
@@ -3966,7 +3966,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
     if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
         strcpy((char *)preassoc_info->supported_data_transmit_rates, "disabled");
     } else {
-        strcpy((char *)preassoc_info->supported_data_transmit_rates, param->valuestring);
+        snprintf((char *)preassoc_info->supported_data_transmit_rates, sizeof(preassoc_info->supported_data_transmit_rates), "%s", param->valuestring);
     }
 
      // minimum_advertised_mcs
@@ -3986,7 +3986,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
           wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect value, value should be withing 0 to 7\n", __FUNCTION__,__LINE__);
           return webconfig_error_decode;
         }
-        strcpy((char *)preassoc_info->minimum_advertised_mcs, param->valuestring);
+        snprintf((char *)preassoc_info->minimum_advertised_mcs, sizeof(preassoc_info->minimum_advertised_mcs), "%s", param->valuestring);
     }
 
      //6GOpInfoMinRate
@@ -3996,7 +3996,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
         if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
             strcpy((char *)preassoc_info->sixGOpInfoMinRate, "disabled");
         } else {
-            strcpy((char *)preassoc_info->sixGOpInfoMinRate, param->valuestring);
+            snprintf((char *)preassoc_info->sixGOpInfoMinRate, sizeof(preassoc_info->sixGOpInfoMinRate), "%s", param->valuestring);
         }
    }
    else {
@@ -4082,16 +4082,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format.\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val > -50 || val < -95) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->rssi_up_threshold, param->valuestring);
+        snprintf((char *)postassoc_info->rssi_up_threshold, sizeof(postassoc_info->rssi_up_threshold), "%s", param->valuestring);
     }
 
     // SamplingInterval
@@ -4104,16 +4104,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 10) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d  Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->sampling_interval, param->valuestring);
+        snprintf((char *)postassoc_info->sampling_interval, sizeof(postassoc_info->sampling_interval), "%s", param->valuestring);
     }
 
     // SnrThreshold
@@ -4126,16 +4126,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->snr_threshold, param->valuestring);
+        snprintf((char *)postassoc_info->snr_threshold, sizeof(postassoc_info->snr_threshold), "%s", param->valuestring);
     }
 
     // SamplingCount
@@ -4148,16 +4148,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 10) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->sampling_count, param->valuestring);
+        snprintf((char *)postassoc_info->sampling_count, sizeof(postassoc_info->sampling_count), "%s", param->valuestring);
     }
 
      // CuThreshold
@@ -4170,16 +4170,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 10 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->cu_threshold, param->valuestring);
+        snprintf((char *)postassoc_info->cu_threshold, sizeof(postassoc_info->cu_threshold), "%s", param->valuestring);
     }
 
     return webconfig_error_none;
