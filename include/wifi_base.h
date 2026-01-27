@@ -145,6 +145,31 @@ extern "C" {
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];
 
+/* HE PHY/MAC capability bit positions (IEEE 802.11ax-2021) */
+#define HE_PHY_CHAN_WIDTH_160_BIT   3
+#define HE_PHY_CHAN_WIDTH_80P80_BIT 4
+#define HE_PHY_SU_BEAMFORMER_BIT    7   /* byte 3 */
+#define HE_PHY_SU_BEAMFORMEE_BIT    0   /* byte 4 */
+#define HE_PHY_MU_BEAMFORMER_BIT    1   /* byte 4 */
+#define HE_PHY_BEAMFORMEE_STS_L80   (5) /* byte 5 bits 3-5 Nr */
+#define HE_PHY_BEAMFORMEE_STS_G80   (5) /* byte 6 bits 3-5 Nr */
+#define HE_MAC_TWT_REQ_BIT          0   /* byte 0 */
+#define HE_MAC_TWT_RESP_BIT         1   /* byte 0 */
+#define HE_MAC_OFDMA_RA_BIT         2   /* byte 2 */
+#define HE_MAC_DL_MU_MIMO_BIT       0   /* byte 4 */
+#define HE_MAC_UL_MU_MIMO_BIT       1   /* byte 4 */
+#define HE_MAC_UL_OFDMA_BIT         2   /* byte 4 */
+#define HE_MAC_DL_OFDMA_BIT         3   /* byte 4 */
+
+#define HE_MAX_MAC_CAPAB_SIZE	  6
+#define HE_MAX_PHY_CAPAB_SIZE	  11
+#define HE_MAX_MCS_CAPAB_SIZE	  12
+#define HE_MAX_PPET_CAPAB_SIZE	  25
+
+#define EHT_PHY_CAPAB_LEN        9
+#define EHT_MCS_NSS_CAPAB_LEN    9
+#define EHT_PPE_THRESH_CAPAB_LEN 62
+
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
     wifi_app_inst_harvester = wifi_app_inst_base << 1,
@@ -838,11 +863,34 @@ typedef struct {
 } interop_data_t;
 
 typedef struct {
+    BOOL wifi6_supported;                     /**< Whether WiFi6 (HE) is supported */
+    UCHAR phy_cap[HE_MAX_PHY_CAPAB_SIZE];     /**< HE PHY capabilities (HE_MAX_PHY_CAPAB_SIZE = 11) */
+    UCHAR mac_cap[HE_MAX_MAC_CAPAB_SIZE];     /**< HE MAC capabilities (HE_MAX_MAC_CAPAB_SIZE = 4) */
+    UCHAR mcs_nss_set[HE_MAX_MCS_CAPAB_SIZE]; /**< HE MCS NSS set (HE_MAX_MCS_CAPAB_SIZE = 6) */
+    UCHAR ppet[HE_MAX_PPET_CAPAB_SIZE];       /**< HE PPE thresholds (HE_MAX_PPET_CAPAB_SIZE = 7) */
+    //USHORT 6ghz_capa;                       /**< HE 6GHz capabilities */
+} he_radio_capability_t;
+
+typedef struct {
+    BOOL wifi7_supported;                 /**< Whether WiFi7 (EHT) is supported */
+    UCHAR mac_cap;                        /**< EHT MAC capabilities */
+    UCHAR phy_cap[EHT_PHY_CAPAB_LEN];     /**< EHT PHY capabilities (EHT_PHY_CAPAB_LEN = 9) */
+    UCHAR mcs[EHT_MCS_NSS_CAPAB_LEN];     /**< EHT MCS set */
+    UCHAR ppet[EHT_PPE_THRESH_CAPAB_LEN]; /**< EHT PPE thresholds */
+} eht_radio_capability_t;
+
+typedef struct {
+    he_radio_capability_t he_cap;
+    eht_radio_capability_t eht_cap;
+} __attribute__((packed)) rdk_wifi_radio_capability_t;
+
+typedef struct {
     char    name[16];
     wifi_radio_operationParam_t oper;
     rdk_wifi_vap_map_t          vaps;
     wifi_radio_feature_param_t  feature;
     radarInfo_t                  radarInfo;
+    rdk_wifi_radio_capability_t radio_capability;
 //  schema_wifi_radio_state_t   radio_state;
 } rdk_wifi_radio_t;
 

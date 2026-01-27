@@ -3004,6 +3004,146 @@ webconfig_error_t decode_radio_curr_operating_classes(const cJSON *obj_radio_set
     return webconfig_error_none;
 }
 
+/* Decode radio capabilities from JSON */
+webconfig_error_t decode_radio_capability(const cJSON *cap_obj, rdk_wifi_radio_capability_t *radio_cap)
+{
+    const cJSON *param;
+    cJSON *array_item;
+    int i, array_size;
+
+    if (cap_obj == NULL || radio_cap == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL pointer\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    memset(radio_cap, 0, sizeof(rdk_wifi_radio_capability_t));
+
+    /* WiFi6 (HE) capabilities */
+#ifdef CONFIG_IEEE80211AX
+    decode_param_bool(cap_obj, "WiFi6Supported", param);
+    if (param != NULL) {
+        radio_cap->he_cap.wifi6_supported = (param->type & cJSON_True) ? true : false;
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "HEPHYCap");
+    if (param != NULL && cJSON_IsArray(param)) {
+        array_size = cJSON_GetArraySize(param);
+        if (array_size > sizeof(radio_cap->he_cap.phy_cap)) {
+            array_size = sizeof(radio_cap->he_cap.phy_cap);
+        }
+        for (i = 0; i < array_size; i++) {
+            array_item = cJSON_GetArrayItem(param, i);
+            if (cJSON_IsNumber(array_item)) {
+                radio_cap->he_cap.phy_cap[i] = (uint8_t)array_item->valuedouble;
+            }
+        }
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "HEMACCap");
+    if (param != NULL && cJSON_IsArray(param)) {
+        array_size = cJSON_GetArraySize(param);
+        if (array_size > sizeof(radio_cap->he_cap.mac_cap)) {
+            array_size = sizeof(radio_cap->he_cap.mac_cap);
+        }
+        for (i = 0; i < array_size; i++) {
+            array_item = cJSON_GetArrayItem(param, i);
+            if (cJSON_IsNumber(array_item)) {
+                radio_cap->he_cap.mac_cap[i] = (uint8_t)array_item->valuedouble;
+            }
+        }
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "HEMCSNSSSet");
+    if (param != NULL && cJSON_IsArray(param)) {
+        array_size = cJSON_GetArraySize(param);
+        if (array_size > sizeof(radio_cap->he_cap.mcs_nss_set)) {
+            array_size = sizeof(radio_cap->he_cap.mcs_nss_set);
+        }
+        for (i = 0; i < array_size; i++) {
+            array_item = cJSON_GetArrayItem(param, i);
+            if (cJSON_IsNumber(array_item)) {
+                radio_cap->he_cap.mcs_nss_set[i] = (uint8_t)array_item->valuedouble;
+            }
+        }
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "HEPPET");
+    if (param != NULL && cJSON_IsArray(param)) {
+        array_size = cJSON_GetArraySize(param);
+        if (array_size > sizeof(radio_cap->he_cap.ppet)) {
+            array_size = sizeof(radio_cap->he_cap.ppet);
+        }
+        for (i = 0; i < array_size; i++) {
+            array_item = cJSON_GetArrayItem(param, i);
+            if (cJSON_IsNumber(array_item)) {
+                radio_cap->he_cap.ppet[i] = (uint8_t)array_item->valuedouble;
+            }
+        }
+    }
+
+    //decode_param_integer(cap_obj, "HE6GHzCapa", param);
+    //if (param != NULL && cJSON_IsNumber(param)) {
+    //    radio_cap->he_cap.6ghz_capa = (USHORT)param->valuedouble;
+    //}
+#endif /* CONFIG_IEEE80211AX */
+
+#ifdef CONFIG_IEEE80211BE
+    decode_param_bool(cap_obj, "WiFi7Supported", param);
+    if (param != NULL) {
+        radio_cap->eht_cap.wifi7_supported = (param->type & cJSON_True) ? true : false;
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "EHTMACCap");
+    if (param != NULL) {
+        radio_cap->eht_cap.mac_cap = (UCHAR)array_item->valuedouble;
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "EHTPHYCap");
+    if (param != NULL && cJSON_IsArray(param)) {
+        array_size = cJSON_GetArraySize(param);
+        if (array_size > sizeof(radio_cap->eht_cap.phy_cap)) {
+            array_size = sizeof(radio_cap->eht_cap.phy_cap);
+        }
+        for (i = 0; i < array_size; i++) {
+            array_item = cJSON_GetArrayItem(param, i);
+            if (cJSON_IsNumber(array_item)) {
+                radio_cap->eht_cap.phy_cap[i] = (UCHAR)array_item->valuedouble;
+            }
+        }
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "EHTMCS");
+    if (param != NULL && cJSON_IsArray(param)) {
+        array_size = cJSON_GetArraySize(param);
+        if (array_size > sizeof(radio_cap->eht_cap.mcs)) {
+            array_size = sizeof(radio_cap->eht_cap.mcs);
+        }
+        for (i = 0; i < array_size; i++) {
+            array_item = cJSON_GetArrayItem(param, i);
+            if (cJSON_IsNumber(array_item)) {
+                radio_cap->eht_cap.mcs[i] = (UCHAR)array_item->valuedouble;
+            }
+        }
+    }
+
+    param = cJSON_GetObjectItem(cap_obj, "EHTPPET");
+    if (param != NULL && cJSON_IsArray(param)) {
+        array_size = cJSON_GetArraySize(param);
+        if (array_size > sizeof(radio_cap->eht_cap.ppet)) {
+            array_size = sizeof(radio_cap->eht_cap.ppet);
+        }
+        for (i = 0; i < array_size; i++) {
+            array_item = cJSON_GetArrayItem(param, i);
+            if (cJSON_IsNumber(array_item)) {
+                radio_cap->eht_cap.ppet[i] = (UCHAR)array_item->valuedouble;
+            }
+        }
+    }
+#endif /* CONFIG_IEEE80211BE */
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *radio)
 {
     const cJSON *param;
@@ -3349,6 +3489,15 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
         wifi_util_error_print(WIFI_WEBCONFIG,
             "%s:%d Radio current operation class decoding failed\n", __func__, __LINE__);
     }
+
+    decode_param_object(obj_radio, "RadioCapability", param);
+    if (param != NULL) {
+        if (decode_radio_capability(param, &radio->radio_capability) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio capability decode failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+    }
+
     return webconfig_error_none;
 }
 
@@ -4642,6 +4791,7 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          }
          wifi_prop->radio_presence[i] = value_object->valuedouble;
     }
+
     return webconfig_error_none;
 }
 
