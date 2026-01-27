@@ -6798,7 +6798,7 @@ int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
     }
     cJSON_Delete(p_root);
     strncpy(cfg_anqp.vap_name, vap_name,(sizeof(cfg_anqp.vap_name)-1));
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Anqp_Config table vap_name=%s capability_length=%d nai_realm_length=%d venue_name_length=%d domain_name_length=%d roaming_consortium_length=%d gpp_cellular_length=%d\n",__func__, __LINE__,cfg_anqp.vap_name,cfg_anqp.capability_length,cfg_anqp.nai_realm_length,cfg_anqp.domain_name_length,cfg_anqp.roaming_consortium_length,cfg_anqp.gpp_cellular_length);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Anqp_Config table vap_name=%s capability_length=%d nai_realm_length=%d venue_name_length=%d domain_name_length=%d roaming_consortium_length=%d gpp_cellular_length=%d\n",__func__, __LINE__,cfg_anqp.vap_name,cfg_anqp.capability_length,cfg_anqp.nai_realm_length,cfg_anqp.venue_name_length,cfg_anqp.domain_name_length,cfg_anqp.roaming_consortium_length,cfg_anqp.gpp_cellular_length);
     if(onewifi_ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Anqp_Config, SCHEMA_COLUMN(Wifi_Anqp_Config, vap_name), vap_name, &cfg_anqp, NULL) == false)
     {
         reset_anqp_json(vap_name);
@@ -7699,7 +7699,7 @@ void wifidb_init_default_value()
         l_radio_cfg = get_wifidb_radio_map(r_index);
         if(l_radio_cfg == NULL)
         {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_map \n",__func__, __LINE__,index);
+            wifi_util_dbg_print(WIFI_DB, "%s:%d: %d invalid get_wifidb_radio_map \n", __func__, __LINE__, r_index);
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
