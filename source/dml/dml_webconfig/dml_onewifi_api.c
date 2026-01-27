@@ -1250,16 +1250,22 @@ void set_cac_cache_changed(uint8_t vap_index)
 
 int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-    data.u.decoded.num_radios = get_num_radio_dml();
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, subdoc) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data->u.decoded.num_radios = get_num_radio_dml();
+
+    if (webconfig_encode(&webconfig_dml.webconfig, data, subdoc) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1269,7 +1275,9 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
