@@ -1120,7 +1120,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
         return false;
     }
 
-    to_mac_bytes(mac_str, mac_addr);
+    str_to_mac_bytes(mac_str, mac_addr);
     acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
     while (acl_entry != NULL) {
@@ -3534,22 +3534,32 @@ int wifidb_vap_status_update(bool status)
 {
     wifi_vap_name_t backhauls[MAX_NUM_RADIOS];
     int count;
-    wifi_vap_info_t vap_config;
+    wifi_vap_info_t *vap_config = NULL;
     rdk_wifi_vap_info_t rdk_vap_config;
-    memset(&vap_config, 0, sizeof(vap_config));
+    
+    vap_config = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_config == NULL) 
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    
+    memset(vap_config, 0, sizeof(wifi_vap_info_t));
     memset(&rdk_vap_config, 0, sizeof(rdk_vap_config));
 
     /* get a list of mesh backhaul names of all radios */
     count = get_list_of_mesh_backhaul(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, sizeof(backhauls)/sizeof(wifi_vap_name_t), backhauls);
 
     for (int i = 0; i < count; i++) {
-        if (get_wifidb_obj()->desc.get_wifi_vpa_info_fn(&backhauls[i][0], &vap_config, &rdk_vap_config) == RETURN_OK) {
-            vap_config.u.bss_info.enabled = status;
+        if (get_wifidb_obj()->desc.get_wifi_vpa_info_fn(&backhauls[i][0], vap_config, &rdk_vap_config) == RETURN_OK) {
+            vap_config->u.bss_info.enabled = status;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi mesh backhaul status save:%d\n", __func__, __LINE__, status);
-            update_wifi_vap_info(&backhauls[i][0], &vap_config, &rdk_vap_config);
+            update_wifi_vap_info(&backhauls[i][0], vap_config, &rdk_vap_config);
         }
     }
 
+    free(vap_config);
+    vap_config = NULL;
     return RETURN_OK;
 }
 
@@ -3645,10 +3655,8 @@ static void process_monitor_init_command(void)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
-                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-            }
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);
+            push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
         }
     }
     free(data);
