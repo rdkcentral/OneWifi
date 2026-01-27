@@ -117,6 +117,7 @@ int init_wifi_hal()
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_getHalCapability returned with error %d\n", __FUNCTION__, ret);
         return RETURN_ERR;
     }
+
     return RETURN_OK;
 }
 
@@ -174,6 +175,35 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
     radios_cfg->vaps.radio_index = radio_index;
     radios_cfg->vaps.num_vaps = vap_array_index;
     radios_cfg->vaps.vap_map.num_vaps = vap_array_index;
+
+    /* Populate radio capabilities from HAL */
+    wifi_freq_bands_t band;
+    if (convert_radio_index_to_freq_band(&wifi_hal_cap_obj->wifi_prop, radio_index, &band) == RETURN_OK) {
+        wifi_radio_capability_data_t *hal_cap_data = (wifi_radio_capability_data_t *)malloc(sizeof(wifi_radio_capability_data_t));
+        memset(&hal_cap_data, 0, sizeof(hal_cap_data));
+        
+        if (wifi_getRadioCapabilityData(radio_index, band, hal_cap_data) == RETURN_OK) {
+            /* Copy from HAL structure to OneWifi structure */
+            radios_cfg->radio_capability.he_cap.wifi6_supported = hal_cap_data->wifi6_supported;
+            memcpy(radios_cfg->radio_capability.he_cap.phy_cap, hal_cap_data->he_phy_cap, sizeof(hal_cap_data->he_phy_cap));
+            memcpy(radios_cfg->radio_capability.he_cap.mac_cap, hal_cap_data->he_mac_cap, sizeof(hal_cap_data->he_mac_cap));
+            memcpy(radios_cfg->radio_capability.he_cap.mcs_nss_set, hal_cap_data->he_mcs_nss_set, sizeof(hal_cap_data->he_mcs_nss_set));
+            memcpy(radios_cfg->radio_capability.he_cap.ppet, hal_cap_data->he_ppet, sizeof(hal_cap_data->he_ppet));
+
+            radios_cfg->radio_capability.eht_cap.wifi7_supported = hal_cap_data->wifi7_supported;
+            memcpy(radios_cfg->radio_capability.eht_cap.mac_cap, hal_cap_data->eht_mac_cap, sizeof(hal_cap_data->eht_mac_cap));
+            memcpy(radios_cfg->radio_capability.eht_cap.phy_cap, hal_cap_data->eht_phy_cap, sizeof(hal_cap_data->eht_phy_cap));
+            memcpy(radios_cfg->radio_capability.eht_cap.mcs, hal_cap_data->eht_mcs, sizeof(hal_cap_data->eht_mcs));
+            memcpy(radios_cfg->radio_capability.eht_cap.ppet, hal_cap_data->eht_ppet, sizeof(hal_cap_data->eht_ppet));
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to get radio capability data for radio %d\n", 
+                __func__, __LINE__, radio_index);
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to convert radio index %d to band\n", 
+            __func__, __LINE__, radio_index);
+    }
+
     return RETURN_OK;
 }
 
