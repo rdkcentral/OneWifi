@@ -1,0 +1,3336 @@
+{
+    "$comment": "WI-FI ALLIANCE PROPRIETARY - SUBJECT TO CHANGE WITHOUT NOTICE This document may be used with the permission of Wi-Fi Alliance under the terms set forth herein. By your use of the document, you are agreeing to these terms. This document is a work in process and is not an approved Wi-Fi Alliance specification. This document is subject to revision or removal at any time without notice. Information contained in this document may be used at your sole risk. Wi-Fi Alliance assumes no responsibility for errors or omissions in this document. This copyright permission does not constitute an endorsement of the products or services. Wi-Fi Alliance trademarks and certification marks may not be used unless specifically allowed by Wi-Fi Alliance. Wi-Fi Alliance has not conducted an independent intellectual property rights (\"IPR\") review of this document and the information contained herein, and makes no representations or warranties regarding IPR, including without limitation patents, copyrights or trade secret rights. This document may contain inventions for which you must obtain licenses from third parties before making, using or selling the inventions. Wi-Fi Alliance owns the copyright in this document and reserves all rights therein. A user of this document may duplicate and distribute copies of the document in connection with the authorized uses described herein, provided any duplication in whole or in part includes the copyright notice and the disclaimer text set forth herein. Wi-Fi Alliance hereby grants a user of the schema file(s) of this document a royalty-free, perpetual, irrevocable copyright license to use and distribute solely the schema file(s) found within this document. Unless prior written permission has been received from Wi-Fi Alliance, any other use of this document and all other duplication and distribution of this document are prohibited. Unauthorized use, duplication, or distribution is an infringement of Wi-Fi Alliance's copyright. NO REPRESENTATIONS OR WARRANTIES (WHETHER EXPRESS OR IMPLIED) ARE MADE BY WI-FI ALLIANCE AND WI-FI ALLIANCE IS NOT LIABLE FOR AND HEREBY DISCLAIMS ANY DIRECT, INDIRECT, PUNITIVE, SPECIAL, INCIDENTAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES ARISING OUT OF OR IN CONNECTION WITH THE USE OF THIS DOCUMENT AND ANY INFORMATION CONTAINED IN THIS DOCUMENT. (C) 2021 Wi-Fi Alliance. All Rights Reserved. Version 2.0, July 15, 2021.",
+    "$schema": "http://json-schema.org/schema#",
+    "$id": "http://www.wi-fi.org/dataelements",
+    "type": "object",
+    "description": "The schema for entities implementing Wi-Fi Alliance DataElements Certification",
+    "definitions": {
+        "uint32_t": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+        },
+        "uint16_t": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+        },
+        "uint8_t": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "timestamp_t": {
+            "title": "Timestamp",
+            "type": "string",
+            "format": "date-time"
+        },
+        "macaddr_t": {
+            "title": "MAC Address",
+            "type": "string",
+            "minLength": 17,
+            "maxLength": 17,
+            "pattern": "^([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]$"
+        },
+        "rssi_t": {
+            "title": "RSSI",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "noisepower_t": {
+            "title": "Noise",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "channel_t": {
+            "title": "Channel",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "operatingclass_t": {
+            "title": "OperatingClass",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "packetcounter_t": {
+            "title": "PacketCounter",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+        },
+        "bytecounter_t": {
+            "title": "ByteCounter",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+        },
+        "utilization_t": {
+            "title": "Utilization",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+        },
+        "txpower_t": {
+            "title": "TransmitPower",
+            "type": "integer",
+            "minimum": -127,
+            "maximum": 127
+        },
+        "phyrate_t": {
+            "title": "PhysicalDataRate",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+        },
+        "macrate_t": {
+            "title": "MACDataRate",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+        },
+        "statuscode_t": {
+            "title": "StatusCode",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+        },
+        "reasoncode_t": {
+            "title": "ReasonCode",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+        },
+        "vlanid_t": {
+            "title": "VID",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4095
+        },
+        "pcp_t": {
+            "title": "PrimaryCodePoint",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+        },
+        "tid_t": {
+            "title": "TrafficID",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+        },
+        "band_t": {
+            "title": "Band",
+            "type": "string",
+            "enum": [
+                "All",
+                "2.4",
+                "5",
+                "6",
+                "5_UNII_1",
+                "5_UNII_2",
+                "5_UNII_3",
+                "5_UNII_4",
+                "6_UNII_5",
+                "6_UNII_6",
+                "6_UNII_7",
+                "6_UNII_8"
+            ]
+        },
+        "akm_t": {
+            "title": "AKM",
+            "type": "string",
+            "enum": [
+                "psk",
+                "dpp",
+                "sae",
+                "psk+sae",
+                "dpp+sae",
+                "dpp+psk+sae",
+                "SuiteSelector"
+            ]
+        },
+        "channelusage_t": {
+            "title": "Channel Usage Reason type",
+            "type": "string",
+            "enum": [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4",
+                "255"
+            ]
+        },
+        "direction_t": {
+            "title": "The direction of traffic for the TID to link mapping",
+            "type": "string",
+            "enum": [
+                "Up",
+                "Down"
+            ]
+        },
+        "linkid_t": {
+            "title": "The LinkId",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 15
+        },
+        "controlleroperationmode_t": {
+            "title": "The EasyMesh controller support",
+            "type": "string",
+            "enum": [
+                "NotSupported",
+                "SupportedNotEnabled",
+                "Running"
+            ]
+        },
+        "mediatype_t": {
+            "title": "The media type of a physical link",
+            "type": "string",
+            "enum": [
+                "IEEE 802.3ab",
+                "IEEE 802.11b",
+                "IEEE 802.11g",
+                "IEEE 802.11a",
+                "IEEE 802.11n 2.4",
+                "IEEE 802.11n 5.0",
+                "IEEE 802.11ac",
+                "IEEE 802.11ad",
+                "IEEE 802.11af",
+                "IEEE 802.11ax",
+                "IEEE 802.11be",
+                "IEEE 1901 Wavelet",
+                "IEEE 1901 FFT",
+                "MoCAv1.1",
+                "Generic PHY"
+            ]
+        },
+        "suiteselector_t": {
+            "title": "AKM suite selector encoded as a 4-octet hex encoded value without internal separator",
+            "type": "string",
+            "pattern": "([0-9a-fA-F]{8})"
+        },
+        "SSIDtoVIDMapping_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "SSID",
+                "VID"
+            ],
+            "properties": {
+                "SSID": {
+                    "type": "string"
+                },
+                "VID": {
+                    "$ref": "#/definitions/vlanid_t"
+                }
+            }
+        },
+        "Default8021Q_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "PrimaryVID",
+                "DefaultPCP"
+            ],
+            "properties": {
+                "PrimaryVID": {
+                    "$ref": "#/definitions/vlanid_t"
+                },
+                "DefaultPCP": {
+                    "$ref": "#/definitions/pcp_t"
+                },
+                "Enable": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "OpClassChannels_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "OpClass",
+                "ChannelList"
+            ],
+            "properties": {
+                "OpClass": {
+                    "$ref": "#/definitions/operatingclass_t"
+                },
+                "ChannelList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/channel_t"
+                    }
+                }
+            }
+        },
+        "CACMethod_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "Method",
+                "NumberOfSeconds",
+                "OpClassList"
+            ],
+            "properties": {
+                "Method": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3
+                },
+                "NumberOfSeconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2e32
+                },
+                "OpClassList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OpClassChannels_g"
+                    }
+                }
+            }
+        },
+        "SPRule_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "ID",
+                "Precedence",
+                "Output",
+                "AlwaysMatch"
+            ],
+            "properties": {
+                "ID": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2e32
+                },
+                "Precedence": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "Output": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9
+                },
+                "AlwaysMatch": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "WiFi6_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "HE160": {
+                    "type": "boolean"
+                },
+                "HE8080": {
+                    "type": "boolean"
+                },
+                "MCSNSS": {
+                    "type": "string"
+                },
+                "SUBeamformer": {
+                    "type": "boolean"
+                },
+                "SUBeamformee": {
+                    "type": "boolean"
+                },
+                "MUBeamformer": {
+                    "type": "boolean"
+                },
+                "Beamformee80orLess": {
+                    "type": "boolean"
+                },
+                "BeamformeeAbove80": {
+                    "type": "boolean"
+                },
+                "ULMUMIMO": {
+                    "type": "boolean"
+                },
+                "ULOFDMA": {
+                    "type": "boolean"
+                },
+                "DLOFDMA": {
+                    "type": "boolean"
+                },
+                "MaxDLMUMIMO": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "MaxULMUMIMO": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "MaxDLOFDMA": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "MaxULOFDMA": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "RTS": {
+                    "type": "boolean"
+                },
+                "MURTS": {
+                    "type": "boolean"
+                },
+                "MultiBSSID": {
+                    "type": "boolean"
+                },
+                "MUEDCA": {
+                    "type": "boolean"
+                },
+                "TWTRequestor": {
+                    "type": "boolean"
+                },
+                "TWTResponder": {
+                    "type": "boolean"
+                },
+                "SpatialReuse": {
+                    "type": "boolean"
+                },
+                "AnticipatedChannelUsage": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "IEEE1905Security_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "OnboardingProtocol",
+                "IntegrityAlgorithm",
+                "EncryptionAlgorithm"
+            ],
+            "properties": {
+                "OnboardingProtocol": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "IntegrityAlgorithm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "EncryptionAlgorithm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                }
+            }
+        },
+        "AKMSuite_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "OUI",
+                "Type"
+            ],
+            "properties": {
+                "OUI": {
+                    "type": "string"
+                },
+                "Type": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                }
+            }
+        },
+        "TIDQueue_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "TID",
+                "Size"
+            ],
+            "properties": {
+                "TID": {
+                    "$ref": "#/definitions/tid_t"
+                },
+                "Size": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                }
+            }
+        },
+        "QMDescriptor_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "BSSID",
+                "ClientMac",
+                "DescriptorElement"
+            ],
+            "properties": {
+                "BSSID": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "ClientMac": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "DescriptorElement": {
+                    "type": "string"
+                }
+            }
+        },
+        "AnticipatedChannelUsageEntry_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "BurstStartTime",
+                "BurstLength",
+                "Repetitions",
+                "BurstInterval",
+                "RUBitmask",
+                "TransmitterIdentifier",
+                "PowerLevel",
+                "ChannelUsageReason"
+            ],
+            "properties": {
+                "BurstStartTime": {
+                    "type": "string"
+                },
+                "BurstLength": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2e32
+                },
+                "Repetitions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2e32
+                },
+                "BurstInterval": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2e32
+                },
+                "RUBitmask": {
+                    "type": "string"
+                },
+                "TransmitterIdentifier": {
+                    "type": "string"
+                },
+                "PowerLevel": {
+                    "type": "integer",
+                    "minimum": -127,
+                    "maximum": 127
+                },
+                "ChannelUsageReason": {
+                    "$ref": "#/definitions/channelusage_t"
+                }
+            }
+        },
+        "AnticipatedChannelUsage_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "OpClass",
+                "Channel",
+                "ReferenceBSSID",
+                "Entry"
+            ],
+            "properties": {
+                "OpClass": {
+                    "$ref": "#/definitions/operatingclass_t"
+                },
+                "Channel": {
+                    "$ref": "#/definitions/channel_t"
+                },
+                "ReferenceBSSID": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "Entry": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AnticipatedChannelUsageEntry_g"
+                    }
+                }
+            }
+        },
+        "SpatialReuse_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "PartialBSSColor",
+                "BSSColor",
+                "HESIGASpatialReuseValue15Allowed",
+                "SRGInformationValid",
+                "NonSRGOffsetValid",
+                "PSRDisallowed",
+                "NonSRGOBSSPDMaxOffset",
+                "SRGOBSSPDMinOffset",
+                "SRGOBSSPDMaxOffset",
+                "SRGBSSColorBitmap",
+                "SRGPartialBSSIDBitmap",
+                "NeighborBSSColorInUseBitmap"
+            ],
+            "properties": {
+                "PartialBSSColor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "BSSColor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "HESIGASpatialReuseValue15Allowed": {
+                    "type": "boolean"
+                },
+                "SRGInformationValid": {
+                    "type": "boolean"
+                },
+                "NonSRGOffsetValid": {
+                    "type": "boolean"
+                },
+                "PSRDisallowed": {
+                    "type": "boolean"
+                },
+                "NonSRGOBSSPDMaxOffset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "SRGOBSSPDMinOffset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "SRGOBSSPDMaxOffset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                },
+                "SRGBSSColorBitmap": {
+                    "type": "string"
+                },
+                "SRGPartialBSSIDBitmap": {
+                    "type": "string"
+                },
+                "NeighborBSSColorInUseBitmap": {
+                    "type": "string"
+                }
+            }
+        },
+        "NetworkSSID_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "SSID",
+                "Band"
+            ],
+            "properties": {
+                "SSID": {
+                    "type": "string"
+                },
+                "Band": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/band_t"
+                    }
+                },
+                "Enable": {
+                    "type": "boolean"
+                },
+                "AKMsAllowed": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/akm_t"
+                    }
+                },
+                "SuiteSelector": {
+                    "$ref": "#/definitions/suiteselector_t"
+                },
+                "AdvertisementEnabled": {
+                    "type": "boolean"
+                },
+                "MFPConfig": {
+                    "type": "string"
+                },
+                "MobilityDomain": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "HaulType": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "Fronthaul",
+                            "Backhaul"
+                        ]
+                    }
+                }
+            }
+        },
+        "DisAllowedOpClassChannels_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "OpClass",
+                "ChannelList"
+            ],
+            "properties": {
+                "Enable": {
+                    "type": "boolean"
+                },
+                "OpClass": {
+                    "$ref": "#/definitions/operatingclass_t"
+                },
+                "ChannelList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/channel_t"
+                    }
+                }
+            }
+        },
+        "PreferredBackhaul_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "BackhaulMACAddress",
+                "BackhaulStaMACAddress"
+            ],
+            "properties": {
+                "BackhaulMACAddress": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "BackhaulStaMACAddress": {
+                    "$ref": "#/definitions/macaddr_t"
+                }
+            }
+        },
+        "STABlock_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "BlockedSTA",
+                "BSSID"
+            ],
+            "properties": {
+                "BlockedSTA": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "BSSID": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/macaddr_t"
+                    }
+                },
+                "Schedule": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "Alias",
+                            "Day",
+                            "StartTime",
+                            "Duration"
+                        ],
+                        "properties": {
+                            "Alias": {
+                                "type": "string"
+                            },
+                            "Day": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "Monday",
+                                        "Tuesday",
+                                        "Wednesday",
+                                        "Thursday",
+                                        "Friday",
+                                        "Saturday",
+                                        "Sunday"
+                                    ]
+                                }
+                            },
+                            "StartTime": {
+                                "type": "string"
+                            },
+                            "Duration": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "WiFi7Config_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "EMLMREnabled",
+                "EMLSREnabled",
+                "STREnabled",
+                "NSTREnabled",
+                "TIDLinkMapNegotiation"
+            ],
+            "properties": {
+                "EMLMREnabled": {
+                    "type": "boolean"
+                },
+                "EMLSREnabled": {
+                    "type": "boolean"
+                },
+                "STREnabled": {
+                    "type": "boolean"
+                },
+                "NSTREnabled": {
+                    "type": "boolean"
+                },
+                "TIDLinkMapNegotiation": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "WiFi7Capabilities_g": {
+            "type": "object",
+            "required": [
+                "EMLMRSupport",
+                "EMLSRSupport",
+                "STRSupport",
+                "NSTRSupport",
+                "TIDLinkMapNegotiation"
+            ],
+            "properties": {
+                "EMLMRSupport": {
+                    "type": "boolean"
+                },
+                "EMLSRSupport": {
+                    "type": "boolean"
+                },
+                "STRSupport": {
+                    "type": "boolean"
+                },
+                "NSTRSupport": {
+                    "type": "boolean"
+                },
+                "TIDLinkMapNegotiation": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "TIDLinkMapEntry_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "TID",
+                "LinkID",
+                "BSSID",
+                "Direction"
+            ],
+            "properties": {
+                "TID": {
+                    "$ref": "#/definitions/tid_t"
+                },
+                "LinkID": {
+                    "$ref": "#/definitions/linkid_t"
+                },
+                "BSSID": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "Direction": {
+                    "$ref": "#/definitions/direction_t"
+                }
+            }
+        },
+        "AffiliatedAP_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "BSSID",
+                "LinkID",
+                "RUID"
+            ],
+            "properties": {
+                "BSSID": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "LinkID": {
+                    "$ref": "#/definitions/linkid_t"
+                },
+                "RUID": {
+                    "type": "string"
+                },
+                "DisabledSubChannels": {
+                    "$ref": "#/definitions/uint16_t"
+                },
+                "UnicastBytesSent": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "UnicastBytesReceived": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "MulticastBytesSent": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "MulticastBytesReceived": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "BroadcastBytesSent": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "BroadcastBytesReceived": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "ErrorsSent": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "PacketsSent": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "PacketsReceived": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "EstServiceParametersBE": {
+                    "type": "string"
+                },
+                "EstServiceParametersBK": {
+                    "type": "string"
+                },
+                "EstServiceParametersVI": {
+                    "type": "string"
+                },
+                "EstServiceParametersVO": {
+                    "type": "string"
+                }
+            }
+        },
+        "AffiliatedSTA_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "MACAddress",
+                "BSSID"
+            ],
+            "properties": {
+                "MACAddress": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "BSSID": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "BytesSent": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "BytesReceived": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "ErrorsSent": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "PacketsSent": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "PacketsReceived": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "SignalStrength": {
+                    "$ref": "#/definitions/rssi_t"
+                },
+                "EstMACDataRateDownlink": {
+                    "$ref": "#/definitions/macrate_t"
+                },
+                "EstMACDataRateUplink": {
+                    "$ref": "#/definitions/macrate_t"
+                },
+                "LastDataDownlinkRate": {
+                    "$ref": "#/definitions/phyrate_t"
+                },
+                "LastDataUplinkRate": {
+                    "$ref": "#/definitions/phyrate_t"
+                },
+                "UtilizationReceive": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "UtilizationTransmit": {
+                    "$ref": "#/definitions/uint32_t"
+                }
+            }
+        },
+        "STAMLD_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "MLDMACAddress",
+                "AffiliatedSTA",
+                "STAMLDConfig",
+                "WiFi7Capabilities",
+                "IsbSTA"
+            ],
+            "properties": {
+                "MLDMACAddress": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "IPV4Address": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "IPV6Address": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "Hostname": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "LastConnectTime": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "BytesSent": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "BytesReceived": {
+                    "$ref": "#/definitions/bytecounter_t"
+                },
+                "PacketsSent": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "PacketsReceived": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ErrorsSent": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ErrorsReceived": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "RetransCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "STAMLDConfig": {
+                    "$ref": "#/definitions/WiFi7Config_g"
+                },
+                "STATIDLinkMap": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/TIDLinkMapEntry_g"
+                            }
+                        }
+                    ]
+                },
+                "AffiliatedSTA": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AffiliatedSTA_g"
+                    }
+                },
+                "WiFi7Capabilities": {
+                    "$ref": "#/definitions/WiFi7Capabilities_g"
+                },
+                "IsbSTA": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "APMLD_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "MLDMACAddress",
+                "TIDLinkMap",
+                "AffiliatedAP",
+                "STAMLD",
+                "APMLDConfig"
+            ],
+            "properties": {
+                "MLDMACAddress": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "TIDLinkMap": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/TIDLinkMapEntry_g"
+                            }
+                        }
+                    ]
+                },
+                "AffiliatedAP": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AffiliatedAP_g"
+                    }
+                },
+                "STAMLD": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/STAMLD_g"
+                            }
+                        }
+                    ]
+                },
+                "APMLDConfig": {
+                    "$ref": "#/definitions/WiFi7Config_g"
+                }
+            }
+        },
+        "FreqSeparationEntry_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "RUID",
+                "FreqSeparation"
+            ],
+            "properties": {
+                "RUID": {
+                    "type": "string"
+                },
+                "FreqSeparation": {
+                    "$ref": "#/definitions/uint32_t"
+                }
+            }
+        },
+        "FreqSeparation_g": {
+            "type": "object",
+            "required": [
+                "EMLMRFreqSeparation",
+                "EMLSRFreqSeparation",
+                "STRFreqSeparation",
+                "NSTRFreqSeparation"
+            ],
+            "properties": {
+                "EMLMRFreqSeparation": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/FreqSeparationEntry_g"
+                            }
+                        }
+                    ]
+                },
+                "EMLSRFreqSeparation": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/FreqSeparationEntry_g"
+                            }
+                        }
+                    ]
+                },
+                "STRFreqSeparation": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/FreqSeparationEntry_g"
+                            }
+                        }
+                    ]
+                },
+                "NSTRFreqSeparation": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/FreqSeparationEntry_g"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "MUStats_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "DLHEPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLMUMIMOPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLMUPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLOFDMAMUMIMOPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLOFDMAPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLTotalPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULHEPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULMUMIMOPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULMUPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULOFDMAMUMIMOPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULOFDMAPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULTotalPPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLRU26PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLRU52PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLRU106PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLRU242PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLRU484PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLRU996PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "DLRU1992PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULRU26PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULRU52PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULRU106PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULRU242PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULRU484PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULRU996PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                },
+                "ULRU1992PPDUCount": {
+                    "$ref": "#/definitions/packetcounter_t"
+                }
+            }
+        },
+        "ThroughputTestResult_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "ClientMac",
+                "DownlinkSpeed",
+                "UplinkSpeed",
+                "TestDuration",
+                "TestLayer",
+                "TimeStamp",
+                "TestAlgorithm",
+                "VID",
+                "WMMUP"
+            ],
+            "properties": {
+                "ClientMac": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "DownlinkSpeed": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "$ref": "#/definitions/uint32_t"
+                        }
+                    ]
+                },
+                "TestAlgorithm": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "TestDuration": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "TestLayer": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 7
+                        }
+                    ]
+                },
+                "TimeStamp": {
+                    "$ref": "#/definitions/timestamp_t"
+                },
+                "UplinkSpeed": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "$ref": "#/definitions/uint32_t"
+                        }
+                    ]
+                },
+                "VID": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "$ref": "#/definitions/vlanid_t"
+                        }
+                    ]
+                },
+                "WMMUP": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "$ref": "#/definitions/uint32_t"
+                        }
+                    ]
+                }
+            }
+        },
+        "LatencyTestResult_g": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "ClientMac",
+                "AverageResponseTime",
+                "MinimumResponseTime",
+                "MaximumResponseTime",
+                "LostCount",
+                "SuccessCount",
+                "DataBlockSize",
+                "TestLayer",
+                "TimeStamp",
+                "TestAlgorithm",
+                "VID",
+                "WMMUP"
+            ],
+            "properties": {
+                "ClientMac": {
+                    "$ref": "#/definitions/macaddr_t"
+                },
+                "AverageResponseTime": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "MinimumResponseTime": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "MaximumResponseTime": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "LostCount": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "SuccessCount": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "DataBlockSize": {
+                    "$ref": "#/definitions/uint32_t"
+                },
+                "TestAlgorithm": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "TestLayer": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 7
+                        }
+                    ]
+                },
+                "TimeStamp": {
+                    "$ref": "#/definitions/timestamp_t"
+                },
+                "VID": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "$ref": "#/definitions/vlanid_t"
+                        }
+                    ]
+                },
+                "WMMUP": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "$ref": "#/definitions/uint32_t"
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "properties": {
+        "wfa-dataelements:Network": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "ID",
+                "NumberOfDevices",
+                "TimeStamp",
+                "DeviceList"
+            ],
+            "properties": {
+                "ID": {
+                    "type": "string"
+                },
+                "ControllerID": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "NumberOfDevices": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                },
+                "TimeStamp": {
+                    "$ref": "#/definitions/timestamp_t"
+                },
+                "PreferredBackhauls": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/PreferredBackhaul_g"
+                            }
+                        }
+                    ]
+                },
+                "STABlock": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/STABlock_g"
+                            }
+                        }
+                    ]
+                },
+                "ColocatedAgentID": {
+                    "oneOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "$ref": "#/definitions/macaddr_t"
+                        }
+                    ]
+                },
+                "DeviceList": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "ID",
+                            "NumberOfRadios",
+                            "RadioList"
+                        ],
+                        "properties": {
+                            "ID": {
+                                "type": "string"
+                            },
+                            "MultiAPCapabilities": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "NumberOfRadios": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 65535
+                            },
+                            "CollectionInterval": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "integer",
+                                        "minimum": 0
+                                    }
+                                ]
+                            },
+                            "ReportUnsuccessfulAssociations": {
+                                "type": "boolean"
+                            },
+                            "MaxReportingRate": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 2e32
+                            },
+                            "MultiAPProfile": {
+                                "deprecated": true,
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 255
+                            },
+                            "APMetricsReportingInterval": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 255
+                            },
+                            "Manufacturer": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "SerialNumber": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "ManufacturerModel": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "SoftwareVersion": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "ExecutionEnv": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "LocalSteeringDisallowedSTAList": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/macaddr_t"
+                                        }
+                                    }
+                                ]
+                            },
+                            "BTMSteeringDisallowedSTAList": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/macaddr_t"
+                                        }
+                                    }
+                                ]
+                            },
+                            "MaxVIDs": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 255
+                            },
+                            "BasicPrioritization": {
+                                "deprecated": true,
+                                "type": [
+                                    "boolean",
+                                    "null"
+                                ]
+                            },
+                            "EnhancedPrioritization": {
+                                "deprecated": true,
+                                "type": [
+                                    "boolean",
+                                    "null"
+                                ]
+                            },
+                            "Default8021Q": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/Default8021Q_g"
+                                    }
+                                ]
+                            },
+                            "TrafficSeparationPolicy": {
+                                "deprecated": true,
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/SSIDtoVIDMapping_g"
+                                        }
+                                    }
+                                ]
+                            },
+                            "SSIDtoVIDMapping": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/SSIDtoVIDMapping_g"
+                                        }
+                                    }
+                                ]
+                            },
+                            "CACStatus": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "TimeStamp",
+                                            "AvailableChannelList",
+                                            "NonOccupancyChannelList",
+                                            "ActiveChannelList"
+                                        ],
+                                        "properties": {
+                                            "TimeStamp": {
+                                                "$ref": "#/definitions/timestamp_t"
+                                            },
+                                            "AvailableChannelList": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "required": [
+                                                        "OpClass",
+                                                        "Channel",
+                                                        "Minutes"
+                                                    ],
+                                                    "properties": {
+                                                        "OpClass": {
+                                                            "$ref": "#/definitions/operatingclass_t"
+                                                        },
+                                                        "Channel": {
+                                                            "$ref": "#/definitions/channel_t"
+                                                        },
+                                                        "Minutes": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 65535
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "NonOccupancyChannelList": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "required": [
+                                                        "OpClass",
+                                                        "Channel",
+                                                        "Seconds"
+                                                    ],
+                                                    "properties": {
+                                                        "OpClass": {
+                                                            "$ref": "#/definitions/operatingclass_t"
+                                                        },
+                                                        "Channel": {
+                                                            "$ref": "#/definitions/channel_t"
+                                                        },
+                                                        "Seconds": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 65535
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "ActiveChannelList": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "required": [
+                                                        "OpClass",
+                                                        "Channel",
+                                                        "Countdown"
+                                                    ],
+                                                    "properties": {
+                                                        "OpClass": {
+                                                            "$ref": "#/definitions/operatingclass_t"
+                                                        },
+                                                        "Channel": {
+                                                            "$ref": "#/definitions/channel_t"
+                                                        },
+                                                        "Countdown": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 65535
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            "Prioritization": {
+                                "deprecated": true,
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/SPRule_g"
+                                }
+                            },
+                            "SPRule": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/SPRule_g"
+                                }
+                            },
+                            "DSCPMap": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "MaxPrioritizationRules": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 255
+                            },
+                            "IEEE1905Security": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/IEEE1905Security_g"
+                                    }
+                                ]
+                            },
+                            "CountryCode": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 2
+                            },
+                            "PrioritizationSupport": {
+                                "type": "boolean"
+                            },
+                            "ReportIndependentScans": {
+                                "type": "boolean"
+                            },
+                            "AnticipatedChannels": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/OpClassChannels_g"
+                                        }
+                                    }
+                                ]
+                            },
+                            "AnticipatedChannelUsage": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/AnticipatedChannelUsage_g"
+                                        }
+                                    }
+                                ]
+                            },
+                            "TrafficSeparationAllowed": {
+                                "type": "boolean"
+                            },
+                            "ServicePrioritizationAllowed": {
+                                "type": "boolean"
+                            },
+                            "STASteeringDisallowed": {
+                                "deprecated": true,
+                                "type": "boolean"
+                            },
+                            "DFSEnable": {
+                                "type": "boolean"
+                            },
+                            "MaxUnsuccessfulAssociationReportingRate": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 2e32
+                            },
+                            "STASteeringState": {
+                                "type": "boolean"
+                            },
+                            "CoordinatedCACAllowed": {
+                                "type": "boolean"
+                            },
+                            "ControllerOperationMode": {
+                                "$ref": "#/definitions/controlleroperationmode_t"
+                            },
+                            "BackhaulMACAddress": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/macaddr_t"
+                                    }
+                                ]
+                            },
+                            "BackhaulDownMACAddress": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref" : "#/definitions/macaddr_t"
+                                        }
+                                    }
+                                ]
+                            },
+                            "BackhaulMediaType": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/mediatype_t"
+                                    }
+                                ]
+                            },
+                            "BackhaulPHYRate": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/phyrate_t"
+                                    }
+                                ]
+                            },
+                            "TrafficSeparationCapability": {
+                                "type": "boolean"
+                            },
+                            "EasyConnectCapability": {
+                                "type": "boolean"
+                            },
+                            "TestCapabilities": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 3
+                            },
+                            "bSTAMLD": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "MLDMACAddress",
+                                            "BSSID",
+                                            "AffiliatedbSTAList"
+                                        ],
+                                        "properties": {
+                                            "MLDMACAddress": {
+                                                "$ref": "#/definitions/macaddr_t"
+                                            },
+                                            "BSSID": {
+                                                "$ref": "#/definitions/macaddr_t"
+                                            },
+                                            "AffiliatedbSTAList": {
+                                                "type": "array",
+                                                "items": {
+                                                    "$ref": "#/definitions/macaddr_t"
+                                                }
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            "bSTAMLDConfig": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "$ref": "#/definitions/WiFi7Config_g"
+                                    }
+                                ]
+                            },
+                            "bSTAMLDMaxLinks": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 15
+                            },
+                            "MaxNumMLDs": {
+                                "$ref": "#/definitions/uint32_t"
+                            },
+                            "APMLD": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/definitions/APMLD_g"
+                                        }
+                                    }
+                                ]
+                            },
+                            "APMLDMaxLinks": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 15
+                            },
+                            "BackhaulALID": {
+                                "oneOf": [
+                                    {
+                                        "type": "null"
+                                    },
+                                    {
+                                        "$ref" : "#/definitions/macaddr_t"
+                                    }
+                                ]
+                            },
+                            "TIDLinkMapping": {
+                                "type": "string",
+                                "enum": [
+                                    "0",
+                                    "1",
+                                    "2"
+                                ]
+                            },
+                            "WPS": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                    "Enable",
+                                    "Status"
+                                ],
+                                "properties": {
+                                    "Enable": {
+                                        "type": "boolean"
+                                    },
+                                    "Status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Disabled",
+                                            "Error",
+                                            "Unconfigured",
+                                            "Configured",
+                                            "InProgress"
+                                        ]
+                                    }
+                                }
+                            },
+                            "AssociatedSTAReportingInterval": {
+                                "$ref": "#/definitions/uint8_t"
+                            },
+                            "RadioList": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "ID",
+                                        "Enabled",
+                                        "NumberOfCurrOpClass",
+                                        "CurrentOperatingClasses",
+                                        "Noise",
+                                        "Utilization",
+                                        "Capabilities",
+                                        "NumberOfBSS",
+                                        "BSSList"
+                                    ],
+                                    "properties": {
+                                        "ID": {
+                                            "type": "string"
+                                        },
+                                        "Enabled": {
+                                            "type": "boolean"
+                                        },
+                                        "NumberOfCurrOpClass": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 255
+                                        },
+                                        "CurrentOperatingClasses": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "TimeStamp",
+                                                    "Class",
+                                                    "Channel",
+                                                    "TxPower"
+                                                ],
+                                                "properties": {
+                                                    "TimeStamp": {
+                                                        "$ref": "#/definitions/timestamp_t"
+                                                    },
+                                                    "Class": {
+                                                        "$ref": "#/definitions/operatingclass_t"
+                                                    },
+                                                    "Channel": {
+                                                        "$ref": "#/definitions/channel_t"
+                                                    },
+                                                    "TxPower": {
+                                                        "$ref": "#/definitions/txpower_t"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "Noise": {
+                                            "$ref": "#/definitions/noisepower_t"
+                                        },
+                                        "Utilization": {
+                                            "$ref": "#/definitions/utilization_t"
+                                        },
+                                        "Transmit": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 255
+                                                }
+                                            ]
+                                        },
+                                        "ReceiveSelf": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 255
+                                                }
+                                            ]
+                                        },
+                                        "ReceiveOther": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 255
+                                                }
+                                            ]
+                                        },
+                                        "Capabilities": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "required": [
+                                                "OperatingClasses",
+                                                "NumberOfOpClass"
+                                            ],
+                                            "properties": {
+                                                "HTCapabilities": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "VHTCapabilities": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "HECapabilities": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "WiFi6APRole": {
+                                                    "oneOf": [
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "$ref": "#/definitions/WiFi6_g"
+                                                        }
+                                                    ]
+                                                },
+                                                "WiFi6bSTARole": {
+                                                    "oneOf": [
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "$ref": "#/definitions/WiFi6_g"
+                                                        }
+                                                    ]
+                                                },
+                                                "AKMFrontHaul": {
+                                                    "oneOf": [
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/AKMSuite_g"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                "AKMBackHaul": {
+                                                    "deprecated": true,
+                                                    "oneOf": [
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/AKMSuite_g"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                "AKMBackhaul": {
+                                                    "oneOf": [
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/definitions/AKMSuite_g"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                "OperatingClasses": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "Class",
+                                                            "MaxTxPower",
+                                                            "NonOperable",
+                                                            "NumberOfNonOperChan"
+                                                        ],
+                                                        "properties": {
+                                                            "Class": {
+                                                                "$ref": "#/definitions/operatingclass_t"
+                                                            },
+                                                            "MaxTxPower": {
+                                                                "$ref": "#/definitions/txpower_t"
+                                                            },
+                                                            "NonOperable": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "$ref": "#/definitions/channel_t"
+                                                                }
+                                                            },
+                                                            "NumberOfNonOperChan": {
+                                                                "type": "integer",
+                                                                "minimum": 0,
+                                                                "maximum": 255
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "NumberOfOpClass": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 255
+                                                },
+                                                 "DSCPPolicyCapability": {
+                                                    "type": "boolean"
+                                                },
+                                                "SCSTrafficDescriptionCapability": {
+                                                    "type": "boolean"
+                                                },
+                                                "MSCSCapability": {
+                                                    "type": "boolean"
+                                                },
+                                                "SCSCapability": {
+                                                    "type": "boolean"
+                                                },
+                                                "QoSMapCapability": {
+                                                    "type": "boolean"
+                                                },
+                                                "WiFi7APRole": {
+                                                    "anyOf": [
+                                                        {
+                                                            "$ref": "#/definitions/WiFi7Capabilities_g"
+                                                        },
+                                                        {
+                                                            "$ref": "#/definitions/FreqSeparation_g"
+                                                        }
+                                                    ]
+                                                },
+                                                "WiFi7bSTARole": {
+                                                    "anyOf": [
+                                                        {
+                                                            "$ref": "#/definitions/WiFi7Capabilities_g"
+                                                        },
+                                                        {
+                                                            "$ref": "#/definitions/FreqSeparation_g"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "NumberOfBSS": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 65535
+                                        },
+                                        "BSSList": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "BSSID",
+                                                    "SSID",
+                                                    "Enabled",
+                                                    "LastChange",
+                                                    "TimeStamp",
+                                                    "UnicastBytesSent",
+                                                    "UnicastBytesReceived",
+                                                    "STAList",
+                                                    "NumberOfSTA"
+                                                ],
+                                                "properties": {
+                                                    "BSSID": {
+                                                        "$ref": "#/definitions/macaddr_t"
+                                                    },
+                                                    "SSID": {
+                                                        "type": "string"
+                                                    },
+                                                    "Enabled": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "LastChange": {
+                                                        "type": "integer",
+                                                        "minimum": 0
+                                                    },
+                                                    "TimeStamp": {
+                                                        "$ref": "#/definitions/timestamp_t"
+                                                    },
+                                                    "UnicastBytesSent": {
+                                                        "$ref": "#/definitions/bytecounter_t"
+                                                    },
+                                                    "UnicastBytesReceived": {
+                                                        "$ref": "#/definitions/bytecounter_t"
+                                                    },
+                                                    "MulticastBytesSent": {
+                                                        "$ref": "#/definitions/bytecounter_t"
+                                                    },
+                                                    "MulticastBytesReceived": {
+                                                        "$ref": "#/definitions/bytecounter_t"
+                                                    },
+                                                    "BroadcastBytesSent": {
+                                                        "$ref": "#/definitions/bytecounter_t"
+                                                    },
+                                                    "BroadcastBytesReceived": {
+                                                        "$ref": "#/definitions/bytecounter_t"
+                                                    },
+                                                    "EstServiceParametersBE": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "EstServiceParametersBK": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "EstServiceParametersVI": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "EstServiceParametersVO": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "ByteCounterUnits": {
+                                                        "type": "integer",
+                                                        "minimum": 0,
+                                                        "maximum": 3
+                                                    },
+                                                    "Profile1bSTAsDisallowed": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "Profile2bSTAsDisallowed": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "AssociationAllowanceStatus": {
+                                                        "type": "integer",
+                                                        "minimum": 0,
+                                                        "maximum": 1
+                                                    },
+                                                    "BackhaulUse": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "FronthaulUse": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "R1disallowed": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "R2disallowed": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "MultiBSSID": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "TransmittedBSSID": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "FronthaulAKMsAllowed": {
+                                                        "oneOf": [
+                                                            {
+                                                                "type": "null"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "$ref": "#/definitions/akm_t"
+                                                                }
+                                                            }
+                                                        ]
+                                                    },
+                                                    "BackhaulAKMsAllowed": {
+                                                        "oneOf": [
+                                                            {
+                                                                "type": "null"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "$ref": "#/definitions/akm_t"
+                                                                }
+                                                            }
+                                                        ]
+                                                    },
+                                                    "QMDescriptor": {
+                                                        "oneOf": [
+                                                            {
+                                                                "type": "null"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "$ref": "#/definitions/QMDescriptor_g"
+                                                                }
+                                                            }
+                                                        ]
+                                                    },
+                                                    "NumberOfSTA": {
+                                                        "type": "integer",
+                                                        "minimum": 0,
+                                                        "maximum": 65535
+                                                    },
+                                                    "BasicDataTransmitRates": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "$ref": "#/definitions/phyrate_t"
+                                                        }
+                                                    },
+                                                    "MUConfig": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "DLMUMIMOEnable",
+                                                            "DLOFDMAEnable",
+                                                            "ULMUMIMOEnable",
+                                                            "ULOFDMAEnable"
+                                                        ],
+                                                        "properties": {
+                                                            "DLMUMIMOEnable": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "DLOFDMAEnable": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "ULMUMIMOEnable": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "ULOFDMAEnable": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    },
+                                                    "MUStats": {
+                                                        "$ref": "#/definitions/MUStats_g"
+                                                    },
+                                                    "ThroughputTestResult": {
+                                                        "$ref": "#/definitions/ThroughputTestResult_g"
+                                                    },
+                                                    "LatencyTestResult": {
+                                                        "$ref": "#/definitions/LatencyTestResult_g"
+                                                    },
+                                                    "LinkRemovalImminent": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "FronthaulSuiteSelector": {
+                                                        "$ref": "#/definitions/suiteselector_t"
+                                                    },
+                                                    "BackhaulSuiteSelector": {
+                                                        "$ref": "#/definitions/suiteselector_t"
+                                                    },
+                                                    "STAList": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "required": [
+                                                                "MACAddress",
+                                                                "TimeStamp",
+                                                                "LastDataDownlinkRate",
+                                                                "LastDataUplinkRate",
+                                                                "SignalStrength",
+                                                                "LastConnectTime",
+                                                                "BytesSent",
+                                                                "BytesReceived",
+                                                                "PacketsSent",
+                                                                "PacketsReceived",
+                                                                "ErrorsSent",
+                                                                "RetransCount"
+                                                            ],
+                                                            "properties": {
+                                                                "MACAddress": {
+                                                                    "$ref": "#/definitions/macaddr_t"
+                                                                },
+                                                                "TimeStamp": {
+                                                                    "$ref": "#/definitions/timestamp_t"
+                                                                },
+                                                                "HTCapabilities": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "VHTCapabilities": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "HECapabilities": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "WiFi6Capabilities": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "$ref": "#/definitions/WiFi6_g"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "ClientCapabilities": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "LastDataDownlinkRate": {
+                                                                    "$ref": "#/definitions/phyrate_t"
+                                                                },
+                                                                "LastDataUplinkRate": {
+                                                                    "$ref": "#/definitions/phyrate_t"
+                                                                },
+                                                                "UtilizationReceive": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "type": "integer",
+                                                                            "minimum": 0
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "UtilizationTransmit": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "type": "integer",
+                                                                            "minimum": 0
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "EstMACDataRateDownlink": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "$ref": "#/definitions/macrate_t"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "EstMACDataRateUplink": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "$ref": "#/definitions/macrate_t"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "SignalStrength": {
+                                                                    "$ref": "#/definitions/rssi_t"
+                                                                },
+                                                                "LastConnectTime": {
+                                                                    "type": "integer",
+                                                                    "minimum": 0
+                                                                },
+                                                                "BytesSent": {
+                                                                    "$ref": "#/definitions/bytecounter_t"
+                                                                },
+                                                                "BytesReceived": {
+                                                                    "$ref": "#/definitions/bytecounter_t"
+                                                                },
+                                                                "PacketsSent": {
+                                                                    "$ref": "#/definitions/packetcounter_t"
+                                                                },
+                                                                "PacketsReceived": {
+                                                                    "$ref": "#/definitions/packetcounter_t"
+                                                                },
+                                                                "ErrorsSent": {
+                                                                    "$ref": "#/definitions/packetcounter_t"
+                                                                },
+                                                                "ErrorsReceived": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "$ref": "#/definitions/packetcounter_t"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "RetransCount": {
+                                                                    "$ref": "#/definitions/packetcounter_t"
+                                                                },
+                                                                "MeasurementReport": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "type": "array",
+                                                                            "items": {
+                                                                                "type": "string"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "NumberOfMeasureReports": {
+                                                                    "oneOf": [
+                                                                        {
+                                                                            "type": "null"
+                                                                        },
+                                                                        {
+                                                                            "type": "integer",
+                                                                            "minimum": 0,
+                                                                            "maximum": 255
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "IPV4Address": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "IPV6Address": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "Hostname": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "TIDQueueSizes": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "$ref": "#/definitions/TIDQueue_g"
+                                                                    }
+                                                                },
+                                                                "CellularDataPreference": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "Excluded",
+                                                                        "Should not use",
+                                                                        "Should use"
+                                                                    ]
+                                                                },
+                                                                "ReAssociationDelay": {
+                                                                    "type": "integer",
+                                                                    "minimum": 0,
+                                                                    "maximum": 65535
+                                                                },
+                                                                "SecurityAssociation": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "PMKSA",
+                                                                        "PMK-R0",
+                                                                        "PMK-R1",
+                                                                        "Mesh_PMKSA",
+                                                                        "Mesh_TKSA",
+                                                                        "PTKSA",
+                                                                        "GTKSA",
+                                                                        "IGTKSA"
+                                                                    ]
+                                                                },
+                                                                "SleepMode": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "Not_Asleep",
+                                                                        "WNM_Sleep_Mode",
+                                                                        "TPU_Sleep",
+                                                                        "TDLS_Peer_Power_Save_Mode",
+                                                                        "AP_PS-Poll",
+                                                                        "TWT_Sleep",
+                                                                        "Light_Sleep",
+                                                                        "Deep_Sleep"
+                                                                    ]
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "BackhaulSta": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "required": [
+                                                        "MACAddress"
+                                                    ],
+                                                    "properties": {
+                                                        "MACAddress": {
+                                                            "$ref": "#/definitions/macaddr_t"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "UnassociatedStaList": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "required": [
+                                                            "MACAddress",
+                                                            "SignalStrength"
+                                                        ],
+                                                        "properties": {
+                                                            "MACAddress": {
+                                                                "$ref": "#/definitions/macaddr_t"
+                                                            },
+                                                            "SignalStrength": {
+                                                                "$ref": "#/definitions/rssi_t"
+                                                            },
+                                                            "Channel": {
+                                                                "$ref": "#/definitions/channel_t"
+                                                            },
+                                                            "OperatingClass": {
+                                                                "$ref": "#/definitions/operatingclass_t"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "NumberOfUnassocSta": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 65535
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "ScanResultList": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "required": [
+                                                        "NumberOfOpClassScans",
+                                                        "TimeStamp",
+                                                        "OpClassScanList"
+                                                    ],
+                                                    "properties": {
+                                                        "NumberOfOpClassScans": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 255
+                                                        },
+                                                        "TimeStamp": {
+                                                            "$ref": "#/definitions/timestamp_t"
+                                                        },
+                                                        "OpClassScanList": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "additionalProperties": false,
+                                                                "required": [
+                                                                    "OperatingClass",
+                                                                    "NumberOfChannelScans",
+                                                                    "ChannelScanList"
+                                                                ],
+                                                                "properties": {
+                                                                    "OperatingClass": {
+                                                                        "$ref": "#/definitions/operatingclass_t"
+                                                                    },
+                                                                    "NumberOfChannelScans": {
+                                                                        "type": "integer",
+                                                                        "minimum": 0,
+                                                                        "maximum": 255
+                                                                    },
+                                                                    "ChannelScanList": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "type": "object",
+                                                                            "additionalProperties": false,
+                                                                            "required": [
+                                                                                "Channel",
+                                                                                "TimeStamp",
+                                                                                "Utilization",
+                                                                                "Noise",
+                                                                                "NumberOfNeighbors",
+                                                                                "NeighborList"
+                                                                            ],
+                                                                            "properties": {
+                                                                                "ScanStatus": {
+                                                                                    "type": "integer",
+                                                                                    "minimum": 0,
+                                                                                    "maximum": 6
+                                                                                },
+                                                                                "Channel": {
+                                                                                    "$ref": "#/definitions/channel_t"
+                                                                                },
+                                                                                "TimeStamp": {
+                                                                                    "$ref": "#/definitions/timestamp_t"
+                                                                                },
+                                                                                "Utilization": {
+                                                                                    "$ref": "#/definitions/utilization_t"
+                                                                                },
+                                                                                "Noise": {
+                                                                                    "$ref": "#/definitions/noisepower_t"
+                                                                                },
+                                                                                "NumberOfNeighbors": {
+                                                                                    "type": "integer",
+                                                                                    "minimum": 0,
+                                                                                    "maximum": 65535
+                                                                                },
+                                                                                "AggregateScanDuration": {
+                                                                                    "$ref": "#/definitions/uint32_t"
+                                                                                },
+                                                                                "ScanType": {
+                                                                                    "type": "boolean"
+                                                                                },
+                                                                                "NeighborList": {
+                                                                                    "type": "array",
+                                                                                    "items": {
+                                                                                        "type": "object",
+                                                                                        "additionalProperties": false,
+                                                                                        "required": [
+                                                                                            "BSSID",
+                                                                                            "SSID",
+                                                                                            "ChannelBandwidth",
+                                                                                            "SignalStrength"
+                                                                                        ],
+                                                                                        "properties": {
+                                                                                            "BSSID": {
+                                                                                                "$ref": "#/definitions/macaddr_t"
+                                                                                            },
+                                                                                            "SSID": {
+                                                                                                "type": "string"
+                                                                                            },
+                                                                                            "ChannelBandwidth": {
+                                                                                                "type": "string"
+                                                                                            },
+                                                                                            "StationCount": {
+                                                                                                "oneOf": [
+                                                                                                    {
+                                                                                                        "type": "integer",
+                                                                                                        "minimum": 0,
+                                                                                                        "maximum": 65535
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "type": "null"
+                                                                                                    }
+                                                                                                ]
+                                                                                            },
+                                                                                            "SignalStrength": {
+                                                                                                "$ref": "#/definitions/rssi_t"
+                                                                                            },
+                                                                                            "ChannelUtilization": {
+                                                                                                "oneOf": [
+                                                                                                    {
+                                                                                                        "type": "null"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "$ref": "#/definitions/utilization_t"
+                                                                                                    }
+                                                                                                ]
+                                                                                            },
+                                                                                            "MLDMACAddress": {
+                                                                                                "$ref": "#/definitions/macaddr_t"
+                                                                                            },
+                                                                                            "ReportingBSSID": {
+                                                                                                "$ref": "#/definitions/macaddr_t"
+                                                                                            },
+                                                                                            "MultiBSSID": {
+                                                                                                "type": "boolean"
+                                                                                            },
+                                                                                            "BSSLoadElementPresent": {
+                                                                                                "type": "boolean"
+                                                                                            },
+                                                                                            "BSSColor": {
+                                                                                                "type": "integer",
+                                                                                                "minimum": 0,
+                                                                                                "maximum": 63
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "TrafficSeparationCombinedFronthaul": {
+                                            "type": "boolean"
+                                        },
+                                        "TrafficSeparationCombinedBackhaul": {
+                                            "type": "boolean"
+                                        },
+                                        "SteeringPolicy": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 3
+                                        },
+                                        "ChannelUtilizationThreshold": {
+                                            "$ref": "#/definitions/utilization_t"
+                                        },
+                                        "RCPISteeringThreshold": {
+                                            "$ref": "#/definitions/rssi_t"
+                                        },
+                                        "CountryCode": {
+                                            "deprecated": true,
+                                            "type": "string",
+                                            "minLength": 2,
+                                            "maxLength": 2
+                                        },
+                                        "STAReportingRCPIThreshold": {
+                                            "$ref": "#/definitions/rssi_t"
+                                        },
+                                        "STAReportingRCPIHysteresisMarginOverride": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 255
+                                        },
+                                        "ChannelUtilizationReportingThreshold": {
+                                            "$ref": "#/definitions/utilization_t"
+                                        },
+                                        "AssociatedSTATrafficStatsInclusionPolicy": {
+                                            "type": "boolean"
+                                        },
+                                        "AssociatedSTALinkMetricsInclusionPolicy": {
+                                            "type": "boolean"
+                                        },
+                                        "ChipsetVendor": {
+                                            "type": "string"
+                                        },
+                                        "ScanCapability": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "required": [
+                                                "OnBootOnly",
+                                                "Impact",
+                                                "MinimumInterval",
+                                                "OpClassList"
+                                            ],
+                                            "properties": {
+                                                "OnBootOnly": {
+                                                    "type": "boolean"
+                                                },
+                                                "Impact": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 3
+                                                },
+                                                "MinimumInterval": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 2e32
+                                                },
+                                                "OpClassList": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/OpClassChannels_g"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "CACCapability": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/CACMethod_g"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "APMetricsWiFi6": {
+                                            "type": "boolean"
+                                        },
+                                        "DisAllowedOpClassChannels": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/DisAllowedOpClassChannels_g"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "SpatialReuse": {
+                                            "$ref": "#/definitions/SpatialReuse_g"
+                                        },
+                                        "TransmitPowerLimit": {
+                                            "type": "integer",
+                                            "minimum": -127,
+                                            "maximum": 127
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "MSCSDisallowedStaList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/macaddr_t"
+                    }
+                },
+                "SCSDisallowedStaList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/macaddr_t"
+                    }
+                },
+                "NetworkSSIDList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/NetworkSSID_g"
+                    }
+                }
+            }
+        },
+        "notification": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "eventTime",
+                        "wfa-dataelements:AssociationEvent"
+                    ],
+                    "properties": {
+                        "eventTime": {
+                            "$ref": "#/definitions/timestamp_t"
+                        },
+                        "wfa-dataelements:AssociationEvent": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "AssocData"
+                            ],
+                            "properties": {
+                                "AssocData": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "BSSID",
+                                        "MACAddress"
+                                    ],
+                                    "properties": {
+                                        "BSSID": {
+                                            "$ref": "#/definitions/macaddr_t"
+                                        },
+                                        "MACAddress": {
+                                            "$ref": "#/definitions/macaddr_t"
+                                        },
+                                        "StatusCode": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "$ref": "#/definitions/statuscode_t"
+                                                }
+                                            ]
+                                        },
+                                        "HTCapabilities": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "VHTCapabilities": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "HECapabilities": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "WiFi6Capabilities": {
+                                            "$ref": "#/definitions/WiFi6_g"
+                                        },
+                                        "ClientCapabilities": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "eventTime",
+                        "wfa-dataelements:DisassociationEvent"
+                    ],
+                    "properties": {
+                        "eventTime": {
+                            "$ref": "#/definitions/timestamp_t"
+                        },
+                        "wfa-dataelements:DisassociationEvent": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "DisassocData"
+                            ],
+                            "properties": {
+                                "DisassocData": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "BSSID",
+                                        "MACAddress",
+                                        "BytesSent",
+                                        "BytesReceived",
+                                        "PacketsSent",
+                                        "PacketsReceived",
+                                        "ErrorsSent",
+                                        "RetransCount"
+                                    ],
+                                    "properties": {
+                                        "BSSID": {
+                                            "$ref": "#/definitions/macaddr_t"
+                                        },
+                                        "MACAddress": {
+                                            "$ref": "#/definitions/macaddr_t"
+                                        },
+                                        "ReasonCode": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "$ref": "#/definitions/reasoncode_t"
+                                                }
+                                            ]
+                                        },
+                                        "BytesSent": {
+                                            "$ref": "#/definitions/bytecounter_t"
+                                        },
+                                        "BytesReceived": {
+                                            "$ref": "#/definitions/bytecounter_t"
+                                        },
+                                        "PacketsSent": {
+                                            "$ref": "#/definitions/packetcounter_t"
+                                        },
+                                        "PacketsReceived": {
+                                            "$ref": "#/definitions/packetcounter_t"
+                                        },
+                                        "ErrorsSent": {
+                                            "$ref": "#/definitions/packetcounter_t"
+                                        },
+                                        "ErrorsReceived": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "$ref": "#/definitions/packetcounter_t"
+                                                }
+                                            ]
+                                        },
+                                        "RetransCount": {
+                                            "$ref": "#/definitions/packetcounter_t"
+                                        },
+                                        "LastDataDownlinkRate": {
+                                            "$ref": "#/definitions/phyrate_t"
+                                        },
+                                        "LastDataUplinkRate": {
+                                            "$ref": "#/definitions/phyrate_t"
+                                        },
+                                        "UtilizationReceive": {
+                                            "$ref": "#/definitions/uint32_t"
+                                        },
+                                        "UtilizationTransmit": {
+                                            "$ref": "#/definitions/uint32_t"
+                                        },
+                                        "EstMACDataRateDownlink": {
+                                            "$ref": "#/definitions/macrate_t"
+                                        },
+                                        "EstMACDataRateUplink": {
+                                            "$ref": "#/definitions/macrate_t"
+                                        },
+                                        "SignalStrength": {
+                                            "$ref": "#/definitions/rssi_t"
+                                        },
+                                        "LastConnectTime": {
+                                            "$ref": "#/definitions/uint32_t"
+                                        },
+                                        "Noise": {
+                                            "$ref": "#/definitions/noisepower_t"
+                                        },
+                                        "InitiatedBy": {
+                                            "type": "string",
+                                            "enum": [
+                                                "STA",
+                                                "EasyMesh_Agent",
+                                                "EasyMesh_Controller",
+                                                "DE_Collector",
+                                                "Unknown"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "eventTime",
+                        "wfa-dataelements:FailedConnectionEvent"
+                    ],
+                    "properties": {
+                        "eventTime": {
+                            "$ref": "#/definitions/timestamp_t"
+                        },
+                        "wfa-dataelements:FailedConnectionEvent": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "FailedConnectionEventData"
+                            ],
+                            "properties": {
+                                "FailedConnectionEventData": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "MACAddress",
+                                        "StatusCode"
+                                    ],
+                                    "properties": {
+                                        "MACAddress": {
+                                            "$ref": "#/definitions/macaddr_t"
+                                        },
+                                        "StatusCode": {
+                                            "$ref": "#/definitions/statuscode_t"
+                                        },
+                                        "ReasonCode": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "null"
+                                                },
+                                                {
+                                                    "$ref": "#/definitions/reasoncode_t"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
