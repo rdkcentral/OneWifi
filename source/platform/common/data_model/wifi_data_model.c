@@ -21,7 +21,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "bus.h"
-#include "wifi_data_model_parse.h"
 #include "wifi_data_model.h"
 #include "wifi_dml_cb.h"
 #include "wifi_dml_api.h"
@@ -1673,8 +1672,20 @@ bus_error_t wifi_region_code_set_param_value(char *event_name, raw_data_t *p_dat
 
 bus_error_t default_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
 {
-    (void)p_data;
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, event_name);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s, data type:%d\r\n", __func__, __LINE__, event_name, p_data->data_type);
+
+    switch(p_data->data_type) {
+        case bus_data_type_string:
+            scratch_data_buff_t temp_buff = { 0 };
+            set_output_string(&temp_buff, " ");
+
+            p_data->raw_data.bytes = temp_buff.buff;
+            p_data->raw_data_len   = temp_buff.buff_len;
+            break;
+        default:
+            break;
+    }
+
     return bus_error_success;
 }
 
@@ -1705,4 +1716,122 @@ bus_error_t default_event_sub_handler(char *eventName, bus_event_sub_action_t ac
     (void)autoPublish;
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s: action:%d interval:%d\r\n", __func__, __LINE__, eventName, action, interval);
     return bus_error_success;
+}
+
+int wifi_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table)
+{
+    bus_data_cb_func_t bus_data_cb[] = {
+        //wifi event cb func
+        { WIFI_OBJ_TREE_NAME,
+            { wifi_get_param_value, wifi_set_param_value, NULL,
+              NULL, wifi_event_sub_handler, NULL }},
+
+        //wifi radio event cb func
+        { RADIO_OBJ_TREE_NAME,
+            { radio_get_param_value, radio_set_param_value, radio_table_add_row_handler,
+              radio_table_remove_row_handler, radio_event_sub_handler, NULL }},
+
+        //wifi accesspoint event cb func
+        { ACCESSPOINT_OBJ_TREE_NAME,
+            { accesspoint_get_param_value, accesspoint_set_param_value, accesspoint_table_add_row_handler,
+              accesspoint_table_remove_row_handler, accesspoint_event_sub_handler, NULL }},
+
+        //wifi ssid event cb func
+        { SSID_OBJ_TREE_NAME,
+            { ssid_get_param_value, ssid_set_param_value, ssid_table_add_row_handler,
+              ssid_table_remove_row_handler, ssid_event_sub_handler, NULL }},
+
+        //wifi security event cb func
+        { SECURITY_OBJ_TREE_NAME,
+            { security_get_param_value, security_set_param_value, NULL,
+              NULL, security_event_sub_handler, NULL }},
+
+        //wifi radius security event cb func
+        { RADIUS_SEC_OBJ_TREE_NAME,
+            { radius_sec_get_param_value, radius_sec_set_param_value, NULL,
+              NULL, radius_sec_event_sub_handler, NULL }},
+
+        //wifi radius security event cb func
+        { AUTH_SEC_OBJ_TREE_NAME,
+            { auth_sec_get_param_value, auth_sec_set_param_value, NULL,
+              NULL, auth_sec_event_sub_handler, NULL }},
+
+        //wifi macfilter event cb func
+        { MACFILTER_OBJ_TREE_NAME,
+            { macfilter_get_param_value, macfilter_set_param_value, macfilter_table_add_row_handler,
+              macfilter_table_remove_row_handler, macfilter_event_sub_handler, NULL }},
+
+        //wifi associated_sta event cb func
+        { ASSOCIATED_STA_OBJ_TREE_NAME,
+            { associated_sta_get_param_value, NULL, associated_sta_table_add_row_handler,
+              associated_sta_table_remove_row_handler, associated_sta_event_sub_handler, NULL }},
+
+        //wifi interworking event cb func
+        { INTERWORKING_OBJ_TREE_NAME,
+            { interworking_get_param_value, interworking_set_param_value, NULL,
+              NULL, interworking_event_sub_handler, NULL }},
+
+        //wifi connection control event cb func
+        { CONN_CTRL_OBJ_TREE_NAME,
+            { conn_ctrl_get_param_value, conn_ctrl_set_param_value, NULL,
+              NULL, conn_ctrl_event_sub_handler, NULL }},
+
+        //wifi pre connection control event cb func
+        { PRE_CONN_CTRL_OBJ_TREE_NAME,
+            { pre_conn_ctrl_get_param_value, pre_conn_ctrl_set_param_value, NULL,
+              NULL, pre_conn_ctrl_event_sub_handler, NULL }},
+
+        //wifi post connection control event cb func
+        { POST_CONN_CTRL_OBJ_TREE_NAME,
+            { post_conn_ctrl_get_param_value, post_conn_ctrl_set_param_value, NULL,
+              NULL, post_conn_ctrl_event_sub_handler, NULL }},
+
+        //wifi wps event cb func
+        { WPS_OBJ_TREE_NAME,
+            { wps_get_param_value, wps_set_param_value, NULL,
+              NULL, wps_event_sub_handler, NULL }},
+
+        //wifi interworking serv event cb func
+        { INTERWORKING_SERV_OBJ_NAME,
+            { interworking_serv_get_param_value, interworking_serv_set_param_value, NULL,
+              NULL, interworking_serv_event_sub_handler, NULL }},
+
+        //wifi passpoint event cb func
+        { PASSPOINT_OBJ_TREE_NAME,
+            { passpoint_get_param_value, passpoint_set_param_value, NULL,
+              NULL, passpoint_event_sub_handler, NULL }},
+
+        //wifi client report event cb func
+        { WIFI_CLIENT_REPORT_OBJ_NAME,
+            { wifi_client_report_get_param_value, wifi_client_report_set_param_value, NULL,
+              NULL, wifi_client_report_event_sub_handler, NULL }},
+
+        //wifi client default report event cb func
+        { WIFI_CLIENT_DEF_REPORT_OBJ_NAME,
+            { wifi_client_def_report_get_param_value, wifi_client_def_report_set_param_value, NULL,
+              NULL, wifi_client_def_report_event_sub_handler, NULL }},
+
+        //wifi event cb func
+        { NEIG_WIFI_DIAG_OBJ_NAME,
+            { neig_wifi_diag_get_param_value, neig_wifi_diag_set_param_value, NULL,
+              NULL, neig_wifi_diag_event_sub_handler, NULL }},
+
+        //wifi event cb func
+        { NEIG_DIAG_RESULT_OBJ_NAME,
+            { neig_diag_result_get_param_value, NULL,
+              neig_diag_result_table_add_row_cb, neig_diag_result_table_remove_row_cb,
+              neig_diag_result_event_sub_cb, NULL }},
+
+        //wifi ap macfilter event cb func
+        { AP_MACFILTER_TREE_NAME,
+            { ap_macfilter_get_param_value, ap_macfilter_set_param_value, NULL,
+              NULL, ap_macfilter_event_sub_handler, NULL }},
+
+        //wifi region code event cb func
+        { WIFI_REGION_OBJ_NAME,
+            { wifi_region_code_get_param_value, wifi_region_code_set_param_value, NULL,
+              NULL, NULL, NULL }}
+    };
+
+    return set_bus_callbackfunc_pointers(full_namespace, cb_table, bus_data_cb, ARRAY_SZ(bus_data_cb));
 }
