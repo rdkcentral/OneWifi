@@ -22,6 +22,7 @@
 #include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "dml_onewifi_api.h"
+#include "wifi_dml_api.h"
 #include "wifi_events.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -1181,7 +1182,15 @@ int start_dml_main(void *arg)
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    decode_json_obj(&ctrl->handle, BUS_DML_CONFIG_FILE);
+    /* Parse and register Native DM */
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing Native DM schema: %s\n", 
+                         __func__, __LINE__, BUS_DML_CONFIG_FILE);
+    parse_and_register_native_dml_schema(&ctrl->handle, BUS_DML_CONFIG_FILE);
+
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing WFA Data Elements schema: %s\n", 
+                         __func__, __LINE__, BUS_WFA_DML_CONFIG_FILE);
+    parse_and_register_wfa_schema(&ctrl->handle, BUS_WFA_DML_CONFIG_FILE);
+    
     print_registered_elems(get_bus_mux_reg_cb_map(), 0);
 
     get_wifidb_obj()->desc.init_data_fn();
@@ -1961,3 +1970,30 @@ int push_data_to_ssp_queue(const void *msg, unsigned int len, uint32_t type, uin
 {
     return RETURN_OK;
 }
+
+
+int set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table,
+                                       const bus_data_cb_func_t *bus_data_cb, uint32_t bus_data_cb_size)
+{
+    /* For now, use default handlers */
+    bus_callback_table_t bus_default_cb = {
+        default_get_param_value, default_set_param_value, default_table_add_row_handler,
+        default_table_remove_row_handler, default_event_sub_handler, NULL
+    };
+
+    uint32_t index = 0;
+
+    for (index = 0; index < bus_data_cb_size; index++) {
+        if (STR_CMP(full_namespace, bus_data_cb[index].cb_table_name)) {
+            memcpy(cb_table, &bus_data_cb[index].cb_func, sizeof(bus_callback_table_t));
+            return RETURN_OK;
+        }
+    }
+
+    /* No match found, use default handlers */
+    wifi_util_info_print(WIFI_DMCLI,"%s:%d:default cb set for namespace:[%s]\n", __func__, __LINE__, full_namespace);
+    memcpy(cb_table, &bus_default_cb, sizeof(bus_callback_table_t));
+
+    return RETURN_OK;
+}
+

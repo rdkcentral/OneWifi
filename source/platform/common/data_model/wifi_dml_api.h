@@ -26,6 +26,8 @@
 #include <unistd.h>
 #include "wifi_data_model.h"
 #include "wifi_hal.h"
+#include "wifi_dml_json_parser.h"
+#include "bus.h"
 
 #define REG_DOMAIN_SZ  3
 #define ENV_SZ         1
@@ -96,6 +98,11 @@ typedef struct table_index_timer_arg {
     char     table_row[64];
 } table_index_timer_arg_t;
 
+typedef struct bus_data_cb_func {
+    char                  *cb_table_name;
+    bus_callback_table_t  cb_func;
+} bus_data_cb_func_t;
+
 int set_output_string(scratch_data_buff_t *output_value, char *str);
 uint32_t get_sec_mode_string_from_int(wifi_security_modes_t security_mode, char *security_name);
 int get_sec_mode_int_from_string(const char *p_sec_name, wifi_security_modes_t *p_sec_mode);
@@ -150,5 +157,8 @@ int get_wifi_region_update_source(char *str_output);
 int set_wifi_region_update_source(char *str_input);
 int update_json_param(char *p_key, char *partner_id, char *p_value, char *p_source, char *p_current_time);
 int push_data_to_ssp_queue(const void *msg, unsigned int len, uint32_t type, uint32_t sub_type);
+
+int set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table,
+                                  const bus_data_cb_func_t *bus_data_cb, uint32_t bus_data_cb_size);
 
 #endif//WIFI_DML_API_H
