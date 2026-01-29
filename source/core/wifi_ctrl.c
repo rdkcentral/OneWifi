@@ -84,15 +84,22 @@ static int wifi_radio_set_enable(bool status)
     int ret = RETURN_OK;
     uint8_t index = 0;
     uint8_t num_of_radios = getNumberRadios();
-    wifi_radio_operationParam_t temp_wifi_radio_oper_param;
+    wifi_radio_operationParam_t *temp_wifi_radio_oper_param = NULL;
 
-    memset(&temp_wifi_radio_oper_param, 0, sizeof(temp_wifi_radio_oper_param));
+    temp_wifi_radio_oper_param = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (temp_wifi_radio_oper_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(temp_wifi_radio_oper_param, 0, sizeof(wifi_radio_operationParam_t));
 
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d num_of_radios:%d\n", __func__, __LINE__, num_of_radios);
     for (index = 0; index < num_of_radios; index++) {
         wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
         if (wifi_radio_oper_param == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d wrong index for radio map: %d\n", __func__, __LINE__, index);
+            free(temp_wifi_radio_oper_param);
+            temp_wifi_radio_oper_param = NULL;
             return RETURN_ERR;
         }
 
@@ -102,10 +109,10 @@ static int wifi_radio_set_enable(bool status)
             continue;
         }
 
-        memcpy(&temp_wifi_radio_oper_param, wifi_radio_oper_param, sizeof(wifi_radio_operationParam_t));
-        temp_wifi_radio_oper_param.enable = status;
+        memcpy(temp_wifi_radio_oper_param, wifi_radio_oper_param, sizeof(wifi_radio_operationParam_t));
+        temp_wifi_radio_oper_param->enable = status;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d index: %d radio enable status:%d\n", __func__, __LINE__, index, status);
-        ret = wifi_hal_setRadioOperatingParameters(index, &temp_wifi_radio_oper_param);
+        ret = wifi_hal_setRadioOperatingParameters(index, temp_wifi_radio_oper_param);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio parameter set failure: radio_index:%d\n", __func__, __LINE__, index);
         } else {
@@ -114,6 +121,8 @@ static int wifi_radio_set_enable(bool status)
 
     }
 
+    free(temp_wifi_radio_oper_param);
+    temp_wifi_radio_oper_param = NULL;
     return ret;
 }
 
@@ -695,7 +704,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
         if (data.data_type != bus_data_type_uint32) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
                 name, data.data_type, rc);
             return;
         }
@@ -709,7 +718,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         if (data.data_type != bus_data_type_string) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
                 name, data.data_type, rc);
             return;
         }
@@ -717,7 +726,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         pTmp = (char *)data.raw_data.bytes;
         if (pTmp == NULL) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus: Unable to get value in event:%s\n",
-                __func__, __LINE__);
+                __func__, __LINE__, name);
             return;
         }
         if (strcmp(pTmp, "Up") == 0) {
@@ -2586,33 +2595,46 @@ wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex)
 int get_wifi_vap_network_status(uint8_t vapIndex, bool *status)
 {
     int ret;
-    wifi_vap_info_t vap_cfg;
+    int retval = RETURN_ERR;
+    wifi_vap_info_t *vap_cfg = NULL;
     rdk_wifi_vap_info_t rdk_vap_cfg;
     char vap_name[32];
     memset(vap_name, 0, sizeof(vap_name));
-    memset(&vap_cfg, 0, sizeof(vap_cfg));
+
+    vap_cfg = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_cfg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(vap_cfg, 0, sizeof(wifi_vap_info_t));
 
     ret = convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, vap_name);
     if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d failure convert vap-index to name vapIndex:%d \n", __func__, __LINE__, vapIndex);
-        return RETURN_ERR;
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failure convert vap-index to name vapIndex:%d\n", __func__, __LINE__, vapIndex);
+        goto cleanup;
     }
-    ret = wifidb_get_wifi_vap_info(vap_name, &vap_cfg, &rdk_vap_cfg);
+    ret = wifidb_get_wifi_vap_info(vap_name, vap_cfg, &rdk_vap_cfg);
     if (ret != RETURN_OK) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d wifiDb get vapInfo failure :vap_name:%s \n", __func__, __LINE__, vap_name);
         wifi_front_haul_bss_t *bss_param = Get_wifi_object_bss_parameter(vapIndex);
         if(bss_param != NULL) {
             *status = bss_param->enabled;
+            retval = RETURN_OK;
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d bss_param null for vapIndex:%d \n", __func__, __LINE__, vapIndex);
-            return RETURN_ERR;
         }
-        return RETURN_OK;
+        goto cleanup;
     }
-    *status = vap_cfg.u.bss_info.enabled;
+    *status = vap_cfg->u.bss_info.enabled;
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d vap_info: vap_name:%s vap_index:%d, bss_status:%d\n", __func__, __LINE__, vap_name, vapIndex, *status);
+    retval = RETURN_OK;
 
-    return RETURN_OK;
+cleanup:
+    if (vap_cfg != NULL) {
+        free(vap_cfg);
+        vap_cfg = NULL;
+    }
+    return retval;
 }
 
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status)

@@ -152,6 +152,11 @@ int apps_mgr_analytics_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, 
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_analytics);
 
+    if (app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d assert - NULL Pointer\n", __FUNCTION__, __LINE__);
+        destroy_wifi_event(event);
+        return RETURN_ERR;
+    }
     app->desc.event_fn(app, event);
 
     event->event_type = wifi_event_type_analytic;
@@ -177,6 +182,11 @@ int apps_mgr_sm_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_ev
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_sm);
 
+    if (app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d assert - NULL Pointer\n", __FUNCTION__, __LINE__);
+        free(event);
+        return RETURN_ERR;
+    }
     app->desc.event_fn(app, event);
 
     if (event != NULL) {
@@ -208,6 +218,11 @@ int apps_mgr_cac_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_e
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_cac);
 
+    if (app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d assert - NULL pointer\n", __FUNCTION__, __LINE__);
+        destroy_wifi_event(event);
+        return RETURN_ERR;
+    }
     app->desc.event_fn(app, event);
 
     destroy_wifi_event(event);
