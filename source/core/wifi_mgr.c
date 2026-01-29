@@ -245,6 +245,11 @@ bool is_device_type_sr203(void)
     return is_supported_gateway_device("SR203");
 }
 
+bool is_device_type_scxf10(void)
+{
+    return is_supported_gateway_device("SCXF11BFL");
+}
+
 int init_wifimgr()
 {
     if (!get_stubs_descriptor()->drop_root_fn()) {
@@ -341,7 +346,7 @@ void init_wifi_db_param(void)
 
 int start_wifimgr()
 {
-#ifdef ONEWIFI_DML_SUPPORT
+#if defined(ONEWIFI_DML_SUPPORT) || defined(ONEWIFI_JSON_DML_SUPPORT)
     get_wifidml_obj()->desc.start_dml_fn();
 #else
     init_wifi_db_param();

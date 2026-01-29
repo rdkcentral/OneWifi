@@ -142,7 +142,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     //encode hal cap
     hal_cap = cJSON_CreateObject();
- #if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE	
+ #if defined EASY_MESH_NODE
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(json, "DeviceInfo", obj);
     // Add Device Info params here
@@ -376,7 +376,7 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
-  #if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+  #if defined EASY_MESH_NODE
     // decode DeviceInfo object
     obj_config = cJSON_GetObjectItem(json, "DeviceInfo");
     if (decode_device_info(obj_config, wifi_prop) != webconfig_error_none) {

@@ -682,6 +682,10 @@ static int off_chan_scan_init (unsigned int radio_index)
 
     //Getting primary channel and country code
     wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_OCS, "%s:%d: radioOperation is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
     UINT prim_chan = radioOperation->channel;
     char countryStr[64] = {0};
     snprintf(countryStr, sizeof(wifiCountryMapMembers[radioOperation->countryCode].countryStr),"%s", wifiCountryMapMembers[radioOperation->countryCode].countryStr);

@@ -28,6 +28,7 @@
 #include "wifi_util.h"
 #include "dml_onewifi_api.h"
 #include "wifi_dml_api.h"
+#include "wifi_ctrl.h"
 
 extern bool is_radio_config_changed;
 extern bool g_update_wifi_region;
@@ -149,7 +150,7 @@ bool wifi_get_param_bool_value(void *obj_ins_context, char *param_name, bool *ou
             }
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload got %s and val=%d\n", __func__, __LINE__, path, val);
         }
-        fclose(fp);
+        pclose(fp);
     } else {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
         return false;
@@ -4260,13 +4261,8 @@ bool wps_get_param_string_value(void *obj_ins_context, char *param_name, scratch
     } else if (STR_CMP(param_name, "ConfigMethodsEnabled")) {
         char buff[128] = {0};
 
-        if (get_wifi_wps_method_string_from_int(pcfg->u.bss_info.wps.methods, buff) != 0) {
-            set_output_string(output_value, buff);
-        } else {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d wps method:%d str value not found\n", __func__,
-                __LINE__, p_dm_vap_default->wps_methods);
-            return false;
-        }
+        get_wifi_wps_method_string_from_int(pcfg->u.bss_info.wps.methods, buff);
+        set_output_string(output_value, buff);
     } else if (STR_CMP(param_name, "X_CISCO_COM_Pin")) {
         set_output_string(output_value, p_dm_vap_default->wps_pin);
     } else if (STR_CMP(param_name, "X_CISCO_COM_ClientPin")) {
