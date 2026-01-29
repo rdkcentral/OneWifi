@@ -1694,21 +1694,27 @@ static void wifi_sta_5g_status_handler(char *event_name, raw_data_t *p_data, voi
 }
 #endif
 
-static void handlePrivateHotspotClientDisconnect(char *event_name, raw_data_t *p_data, void *userData)
+/**
+* Hotspot app use this to kick stations which won't complete DHCP in time.
+* Expected command from hotspot app:
+* Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient <mac>_<vap_index>
+*/
+
+static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
-    char mac[64] = {0};
+    char mac[18] = {0};
     int index = 0;
-    char tmp_str[120];
+    char tmp_str[124] = {0};
        
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
             event_name, p_data->data_type);
     
     pTmp = (char *)p_data->raw_data.bytes;
 
-    if((strcmp(event_name, WIFI_PRIVATE_HOTSPOT_CLIENT_IP) != 0) || (pTmp == NULL)) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->data_type);
+    if((strcmp(event_name, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED) != 0) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->data_type);
         return;
     }
     // Find the position of the underscore
@@ -1726,7 +1732,6 @@ static void handlePrivateHotspotClientDisconnect(char *event_name, raw_data_t *p
         return;
 
     }
-    memset(tmp_str, 0, sizeof(tmp_str));
     snprintf(tmp_str, sizeof(tmp_str), "%d-%s-0", (index-1),mac);
     push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
 }
@@ -2111,15 +2116,15 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 #endif
-    if(ctrl->privateHotspotIPSubscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_PRIVATE_HOTSPOT_CLIENT_IP,handlePrivateHotspotClientDisconnect, NULL, 
+    if(!ctrl->hotspot_client_private_ip_status_subscribed) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED, hotspot_client_dhcp_failure_disconnect, NULL, 
             0) != bus_error_success) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
-                    __FUNCTION__, __LINE__, WIFI_PRIVATE_HOTSPOT_CLIENT_IP);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
+                    __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
         } else {
-            ctrl->privateHotspotIPSubscribed = true;
+            ctrl->hotspot_client_private_ip_status_subscribed = true;
             wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
-                __FUNCTION__, __LINE__, WIFI_PRIVATE_HOTSPOT_CLIENT_IP);
+                __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
         }
     }
 }

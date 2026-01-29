@@ -245,7 +245,6 @@ typedef struct wifi_ctrl {
     bool                marker_list_config_subscribed;
     bool                wifi_sta_2g_status_subscribed;
     bool                wifi_sta_5g_status_subscribed;
-    bool                privateHotspotIPSubscribed;
     bool                eth_bh_status_subscribed;
     bool                mesh_keep_out_chans_subscribed;
     wifiapi_t           wifiapi;
@@ -268,6 +267,7 @@ typedef struct wifi_ctrl {
     events_bus_data_t   events_bus_data;
     hotspot_cfg_sem_param_t hotspot_sem_param;
     bool                rf_status_down;
+    bool                hotspot_client_dhcp_failure_subscribed;
 } wifi_ctrl_t;
 
 
