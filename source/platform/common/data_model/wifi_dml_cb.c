@@ -17,17 +17,18 @@
   limitations under the License.
  **************************************************************************/
 
-#include "wifi_dml_cb.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "bus.h"
-#include "dml_onewifi_api.h"
+#include "wifi_dml_cb.h"
 #include "wifi_data_model.h"
-#include "wifi_dml_api.h"
 #include "wifi_events.h"
 #include "wifi_stubs.h"
 #include "wifi_util.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "dml_onewifi_api.h"
+#include "wifi_dml_api.h"
+#include "wifi_ctrl.h"
 
 extern bool is_radio_config_changed;
 extern bool g_update_wifi_region;
@@ -154,7 +155,7 @@ bool wifi_get_param_bool_value(void *obj_ins_context, char *param_name, bool *ou
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Log_upload got %s and val=%d\n", __func__,
                 __LINE__, path, val);
         }
-        fclose(fp);
+        pclose(fp);
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
