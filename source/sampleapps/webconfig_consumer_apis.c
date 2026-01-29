@@ -534,13 +534,18 @@ void handle_webconfig_subdoc_test_result(webconfig_subdoc_type_t subdoc_type, we
 void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char *str, unsigned int len, consumer_event_subtype_t subtype)
 {
     webconfig_t *config = NULL;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_subdoc_type_t subdoc_type;
     webconfig_error_t ret = webconfig_error_none;
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memset(&subdoc_type, 0, sizeof(webconfig_subdoc_type_t));
     config = &consumer->webconfig;
 
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     printf( "%s:%d:webconfig initializ:%d\n", __func__, __LINE__, config->initializer);
     switch (subtype) {
         case consumer_event_webconfig_set_data:
@@ -551,19 +556,18 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
             } else {
                 printf( "%s:%d:webconfig_decode\n", __func__, __LINE__);
 
-                memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-                memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+                memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-                ret = webconfig_decode(&consumer->webconfig, &data, str);
+                ret = webconfig_decode(&consumer->webconfig, data, str);
                 if (ret == webconfig_error_none)
-                    subdoc_type = data.type;
+                    subdoc_type = data->type;
             }
 
             if (ret == webconfig_error_none ) {
                 printf( "%s:%d:webconfig initializ:%d subdoc_type : %d\n", __func__, __LINE__, config->initializer, subdoc_type);
 
                 dump_subdoc(str, subdoc_type);
-                sample_app_cache_update(consumer, &data);
+                sample_app_cache_update(consumer, data);
                 handle_webconfig_subdoc_test_result(subdoc_type, consumer);
 
                 if (enable_ovsdb == true) {
@@ -572,7 +576,7 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
 
-            webconfig_data_free(&data);
+            webconfig_data_free(data);
         break;
         case consumer_event_webconfig_get_data:
             //printf("%s:%d: Received webconfig subdoc:\n%s\n ... decoding and translating\n", __func__, __LINE__, str);
@@ -581,12 +585,11 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
             } else {
                 printf( "%s:%d:webconfig_decode\n", __func__, __LINE__);
 
-                memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-                memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+                memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-                ret = webconfig_decode(&consumer->webconfig, &data, str);
+                ret = webconfig_decode(&consumer->webconfig, data, str);
                 if (ret == webconfig_error_none)
-                    subdoc_type = data.type;
+                    subdoc_type = data->type;
             }
 
             if (ret == webconfig_error_none ) {
@@ -613,16 +616,18 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                     break;
 
                     default:
-                        printf("%s:%d: Unknown webconfig subdoc type:%d\n", __func__, __LINE__, data.type);
+                        printf("%s:%d Unknown webconfig subdoc type:%d\n", __func__, __LINE__, data->type);
                     break;
                 }
             } else {
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
 
-            webconfig_data_free(&data);
+            webconfig_data_free(data);
         break;
     }
+    free(data);
+    data = NULL;
 }
 
 webconfig_error_t webconfig_parse_json_to_struct(webconfig_t *config, webconfig_subdoc_data_t *data)
@@ -671,33 +676,38 @@ int parse_subdoc_input_param(webconfig_consumer_t *consumer, webconfig_subdoc_da
 
 void test_radio_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str;
     webconfig_error_t ret=webconfig_error_none;
 
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
     } else {
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
-            data.u.decoded.radios[0].oper.channel = 3;
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
+            data->u.decoded.radios[0].oper.channel = 3;
         }
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         //clearing the descriptor
-        data.descriptor =  0;
+        data->descriptor =  0;
 
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_radio);
         if (ret == webconfig_error_none)
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
     }
 
     if (ret == webconfig_error_none) {
@@ -717,25 +727,33 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 void test_null_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret=webconfig_error_none;
     char *str;
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     //The below information is not required for the null subdoc, Filled the structures for testing purpose.
     if (enable_ovsdb == true) {
     } else {
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_null);
         if (ret == webconfig_error_none) {
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
         }
     }
 
@@ -752,57 +770,69 @@ void test_null_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret=webconfig_error_none;
     time_t t;
 
     char *str;
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     srand((unsigned) time(&t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
     } else {
 
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
             wifi_vap_info_t *vap_info;
 
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "mesh_sta");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "mesh_sta");
             if (vap_info == NULL) {
                 printf("%s:%d: vap_info is NULL \n", __func__, __LINE__);
+                free(data);
+                data = NULL;
                 return;
             }
             vap_info->u.sta_info.scan_params.period = rand() % 10;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "mesh_sta");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "mesh_sta");
             if (vap_info == NULL) {
                 printf("%s:%d: vap_info is NULL \n", __func__, __LINE__);
+                free(data);
+                data = NULL;
                 return;
             }
             vap_info->u.sta_info.scan_params.period = rand() % 10;
         }
 
         // clearing the descriptor and raw json data
-        data.descriptor =  0;
-        if (data.u.encoded.raw != NULL) {
-            free(data.u.encoded.raw);
-            data.u.encoded.raw = NULL;
+        data->descriptor =  0;
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
         }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_mesh_sta);
         if (ret == webconfig_error_none) {
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
         }
     }
 
@@ -823,11 +853,14 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret=webconfig_error_none;
     char test_mac[18];
     time_t t;
@@ -838,7 +871,12 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
     char *str;
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     srand((unsigned) time(&t));
     snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xaa, rand() % 25, rand() % 50);
 
@@ -846,32 +884,34 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
     if (enable_ovsdb == true) {
     } else {
 
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
             int radio_0_bssMaxSta;
             wifi_vap_info_t *vap_info;
 
-            data.u.decoded.radios[0].oper.channel = 4;
-            data.u.decoded.radios[1].oper.channel = 36;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "mesh_backhaul");
+            data->u.decoded.radios[0].oper.channel = 4;
+            data->u.decoded.radios[1].oper.channel = 36;
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "mesh_backhaul");
             /* set to different value from current to force a change */
             if (vap_info->u.bss_info.bssMaxSta == 5) {
                 vap_info->u.bss_info.bssMaxSta = radio_0_bssMaxSta = 6;
             } else {
                 vap_info->u.bss_info.bssMaxSta = radio_0_bssMaxSta = 5;
             }
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "mesh_backhaul");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "mesh_backhaul");
             vap_info->u.bss_info.bssMaxSta = (radio_0_bssMaxSta == 6) ? 5 : 6;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "mesh_sta");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "mesh_sta");
             vap_info->u.sta_info.scan_params.period = 2;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "mesh_sta");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "mesh_sta");
             vap_info->u.sta_info.scan_params.period = 2;
 
-            rdk_vap = get_wifi_radio_rdkvap_info(&data.u.decoded.radios[0], "mesh_backhaul");
+            rdk_vap = get_wifi_radio_rdkvap_info(&data->u.decoded.radios[0], "mesh_backhaul");
             if ((rdk_vap == NULL)) {
                 printf("%s:%d: rdk_vap is null\n", __func__, __LINE__);
+                free(data);
+                data = NULL;
                 return;
             }
 
@@ -881,6 +921,8 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             if (acl_entry == NULL) {
                 printf("%s:%d NULL Pointer \n", __func__, __LINE__);
+                free(data);
+                data = NULL;
                 return;
             }
             memset(acl_entry, 0, (sizeof(acl_entry_t)));
@@ -890,18 +932,18 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
         }
 
         // clearing the descriptor and raw json data
-        data.descriptor =  0;
-        if (data.u.encoded.raw != NULL) {
-            free(data.u.encoded.raw);
-            data.u.encoded.raw = NULL;
+        data->descriptor =  0;
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
         }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_mesh);
         if (ret == webconfig_error_none) {
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
         }
     }
 
@@ -922,12 +964,15 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 
 void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     uint8_t vap_array_index = 0;
     webconfig_error_t ret=webconfig_error_none;
     char test_mac[18];
@@ -939,7 +984,12 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
     char *str;
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     srand((unsigned) time(&t));
 
     snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xdd, rand() % 25, rand() % 50);
@@ -948,20 +998,22 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
     if (enable_ovsdb == true) {
     } else {
 
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
             rdk_vap = NULL;
-            for (vap_array_index = 0; vap_array_index < data.u.decoded.radios[0].vaps.num_vaps; ++vap_array_index) {
-                if (!strncmp(data.u.decoded.radios[0].vaps.rdk_vap_array[vap_array_index].vap_name, "mesh_backhaul", strlen("mesh_backhaul"))) {
-                    rdk_vap = &data.u.decoded.radios[0].vaps.rdk_vap_array[vap_array_index];
+            for (vap_array_index = 0; vap_array_index < data->u.decoded.radios[0].vaps.num_vaps; ++vap_array_index) {
+                if (!strncmp(data->u.decoded.radios[0].vaps.rdk_vap_array[vap_array_index].vap_name, "mesh_backhaul", strlen("mesh_backhaul"))) {
+                    rdk_vap = &data->u.decoded.radios[0].vaps.rdk_vap_array[vap_array_index];
                     break;
                 }
             }
 
             if ((rdk_vap == NULL)) {
                 printf("%s:%d: rdk_vap is null\n", __func__, __LINE__);
+                free(data);
+                data = NULL;
                 return;
             }
 
@@ -971,6 +1023,8 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             if (acl_entry == NULL) {
                 printf("%s:%d NULL Pointer \n", __func__, __LINE__);
+                free(data);
+                data = NULL;
                 return;
             }
             memset(acl_entry, 0, (sizeof(acl_entry_t)));
@@ -980,18 +1034,18 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
         }
 
         // clearing the descriptor and raw json data
-        data.descriptor =  0;
-        if (data.u.encoded.raw != NULL) {
-            free(data.u.encoded.raw);
-            data.u.encoded.raw = NULL;
+        data->descriptor =  0;
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
         }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_mac_filter);
         if (ret == webconfig_error_none) {
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
         }
     }
 
@@ -1012,18 +1066,18 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 void test_vif_neighbors_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
 
     str = NULL;
-
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
@@ -1050,14 +1104,11 @@ void test_vif_neighbors_subdoc_change(webconfig_consumer_t *consumer)
 
 void test_steeringclient_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
 
     str = NULL;
-
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
@@ -1084,14 +1135,11 @@ void test_steeringclient_subdoc_change(webconfig_consumer_t *consumer)
 
 void test_steerconfig_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
 
     str = NULL;
-
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
@@ -1119,14 +1167,11 @@ void test_steerconfig_subdoc_change(webconfig_consumer_t *consumer)
 
 void test_statsconfig_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
 
     str = NULL;
-
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
 
@@ -1150,50 +1195,55 @@ void test_statsconfig_subdoc_change(webconfig_consumer_t *consumer)
 
 void test_private_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
 
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
     } else {
 
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
             int bssMaxSta;
             wifi_vap_info_t *vap_info;
 
-            data.u.decoded.radios[0].oper.channel = 5;
-            data.u.decoded.radios[1].oper.channel = 36;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "private_ssid");
+            data->u.decoded.radios[0].oper.channel = 5;
+            data->u.decoded.radios[1].oper.channel = 36;
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "private_ssid");
             if (vap_info->u.bss_info.bssMaxSta == 5) {
                 vap_info->u.bss_info.bssMaxSta = bssMaxSta = 6;
             } else {
                 vap_info->u.bss_info.bssMaxSta = bssMaxSta = 5;
             }
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "private_ssid");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "private_ssid");
             vap_info->u.bss_info.bssMaxSta = bssMaxSta;
         }
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         // clearing the descriptor and raw json data
-        data.descriptor =  0;
-        if (data.u.encoded.raw != NULL) {
-            free(data.u.encoded.raw);
-            data.u.encoded.raw = NULL;
+        data->descriptor =  0;
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
         }
-        printf("%s:%d: start webconfig_encode num_of_radio:%d\n", __func__, __LINE__, data.u.decoded.num_radios);
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        printf("%s:%d start webconfig_encode num_of_radio:%d\n", __func__, __LINE__, data->u.decoded.num_radios);
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_private);
         if (ret == webconfig_error_none)
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
     }
 
     if (ret == webconfig_error_none) {
@@ -1213,62 +1263,75 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 void test_home_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str;
     webconfig_error_t ret = webconfig_error_none;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     int num_vaps;
 
     str = NULL;
+    
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        consumer->home_test_pending_count = 0;
+        consumer->test_state = consumer_test_state_home_subdoc_test_complete;
+        return;
+    }
     num_vaps = get_list_of_vap_names(&consumer->hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
                                      1, VAP_PREFIX_IOT);
     if (num_vaps == 0) {
         printf("%s:%d: Home VAP is not supported\n", __func__, __LINE__);
         consumer->home_test_pending_count = 0;
         consumer->test_state = consumer_test_state_home_subdoc_test_complete;
+        free(data);
+        data=NULL;
         return;
     }
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
     } else {
 
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
             int bssMaxSta;
             wifi_vap_info_t *vap_info;
 
-            data.u.decoded.radios[0].oper.channel = 5;
-            data.u.decoded.radios[1].oper.channel = 36;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "iot_ssid");
+            data->u.decoded.radios[0].oper.channel = 5;
+            data->u.decoded.radios[1].oper.channel = 36;
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "iot_ssid");
             if (vap_info->u.bss_info.bssMaxSta == 5) {
                 vap_info->u.bss_info.bssMaxSta = bssMaxSta = 6;
             } else {
                 vap_info->u.bss_info.bssMaxSta = bssMaxSta = 5;
             }
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "iot_ssid");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "iot_ssid");
             vap_info->u.bss_info.bssMaxSta = bssMaxSta;
         }
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         // clearing the descriptor and raw json data
-        data.descriptor =  0;
-        if (data.u.encoded.raw != NULL) {
-            free(data.u.encoded.raw);
-            data.u.encoded.raw = NULL;
+        data->descriptor =  0;
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
         }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_home);
         if (ret == webconfig_error_none) {
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
         }
     }
 
@@ -1289,6 +1352,9 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data=NULL;
 }
 
 
@@ -1319,7 +1385,7 @@ void test_getsubdoctype(webconfig_consumer_t *consumer)
 
 void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret = webconfig_error_none;
     char *str;
     int num_vaps;
@@ -1328,26 +1394,36 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
     unsigned int array_index = 0;
     unsigned int radio_index = 0;
 
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        consumer->lnf_test_pending_count = 0;
+        consumer->test_state = consumer_test_state_lnf_subdoc_test_complete;
+        return;
+    }
+
     num_vaps = get_list_of_vap_names(&consumer->hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
                                      2, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
     if (num_vaps == 0) {
         printf("%s:%d: lnf VAP is not supported\n", __func__, __LINE__);
         consumer->lnf_test_pending_count = 0;
         consumer->test_state = consumer_test_state_lnf_subdoc_test_complete;
+        free(data);
+        data = NULL;
         return;
     }
 
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
     } else {
 
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
             wifi_vap_info_t *vap_info;
 
             for ( i = 0; i < num_vaps; i++) {
@@ -1357,24 +1433,24 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
                     printf("%s:%d: Invalid index\n", __func__, __LINE__);
                     continue;
                 }
-                vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[radio_index], vap_names[i]);
+                vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[radio_index], vap_names[i]);
                 snprintf((char *)vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "app_lnf_test_%d", array_index);
                 printf("%s:%d: radio_index : %d vap_names[i] : %s\n", __func__, __LINE__, radio_index, vap_names[i]);
             }
         }
         // clearing the descriptor and raw json data
-        data.descriptor =  0;
-        if (data.u.encoded.raw != NULL) {
-            free(data.u.encoded.raw);
-            data.u.encoded.raw = NULL;
+        data->descriptor =  0;
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
         }
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         printf("%s:%d: start webconfig_encode \n", __func__, __LINE__);
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_lnf);
         if (ret == webconfig_error_none) {
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
         }
     }
 
@@ -1395,12 +1471,15 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 
 void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret = webconfig_error_none;
     char *str;
     int num_vaps;
@@ -1417,21 +1496,26 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 
     str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = (webconfig_subdoc_data_t*)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
     } else {
 
-        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)data->u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+        if (parse_subdoc_input_param(consumer, data) != RETURN_OK) {
             int radio_1_open_bssMaxSta, radio_2_open_bssMaxSta;
             wifi_vap_info_t *vap_info;
 
-            data.u.decoded.radios[0].oper.channel = 6;
-            data.u.decoded.radios[1].oper.channel = 36;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "hotspot_open");
+            data->u.decoded.radios[0].oper.channel = 6;
+            data->u.decoded.radios[1].oper.channel = 36;
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "hotspot_open");
             if (vap_info->u.bss_info.bssMaxSta == 5) {
                 vap_info->u.bss_info.bssMaxSta = radio_1_open_bssMaxSta = 6;
                 radio_2_open_bssMaxSta = 5;
@@ -1439,26 +1523,26 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
                 vap_info->u.bss_info.bssMaxSta = radio_1_open_bssMaxSta = 5;
                 radio_2_open_bssMaxSta = 6;
             }
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "hotspot_open");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "hotspot_open");
             vap_info->u.bss_info.bssMaxSta = radio_2_open_bssMaxSta;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "hotspot_secure");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "hotspot_secure");
             vap_info->u.bss_info.bssMaxSta = radio_2_open_bssMaxSta;
-            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "hotspot_secure");
+            vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "hotspot_secure");
             vap_info->u.bss_info.bssMaxSta = radio_1_open_bssMaxSta;
         }
         // clearing the descriptor and raw json data
-        data.descriptor =  0;
-        if (data.u.encoded.raw != NULL) {
-            free(data.u.encoded.raw);
-            data.u.encoded.raw = NULL;
+        data->descriptor =  0;
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
         }
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+        data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         printf("%s:%d: start webconfig_encode \n", __func__, __LINE__);
-        ret = webconfig_encode(&consumer->webconfig, &data,
+        ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_xfinity);
         if (ret == webconfig_error_none) {
-            str = data.u.encoded.raw;
+            str = data->u.encoded.raw;
         }
     }
 
@@ -1479,6 +1563,9 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
     if (str != NULL) {
         free(str);
     }
+    
+    free(data);
+    data = NULL;
 }
 
 void test_initial_sync()
@@ -1799,10 +1886,9 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
     const char *str;
     int len = 0;
     int rc = RBUS_ERROR_SUCCESS;
-    webconfig_consumer_t l_consumer;
-    webconfig_subdoc_data_t data;
+    webconfig_consumer_t *l_consumer = NULL;
+    webconfig_subdoc_data_t *data = NULL;
     const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DML_DATA};
-    memset(&l_consumer, 0, sizeof(l_consumer));
 
     rc = rbus_get(consumer->rbus_handle, paramNames[0], &value);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -1817,11 +1903,26 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
         return -1;
     }
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    rc = recv_data_decode(consumer, &data, str);
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        printf("%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+
+    l_consumer = (webconfig_consumer_t *)malloc(sizeof(webconfig_consumer_t));
+    if (l_consumer == NULL) {
+        printf("%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        free(data);
+        data = NULL;
+        return -1;
+    }
+    memset(l_consumer, 0, sizeof(webconfig_consumer_t));
+
+    rc = recv_data_decode(consumer, data, str);
     if (rc == 0) {
-        memcpy((unsigned char *)&l_consumer.config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
-        *device_network_mode = l_consumer.config.global_parameters.device_network_mode;
+        memcpy((unsigned char *)&l_consumer->config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+        *device_network_mode = l_consumer->config.global_parameters.device_network_mode;
         printf("%s:%d: get device network mode:%d\n", __func__, __LINE__, *device_network_mode);
     } else {
         printf("%s:%d: use default value\r\n", __func__, __LINE__);
@@ -1829,7 +1930,11 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
     }
 
     rbusValue_Release(value);
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
+    free(l_consumer);
+    l_consumer = NULL;
 
     return 0;
 }
