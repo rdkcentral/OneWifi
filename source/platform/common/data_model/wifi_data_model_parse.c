@@ -493,7 +493,6 @@ int decode_json_obj(bus_handle_t *handle, const char *json_name)
     }
 
     raw_buffer = calloc(1, (fileSize + 1));
-    printf("File size: %d bytes\n", fileSize);
 
     // Seek to the start of the file
     fseek(file, 0, SEEK_SET);

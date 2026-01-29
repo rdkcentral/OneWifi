@@ -525,7 +525,7 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     rdata.raw_data.bytes = (void *)data->raw;
     rdata.raw_data_len = strlen(data->raw) + 1;
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_DOC_DATA_NORTH initiated %d\n", __func__,
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_DOC_DATA_NORTH initiated\n", __func__,
             __LINE__);
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_DOC_DATA_NORTH,
@@ -1103,7 +1103,11 @@ bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_use
 
     data->u.decoded.num_radios = getNumberRadios();
     data->u.decoded.assoclist_notifier_type = assoclist_notifier_full;
-    webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_associated_clients);
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
+        webconfig_data_free(data);
+        free(data);
+        return bus_error_general;
+    }
 
     uint32_t str_size = strlen(data->u.encoded.raw) + 1;
     p_data->data_type = bus_data_type_string;
@@ -1155,7 +1159,11 @@ bus_error_t get_null_subdoc_data(char *name, raw_data_t *p_data, bus_user_data_t
         sizeof(wifi_hal_capability_t));
 
     data->u.decoded.num_radios = getNumberRadios();
-    webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_null);
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_null) != webconfig_error_none) {
+        webconfig_data_free(data);
+        free(data);
+        return bus_error_general;
+    }
 
     uint32_t str_size = strlen(data->u.encoded.raw) + 1;
     p_data->data_type = bus_data_type_string;
@@ -1362,7 +1370,11 @@ char *get_assoc_devices_blob()
     pdata->u.decoded.num_radios = getNumberRadios();
     pdata->u.decoded.assoclist_notifier_type = assoclist_notifier_full;
 
-    webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients);
+    if (webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
+        webconfig_data_free(pdata);
+        free(pdata);
+        return NULL;
+    }
 
     size_t len = strlen(pdata->u.encoded.raw);
     str = (char *)calloc(len + 1, sizeof(char));
@@ -1753,7 +1765,7 @@ static int eth_bh_status_notify()
     rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, ETH_BH_STATUS, &data);
     if (data.data_type != bus_data_type_boolean) {
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
             LAST_REBOOT_REASON_NAMESPACE, data.data_type, rc);
         return rc;
     }
@@ -2698,7 +2710,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
     ret = sscanf(name, "Device.WiFi.AccessPoint.%d.Security.ConnectedRadiusEndpoint", &idx);
     if (ret == 1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
         wifi_front_haul_bss_t *vap_bss =  Get_wifi_object_bss_parameter(idx - 1);
-        if(vap_bss->enabled && (isVapHotspotSecure5g(idx - 1) || isVapHotspotSecure6g(idx - 1) || isVapHotspotOpen5g(idx - 1) || isVapHotspotOpen6g(idx - 1))){
+        if(((vap_bss != NULL) && vap_bss->enabled && (isVapHotspotSecure5g(idx - 1) || isVapHotspotSecure6g(idx - 1) || isVapHotspotOpen5g(idx - 1) || isVapHotspotOpen6g(idx - 1)))){
 #ifndef WIFI_HAL_VERSION_3_PHASE2
             str_len = strlen((char*)vap_bss->security.u.radius.connectedendpoint) + 1;
             p_data->data_type = bus_data_type_string;

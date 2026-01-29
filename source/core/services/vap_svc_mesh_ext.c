@@ -688,17 +688,6 @@ int process_connected_scan_result_timeout(vap_svc_t *svc)
     return 0;
 }
 
-int proces_ext_fallback_parent_event_timeout(vap_svc_t *svc)
-{
-    vap_svc_ext_t *ext = &svc->u.ext;
-    ext->ext_fallback_parent_event_timeout_handler_id = 0;
-    if (ext->conn_state == connection_state_connected) {
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-        schedule_connect_sm(svc);
-    }
-    return 0;
-}
-
 void ext_connected_scan(vap_svc_t *svc)
 {
     if (svc == NULL) {
@@ -1136,19 +1125,14 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
 
     uint8_mac_to_string_mac(vap_info->u.sta_info.bssid, bssid_str);
 
-    // Support only connected/wait_for_csa/connected_scan_list -> nb_in_progress state change
-    if (ext->conn_state != connection_state_connected &&
-        ext->conn_state != connection_state_connected_wait_for_csa &&
-        ext->conn_state != connection_state_connected_scan_list) {
+    // Do not support for connection_*_in_progress state
+    if (ext->conn_state == connection_state_connection_in_progress ||
+        ext->conn_state == connection_state_connection_to_lcb_in_progress ||
+        ext->conn_state == connection_state_connection_to_nb_in_progress) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d skip sta bssid change event: connection state: %s,"
             "vap: %s, bssid: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state),
             vap_info->vap_name, bssid_str);
         return 0;
-    }
-
-    if (ext->ext_fallback_parent_event_timeout_handler_id) {
-        scheduler_cancel_timer_task(ctrl->sched, ext->ext_fallback_parent_event_timeout_handler_id);
-        ext->ext_fallback_parent_event_timeout_handler_id = 0;
     }
 
     // Clear old bssid
@@ -1206,6 +1190,17 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     if (ext->ext_connect_algo_processor_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
         ext->ext_connect_algo_processor_id = 0;
+    }
+
+    // In disconnected / scanning states we only cache the provided BSSID in new_bss.
+    // Do NOT change the current state here, because the state machine is already
+    // progressing through scan -> connection_in_progress.
+    // When entering connection_in_progress, ext_try_connecting() will prioritize new_bss.
+    if (ext->conn_state == connection_state_disconnected_scan_list_none ||
+        ext->conn_state == connection_state_disconnected_scan_list_in_progress ||
+        ext->conn_state == connection_state_disconnected_scan_list_all ||
+        ext->conn_state == connection_state_disconnection_in_progress) {
+        return 0;
     }
 
     // If BSSID changed on the same band need to initiate disconnection before connection to avoid
@@ -1607,7 +1602,7 @@ static bool is_connected_to_bssid(vap_svc_ext_t *ext)
 static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
 {
     int ret, radio_index;
-    wifi_radio_operationParam_t *radio_params, temp_radio_params;
+    wifi_radio_operationParam_t *radio_params = NULL, *temp_radio_params = NULL;
     vap_svc_ext_t *ext = &svc->u.ext;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
@@ -1633,20 +1628,30 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
     wifi_util_info_print(WIFI_CTRL, "%s:%d: change channel: %d radio index: %d\n", __func__,
         __LINE__, ext->go_to_channel, radio_index);
 
-    // make a copy so actual radio parameters are updated by channel change callback
-    pthread_mutex_lock(&mgr->data_cache_lock);
-    memcpy(&temp_radio_params, radio_params, sizeof(wifi_radio_operationParam_t));
-    pthread_mutex_unlock(&mgr->data_cache_lock);
-
-    temp_radio_params.channel = ext->go_to_channel;
-    temp_radio_params.channelWidth = ext->go_to_channel_width;
-    ret = wifi_hal_setRadioOperatingParameters(radio_index, &temp_radio_params);
-    if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to set channel %d for radio index: %d\n",
-            __func__, __LINE__, radio_params->channel, radio_index);
+    temp_radio_params = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (temp_radio_params == NULL) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
+    // make a copy so actual radio parameters are updated by channel change callback
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    memcpy(temp_radio_params, radio_params, sizeof(wifi_radio_operationParam_t));
+    pthread_mutex_unlock(&mgr->data_cache_lock);
+
+    temp_radio_params->channel = ext->go_to_channel;
+    temp_radio_params->channelWidth = ext->go_to_channel_width;
+    ret = wifi_hal_setRadioOperatingParameters(radio_index, temp_radio_params);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to set channel %d for radio index: %d\n",
+            __func__, __LINE__, radio_params->channel, radio_index);
+        free(temp_radio_params);
+        temp_radio_params = NULL;
+        return RETURN_ERR;
+    }
+
+    free(temp_radio_params);
+    temp_radio_params = NULL;
     return RETURN_OK;
 }
 
@@ -1920,10 +1925,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             candidate = ext->candidates_list.scan_list;
             found_candidate = true;
         } else if ((ext->conn_state == connection_state_connected)) {
-            scheduler_add_timer_task(ctrl->sched, FALSE,
-                &ext->ext_fallback_parent_event_timeout_handler_id,
-                proces_ext_fallback_parent_event_timeout, svc, EXT_FALLBACK_PARENT_CONFIG_TIMEOUT,
-                1, FALSE);
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                __LINE__);
         }
     }
 
