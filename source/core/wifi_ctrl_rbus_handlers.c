@@ -1706,7 +1706,7 @@ static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t 
     char *pTmp = NULL;
     char mac[18] = {0};
     int index = 0;
-    char tmp_str[124] = {0};
+    char tmp_str[128] = {0};
        
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
             event_name, p_data->data_type);
