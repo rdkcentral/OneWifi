@@ -114,11 +114,11 @@ static int schedule_from_pending_map(wifi_app_t *wifi_app)
             memcpy(mac_addr, levl_sc_data->mac_addr, sizeof(mac_address_t));
             levl_sc_data = hash_map_remove(p_map, mac_str);
             if (levl_sc_data != NULL) {
+                //schedule for sounding
+                schedule_mac_for_sounding(ap_index, mac_addr, levl_sc_data->duration, levl_sc_data->interval);
                 free(levl_sc_data);
             }
 
-            //schedule for sounding
-            schedule_mac_for_sounding(ap_index, mac_addr, levl_sc_data->duration, levl_sc_data->interval);
             break;
         }
     }
@@ -1831,7 +1831,11 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
                                levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0, FALSE);
 
     //Create FIFO for the csi.
-    mkfifo(CSI_LEVL_PIPE, 0777);
+    if (mkfifo(CSI_LEVL_PIPE, 0777) != 0 && errno != EEXIST) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create FIFO %s, errno:%d\n",
+            __func__, __LINE__, CSI_LEVL_PIPE, errno);
+        return RETURN_ERR;
+    }
     app->data.u.levl.csi_fd = -1;
  
     rc = get_bus_descriptor()->bus_open_fn(&app->handle, component_name);

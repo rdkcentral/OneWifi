@@ -930,7 +930,7 @@ int radio_diag_stats_response(wifi_app_t *app, wifi_provider_response_t *provide
     radio_data_t *radio_stats = NULL;
     
     radio_index = provider_response->args.radio_index;
-    if (radio_index > MAX_NUM_RADIOS) {
+    if (radio_index >= MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Invalid radio index %d\n", __func__, __LINE__,
             radio_index);
         return RETURN_ERR;
@@ -955,7 +955,8 @@ int radio_channel_util_response(wifi_app_t *app, wifi_provider_response_t *provi
     radio_chan_data_t *channel_stats = NULL;
 
     radio_index = provider_response->args.radio_index;
-    if (radio_index > MAX_NUM_RADIOS) {
+
+    if (radio_index >= MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Invalid radio index %d\n", __func__, __LINE__,
             radio_index);
         return RETURN_ERR;
@@ -2239,7 +2240,7 @@ static void rejected_client_stats(void *args)
 
     for (int ap_index = 0; ap_index < (int)getTotalNumberVAPs(); ap_index++) {
         vap_index = VAP_INDEX(mgr->hal_cap, ap_index);
-        wifi_util_dbg_print(WIFI_APPS, "Value of ap_index %d and vap_index is %d\n", __func__,
+        wifi_util_dbg_print(WIFI_APPS, "%s Value of ap_index %d and vap_index is %d\n", __func__,
             ap_index, vap_index);
         rejected_client_stat_t *ap_params = &whix_obj->rejected_client_stats[vap_index];
 

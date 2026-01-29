@@ -36,20 +36,12 @@ bool vap_svc_is_private(unsigned int vap_index)
 
 int vap_svc_private_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-    // for private just create vaps and install acl filters
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_start(svc);
-    }
-
-    return 0;
+    return vap_svc_start(svc, radio_index);
 }
 
 int vap_svc_private_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_stop(svc);
-    }
-    return 0;
+    return vap_svc_stop(svc, radio_index);
 }
 
 static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
@@ -73,7 +65,10 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
     }
 
     if (band == WIFI_FREQUENCY_2_4_BAND) {
-        convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &rIdx);
+        if (convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &rIdx) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to convert freq to band\n", __FUNCTION__, __LINE__);
+            return -1;
+        }
         hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE));
     } else {
         hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(vap_info->radio_index, VAP_PREFIX_HOTSPOT_SECURE));

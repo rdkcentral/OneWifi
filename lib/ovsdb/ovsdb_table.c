@@ -197,7 +197,7 @@ out:
     if (!retval && records_array)
         free(records_array);
     json_decref(jrows);
-    return retval;
+    return records_array;
 }
 
 void* onewifi_ovsdb_table_select(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, char *value, int *count)

@@ -251,6 +251,7 @@ bool qm_conn_read_req(int fd, qm_request_t *req, char **topic, void **data)
         if (!*topic) goto alloc_err;
         ret = read(fd, *topic, size);
         if (ret != size) goto read_err;
+        (*topic)[size] = '\0';
     }
     total += size;
 
@@ -264,7 +265,7 @@ bool qm_conn_read_req(int fd, qm_request_t *req, char **topic, void **data)
     }
     total += size;
 
-    LOG(TRACE, "%s: t:%s ds:%d b:%d", __FUNCTION__, *topic, size, total);
+    LOG(TRACE, "%s: t:%s ds:%d b:%d", __FUNCTION__, *topic ? *topic : "", size, total);
 
     return true;
 

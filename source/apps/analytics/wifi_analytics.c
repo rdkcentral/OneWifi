@@ -101,7 +101,7 @@ void device_statistics_info(analytics_data_t *data)
     char         temp_str[128];
     unsigned int radio_index = 0;
     radio_data_t radio_stats;
-    char   client_mac[32], sta_stats_str[256], tm_str[64];
+    char   client_mac[32], sta_stats_str[256], tm_str[128];
     analytics_sta_info_t    *sta_info;
     wifi_associated_dev3_t  *dev_stats;
     sta_data_t *sta_data;
@@ -872,7 +872,8 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         break;
 
     case wifi_event_type_rsn_override_rfc:
-        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d \r\n", __func__, __LINE__, (bool *)arg);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d\r\n",
+            __func__, __LINE__, *(int *)arg);
         break;
 
     default:

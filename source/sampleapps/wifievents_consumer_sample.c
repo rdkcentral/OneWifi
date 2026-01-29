@@ -454,7 +454,7 @@ int get_csi_data_interval(void)
     }
 }
 
-void add_or_update_number(cJSON *obj, const char *key, double value)
+void cjson_add_number(cJSON *obj, const char *key, double value)
 {
     cJSON *item = cJSON_GetObjectItem(obj, key);
     if (item == NULL) {
@@ -484,7 +484,7 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
         cJSON_AddItemToObject(p_csi_json_obj->main_json_obj, "CSI", p_csi_json_obj->json_csi_obj);
     }
 
-    add_or_update_number(p_csi_json_obj->json_csi_obj, "csi_sampling_interval_ms",
+    cjson_add_number(p_csi_json_obj->json_csi_obj, "csi_sampling_interval_ms",
         get_csi_data_interval());
 
     if (p_csi_json_obj->json_sounding_devices == NULL) {
