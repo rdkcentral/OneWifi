@@ -412,17 +412,19 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Log_Upload", TRUE))
     {
         fp = popen("crontab -l | grep -c copy_wifi_logs.sh","r");
-        while(fgets(path,sizeof(path) , fp) != NULL) {
-            val = atoi(path);
-            if(val == 1) {
-                *pBool = TRUE;
+        if (fp != NULL) {
+            while(fgets(path,sizeof(path) , fp) != NULL) {
+                val = atoi(path);
+                if(val == 1) {
+                    *pBool = TRUE;
+                }
+                else  {
+                    *pBool = FALSE;
+               }
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload got %s and val=%d\n", __FUNCTION__,__LINE__,path,val);
             }
-            else  {
-                *pBool = FALSE;
-            }
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload got %s and val=%d\n", __FUNCTION__,__LINE__,path,val);
+            pclose(fp);
         }
-        pclose(fp);
         return TRUE;
     }
 
@@ -8054,8 +8056,13 @@ AccessPoint_Commit
 
     vap_index = pcfg->vap_index;
     dml_vap_default *cfg = (dml_vap_default *) get_vap_default(vap_index);
+    if (cfg == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d assert - NULL pointer for vap_index %d\n",
+            __func__, __LINE__, vap_index);
+        return ANSC_STATUS_FAILURE;
+    }
     if (cfg->kick_assoc_devices) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Pushing Kick assoc to control queue\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Pushing Kick assoc to control queue\n", __func__, __LINE__);
         push_kick_assoc_to_ctrl_queue(vap_index);
         cfg->kick_assoc_devices = FALSE;
     }
@@ -12569,6 +12576,11 @@ WPS_SetParamIntValue
         dml_vap_default *cfg = (dml_vap_default *)get_vap_default(wlanIndex);
         wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
 
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d assert - Unable to get VAP info for instance_number:%d\n",
+                __FUNCTION__, __LINE__, instance_number);
+            return FALSE;
+        }
         if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }
@@ -12627,7 +12639,7 @@ WPS_SetParamIntValue
             1;
         INT wlanIndex = instance_number - 1;
         wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
-        if (vapInfo->u.bss_info.wpsPushButton == true) {
+        if ((vapInfo != NULL) && (vapInfo->u.bss_info.wpsPushButton == true)) {
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:Activate push button for vap %d\n", __func__,
                 __LINE__, wlanIndex);
             push_event_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), wifi_event_type_command,
