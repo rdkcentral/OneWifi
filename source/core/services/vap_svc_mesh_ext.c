@@ -1602,7 +1602,7 @@ static bool is_connected_to_bssid(vap_svc_ext_t *ext)
 static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
 {
     int ret, radio_index;
-    wifi_radio_operationParam_t *radio_params, temp_radio_params;
+    wifi_radio_operationParam_t *radio_params = NULL, *temp_radio_params = NULL;
     vap_svc_ext_t *ext = &svc->u.ext;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
@@ -1628,20 +1628,30 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
     wifi_util_info_print(WIFI_CTRL, "%s:%d: change channel: %d radio index: %d\n", __func__,
         __LINE__, ext->go_to_channel, radio_index);
 
-    // make a copy so actual radio parameters are updated by channel change callback
-    pthread_mutex_lock(&mgr->data_cache_lock);
-    memcpy(&temp_radio_params, radio_params, sizeof(wifi_radio_operationParam_t));
-    pthread_mutex_unlock(&mgr->data_cache_lock);
-
-    temp_radio_params.channel = ext->go_to_channel;
-    temp_radio_params.channelWidth = ext->go_to_channel_width;
-    ret = wifi_hal_setRadioOperatingParameters(radio_index, &temp_radio_params);
-    if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to set channel %d for radio index: %d\n",
-            __func__, __LINE__, radio_params->channel, radio_index);
+    temp_radio_params = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (temp_radio_params == NULL) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
+    // make a copy so actual radio parameters are updated by channel change callback
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    memcpy(temp_radio_params, radio_params, sizeof(wifi_radio_operationParam_t));
+    pthread_mutex_unlock(&mgr->data_cache_lock);
+
+    temp_radio_params->channel = ext->go_to_channel;
+    temp_radio_params->channelWidth = ext->go_to_channel_width;
+    ret = wifi_hal_setRadioOperatingParameters(radio_index, temp_radio_params);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to set channel %d for radio index: %d\n",
+            __func__, __LINE__, radio_params->channel, radio_index);
+        free(temp_radio_params);
+        temp_radio_params = NULL;
+        return RETURN_ERR;
+    }
+
+    free(temp_radio_params);
+    temp_radio_params = NULL;
     return RETURN_OK;
 }
 
