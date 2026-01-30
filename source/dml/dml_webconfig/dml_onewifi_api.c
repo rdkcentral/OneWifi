@@ -1307,7 +1307,7 @@ int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin)
 
     wifi_util_dbg_print(WIFI_DMCLI, "Inside :%s:%d vap_index:%d wps_pin:%s\r\n", __func__, __LINE__, vap_index, wps_pin);
     wps_config.vap_index = vap_index;
-    strncpy(wps_config.wps_pin, wps_pin, strlen(wps_pin));
+    snprintf(wps_config.wps_pin, sizeof(wps_config.wps_pin), "%s", wps_pin);
     push_event_to_ctrl_queue(&wps_config, sizeof(wps_config), wifi_event_type_command, wifi_event_type_command_wps_pin, NULL);
     return RETURN_OK;
 }
