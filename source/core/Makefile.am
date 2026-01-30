@@ -169,8 +169,7 @@ endif
 if USE_DML_SOURCES
 if ONEWIFI_DML_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_loop.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c  $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_without_seshat.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_with_seshat.c  $(top_srcdir)/source/dml/tr_181/sbapi/cosa_dbus_api.c
-endif
-if ONEWIFI_JSON_DML_SUPPORT
+else
 OneWifi_SOURCES += $(top_srcdir)/source/platform/common/data_model/wifi_data_model.c $(top_srcdir)/source/platform/common/data_model/wifi_data_model_parse.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_cb.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_api.c
 #we need this file for new dml implementation
 OneWifi_SOURCES += $(top_srcdir)/source/dml/dml_webconfig/dml_onewifi_api.c
