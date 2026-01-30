@@ -564,7 +564,6 @@ int telemetry_stats_timeout_handler(void *arg)
         if (guard->fp != NULL) {
             wifi_util_error_print(WIFI_APPS,
                 "WIFI_TELEMETRY: dmesg hang detected! Force-closing pipe.\n");
-            // This kicks the main thread out of the blocking fgets call
             v_secure_pclose(guard->fp);
             guard->fp = NULL;
         }
@@ -582,6 +581,7 @@ static void upload_client_debug_stats_sta_fa_info(INT apIndex, sta_data_t *sta)
     char tmp[128] = { 0 };
     sta_key_t sta_key;
     char buf[CLIENT_STATS_MAX_LEN_BUF] = { 0 };
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     int timer_id = -1;
 
     memset(buf, 0, CLIENT_STATS_MAX_LEN_BUF);
@@ -621,8 +621,7 @@ static void upload_client_debug_stats_sta_fa_info(INT apIndex, sta_data_t *sta)
 
             if (len > 0) {
                 ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':')
-                    ;
+                while (len-- && ptr-- && *ptr != ':');
                 ptr++;
 
                 value = strtok_r(ptr, ",", &saveptr);
@@ -698,6 +697,7 @@ static void upload_client_debug_stats_sta_fa_lmac_data_stats(INT apIndex, sta_da
     char tmp[128] = { 0 };
     sta_key_t sta_key;
     char buf[CLIENT_STATS_MAX_LEN_BUF] = { 0 };
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     int timer_id = -1;
 
     if (sta != NULL) {
@@ -728,8 +728,7 @@ static void upload_client_debug_stats_sta_fa_lmac_data_stats(INT apIndex, sta_da
 
             if (len > 0) {
                 ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':')
-                    ;
+                while (len-- && ptr-- && *ptr != ':');
                 ptr++;
                 value = strtok_r(ptr, ",", &saveptr);
                 memset(tmp, 0, sizeof(tmp));
@@ -776,6 +775,7 @@ static void upload_client_debug_stats_sta_fa_lmac_mgmt_stats(INT apIndex, sta_da
     sta_key_t sta_key;
     char tmp[128] = { 0 };
     char buf[CLIENT_STATS_MAX_LEN_BUF] = { 0 };
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     int timer_id = -1;
 
     memset(buf, 0, CLIENT_STATS_MAX_LEN_BUF);
@@ -812,8 +812,7 @@ static void upload_client_debug_stats_sta_fa_lmac_mgmt_stats(INT apIndex, sta_da
 
             if (len) {
                 ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':')
-                    ;
+                while (len-- && ptr-- && *ptr != ':');
                 ptr++;
                 value = strtok_r(ptr, ",", &saveptr);
                 memset(tmp, 0, sizeof(tmp));
@@ -859,6 +858,7 @@ static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
     FILE *fp  = NULL;
     char tmp[128] = {0};
     char buf[CLIENT_STATS_MAX_LEN_BUF] = {0};
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     int timer_id = -1;
 
     // Use apIndex 0 for ath0
