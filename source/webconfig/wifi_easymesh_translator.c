@@ -274,6 +274,54 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
 
     return webconfig_error_none;
 }
+
+/* Helper function to translate radio capabilities from OneWifi to EasyMesh */
+static webconfig_error_t translate_radio_capability_to_easymesh(
+    const rdk_wifi_radio_capability_t *radio_cap,
+    mac_address_t ruid,
+    webconfig_external_easymesh_t *proto)
+{
+#if 0
+    void *radio_cap_ptr;
+    void *cap_info_ptr;
+    em_radio_wifi6_cap_data_t *wifi6_cap;
+    em_wifi7_agent_cap_t *wifi7_cap;
+    em_radio_wifi7_radio_t *wifi7_radio;
+    unsigned int i;
+    unsigned short mcs_nss_val;
+    
+    if (radio_cap == NULL || proto == NULL || proto->get_radio_cap == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer or get_radio_cap not set\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    /* Get radio capability from easymesh data model */
+    radio_cap_ptr = proto->get_radio_cap(proto->data_model, ruid);
+    if (radio_cap_ptr == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to get radio_cap for ruid\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    /* WiFi6 (HE) capabilities translation */
+#ifdef CONFIG_IEEE80211AX
+    if (radio_cap->wifi6_supported) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: WiFi6 supported, capability translation needed\n", __func__, __LINE__);
+    }
+#endif /* CONFIG_IEEE80211AX */
+
+    /* WiFi7 (EHT) capabilities translation */
+#ifdef CONFIG_IEEE80211BE
+#if HOSTAPD_VERSION >= 211
+    if (radio_cap->wifi7_supported) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: WiFi7 supported, capability translation needed\n", __func__, __LINE__);
+    }
+#endif /* HOSTAPD_VERSION >= 211 */
+#endif /* CONFIG_IEEE80211BE */
+#endif
+
+    return webconfig_error_none;
+}
+
 // This routine converts Radio webconfig subdoc values to em_radio_list_t,em_radio_info_t easymesh structures
 webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_data_t *data)
 {
@@ -2991,7 +3039,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac,
         ext_proto_put_scan_results_t put_scan_res, ext_proto_update_ap_mld_info_t update_ap_mld,
         ext_proto_update_bsta_mld_info_t update_bsta_mld, ext_proto_update_assoc_sta_mld_info_t update_assoc_sta_mld,
-        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid)
+        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid, ext_proto_get_radio_cap_t get_radio_cap)
 {
     proto->data_model = data_model;
     proto->m2ctrl_radioconfig = m2ctrl_radioconfig;
@@ -3018,4 +3066,5 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
     proto->update_bsta_mld_info = update_bsta_mld;
     proto->update_assoc_sta_mld_info = update_assoc_sta_mld;
     proto->get_ap_mld_frm_bssid = get_ap_mld_frm_bssid;
+    proto->get_radio_cap = get_radio_cap;
 }
