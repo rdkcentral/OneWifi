@@ -1822,7 +1822,7 @@ void generate_tunnel_event(bool status, rbusHandle_t handle)
 void copy_data(char *dest, char *src, unsigned char dest_len)
 {
     if (src != NULL) {
-        strcpy(dest, src);
+        snprintf(dest, dest_len, "%s", src);
     } else {
         memset(dest, 0 , dest_len);
     }

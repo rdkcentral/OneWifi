@@ -3017,7 +3017,8 @@ int dfs_nop_start_timer(void *args)
 
     radarDetected_temp[sizeof(radarDetected_temp) - 1] = '\0';
 
-    if( !strcmp(radarDetected_temp, " ") || radarDetected_temp == NULL ) {
+    if (!strcmp(radarDetected_temp, " ") )
+    {
         wifi_util_error_print(WIFI_CTRL, "%s:%d No radar detected \n", __func__, __LINE__);
         return RETURN_ERR;
     }
@@ -3063,7 +3064,7 @@ int dfs_nop_start_timer(void *args)
         radio_channel_param.channelWidth = dfs_radar_ch_bw;
         radio_channel_param.op_class = radio_params->operatingClass;
 
-        dfs_timer_secs = ((time_now - radar_detected_time)<(radio_params->DFSTimer * 60) && (time_now > radar_detected_time)) ? ( (radio_params->DFSTimer * 60) - (time_now - radar_detected_time)) : 0;
+        dfs_timer_secs = ((time_now - radar_detected_time) < ((long long)radio_params->DFSTimer * 60) && (time_now > radar_detected_time)) ? (((long long)radio_params->DFSTimer * 60) - (time_now - radar_detected_time)) : 0;
         if(dfs_timer_secs == 0) {
             update_db_radar_detected(radar_detected_ch_time);
             update_wifi_radio_config(RADIO_INDEX_DFS, radio_params, radio_feat);

@@ -153,7 +153,7 @@ void delete_cli_thread(void)
 
 void *cli_input_func(void *arg)
 {
-    char input_char;
+    int input_char;
     unsigned char char_index = 0;
     bool space_detection = 0, allow_special_char = 0;
     char input_buff[128] = { 0 };
