@@ -2585,6 +2585,7 @@ bus_error_t ap_get_handler(char *name, raw_data_t *p_data, bus_user_data_t *user
             if (p_data->raw_data.bytes == NULL) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                     __LINE__, str_len);
+                pthread_mutex_unlock(&events_bus_data->events_bus_lock);
                 return bus_error_out_of_resources;
             }
             strncpy((char *)p_data->raw_data.bytes, events_bus_data->diag_events_json_buffer[vap_array_index], str_len);
@@ -2623,6 +2624,7 @@ bus_error_t ap_get_handler(char *name, raw_data_t *p_data, bus_user_data_t *user
             if (p_data->raw_data.bytes == NULL) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                     __LINE__, str_len);
+                pthread_mutex_unlock(&events_bus_data->events_bus_lock);
                 return bus_error_out_of_resources;
             }
             strncpy((char *)p_data->raw_data.bytes, harvester_buf[vap_array_index], str_len);
@@ -3002,18 +3004,22 @@ static BOOL events_getSubscribed(char *eventName)
     int i;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
     int count = queue_count(ctrl->events_bus_data.events_bus_queue);
 
     if (count == 0) {
+        pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
         return FALSE;
     }
 
     for (i = 0; i < count; i++) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);
         if ((event != NULL) && (strncmp(event->name, eventName, MAX_EVENT_NAME_SIZE) == 0)) {
+            pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
             return event->subscribed;
         }
     }
+    pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
     return FALSE;
 }
 
