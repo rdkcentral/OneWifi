@@ -27,6 +27,8 @@
 #include "wifi_dml_api.h"
 #include "wifi_monitor.h"
 #include "wifi_mgr.h"
+#include "dml_onewifi_api.h"
+
 wifi_dml_data_model_t g_dml_data_model;
 
 wifi_dml_data_model_t *get_dml_data_model_param(void)
