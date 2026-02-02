@@ -38,6 +38,7 @@
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 #include "run_qmgr.h"
+#define EASYMESH_OFF_FLAG "/nvram/rdkb_user_easymesh_off"
 
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
@@ -647,6 +648,14 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     get_wifidb_obj()->desc.get_wifi_global_param_fn(&global_param);
     // set all default return values first
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
+        if (access(EASYMESH_OFF_FLAG, F_OK) == 0) {
+             wifi_util_info_print(WIFI_CTRL, "%s:%d: detected %s, easy mesh is off\n",__func__, __LINE__, EASYMESH_OFF_FLAG);
+#ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
+            *ret_val = ONEWIFI_DEFAULT_NETWORKING_MODE;
+#else
+            *ret_val = (unsigned int)global_param.device_network_mode;
+#endif
+        } else {
 #if defined EASY_MESH_NODE
         wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
         int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
@@ -657,9 +666,15 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
                a valid colocated_mode */
             sleep(1);
             total_slept++;
+            if (total_slept >= 30) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Timeout waiting for valid colocated_mode, defaulting to em_node\n",
+                        __func__, __LINE__);
+                break;
+            }
             wifi_hal_getHalCapability(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap);
             colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
         }
+        total_slept = 0;
         if (colocated_mode == 1) {
             *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
         } else if (colocated_mode == 0) {
@@ -674,6 +689,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         *ret_val = (unsigned int)global_param.device_network_mode;
 #endif
 #endif
+        } /* EASYMESH_OFF_FLAG not present */
         ctrl->network_mode = (unsigned int)*ret_val;
 
 #ifdef ONEWIFI_DEFAULT_DEVICE_TYPE
