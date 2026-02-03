@@ -270,7 +270,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             scheduler_add_timer_task(ctrl->sched, FALSE, NULL, update_managementFramePower, NULL, MFPC_TIMER * 1000, 1, FALSE);
         }
     }
-
+    update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
     //Load all the Acl entries related to the created public vaps
     update_xfinity_acl_entries(p_tgt_vap_map->vap_array[0].vap_name);
     free(p_tgt_vap_map);
