@@ -1210,7 +1210,7 @@ WiFi_SetParamBoolValue
                 fclose(fp);
             }
         } else {
-            remove(WIFI_STUCK_DETECT_FILE_NAME);
+            (void)remove(WIFI_STUCK_DETECT_FILE_NAME);
         }
         return TRUE;
     }
@@ -1387,29 +1387,29 @@ WiFi_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind)) {
         char str[1024] = "";
-        strcpy(str,pString);
+        snprintf(str, sizeof(str), "%s", pString);
         flag = CosaDmlWiFi_Logfiles_validation(str);
         if(flag == -1) {
             wifi_util_dbg_print(WIFI_DMCLI,"Log_Enable has invalid params in string\n");
             return FALSE;
         }
-        remove("/nvram/wifiDbDbg");
-        remove("/nvram/wifiMgrDbg");
-        remove("/nvram/wifiWebConfigDbg");
-        remove("/nvram/wifiCtrlDbg");
-        remove("/nvram/wifiPasspointDbg");
-        remove("/nvram/wifiDppDbg");
-        remove("/nvram/wifiMonDbg");
-        remove("/nvram/wifiDMCLI");
-        remove("/nvram/wifiLib");
-        remove("/nvram/wifiPsm");
-        remove("/nvram/wifiLibhostapDbg");
-        remove("/nvram/wifiHalDbg");
+        (void)remove("/nvram/wifiDbDbg");
+        (void)remove("/nvram/wifiMgrDbg");
+        (void)remove("/nvram/wifiWebConfigDbg");
+        (void)remove("/nvram/wifiCtrlDbg");
+        (void)remove("/nvram/wifiPasspointDbg");
+        (void)remove("/nvram/wifiDppDbg");
+        (void)remove("/nvram/wifiMonDbg");
+        (void)remove("/nvram/wifiDMCLI");
+        (void)remove("/nvram/wifiLib");
+        (void)remove("/nvram/wifiPsm");
+        (void)remove("/nvram/wifiLibhostapDbg");
+        (void)remove("/nvram/wifiHalDbg");
         FILE *fp = NULL;
         char * token = strtok(pString, ",");
         while( token != NULL ) {
             char dest[128]="/nvram/";
-            strncat(dest,token,strlen(token));
+            snprintf(dest + strlen(dest), sizeof(dest) - strlen(dest), "%s", token);
             fp = fopen(dest,"w" );
             if (fp != NULL) {
                 fclose(fp);
@@ -1722,9 +1722,23 @@ WiFiRegion_SetParamStringValue
             }
         }
 
-        AnscCopyString( global_wifi_config->global_parameters.wifi_region_code, pString );
-        push_global_config_dml_cache_to_one_wifidb();
-        push_radio_dml_cache_to_one_wifidb();
+        if (strnlen(pString, sizeof(global_wifi_config->global_parameters.wifi_region_code)) < sizeof(global_wifi_config->global_parameters.wifi_region_code))
+        {
+            AnscCopyString( global_wifi_config->global_parameters.wifi_region_code, pString );
+        }
+        else
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d country code string too long\n", __func__, __LINE__);
+            return FALSE;
+        }
+        if (push_global_config_dml_cache_to_one_wifidb() == RETURN_ERR)
+        {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Failed to push WiFiRegion to onewifi db\n", __func__, __LINE__);
+        }
+        if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR)
+        {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d ApplyRadioSettings failed\n", __func__, __LINE__);
+        }
         last_radio_change = AnscGetTickInSeconds();
 
         if((CCSP_SUCCESS == getPartnerId(PartnerID) ) && (PartnerID[ 0 ] != '\0') )
@@ -3104,29 +3118,25 @@ Radio_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
         return FALSE;
     }
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
+        return FALSE;
+    }
     wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
     UINT wlanIndex = 0;
 
     if (wifiRadioOperParam == NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, instance_number));
         return FALSE;
     }
 
-    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
-        return FALSE;
-    }
 
     wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
-    if (wifiRadioOperParam == NULL)
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wlanIndex));
-        return FALSE;
-    }
     dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
@@ -3433,6 +3443,11 @@ Radio_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
         return FALSE;
     }
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
+        return FALSE;
+    }
     dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
@@ -3445,23 +3460,14 @@ Radio_SetParamIntValue
     if (wifiRadioOperParam == NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, instance_number));
         return FALSE;
     }
 
-    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
-        return FALSE;
-    }
 
     wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
-    if (wifiRadioOperParam == NULL)
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wlanIndex));
-        return FALSE;
-    }
  
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "MCS", TRUE))
@@ -3647,6 +3653,11 @@ Radio_SetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
         return FALSE;
     }
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
+        return FALSE;
+    }
     wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     UINT wlanIndex = 0;
@@ -3655,23 +3666,14 @@ Radio_SetParamUlongValue
     if (wifiRadioOperParam == NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, instance_number));
         return FALSE;
     }
 
-    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
-        return FALSE;
-    }
 
     wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
-    if (wifiRadioOperParam == NULL)
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wlanIndex));
-        return FALSE;
-    }
     dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
@@ -4089,6 +4091,11 @@ Radio_SetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
         return FALSE;
     }
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
+        return FALSE;
+    }
     wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
     UINT wlanIndex = 0;
     UINT txRate = 0;
@@ -4096,23 +4103,14 @@ Radio_SetParamStringValue
     if (wifiRadioOperParam == NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, instance_number));
         return FALSE;
     }
 
-    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
-        return FALSE;
-    }
 
     wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
-    if (wifiRadioOperParam == NULL)
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wlanIndex));
-        return FALSE;
-    }
     dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
@@ -5260,7 +5258,7 @@ SSID_GetEntry
     wifi_vap_info_t *vapInfo = NULL;
 
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: get_total_num_vap_dml():%d nIndex:%d\n",__func__, __LINE__, get_total_num_vap_dml(), nIndex);
-    if (nIndex >= 0 && nIndex <= (UINT)get_total_num_vap_dml())
+    if (nIndex <= (UINT)get_total_num_vap_dml())
     {
         UINT vapIndex = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, nIndex);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: nIndex:%d -> vapIndex:%d\n", __func__, __LINE__, nIndex, vapIndex);
