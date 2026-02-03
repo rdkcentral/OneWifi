@@ -47,8 +47,6 @@ AM_LDFLAGS += -L$(top_builddir)/source/utils/quality_mgr/
 AM_LDFLAGS += -lwifi_quality_manager
 AM_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
 AM_LDFLAGS += -lwifi_math_utils
-AM_LDFLAGS += -L$(top_builddir)/source/utils/webserver/
-AM_LDFLAGS += -lwifi_webserver
 if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
 AM_LDFLAGS += -L$(top_builddir)/source/platform/
@@ -66,7 +64,7 @@ AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
 hardware_platform = i686-linux-gnu
 bin_PROGRAMS = OneWifi
-OneWifi_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/custom -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/include -I$(top_srcdir)/../CcspCommonLibrary/source/debug_api/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include/linux -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/package/slap/include -I$(top_srcdir)/../hal/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/http/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/ansc/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/MessageBusHelper/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/PoamIrepFolder -I$(top_srcdir)/include/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/inc -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/utils/math_utils/inc -I$(top_srcdir)/source/utils/webserver/inc/ -I$(top_srcdir)/source/utils/quality_mgr/inc -I$(top_srcdir)/source/apps/linkquality -I$(top_srcdir)/lib/pktgen -I$(top_srcdir)/source/stubs -I$(top_srcdir)/lib/datapipeline $(CPPFLAGS)
+OneWifi_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/custom -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/include -I$(top_srcdir)/../CcspCommonLibrary/source/debug_api/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include/linux -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/package/slap/include -I$(top_srcdir)/../hal/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/http/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/ansc/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/MessageBusHelper/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/PoamIrepFolder -I$(top_srcdir)/include/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/inc -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/utils/math_utils/inc  -I$(top_srcdir)/source/utils/quality_mgr/inc -I$(top_srcdir)/source/apps/linkquality -I$(top_srcdir)/lib/pktgen -I$(top_srcdir)/source/stubs -I$(top_srcdir)/lib/datapipeline $(CPPFLAGS)
 
 if ONEWIFI_DBUS_SUPPORT
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/dbus -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir)/dbus-1.0 -I${PKG_CONFIG_SYSROOT_DIR}/usr/lib/dbus-1.0/include/
@@ -216,8 +214,6 @@ OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/quality_mgr/
 OneWifi_LDFLAGS += -lwifi_quality_manager
 OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
 OneWifi_LDFLAGS += -lwifi_math_utils
-OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/webserver/
-OneWifi_LDFLAGS += -lwifi_webserver
 if WITH_LIBWEBCONFIG
 OneWifi_LDFLAGS += -L$(top_builddir)/source/platform/
 OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/

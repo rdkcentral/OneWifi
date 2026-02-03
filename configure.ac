@@ -281,7 +281,6 @@ AC_CONFIG_FILES(
     source/utils/Makefile
     source/utils/quality_mgr/Makefile
     source/utils/math_utils/Makefile
-    source/utils/webserver/Makefile
     Makefile
 )
 

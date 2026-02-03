@@ -61,6 +61,8 @@ typedef enum {
         << wifi_event_type_exec, // wifi_event_type_base << 0
     wifi_event_exec_stop,
     wifi_event_exec_timeout,
+    wifi_event_exec_register_station,
+    wifi_event_exec_unregister_station,
     wifi_event_exec_max,
 
     // WebConfig event sub types

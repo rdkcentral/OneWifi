@@ -18,124 +18,173 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <errno.h>
-#include "web.h"
 #include "vector.h"
 #include "sequence.h"
 #include "wifi_hal.h"
 #include "wifi_util.h"
 #include "qmgr.h"
 #include "run_qmgr.h"
-static qmgr_report_cb_t g_qmgr_cb = NULL;
+//Static callback functions
+static qmgr_report_batch_cb_t qmgr_batch_cb = NULL;
+static qmgr_report_score_cb_t qmgr_score_cb = NULL;
 
-void qmgr_register_callback(qmgr_report_cb_t cb)
+//Register callback functions
+void qmgr_register_batch_callback(qmgr_report_batch_cb_t cb)
 {
-    g_qmgr_cb = cb;
+    wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    qmgr_batch_cb = cb;
 }
 
-/* Called internally from qmgr_t::run() */
-extern "C" void qmgr_invoke_callback( const report_batch_t* batch)
+void qmgr_register_score_callback(qmgr_report_score_cb_t cb)
 {
-    wifi_util_error_print(WIFI_CTRL,"%s:%d \n",__func__,__LINE__); 
-    if (g_qmgr_cb) 
-        g_qmgr_cb(batch);
-    wifi_util_error_print(WIFI_CTRL,"%s:%d \n",__func__,__LINE__); 
-}
-int run_web_server()
-{
-    web_t *web;
-    char path[64] = "/www/data";
-    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
-    web = web_t::get_instance(path);
-    web->start();
-    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
-    return 0;
+    qmgr_score_cb = cb;
 }
 
-int stop_web_server(const char *path)
- {
-    wifi_util_info_print(WIFI_APPS,"stoping web_server %s:%d \n",__func__,__LINE__);
-    web_t *web;
-    web = web_t::get_instance(path);   // always returns SAME instance
-    wifi_util_info_print(WIFI_APPS,"Got web instance\n");
-    web->stop();
-    wifi_util_info_print(WIFI_APPS,"stopped web_server\n");
-    return 0;
-  }
+//check if callback functions are registered
+
+bool qmgr_is_batch_registered(void)
+{
+    return (qmgr_batch_cb != NULL);
+}
+
+bool qmgr_is_score_registered(void)
+{
+    return (qmgr_score_cb != NULL);
+}
+
+void reset_qmgr_score_cb(void) {
+    qmgr_score_cb = NULL;
+}
+/* Invoking of callbacks  Called internally from qmgr_t::run() */
+extern "C" void qmgr_invoke_batch(const report_batch_t *batch)
+{
+    if (qmgr_batch_cb)
+        qmgr_batch_cb(batch);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d \n",__func__,__LINE__); 
+}
+
+
+extern "C" void qmgr_invoke_score(const char *str, double score)
+{
+    if (qmgr_score_cb)
+        qmgr_score_cb(str, score);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d \n",__func__,__LINE__); 
+}
+
 
 int reinit_link_metrics(server_arg_t *ser_arg)
 {
     wifi_util_info_print(WIFI_APPS,"started add_stats stats->\n"); 
     server_arg_t arg;
     memset(&arg, 0, sizeof(server_arg_t));
-    strcpy(arg.path, "/www/data");
-    snprintf(arg.output_file, sizeof(arg.output_file), "%s/telemetry.json", arg.path);
-    arg.sampling =  SAMPLING_INTERVAL;
-    arg.reporting = ser_arg->reporting;
-    arg.threshold = ser_arg->threshold;
-
-    qmgr_t *mgr;
-    mgr = qmgr_t::get_instance(&arg);   // always returns SAME instance
+    if ( ser_arg->sampling == 0) {
+       arg.sampling = SAMPLING_INTERVAL;
+    } else { 
+       arg.sampling =  ser_arg->sampling;
+    }
+    if ( ser_arg->reporting == 0) {
+        arg.reporting = REPORTING_INTERVAL;
+    } else { 
+        arg.reporting = ser_arg->reporting;
+    }
+    if ( ser_arg->threshold == 0.0) {
+        arg.threshold = THRESHOLD;
+    } else {
+        arg.threshold = ser_arg->threshold;
+    }
+    qmgr_t *qmgr;
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
     wifi_util_info_print(WIFI_APPS,"%s:%d reporting=%d threshold =%f\n",__func__,__LINE__,arg.reporting,arg.threshold); 
 
-    mgr->reinit(&arg); 
-    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
+    qmgr->reinit(&arg); 
     return 0;
 }
 
 int start_link_metrics()
 {
-    wifi_util_info_print(WIFI_APPS,"started add_stats stats->\n"); 
-    server_arg_t arg;
-    memset(&arg, 0, sizeof(server_arg_t));
-    strcpy(arg.path, "/www/data");
-    snprintf(arg.output_file, sizeof(arg.output_file), "%s/telemetry.json", arg.path);
-    arg.sampling =  SAMPLING_INTERVAL;
-    arg.reporting = REPORTING_INTERVAL;
-    arg.threshold = THRESHOLD;
-
-    qmgr_t *mgr;
-    mgr = qmgr_t::get_instance(&arg);   // always returns SAME instance
     wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
 
-    mgr->start_background_run(); 
+    qmgr_t *qmgr;
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
+
+    qmgr->start_background_run(); 
     wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
     return 0;
 }
 
+void register_station_mac(const char* str)
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
+
+    qmgr_t *qmgr;
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
+
+    qmgr->register_station_mac(str); 
+    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
+    return ;
+}
+
+void unregister_station_mac(const char* str)
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
+
+    qmgr_t *qmgr;
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
+
+    qmgr->unregister_station_mac(str); 
+    qmgr_score_cb = NULL;
+    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
+    return ;
+}
+
+char*  get_link_metrics()
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__); 
+
+    qmgr_t *qmgr;
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
+    return (qmgr->update_graph());
+
+}
+
+int stop_link_metrics()
+{
+    wifi_util_info_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__); 
+    qmgr_t::destroy_instance(); 
+    wifi_util_info_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
+    return 0;
+}
 
 int add_stats_metrics(stats_arg_t *stats)
 {
-    qmgr_t *mgr;
+    qmgr_t *qmgr;
     wifi_util_dbg_print(WIFI_APPS,"%s:%d \n",__func__,__LINE__); 
-    server_arg_t arg;
-    memset(&arg, 0, sizeof(server_arg_t));
-    strcpy(arg.path, "/www/data");
-    snprintf(arg.output_file, sizeof(arg.output_file), "%s/telemetry.json", arg.path);
-    arg.sampling =  SAMPLING_INTERVAL;
-    arg.reporting = REPORTING_INTERVAL;
-    arg.threshold = THRESHOLD;
-    wifi_util_dbg_print(WIFI_APPS,"mac_address=%s per =%f, snr=%d and phy=%d\n",stats->mac_str,stats->per,stats->snr,stats->phy); 
+    wifi_util_dbg_print(WIFI_APPS,"mac_address=%s  snr=%d and phy=%d\n",stats->mac_str,stats->dev.cli_SNR,stats->dev.cli_LastDataDownlinkRate); 
     
-    mgr = qmgr_t::get_instance(&arg);   // always returns SAME instance
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
 
-    mgr->init(stats,true);
-    wifi_util_dbg_print(WIFI_APPS,"Added the stats data->\n"); 
+    qmgr->init(stats,true);
+    return 0;
+}
+
+int disconnect_link_stats( stats_arg_t  *stats)
+{
+    wifi_util_info_print(WIFI_APPS,"started  %s:%d \n",__func__,__LINE__); 
+
+    qmgr_t *qmgr;
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
+    qmgr->rapid_disconnect(stats);
+    wifi_util_info_print(WIFI_APPS,"mac_str=%s %s:%d \n",stats->mac_str,__func__,__LINE__); 
     return 0;
 }
 
 int remove_link_stats( stats_arg_t  *stats)
 {
     wifi_util_info_print(WIFI_APPS,"started  %s:%d \n",__func__,__LINE__); 
-    server_arg_t arg;
-    memset(&arg, 0, sizeof(server_arg_t));
-    snprintf(arg.output_file, sizeof(arg.output_file), "%s/telemetry.json", arg.path);
-    arg.sampling =  SAMPLING_INTERVAL;
-    arg.reporting = REPORTING_INTERVAL;
-    arg.threshold = THRESHOLD;
 
-    qmgr_t *mgr;
-    mgr = qmgr_t::get_instance(&arg);   // always returns SAME instance
-    mgr->init(stats,false);
+    qmgr_t *qmgr;
+    qmgr = qmgr_t::get_instance();   // always returns SAME instance
+    qmgr->init(stats,false);
     wifi_util_info_print(WIFI_APPS,"mac_str=%s %s:%d \n",stats->mac_str,__func__,__LINE__); 
     return 0;
 }

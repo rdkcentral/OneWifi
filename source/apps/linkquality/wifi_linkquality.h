@@ -24,6 +24,8 @@
 extern "C" {
 #endif
 #include "run_qmgr.h"
+#include "wifi_base.h"
+#include "wifi_webconfig.h"
 
 typedef struct {
     stats_arg_t stats;

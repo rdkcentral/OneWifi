@@ -81,6 +81,7 @@ extern "C" {
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
+#define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 
 #ifdef CONFIG_IEEE80211BE
 
@@ -953,6 +954,7 @@ typedef struct {
     long            deauth_gate_time;
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
+    bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
 
     /* wifi7 client specific data */
@@ -1181,6 +1183,13 @@ typedef struct {
 
 typedef char marker_name[32];
 
+
+typedef struct {
+    char collection_start_time[128];
+    unsigned int reporting_interval;
+    float link_quality_threshold;
+} alarm_report_policy_t;
+
 typedef struct {
     int interval;
     marker_name managed_client_marker;
@@ -1219,6 +1228,7 @@ typedef struct {
 } radio_metrics_policies_t;
 
 typedef struct {
+    alarm_report_policy_t alarm_report_policy;
     ap_metrics_policy_t ap_metric_policy;
     steering_disallowed_policy_t local_steering_dslw_policy;
     steering_disallowed_policy_t btm_steering_dslw_policy;

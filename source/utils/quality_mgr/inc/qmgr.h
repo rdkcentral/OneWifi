@@ -40,13 +40,16 @@ class qmgr_t {
     linkq_t *lq;
     hash_map_t *m_link_map;
     static qmgr_t *instance;
-    qmgr_t(server_arg_t *args);
+    qmgr_t();
     qmgr_t(server_arg_t *args,stats_arg_t *stats);
     bool m_exit;
+    pthread_t m_thread;
     bool m_run_started;
+    bool m_bg_running;
     cJSON *out_obj;
 public:
     int init(stats_arg_t *arg,bool create_flag);
+    int rapid_disconnect(stats_arg_t *arg);
     int reinit(server_arg_t *arg);
     void deinit();
     void trim_cjson_array(cJSON *arr, int max_len);
@@ -56,12 +59,14 @@ public:
     void start_background_run();
     static void* run_helper(void* arg);
     void remove_device_from_out_obj(cJSON *out_obj, const char *mac_str);
-    static qmgr_t* get_instance(server_arg_t *args);
+    static qmgr_t* get_instance();
     char *get_local_time(char *buff, unsigned int len,bool flag);
-    cJSON *create_dev_template(mac_addr_str_t mac_str);
-    
+    cJSON *create_dev_template(mac_addr_str_t mac_str,unsigned int vap_index);
+    static void destroy_instance();
     void update_json(const char *str, vector_t v, cJSON *out_obj, bool &alarm);
-    void update_graph( cJSON *out_obj);
+    char* update_graph();
+    void register_station_mac(const char* str);
+    void unregister_station_mac(const char* str);
     ~qmgr_t();
 };
 

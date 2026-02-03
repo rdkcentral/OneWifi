@@ -51,6 +51,7 @@ typedef int (* wifi_db_init_global_config_default_fn_t)(wifi_global_param_t *con
 typedef int (* wifi_db_init_radio_config_default_fn_t)(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 typedef int (* wifi_db_init_vap_config_default_fn_t)(int vap_index, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config);
+typedef void (* wifi_db_init_rfc_config_default_fn_t)(wifi_rfc_dml_parameters_t *config);
 typedef int (* wifi_db_update_wifi_security_config_fn_t)(char *vap_name, wifi_vap_security_t *sec);
 typedef int (* wifi_db_get_gas_config_fn_t)(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 typedef int (* wifi_db_update_gas_config_fn_t)(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
@@ -80,6 +81,7 @@ typedef struct {
     wifi_db_init_global_config_default_fn_t    init_global_config_default_fn;
     wifi_db_init_radio_config_default_fn_t     init_radio_config_default_fn;
     wifi_db_init_vap_config_default_fn_t       init_vap_config_default_fn;
+    wifi_db_init_rfc_config_default_fn_t       init_rfc_config_default_fn;
     wifi_db_update_wifi_security_config_fn_t   update_wifi_security_config_fn;
     wifi_db_get_gas_config_fn_t                get_gas_config_fn;
     wifi_db_update_gas_config_fn_t             update_gas_config_fn;

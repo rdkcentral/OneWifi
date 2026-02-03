@@ -25,15 +25,14 @@ extern "C" {
 //#define MAX_BUFF_SIZE   MAX_LINE_SIZE*1000
  #define MAX_FILE_NAME_SZ 1024
 
-#define MAX_LINKQ_PARAMS    3
+#define MAX_LINKQ_PARAMS    6
+#define MAX_SCORE_PARAMS    12
 #define THRESHOLD 0.4
 #define SAMPLING_INTERVAL 5
 #define REPORTING_INTERVAL 10
 #include "wifi_base.h"
+
 typedef struct {
-    int socket;
-    char path[MAX_FILE_NAME_SZ];
-    char output_file[MAX_FILE_NAME_SZ];
     double threshold;
     unsigned int sampling;
     unsigned int reporting;
@@ -42,24 +41,54 @@ typedef struct {
 typedef struct {
     mac_addr_str_t mac_str;
     unsigned int vap_index;
-    double per;
-    unsigned int snr;
-    unsigned int phy;
-    unsigned int max_phy;
+    wifi_associated_dev3_t dev;
   } stats_arg_t;
 
-typedef void (*qmgr_report_cb_t)(const report_batch_t *report);
+typedef struct {
+    unsigned int  pkt_sent;
+    unsigned  int pkt_recv;
+    unsigned int  err_sent;
+    unsigned int  err_recv;
+  } window_per_param_t;
 
-int run_web_server();
-int stop_web_server(const char *path);
+typedef struct {
+    bool downlink_snr;
+    bool downlink_per;
+    bool downlink_phy;
+    bool uplink_snr;
+    bool uplink_per;
+    bool uplink_phy;
+    bool aggregate;
+    bool int_reconn;
+
+  } quality_flags_t;
+
+typedef void (*qmgr_report_batch_cb_t)(const report_batch_t *report);
+typedef void (*qmgr_report_score_cb_t)(const char *str, double score);
+
 /* Registration function (called from C main) */
-void qmgr_register_callback(qmgr_report_cb_t cb);
-void qmgr_invoke_callback(const report_batch_t *batch);
+void qmgr_register_batch_callback(qmgr_report_batch_cb_t cb);
+void qmgr_register_score_callback(qmgr_report_score_cb_t cb);
+
+bool qmgr_is_batch_registered(void);
+bool qmgr_is_score_registered(void);
+
+void reset_qmgr_score_cb(void);
+void qmgr_invoke_batch(const report_batch_t *batch);
+void qmgr_invoke_score(const char *str, double score);
 
 int add_stats_metrics(stats_arg_t *stats);
 int remove_link_stats(stats_arg_t *stats);
 int start_link_metrics();
+int stop_link_metrics();
+int disconnect_link_stats(stats_arg_t *stats);
 int reinit_link_metrics(server_arg_t *arg);
+char* get_link_metrics();
+
+/* Ignite station mac register and unregister function to monitor*/
+void register_station_mac(const char* str);
+void unregister_station_mac(const char* str);
+
 #ifdef __cplusplus
 }
 #endif

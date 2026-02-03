@@ -26,6 +26,7 @@
 #include "wifi_util.h"
 #include "wifi_monitor.h"
 #include "wifi_webconfig.h"
+#include "run_qmgr.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -148,6 +149,11 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
+    if (rf_status) {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    } else {
+       apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+    }
 
     return rc;
 
@@ -593,6 +599,37 @@ int set_managed_guest_interfaces(char *interface_name, int radio_index)
         wifi_util_dbg_print(WIFI_CTRL, "Successfuly set %s with %s \n", str, interface_name);
     }
     return RETURN_OK;
+}
+bus_error_t wifi_get_link_quality_data(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    uint32_t bytes_size;
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    char *str = get_link_metrics();
+
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d get_link_metrics returned NULL\n",
+                          __func__, __LINE__);
+        return bus_error_general;
+    } 
+    bytes_size =  strlen(str);
+    p_data->data_type = bus_data_type_string;
+    p_data->raw_data.bytes = (uint8_t *)strdup(str);
+    
+    if (!p_data->raw_data.bytes) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+             __LINE__,strlen(str));
+        free(str);     
+        return bus_error_out_of_resources;
+    }
+    p_data->raw_data_len = bytes_size;
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    if (str)
+        free(str);
+
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    return RETURN_OK;
+
 }
 
 bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
@@ -3481,6 +3518,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_CSA_BEACON_FRAME_RECEIVED, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, eventSubHandler, NULL}, high_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+                                { WIFI_LINK_QUALITY_DATA, bus_element_type_method,
+                                    { wifi_get_link_quality_data, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);
