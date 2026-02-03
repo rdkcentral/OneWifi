@@ -1212,7 +1212,7 @@ static void dppline_add_stat_client(Sts__Report *r, dppline_stats_t *s)
             dr->stats->rx_retries = rec->stats.retries_rx;
             dr->stats->has_rx_retries = true;
         }
-        if (rec->stats.retries_rx) {
+        if (rec->stats.retries_tx) {
             dr->stats->tx_retries = rec->stats.retries_tx;
             dr->stats->has_tx_retries = true;
         }
