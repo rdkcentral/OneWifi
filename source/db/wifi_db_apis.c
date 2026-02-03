@@ -88,6 +88,7 @@
 #define DEFAULT_WHIX_LOGINTERVAL 3600
 #define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100042
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100043
+#define ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG 100044
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -2651,15 +2652,17 @@ void wifidb_get_wifi_macfilter_config()
 
         if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
             tmp_mac = strdup(pcfg->device_mac);
+            if (tmp_mac == NULL) {
+                wifi_util_error_print(WIFI_DB,"%s:%d: Failed to dup str \n", __func__, __LINE__);
+                return;
+            }
             str_tolower(tmp_mac);
             tmp_acl_entry = hash_map_get(l_rdk_vap_array->acl_map, tmp_mac);
             if (tmp_acl_entry == NULL) {
                 tmp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
                 if (tmp_acl_entry == NULL) {
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
-                    if(tmp_mac) {
-                        free(tmp_mac);
-                    }
+                    free(tmp_mac);
                     return;
                 }
                 memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
@@ -4907,6 +4910,20 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                     &rdk_config[i]);
+            }
+        }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG) {
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                // apply mld_link_id from first VAP(private SSID) to all other VAPs on radio
+                if (i != 0) {
+                    wifi_util_info_print(WIFI_DB,
+                        "%s:%d upgrade multi mld unit vap's MLO configuration, db version %d vap name: %s\n",
+                        __func__, __LINE__, g_wifidb->db_version, config->vap_array[i].vap_name);
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id =
+                        config->vap_array[0].u.bss_info.mld_info.common_info.mld_link_id;
+                    wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
+                        &config->vap_array[i], &rdk_config[i]);
+                }
             }
         }
     }

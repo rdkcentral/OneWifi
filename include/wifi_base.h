@@ -88,12 +88,7 @@ extern "C" {
 #endif /*MAX_NUM_MLD_LINKS*/
 
 #define UNDEFINED_MLD_ID 255
-
-#ifdef CONFIG_NO_MLD_ONLY_PRIVATE
 #define MLD_UNIT_COUNT 8
-#else
-#define MLD_UNIT_COUNT 1
-#endif /* CONFIG_NO_MLD_ONLY_PRIVATE */
 
 #endif /* CONFIG_IEEE80211BE */
 
