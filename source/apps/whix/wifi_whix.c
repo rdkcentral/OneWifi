@@ -1696,10 +1696,10 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                 } else {
                     unsigned long curr = sta[i].dev_stats.cli_RetransCount;
                     unsigned long prev = dev_stats_last->cli_RetransCount;
-                    if (curr >= last) {
-                        diff = curr - last;
+                    if (curr >= prev) {
+                        diff = curr - prev;
                     } else {
-                        diff = (ULONG_MAX - last) + curr + 1;
+                        diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
                     wifi_util_dbg_print(WIFI_APPS,
