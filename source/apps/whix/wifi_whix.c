@@ -1139,6 +1139,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     wifi_mgr_t *wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
     hash_map_t *last_stats_map = app->data.u.whix.last_stats_map;
     wifi_associated_dev3_t *dev_stats_last = NULL;
+    unsigned long diff;
 
     if (NULL == sta && num_devs != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d sta is NULL and num_devs %u\n", __func__, __LINE__,
@@ -1544,8 +1545,17 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_BytesReceived - dev_stats_last->cli_BytesReceived);
+                    unsigned long curr = sta[i].dev_stats.cli_BytesReceived;
+                    unsigned long prev = dev_stats_last->cli_BytesReceived;
+                    if (curr >= prev) {
+                        diff = curr - prev;
+                    } else {
+                        diff = (ULONG_MAX - prev) + curr + 1;
+                    }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrBytesReceived:%lu LastBytesReceived:%lu Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1568,8 +1578,17 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_PacketsSent - dev_stats_last->cli_PacketsSent);
+                    unsigned long curr = sta[i].dev_stats.cli_PacketsSent;
+                    unsigned long prev = dev_stats_last->cli_PacketsSent;
+                     if (curr >= prev) {
+                          diff = curr - prev;
+                        } else {
+                    diff = (ULONG_MAX - prev) + curr + 1;
+                        }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrPacketsSent:%lu LastPacketsSent:%lu Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1600,8 +1619,18 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_PacketsReceived - dev_stats_last->cli_PacketsReceived);
+                    unsigned long curr = sta[i].dev_stats.cli_PacketsReceived;
+                    unsigned long prev = dev_stats_last->cli_PacketsReceived;
+                    if (curr >= prev) {
+                        diff = curr - prev;
+                    } else {
+                        diff = (ULONG_MAX - prev) + curr + 1;
+                    }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrPacketsReceived:%lu LastPacketsReceived:%lu "
+                        "Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1624,8 +1653,17 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_ErrorsSent - dev_stats_last->cli_ErrorsSent);
+                    unsigned long curr = sta[i].dev_stats.cli_ErrorsSent;
+                    unsigned long prev = dev_stats_last->cli_ErrorsSent;
+                    if (curr >= prev) {
+                        diff = curr - prev;
+                    } else {
+                        diff = (ULONG_MAX - prev) + curr + 1;
+                    }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrErrorsSent:%lu LastErrorsSent:%lu Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1656,8 +1694,17 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_RetransCount - dev_stats_last->cli_RetransCount);
+                    unsigned long curr = sta[i].dev_stats.cli_RetransCount;
+                    unsigned long prev = dev_stats_last->cli_RetransCount;
+                    if (curr >= last) {
+                        diff = curr - last;
+                    } else {
+                        diff = (ULONG_MAX - last) + curr + 1;
+                    }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrRetransCount:%lu LastRetransCount:%lu Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1687,9 +1734,18 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_FailedRetransCount -
-                            dev_stats_last->cli_FailedRetransCount);
+                    unsigned long curr = sta[i].dev_stats.cli_FailedRetransCount;
+                    unsigned long prev = dev_stats_last->cli_FailedRetransCount;
+                    if (curr >= prev) {
+                        diff = curr - prev;
+                    } else {
+                        diff = (ULONG_MAX - prev) + curr + 1;
+                    }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrFailedRetransCount:%lu LastFailedRetransCount:%lu "
+                        "Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1711,8 +1767,17 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_RetryCount - dev_stats_last->cli_RetryCount);
+                    unsigned long curr = sta[i].dev_stats.cli_RetryCount;
+                    unsigned long prev = dev_stats_last->cli_RetryCount;
+                    if (curr >= prev) {
+                        diff = curr - prev;
+                    } else {
+                        diff = (ULONG_MAX - prev) + curr + 1;
+                    }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrRetryCount:%lu LastRetryCount:%lu Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1734,9 +1799,18 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_MultipleRetryCount -
-                            dev_stats_last->cli_MultipleRetryCount);
+                    unsigned long curr = sta[i].dev_stats.cli_MultipleRetryCount;
+                    unsigned long prev = dev_stats_last->cli_MultipleRetryCount;
+                    if (curr >= prev) {
+                        diff = curr - prev;
+                    } else {
+                        diff = (ULONG_MAX - prev) + curr + 1;
+                    }
+                    snprintf(tmp, 32, "%lu,", diff);
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d MJ MAC:%s CurrMultipleRetryCount:%lu LastMultipleRetryCount:%lu "
+                        "Diff:%lu\n",
+                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
