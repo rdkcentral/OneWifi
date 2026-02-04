@@ -72,7 +72,7 @@ webconfig_error_t translate_to_em_ap_metrics_report_subdoc(webconfig_t *config, 
 
 webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    cJSON *json, *emap_metrics_report_obj;
+    cJSON *json, *emap_metrics_report_arr, *radio_arr, *radio_reports;
     char *str = NULL;
     webconfig_subdoc_decoded_data_t *params = NULL;
     rdk_wifi_radio_t *radio = NULL;
@@ -89,13 +89,6 @@ webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
         return webconfig_error_encode;
     }
 
-    radio = &params->radios[ap_report->radio_index];
-    if (radio == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to find the interface map entry\n", __func__,
-            __LINE__);
-        return RETURN_ERR;
-    }
-
     json = cJSON_CreateObject();
     if (json == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
@@ -107,14 +100,19 @@ webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
     cJSON_AddStringToObject(json, "Version", "1.0");
     cJSON_AddStringToObject(json, "SubDocName", "Easymesh AP Metrics Report");
 
-    emap_metrics_report_obj = cJSON_CreateObject();
-    if ((emap_metrics_report_obj == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
-    cJSON_AddItemToObject(json, "EMAPMetricsReport", emap_metrics_report_obj);
+    emap_metrics_report_arr = cJSON_CreateArray();
+    cJSON_AddItemToObject(json, "EMAPMetricsReport", emap_metrics_report_arr);
 
-    encode_em_ap_metrics_report_object(radio, ap_report, emap_metrics_report_obj);
+    for (int i = 0; i < ap_report->radio_count; i++) {
+        radio = &params->radios[ap_report->radio_reports[i].radio_index];
+        radio_reports = cJSON_CreateObject();
+        cJSON_AddItemToArray(emap_metrics_report_arr, radio_reports);
+        if(encode_em_ap_metrics_report_object(radio, &params->em_ap_metrics_report.radio_reports[i], radio_reports) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: encode_em_ap_metrics_report_object failed\n", __func__, __LINE__);
+            cJSON_Delete(json);
+            return webconfig_error_encode;
+        }
+    }
 
     // Convert JSON object to string
     str = cJSON_Print(json);
@@ -138,7 +136,7 @@ webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
 webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
-    cJSON *json;
+    cJSON *json, *em_ap_report_arr;
     webconfig_subdoc_t  *doc;
     int i = 0;
 
@@ -172,7 +170,27 @@ webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
         }
     }
 
-    decode_em_ap_metrics_report_object(json, &params->em_ap_metrics_report);
+    em_ap_report_arr = cJSON_GetObjectItem(json, "EMAPMetricsReport");
+    if (em_ap_report_arr == NULL || !cJSON_IsArray(em_ap_report_arr)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid or missing EMAPMetricsReport\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    for (i = 0; i < cJSON_GetArraySize(em_ap_report_arr); i++) {
+        cJSON *em_ap_report_obj = cJSON_GetArrayItem(em_ap_report_arr, i);
+        if (em_ap_report_obj == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EMAPMetricsReport object at index %d\n",
+                __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+
+        if(decode_em_ap_metrics_report_object(em_ap_report_obj, &params->em_ap_metrics_report.radio_reports[i]) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decode_em_ap_metrics_report_object failed\n", __func__, __LINE__);
+            cJSON_Delete(json);
+            return webconfig_error_decode;
+        }
+    }
 
     return webconfig_error_none;
 }
