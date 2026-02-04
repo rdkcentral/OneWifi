@@ -312,7 +312,7 @@ static bus_error_t memwraptool_get_handler(char *event_name, raw_data_t *p_data,
         return bus_error_invalid_input;
     }
 
-    wifi_util_dbg_print(WIFI_MEMWRAPTOOL, "%s:%d Event name: %s\n", __func__, event_name);
+    wifi_util_dbg_print(WIFI_MEMWRAPTOOL, "%s:%d Event name: %s\n", __func__, __LINE__, event_name);
     sscanf(event_name, "Device.WiFi.MemwrapTool.%199s", parameter);
 
     if (strcmp(parameter, "RSSThreshold") == 0) {
