@@ -1701,7 +1701,7 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
             if (!isVapHotspot(tgt_vap_index)) {
                 wifi_util_dbg_print(WIFI_CTRL,
                     "%s:%d Skipping cac config apply for non hotspot vap: %d \n", __func__,
-                    __LINE__, vap_index);
+                    __LINE__, tgt_vap_index);
                 continue;
             }
             if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
