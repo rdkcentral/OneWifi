@@ -97,17 +97,17 @@ void rdkb_daemonize()
         exit(0);
     }
     fd = open("/dev/null", O_RDONLY);
-    if (fd != 0) {
+    if ((fd != -1) && (fd != 0)) {
         dup2(fd, 0);
         close(fd);
     }
     fd = open("/dev/null", O_WRONLY);
-    if (fd != 1) {
+    if ((fd != -1) && (fd != 1)) {
         dup2(fd, 1);
         close(fd);
     }
     fd = open("/dev/null", O_WRONLY);
-    if (fd != 2) {
+    if ((fd != -1) && (fd != 2)) {
         dup2(fd, 2);
         close(fd);
     }
