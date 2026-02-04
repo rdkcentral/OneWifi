@@ -12,7 +12,7 @@ The OneWifi repository contains a **comprehensive Connection Admission Control (
 ## CAC Files Found
 
 ### Core Implementation
-- **`/source/apps/cac/wifi_cac.c`** - Main CAC implementation (~1300 lines, 50+ KB)
+- **`/source/apps/cac/wifi_cac.c`** - Main CAC implementation (1,235 lines, 50+ KB)
 - **`/source/apps/cac/wifi_cac.h`** - CAC header with data structures and function declarations
 
 ### Integration
@@ -111,9 +111,9 @@ typedef struct cac_sta_info {
 
 ### Post-Association Flow
 1. Periodic monitoring loop samples client metrics
-2. Calculate exponential weighted average (weight: 0.05):
+2. Calculate exponential weighted average (weight: 0.05, formula):
    ```
-   new_avg = (1 - weight) * old_avg + weight * new_sample
+   new_avg = (1 - 0.05) * old_avg + 0.05 * new_sample
    ```
 3. Check if averaged metrics breach thresholds
 4. If breach detected:
