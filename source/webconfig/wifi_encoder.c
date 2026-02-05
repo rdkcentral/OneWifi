@@ -1104,7 +1104,9 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 
     if (is_6g &&
         security_info->mode != wifi_security_mode_wpa3_personal &&
+#if defined(CONFIG_IEEE80211BE)
         security_info->mode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
         security_info->mode != wifi_security_mode_wpa3_enterprise &&
         security_info->mode != wifi_security_mode_enhanced_open) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
@@ -1202,7 +1204,14 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 #endif // CONFIG_IEEE80211BE
 
     if(security_info->mode == wifi_security_mode_wpa3_compatibility &&
+#if defined(CONFIG_IEEE80211BE)
+        ((is_6g == true &&
+        security_info->mfp != wifi_mfp_cfg_required) ||
+        (is_6g == false &&
+        security_info->mfp != wifi_mfp_cfg_disabled))) {
+#else
        security_info->mfp != wifi_mfp_cfg_disabled) {
+#endif /* CONFIG_IEEE80211BE */
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
             __func__, __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_encode;
