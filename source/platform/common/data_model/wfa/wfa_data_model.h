@@ -412,4 +412,6 @@ int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_t
 
 bus_error_t wfa_elem_num_of_table_row(char *event_name, uint32_t *table_row_size);
 
+bus_error_t default_wfa_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum);
+
 #endif // WFA_DATA_MODEL_H

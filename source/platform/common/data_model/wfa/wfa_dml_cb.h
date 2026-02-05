@@ -44,4 +44,14 @@ bool wfa_network_get_param_uint_value(void *obj_ins_context, char *param_name, u
  */
 bool wfa_network_get_param_string_value(void *obj_ins_context, char *param_name, scratch_data_buff_t *output_value);
 
+/**
+ * @brief Get string parameter value for WFA Network SSID
+ * 
+ * @param obj_ins_context Object instance context
+ * @param param_name Parameter name to retrieve
+ * @param raw_data_t Pointer to raw data object
+ * @return true on success, false on failure
+ */
+bus_error_t wfa_network_ssid_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data);
+
 #endif // WFA_DML_CB_H

@@ -25,6 +25,33 @@
 #include "wifi_data_model.h"
 #include "wifi_dml_api.h"
 #include "wfa_data_model.h"
+#include "wifi_ctrl.h"
+
+static bus_error_t set_output_value(char *param_name, raw_data_t *p_data, void *p_value) {
+    switch(p_data->data_type) {
+        case bus_data_type_boolean:
+            p_data->raw_data.b = *((bool *)p_value);
+        break;
+        case bus_data_type_int32:
+            p_data->raw_data.i32 = *((int32_t *)p_value);
+        break;
+        case bus_data_type_uint32:
+            p_data->raw_data.u32 = *((uint32_t *)p_value);
+        break;
+        case bus_data_type_string:
+            scratch_data_buff_t temp_buff = { 0 };
+            set_output_string(&temp_buff, (char *)p_value);
+            p_data->raw_data.bytes = temp_buff.buff;
+            p_data->raw_data_len   = temp_buff.buff_len;
+        break;
+        case bus_data_type_none:
+        default:
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d unsupported param:%x failed for [%s]\n", __func__, __LINE__, p_data->data_type, param_name);
+            return bus_error_invalid_input;
+        break;
+    }
+    return bus_error_success;
+}
 
 bool wfa_network_get_param_uint_value(void *obj_ins_context, char *param_name, uint32_t *output_value)
 {
@@ -61,4 +88,62 @@ bool wfa_network_get_param_string_value(void *obj_ins_context, char *param_name,
     }
 
     return true;
+}
+
+bus_error_t wfa_network_ssid_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data)
+{
+    wifi_vap_info_t *vap = obj_ins_context;
+    wifi_radio_operationParam_t *radio_param = getRadioOperationParam(vap->radio_index);
+    wifi_util_info_print(WIFI_DMCLI,"%s:%d: param name:%s\n",__func__, __LINE__, param_name);
+
+    if (STR_CMP(param_name, "SSID")) {
+        return set_output_value(param_name, p_data, vap->u.bss_info.ssid);
+    } else if (STR_CMP(param_name, "Band")) {
+        switch (radio_param->band)
+        {
+            case WIFI_FREQUENCY_2_4_BAND: return set_output_value(param_name, p_data, "2.4");
+            case WIFI_FREQUENCY_5_BAND: return set_output_value(param_name, p_data, "5");
+            case WIFI_FREQUENCY_6_BAND: return set_output_value(param_name, p_data, "6");
+            default: return set_output_value(param_name, p_data, "NotImplemented");
+        }
+    }
+    else if (STR_CMP(param_name, "AKMsAllowed")) {
+        return set_output_value(param_name, p_data, "NotImplemented");
+    }
+    else if (STR_CMP(param_name, "SuiteSelector")) {
+        return set_output_value(param_name, p_data, "NotImplemented");
+    }
+    else if (STR_CMP(param_name, "MFPConfig")) {
+#if defined(WIFI_HAL_VERSION_3)
+        switch (vap->u.bss_info.security.mfp) {
+            case wifi_mfp_cfg_disabled: return set_output_value(param_name, p_data, "Disabled");
+            case wifi_mfp_cfg_optional: return set_output_value(param_name, p_data, "Optional");
+            case wifi_mfp_cfg_required: return set_output_value(param_name, p_data, "Required");
+            default: return set_output_value(param_name, p_data, "NotImplemented");
+        }
+#else
+        return set_output_value(param_name, p_data, vap->u.bss_info.security.mfpConfig);
+#endif
+    }
+    else if (STR_CMP(param_name, "MobilityDomain")) {
+        return set_output_value(param_name, p_data, "NotImplemented");
+    }
+    else if (STR_CMP(param_name, "HaulType")) {
+        if (!strncmp(vap->vap_name, "mesh_backhaul", strlen("mesh_backhaul")) ||
+            !strncmp(vap->vap_name, "mesh_sta", strlen("mesh_sta"))) {
+            return set_output_value(param_name, p_data, "Backhaul");
+        }
+        else {
+            return set_output_value(param_name, p_data, "Fronthaul");
+        }
+    }
+    else if (STR_CMP(param_name, "AdvertisementEnabled")) {
+        return set_output_value(param_name, p_data, &vap->u.bss_info.showSsid);
+    }
+    else if (STR_CMP(param_name, "Enable")) {
+        return set_output_value(param_name, p_data, &vap->u.bss_info.enabled);
+    } else {
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
+        return bus_error_invalid_input;
+    }
 }
