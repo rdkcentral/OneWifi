@@ -592,7 +592,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDEnable\":\"%d\","
-                        "\"AssociationLink\:\"%d\","
+                        "\"AssociationLink\":\"%d\","
                         "\"DownlinkDataRate\":\"%d\","
                         "\"UplinkDataRate\":\"%d\","
                         "\"BytesSent\":\"%lu\","
