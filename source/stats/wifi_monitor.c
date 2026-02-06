@@ -921,6 +921,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDEnable\":\"%d\","
+                        "\"AssociationLink\":\"%d\","
                         "\"DownlinkDataRate\":\"%d\","
                         "\"UplinkDataRate\":\"%d\","
                         "\"BytesSent\":\"%lu\","
@@ -958,6 +959,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                         sta_data->dev_stats.cli_MLDAddr[4],
                         sta_data->dev_stats.cli_MLDAddr[5],
                         sta_data->dev_stats.cli_MLDEnable,
+                        sta_data->primary_link,
                         sta_data->dev_stats.cli_MaxDownlinkRate,
                         sta_data->dev_stats.cli_MaxUplinkRate,
                         sta_data->dev_stats.cli_BytesSent,
