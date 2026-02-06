@@ -656,7 +656,6 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
         }
 
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        l_security_cfg->mode = new_rec->security_mode;
         l_security_cfg->mode = new_rec->security_mode_new;
         l_security_cfg->encr = new_rec->encryption_method;
 
@@ -1713,7 +1712,7 @@ int wifidb_update_interworking_config(char *vap_name, wifi_InterworkingElement_t
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Found %d records with key: %s in Wifi VAP table\n", 
                         __func__, __LINE__, count, vap_name);
-        strcpy(cfg.vap_name, vap_name);
+        snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
         cfg.enable = interworking->interworkingEnabled;
         cfg.access_network_type = interworking->accessNetworkType;
         cfg.internet = interworking->internetAvailable;
@@ -1844,7 +1843,6 @@ void wifidb_print_interworking_config ()
             }
 
             free(pcfg);
-            pcfg = NULL;
         }
     }
 }
@@ -2348,12 +2346,12 @@ int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
     uint8_t vap_index = 0;
     char name[BUFFER_LENGTH_WIFIDB];
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update for radio index=%d No of Vaps=%d\n",__func__, __LINE__,radio_index,config->num_vaps);
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update for radio index=%d No of Vaps=%d\n",__func__, __LINE__,radio_index,config->num_vaps);
     for(i=0;i<config->num_vaps;i++)
     {
         wifidb_print("%s:%d Updated WIFI DB. vap Config updated successful for radio %s and vap_name %s. \n",__func__, __LINE__,name,config->vap_array[i].vap_name);
@@ -2874,7 +2872,7 @@ int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *
         return -1;
     }
 
-    strcpy(cfg.vap_name, vap_name);
+    snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
     strcpy(cfg.rssi_up_threshold, preassoc->rssi_up_threshold);
     strcpy(cfg.snr_threshold, preassoc->snr_threshold);
     strcpy(cfg.cu_threshold, preassoc->cu_threshold);
@@ -2960,7 +2958,7 @@ int wifidb_update_postassoc_ctrl_config(char *vap_name, wifi_postassoc_control_t
         return -1;
     }
 
-    strcpy(cfg.vap_name, vap_name);
+    snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
     strcpy(cfg.rssi_up_threshold, postassoc->rssi_up_threshold);
     strcpy(cfg.sampling_interval, postassoc->sampling_interval);
     strcpy(cfg.snr_threshold, postassoc->snr_threshold);
@@ -3357,7 +3355,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->force_disable_radio_status = pcfg->force_disable_radio_status;
         config->fixed_wmm_params = pcfg->fixed_wmm_params;
         if (strlen(pcfg->wifi_region_code) != 0) {
-            strncpy(config->wifi_region_code,pcfg->wifi_region_code,sizeof(config->wifi_region_code)-1);
+            snprintf(config->wifi_region_code, sizeof(config->wifi_region_code), "%s", pcfg->wifi_region_code);
         }
         config->diagnostic_enable = pcfg->diagnostic_enable;
         config->validate_ssid = pcfg->validate_ssid;
@@ -4716,7 +4714,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     unsigned int total_radios = getNumberRadios();
 
-    if (index < 0 || index >= total_radios)
+    if (index >= total_radios)
     {
         wifi_util_error_print(WIFI_DB,"%s:%d Invalid radio index\n", __func__, __LINE__);
         return;
@@ -6383,6 +6381,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
     char *vap_name = NULL;
     json_t *where;
     int ret = 0;
+    int vap_index = -1;
     rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
     wifi_mac_entry_param_t l_mac_entry;
     memset(&l_mac_entry, 0, sizeof(l_mac_entry));
@@ -6394,7 +6393,12 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
     if (!add) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "macfilter_key", OFUNC_EQ, macfilter_key);
         ret = onewifi_ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, where);
-        l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        if (vap_index == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, vap_name);
+            return -1;
+        }
+        l_mac_entry.vap_index = (unsigned char) vap_index;
         wifidb_print("%s:%d vap_name:%s key:%s\n",__func__, __LINE__, vap_name, macfilter_key);
         memset(tmp_mac_str, 0, sizeof(tmp_mac_str));
         to_mac_str(config->mac, tmp_mac_str);
@@ -6434,11 +6438,12 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         snprintf(cfg_mac.macfilter_key, sizeof(cfg_mac.macfilter_key), "%s", macfilter_key);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: updating table wifi_macfilter_config table entry is device_mac %s, device_name %s,macfilter_key %s reason %d and expiry_time %d\n", __func__, __LINE__, cfg_mac.device_mac, cfg_mac.device_name, cfg_mac.macfilter_key,cfg_mac.reason,cfg_mac.expiry_time);
 
-        l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
-        if (l_mac_entry.vap_index == -1) {
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        if (vap_index == -1) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, vap_name);
             return -1;
         }
+        l_mac_entry.vap_index = (unsigned char) vap_index;
         l_rdk_vap_array = get_wifidb_rdk_vap_info(l_mac_entry.vap_index);
         if (l_rdk_vap_array ==  NULL) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to find vap_array for vap_index %d\n", __func__, __LINE__, l_mac_entry.vap_index);
@@ -8759,7 +8764,7 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
         snprintf(recName, sizeof(recName), MacFilterDevice, instance_number, index);
         str = p_ccsp_desc->psm_get_value_fn(recName, strValue, sizeof(strValue));
         if (str != NULL) {
-            strcpy(temp_psm_mac_param->device_name, str);
+            snprintf(temp_psm_mac_param->device_name, sizeof(temp_psm_mac_param->device_name), "%s", str);
             wifi_util_dbg_print(WIFI_MGR,"psm get device_name is %s\r\n", str);
         } else {
             wifi_util_dbg_print(WIFI_MGR,"[Failure] psm record_name: %s\n", recName);
@@ -8981,7 +8986,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     snprintf(recName, sizeof(recName), BeaconRateCtl, instance_number);
     str = p_ccsp_desc->psm_get_value_fn(recName, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(bss_cfg->beaconRateCtl,str);
+        snprintf(bss_cfg->beaconRateCtl, sizeof(bss_cfg->beaconRateCtl), "%s", str);
         wifi_util_dbg_print(WIFI_MGR,"bss_cfg->beaconRateCtl is %s and str is %s \r\n", bss_cfg->beaconRateCtl, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for beaconRateCtl:%s \r\n", __func__, __LINE__, str);

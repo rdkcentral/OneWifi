@@ -721,11 +721,6 @@ static void validation_error_msg(const uint8_t group, const uint8_t type, pErr e
 
 static int checkVenueParams(const uint8_t venueGroup, const uint8_t venueType, pErr execRetVal)
 {
-    if (venueType > 15) {
-        validation_error_msg(venueGroup, venueType, execRetVal);
-        return RETURN_ERR;
-    }
-
     switch (venueGroup) {
     case 0:
        if (venueType > 0) {
@@ -1493,7 +1488,7 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 
         //VAP Name
 	validate_param_string(vap, "VapName",param);
-	strcpy(vap_info->vap_name, param->valuestring);
+	snprintf(vap_info->vap_name, sizeof(vap_info->vap_name), "%s", param->valuestring);
 
         //Bridge Name
         validate_param_string(vap, "BridgeName", param);
@@ -1501,7 +1496,7 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 
 	// SSID
 	validate_param_string(vap, "SSID", param);
-	strcpy(vap_info->u.bss_info.ssid, param->valuestring);
+	snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s", param->valuestring);
 
         if (validate_ssid_name(vap_info->u.bss_info.ssid, execRetVal) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s %d : Ssid name validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
@@ -1612,7 +1607,7 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 
         // BeaconRateCtl
         validate_param_string(vap, "BeaconRateCtl", param);
-        strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
+        snprintf(vap_info->u.bss_info.beaconRateCtl, sizeof(vap_info->u.bss_info.beaconRateCtl), "%s", param->valuestring);
 
         // HostapMgtFrameCtrl
         validate_param_bool(vap, "HostapMgtFrameCtrl", param);
