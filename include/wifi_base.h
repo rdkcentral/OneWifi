@@ -838,11 +838,37 @@ typedef struct {
 } interop_data_t;
 
 typedef struct {
+    /* WiFi6 (HE) capabilities */
+    BOOL wifi6_supported;                 /**< Whether WiFi6 (HE) is supported */
+    UCHAR phy_cap[11];                 /**< HE PHY capabilities (HE_MAX_PHY_CAPAB_SIZE = 11) */
+    UCHAR mac_cap[4];                  /**< HE MAC capabilities (HE_MAX_MAC_CAPAB_SIZE = 4) */
+    UCHAR mcs_nss_set[6];              /**< HE MCS NSS set (HE_MAX_MCS_CAPAB_SIZE = 6) */
+    UCHAR ppet[7];                     /**< HE PPE thresholds (HE_MAX_PPET_CAPAB_SIZE = 7) */
+    //USHORT 6ghz_capa;                  /**< HE 6GHz capabilities */
+} he_radio_capability_t;
+
+typedef struct {
+    /* WiFi7 (EHT) capabilities */
+    BOOL wifi7_supported;                 /**< Whether WiFi7 (EHT) is supported */
+    UCHAR mac_cap[4];                 /**< EHT MAC capabilities */
+    UCHAR phy_cap[9];                 /**< EHT PHY capabilities (EHT_PHY_CAPAB_LEN = 9) */
+    UCHAR mcs[3];                     /**< EHT MCS set */
+    UCHAR ppet[16];                   /**< EHT PPE thresholds */
+} eht_radio_capability_t;
+
+/* This structure is populated from HAL and translated to easymesh */
+typedef struct {
+    he_radio_capability_t he_cap;
+    eht_radio_capability_t eht_cap;
+} __attribute__((packed)) rdk_wifi_radio_capability_t;
+
+typedef struct {
     char    name[16];
     wifi_radio_operationParam_t oper;
     rdk_wifi_vap_map_t          vaps;
     wifi_radio_feature_param_t  feature;
     radarInfo_t                  radarInfo;
+    rdk_wifi_radio_capability_t radio_capability; /**< WiFi6/WiFi7 capabilities for AP mode */
 //  schema_wifi_radio_state_t   radio_state;
 } rdk_wifi_radio_t;
 
