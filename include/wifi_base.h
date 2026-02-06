@@ -1147,8 +1147,15 @@ typedef struct {
 #define EM_MAX_NEIGHBORS 16
 #define EM_MAX_RESULTS 32
 #define EM_MAX_CHANNELS 64
+#define EM_MAX_STA_PER_BSS 64
 
 typedef char marker_name[32];
+
+typedef struct {
+    char collection_start_time[32];
+    unsigned int reporting_interval;
+    float link_quality_threshold;
+} alarm_report_policy_t;
 
 typedef struct {
     int interval;
@@ -1188,6 +1195,7 @@ typedef struct {
 } radio_metrics_policies_t;
 
 typedef struct {
+    alarm_report_policy_t alarm_report_policy;
     ap_metrics_policy_t ap_metric_policy;
     steering_disallowed_policy_t local_steering_dslw_policy;
     steering_disallowed_policy_t btm_steering_dslw_policy;
@@ -1360,6 +1368,11 @@ typedef struct {
     int radio_index;
     radio_metrics_t radio_metrics;
     em_vap_metrics_t vap_reports[MAX_NUM_VAP_PER_RADIO];
+} em_per_radio_report_t;
+
+typedef struct {
+    int radio_count;
+    em_per_radio_report_t radio_reports[MAX_NUM_RADIOS];
 } em_ap_metrics_report_t;
 
 #endif

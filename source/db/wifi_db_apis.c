@@ -2650,15 +2650,17 @@ void wifidb_get_wifi_macfilter_config()
 
         if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
             tmp_mac = strdup(pcfg->device_mac);
+            if (tmp_mac == NULL) {
+                wifi_util_error_print(WIFI_DB,"%s:%d: Failed to dup str \n", __func__, __LINE__);
+                return;
+            }
             str_tolower(tmp_mac);
             tmp_acl_entry = hash_map_get(l_rdk_vap_array->acl_map, tmp_mac);
             if (tmp_acl_entry == NULL) {
                 tmp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
                 if (tmp_acl_entry == NULL) {
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
-                    if(tmp_mac) {
-                        free(tmp_mac);
-                    }
+                    free(tmp_mac);
                     return;
                 }
                 memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
