@@ -35,6 +35,32 @@
         } \
     } while (0)
 
+#define WIFI_OBJ_TREE_NAME                  "Device.WiFi"
+#define NEIG_WIFI_DIAG_OBJ_NAME             "Device.WiFi.NeighboringWiFiDiagnostic"
+#define NEIG_DIAG_RESULT_OBJ_NAME           "Device.WiFi.NeighboringWiFiDiagnostic.Result"
+#define WIFI_REGION_OBJ_NAME                "Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion"
+#define WIFI_CLIENT_REPORT_OBJ_NAME         "Device.WiFi.X_RDKCENTRAL-COM_Report.WifiClient"
+#define WIFI_CLIENT_DEF_REPORT_OBJ_NAME     "Device.WiFi.X_RDKCENTRAL-COM_Report.WifiClient.Default"
+#define RADIO_OBJ_TREE_NAME                 "Device.WiFi.Radio.{i}"
+#define ACCESSPOINT_OBJ_TREE_NAME           "Device.WiFi.AccessPoint.{i}"
+#define SECURITY_OBJ_TREE_NAME              "Device.WiFi.AccessPoint.{i}.Security"
+#define RADIUS_SEC_OBJ_TREE_NAME            "Device.WiFi.AccessPoint.{i}.Security.X_COMCAST-COM_RadiusSettings"
+#define AUTH_SEC_OBJ_TREE_NAME              "Device.WiFi.AccessPoint.{i}.Security.X_RDKCENTRAL-COM_Authenticator"
+#define AP_MACFILTER_TREE_NAME              "Device.WiFi.AccessPoint.{i}.X_CISCO_COM_MACFilter"
+#define MACFILTER_OBJ_TREE_NAME             "Device.WiFi.AccessPoint.{i}.X_CISCO_COM_MacFilterTable.{i}"
+#define ASSOCIATED_STA_OBJ_TREE_NAME        "Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}"
+#define INTERWORKING_OBJ_TREE_NAME          "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_InterworkingElement"
+#define CONN_CTRL_OBJ_TREE_NAME             "Device.WiFi.AccessPoint.{i}.ConnectionControl"
+#define PRE_CONN_CTRL_OBJ_TREE_NAME         "Device.WiFi.AccessPoint.{i}.ConnectionControl.PreAssocDeny"
+#define POST_CONN_CTRL_OBJ_TREE_NAME        "Device.WiFi.AccessPoint.{i}.ConnectionControl.PostAssocDisc"
+#define WPS_OBJ_TREE_NAME                   "Device.WiFi.AccessPoint.{i}.WPS"
+#define INTERWORKING_SERV_OBJ_NAME          "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_InterworkingService"
+#define PASSPOINT_OBJ_TREE_NAME             "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_Passpoint"
+#define SSID_OBJ_TREE_NAME                  "Device.WiFi.SSID.{i}"
+
+#define DML_GET_CB                 1
+#define DML_SET_CB                 2
+
 typedef struct scratch_data_buff {
     void     *buff;
     uint32_t buff_len;
@@ -69,6 +95,8 @@ typedef struct dml_callback_table {
     dml_set_uint_cb_t    set_uint_value;
     dml_set_string_cb_t  set_string_value;
 } dml_callback_table_t;
+
+int wifi_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table);
 
 bus_error_t wifi_elem_num_of_table_row(char *event_name, uint32_t *table_row_size);
 
