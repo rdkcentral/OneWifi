@@ -421,7 +421,7 @@ bool drop_root()
   bool retval = false;
   syscfg_init();
   syscfg_get( NULL, "NonRootSupport", buf, sizeof(buf));
-  if(buf != NULL) {
+  if (buf[0] != '\0') {
      if(strncmp(buf, "true", strlen("true")) == 0) {
         if(init_capability() != NULL) {
            if(drop_root_caps(&appcaps) != -1) {
