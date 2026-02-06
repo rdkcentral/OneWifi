@@ -1178,11 +1178,6 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->ext_connected_scan_result_timeout_handler_id = 0;
     }
 
-    if (ext->ext_connect_algo_processor_id != 0) {
-        scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
-        ext->ext_connect_algo_processor_id = 0;
-    }
-
     if (ext->conn_state == connection_state_connection_in_progress ||
         ext->conn_state == connection_state_connection_to_lcb_in_progress ||
         ext->conn_state == connection_state_connection_to_nb_in_progress) {
@@ -1199,6 +1194,11 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->conn_state == connection_state_disconnected_scan_list_all ||
         ext->conn_state == connection_state_disconnection_in_progress) {
         return 0;
+    }
+
+    if (ext->ext_connect_algo_processor_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
+        ext->ext_connect_algo_processor_id = 0;
     }
 
     // If BSSID changed on the same band need to initiate disconnection before connection to avoid
