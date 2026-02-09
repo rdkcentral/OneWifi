@@ -1214,7 +1214,8 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->ignored_radio_index = get_radio_index_for_vap_index(svc->prop,
             ext->connected_vap_index);
         ext->is_on_channel = true;
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        ext->new_bss_delayed = true;
+        ext_set_conn_state(ext, connection_state_disconnection_in_progress, __func__, __LINE__);
     }
 
     schedule_connect_sm(svc);
