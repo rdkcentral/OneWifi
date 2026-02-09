@@ -26,6 +26,7 @@
 #include "wfa_data_model.h"
 #include "wfa_dml_cb.h"
 #include "wifi_ctrl.h"
+#include "dml_onewifi_api.h"
 
 wfa_dml_data_model_t g_wfa_dml_data_model;
 
@@ -41,6 +42,9 @@ bus_error_t wfa_elem_num_of_table_row(char *event_name, uint32_t *table_row_size
         *table_row_size = 1;
     } else if (strstr(event_name, DE_SSID_TABLE) != NULL) {
         *table_row_size = getTotalNumberVAPs();
+    } else if (strstr(event_name, DE_APMLD_TABLE) != NULL) {
+        update_apmld_map();
+        *table_row_size = get_num_apmld_dml();
     } else {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d Table is not found for [%s]\n", __func__, __LINE__, event_name);
         return bus_error_invalid_input;
@@ -69,7 +73,7 @@ static bus_error_t wfa_network_get(char *event_name, raw_data_t *p_data,struct b
     return status;
 }
 
-static bus_error_t wfa_network_ssid_get(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+static bus_error_t wfa_network_ssid_get(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
 {
     bus_error_t status = bus_error_invalid_input;
     uint32_t index = 0;
@@ -86,6 +90,33 @@ static bus_error_t wfa_network_ssid_get(char *event_name, raw_data_t *p_data, st
     }
 
     if ((status = wfa_network_ssid_get_param_value(vap_param, extension, p_data)) != bus_error_success)
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d wifi param get failed for:[%s][%s]\r\n", __func__, __LINE__, event_name, extension);
+
+    return status;
+}
+
+static bus_error_t wfa_apmld_get(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+{
+    bus_error_t status = bus_error_invalid_input;
+    uint32_t device_index = 0;
+    uint32_t index = 0;
+    char     extension[64]    = {0};
+
+    (void) device_index;
+    sscanf(event_name, DATAELEMS_NETWORK "Device.%d.APMLD.%d.%s", &device_index, &index, extension);
+    wifi_util_info_print(WIFI_DMCLI,"%s:%d get event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
+
+    //TODO remove
+    update_apmld_map();
+
+    mld_group_t *mld_grp = get_dml_apmld_group(index - 1);
+    if (mld_grp == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong MLDAP index:%d for:[%s]\r\n", __func__,
+            __LINE__, index, event_name);
+        return status;
+    }
+
+    if ((status = wfa_apmld_get_param_value(mld_grp, extension, p_data)) != bus_error_success)
         wifi_util_error_print(WIFI_DMCLI,"%s:%d wifi param get failed for:[%s][%s]\r\n", __func__, __LINE__, event_name, extension);
 
     return status;
@@ -134,6 +165,36 @@ bus_error_t de_device_table_remove_row_handler(char const* rowName)
     return bus_error_success;
 }
 
+bus_error_t de_apmld_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum)
+{
+    (void)instNum;
+    (void)aliasName;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter\r\n", __func__, __LINE__);
+    *instNum = get_num_apmld_dml() + 1;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Added table:%s table_de_ssid_index:%d-%d\r\n", __func__,
+        __LINE__, tableName, *instNum, *instNum);
+    return bus_error_success;
+}
+
+bus_error_t de_apmld_table_remove_row_handler(char const* rowName)
+{
+    wfa_dml_data_model_t *p_dml_param = get_wfa_dml_data_model_param();
+    (void)p_dml_param;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, rowName);
+    return bus_error_success;
+}
+
+bus_error_t de_apmld_sync_handler(char const* methodName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
+{
+    (void)methodName;
+    (void)inParams;
+    (void)outParams;
+    (void)asyncHandle;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter\r\n", __func__, __LINE__);
+    update_apmld_map();
+    return bus_error_success;
+}
+
 /* WFA DataElements callback function pointer mapping */
 int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table)
 {
@@ -161,6 +222,55 @@ int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_t
         { DE_SSID_TABLE, {
             wfa_network_ssid_get,            default_set_param_value,
             de_ssid_table_add_row_handler,   de_ssid_table_remove_row_handler,
+            default_event_sub_handler,       NULL }
+        },
+
+        /* Device.WiFi.DataElements.Network.Device.{i}.APMLD */
+        { DE_APMLD_TABLE, {
+            wfa_apmld_get,                   default_set_param_value,
+            de_apmld_table_add_row_handler,  de_apmld_table_remove_row_handler,
+            default_event_sub_handler,       NULL }
+        },
+
+        /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.APMLDConfig */
+        { DE_APMLD_CONFIG, {
+            wfa_apmld_get,                   default_set_param_value,
+            NULL,   NULL,
+            default_event_sub_handler,       NULL }
+        },
+
+        /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.AffiliatedAP */
+        { DE_AFFAP_TABLE, {
+            default_get_param_value,            default_set_param_value,
+            NULL,   NULL,
+            default_event_sub_handler,       NULL }
+        },
+
+        /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD */
+        { DE_STAMLD_TABLE, {
+            default_get_param_value,            default_set_param_value,
+            NULL,   NULL,
+            default_event_sub_handler,       NULL }
+        },
+
+        /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.WiFi7Capabilities */
+        { DE_STAMLD_WIFI7CAPS, {
+            default_get_param_value,            default_set_param_value,
+            NULL,   NULL,
+            default_event_sub_handler,       NULL }
+        },
+
+        /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.STAMLDConfig */
+        { DE_STAMLD_CONFIG, {
+            default_get_param_value,            default_set_param_value,
+            NULL,   NULL,
+            default_event_sub_handler,       NULL }
+        },
+
+        /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.AffiliatedSTA */
+        { DE_AFFSTA_TABLE, {
+            default_get_param_value,            default_set_param_value,
+            NULL,   NULL,
             default_event_sub_handler,       NULL }
         },
     };

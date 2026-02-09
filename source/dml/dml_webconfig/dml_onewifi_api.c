@@ -142,6 +142,95 @@ UINT get_num_radio_dml()
     }
 }
 
+void update_apmld_map()
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+    apmld_map_t *apmld_map = &dml->apmld_map;
+    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
+    unsigned int num_radios = getNumberRadios();
+    int mld_id_to_idx[MLD_UNIT_COUNT];
+
+    memset(apmld_map, 0, sizeof(apmld_map_t));
+    memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
+
+    for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
+        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
+        if (mgr_vap_info_map == NULL) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
+            apmld_map->mld_group_count = 0;
+            return;
+        }
+
+        for (unsigned int k = 0; k < mgr_vap_info_map->num_vaps; k++) {
+            wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
+            wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
+            unsigned int id = mld_info->mld_id;
+            unsigned int mld_idx;
+
+            if (!mld_info->mld_enable) {
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            if (id >= MLD_UNIT_COUNT) {
+                wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid MLD ID: %u\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            // Check if MLD ID already has an index
+            if (mld_id_to_idx[id] == -1) {
+                // New MLD ID
+                if (apmld_map->mld_group_count >= MLD_UNIT_COUNT) {
+                    wifi_util_error_print(WIFI_DMCLI, "%s:%d MLD count exceeds maximum\n", __func__, __LINE__);
+                    continue;
+                }
+                mld_idx = apmld_map->mld_group_count;
+                mld_id_to_idx[id] = mld_idx;
+                apmld_map->mld_group_count++;
+            } else {
+                // Existing MLD ID
+                mld_idx = mld_id_to_idx[id];
+            }
+
+            // Store VAP in MLD group
+            mld_group_t *mld_group = &apmld_map->mld_groups[mld_idx];
+            if (mld_group->mld_vap_count < MAX_NUM_RADIOS) {
+                mld_group->mld_vaps[mld_group->mld_vap_count] = vap_config;
+                mld_group->mld_vap_count++;
+            }
+        }
+    }
+
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d Total MLD count = %d\n", __func__, __LINE__, apmld_map->mld_group_count);
+}
+
+UINT get_num_apmld_dml()
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    return dml->apmld_map.mld_group_count;
+}
+
+mld_group_t* get_dml_apmld_group(uint8_t index)
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    if (index >= dml->apmld_map.mld_group_count) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index %u\n", __func__, __LINE__, index);
+        return NULL;
+    }
+
+    return &dml->apmld_map.mld_groups[index];
+}
+
+UINT get_total_num_affiliated_ap_dml(mld_group_t *mld_group)
+{
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d get_total_num_affiliated_ap_dml called. Number:%u\n",
+        __func__, __LINE__, mld_group->mld_vap_count);
+
+    return mld_group->mld_vap_count;
+}
+
 UINT get_total_num_vap_dml()
 {
     webconfig_dml_t* pwebconfig = get_webconfig_dml();
@@ -622,6 +711,100 @@ void get_associated_devices_data(unsigned int radio_index)
     webconfig_data_free(data);
     free(data);
     data = NULL;
+}
+
+unsigned long get_mld_associated_devices_count(mld_group_t *mld_group)
+{
+    UINT vap_idx;
+    unsigned long count = 0;
+    assoc_dev_data_t *assoc_dev_data_temp = NULL;
+
+    if (mld_group == NULL){
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d mld_group is NULL\n", __func__, __LINE__);
+        return 0;
+    }
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    for (vap_idx = 0; vap_idx < mld_group->mld_vap_count; vap_idx++) {
+        wifi_vap_info_t *vap_info = mld_group->mld_vaps[vap_idx];
+        if (vap_info == NULL)
+            continue;
+        hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_info->vap_index);
+        if (assoc_vap_info_map == NULL) {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d No assoc_vap_info_map for vap_index %d\n",
+                __func__, __LINE__, vap_info->vap_index);
+            continue;
+        }
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d Assoc_vap_info_map found for vap_index %d\n",
+            __func__, __LINE__, vap_info->vap_index);
+
+        assoc_dev_data_temp = hash_map_get_first(assoc_vap_info_map);
+        while (assoc_dev_data_temp != NULL) {
+            if (assoc_dev_data_temp->dev_stats.cli_MLDEnable)
+                count++;
+            assoc_dev_data_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_data_temp);
+        }
+    }
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    return count;
+}
+
+assoc_dev_data_t* create_copy_assoc_dev_data(assoc_dev_data_t* src_assoc_dev_data)
+{
+    assoc_dev_data_t *assoc_dev_data = NULL;
+
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+    if (NULL == assoc_dev_data) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d assoc_dev_data - allocation failed!\n", __func__, __LINE__);
+        return NULL;
+    }
+    memcpy(assoc_dev_data, src_assoc_dev_data, sizeof(assoc_dev_data_t));
+
+    return assoc_dev_data;
+}
+
+assoc_dev_data_t *get_mld_associated_device(mld_group_t *mld_group, unsigned int dev_index)
+{
+    UINT vap_idx;
+    unsigned long idx = 0; /*indexed from value 1 - idx=0 is invalid value*/
+    assoc_dev_data_t *assoc_dev_data_temp = NULL, *assoc_dev_data = NULL;
+
+    if (mld_group == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d mld_group is NULL\n", __func__, __LINE__);
+        return NULL;
+    }
+
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    for (vap_idx = 0; vap_idx < mld_group->mld_vap_count; vap_idx++) {
+        wifi_vap_info_t *vap_info = mld_group->mld_vaps[vap_idx];
+        if (vap_info == NULL)
+            continue;
+        hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_info->vap_index);
+        if (assoc_vap_info_map == NULL) {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d No assoc_vap_info_map for vap_index %d\n",
+                __func__, __LINE__, vap_info->vap_index);
+            continue;
+        }
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d Assoc_vap_info_map found for vap_index %d\n",
+            __func__, __LINE__, vap_info->vap_index);
+
+        assoc_dev_data_temp = hash_map_get_first(assoc_vap_info_map);
+        while (assoc_dev_data_temp != NULL) {
+            if (assoc_dev_data_temp->dev_stats.cli_MLDEnable)
+                idx++;
+            if (idx == dev_index) {
+                assoc_dev_data = create_copy_assoc_dev_data(assoc_dev_data_temp);
+                if (assoc_dev_data == NULL) {
+                    wifi_util_error_print(WIFI_DMCLI, "%s:%d Create assoc dev copy failed for dev_index %lu\n",
+                        __func__, __LINE__, dev_index);
+                }
+                pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+                return assoc_dev_data;
+            }
+            assoc_dev_data_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_data_temp);
+        }
+    }
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    return NULL;
 }
 
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
