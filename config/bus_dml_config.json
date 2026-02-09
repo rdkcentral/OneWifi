@@ -116,12 +116,24 @@
 				"3200nsec"
 			]
 		},
+		"linkid_t": {
+			"title": "The LinkId",
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 15
+		},
 		"macaddr_t": {
 			"title": "MAC Address",
 			"type": "string",
 			"maxLength": 17,
 			"minLength": 17,
 			"pattern": "^([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]$"
+		},
+		"mld_unit_t": {
+			"title": "MLD Unit",
+			"type": "integer",
+			"maximum": 24,
+			"minimum": -1
 		},
 		"rapid_reconnect_max_time_t": {
 			"title": "rapid reconnect max time",
@@ -1284,6 +1296,10 @@
 										"$ref": "#/definitions/macaddr_t",
 										"writable": false
 									},
+									"MLDUnit": {
+										"$ref": "#/definitions/mld_unit_t",
+										"writable": true
+									},
 									"Name": {
 										"type": "string",
 										"writable": false
@@ -1311,6 +1327,10 @@
 									"X_COMCAST-COM_DefaultSSID": {
 										"type": "string",
 										"writable": false
+									},
+									"X_RDK_MLDLinkID": {
+										"$ref": "#/definitions/linkid_t",
+										"writable": true
 									}
 								}
 							}
