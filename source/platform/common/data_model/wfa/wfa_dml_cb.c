@@ -26,6 +26,8 @@
 #include "wifi_dml_api.h"
 #include "wfa_data_model.h"
 #include "wifi_ctrl.h"
+#include "dml_onewifi_api.h"
+#include "wifi_mgr.h"
 
 static bus_error_t set_output_value(char *param_name, raw_data_t *p_data, void *p_value) {
     switch(p_data->data_type) {
@@ -142,6 +144,44 @@ bus_error_t wfa_network_ssid_get_param_value(void *obj_ins_context, char *param_
     }
     else if (STR_CMP(param_name, "Enable")) {
         return set_output_value(param_name, p_data, &vap->u.bss_info.enabled);
+    } else {
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
+        return bus_error_invalid_input;
+    }
+}
+
+bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data)
+{
+    mld_group_t *mld_grp = obj_ins_context;
+    //get the first radio config
+    wifi_multi_link_modes_t capab_val = get_wifimgr_obj()->hal_cap.wifi_prop.radiocap[0].mldOperationalCap;
+    if (STR_CMP(param_name, "MLDMACAddress")) {
+        mac_addr_str_t mld_mac_str = { 0 };
+        wifi_vap_info_t *vap = mld_grp->mld_vaps[0]; /* All affiliated APs share the same MLD MAC address */
+        if (!vap) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d cannot find VAP\n", __FUNCTION__, __LINE__);
+            return bus_error_invalid_input;
+        }
+        to_mac_str(vap->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
+        return set_output_value(param_name, p_data, mld_mac_str);
+    } else if (STR_CMP(param_name, "AffiliatedAPNumberOfEntries")) {
+        UINT num_af_ap = get_total_num_affiliated_ap_dml(mld_grp);
+        return set_output_value(param_name, p_data, &num_af_ap);
+    } else if (STR_CMP(param_name, "STAMLDNumberOfEntries")) {
+        UINT num_sta = get_mld_associated_devices_count(mld_grp);
+        return set_output_value(param_name, p_data, &num_sta);
+    } else if (STR_CMP(param_name, "APMLDConfig.EMLMREnabled")) {
+        bool bool_val = capab_val & eMLMR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "APMLDConfig.EMLSREnabled")) {
+        bool bool_val = capab_val & eMLSR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "APMLDConfig.STREnabled")) {
+        bool bool_val = capab_val & STR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "APMLDConfig.NSTREnabled")) {
+        bool bool_val = capab_val & NSTR;
+        return set_output_value(param_name, p_data, &bool_val);
     } else {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
         return bus_error_invalid_input;
