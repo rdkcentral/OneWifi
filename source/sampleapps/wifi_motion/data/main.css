@@ -1,0 +1,270 @@
+h1 {
+	text-align: left;
+	color: grey;
+}
+
+h2 {
+	text-align: left;
+}
+
+hr.dotted {
+    border-top: 3px dotted #bbb;
+}
+
+.tabs {
+    border-bottom: 1px solid grey;
+    background-color: rgb(255, 255, 255);
+    font-size: 15px;
+    color: rgb(0, 0, 0);
+    display: flex;
+    margin: 0;
+}
+
+.tabs span {
+   background: #f0f0f0;
+   padding: 10px;
+   border: 1px solid rgb(255, 255, 255);
+}
+
+.tabs span:hover {
+   background: #d0d0d0;
+   cursor: pointer;
+   color: black;
+}
+
+::file-selector-button {
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #f0f0f0;
+    padding: 5px 10px;
+    border-radius: 5px;
+}     
+.button {
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #f0f0f0;
+    padding: 5px 20px;
+    border-radius: 5px;
+	width: 120px;
+}     
+
+.grid-container-analyzer {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    grid-template-rows: 0.5fr 2fr 2fr 2fr 2fr 2fr 2fr;
+    gap: 0.2em;
+	height: 2000px;
+	overflow: auto;
+}
+
+.item-csi-analysis-controls {
+    grid-column:1/2;
+    grid-row:1/2;
+	border-style: solid;
+  	border-width: 4px;
+  	border-color: #e0e0e0;
+	padding: 10px;
+	background-color: #edf4f5;
+}
+
+.item-algorithm-parameters {
+    grid-column:2/3;
+    grid-row:1/2;
+	border-style: solid;
+  	border-width: 4px;
+  	border-color: #e0e0e0;
+	padding: 10px;
+	background-color: #edf4f5;
+}
+
+
+.item-csifile-display {
+    grid-column:1/2;
+    grid-row:2/8;
+    max-width: 100%;
+	overflow: scroll;
+	background-color: #f0f0f0;
+	padding: 10px;
+	font-size: 0.8em;
+}
+
+.item-algorithm-result-display {
+    grid-column:2/3;
+    grid-row:2/3;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.item-antenna1-display {
+    grid-column:2/3;
+    grid-row:3/4;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.item-antenna2-display {
+    grid-column:2/3;
+    grid-row:4/5;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.item-antenna3-display {
+    grid-column:2/3;
+    grid-row:5/6;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.item-antenna4-display {
+    grid-column:2/3;
+    grid-row:6/7;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.item-antenna5-display {
+    grid-column:2/3;
+    grid-row:7/8;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.grid-container-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 0.5fr 10fr;
+    gap: 0.2em;
+    height: 1800px;
+    overflow: auto;
+}
+
+.item-comparison-controls {
+    grid-column:1/3;
+    grid-row:1/2;
+	border-style: solid;
+  	border-width: 4px;
+  	border-color: #e0e0e0;
+	padding: 10px;
+	background-color: #edf4f5;
+}
+
+.item-comparison-display-left {
+    grid-column:1/2;
+    grid-row:2/3;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.item-comparison-display-right {
+    grid-column:2/3;
+    grid-row:2/3;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
+.form-row {
+    display: flex; /* Activates flexbox layout */
+    align-items: center; /* Vertically centers the label and input */
+    gap: 10px; /* Provides consistent spacing */
+    margin-bottom: 10px; /* Space between different rows */
+}
+
+label {display: block;}
+
+ul, #csiTree {
+  	list-style-type: none;
+	padding-left: 20px;
+}
+
+#csiTree {
+  margin: 0;
+  padding: 0;
+}
+
+.caret {
+  cursor: pointer;
+  -webkit-user-select: none; /* Safari 3.1+ */
+  -moz-user-select: none; /* Firefox 2+ */
+  -ms-user-select: none; /* IE 10+ */
+  user-select: none;
+}
+
+.caret::before {
+  content: "\25B6";
+  color: lightgrey;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.caret-down::before {
+  -ms-transform: rotate(90deg); /* IE 9 */
+  -webkit-transform: rotate(90deg); /* Safari */
+  transform: rotate(90deg);  
+}
+
+.nested {
+  display: none;
+}
+
+.active {
+  display: block;
+}
+
+[data-tab-info] {
+	display: none;
+}
+
+.active[data-tab-info] {
+	display: block;
+}
+
+.radio-container input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.radio-container label:before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid #ccc;
+  border-radius: 50%; /* Makes it a circle */
+  margin-right: 0.5em;
+  vertical-align: middle;
+}
+
+.radio-container input[type="radio"]:checked + label:before {
+  background-color: #007bff; /* Example checked color */
+  border-color: #007bff;
+  box-shadow: inset 0 0 0 4px white; /* Inner circle effect */
+}
+
+.radio-container label:hover:before {
+  border-color: #0056b3;
+}
+
+.hide-file-text {
+    color: transparent; /* Makes the "No file chosen" text invisible */
+}
+
+/* To ensure the button text remains visible, use the ::file-selector-button pseudo-element */
+.hide-file-text::file-selector-button {
+    color: initial; /* Restores the color for the button part */
+}
+
+.souding-devices-select {
+  width: 300px; /* or any other length unit like em, % */
+}

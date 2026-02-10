@@ -1,0 +1,7 @@
+{
+	"Beverages": [{
+		"Water": ["Plain", "Mineral"]}, {
+		"Coffee": ["Black", "Cold"]}, {
+		"Tea": ["Green", "English"]	
+	}]
+}
