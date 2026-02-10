@@ -272,7 +272,13 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
             {
                 wifi_util_dbg_print(WIFI_BUS,"Create child [%s]\n", token);
                 temp_node = get_empty_elem_node();
-                BUS_CHECK_NULL_WITH_RC(temp_node, NULL);
+                if(temp_node == NULL)
+                {
+                    wifi_util_error_print(WIFI_BUS, "Failed to create child node [%s] for element [%s]\n",
+                         token, elem->full_name);
+                    BUS_MUX_UNLOCK(get_bus_mux_mutex());
+                    return NULL;
+                }
                 temp_node->parent = current_node;
                 if(current_node == root)
                 {
@@ -313,7 +319,13 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
                 {
                     wifi_util_dbg_print(WIFI_BUS,"Create Sibling [%s]\n", token);
                     temp_node = get_empty_elem_node();
-                    BUS_CHECK_NULL_WITH_RC(temp_node, NULL);
+                    if(temp_node == NULL)
+                    {
+                        wifi_util_error_print(WIFI_BUS, "Failed to create sibling node [%s] for element [%s]\n",
+                             token, elem->full_name);
+                        BUS_MUX_UNLOCK(get_bus_mux_mutex());
+                        return NULL;
+                    }
                     temp_node->parent = current_node->parent;
                     if(strlen(current_node->parent->full_name) != 0) {
                         snprintf(buff, sizeof(buff), "%s.%s", current_node->parent->full_name, token);
@@ -331,38 +343,47 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
         }
         token = strtok_r(NULL, ".", &saveptr);
     }
-    if(ret == 0)
+    if(ret != 0)
     {
-        current_node->type           = elem->type;
-        current_node->node_data_type = elem->node_data_type;
-        current_node->node_elem_data = malloc(elem->cfg_data_len);
-        BUS_CHECK_NULL_WITH_RC(current_node->node_elem_data, NULL);
-        memcpy(current_node->node_elem_data, elem->cfg_data, elem->cfg_data_len);
-        current_node->node_elem_data_len = elem->cfg_data_len;
 
-        if(elem->type == bus_element_type_table)
-        {
-            elem_node_map_t* rowTemplate = get_empty_elem_node();
-            BUS_CHECK_NULL_WITH_RC(rowTemplate, NULL);
-            rowTemplate->parent = current_node;
-            strncpy(rowTemplate->name, "{i}", strlen("{i}") + 1);
-            snprintf(buff, sizeof(buff), "%s.%s", current_node->full_name, rowTemplate->name);
-            snprintf(rowTemplate->full_name, sizeof(rowTemplate->full_name), "%s", buff);
-            current_node->child = rowTemplate;
-
-            //bus_add_table_row(current_node, elem->num_of_table_row);
-        }
-    }
-    BUS_MUX_UNLOCK(get_bus_mux_mutex());
-
-    if(ret == 0)
-    {
-        return current_node;
-    }
-    else
-    {
+        BUS_MUX_UNLOCK(get_bus_mux_mutex());
         return NULL;
     }
+
+    current_node->type           = elem->type;
+    current_node->node_data_type = elem->node_data_type;
+    current_node->node_elem_data = malloc(elem->cfg_data_len);
+    if(current_node->node_elem_data == NULL)
+    {
+        wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n", elem->full_name);
+        BUS_MUX_UNLOCK(get_bus_mux_mutex());
+        return NULL;
+    }
+    memcpy(current_node->node_elem_data, elem->cfg_data, elem->cfg_data_len);
+    current_node->node_elem_data_len = elem->cfg_data_len;
+
+    if(elem->type == bus_element_type_table)
+    {
+        elem_node_map_t* rowTemplate = get_empty_elem_node();
+        if(rowTemplate == NULL)
+        {
+            wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n",
+                 elem->full_name);
+            BUS_MUX_UNLOCK(get_bus_mux_mutex());
+            return NULL;
+        }
+        rowTemplate->parent = current_node;
+        strncpy(rowTemplate->name, "{i}", strlen("{i}") + 1);
+        snprintf(buff, sizeof(buff), "%s.%s", current_node->full_name, rowTemplate->name);
+        snprintf(rowTemplate->full_name, sizeof(rowTemplate->full_name), "%s", buff);
+        current_node->child = rowTemplate;
+
+        //bus_add_table_row(current_node, elem->num_of_table_row);
+    }
+
+    BUS_MUX_UNLOCK(get_bus_mux_mutex());
+    return current_node;
+
 }
 
 elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* elmentName)
