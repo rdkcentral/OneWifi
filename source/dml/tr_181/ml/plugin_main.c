@@ -238,7 +238,15 @@ COSA_Init
         
         if ((tmpSubsystemPrefix = g_GetSubsystemPrefix(g_pDslhDmlAgent)))
         {
-            AnscCopyString(g_SubSysPrefix_Irep, tmpSubsystemPrefix);
+            if (strnlen(tmpSubsystemPrefix, sizeof(g_SubSysPrefix_Irep)) < sizeof(g_SubSysPrefix_Irep))
+            {
+                AnscCopyString(g_SubSysPrefix_Irep, tmpSubsystemPrefix);
+            }
+            else
+            {
+                wifi_util_error_print(WIFI_APPS, "%s:%d Subsystem prefix length is more than expected\n", __func__, __LINE__);
+                goto EXIT;
+            }
         }
     }
 

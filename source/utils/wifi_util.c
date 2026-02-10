@@ -2191,7 +2191,7 @@ int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t *
 
     va_start(args, num_types);
 
-    memset(&vap_names[0], 0, list_size*sizeof(wifi_vap_name_t));
+    memset(vap_names, 0, list_size*sizeof(wifi_vap_name_t));
     TOTAL_INTERFACES(total_vaps, wifi_prop);
     for (int num = 0; num < num_types; num++) {
         vap_type = va_arg(args, char *);

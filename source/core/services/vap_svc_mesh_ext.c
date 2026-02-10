@@ -1178,11 +1178,6 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->ext_connected_scan_result_timeout_handler_id = 0;
     }
 
-    if (ext->ext_connect_algo_processor_id != 0) {
-        scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
-        ext->ext_connect_algo_processor_id = 0;
-    }
-
     if (ext->conn_state == connection_state_connection_in_progress ||
         ext->conn_state == connection_state_connection_to_lcb_in_progress ||
         ext->conn_state == connection_state_connection_to_nb_in_progress) {
@@ -1201,6 +1196,11 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         return 0;
     }
 
+    if (ext->ext_connect_algo_processor_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
+        ext->ext_connect_algo_processor_id = 0;
+    }
+
     // If BSSID changed on the same band need to initiate disconnection before connection to avoid
     // HAL error. On different band try to connect to new BSSID before disconnection.
     // disconnect will be executed if new bssid is found in the scan results
@@ -1214,7 +1214,8 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->ignored_radio_index = get_radio_index_for_vap_index(svc->prop,
             ext->connected_vap_index);
         ext->is_on_channel = true;
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        ext->new_bss_delayed = true;
+        ext_set_conn_state(ext, connection_state_disconnection_in_progress, __func__, __LINE__);
     }
 
     schedule_connect_sm(svc);
