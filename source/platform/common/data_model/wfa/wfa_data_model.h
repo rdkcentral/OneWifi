@@ -317,11 +317,11 @@
 #define DE_APMLD_AFFAPNOE       DE_DEVICE_APMLD         "AffiliatedAPNumberOfEntries"
 #define DE_APMLD_STAMLDNOE      DE_DEVICE_APMLD         "STAMLDNumberOfEntries"
 /* Device.WiFi.DataElements.Network.Device.APMLD.APMLDConfig */
-#define DE_APMLD_CONFIG         DE_DEVICE_APMLD         "APMLDConfig."
-#define DE_APMLDCFG_EMLMR       DE_APMLD_CONFIG         "EMLMREnabled"
-#define DE_APMLDCFG_EMLSR       DE_APMLD_CONFIG         "EMLSREnabled"
-#define DE_APMLDCFG_STR         DE_APMLD_CONFIG         "STREnabled"
-#define DE_APMLDCFG_NSTR        DE_APMLD_CONFIG         "NSTREnabled"
+#define DE_APMLD_CONFIG         DE_DEVICE_APMLD         "APMLDConfig"
+#define DE_APMLDCFG_EMLMR       DE_APMLD_CONFIG         ".EMLMREnabled"
+#define DE_APMLDCFG_EMLSR       DE_APMLD_CONFIG         ".EMLSREnabled"
+#define DE_APMLDCFG_STR         DE_APMLD_CONFIG         ".STREnabled"
+#define DE_APMLDCFG_NSTR        DE_APMLD_CONFIG         ".NSTREnabled"
 /* Device.WiFi.DataElements.Network.Device.APMLD.AffiliatedAP */
 #define DE_APMLD_AFFAP          DE_DEVICE_APMLD         "AffiliatedAP.{i}."
 #define DE_AFFAP_TABLE          DE_DEVICE_APMLD         "AffiliatedAP.{i}"

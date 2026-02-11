@@ -42,9 +42,6 @@ bus_error_t wfa_elem_num_of_table_row(char *event_name, uint32_t *table_row_size
         *table_row_size = 1;
     } else if (strstr(event_name, DE_SSID_TABLE) != NULL) {
         *table_row_size = getTotalNumberVAPs();
-    } else if (strstr(event_name, DE_APMLD_TABLE) != NULL) {
-        update_apmld_map();
-        *table_row_size = get_num_apmld_dml();
     } else {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d Table is not found for [%s]\n", __func__, __LINE__, event_name);
         return bus_error_invalid_input;
@@ -106,9 +103,6 @@ static bus_error_t wfa_apmld_get(char *event_name, raw_data_t *p_data, struct bu
     sscanf(event_name, DATAELEMS_NETWORK "Device.%d.APMLD.%d.%s", &device_index, &index, extension);
     wifi_util_info_print(WIFI_DMCLI,"%s:%d get event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
 
-    //TODO remove
-    update_apmld_map();
-
     mld_group_t *mld_grp = get_dml_apmld_group(index - 1);
     if (mld_grp == NULL) {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong MLDAP index:%d for:[%s]\r\n", __func__,
@@ -169,8 +163,10 @@ bus_error_t de_apmld_table_add_row_handler(char const* tableName, char const* al
 {
     (void)instNum;
     (void)aliasName;
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter\r\n", __func__, __LINE__);
-    *instNum = get_num_apmld_dml() + 1;
+    wfa_dml_data_model_t *p_dml_param = get_wfa_dml_data_model_param();
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %d\r\n", __func__, __LINE__, *instNum);
+    p_dml_param->table_de_apmld_index++;
+    *instNum = p_dml_param->table_de_apmld_index;
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Added table:%s table_de_ssid_index:%d-%d\r\n", __func__,
         __LINE__, tableName, *instNum, *instNum);
     return bus_error_success;
@@ -179,19 +175,49 @@ bus_error_t de_apmld_table_add_row_handler(char const* tableName, char const* al
 bus_error_t de_apmld_table_remove_row_handler(char const* rowName)
 {
     wfa_dml_data_model_t *p_dml_param = get_wfa_dml_data_model_param();
-    (void)p_dml_param;
+    if(p_dml_param->table_de_apmld_index > 0)
+        p_dml_param->table_de_apmld_index--;
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, rowName);
     return bus_error_success;
 }
 
-bus_error_t de_apmld_sync_handler(char const* methodName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
+bus_error_t de_apmld_sync_handler(char const* tableName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
 {
-    (void)methodName;
     (void)inParams;
     (void)outParams;
     (void)asyncHandle;
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter\r\n", __func__, __LINE__);
+    wfa_dml_data_model_t *p_dml_param = get_wfa_dml_data_model_param();
+
     update_apmld_map();
+    UINT num_apmld = get_num_apmld_dml();
+    UINT num_row = p_dml_param->table_de_apmld_index;
+    char *tablePath = malloc(strlen(tableName) + 2);
+    sprintf(tablePath, "%s.", tableName);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %s, numrow %d, numapmld %d\r\n", __func__, __LINE__, tablePath, num_row, num_apmld);
+
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_bus_desc_t *p_bus_desc = get_bus_descriptor();
+
+    if (num_row != num_apmld) {
+        char *rowPath = malloc(strlen(tablePath) + 5);
+        for (UINT i = 1; i <= num_row; i++) {
+            sprintf(rowPath, "%s%d.", tablePath, i);
+            if (p_bus_desc->bus_unreg_table_row_fn(&ctrl->handle, rowPath) != bus_error_success) {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d remove %s failed\r\n", __func__, __LINE__, rowPath);
+            } else {
+                p_dml_param->table_de_apmld_index--;
+            }
+        }
+        for (UINT i = 1; i <= num_apmld; i++) {
+            if (p_bus_desc->bus_reg_table_row_fn(&ctrl->handle, tablePath, i, NULL) != bus_error_success) {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d add %s row failed\r\n", __func__, __LINE__, tablePath);
+            } else {
+                p_dml_param->table_de_apmld_index++;
+            }
+        }
+        free(rowPath);
+    }
+    free(tablePath);
     return bus_error_success;
 }
 
@@ -229,7 +255,7 @@ int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_t
         { DE_APMLD_TABLE, {
             wfa_apmld_get,                   default_set_param_value,
             de_apmld_table_add_row_handler,  de_apmld_table_remove_row_handler,
-            default_event_sub_handler,       NULL }
+            default_event_sub_handler,       de_apmld_sync_handler }
         },
 
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.APMLDConfig */
