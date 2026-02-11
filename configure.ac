@@ -279,8 +279,8 @@ AC_CONFIG_FILES(
     source/core/Makefile
     source/Makefile
     source/sampleapps/Makefile
-    source/sampleapps/wifi_motion/Makefile
     source/utils/Makefile
+    source/utils/math_utils/Makefile
     Makefile
 )
 

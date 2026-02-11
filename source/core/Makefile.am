@@ -43,6 +43,8 @@ AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
 AM_LDFLAGS += -L$(top_builddir)/source/utils/
 AM_LDFLAGS += -lwifi_utils
+AM_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
+AM_LDFLAGS += -lwifi_math_utils
 if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
 AM_LDFLAGS += -L$(top_builddir)/source/platform/
@@ -62,6 +64,8 @@ hardware_platform = i686-linux-gnu
 bin_PROGRAMS = OneWifi
 
 OneWifi_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/custom -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/include -I$(top_srcdir)/../CcspCommonLibrary/source/debug_api/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include/linux -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/package/slap/include -I$(top_srcdir)/../hal/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/http/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/ansc/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/MessageBusHelper/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/PoamIrepFolder -I$(top_srcdir)/include/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/inc -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/stats -I$(top_srcdir)/lib/pktgen -I$(top_srcdir)/source/stubs -I$(top_srcdir)/lib/datapipeline $(CPPFLAGS)
+
+OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}/usr/include/ccsp/
 
 if ONEWIFI_DBUS_SUPPORT
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/dbus -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir)/dbus-1.0 -I${PKG_CONFIG_SYSROOT_DIR}/usr/lib/dbus-1.0/include/
@@ -166,6 +170,17 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/cac/wifi_cac.c
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/cac/
 endif
 
+OneWifi_CXXFLAGS = -std=c++17 -Wall -Werror
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/utils/math_utils/inc
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/web_gui/motion/inc
+OneWifi_SOURCES += $(top_srcdir)/source/apps/web_gui/motion/src/csimgr.cpp \
+                   $(top_srcdir)/source/apps/web_gui/motion/src/sounder.cpp \
+                   $(top_srcdir)/source/apps/web_gui/motion/src/motion_cpp_wrapper.c
+
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/web_gui/webserver/inc -I$(top_srcdir)/source/apps/web_gui
+OneWifi_SOURCES += $(top_srcdir)/source/apps/web_gui/webserver/src/web.cpp \
+                   $(top_srcdir)/source/apps/web_gui/webserver/src/utils.cpp
+
 if USE_DML_SOURCES
 if ONEWIFI_DML_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_loop.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c  $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_without_seshat.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_with_seshat.c  $(top_srcdir)/source/dml/tr_181/sbapi/cosa_dbus_api.c
@@ -208,6 +223,9 @@ if WITH_LIBWEBCONFIG
 OneWifi_LDFLAGS += -L$(top_builddir)/source/platform/
 OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
+OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
+OneWifi_LDFLAGS += -lwifi_math_utils
+OneWifi_LDFLAGS += -lstdc++
 OneWifi_LDFLAGS += -lwifi_webconfig 
 OneWifi_LDFLAGS += -lwifi_bus
 #OneWifi_LDFLAGS += -llibnl-3.la llibnl-genl-3.la llibnl-route-3.la llibnl-nf-3.la llibnl-idiag-3
