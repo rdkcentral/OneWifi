@@ -2724,6 +2724,19 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
             __LINE__);
         return webconfig_error_encode;
     }
+
+    cJSON_AddItemToObject(policy_obj, "Algorithm Run Policy", param_obj);
+    cJSON_AddStringToObject(param_obj, "Collection Start Time",
+        em_config->alarm_report_policy.collection_start_time);
+    cJSON_AddNumberToObject(param_obj, "Reporting Interval", em_config->alarm_report_policy.reporting_interval);
+    cJSON_AddNumberToObject(param_obj, "Link Quality Threshold", em_config->alarm_report_policy.link_quality_threshold);
+
+    // Algorithm Run Policy
+    param_obj = cJSON_CreateObject();
+    if (param_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+            __LINE__);
+    }
     cJSON_AddItemToObject(policy_obj, "AP Metrics Reporting Policy", param_obj);
 
     cJSON_AddNumberToObject(param_obj, "Interval", em_config->ap_metric_policy.interval);
@@ -3151,17 +3164,17 @@ webconfig_error_t encode_sta_link_metrics_object(per_sta_metrics_t *sta_metrics,
 }
 
 webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
-    em_ap_metrics_report_t *ap_report, cJSON *emap_metrics_report_obj)
+    em_per_radio_report_t *radio_report, cJSON *emap_metrics_report_obj)
 {
     cJSON *error_code_obj, *param_obj, *temp_obj, *param_arr;
-    int radio_index = ap_report->radio_index;
+    int radio_index = radio_report->radio_index;
     wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_t *vap = NULL;
     em_vap_metrics_t *ap_metrics = NULL;
     mac_addr_str_t mac_string;
     int vap_arr_index = -1;
 
-    if ((ap_report == NULL) || (emap_metrics_report_obj == NULL)) {
+    if ((radio_report == NULL) || (emap_metrics_report_obj == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NUll obj\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
@@ -3175,7 +3188,24 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
     vap_map = &radio->vaps.vap_map;
 
     // Add Radio Index
-    cJSON_AddNumberToObject(emap_metrics_report_obj, "Radio Index", ap_report->radio_index);
+    cJSON_AddNumberToObject(emap_metrics_report_obj, "Radio Index", radio_report->radio_index);
+
+    temp_obj = cJSON_CreateObject();
+        if ((temp_obj == NULL)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToObject(emap_metrics_report_obj, "Radio Metrics", temp_obj);
+        to_mac_str(radio_report->radio_metrics.ruid, mac_string);
+        cJSON_AddStringToObject(temp_obj, "Radio ID", mac_string);
+        cJSON_AddNumberToObject(temp_obj, "Radio.Noise",
+            radio_report->radio_metrics.noise);
+        cJSON_AddNumberToObject(temp_obj, "Radio.Transmit",
+            radio_report->radio_metrics.transmit);
+        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveSelf",
+            radio_report->radio_metrics.receive_self);
+        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveOther",
+            radio_report->radio_metrics.receive_other);
 
     // Create Vap Info array within the radio object
     param_arr = cJSON_CreateArray();
@@ -3192,7 +3222,7 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
         }
 
         for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
-            ap_metrics = &ap_report->vap_reports[k];
+            ap_metrics = &radio_report->vap_reports[k];
             if (strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
                 sizeof(bssid_t)) == 0) {
                     vap_arr_index = k;
@@ -3205,7 +3235,7 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
 
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d vap_arr_index: %d\n", __func__, __LINE__, vap_arr_index);
 
-        ap_metrics = &ap_report->vap_reports[vap_arr_index];
+        ap_metrics = &radio_report->vap_reports[vap_arr_index];
 
         param_obj = cJSON_CreateObject();
         if ((param_obj == NULL)) {
@@ -3240,25 +3270,6 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
         cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesReceived",
             ap_metrics->vap_metrics.unicast_bytes_rcvd);
 
-
-        // Create Radio Metrics
-        temp_obj = cJSON_CreateObject();
-        if ((temp_obj == NULL)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
-            return webconfig_error_encode;
-        }
-        cJSON_AddItemToObject(param_obj, "Radio Metrics", temp_obj);
-        to_mac_str(ap_report->radio_metrics.ruid, mac_string);
-        cJSON_AddStringToObject(temp_obj, "Radio ID", mac_string);
-        cJSON_AddNumberToObject(temp_obj, "Radio.Noise",
-            ap_report->radio_metrics.noise);
-        cJSON_AddNumberToObject(temp_obj, "Radio.Transmit",
-            ap_report->radio_metrics.transmit);
-        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveSelf",
-            ap_report->radio_metrics.receive_self);
-        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveOther",
-            ap_report->radio_metrics.receive_other);
-
         // check sta link metrics and traffic stats
         if (ap_metrics->is_sta_traffic_stats_enabled == true) {
             encode_em_sta_traffic_stats_object(ap_metrics->sta_cnt,
@@ -3270,6 +3281,7 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
                 param_obj);
         }
     }
+    return webconfig_error_none;
 }
 
 #endif

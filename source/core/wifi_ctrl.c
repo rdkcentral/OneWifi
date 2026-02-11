@@ -905,7 +905,7 @@ bool get_notify_wifi_from_psm(char *PsmParamName)
     if (rc == bus_error_success) {
         strncpy(psm_notify_get, data.raw_data.bytes, (sizeof(psm_notify_get) - 1));
         wifi_util_dbg_print(WIFI_CTRL, " PSMDB value=%s\n", psm_notify_get);
-        if ((psm_notify_get != NULL) && (strcmp(psm_notify_get, "true") == 0)) {
+        if (strcmp(psm_notify_get, "true") == 0) {
             psm_notify_flag = true;
         } else {
             psm_notify_flag = false;
@@ -3242,7 +3242,7 @@ CHAR* getVAPName(UINT apIndex)
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
             if (apIndex == wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex].vap_index) {
                 //wifi_util_dbg_print(WIFI_CTRL, "%s Input apIndex = %d  found at radioIndex = %d vapArrayIndex = %d\n ", __FUNCTION__, apIndex, radioIndex, vapArrayIndex);
-                if((wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name != NULL) && (strlen((CHAR *)wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name) != 0)) {
+                if (strlen((CHAR *)wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name) != 0) {
                     return (CHAR *)wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name;
                 } else {
                     return unused;
