@@ -2387,6 +2387,11 @@ void process_wpa3_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+            __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -3731,6 +3736,11 @@ void process_rsn_override_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+                __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -3746,7 +3756,8 @@ void process_rsn_override_rfc(bool type)
         memset(new_sec_mode, 0, sizeof(new_sec_mode));
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, old_sec_mode);
         if(ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string for mode %d\n",
+                __func__, __LINE__, vapInfo->u.bss_info.security.mode);
         }
 
         if(type) {
@@ -3781,7 +3792,7 @@ void process_rsn_override_rfc(bool type)
 
         wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
             __func__, __LINE__, old_sec_mode, new_sec_mode);
-        if( (strcmp(old_sec_mode, new_sec_mode) != 0) && (new_sec_mode != NULL || old_sec_mode != NULL)) {
+        if (strcmp(old_sec_mode, new_sec_mode) != 0) {
             notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
         }
 
