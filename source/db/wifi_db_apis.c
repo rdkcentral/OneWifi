@@ -2407,7 +2407,10 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->mfp_config,pcfg->key_type,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->wpa3_transition_disable);
 
     def_mode = sec->mode;
-    if ((band == WIFI_FREQUENCY_6_BAND)  && (pcfg->security_mode != wifi_security_mode_wpa3_personal && \
+    if ((band == WIFI_FREQUENCY_6_BAND)  && (pcfg->security_mode != wifi_security_mode_wpa3_personal &&
+#if defined(CONFIG_IEEE80211BE)
+     pcfg->security_mode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
       pcfg->security_mode != wifi_security_mode_wpa3_enterprise &&  pcfg->security_mode != wifi_security_mode_enhanced_open)) {
         sec->mode = wifi_security_mode_wpa3_personal;
         sec->encr = wifi_encryption_aes;
@@ -4821,6 +4824,12 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             if (config->vap_array[i].u.bss_info.security.mode == WPA3_COMPATIBILITY) {
                 config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                 config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+                if( ( config->vap_array[i].radio_index == 2) ) {
+                    config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+                    config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                }
+#endif /* CONFIG_IEEE80211BE */			
                 wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__,
                     config->vap_array[i].u.bss_info.security.mode,
                     config->vap_array[i].u.bss_info.security.mfp);
@@ -6242,16 +6251,25 @@ int wifidb_get_wifi_security_config_old_mode(char *vap_name, int vap_index)
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
     int count, sec_mode_old = 0;
-
+#if defined(CONFIG_IEEE80211BE)
+    bool is_6g = strstr(vap_name, "6g")?true:false;
+#endif /* CONFIG_IEEE80211BE */
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Security_Config, where, &count);
 
     if (pcfg == NULL) {
         wifidb_print("%s:%d Table table_Wifi_Security_Config table not found, entry count=%d \n",__func__, __LINE__, count);
+#if defined(CONFIG_IEEE80211BE)
+        if(is_6g)
+            return wifi_security_mode_wpa3_personal;
+#endif /* CONFIG_IEEE80211BE */		
         return wifi_security_mode_wpa2_personal;
     }
+	
     sec_mode_old = (isVapPrivate(vap_index) && !pcfg->security_mode) ? wifi_security_mode_wpa2_personal : pcfg->security_mode;
-
+#if defined(CONFIG_IEEE80211BE)
+    sec_mode_old = (is_6g && !pcfg->security_mode) ? wifi_security_mode_wpa3_personal : pcfg->security_mode;
+#endif /* CONFIG_IEEE80211BE */
     return sec_mode_old;
 }
 
@@ -6288,8 +6306,8 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     }
     cfg_sec.security_mode = sec->mode;
     if( sec->mode == WPA3_COMPATIBILITY ) {
-	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
-	wifi_util_info_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
+        cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
+        wifi_util_info_print(WIFI_DB,"%s:%d: vap_index:%d security_mode:%d \n",__func__, __LINE__, vap_index, cfg_sec.security_mode);
     }
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
