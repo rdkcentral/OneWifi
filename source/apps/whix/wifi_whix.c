@@ -1527,14 +1527,11 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                 prev = dev_stats_last->cli_BytesSent;
                 if (curr >= prev) {
                     diff = curr - prev;
-                    } else {
-                        diff = (ULONG_MAX - prev) + curr + 1;
-                    }
-                    snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrBytesReceived:%lu LastBytesReceived:%lu Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
-                    strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+                } else {
+                    diff = (ULONG_MAX - prev) + curr + 1;
+                }
+                snprintf(tmp, 32, "%lu,", diff);
+                strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
         }
         strncat(buff, "\n", 2);
@@ -1562,9 +1559,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrBytesReceived:%lu LastBytesReceived:%lu Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1589,15 +1583,12 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                 } else {
                     curr = sta[i].dev_stats.cli_PacketsSent;
                     prev = dev_stats_last->cli_PacketsSent;
-                     if (curr >= prev) {
-                          diff = curr - prev;
-                        } else {
-                    diff = (ULONG_MAX - prev) + curr + 1;
-                        }
+                    if (curr >= prev) {
+                        diff = curr - prev;
+                    } else {
+                        diff = (ULONG_MAX - prev) + curr + 1;
+                    }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrPacketsSent:%lu LastPacketsSent:%lu Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1636,10 +1627,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrPacketsReceived:%lu LastPacketsReceived:%lu "
-                        "Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1670,9 +1657,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrErrorsSent:%lu LastErrorsSent:%lu Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1711,9 +1695,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrRetransCount:%lu LastRetransCount:%lu Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1751,10 +1732,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrFailedRetransCount:%lu LastFailedRetransCount:%lu "
-                        "Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1784,9 +1761,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrRetryCount:%lu LastRetryCount:%lu Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1816,10 +1790,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         diff = (ULONG_MAX - prev) + curr + 1;
                     }
                     snprintf(tmp, 32, "%lu,", diff);
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d MJ MAC:%s CurrMultipleRetryCount:%lu LastMultipleRetryCount:%lu "
-                        "Diff:%lu\n",
-                        __func__, __LINE__, sta_key, curr, prev, diff);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
