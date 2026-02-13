@@ -628,7 +628,11 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
     /* For XB3, there are  4 rpc calls to arm to get loglevel values from syscfg
      * this takes around 7 to 10 seconds, so we are moving this to a thread */
     pthread_t updateSyscfgLogLevel;
-    pthread_create(&updateSyscfgLogLevel, NULL, &getSyscfgLogLevel, NULL);
+    pthread_attr_t updateSyscfgLogLevelAttr;
+    pthread_attr_init(&updateSyscfgLogLevelAttr);
+    pthread_attr_setdetachstate(&updateSyscfgLogLevelAttr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&updateSyscfgLogLevel, &updateSyscfgLogLevelAttr, &getSyscfgLogLevel, NULL);
+    pthread_attr_destroy(&updateSyscfgLogLevelAttr);
 
 #ifdef _COSA_SIM_
     subSys = "";        /* PC simu use empty string as subsystem */
