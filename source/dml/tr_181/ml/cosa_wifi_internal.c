@@ -261,7 +261,7 @@ void psm_get_mac_list_entry(hash_map_t *psm_mac_map, unsigned int instance_numbe
         snprintf(recName, sizeof(recName), MacFilterDevice, instance_number, index);
         str = PSM_Get_Record_Status(recName, strValue, sizeof(strValue));
         if (str != NULL) {
-            strcpy(temp_psm_mac_param->device_name, str);
+            snprintf(temp_psm_mac_param->device_name, sizeof(temp_psm_mac_param->device_name), "%s", str);
             wifi_util_dbg_print(WIFI_PSM,"psm get device_name is %s\r\n", str);
         } else {
             wifi_util_dbg_print(WIFI_PSM,"[Failure] psm record_name: %s\n", recName);
@@ -272,7 +272,7 @@ void psm_get_mac_list_entry(hash_map_t *psm_mac_map, unsigned int instance_numbe
         snprintf(recName, sizeof(recName), MacFilter, instance_number, index);
         str = PSM_Get_Record_Status(recName, strValue, sizeof(strValue));
         if (str != NULL) {
-            strcpy(temp_psm_mac_param->mac, str);
+            snprintf(temp_psm_mac_param->mac, sizeof(temp_psm_mac_param->mac), "%s", str);
             str_tolower(temp_psm_mac_param->mac);
             temp_psm_mac_param->data_index = index;
             wifi_util_dbg_print(WIFI_PSM,"psm get mac is %s\n", str);
