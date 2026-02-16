@@ -3188,6 +3188,10 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_
             vap_row->wpa = true;
             vap_row->wpa_key_mgmt_len = len;
 
+	        if (!is_personal_sec(vap->u.sta_info.security.mode)) {
+                return webconfig_error_none;
+            }
+
             if ((strlen(vap->u.sta_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.sta_info.security.u.key.key) > MAX_PWD_LEN)) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
                 return webconfig_error_translate_to_ovsdb;
