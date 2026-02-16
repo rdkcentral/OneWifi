@@ -132,8 +132,9 @@ int get_radio_band_int_from_string(const char *p_str_radio_band, wifi_freq_bands
 uint32_t get_total_dbg_log_enable_str_value(char *p_output_str);
 int disable_dbg_logs(char *p_input_str);
 
-bool is_valid_transmit_rate(char *input_str);
+uint8_t rssi_to_rcpi(int rssi_dbm);
 
+bool is_valid_transmit_rate(char *input_str);
 int radio_wifi_channel_is_valid(uint32_t radio_index, uint32_t input_channel);
 bool is_radio_tx_power_valid(char *p_supported_power_list, int l_tx_power);
 int enable_wifi_telnet(bool enabled);

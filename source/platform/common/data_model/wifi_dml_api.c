@@ -67,6 +67,15 @@ int set_output_string(scratch_data_buff_t *output_value, char *str)
     return RETURN_OK;
 }
 
+uint8_t rssi_to_rcpi(int rssi_dbm)
+{
+    if (rssi_dbm < -110)
+        return 0;
+    if (rssi_dbm > 0)
+        return 220;
+    return (rssi_dbm + 110) * 2;
+}
+
 uint32_t get_sec_mode_string_from_int(wifi_security_modes_t security_mode, char *security_name)
 {
     uint32_t index;
@@ -1190,7 +1199,7 @@ int start_dml_main(void *arg)
     wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing WFA Data Elements schema: %s\n", 
                          __func__, __LINE__, BUS_WFA_DML_CONFIG_FILE);
     parse_and_register_wfa_schema(&ctrl->handle, BUS_WFA_DML_CONFIG_FILE);
-    
+
     print_registered_elems(get_bus_mux_reg_cb_map(), 0);
 
     get_wifidb_obj()->desc.init_data_fn();

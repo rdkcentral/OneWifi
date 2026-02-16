@@ -984,13 +984,13 @@
                 "MLDMACAddress": {
                     "$ref": "#/definitions/macaddr_t"
                 },
-                "IPV4Address": {
+                "IPv4Address": {
                     "type": [
                         "string",
                         "null"
                     ]
                 },
-                "IPV6Address": {
+                "IPv6Address": {
                     "type": [
                         "string",
                         "null"

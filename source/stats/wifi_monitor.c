@@ -1085,6 +1085,8 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_FailedRetransCount = sta_data->dev_stats.cli_FailedRetransCount;
     assoc_dev_data->dev_stats.cli_RetryCount = sta_data->dev_stats.cli_RetryCount;
     assoc_dev_data->dev_stats.cli_MultipleRetryCount = sta_data->dev_stats.cli_MultipleRetryCount;
+    assoc_dev_data->dev_stats.cli_MaxDownlinkRate = sta_data->dev_stats.cli_MaxDownlinkRate;
+    assoc_dev_data->dev_stats.cli_MaxUplinkRate = sta_data->dev_stats.cli_MaxUplinkRate;
     assoc_dev_data->dev_stats.cli_MLDEnable = sta_data->dev_stats.cli_MLDEnable;
     memcpy(&assoc_dev_data->sta_data, &sta_data->assoc_frame_data, sizeof(assoc_req_elem_t));
 
