@@ -135,6 +135,8 @@ bus_error_t convert_rbus_to_bus_error_code(rbusError_t rbus_error)
 {
     bus_error_t bus_error;
 
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d mapping rbus_error:%d\n", __func__, __LINE__, rbus_error);
+
     switch(rbus_error)
     {
         case RBUS_ERROR_SUCCESS:
@@ -223,6 +225,7 @@ bus_error_t convert_rbus_to_bus_error_code(rbusError_t rbus_error)
             wifi_util_error_print(WIFI_BUS, "%s:%d unsupported rbus error code:%02x\r\n", __func__, __LINE__, rbus_error);
         break;
     }
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d mapped to bus_error:%d\n", __func__, __LINE__, bus_error);
     return bus_error;
 }
 
@@ -487,6 +490,125 @@ void free_raw_data_struct(raw_data_t *p_data)
     }
 }
 
+static bus_error_t populate_bus_data_from_properties(rbusProperty_t prop_head, raw_data_t *bus_data)
+{
+    if ((prop_head == NULL) || (bus_data == NULL)) {
+        return bus_error_invalid_input;
+    }
+
+    bus_error_t rc = bus_error_success;
+    bus_data_prop_t *head = NULL;
+    bus_data_prop_t *tail = NULL;
+    rbusProperty_t prop = prop_head;
+
+    while ((rc == bus_error_success) && (prop != NULL)) {
+        const char *prop_name = rbusProperty_GetName(prop);
+        if (prop_name == NULL) {
+            rc = bus_error_invalid_input;
+            break;
+        }
+
+        bus_data_prop_t *node = (bus_data_prop_t *)calloc(1, sizeof(*node));
+        if (node == NULL) {
+            rc = bus_error_out_of_resources;
+            break;
+        }
+
+        size_t name_len = strnlen(prop_name, sizeof(node->name) - 1);
+        memcpy(node->name, prop_name, name_len);
+        node->name[name_len] = '\0';
+        node->name_len = (uint32_t)name_len;
+        node->is_data_set = true;
+        node->status = bus_error_success;
+
+        rbusValue_t prop_val = rbusProperty_GetValue(prop);
+        rbusValueType_t prop_type = rbusValue_GetType(prop_val);
+        node->value.data_type = convert_rbus_to_bus_data_type(prop_type);
+
+        switch (prop_type) {
+            case RBUS_STRING: {
+                int str_len = 0;
+                const char *str_val = rbusValue_GetString(prop_val, &str_len);
+                if (str_val == NULL) {
+                    rc = bus_error_invalid_input;
+                    free(node);
+                    break;
+                }
+                node->value.raw_data.bytes = calloc(1, (size_t)str_len + 1);
+                if (node->value.raw_data.bytes == NULL) {
+                    rc = bus_error_out_of_resources;
+                    free(node);
+                    break;
+                }
+                memcpy(node->value.raw_data.bytes, str_val, (size_t)str_len);
+                ((char *)node->value.raw_data.bytes)[str_len] = '\0';
+                node->value.raw_data_len = (unsigned int)str_len + 1;
+                break;
+            }
+            case RBUS_BYTES: {
+                int bytes_len = 0;
+                const uint8_t *bytes_val = rbusValue_GetBytes(prop_val, &bytes_len);
+                if ((bytes_val == NULL) || (bytes_len <= 0)) {
+                    rc = bus_error_invalid_input;
+                    free(node);
+                    break;
+                }
+                node->value.raw_data.bytes = calloc(1, (size_t)bytes_len);
+                if (node->value.raw_data.bytes == NULL) {
+                    rc = bus_error_out_of_resources;
+                    free(node);
+                    break;
+                }
+                memcpy(node->value.raw_data.bytes, bytes_val, (size_t)bytes_len);
+                node->value.raw_data_len = (unsigned int)bytes_len;
+                break;
+            }
+            case RBUS_BOOLEAN:
+                node->value.raw_data.b = rbusValue_GetBoolean(prop_val);
+                node->value.raw_data_len = sizeof(bool);
+                break;
+            case RBUS_INT32:
+                node->value.raw_data.i32 = rbusValue_GetInt32(prop_val);
+                node->value.raw_data_len = sizeof(int32_t);
+                break;
+            case RBUS_UINT32:
+                node->value.raw_data.u32 = rbusValue_GetUInt32(prop_val);
+                node->value.raw_data_len = sizeof(uint32_t);
+                break;
+            default:
+                rc = bus_error_invalid_input;
+                free(node);
+                break;
+        }
+
+        if (rc != bus_error_success) {
+            break;
+        }
+
+        if (tail != NULL) {
+            tail->next_data = node;
+        } else {
+            head = node;
+        }
+        tail = node;
+
+        prop = rbusProperty_GetNext(prop);
+    }
+
+    bus_data->data_type = bus_data_type_property;
+    bus_data->raw_data.bytes = head;
+    bus_data->raw_data_len = sizeof(bus_data_prop_t);
+
+    if ((rc != bus_error_success) || (head == NULL)) {
+        if (rc == bus_error_success) {
+            rc = bus_error_invalid_input;
+        }
+        free_raw_data_struct(bus_data);
+    }
+
+    return rc;
+}
+
 void *get_bus_cb_data_info(elem_node_map_t *cb_root, char *name)
 {
     elem_node_map_t *mux_elem = get_bus_node_info(cb_root, name);
@@ -621,6 +743,13 @@ bus_error_t get_rbus_object_data(char *name, rbusObject_t inParams, raw_data_t *
         return bus_error_invalid_input;
     }
 
+    /* First, try to enumerate properties directly (common for method params) */
+    rbusProperty_t prop_head = rbusObject_GetProperties(inParams);
+    if (prop_head != NULL) {
+        rc = populate_bus_data_from_properties(prop_head, bus_data);
+        return rc;
+    }
+
     rbusValue_t value = rbusObject_GetValue(inParams, NULL);
     rbusValueType_t type = rbusValue_GetType(value);
     bus_data->data_type = convert_rbus_to_bus_data_type(type);
@@ -658,6 +787,10 @@ bus_error_t get_rbus_object_data(char *name, rbusObject_t inParams, raw_data_t *
                 wifi_util_error_print(WIFI_BUS,"%s Rbus get bytes failure len=%d\n",__FUNCTION__, len);
             }
         break;
+        case RBUS_PROPERTY:
+        case RBUS_OBJECT:
+            rc = populate_bus_data_from_properties(rbusObject_GetProperties(inParams), bus_data);
+        break;
         default:
             wifi_util_error_print(WIFI_BUS,"%s Rbus value type not found =%d\n",__FUNCTION__, type);
             rc = bus_error_invalid_input;
@@ -686,6 +819,47 @@ bus_error_t set_rbus_object_data(char *name, rbusObject_t outParams, raw_data_t 
         case bus_data_type_string:
             rbusValue_SetString(value, (char *)bus_data->raw_data.bytes);
         break;
+        case bus_data_type_property: {
+            bus_data_prop_t *prop = (bus_data_prop_t *)bus_data->raw_data.bytes;
+            if (prop == NULL) {
+                wifi_util_error_print(WIFI_BUS,"%s Rbus:%s property list empty\n", __FUNCTION__, name);
+                return bus_error_invalid_input;
+            }
+            while (prop != NULL) {
+                rbusValue_t v = NULL;
+                rbusProperty_t p = NULL;
+                rbusValue_Init(&v);
+
+                switch (prop->value.data_type) {
+                    case bus_data_type_string:
+                        rbusValue_SetString(v, (char *)prop->value.raw_data.bytes);
+                        break;
+                    case bus_data_type_bytes:
+                        rbusValue_SetBytes(v, (uint8_t *)prop->value.raw_data.bytes, prop->value.raw_data_len);
+                        break;
+                    case bus_data_type_int32:
+                        rbusValue_SetInt32(v, prop->value.raw_data.i32);
+                        break;
+                    case bus_data_type_uint32:
+                        rbusValue_SetUInt32(v, prop->value.raw_data.u32);
+                        break;
+                    case bus_data_type_boolean:
+                        rbusValue_SetBoolean(v, prop->value.raw_data.b);
+                        break;
+                    default:
+                        wifi_util_error_print(WIFI_BUS,"%s Rbus:%s unsupported property value type=%d\n", __FUNCTION__, name, prop->value.data_type);
+                        rbusValue_Release(v);
+                        return bus_error_invalid_input;
+                }
+
+                rbusProperty_Init(&p, prop->name, v);
+                rbusObject_SetProperty(outParams, p);
+                rbusProperty_Release(p);
+                rbusValue_Release(v);
+                prop = prop->next_data;
+            }
+            return bus_error_success;
+        }
         default:
             wifi_util_error_print(WIFI_BUS,"%s Rbus:%s value type not found =%d\n",__FUNCTION__, name, bus_data->data_type);
             rc = bus_error_invalid_input;
@@ -857,6 +1031,9 @@ rbusError_t rbus_method_handler(rbusHandle_t handle, char const* methodName, rbu
             }
             free_raw_data_struct(&bus_output_data);
         }
+    }
+    if ((bus_input_data.data_type == bus_data_type_property) && (bus_input_data.raw_data.bytes != NULL)) {
+        free_raw_data_struct(&bus_input_data);
     }
     return convert_bus_to_rbus_error_code(ret);
 }
@@ -1108,6 +1285,9 @@ static bus_error_t bus_set(bus_handle_t *handle, char const *name, raw_data_t *d
 
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
 
+    wifi_util_info_print(WIFI_BUS, "%s:%d bus_set name:%s type:%d len:%u\n", __func__, __LINE__,
+        name, data ? data->data_type : -1, data ? data->raw_data_len : 0);
+
     rbusValue_t value;
 
     rbusValue_Init(&value);
@@ -1140,6 +1320,8 @@ static bus_error_t bus_set(bus_handle_t *handle, char const *name, raw_data_t *d
     if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_dbg_print(WIFI_BUS, "%s:%d bus: rbus_set() failed:%d for name:%s\n",
           __func__, __LINE__, rc, name);
+    } else {
+        wifi_util_info_print(WIFI_BUS, "%s:%d bus_set succeeded for name:%s\n", __func__, __LINE__, name);
     }
     rbusValue_Release(value);
     return convert_rbus_to_bus_error_code(rc);
@@ -1162,12 +1344,17 @@ static bus_error_t bus_data_get(bus_handle_t *handle, char const *name, raw_data
     void *ptr = NULL;
     int len = 0;
 
+    wifi_util_info_print(WIFI_BUS, "%s:%d bus_data_get name:%s\n", __func__, __LINE__, name);
+
     rc = rbus_get(p_rbus_handle, name, &value);
     if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_error_print(WIFI_BUS, "%s:%d bus: rbus_get failed for [%s] with error [%d]\n",
             __func__, __LINE__, name, rc);
         return convert_rbus_to_bus_error_code(rc);
     }
+
+    wifi_util_info_print(WIFI_BUS, "%s:%d bus_data_get succeeded name:%s type:%d\n",
+        __func__, __LINE__, name, rbusValue_GetType(value));
 
     rbusValueType_t type = rbusValue_GetType(value);
     wifi_util_error_print(WIFI_BUS, ":%s:%d bus: rbus_get(): rc:%d, name:%s, type:0x%x\n",
