@@ -39,9 +39,9 @@ define Build/Prepare
 	$(CP) -r ./trower-base64 $(PKG_BUILD_DIR)/
 	@if [ "$(OTS_EXTERNAL_AGENT_ENABLE)" = "1" ]; then \
 		if [ ! -d OneWifiTestSuite ]; then \
-			git clone ssh://gerrit.teamccp.com:29418/rdk/components/cpc/OneWifiTestSuite; \
+			git clone git@github.com:rdkcentral/OneWifiTestSuite.git; \
 			cd OneWifiTestSuite/; \
-			git checkout origin/25Q3_sprint; \
+			git checkout develop; \
 			git clone http://github.com/yhirose/cpp-httplib; \
 			cd cpp-httplib; \
 			git checkout 9bbb4741b4f7c8fc5083c8a56d8d301a8abc25a3; \
