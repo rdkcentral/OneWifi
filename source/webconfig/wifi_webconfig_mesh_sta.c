@@ -81,7 +81,7 @@ webconfig_error_t translate_to_mesh_sta_subdoc(webconfig_t *config, webconfig_su
 webconfig_error_t encode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json;
-    cJSON *obj, *obj_array, *hal_cap;
+    cJSON *obj, *obj_array, *hal_cap, *ignite_obj;
     unsigned int i, j;
     wifi_vap_info_map_t *map;
     wifi_vap_info_t *vap;

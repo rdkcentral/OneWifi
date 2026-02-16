@@ -1119,7 +1119,7 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
 webconfig_error_t encode_security_mode_and_repurposed_mode(const wifi_vap_security_t *security_info, cJSON *security, int selector)
 {
     int mode;
-    char key[MAX_KEY_LEN] = '\0';
+    char key[MAX_KEY_LEN] = {0};
     if (selector == 1) {
 	mode = security_info->mode;
 	strncpy(key, "Mode", MAX_KEY_LEN - 1);
@@ -1183,6 +1183,7 @@ webconfig_error_t encode_security_mode_and_repurposed_mode(const wifi_vap_securi
 
             return webconfig_error_encode;
     } 
+    return webconfig_error_none;
 }   
 
 webconfig_error_t encode_security_object(const wifi_vap_security_t *security_info, cJSON *security,
@@ -1724,7 +1725,7 @@ webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *secur
          obj = cJSON_CreateObject();
 	 cJSON_AddItemToObject(security, "IgniteRadiusSettings", obj);
 	 
-         if (encode_ignite_radius_object(&security_info->u.repurposed_radius, obj) != webconfig_error_none) {
+         if (encode_ignite_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
              wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
                 __func__, __LINE__);
              return webconfig_error_encode;

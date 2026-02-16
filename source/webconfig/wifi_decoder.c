@@ -1332,7 +1332,7 @@ webconfig_error_t decode_ignite_radius_object(const cJSON *radius, wifi_radius_s
 webconfig_error_t decode_ignite_security_object(const cJSON *security, wifi_vap_security_t *security_info, int band)
 {
      wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
-     const cJSON *param;
+     const cJSON *param, *object;
      decode_param_string(security, "IgniteMode", param);
 
 
@@ -1358,7 +1358,7 @@ webconfig_error_t decode_ignite_security_object(const cJSON *security, wifi_vap_
 	object = cJSON_GetObjectItem(security, "IgniteRadiusSettings");
 	if (object != NULL) {
             decode_param_object(security, "IgniteRadiusSettings", param);
-            if (decode_ignite_radius_object(param, &security_info->u.repurposed_radius) != 0) {
+            if (decode_ignite_radius_object(param, &security_info->repurposed_radius) != 0) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode ignite radius settings\n",
                     __func__, __LINE__);
                 return webconfig_error_decode;
