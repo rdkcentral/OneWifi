@@ -1528,7 +1528,7 @@ char *unpackDecode(const char* enb)
     msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
     if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
         msgpack_zone_destroy(&msg_z);
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: mtrace analysis : Failed to unpack blob\n", __func__);
         return NULL;
     }
 
