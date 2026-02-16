@@ -1636,7 +1636,7 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
 #ifdef WIFI_HAL_VERSION_3_PHASE2
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
 #else
-#if defined(_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
             frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);
