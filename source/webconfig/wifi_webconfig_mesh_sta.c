@@ -184,6 +184,16 @@ webconfig_error_t encode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
+
+		ignite_obj = cJSON_CreateObject();
+		cJSON_AddItemToObject(obj, "IgniteSettings", ignite_obj);
+		if (vap->u.sta_info.ignite_enabled == true) {
+		    if (encode_ignite_mesh_sta_object(vap, rdk_vap, ignite_obj) != webconfig_error_none) {
+		        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh sta vap object\n", __func__, __LINE__);
+                        cJSON_Delete(json);
+                        return webconfig_error_encode;
+		    }
+		}
             }
         }
     }
@@ -452,6 +462,8 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
+
+
         }
     }
 

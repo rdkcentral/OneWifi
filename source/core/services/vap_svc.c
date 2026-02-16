@@ -194,15 +194,31 @@ int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map
             return RETURN_ERR;
         }
 
-        if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
-                strlen(vap_map->vap_array[j].bridge_name)) != 0) {
-            wifi_util_info_print(WIFI_CTRL,
-                "%s:%d: changed bridge name from :%s to %s\n",
-                __func__, __LINE__, if_prop->bridge_name,
-                vap_map->vap_array[j].bridge_name);
-            snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s",
-                vap_map->vap_array[j].bridge_name);
+        wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d: changed bridge name from :%s to %s\n",
+                        __func__, __LINE__, if_prop->bridge_name, vap_map->vap_array[j].repurposed_bridge_name);
+
+        if ((isVapSTAMesh(vap_map->vap_array[j].vap_index)) && (ctrl->rf_status_down == true)) {
+            if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].repurposed_bridge_name,
+                        strlen(vap_map->vap_array[j].repurposed_bridge_name)) != 0) {
+                wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d: changed bridge name from :%s to %s\n",
+                        __func__, __LINE__, if_prop->bridge_name, vap_map->vap_array[j].repurposed_bridge_name);
+                snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s",
+                        vap_map->vap_array[j].repurposed_bridge_name);
+            }
+        } else {
+            if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
+                        strlen(vap_map->vap_array[j].bridge_name)) != 0) {
+                wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d: changed bridge name from :%s to %s\n",
+                        __func__, __LINE__, if_prop->bridge_name,
+                        vap_map->vap_array[j].bridge_name);
+                snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s",
+                        vap_map->vap_array[j].bridge_name);
+            }
         }
+
     }
     return RETURN_OK;
 }

@@ -345,6 +345,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.sta_info.security.wpa3_transition_disable = false;
             cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
             cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
+	    cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
 #if defined(_PLATFORM_BANANAPI_R4_)
             cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
@@ -355,6 +356,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.sta_info.security.mfp = wifi_mfp_cfg_disabled;
             cfg.u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif // _PLATFORM_BANANAPI_R4_
+	    cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_enterprise;
         }
         cfg.u.sta_info.security.encr = wifi_encryption_aes;
         cfg.u.sta_info.enabled = false;
@@ -376,6 +378,13 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             strncpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.u.key.key));
         }
 
+	strncpy(cfg.u.sta_info.repurposed_ssid, "Xfinity Mobile", sizeof(cfg.u.sta_info.repurposed_ssid)-1);
+	strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
+	cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
+	cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
+	cfg.u.sta_info.ignite_enabled = false;
+	memset(&cfg.u.sta_info.security.repurposed_radius.identity, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.identity));
+	memset(&cfg.u.sta_info.security.repurposed_radius.key, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.key));
         cfg.u.sta_info.scan_params.channel.band = band;
         cfg.u.sta_info.scan_params.channel.channel = 0;
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
@@ -734,6 +743,7 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     wifi_platform_property_t *wifi_prop = NULL;
     int ret = RETURN_OK;
 
+    wifi_util_error_print(WIFI_DB, "%s:%d CHECK!!!!!!!!!\n", __func__, __LINE__);
     wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
     if (vap_name == NULL || config == NULL || wifi_prop == NULL) {
         wifi_util_error_print(WIFI_DB, "%s:%d Failed to Get VAP info - Null pointer\n", __func__,

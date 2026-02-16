@@ -1152,7 +1152,11 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     ext->new_bss_delayed = false;
     memset(candidate, 0, sizeof(bss_candidate_t));
     memcpy(candidate->external_ap.bssid, vap_info->u.sta_info.bssid, sizeof(bssid_t));
-    strncpy(candidate->external_ap.ssid, vap_info->u.sta_info.ssid, sizeof(ssid_t) - 1);
+    if (vap_info->u.sta_info.ignite_enabled == true) {
+        strncpy(candidate->external_ap.ssid, vap_info->u.sta_info.repurposed_ssid, sizeof(ssid_t) - 1);
+    } else {
+        strncpy(candidate->external_ap.ssid, vap_info->u.sta_info.ssid, sizeof(ssid_t) - 1);
+    }
     candidate->vap_index = vap_info->vap_index;
     candidate->external_ap.freq = freq;
     candidate->radio_freq_band = band;
