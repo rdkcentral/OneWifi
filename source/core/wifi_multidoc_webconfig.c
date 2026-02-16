@@ -1507,6 +1507,7 @@ char *unpackDecode(const char* enb)
 
     msg_size = b64_get_decoded_buffer_size(strlen((char *)enb));
     msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
+    wifi_util_error_print(WIFI_CTRL, "%s: mtrace analysis : calloc msg_size\n", __func__);
     if (!msg) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
         return NULL;
