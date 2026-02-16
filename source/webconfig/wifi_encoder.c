@@ -1126,6 +1126,9 @@ webconfig_error_t encode_security_mode_and_repurposed_mode(const wifi_vap_securi
     } else if (selector == 2) {
         mode = security_info->repurposed_mode;
 	strncpy(key, "RepurposedMode", MAX_KEY_LEN - 1);
+    } else {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d unknown selector type\n", __func__, __LINE__);
+	return webconfig_error_decode;
     }
     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Selector : %d mode : %d key : %s\n", __func__, __LINE__, selector, mode, key);
        switch (mode) {
