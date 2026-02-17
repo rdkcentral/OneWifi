@@ -179,6 +179,7 @@ int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map
 {
     uint8_t j = 0;
     wifi_interface_name_idex_map_t *if_prop = NULL;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     for (j = 0; j < vap_map->num_vaps; j++) {
         if (!isVapSTAMesh(vap_map->vap_array[j].vap_index) && 
