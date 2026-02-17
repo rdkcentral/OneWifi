@@ -1122,7 +1122,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 	wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Ignite enable %d is_mesh_sta : %d\n", __func__, __LINE__, vap_info->u.sta_info.ignite_enabled, isVapSTAMesh(tgt_vap_index));
 
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
-                isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info) || ((isVapSTAMesh(tgt_vap_index)) && (vap_info->u.sta_info.ignite_enabled == 0))) {
+                isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info) || ((isVapSTAMesh(tgt_vap_index)) && (vap_info->u.sta_info.ignite_enabled == 1))) {
             // radio data changed apply
             wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);
