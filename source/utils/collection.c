@@ -421,17 +421,21 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
             hash_map_destroy(dst_map);
             return NULL;
         }
+      data = NULL;
 
-        if (data_size != 0 && (data = malloc(data_size)) == NULL) {
-            hash_map_destroy(dst_map);
-            return NULL;
-        }
-
-        if (he->data) {
+        if (data_size && he->data) {
+            data = malloc(data_size);
+            if (data == NULL) {
+                free(key);
+                hash_map_destroy(dst_map);
+                return NULL;
+            }
             memcpy(data, he->data, data_size);
         }
 
         if (hash_map_put(dst_map, key, data) == -1) {
+          free(key);
+            free(data);
             hash_map_destroy(dst_map);
             return NULL;
         }
