@@ -5049,7 +5049,7 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
 
 	   memset(password, 0, sizeof(password));		
 	   if (wifi_hal_get_default_keypassphrase(password, vap_config->vap_index) == 0) { 
-               strncpy(vap_config->u.sta_info.security.u.key.key, password, sizeof(password));
+               strncpy(vap_config->u.sta_info.security.u.key.key, password, sizeof(vap_config->u.sta_info.security.u.key.key));
 	   } else {
 	       strcpy(vap_config->u.sta_info.security.u.key.key, "12345678");
 	   }
@@ -5078,7 +5078,7 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                     g_wifidb->hal_cap.wifi_prop.cm_mac[2], g_wifidb->hal_cap.wifi_prop.cm_mac[3],
                     g_wifidb->hal_cap.wifi_prop.cm_mac[4], g_wifidb->hal_cap.wifi_prop.cm_mac[5], cm_mac_str);	
 	   strncpy(vap_config->u.sta_info.security.repurposed_radius.identity, cm_mac_str, sizeof(vap_config->u.sta_info.security.repurposed_radius.identity));
-	   strncpy(vap_config->u.sta_info.security.repurposed_radius.key, mgr->hal_cap.wifi_prop.serialNo, sizeof(vap_config->u.sta_info.security.repurposed_radius.key));
+	   strncpy(vap_config->u.sta_info.security.repurposed_radius.key, g_wifidb->hal_cap.wifi_prop.serialNo, sizeof(vap_config->u.sta_info.security.repurposed_radius.key));
            rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
 	   if (rdk_vap_config == NULL) {
 	       wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
@@ -7216,7 +7216,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 	    cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_enterprise;
 	}
 	memset(&cfg->u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.ip));
-	memset(&cfg->u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg->u.sta_info.security.u.repurposed_radius.s_ip));
+	memset(&cfg->u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.s_ip));
         // Convert CM MAC bytes to string "XX:XX:XX:XX:XX:XX"
        memset(&cfg->u.sta_info.security.repurposed_radius.identity, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.identity));
        snprintf(cm_mac_str, sizeof(cm_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -7231,8 +7231,8 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
        strncpy(cfg->u.sta_info.security.repurposed_radius.identity, cm_mac_str, sizeof(cfg->u.sta_info.security.repurposed_radius.identity)-1);
        
        memset(&cfg->u.sta_info.security.repurposed_radius.key, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.key));
-       strncpy(cfg->u.sta_info.security.repurposed_radius.key, mgr->hal_cap.wifi_prop.serialNo, sizeof(cfg->u.sta_info.security.repurposed_radius.key)-1);
-       wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s key: %s Identity: %s mode: %d eap-type: %d phase: %d\n", cfg->u.sta_info.repurposed_ssid, cfg->u.sta_info.security.repurposed_radius.key, cfg->u.sta_info.security.repurposed_radius.identity, cfg->.u.sta_info.security.repurposed_mode, cfg->u.sta_info.security.repurposed_radius.eap_type, cfg->u.sta_info.security.repurposed_radius.phase2);
+       strncpy(cfg->u.sta_info.security.repurposed_radius.key, g_wifidb->hal_cap.wifi_prop.serialNo, sizeof(cfg->u.sta_info.security.repurposed_radius.key)-1);
+       wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s key: %s Identity: %s mode: %d eap-type: %d phase: %d\n", cfg->u.sta_info.repurposed_ssid, cfg->u.sta_info.security.repurposed_radius.key, cfg->u.sta_info.security.repurposed_radius.identity, cfg->u.sta_info.security.repurposed_mode, cfg->u.sta_info.security.repurposed_radius.eap_type, cfg->u.sta_info.security.repurposed_radius.phase2);
        
     } else {
         cfg->u.bss_info.wmm_enabled = true;
