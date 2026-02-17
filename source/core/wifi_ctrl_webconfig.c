@@ -1119,7 +1119,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
-	wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Ignite enable %d is_mesh_sta : %d\n", __func__, __LINE__, vap_info->u.sta_info.ignite_enabled, isVapSTAMesh(tgt_vap_index));
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Ignite enable %d is_mesh_sta : %d\n", __func__, __LINE__, vap_info->u.sta_info.ignite_enabled, isVapSTAMesh(tgt_vap_index));
 
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
                 isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info) || ((isVapSTAMesh(tgt_vap_index)) && (vap_info->u.sta_info.ignite_enabled == 1))) {
@@ -1972,7 +1972,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
                             wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
 #ifdef NL80211_ACL
-			    if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #else
                             if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #endif
@@ -1999,7 +1999,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
 #ifdef NL80211_ACL
                 wifi_hal_delApAclDevices(vap_index);
 #else
-		wifi_delApAclDevices(vap_index);
+        wifi_delApAclDevices(vap_index);
 #endif
                 wifi_util_info_print(WIFI_MGR, "%s:%d: remove all mac acl entries"
                     " from cache and db vap_index:%d\n", __func__, __LINE__, vap_index);
@@ -3124,6 +3124,39 @@ void start_station_vaps(bool rf_status)
     }
 
     webconfig_init_subdoc_data(data);
+    if (rf_status == true) {
+        int vap_index, radio_index = 0, vap_array_index = 0;
+        int status = RETURN_OK;
+        wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
+        unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
+                &vap_names[0]);
+
+        for (size_t i = 0; i < num_vaps; i++) {
+            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
+            if (vap_index == RETURN_ERR) {
+                continue;
+            }
+            status = get_vap_and_radio_index_from_vap_instance(&data->u.decoded.hal_cap.wifi_prop,
+                    vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
+            if (status == RETURN_ERR) {
+                break;
+            }
+
+            wifi_util_error_print(WIFI_CTRL, "[%s %d] vap-idx : %d radio-idx : %d vap-array-idx : %d\n", __func__, __LINE__, vap_index, 
+			    radio_index, vap_array_index); 
+            data->u.decoded.radios[radio_index]
+                .vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.ignite_enabled = true;
+            wifi_util_error_print(WIFI_CTRL, "[%s %d] SSID: %s ignite-enable : %d identity : %s key : %s eap-type : %d phase : %d bridge : %s\n", __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid, 
+                    data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ignite_enabled,
+                    data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.identity,
+                    data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.key,
+                    data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.eap_type,
+                    data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.phase2,
+                    data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].repurposed_bridge_name);
+        }
+    }
+
 #if 0
     unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
         &vap_names[0]);
