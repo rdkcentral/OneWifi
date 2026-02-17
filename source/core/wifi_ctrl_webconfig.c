@@ -3107,14 +3107,14 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 void start_station_vaps(bool rf_status)
 {
     webconfig_subdoc_data_t *data = NULL;
-    int status = RETURN_OK;
-    int vap_index, radio_index = 0, vap_array_index = 0, band = 0;
+    //int status = RETURN_OK;
+    //int vap_index, radio_index = 0, vap_array_index = 0, band = 0;
     char *str;
-    char password[128] = { 0 };
-    wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
+    //char password[128] = { 0 };
+    //wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_mgr_t *mgr = get_wifimgr_obj();
+    //wifi_mgr_t *mgr = get_wifimgr_obj();
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL,
