@@ -8294,7 +8294,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
 #endif // NEWPLATFORM_PORT
     str = p_ccsp_desc->psm_get_value_fn(TR181_WIFIREGION_Code, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(global_cfg->wifi_region_code, str);
+        snprintf(global_cfg->wifi_region_code, sizeof(global_cfg->wifi_region_code), "%s", str);
         wifi_util_dbg_print(WIFI_MGR,"global_cfg->wifi_region_code is %s and str is %s \n", global_cfg->wifi_region_code, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for wifi_region_code:%s \r\n", __func__, __LINE__, str);
@@ -8305,7 +8305,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     str = p_ccsp_desc->psm_get_value_fn(WpsPin, strValue, sizeof(strValue));
     if (str != NULL) {
         // global_cfg->wps_pin = atoi(str);
-        strcpy(global_cfg->wps_pin, str);
+        snprintf(global_cfg->wps_pin, sizeof(global_cfg->wps_pin), "%s", str);
         wifi_util_dbg_print(WIFI_MGR,
             "global_cfg->wps_pin is %s and str is %s and atoi(str) is %d\n", global_cfg->wps_pin,
             str, atoi(str));

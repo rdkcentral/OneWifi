@@ -1082,7 +1082,7 @@ bool json_stringify(json_t *jval, char *dst, size_t dst_sz)
 {
     if (jval == NULL)
     {
-        return "(null)";
+        return false;
     }
     else if (json_is_string(jval))
     {
