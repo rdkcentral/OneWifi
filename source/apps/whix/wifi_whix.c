@@ -163,10 +163,10 @@ int radio_health_telemetry_logger_whix(unsigned int radio_index, int ch_util)
 static inline unsigned long calculate_counter_delta(unsigned long current, unsigned long previous)
 {
     unsigned long diff = 0;
-    if (curr >= prev) {
-        diff = curr - prev;
+    if (current >= previous) {
+        diff = current - previous;
     } else {
-        diff = (ULONG_MAX - prev) + curr + 1;
+        diff = (ULONG_MAX - previous) + current + 1;
     }
     return diff;
 }
