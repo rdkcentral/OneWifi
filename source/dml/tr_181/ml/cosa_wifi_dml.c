@@ -20446,7 +20446,15 @@ InterworkingService_SetParamStringValue
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid json for vap %s\n", __FUNCTION__,__LINE__,pcfg->vap_name);
                 return FALSE;
             }
-            AnscCopyString((char*)vapInfo->u.bss_info.interworking.anqp.anqpParameters,(char*)pString);
+            if (strnlen(pString, sizeof(vapInfo->u.bss_info.interworking.anqp.anqpParameters)) < sizeof(vapInfo->u.bss_info.interworking.anqp.anqpParameters))
+            {
+                AnscCopyString((char*)vapInfo->u.bss_info.interworking.anqp.anqpParameters,(char*)pString);
+            }
+            else
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Input string too long for vap %s\n", __FUNCTION__, __LINE__, pcfg->vap_name);
+                return FALSE;
+            }
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }

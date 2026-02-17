@@ -1513,6 +1513,11 @@ void update_json_gas_config(wifi_GASConfiguration_t *gasConfig_struct) {
     cJSON_AddNumberToObject(mainEntry,"QueryRespLengthLimit",gasConfig_struct->QueryResponseLengthLimit);
 
     JSON_STR = malloc(512);
+    if (JSON_STR == NULL) {
+        wifi_util_dbg_print(WIFI_PASSPOINT, "Failed to allocate memory\n");
+        cJSON_Delete(gasCfg);
+        return;
+    }
     memset(JSON_STR, 0, 512);
     cJSON_PrintPreallocated(gasCfg, JSON_STR,512,false);
 
