@@ -3124,6 +3124,7 @@ void start_station_vaps(bool rf_status)
     }
 
     webconfig_init_subdoc_data(data);
+#if 0
     unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
         &vap_names[0]);
 
@@ -3299,7 +3300,7 @@ void start_station_vaps(bool rf_status)
                         .u.sta_info.security.u.radius.s_ip));
         }
     }
-
+#endif
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) ==
         webconfig_error_none) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
@@ -3310,7 +3311,10 @@ void start_station_vaps(bool rf_status)
     } else {
         webconfig_data_free(data);
     }
+    free(data);
+    data = NULL;
 }
+
 // register subdocs with webconfig_framework
 int register_with_webconfig_framework()
 {

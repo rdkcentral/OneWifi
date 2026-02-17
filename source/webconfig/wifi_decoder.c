@@ -1335,7 +1335,6 @@ webconfig_error_t decode_ignite_security_object(const cJSON *security, wifi_vap_
      const cJSON *param, *object;
      decode_param_string(security, "IgniteMode", param);
 
-
     if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) {
         security_info->repurposed_mode = wifi_security_mode_wpa2_enterprise;
     } else if (strcmp(param->valuestring, "WPA3-Enterprise") == 0) {
@@ -1378,9 +1377,6 @@ webconfig_error_t decode_ignite_mesh_sta_object(const cJSON *ignite, wifi_vap_in
 
     decode_param_string(ignite, "IgniteBridgeName", param);
     strncpy(vap_info->repurposed_bridge_name, param->valuestring, sizeof(vap_info->repurposed_bridge_name)-1);
-
-    decode_param_bool(ignite, "IgniteEnabled", param);
-    vap_info->u.sta_info.ignite_enabled = (param->type & cJSON_True) ? true:false;
 
     decode_param_object(ignite, "IgniteSecurity", security);
     if (decode_ignite_security_object(security, &vap_info->u.sta_info.security, band) != webconfig_error_none) {
@@ -2330,7 +2326,7 @@ webconfig_error_t decode_scan_params_object(const cJSON *scan_obj, wifi_scan_par
 webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
-    const cJSON  *param, *security, *scan, *ignite;
+    const cJSON  *param, *security, *scan;
     int radio_index = -1;
     int band = -1;
     //VAP Name
@@ -2408,7 +2404,8 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     }
 
     if (vap_info->u.sta_info.ignite_enabled == true) {
-         decode_param_object(vap, "IgniteSettings", ignite);
+         const cJSON *ignite;
+	 decode_param_object(vap, "IgniteSettings", ignite);
 	 if (decode_ignite_mesh_sta_object(ignite, vap_info, band) != webconfig_error_none) {
 	     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Ignite objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
 	     return webconfig_error_decode;

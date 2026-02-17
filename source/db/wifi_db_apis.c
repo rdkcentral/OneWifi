@@ -5029,7 +5029,8 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 __LINE__, vap_config->vap_name);
             continue;
         }
-	
+
+#if 0	
 	if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity Mobile") == 0)) {
             wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
 	    convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, index, &band);
@@ -5079,7 +5080,8 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                     g_wifidb->hal_cap.wifi_prop.cm_mac[4], g_wifidb->hal_cap.wifi_prop.cm_mac[5], cm_mac_str);	
 	   strncpy(vap_config->u.sta_info.security.repurposed_radius.identity, cm_mac_str, sizeof(vap_config->u.sta_info.security.repurposed_radius.identity));
 	   strncpy(vap_config->u.sta_info.security.repurposed_radius.key, g_wifidb->hal_cap.wifi_prop.serialNo, sizeof(vap_config->u.sta_info.security.repurposed_radius.key));
-           rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+#endif
+	   rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
 	   if (rdk_vap_config == NULL) {
 	       wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
                continue;
