@@ -1736,8 +1736,7 @@ webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *secur
 
 }
 
-webconfig_error_t encode_ignite_mesh_sta_object(const wifi_vap_info_t *vap_info,
-    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
+webconfig_error_t encode_ignite_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
@@ -1765,7 +1764,7 @@ webconfig_error_t encode_ignite_mesh_sta_object(const wifi_vap_info_t *vap_info,
 webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
-    cJSON *obj, *ignite_obj;
+    cJSON *obj;
     char mac_str[32];
 
     //VAP Name
@@ -1818,12 +1817,12 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
         return webconfig_error_encode;
     }
     
-    if (vap->u.sta_info.ignite_enabled == true) {
+    if (vap_info->u.sta_info.ignite_enabled == true) {
+        cJSON *ignite_obj;
         ignite_obj = cJSON_CreateObject();
-        cJSON_AddItemToObject(obj, "IgniteSettings", ignite_obj);
-        if (encode_ignite_mesh_sta_object(vap, rdk_vap, ignite_obj) != webconfig_error_none) {
+        cJSON_AddItemToObject(vap_obj, "IgniteSettings", ignite_obj);
+        if (encode_ignite_mesh_sta_object(vap_info, ignite_obj) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh sta vap object\n", __func__, __LINE__);
-            cJSON_Delete(json);
             return webconfig_error_encode;
         }
     }
