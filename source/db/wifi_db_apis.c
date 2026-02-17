@@ -4966,10 +4966,10 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
     unsigned int index = 0;
     wifi_vap_info_t *vap_config = NULL;
     rdk_wifi_vap_info_t *rdk_vap_config = NULL;
-    int band = 0;
-    char password[128] = { 0 };
-    char cm_mac_str[32] = { 0 };
-    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    //int band = 0;
+    //char password[128] = { 0 };
+    //char cm_mac_str[32] = { 0 };
+    //wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
@@ -5080,7 +5080,6 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                     g_wifidb->hal_cap.wifi_prop.cm_mac[4], g_wifidb->hal_cap.wifi_prop.cm_mac[5], cm_mac_str);	
 	   strncpy(vap_config->u.sta_info.security.repurposed_radius.identity, cm_mac_str, sizeof(vap_config->u.sta_info.security.repurposed_radius.identity));
 	   strncpy(vap_config->u.sta_info.security.repurposed_radius.key, g_wifidb->hal_cap.wifi_prop.serialNo, sizeof(vap_config->u.sta_info.security.repurposed_radius.key));
-#endif
 	   rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
 	   if (rdk_vap_config == NULL) {
 	       wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
@@ -5090,6 +5089,7 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
            wifidb_update_wifi_security_config(vap_config->vap_name, &vap_config->u.sta_info.security);
 	   wifi_util_error_print(WIFI_DB, "%s:%d: wifi-db update done\n");
      }
+#endif
    }
 }
 
