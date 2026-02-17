@@ -2019,8 +2019,8 @@ int wifi_sched_timeout(void *arg)
             handler_id = sched_id->wifi_acs_sched_handler_id;
             break;
         default:
-            free(args);
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, args->index, args->type);
+            free(args);
             return TIMER_TASK_ERROR;
     }
 
