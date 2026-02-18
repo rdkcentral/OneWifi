@@ -3142,16 +3142,16 @@ void start_station_vaps(bool rf_status)
             data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = true;
-            data->u.decoded.radios[radio_index]
-                .vaps.vap_map.vap_array[vap_array_index]
-                .u.sta_info.enabled = true;
+          //  data->u.decoded.radios[radio_index]
+         //      .vaps.vap_map.vap_array[vap_array_index]
+         //       .u.sta_info.enabled = true;
         } else {
             data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = false;
-            data->u.decoded.radios[radio_index]
-                .vaps.vap_map.vap_array[vap_array_index]
-                .u.sta_info.enabled = false;
+        //    data->u.decoded.radios[radio_index]
+        //        .vaps.vap_map.vap_array[vap_array_index]
+        //        .u.sta_info.enabled = false;
         }
         wifi_util_error_print(WIFI_CTRL, "[%s %d] SSID: %s vap-enable : %d ignite-enable : %d identity : %s key : %s eap-type : %d phase : %d bridge : %s\n", __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.enabled, 
                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ignite_enabled,

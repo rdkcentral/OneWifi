@@ -1133,10 +1133,10 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     }
 
     // Skip zero bssid and disabled vaps
-    if (!is_bssid_valid(vap_info->u.sta_info.bssid) || !vap_info->u.sta_info.enabled) {
+    if (!is_bssid_valid(vap_info->u.sta_info.bssid) ||  (!vap_info->u.sta_info.enabled && !vap_info->u.sta_info.ignite_enabled)) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d skip sta bssid change event, vap: %s, bssid: %s, "
-            "enabled: %d\n", __func__, __LINE__, vap_info->vap_name, bssid_str,
-            vap_info->u.sta_info.enabled);
+            "enabled: %d ignite-enable: %d\n", __func__, __LINE__, vap_info->vap_name, bssid_str,
+            vap_info->u.sta_info.enabled, vap_info->u.sta_info.ignite_enabled);
         return 0;
     }
 
@@ -1247,11 +1247,12 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
                     sizeof(wifi_vap_info_t));
         tgt_vap_map->num_vaps = 1;
 
+	wifi_util_error_print(WIFI_CTRL,"%s:%d Sta-enable : %d ignite-enable : %d is_sta_enabled : %d\n", __func__, __LINE__, tgt_vap_map->vap_array[0].u.sta_info.enabled, tgt_vap_map->vap_array[0].u.sta_info.ignite_enabled, is_sta_enabled());
         // avoid disabling mesh sta in extender mode
-        if (tgt_vap_map->vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
-                __LINE__, tgt_vap_map->vap_array[0].vap_index);
-            tgt_vap_map->vap_array[0].u.sta_info.enabled = true;
+        if ((tgt_vap_map->vap_array[0].u.sta_info.enabled == false) && (tgt_vap_map->vap_array[0].u.sta_info.ignite_enabled == false) && (is_sta_enabled())) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
+                    __LINE__, tgt_vap_map->vap_array[0].vap_index);
+                tgt_vap_map->vap_array[0].u.sta_info.enabled = true;
         }
 
         if (wifi_hal_createVAP(radio_index, tgt_vap_map) != RETURN_OK) {

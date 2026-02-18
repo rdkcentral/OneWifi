@@ -270,6 +270,7 @@ int vap_svc_start_stop(vap_svc_t *svc, unsigned int radio_index, bool enable)
             memcpy((unsigned char *)&tgt_vap_map->vap_array[tgt_vap_map->num_vaps], (unsigned char *)&vap_map->vap_array[j], sizeof(wifi_vap_info_t));
             memcpy(&tgt_rdk_vaps[tgt_vap_map->num_vaps], &rdk_vaps[j], sizeof(rdk_wifi_vap_info_t));
             if (tgt_vap_map->vap_array[tgt_vap_map->num_vaps].vap_mode == wifi_vap_mode_sta) {
+		wifi_util_error_print(WIFI_CTRL,"%s %d[DL] vap-enable : %d\n", __func__, __LINE__, enable);
                 tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.sta_info.enabled = enable;
             } else {
                 if(tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled) {
