@@ -1558,7 +1558,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
                     del = calculate_counter_delta(sta[i].dev_stats.cli_BytesReceived,
-                        dev_stats_last->cli_BytesReceived); 
+                        dev_stats_last->cli_BytesReceived);
                     snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
