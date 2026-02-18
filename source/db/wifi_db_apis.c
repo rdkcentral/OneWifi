@@ -4961,7 +4961,7 @@ static void wifidb_vap_config_ext(wifi_vap_info_map_t *config, rdk_wifi_vap_info
   Description : vap config parameters corrections
  *************************************************************************************
 ********************************************** ****************************************/
-void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
+void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_map_param)
 {
     unsigned int index = 0;
     wifi_vap_info_t *vap_config = NULL;
@@ -5032,7 +5032,9 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
 
 	if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity Mobile") == 0)) {
             wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
-	    convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, index, &band);
+	    wifi_util_info_print(WIFI_DB, "index : %d band : %d radio-idx-prop: %d vap-name : %d\n", r_index, band, g_wifidb->hal_cap.wifi_prop.rdk_radio_index, g_wifidb->hal_cap.wifi_prop.vap_name);
+	    convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, r_index, &band);
+	    wifi_util_info_print(WIFI_DB, "index : %d band : %d radio-idx-prop: %d vap-name : %d\n", r_index, band, g_wifidb->hal_cap.wifi_prop.rdk_radio_index, g_wifidb->hal_cap.wifi_prop.vap_name);
 	    strncpy(vap_config->u.sta_info.ssid, "we.connect.yellowstone", sizeof(vap_config->u.sta_info.ssid)-1);
 	    vap_config->u.sta_info.ignite_enabled = false;
 	    vap_config->u.sta_info.enabled = false;
@@ -7985,7 +7987,7 @@ void init_wifidb_data()
                 wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
             }
 
-            wifidb_vap_config_correction(l_vap_param_cfg);
+            wifidb_vap_config_correction(r_index, l_vap_param_cfg);
 
             if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
