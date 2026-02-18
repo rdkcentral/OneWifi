@@ -841,6 +841,13 @@ void ext_try_connecting(vap_svc_t *svc)
         candidate->conn_retry_attempt++;
     } else if (ext->conn_state == connection_state_connection_in_progress) {
         candidate = ext->candidates_list.scan_list;
+        bool new_bss_is_set = false;
+        unsigned char zero_mac[6] = {0};
+
+        // Check if new_bss.external_ap.bssid is not empty
+        if (memcmp(ext->new_bss.external_ap.bssid, zero_mac, sizeof(zero_mac)) != 0) {
+            new_bss_is_set = true;
+        }
 
         for (i = 0; i < ext->candidates_list.scan_count; i++) {
             if (temp == NULL && (candidate->conn_attempt == connection_attempt_wait) &&
@@ -860,6 +867,26 @@ void ext_try_connecting(vap_svc_t *svc)
 
             candidate++;
         }
+
+        // If new_bss is set but not found in candidate list, trigger scanning (max 2 times)
+        if (new_bss_is_set && new_bss == NULL && ext->new_bss_scan_retry < 2) {
+            ext->new_bss_scan_retry++;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: new_bss BSSID not found in candidate list, "
+                "triggering scan (attempt %d/2)\n", __func__, __LINE__, ext->new_bss_scan_retry);
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+            schedule_connect_sm(svc);
+            return;
+        }
+
+        // If max retries reached and new_bss still not found, clear it
+        if (new_bss_is_set && new_bss == NULL && ext->new_bss_scan_retry >= 2) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: new_bss BSSID not found after 2 scan attempts, "
+                "clearing new_bss\n", __func__, __LINE__);
+            memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
+            ext->new_bss_scan_retry = 0;
+            new_bss_is_set = false; // Update flag after clearing
+        }
+
         if (new_bss || last_connected_bss || temp) {
             if (new_bss) {
                 candidate = new_bss;
