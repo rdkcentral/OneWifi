@@ -4966,10 +4966,10 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
     unsigned int index = 0;
     wifi_vap_info_t *vap_config = NULL;
     rdk_wifi_vap_info_t *rdk_vap_config = NULL;
-    //int band = 0;
-    //char password[128] = { 0 };
+    int band = 0;
+    char password[128] = { 0 };
     //char cm_mac_str[32] = { 0 };
-    //wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
