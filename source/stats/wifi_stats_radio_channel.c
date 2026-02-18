@@ -969,17 +969,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 return RETURN_OK;
             }
         }
-	
-		if (radioOperation->band == WIFI_FREQUENCY_5L_BAND ||
-    	radioOperation->band == WIFI_FREQUENCY_5H_BAND ||
-    	radioOperation->band == WIFI_FREQUENCY_5_BAND) {
-    	if (radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
-        	wifi_util_dbg_print(WIFI_MON,
-            "%s:%d  off channel scan not executed due to 160MHz channel in use for radio index %d\n",
-            __func__, __LINE__, args->radio_index);
-        return RETURN_OK;
-    }
-}
         // Fill on-channel scan list
         if (get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth,
 		radioOperation->channel, on_chan_list, &onchan_num_channels) != 0) {
