@@ -5032,9 +5032,8 @@ void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_ma
 
 	if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity Mobile") == 0)) {
             wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
-	    wifi_util_info_print(WIFI_DB, "index : %d band : %d radio-idx-prop: %d vap-name : %d\n", r_index, band, g_wifidb->hal_cap.wifi_prop.rdk_radio_index, g_wifidb->hal_cap.wifi_prop.vap_name);
 	    convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, r_index, &band);
-	    wifi_util_info_print(WIFI_DB, "index : %d band : %d radio-idx-prop: %d vap-name : %d\n", r_index, band, g_wifidb->hal_cap.wifi_prop.rdk_radio_index, g_wifidb->hal_cap.wifi_prop.vap_name);
+	    wifi_util_info_print(WIFI_DB, "index : %d band : %d\n", r_index, band);
 	    strncpy(vap_config->u.sta_info.ssid, "we.connect.yellowstone", sizeof(vap_config->u.sta_info.ssid)-1);
 	    vap_config->u.sta_info.ignite_enabled = false;
 	    vap_config->u.sta_info.enabled = false;
