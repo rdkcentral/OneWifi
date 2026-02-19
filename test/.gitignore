@@ -1,0 +1,5 @@
+halinterface/
+rdk-wifi-hal/
+
+.cache/
+compile_commands.json
