@@ -1119,7 +1119,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Ignite enable %d is_mesh_sta : %d\n", __func__, __LINE__, vap_info->u.sta_info.ignite_enabled, isVapSTAMesh(tgt_vap_index));
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Mgr-ignite-enable %d Ignite enable %d is_mesh_sta : %d\n", __func__, __LINE__, mgr_vap_info->u.sta_info.ignite_enabled, vap_info->u.sta_info.ignite_enabled, isVapSTAMesh(tgt_vap_index));
 
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
                 isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info) || ((isVapSTAMesh(tgt_vap_index)) && (vap_info->u.sta_info.ignite_enabled == 1))) {
@@ -1196,12 +1196,15 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              */
 
 	    if (isVapSTAMesh(tgt_vap_index)) {
-	        wifi_util_dbg_print(WIFI_CTRL,"[%s %d] eap-type : %d phase2 : %d identity : %s\n", __func__, __LINE__, p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.eap_type, p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.phase2,
+	        wifi_util_dbg_print(WIFI_CTRL,"[%s %d] ignite-enabled : %d eap-type : %d phase2 : %d identity : %s\n", __func__, __LINE__,
+			       p_tgt_vap_map->vap_array[0].u.sta_info.ignite_enabled,	p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.eap_type, p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.phase2,
 p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.identity);
 	    }
             
             memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
-	    wifi_util_dbg_print(WIFI_CTRL,"[%s %d] eap-type : %d phase2 : %d identity : %s\n", __func__, __LINE__, mgr_vap_info->u.sta_info.security.repurposed_radius.eap_type, mgr_vap_info->u.sta_info.security.repurposed_radius.phase2,
+	    
+	    wifi_util_dbg_print(WIFI_CTRL,"[%s %d] ignite-enabled: %d eap-type : %d phase2 : %d identity : %s\n", __func__, __LINE__,
+			   mgr_vap_info->u.sta_info.ignite_enabled,  mgr_vap_info->u.sta_info.security.repurposed_radius.eap_type, mgr_vap_info->u.sta_info.security.repurposed_radius.phase2,
 mgr_vap_info->u.sta_info.security.repurposed_radius.identity);
 	    
 	    // This block of code is only used for updating VAP mac.
