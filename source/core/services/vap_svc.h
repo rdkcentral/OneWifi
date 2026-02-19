@@ -123,6 +123,7 @@ typedef struct {
     unsigned char          disconn_retry;
     unsigned char          wait_scan_result;
     unsigned char          scanned_radios;
+    unsigned char          new_bss_scan_retry;
     unsigned int           go_to_channel;
     unsigned int           go_to_channel_width;
     unsigned int           channel_change_pending_map;
