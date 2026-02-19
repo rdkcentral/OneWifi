@@ -2403,7 +2403,6 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
         return webconfig_error_decode;
     }
 
-    if (vap_info->u.sta_info.ignite_enabled == true) {
          const cJSON *ignite;
 	 decode_param_object(vap, "IgniteSettings", ignite);
 	 if (decode_ignite_mesh_sta_object(ignite, vap_info, band) != webconfig_error_none) {
@@ -2411,7 +2410,6 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
 	     return webconfig_error_decode;
 	 }
 
-    }
 
     decode_param_object(vap, "ScanParameters", scan);
     if (decode_scan_params_object(scan, &vap_info->u.sta_info.scan_params) != webconfig_error_none) {

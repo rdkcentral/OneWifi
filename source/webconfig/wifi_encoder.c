@@ -1817,7 +1817,6 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
         return webconfig_error_encode;
     }
     
-    if (vap_info->u.sta_info.ignite_enabled == true) {
         cJSON *ignite_obj;
         ignite_obj = cJSON_CreateObject();
         cJSON_AddItemToObject(vap_obj, "IgniteSettings", ignite_obj);
@@ -1825,7 +1824,6 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh sta vap object\n", __func__, __LINE__);
             return webconfig_error_encode;
         }
-    }
 
     // Scan Parameters
     obj = cJSON_CreateObject();
