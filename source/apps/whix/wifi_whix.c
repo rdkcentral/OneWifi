@@ -1777,8 +1777,8 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    del = calculate_counter_delta(sta[i].dev_stats.cli_PacketsSent,
-                        dev_stats_last->cli_PacketsSent);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_ErrorsSent,
+                        dev_stats_last->cli_ErrorsSent);
                     snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
