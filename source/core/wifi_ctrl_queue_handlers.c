@@ -3668,6 +3668,9 @@ static void process_monitor_init_command(void)
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
+            if (isVapSTAMesh(wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index)) {
+                continue; //we don't need to collect ClientsList for STA vap
+            }
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);
             push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
