@@ -1119,7 +1119,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Mgr-ignite-enable %d Ignite enable %d is_mesh_sta : %d\n", __func__, __LINE__, mgr_vap_info->u.sta_info.ignite_enabled, vap_info->u.sta_info.ignite_enabled, isVapSTAMesh(tgt_vap_index));
 
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
                 isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info)) {
@@ -1195,17 +1194,8 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
              */
 
-	    if (isVapSTAMesh(tgt_vap_index)) {
-	        wifi_util_dbg_print(WIFI_CTRL,"[%s %d] ignite-enabled : %d eap-type : %d phase2 : %d identity : %s\n", __func__, __LINE__,
-			       p_tgt_vap_map->vap_array[0].u.sta_info.ignite_enabled,	p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.eap_type, p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.phase2,
-p_tgt_vap_map->vap_array[0].u.sta_info.security.repurposed_radius.identity);
-	    }
-            
-            memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
-	    
-	    wifi_util_dbg_print(WIFI_CTRL,"[%s %d] ignite-enabled: %d eap-type : %d phase2 : %d identity : %s\n", __func__, __LINE__,
-			   mgr_vap_info->u.sta_info.ignite_enabled,  mgr_vap_info->u.sta_info.security.repurposed_radius.eap_type, mgr_vap_info->u.sta_info.security.repurposed_radius.phase2,
-mgr_vap_info->u.sta_info.security.repurposed_radius.identity);
+            // Updating ignite enable/disable config via this memcpy
+	    memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
 	    
 	    // This block of code is only used for updating VAP mac.
             //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.bss_info.bssid)) {
@@ -1983,7 +1973,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
                             wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
 #ifdef NL80211_ACL
-                if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                        if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #else
                             if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #endif
@@ -3153,16 +3143,10 @@ void start_station_vaps(bool rf_status)
             data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = true;
-          //  data->u.decoded.radios[radio_index]
-         //      .vaps.vap_map.vap_array[vap_array_index]
-         //       .u.sta_info.enabled = true;
         } else {
             data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = false;
-        //    data->u.decoded.radios[radio_index]
-        //        .vaps.vap_map.vap_array[vap_array_index]
-        //        .u.sta_info.enabled = false;
         }
         wifi_util_error_print(WIFI_CTRL, "[%s %d] SSID: %s vap-enable : %d ignite-enable : %d identity : %s key : %s eap-type : %d phase : %d bridge : %s\n", __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.enabled, 
                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ignite_enabled,
@@ -3179,7 +3163,6 @@ void start_station_vaps(bool rf_status)
         str = data->u.encoded.raw;
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_dml, NULL);
-
     } else {
         webconfig_data_free(data);
     }

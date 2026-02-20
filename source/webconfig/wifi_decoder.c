@@ -218,7 +218,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     cJSON *statsList = cJSON_AddArrayToObject(statsMainEntry, "ANQPResponse");
     if(!anqp || !interworking_info){
         wifi_util_dbg_print(WIFI_WEBCONFIG,"Anqp entry is NULL\n");
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_decode;
     }
 
@@ -229,7 +229,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_array(anqpElement, "VenueInfo", anqpList);
     if(cJSON_GetArraySize(anqpList) > 16){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_venue_entries;
     } else if (cJSON_GetArraySize(anqpList)) {
         //Venue List is non-empty. Update capability List
@@ -252,16 +252,16 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
-	    cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
             return webconfig_error_venue_name_size;
         }
         cJSON *realmStats = cJSON_CreateObject();
-    	cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
-	cJSON_AddNumberToObject(realmStats, "EntryType", 1); // 1-Venue
-    	cJSON_AddNumberToObject(realmStats, "Sent", 0);
-    	cJSON_AddNumberToObject(realmStats, "Failed", 0);
-    	cJSON_AddNumberToObject(realmStats, "Timeout", 0);
-    	cJSON_AddItemToArray(statsList, realmStats);
+        cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
+    cJSON_AddNumberToObject(realmStats, "EntryType", 1); // 1-Venue
+        cJSON_AddNumberToObject(realmStats, "Sent", 0);
+        cJSON_AddNumberToObject(realmStats, "Failed", 0);
+        cJSON_AddNumberToObject(realmStats, "Timeout", 0);
+        cJSON_AddItemToArray(statsList, realmStats);
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += strlen(anqpParam->valuestring);
         venueBuf->length = next_pos - &venueBuf->language[0];
@@ -275,7 +275,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_array(anqpElement,"OI",anqpList);
     if(cJSON_GetArraySize(anqpList) > 32){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Only 32 OUI supported in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_oui_entries;
     }
     int ouiCount = 0;
@@ -289,7 +289,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
             ouiStrLen = strlen(anqpParam->valuestring);
             if((ouiStrLen < 6) || (ouiStrLen > 30) || (ouiStrLen % 2)){
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid OUI Length in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-		cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
                 return webconfig_error_oui_length;
             }
             strcpy((char*)ouiStr, anqpParam->valuestring);
@@ -304,7 +304,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                 ouiStr[i] -= ('A' - 10);//A=10
             }else{
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid OUI in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-		cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
                 return webconfig_error_oui_char;
             }
             if(i%2){
@@ -335,7 +335,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_integer(anqpElement,"IPv6AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (2 < anqpParam->valuedouble)){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid IPAddressTypeAvailabilityANQPElement. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_ipaddress;
     }
     interworking_info->anqp.ipAddressInfo.field_format = (UCHAR)anqpParam->valuedouble;
@@ -343,7 +343,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_integer(anqpElement,"IPv4AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (7 < anqpParam->valuedouble)){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid IPAddressTypeAvailabilityANQPElement. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_ipaddress;
     }
     interworking_info->anqp.ipAddressInfo.field_format |= ((UCHAR)anqpParam->valuedouble << 2);
@@ -358,7 +358,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     naiElem->nai_realm_count = cJSON_GetArraySize(anqpList);
     if(naiElem->nai_realm_count > 20) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Only 20 Realm Entries are supported. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_realm_entries;
     }
     next_pos = (UCHAR *)naiElem;
@@ -380,7 +380,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         decode_param_string(anqpEntry,"Realms",anqpParam);
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Realm Length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
-	    cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
             return webconfig_error_realm_length;
         }
         realmInfoBuf->realm_length = strlen(anqpParam->valuestring);
@@ -388,7 +388,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += realmInfoBuf->realm_length;
 
-      	cJSON *realmStats = cJSON_CreateObject();
+        cJSON *realmStats = cJSON_CreateObject();
         decode_param_string(anqpEntry,"Realms",anqpParam);
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
         cJSON_AddNumberToObject(realmStats, "EntryType", 1); // 1-NAI Realm
@@ -401,7 +401,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         eap_method_count = cJSON_GetArraySize(subList);
         if(eap_method_count > 16){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: EAP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
-	    cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
             return webconfig_error_eap_entries;
         }
         *next_pos = eap_method_count;
@@ -422,7 +422,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
             eapBuf->auth_param_count = cJSON_GetArraySize(subList_1);
             if(eapBuf->auth_param_count > 16){
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Auth entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
-		cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
                 return webconfig_error_auth_entries;
             }
             next_pos += sizeof(eapBuf->auth_param_count);
@@ -438,7 +438,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                 subParam_1 = cJSON_GetObjectItem(subEntry_1,"Value");
                 if(!subParam_1){
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Auth Parameter Value not prensent in NAIRealmANQPElement EAP Data. Discarding Configuration\n", __func__, __LINE__);
-		    cJSON_Delete(passPointStats);
+            cJSON_Delete(passPointStats);
                     return webconfig_error_auth_param;
                 } else if (subParam_1->valuedouble) {
                     authBuf->length = 1;
@@ -447,7 +447,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                     authStrLen = strlen(subParam_1->valuestring);
                     if((authStrLen != 2) && (authStrLen != 14)){
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
-			cJSON_Delete(passPointStats);
+            cJSON_Delete(passPointStats);
                         return webconfig_error_eap_length;
                     }
                     snprintf((char*)authStr, sizeof(authStr), "%s", subParam_1->valuestring);
@@ -462,7 +462,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                             authStr[i] -= ('A' - 10);//A=10
                         }else{
                             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EAP val in NAIRealmANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-			    cJSON_Delete(passPointStats);
+                cJSON_Delete(passPointStats);
                             return webconfig_error_eap_value;
                         }
                         if(i%2){
@@ -504,7 +504,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     if(plmnInfoBuf->number_of_plmns > 16){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: 3GPP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Exceeded max number of 3GPP entries",sizeof(execRetVal->ErrorMsg)-1);
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_decode;
      }
 
@@ -523,7 +523,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         }else{
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MCC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid MCC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
-	    cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
             return webconfig_error_decode;
         }
 
@@ -536,7 +536,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         }else{
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MNC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid MNC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
-	    cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
             return webconfig_error_decode;
         }
         wifi_plmn_t *plmnBuf = (wifi_plmn_t *)next_pos;
@@ -545,8 +545,8 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         plmnBuf->PLMN[2] = (UCHAR)((mncStr[0] - '0') | ((mncStr[1] - '0') << 4));
         next_pos += sizeof(wifi_plmn_t);
 
-	char  nameStr[8];
-    	snprintf(nameStr, sizeof(nameStr), "%s:%s", mccStr, mncStr);
+    char  nameStr[8];
+        snprintf(nameStr, sizeof(nameStr), "%s:%s", mccStr, mncStr);
         cJSON *realmStats = cJSON_CreateObject();
         cJSON_AddStringToObject(realmStats, "Name", nameStr);
         cJSON_AddNumberToObject(realmStats, "EntryType", 3); // 3-3GPP
@@ -567,7 +567,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     if(cJSON_GetArraySize(anqpList) > 4){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Only 4 Entries supported in DomainNameANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Exceeded max no of entries in DomainNameANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
-	cJSON_Delete(passPointStats);
+    cJSON_Delete(passPointStats);
         return webconfig_error_decode;
     }
     next_pos = (UCHAR *)&interworking_info->anqp.domainNameInfo;
@@ -578,7 +578,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Domain name length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid Domain name length",sizeof(execRetVal->ErrorMsg)-1);
-	    cJSON_Delete(passPointStats);
+        cJSON_Delete(passPointStats);
             return webconfig_error_decode;
         }
         nameBuf->length = strlen(anqpParam->valuestring);
@@ -1331,9 +1331,8 @@ webconfig_error_t decode_ignite_radius_object(const cJSON *radius, wifi_radius_s
 
 webconfig_error_t decode_ignite_security_object(const cJSON *security, wifi_vap_security_t *security_info, int band)
 {
-     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
-     const cJSON *param, *object;
-     decode_param_string(security, "IgniteMode", param);
+    const cJSON *param, *object;
+    decode_param_string(security, "IgniteMode", param);
 
     if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) {
         security_info->repurposed_mode = wifi_security_mode_wpa2_enterprise;
@@ -1341,31 +1340,28 @@ webconfig_error_t decode_ignite_security_object(const cJSON *security, wifi_vap_
         security_info->repurposed_mode = wifi_security_mode_wpa3_enterprise;
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode security mode: %s\n",
-            __func__, __LINE__, param->valuestring);
+                __func__, __LINE__, param->valuestring);
         return webconfig_error_decode;
     }
     wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] repurposed_mode : %d band : %d\n", __func__, __LINE__, security_info->repurposed_mode, band);
 
     if (band == WIFI_FREQUENCY_6_BAND &&
-        security_info->repurposed_mode != wifi_security_mode_wpa3_enterprise) {
+            security_info->repurposed_mode != wifi_security_mode_wpa3_enterprise) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode for 6G interface: %d\n",
-            __func__, __LINE__, security_info->repurposed_mode);
+                __func__, __LINE__, security_info->repurposed_mode);
         return webconfig_error_decode;
     }
 
-	
-	object = cJSON_GetObjectItem(security, "IgniteRadiusSettings");
-	if (object != NULL) {
-            decode_param_object(security, "IgniteRadiusSettings", param);
-            if (decode_ignite_radius_object(param, &security_info->repurposed_radius) != 0) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode ignite radius settings\n",
+    object = cJSON_GetObjectItem(security, "IgniteRadiusSettings");
+    if (object != NULL) {
+        decode_param_object(security, "IgniteRadiusSettings", param);
+        if (decode_ignite_radius_object(param, &security_info->repurposed_radius) != 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode ignite radius settings\n",
                     __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-	}
-
+            return webconfig_error_decode;
+        }
+    }
     return webconfig_error_none;
-
 }
 
 webconfig_error_t decode_ignite_mesh_sta_object(const cJSON *ignite, wifi_vap_info_t *vap_info, int band)
@@ -1381,7 +1377,7 @@ webconfig_error_t decode_ignite_mesh_sta_object(const cJSON *ignite, wifi_vap_in
     decode_param_object(ignite, "IgniteSecurity", security);
     if (decode_ignite_security_object(security, &vap_info->u.sta_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d:Ignite Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-	return webconfig_error_decode;
+        return webconfig_error_decode;
     }
 
     return webconfig_error_none;
@@ -2326,7 +2322,7 @@ webconfig_error_t decode_scan_params_object(const cJSON *scan_obj, wifi_scan_par
 webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
-    const cJSON  *param, *security, *scan;
+    const cJSON  *param, *security, *scan, *ignite;
     int radio_index = -1;
     int band = -1;
     //VAP Name
@@ -2403,13 +2399,11 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
         return webconfig_error_decode;
     }
 
-         const cJSON *ignite;
-	 decode_param_object(vap, "IgniteSettings", ignite);
-	 if (decode_ignite_mesh_sta_object(ignite, vap_info, band) != webconfig_error_none) {
-	     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Ignite objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-	     return webconfig_error_decode;
-	 }
-
+    decode_param_object(vap, "IgniteSettings", ignite);
+    if (decode_ignite_mesh_sta_object(ignite, vap_info, band) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Ignite objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
 
     decode_param_object(vap, "ScanParameters", scan);
     if (decode_scan_params_object(scan, &vap_info->u.sta_info.scan_params) != webconfig_error_none) {

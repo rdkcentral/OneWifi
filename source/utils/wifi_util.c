@@ -3941,7 +3941,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 sizeof(ssid_t)) ||
             IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
             IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) || 
-	    IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
                 sizeof(wifi_vap_security_t))) {
             return true;
         }

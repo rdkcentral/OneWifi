@@ -835,7 +835,7 @@ void stop_gateway_vaps(unsigned int radio_index)
 void stop_extender_vaps(unsigned int radio_index)
 {
     wifi_ctrl_t *ctrl;
-    vap_svc_t *ext_svc;	
+    vap_svc_t *ext_svc; 
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
@@ -1467,7 +1467,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 #if HAL_IPC
 int onewifi_get_ap_assoc_dev_diag_res3(int ap_index, 
                                        wifi_associated_dev3_t *assoc_dev_array, 
-						               unsigned int *output_array_size)
+                                       unsigned int *output_array_size)
 {
     return get_sta_stats_for_vap(ap_index, assoc_dev_array, output_array_size);
 }
@@ -1513,7 +1513,7 @@ typedef int (* app_get_radio_traffic_stats_t) (int radio_index,
 
 typedef struct {
     unsigned int version;
-    app_get_ap_assoc_dev_diag_res3_t app_get_ap_assoc_dev_diag_res3_fn;		
+    app_get_ap_assoc_dev_diag_res3_t app_get_ap_assoc_dev_diag_res3_fn;     
     app_get_neighbor_ap2_t           app_get_neighbor_ap2_fn;
     app_get_radio_channel_stats_t    app_get_radio_channel_stats_fn;
     app_get_radio_traffic_stats_t    app_get_radio_traffic_stats_fn;
@@ -2884,12 +2884,14 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     for (i = 0; i < map->num_vaps; i++) {
         if (map->vap_array[i].vap_index == index) {
             found = true;
-	    if (map->vap_array[i].u.sta_info.ignite_enabled == true) {
-	       strncpy(ssid, map->vap_array[i].u.sta_info.repurposed_ssid, 31);
-	    } else {
-                strcpy(ssid, map->vap_array[i].u.sta_info.ssid);
-	    }
-	    break;
+        if (map->vap_array[i].u.sta_info.ignite_enabled == true) {
+            snprintf(ssid, sizeof(ssid_t), "%s",
+                    map->vap_array[i].u.sta_info.repurposed_ssid);
+        } else {
+            snprintf(ssid, sizeof(ssid_t), "%s",
+                    map->vap_array[i].u.sta_info.ssid);
+        }
+        break;
         }
     }
 
