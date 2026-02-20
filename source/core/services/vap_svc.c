@@ -192,8 +192,8 @@ int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map
             wifi_util_error_print(WIFI_CTRL,
                 "%s:%d: Could not find wifi hal capability info for vap_name: %s\n",
                 __func__, __LINE__, vap_map->vap_array[j].vap_name);
-            return RETURN_ERR;
-        }
+        return RETURN_ERR;
+    }
 
     if ((isVapSTAMesh(vap_map->vap_array[j].vap_index)) && (ctrl->rf_status_down == true)) {
         if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].repurposed_bridge_name,

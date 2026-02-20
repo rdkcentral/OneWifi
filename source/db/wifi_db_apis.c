@@ -4968,7 +4968,6 @@ void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_ma
     rdk_wifi_vap_info_t *rdk_vap_config = NULL;
     int band = 0;
     char password[128] = { 0 };
-    //char cm_mac_str[32] = { 0 };
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
@@ -5030,8 +5029,8 @@ void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_ma
             continue;
         }
 
-        if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity Mobile") == 0)) {
-            wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
+    if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity Mobile") == 0)) {
+        wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
         convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, r_index, &band);
         wifi_util_info_print(WIFI_DB, "index : %d band : %d\n", r_index, band);
         strncpy(vap_config->u.sta_info.ssid, "we.connect.yellowstone", sizeof(vap_config->u.sta_info.ssid)-1);
@@ -5043,27 +5042,27 @@ void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_ma
         memset(vap_config->u.sta_info.security.u.radius.s_ip, '\0', sizeof(vap_config->u.sta_info.security.u.radius.s_ip));
         memset(vap_config->bridge_name, '\0', WIFI_BRIDGE_NAME_LEN);
         if (band == WIFI_FREQUENCY_6_BAND) {
-                vap_config->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
-            } else {
-                 vap_config->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
-            }
+            vap_config->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+        } else {
+            vap_config->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+        }
 
-       memset(password, 0, sizeof(password));       
-       if (wifi_hal_get_default_keypassphrase(password, vap_config->vap_index) == 0) { 
-               strncpy(vap_config->u.sta_info.security.u.key.key, password, sizeof(vap_config->u.sta_info.security.u.key.key));
-       } else {
-           strcpy(vap_config->u.sta_info.security.u.key.key, "12345678");
-       }
-       
-       rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
-       if (rdk_vap_config == NULL) {
-           wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
-               continue;
-       }
-       update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
-           wifidb_update_wifi_security_config(vap_config->vap_name, &vap_config->u.sta_info.security);
-       wifi_util_error_print(WIFI_DB, "%s:%d: wifi-db update done\n");
-     }
+        memset(password, 0, sizeof(password));       
+        if (wifi_hal_get_default_keypassphrase(password, vap_config->vap_index) == 0) { 
+            strncpy(vap_config->u.sta_info.security.u.key.key, password, sizeof(vap_config->u.sta_info.security.u.key.key));
+        } else {
+            strncpy(vap_config->u.sta_info.security.u.key.key, "12345678", sizeof(vap_config->u.sta_info.security.u.key.key));
+        }
+
+        rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+        if (rdk_vap_config == NULL) {
+            wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
+            continue;
+        }
+        update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+        wifidb_update_wifi_security_config(vap_config->vap_name, &vap_config->u.sta_info.security);
+        wifi_util_error_print(WIFI_DB, "%s:%d: wifi-db update done\n");
+    }
    }
 }
 
@@ -7182,10 +7181,10 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg->u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg->u.sta_info.bssid, 0, sizeof(cfg->u.sta_info.bssid));
-        strcpy(cfg->u.sta_info.repurposed_ssid, "Xfinity Mobile");
+        strncpy(cfg->u.sta_info.repurposed_ssid, "Xfinity Mobile", sizeof(ssid_t)-1);
         cfg->u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
         cfg->u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
-        strcpy(cfg->repurposed_bridge_name, "brww0");
+        strncpy(cfg->repurposed_bridge_name, "brww0", sizeof(cfg->repurposed_bridge_name)-1);
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
