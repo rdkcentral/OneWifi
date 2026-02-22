@@ -886,28 +886,6 @@ int clone_raw_data(raw_data_t *dst, raw_data_t *src)
     return RETURN_OK;
 }
 
-int bus_get_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, raw_data_t *p_raw_data)
-{
-    BUS_CHECK_NULL_WITH_RC(p_bus_prop, RETURN_ERR);
-    BUS_CHECK_NULL_WITH_RC(p_raw_data, RETURN_ERR);
-
-    if (event_name == NULL) {
-        *p_raw_data = p_bus_prop->value;
-    } else {
-        uint32_t str_len = MIN_VAL(strlen(event_name) + 1, BUS_MAX_NAME_LENGTH);
-
-        while(p_bus_prop) {
-            if (!strncmp(event_name, p_bus_prop->name, str_len)) {
-                *p_raw_data = p_bus_prop->value;
-                return RETURN_OK;
-            }
-            p_bus_prop = p_bus_prop->next_data;
-        }
-    }
-
-    return RETURN_ERR;
-}
-
 int bus_set_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, raw_data_t *p_raw_data)
 {
     BUS_CHECK_NULL_WITH_RC(p_bus_prop, RETURN_ERR);
