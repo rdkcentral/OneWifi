@@ -2940,14 +2940,14 @@ static bus_error_t stats_table_addrowhandler(char const *tableName, char const *
 
 bus_error_t ap_table_removerowhandler(char const *rowName)
 {
-    int i = 0;
+    int i = 0, count = 0;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int count = queue_count(ctrl->events_bus_data.events_bus_queue);
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
+    count = queue_count(ctrl->events_bus_data.events_bus_queue);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, rowName);
 
-    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
 
     while (i < count) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);
@@ -2971,13 +2971,13 @@ bus_error_t ap_table_removerowhandler(char const *rowName)
 
 static bus_error_t stats_table_removerowhandler(char const *rowName)
 {
-    int i = 0;
+    int i = 0, count = 0;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int count = queue_count(ctrl->events_bus_data.events_bus_queue);
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
+    count = queue_count(ctrl->events_bus_data.events_bus_queue);
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, rowName);
 
-    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
 
     while (i < count) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);

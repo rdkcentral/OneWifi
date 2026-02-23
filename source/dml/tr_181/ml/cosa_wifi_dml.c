@@ -5563,7 +5563,7 @@ SSID_GetParamStringValue
 {
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
     CHAR str[32] = {0};
-    uint8_t instance_number = (uint8_t)convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name) +1;
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name) +1;
 
     if (pcfg == NULL)
     {
@@ -5575,7 +5575,7 @@ SSID_GetParamStringValue
     if( AnscEqualString(ParamName, "Alias", TRUE))
     {
         /* collect value */
-        if(instance_number>(MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || instance_number<0)
+        if(instance_number>(MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || instance_number == 0)
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d invalid vap instance %d\n", __FUNCTION__,__LINE__,instance_number);
             return FALSE;
@@ -5748,7 +5748,7 @@ SSID_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    uint8_t instance_number = (uint8_t)convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name) +1;
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name) +1;
     wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
 
     if (vapInfo == NULL)

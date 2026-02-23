@@ -992,10 +992,13 @@ int levl_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void *
 int apps_frame_event_exec_timeout(wifi_app_t *apps)
 {
     time_t l_curr_alive_time_sec, delta_time_sec;
-    hash_map_t *probe_map = apps->data.u.levl.probe_req_map;
+    hash_map_t *probe_map = NULL;
     probe_req_elem_t *l_elem = NULL, *l_temp_elem = NULL;
+    pthread_mutex_lock(&apps->data.u.levl.lock);
+    probe_map = apps->data.u.levl.probe_req_map;
 
     if (probe_map == NULL) {
+        pthread_mutex_unlock(&apps->data.u.levl.lock);
         wifi_util_error_print(WIFI_APPS,"%s:%d probe map is NULL\r\n", __func__, __LINE__);
         return RETURN_ERR;
     }
@@ -1019,6 +1022,7 @@ int apps_frame_event_exec_timeout(wifi_app_t *apps)
     }
 
     wifi_util_info_print(WIFI_APPS,"%s:%d total probe entry:%d\r\n", __func__, __LINE__, hash_map_count(probe_map));
+    pthread_mutex_unlock(&apps->data.u.levl.lock);
     return 0;
 }
 
@@ -1595,7 +1599,7 @@ bus_error_t levl_event_handler(char *eventName, bus_event_sub_action_t action, i
                 return bus_error_general;
             }
 
-            if ((radio < 0) || (radio > MAX_NUM_RADIOS)) {
+            if ((radio == 0) || (radio > MAX_NUM_RADIOS)) {
                 wifi_util_dbg_print(WIFI_APPS, "%s:%d Invalid Radio: %u\n", __func__, __LINE__, radio-1);
                 pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
                 return bus_error_general;

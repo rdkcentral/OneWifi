@@ -564,11 +564,13 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
                 queue_remove(sched->timer_list, i);
                 if (tt->id == lp_id) {
                     lp_update_index = 0;
-                    sched->index = i-1;
+                    sched->index = (i > 0) ? (i - 1) : 0;
                 }
                 free(tt);
                 sched->num_tasks--;
-                i--;
+                if (i > 0) {
+                    i--;
+                }
             }
         }
     }
@@ -579,11 +581,13 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
                 queue_remove(sched->high_priority_timer_list, i);
                 if (tt->id == hp_id) {
                     hp_update_index = 0;
-                    sched->hp_index = i-1;
+                    sched->hp_index = (i > 0) ? (i - 1) : 0;
                 }
                 free(tt);
                 sched->num_hp_tasks--;
-                i--;
+                if (i > 0) {
+                    i--;
+                }
             }
         }
     }
