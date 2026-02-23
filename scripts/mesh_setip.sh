@@ -300,15 +300,21 @@ if [ "$MODEL_NUM" == "$X50" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" 
         if [ "x$ovs_enable" = "xtrue" ]; then
             ifbr403=`ovs-vsctl show | grep br403`
             ifbr412=`ovs-vsctl show | grep br412`
+	    ipbr403="$(ip -4 addr show br403 2>/dev/null | awk '{print $2}')"
         else
             ifbr403=`brctl show | grep br403`
             ifbr412=`brctl show | grep br412`
+            ipbr403="$(ip -4 addr show br403 2>/dev/null | awk '{print $2}')"
         fi
         if [ "$DEVICE_MODE" == "1" ]; then
             echo "XLE is in Extender Mode skipping backhaul bridge configuration"
         else
             if [ "$ifbr403" == "" ]; then
                 sysevent set meshbhaul-setup 10
+            else
+                 if [ -z "$ipbr403" ]; then
+                     sysevent set meshbhaul-setup 10
+                 fi
             fi
             if [ "$secBhaulEnable" == "1" ]; then
                 if [ "$ifbr412" == "" ]; then
