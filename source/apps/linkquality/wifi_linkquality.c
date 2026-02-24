@@ -85,9 +85,9 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     return;
 }
 
-void publish_station_score(const char *str, double score)
+void publish_station_score(const char *str, double score, double threshold)
 {
-    wifi_util_info_print(WIFI_APPS, "%s:%d score =%f\n", __func__, __LINE__,score);
+    wifi_util_info_print(WIFI_APPS, "%s:%d score =%f threshold=%f\n", __func__, __LINE__,score,threshold);
     return;
 }
 
@@ -134,6 +134,7 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
     if ( ctrl->network_mode == rdk_dev_mode_type_em_node
       || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         qmgr_register_batch_callback(publish_qmgr_subdoc);
+    wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n", __func__, __LINE__,ctrl->network_mode);
     } 
     start_link_metrics();
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
@@ -169,15 +170,30 @@ int link_quality_hal_rapid_connect(wifi_app_t *apps, void *arg, int len)
     return RETURN_OK;
 
 }
+int link_quality_ignite_reinit_param(wifi_app_t *apps, wifi_event_t *arg)
+{
+    if (!arg) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL arg\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    wifi_util_error_print(WIFI_APPS, "%s:%d \n", __func__, __LINE__);
+    linkquality_data_t *data = (linkquality_data_t *)arg;
+    server_arg_t *args = &data->server_arg;
+    reinit_link_metrics(args);
+    wifi_util_info_print(WIFI_APPS, "%s:%d sampling = %d reportingl as %d and threshold as %f\n",
+        __func__, __LINE__,args->sampling, args->reporting, args->threshold);
+    return RETURN_OK;
+
+}
 int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
 {
 
+#ifdef EM_APP
     if (!arg) {
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL arg\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
-#ifdef EM_APP
     //linkquality_data_t *data = (linkquality_data_t *)arg;
 
     em_config_t *em_config;
@@ -226,12 +242,6 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
   
             break;
     }
-#else
-    linkquality_data_t *data = (linkquality_data_t *)arg;
-    server_arg_t *server_arg = &data->server_arg;
-    wifi_util_info_print(WIFI_APPS, "%s:%d sampling=%d reporting as %d and threshold as %f\n",
-                __func__, __LINE__,server_arg->sampling, server_arg->reporting, server_arg->threshold);
-    reinit_link_metrics(server_arg);
 #endif
     return RETURN_OK;
 }
@@ -312,6 +322,11 @@ int exec_event_link_quality(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         case wifi_event_exec_unregister_station:
             link_quality_unregister_station(apps, arg);
             break;
+        
+	case wifi_event_exec_link_param_reinit:
+            link_quality_ignite_reinit_param(apps, arg);
+            break;
+        
         
         default:
             wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,

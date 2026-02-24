@@ -59,10 +59,6 @@ int validate_assoc_client_args(wifi_mon_stats_args_t *args)
         wifi_util_error_print(WIFI_MON,"RDK_LOG_ERROR, %s Input apIndex = %d not found, Out of range\n", __FUNCTION__, args->vap_index);
         return RETURN_ERR;
     }
-    if (isVapSTAMesh(args->vap_index)) {
-        wifi_util_error_print(WIFI_MON, "%s:%d input vap_index %d is STA mesh interface\n",__func__,__LINE__, args->vap_index);
-        return RETURN_ERR;
-    }
 
     return RETURN_OK;
 }

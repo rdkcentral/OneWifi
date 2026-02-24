@@ -79,7 +79,8 @@ public:
     int rapid_disconnect(stats_arg_t *stats);
     void update_window_per();
     static linkq_params_t *get_score_params();
-    static int set_quality_params(quality_flags_t *flag);
+    static int set_quality_flags(quality_flags_t *flag);
+    static int get_quality_flags(quality_flags_t *flag);
     const char * get_mac_addr() const{ return m_mac; }
     unsigned int get_vap_index() const{ return m_vapindex; }
     bool get_alarm() const{ return m_alarm; }

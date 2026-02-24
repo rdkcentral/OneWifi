@@ -207,7 +207,7 @@ void update_probe_map(wifi_app_t *apps, char *mac_key)
 
         if (elem->curr_time_alive > max_probe_map_ttl_cnt) {
             ttl_data.max_probe_ttl_cnt = elem->curr_time_alive;
-            strcpy(ttl_data.mac_str, mac_key);
+            snprintf(ttl_data.mac_str, sizeof(ttl_data.mac_str), "%s", mac_key);
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, wifi_event_hal_potential_misconfiguration, &ttl_data);
 
             if (mac_key != NULL) {
@@ -1831,7 +1831,11 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
                                levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0, FALSE);
 
     //Create FIFO for the csi.
-    mkfifo(CSI_LEVL_PIPE, 0777);
+    if (mkfifo(CSI_LEVL_PIPE, 0777) != 0 && errno != EEXIST) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to create FIFO %s, errno:%d\n",
+            __func__, __LINE__, CSI_LEVL_PIPE, errno);
+        return RETURN_ERR;
+    }
     app->data.u.levl.csi_fd = -1;
  
     rc = get_bus_descriptor()->bus_open_fn(&app->handle, component_name);

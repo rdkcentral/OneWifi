@@ -64,7 +64,7 @@ typedef struct {
   } quality_flags_t;
 
 typedef void (*qmgr_report_batch_cb_t)(const report_batch_t *report);
-typedef void (*qmgr_report_score_cb_t)(const char *str, double score);
+typedef void (*qmgr_report_score_cb_t)(const char *str, double score,double threshold);
 
 /* Registration function (called from C main) */
 void qmgr_register_batch_callback(qmgr_report_batch_cb_t cb);
@@ -75,7 +75,7 @@ bool qmgr_is_score_registered(void);
 
 void reset_qmgr_score_cb(void);
 void qmgr_invoke_batch(const report_batch_t *batch);
-void qmgr_invoke_score(const char *str, double score);
+void qmgr_invoke_score(const char *str, double score,double threshold);
 
 int add_stats_metrics(stats_arg_t *stats);
 int remove_link_stats(stats_arg_t *stats);
@@ -84,6 +84,8 @@ int stop_link_metrics();
 int disconnect_link_stats(stats_arg_t *stats);
 int reinit_link_metrics(server_arg_t *arg);
 char* get_link_metrics();
+int set_quality_flags(quality_flags_t *flag);
+int get_quality_flags(quality_flags_t *flag);
 
 /* Ignite station mac register and unregister function to monitor*/
 void register_station_mac(const char* str);

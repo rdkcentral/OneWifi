@@ -271,7 +271,7 @@ int qmgr_t::run()
             if (update_alarm) {
                 start_time = tm;
                 update_alarm = false;
-                if (qmgr_is_batch_registered) {
+                if (qmgr_is_batch_registered()) {
                     push_reporting_subdoc();   // batch mode
                 }
             }
@@ -384,7 +384,8 @@ int qmgr_t::reinit(server_arg_t *args)
     linkq_t *lq = NULL;
     wifi_util_info_print(WIFI_APPS," %s:%d\n", __func__,__LINE__);
     if (args){
-        wifi_util_info_print(WIFI_APPS," %s:%d args->reporting =%d args->threshold=%f\n", __func__,__LINE__,args->reporting,args->threshold); 
+        wifi_util_info_print(WIFI_APPS," %s:%d sampling=%d args->reporting =%d args->threshold=%f\n"
+	, __func__,__LINE__,args->sampling,args->reporting,args->threshold); 
     } else {
         wifi_util_info_print(WIFI_APPS," %s:%d err\n", __func__,__LINE__); 
     }
@@ -595,6 +596,17 @@ void qmgr_t::destroy_instance()
     return;
 }
 
+int qmgr_t::set_quality_flags(quality_flags_t *flag)
+{
+    linkq_t::set_quality_flags(flag);
+    return 0;
+}
+
+int qmgr_t::get_quality_flags(quality_flags_t *flag)
+{
+    linkq_t::get_quality_flags(flag);
+    return 0;
+}
 qmgr_t::~qmgr_t()
 {
 }

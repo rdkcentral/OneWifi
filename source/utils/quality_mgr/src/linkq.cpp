@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include "wifi_util.h"
 
-extern "C" void qmgr_invoke_score(const char *str, double score);
+extern "C" void qmgr_invoke_score(const char *str, double score, double threshold);
 linkq_params_t linkq_t::m_linkq_params[MAX_LINKQ_PARAMS] = {{"DOWNLINK_SNR", true}, {"DOWNLINK_PER", false}, {"DOWNLINK_PHY", true},{"UPLINK_SNR", true}, {"UPLINK_PER", false}, {"UPLINK_PHY", true}};
 mac_addr_str_t linkq_t::ignite_station_mac = "";
 linkq_params_t linkq_t::m_score_params[] = {
@@ -287,9 +287,9 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
         m_data_sample.score = v.m_val[11].m_re;
         if (v.m_val[11].m_re < m_threshold) {
             m_threshold_cross_counter++;
-            if (is_ignite_station && qmgr_is_score_registered) {
+            if (is_ignite_station && qmgr_is_score_registered()) {
                 wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[11].m_re);   
-                qmgr_invoke_score(mac,v.m_val[11].m_re);
+                qmgr_invoke_score(mac,v.m_val[11].m_re,m_threshold);
             }
         }
     } else if ((m_quality_flag.downlink_snr || m_quality_flag.downlink_per || m_quality_flag.downlink_phy)
@@ -297,29 +297,29 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
          m_data_sample.score  = (v.m_val[9].m_re + v.m_val[10].m_re)/2;
         if(v.m_val[9].m_re < m_threshold || v.m_val[10].m_re < m_threshold) {
             m_threshold_cross_counter++;
-            if (is_ignite_station && qmgr_is_score_registered) {
+            if (is_ignite_station && qmgr_is_score_registered()) {
                 wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re,v.m_val[10].m_re);   
                 if (v.m_val[9].m_re < m_threshold)
-                    qmgr_invoke_score(mac,v.m_val[9].m_re);
+                    qmgr_invoke_score(mac,v.m_val[9].m_re,m_threshold);
                 else if (v.m_val[10].m_re < m_threshold)
-                    qmgr_invoke_score(mac,v.m_val[10].m_re);
+                    qmgr_invoke_score(mac,v.m_val[10].m_re,m_threshold);
 	    }
         }
     } else if (m_quality_flag.downlink_snr || m_quality_flag.downlink_per || m_quality_flag.downlink_phy) {
         m_data_sample.score = v.m_val[9].m_re;
         if(v.m_val[9].m_re < m_threshold)
             m_threshold_cross_counter++;
-            if ( is_ignite_station && qmgr_is_score_registered) {
+            if ( is_ignite_station && qmgr_is_score_registered()) {
                 wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re);   
-                qmgr_invoke_score(mac,v.m_val[9].m_re);
+                qmgr_invoke_score(mac,v.m_val[9].m_re,m_threshold);
 	    }
     } else if (m_quality_flag.uplink_snr || m_quality_flag.uplink_per || m_quality_flag.uplink_phy) {
         m_data_sample.score = v.m_val[10].m_re;
         if(v.m_val[10].m_re < m_threshold)
             m_threshold_cross_counter++;
-            if (is_ignite_station && qmgr_is_score_registered) {
+            if (is_ignite_station && qmgr_is_score_registered()) {
                 wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[10].m_re);   
-                qmgr_invoke_score(mac,v.m_val[10].m_re);
+                qmgr_invoke_score(mac,v.m_val[10].m_re,m_threshold);
 	    }
     }
     m_window_samples.push_back(m_data_sample);
@@ -589,7 +589,7 @@ int linkq_t::rapid_disconnect(stats_arg_t *stats)
     }
     return 0;
 }
-int linkq_t::set_quality_params(quality_flags_t *flag)
+int linkq_t::set_quality_flags(quality_flags_t *flag)
 {
     wifi_util_error_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
     m_quality_flag = *flag;
@@ -598,7 +598,12 @@ int linkq_t::set_quality_params(quality_flags_t *flag)
     m_quality_flag.uplink_per,m_quality_flag.uplink_phy,m_quality_flag.aggregate,m_quality_flag.int_reconn);
     return 0;
 }
-
+int linkq_t::get_quality_flags(quality_flags_t *flag)
+{
+    wifi_util_error_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
+    *flag = m_quality_flag;
+    return 0;
+}
 void linkq_t::register_station_mac(const char* str)
 {
     wifi_util_error_print(WIFI_APPS,"%s:%d str=%s\n",__func__,__LINE__,str);

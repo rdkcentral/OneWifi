@@ -90,12 +90,7 @@ extern "C" {
 #endif /*MAX_NUM_MLD_LINKS*/
 
 #define UNDEFINED_MLD_ID 255
-
-#ifdef CONFIG_NO_MLD_ONLY_PRIVATE
 #define MLD_UNIT_COUNT 8
-#else
-#define MLD_UNIT_COUNT 1
-#endif /* CONFIG_NO_MLD_ONLY_PRIVATE */
 
 #endif /* CONFIG_IEEE80211BE */
 
@@ -1180,6 +1175,7 @@ typedef struct {
 #define EM_MAX_NEIGHBORS 16
 #define EM_MAX_RESULTS 32
 #define EM_MAX_CHANNELS 64
+#define EM_MAX_STA_PER_BSS 64
 
 typedef char marker_name[32];
 
@@ -1189,6 +1185,7 @@ typedef struct {
     unsigned int reporting_interval;
     float link_quality_threshold;
 } alarm_report_policy_t;
+
 
 typedef struct {
     int interval;
@@ -1401,6 +1398,11 @@ typedef struct {
     int radio_index;
     radio_metrics_t radio_metrics;
     em_vap_metrics_t vap_reports[MAX_NUM_VAP_PER_RADIO];
+} em_per_radio_report_t;
+
+typedef struct {
+    int radio_count;
+    em_per_radio_report_t radio_reports[MAX_NUM_RADIOS];
 } em_ap_metrics_report_t;
 
 #endif

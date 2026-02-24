@@ -1250,16 +1250,22 @@ void set_cac_cache_changed(uint8_t vap_index)
 
 int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-    data.u.decoded.num_radios = get_num_radio_dml();
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, subdoc) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data->u.decoded.num_radios = get_num_radio_dml();
+
+    if (webconfig_encode(&webconfig_dml.webconfig, data, subdoc) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1269,7 +1275,9 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1299,7 +1307,7 @@ int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin)
 
     wifi_util_dbg_print(WIFI_DMCLI, "Inside :%s:%d vap_index:%d wps_pin:%s\r\n", __func__, __LINE__, vap_index, wps_pin);
     wps_config.vap_index = vap_index;
-    strncpy(wps_config.wps_pin, wps_pin, strlen(wps_pin));
+    snprintf(wps_config.wps_pin, sizeof(wps_config.wps_pin), "%s", wps_pin);
     push_event_to_ctrl_queue(&wps_config, sizeof(wps_config), wifi_event_type_command, wifi_event_type_command_wps_pin, NULL);
     return RETURN_OK;
 }
@@ -1730,7 +1738,7 @@ wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_cha
 
 bool wifi_factory_reset(bool factory_reset_all_vaps)
 {
-    wifi_vap_info_t default_vap;
+    wifi_vap_info_t *default_vap = NULL;
     wifi_vap_info_t *p_vapInfo = NULL;
     rdk_wifi_vap_info_t rdk_default_vap;
     rdk_wifi_vap_info_t *rdk_vap_info;
@@ -1740,15 +1748,31 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
     unsigned int vap_index;
-    wifi_radio_operationParam_t rcfg;
+    wifi_radio_operationParam_t *rcfg = NULL;
     wifi_radio_feature_param_t *wifiRadioFeatParam = NULL;
     wifi_radio_feature_param_t fcfg;
+    bool retval = FALSE;
 
-    wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d\n",__func__, __LINE__);
     if (global_wifi_config == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
-        return FALSE;
+        goto cleanup;
     }
+
+    rcfg = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (rcfg == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        goto cleanup;
+    }
+    memset(rcfg, 0, sizeof(wifi_radio_operationParam_t));
+
+    default_vap = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (default_vap == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        goto cleanup;
+    }
+    memset(default_vap, 0, sizeof(wifi_vap_info_t));
+
 
     //Reset to all radios params to default
     for (UINT i= 0; i < getNumberRadios(); i++) {
@@ -1756,9 +1780,9 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         wifiRadioFeatParam = (wifi_radio_feature_param_t *) get_dml_cache_radio_feat_map(i);
         if (wifiRadioOperParam == NULL || wifiRadioFeatParam == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param and Radio Feat Param for instance_number:%d\n", __FUNCTION__,__LINE__,i);
-            return FALSE;
+            goto cleanup;
         }
-        wifidb_init_radio_config_default(i,&rcfg,&fcfg);
+        wifidb_init_radio_config_default(i,rcfg,&fcfg);
 
         wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
         if (wifidb_get_rfc_config(0,rfc_param) != 0) {
@@ -1766,21 +1790,21 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         }
 
         //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
-        if (WIFI_FREQUENCY_2_4_BAND == rcfg.band) {
+        if (WIFI_FREQUENCY_2_4_BAND == rcfg->band) {
             if(rfc_param->twoG80211axEnable_rfc) {
-                rcfg.variant = rcfg.variant | WIFI_80211_VARIANT_AX;
+                rcfg->variant = rcfg->variant | WIFI_80211_VARIANT_AX;
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated default config with twoG80211axEnable_rfc\n",__func__, __LINE__);
             }
         }
 
         //Update DFS RFC as disabled for 5GHz radio
-        if( (WIFI_FREQUENCY_5_BAND == rcfg.band) || (WIFI_FREQUENCY_5L_BAND == rcfg.band) || (WIFI_FREQUENCY_5H_BAND == rcfg.band) ) {
+        if( (WIFI_FREQUENCY_5_BAND == rcfg->band) || (WIFI_FREQUENCY_5L_BAND == rcfg->band) || (WIFI_FREQUENCY_5H_BAND == rcfg->band) ) {
             wifi_mgr_t *g_wifidb;
             g_wifidb = get_wifimgr_obj();
             rdk_wifi_radio_t *l_radio = NULL;
 
             // Disable DFS and update rfc Config
-            rcfg.DfsEnabled = FALSE;
+            rcfg->DfsEnabled = FALSE;
             rfc_param->dfs_rfc = FALSE;
             get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
@@ -1792,7 +1816,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                     wifi_util_error_print(WIFI_DMCLI,"%s:%d radio strucutre is not present for radio %d\n",
                                     __FUNCTION__, __LINE__, i);
                     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
-                    return FALSE;
+                    goto cleanup;
             }
             l_radio->radarInfo.last_channel = 0;
             l_radio->radarInfo.num_detected = 0;
@@ -1805,7 +1829,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated DFS RFC as %d\n",__func__, __LINE__, rfc_param->dfs_rfc);
         }
 
-        memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)&rcfg,sizeof(wifi_radio_operationParam_t));
+        memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)rcfg,sizeof(wifi_radio_operationParam_t));
         memcpy((unsigned char *)wifiRadioFeatParam, (unsigned char *)&fcfg, sizeof(wifi_radio_feature_param_t));
         is_radio_config_changed = TRUE;
     }
@@ -1848,9 +1872,9 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                 *acl_dev_map = NULL;
             }
 
-            wifidb_init_vap_config_default(vap_index,&default_vap,&rdk_default_vap);
-            wifidb_init_interworking_config_default(vap_index,&default_vap.u.bss_info.interworking);
-            memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
+            wifidb_init_vap_config_default(vap_index,default_vap,&rdk_default_vap);
+            wifidb_init_interworking_config_default(vap_index,&default_vap->u.bss_info.interworking);
+            memcpy((unsigned char *)p_vapInfo,(unsigned char *)default_vap,sizeof(wifi_vap_info_t));
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
             if(rdk_default_vap.exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
@@ -1871,13 +1895,13 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
     if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed in setting Radios to default\n",__func__, __LINE__);
-        return FALSE;
+        goto cleanup;
     }
 
     wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
     if (push_acl_list_dml_cache_to_one_wifidb(p_vapInfo) != RETURN_OK) {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
-        return FALSE;
+        goto cleanup;
     }
 
     create_onewifi_factory_reset_flag();
@@ -1891,8 +1915,19 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
     {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
-        return FALSE;
+        goto cleanup;
     }
     wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
-    return TRUE;
+    retval = TRUE;
+
+cleanup:
+    if (default_vap != NULL) {
+        free(default_vap);
+        default_vap = NULL;
+    }
+    if (rcfg != NULL) {
+        free(rcfg);
+        rcfg = NULL;
+    }
+    return retval;
 }

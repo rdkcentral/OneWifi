@@ -335,11 +335,11 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_radio_info->enabled = oper_param->enable;
 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
-            em_radio_info->band = 0;
+            em_radio_info->band = em_freq_band_24;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
-            em_radio_info->band = 1;
+            em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
-            em_radio_info->band = 2;
+            em_radio_info->band = em_freq_band_6;
         }
         
         radio_iface_map = NULL;
@@ -444,11 +444,11 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_radio_info->enabled = oper_param->enable;
         //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
-            em_radio_info->band = 0;
+            em_radio_info->band = em_freq_band_24;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
-            em_radio_info->band = 1;
+            em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
-            em_radio_info->band = 2;
+            em_radio_info->band = em_freq_band_6;
         }
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
@@ -855,6 +855,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
     em_sta_info_t *em_sta_dev_info = NULL;
     mac_addr_str_t bss_str;
 
+    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: translate_ap_metrics_report_to_easy_mesh_bss_info enter\n", __func__, __LINE__);
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -878,63 +879,66 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
     }
 
     em_ap_report = &decoded_params->em_ap_metrics_report;
-    radio_index = decoded_params->em_ap_metrics_report.radio_index;
-    radio = &decoded_params->radios[radio_index];
-    vap_map = &radio->vaps.vap_map;
 
-    for (j = 0; j < radio->vaps.num_vaps; j++) {
-        //Get the corresponding vap
-        vap = &vap_map->vap_array[j];
-        ap_metrics = &em_ap_report->vap_reports[j];
-        if ((vap->vap_mode != wifi_vap_mode_ap) || (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) != 0)) {
-            continue;
-        }
+    for (unsigned int i = 0; i < em_ap_report->radio_count; i++) {
+        radio_index = decoded_params->em_ap_metrics_report.radio_reports[i].radio_index;
+        radio = &decoded_params->radios[radio_index];
+        vap_map = &radio->vaps.vap_map;
 
-        em_bss_info =  (em_bss_info_t *)(proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid));
-        if (em_bss_info == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find bss info for index %d\n", __func__, __LINE__, vap->vap_index);
-            continue;
-        }
-        em_bss_info->numberofsta = ap_metrics->sta_cnt;
-
-        per_sta_metrics_t *sta_stats = NULL;
-        for (unsigned int count = 0; count < em_bss_info->numberofsta; count++) {
-            radio_info = proto->get_radio_info(proto->data_model, radio_index);
-            if (radio_info == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find radio info for index %d\n", __func__, __LINE__, vap->vap_index);
+        for (j = 0; j < radio->vaps.num_vaps; j++) {
+            //Get the corresponding vap
+            vap = &vap_map->vap_array[j];
+            ap_metrics = &em_ap_report->radio_reports[i].vap_reports[j];
+            if ((vap->vap_mode != wifi_vap_mode_ap) || (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) != 0)) {
                 continue;
             }
-            //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Assoc Sta count %d\n", __func__, __LINE__, em_bss_info->numberofsta);
-            sta_stats = &ap_metrics->sta_link_metrics[count];
-            if (sta_stats == NULL) {
+
+            em_bss_info =  (em_bss_info_t *)(proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid));
+            if (em_bss_info == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find bss info for index %d\n", __func__, __LINE__, vap->vap_index);
                 continue;
             }
-            em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
-                em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
-            // Update the consolidated map
-            // Link metrics and Extended Link metrics
-            if (em_sta_dev_info != NULL) {
-                if (ap_metrics->is_sta_link_metrics_enabled == true) {
-                    strncpy(em_sta_dev_info->sta_client_type, sta_stats->client_type, sizeof(em_sta_dev_info->sta_client_type));
-                    em_sta_dev_info->sta_client_type[strlen(sta_stats->client_type)] = '\0';
-                    em_sta_dev_info->last_ul_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
-                    em_sta_dev_info->last_dl_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_downlink_rate;
-                    em_sta_dev_info->est_ul_rate              = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_up;
-                    em_sta_dev_info->est_dl_rate              = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_down;
-                    em_sta_dev_info->rcpi                     = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
-                    em_sta_dev_info->util_tx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit;
-                    em_sta_dev_info->util_rx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive;
+            em_bss_info->numberofsta = ap_metrics->sta_cnt;
+
+            per_sta_metrics_t *sta_stats = NULL;
+            for (unsigned int count = 0; count < em_bss_info->numberofsta; count++) {
+                radio_info = proto->get_radio_info(proto->data_model, radio_index);
+                if (radio_info == NULL) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find radio info for index %d\n", __func__, __LINE__, vap->vap_index);
+                    continue;
                 }
+                //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Assoc Sta count %d\n", __func__, __LINE__, em_bss_info->numberofsta);
+                sta_stats = &ap_metrics->sta_link_metrics[count];
+                if (sta_stats == NULL) {
+                    continue;
+                }
+                em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
+                    em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
+                // Update the consolidated map
+                // Link metrics and Extended Link metrics
+                if (em_sta_dev_info != NULL) {
+                    if (ap_metrics->is_sta_link_metrics_enabled == true) {
+                        strncpy(em_sta_dev_info->sta_client_type, sta_stats->client_type, sizeof(em_sta_dev_info->sta_client_type));
+                        em_sta_dev_info->sta_client_type[strlen(sta_stats->client_type)] = '\0';
+                        em_sta_dev_info->last_ul_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
+                        em_sta_dev_info->last_dl_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_downlink_rate;
+                        em_sta_dev_info->est_ul_rate              = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_up;
+                        em_sta_dev_info->est_dl_rate              = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_down;
+                        em_sta_dev_info->rcpi                     = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
+                        em_sta_dev_info->util_tx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit;
+                        em_sta_dev_info->util_rx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive;
+                    }
 
-                if (ap_metrics->is_sta_traffic_stats_enabled == true) {
-                    //Traffic stats
-                    em_sta_dev_info->pkts_tx                  = ap_metrics->sta_traffic_stats[count].packets_sent;
-                    em_sta_dev_info->pkts_rx                  = ap_metrics->sta_traffic_stats[count].packets_rcvd;
-                    em_sta_dev_info->bytes_tx                 = ap_metrics->sta_traffic_stats[count].bytes_sent;
-                    em_sta_dev_info->bytes_rx                 = ap_metrics->sta_traffic_stats[count].bytes_rcvd;
-                    em_sta_dev_info->errors_tx                = ap_metrics->sta_traffic_stats[count].tx_packtes_errs;
-                    em_sta_dev_info->errors_rx                = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
-                    em_sta_dev_info->retrans_count            = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
+                    if (ap_metrics->is_sta_traffic_stats_enabled == true) {
+                        //Traffic stats
+                        em_sta_dev_info->pkts_tx                  = ap_metrics->sta_traffic_stats[count].packets_sent;
+                        em_sta_dev_info->pkts_rx                  = ap_metrics->sta_traffic_stats[count].packets_rcvd;
+                        em_sta_dev_info->bytes_tx                 = ap_metrics->sta_traffic_stats[count].bytes_sent;
+                        em_sta_dev_info->bytes_rx                 = ap_metrics->sta_traffic_stats[count].bytes_rcvd;
+                        em_sta_dev_info->errors_tx                = ap_metrics->sta_traffic_stats[count].tx_packtes_errs;
+                        em_sta_dev_info->errors_rx                = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
+                        em_sta_dev_info->retrans_count            = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
+                    }
                 }
             }
         }
@@ -2663,6 +2667,22 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
     }
 
     policy_cfg = &decoded_params->em_config;
+
+    //link stats alarm policy
+    strncpy(policy_cfg->alarm_report_policy.collection_start_time,
+        em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.collection_start_time,
+        strlen(em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.collection_start_time) + 1);
+    policy_cfg->alarm_report_policy.reporting_interval =
+        em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.reporting_interval;
+    policy_cfg->alarm_report_policy.link_quality_threshold =
+        em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.link_quality_threshold;
+
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.collection_start_time is %s\n", __func__,
+            __LINE__, em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.collection_start_time);
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.reporting_interval is %d\n", __func__,
+            __LINE__, em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.reporting_interval);
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.link_quality_threshold is %0.2f\n", __func__,
+            __LINE__, em_policy_cfg->vendor_policy.link_stats_alarm_policy_cfg.link_quality_threshold);
 
     // ap metric policy
     policy_cfg->ap_metric_policy.interval = em_policy_cfg->metrics_policy.interval;

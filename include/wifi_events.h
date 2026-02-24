@@ -63,6 +63,7 @@ typedef enum {
     wifi_event_exec_timeout,
     wifi_event_exec_register_station,
     wifi_event_exec_unregister_station,
+    wifi_event_exec_link_param_reinit,
     wifi_event_exec_max,
 
     // WebConfig event sub types

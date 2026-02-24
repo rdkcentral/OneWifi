@@ -421,7 +421,7 @@ bool drop_root()
   bool retval = false;
   syscfg_init();
   syscfg_get( NULL, "NonRootSupport", buf, sizeof(buf));
-  if(buf != NULL) {
+  if (buf[0] != '\0') {
      if(strncmp(buf, "true", strlen("true")) == 0) {
         if(init_capability() != NULL) {
            if(drop_root_caps(&appcaps) != -1) {
@@ -521,7 +521,15 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
             /* Coverity Fix */
             if ((idx+1) < argc)
             {
-                AnscCopyString(g_Subsystem, argv[idx+1]);
+                if (strnlen(argv[idx+1], sizeof(g_Subsystem)) < sizeof(g_Subsystem))
+                {
+                    AnscCopyString(g_Subsystem, argv[idx+1]);
+                }
+                else
+                {
+                    wifi_util_dbg_print(WIFI_MGR,"%s:%d: Subsystem string too long\n", __func__, __LINE__);
+                    return -1;
+                }
                 CcspTraceWarning(("\nSubsystem is %s\n", g_Subsystem));
                 wifi_util_dbg_print(WIFI_MGR,"%s:%d: Subsystem is %s\n", __func__, __LINE__, g_Subsystem);
             }

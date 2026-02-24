@@ -766,10 +766,14 @@ int readRemoteIP(char *sIP, int size,char *sName)
 
                 // grab URL from string
                 urlPtr = strstr(buf, "=");
+                if (urlPtr == NULL) {
+                    fclose(fp1);
+                    return -1;
+                }
                 urlPtr++;
                 strncpy(sIP, urlPtr, size);
-              ret=0;
-              break;
+                ret=0;
+                break;
             }
         }
 
@@ -1038,7 +1042,7 @@ ANSC_STATUS wifiRadioChannelIsValid(UINT radioIndex, UINT inputChannel)
     UINT bandArrIndex = 0;
     BOOL isBandFound = FALSE;
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
-    wifi_radio_operationParam_t l_pcfg;
+    wifi_radio_operationParam_t *l_pcfg = NULL;
 
     //Get the radio capability for further comparision
     wifiRadioCap = getRadioCapability(radioIndex);
@@ -1055,8 +1059,14 @@ ANSC_STATUS wifiRadioChannelIsValid(UINT radioIndex, UINT inputChannel)
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, radioIndex));
         return ANSC_STATUS_FAILURE;
     }
-    memcpy(&l_pcfg, wifiRadioOperParam, sizeof(l_pcfg));
-    wifiRadioOperParam = &l_pcfg;
+
+    l_pcfg = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (l_pcfg == NULL) {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s:%d: Failed to allocate memory\n", __FUNCTION__, radioIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+    memcpy(l_pcfg, wifiRadioOperParam, sizeof(wifi_radio_operationParam_t));
+    wifiRadioOperParam = l_pcfg;
 
     //Compare the Band from capability and operation
     for (bandArrIndex = 0; bandArrIndex < wifiRadioCap->numSupportedFreqBand; bandArrIndex++)
@@ -1072,8 +1082,13 @@ ANSC_STATUS wifiRadioChannelIsValid(UINT radioIndex, UINT inputChannel)
     if (isBandFound == FALSE)
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d Band=%d is  not found in capability\n", __FUNCTION__, radioIndex, wifiRadioOperParam->band));
+        free(l_pcfg);
+        l_pcfg = NULL;
         return ANSC_STATUS_FAILURE;
     }
+
+    free(l_pcfg);
+    l_pcfg = NULL;
 
     arrayLen = wifiRadioCap->channel_list[bandArrIndex].num_channels;
     for (seqCounter = 0; seqCounter < arrayLen; seqCounter++)

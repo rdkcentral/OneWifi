@@ -3975,16 +3975,16 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: -90 to -50\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val > -50 || val < -95) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->rssi_up_threshold, param->valuestring);
+        snprintf((char *)preassoc_info->rssi_up_threshold, sizeof(preassoc_info->rssi_up_threshold), "%s", param->valuestring);
     }
 
     // SnrThreshold
@@ -3997,16 +3997,16 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->snr_threshold, param->valuestring);
+        snprintf((char *)preassoc_info->snr_threshold, sizeof(preassoc_info->snr_threshold), "%s", param->valuestring);
     }
 
      // CuThreshold
@@ -4019,16 +4019,16 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 0 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->cu_threshold, param->valuestring);
+        snprintf((char *)preassoc_info->cu_threshold, sizeof(preassoc_info->cu_threshold), "%s", param->valuestring);
     }
 
     // basic_data_transmit_rate
@@ -4041,11 +4041,11 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->basic_data_transmit_rates, param->valuestring);
+        snprintf((char *)preassoc_info->basic_data_transmit_rates, sizeof(preassoc_info->basic_data_transmit_rates), "%s", param->valuestring);
     }
 
      // operational_data_transmit_rate
@@ -4054,7 +4054,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
     if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
         strcpy((char *)preassoc_info->operational_data_transmit_rates, "disabled");
     } else {
-        strcpy((char *)preassoc_info->operational_data_transmit_rates, param->valuestring);
+        snprintf((char *)preassoc_info->operational_data_transmit_rates, sizeof(preassoc_info->operational_data_transmit_rates), "%s", param->valuestring);
     }
 
      // supported_data_transmit_rate
@@ -4063,7 +4063,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
     if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
         strcpy((char *)preassoc_info->supported_data_transmit_rates, "disabled");
     } else {
-        strcpy((char *)preassoc_info->supported_data_transmit_rates, param->valuestring);
+        snprintf((char *)preassoc_info->supported_data_transmit_rates, sizeof(preassoc_info->supported_data_transmit_rates), "%s", param->valuestring);
     }
 
      // minimum_advertised_mcs
@@ -4083,7 +4083,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
           wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect value, value should be withing 0 to 7\n", __FUNCTION__,__LINE__);
           return webconfig_error_decode;
         }
-        strcpy((char *)preassoc_info->minimum_advertised_mcs, param->valuestring);
+        snprintf((char *)preassoc_info->minimum_advertised_mcs, sizeof(preassoc_info->minimum_advertised_mcs), "%s", param->valuestring);
     }
 
      //6GOpInfoMinRate
@@ -4093,7 +4093,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
         if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
             strcpy((char *)preassoc_info->sixGOpInfoMinRate, "disabled");
         } else {
-            strcpy((char *)preassoc_info->sixGOpInfoMinRate, param->valuestring);
+            snprintf((char *)preassoc_info->sixGOpInfoMinRate, sizeof(preassoc_info->sixGOpInfoMinRate), "%s", param->valuestring);
         }
    }
    else {
@@ -4179,16 +4179,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format.\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val > -50 || val < -95) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->rssi_up_threshold, param->valuestring);
+        snprintf((char *)postassoc_info->rssi_up_threshold, sizeof(postassoc_info->rssi_up_threshold), "%s", param->valuestring);
     }
 
     // SamplingInterval
@@ -4201,16 +4201,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 10) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d  Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->sampling_interval, param->valuestring);
+        snprintf((char *)postassoc_info->sampling_interval, sizeof(postassoc_info->sampling_interval), "%s", param->valuestring);
     }
 
     // SnrThreshold
@@ -4223,16 +4223,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->snr_threshold, param->valuestring);
+        snprintf((char *)postassoc_info->snr_threshold, sizeof(postassoc_info->snr_threshold), "%s", param->valuestring);
     }
 
     // SamplingCount
@@ -4245,16 +4245,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 1 || val > 10) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->sampling_count, param->valuestring);
+        snprintf((char *)postassoc_info->sampling_count, sizeof(postassoc_info->sampling_count), "%s", param->valuestring);
     }
 
      // CuThreshold
@@ -4267,16 +4267,16 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
 
         /*String should be in format of range between two integers*/
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
         if (val < 10 || val > 100) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)postassoc_info->cu_threshold, param->valuestring);
+        snprintf((char *)postassoc_info->cu_threshold, sizeof(postassoc_info->cu_threshold), "%s", param->valuestring);
     }
 
     return webconfig_error_none;
@@ -5883,6 +5883,31 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         return webconfig_error_decode;
     }
 
+    // Algorithm Run Policy
+    const cJSON *algo_run_policy = cJSON_GetObjectItem(policy_obj, "Algorithm Run Policy");
+    if (algo_run_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Algorithm Run Policy is NULL\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    decode_param_allow_optional_string(algo_run_policy, "Collection Start Time", param);
+    strncpy(em_config->alarm_report_policy.collection_start_time, param->valuestring,
+        sizeof(em_config->alarm_report_policy.collection_start_time));
+
+    decode_param_integer(algo_run_policy, "Reporting Interval", param);
+    em_config->alarm_report_policy.reporting_interval = param->valuedouble;
+
+    decode_param_integer(algo_run_policy, "Link Quality Threshold", param);
+    em_config->alarm_report_policy.link_quality_threshold = param->valuedouble;
+
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: alarm policy cfg, collection start time is %s\n", __func__,
+            __LINE__, em_config->alarm_report_policy.collection_start_time);
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: alarm policy cfg, reporting interval is %d\n", __func__,
+            __LINE__, em_config->alarm_report_policy.reporting_interval);
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: alarm policy cfg, link quality threshold is %0.2f\n", __func__,
+            __LINE__, em_config->alarm_report_policy.link_quality_threshold);
+
     // AP Metrics Reporting Policy
     const cJSON *ap_metrics_policy = cJSON_GetObjectItem(policy_obj, "AP Metrics Reporting Policy");
     if (ap_metrics_policy == NULL) {
@@ -6145,7 +6170,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
 }
 
 webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_obj,
-    em_ap_metrics_report_t *em_ap_report)
+    em_per_radio_report_t *radio_report)
 {
     cJSON *vap_obj, *param_arr, *param_obj, *value_object, *assoc_sta_arr, *link_metrics_obj,
         *bssid_arr, *bssid_obj;
@@ -6155,21 +6180,17 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
     assoc_sta_ext_link_metrics_data_t *sta_ext_link_metrics_data = NULL;
     int vapindex = -1;
 
-    param_obj = cJSON_GetObjectItem(em_ap_report_obj, "EMAPMetricsReport");
-    if (param_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid or missing EMAPMetricsReport\n",
-            __func__, __LINE__);
-        return webconfig_error_decode;
-    }
+    decode_param_integer(em_ap_report_obj, "Radio Index", value_object);
+    radio_report->radio_index = value_object->valueint;
 
-    decode_param_integer(param_obj, "Radio Index", value_object);
-    em_ap_report->radio_index = value_object->valueint;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio Index: %d\n", __func__, __LINE__,
+        radio_report->radio_index);
 
     // Decode Vap Info
-    param_arr = cJSON_GetObjectItem(param_obj, "Vap Info");
+    param_arr = cJSON_GetObjectItem(em_ap_report_obj, "Vap Info");
     if (param_arr == NULL || !cJSON_IsArray(param_arr)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Missing Vap Info for Radio Index %d\n",
-            __func__, __LINE__, em_ap_report->radio_index);
+            __func__, __LINE__, radio_report->radio_index);
     }
 
     for (j = 0; j < cJSON_GetArraySize(param_arr); j++) {
@@ -6186,38 +6207,38 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
         if (param_obj != NULL && cJSON_IsObject(param_obj)) {
             decode_param_allow_optional_string(param_obj, "BSSID", value_object);
             str_to_mac_bytes(value_object->valuestring,
-                em_ap_report->vap_reports[j].vap_metrics.bssid);
+                radio_report->vap_reports[j].vap_metrics.bssid);
 
             decode_param_integer(param_obj, "Channel Util", value_object);
-            em_ap_report->vap_reports[j].vap_metrics.channel_util = value_object->valueint;
+            radio_report->vap_reports[j].vap_metrics.channel_util = value_object->valueint;
 
             decode_param_integer(param_obj, "Number of Associated STAs", value_object);
-            em_ap_report->vap_reports[j].sta_cnt =
-                em_ap_report->vap_reports[j].vap_metrics.num_of_assoc_stas = value_object->valueint;
+            radio_report->vap_reports[j].sta_cnt =
+                radio_report->vap_reports[j].vap_metrics.num_of_assoc_stas = value_object->valueint;
         }
 
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:Number of Assoc STAs: %d for vap index:%d of rad index:%d\n", __func__,
-            __LINE__, em_ap_report->vap_reports[j].sta_cnt, vapindex, em_ap_report->radio_index);
+            __LINE__, radio_report->vap_reports[j].sta_cnt, vapindex, radio_report->radio_index);
 
         // Decode AP Extended Metrics
         param_obj = cJSON_GetObjectItem(vap_obj, "AP Extended Metrics");
         if (param_obj != NULL && cJSON_IsObject(param_obj)) {
             decode_param_integer(param_obj, "BSS.UnicastBytesSent", value_object);
-            em_ap_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
+            radio_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
 
             decode_param_integer(param_obj, "BSS.UnicastBytesReceived", value_object);
-            em_ap_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
+            radio_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
         }
 
-        em_ap_report->vap_reports[j].sta_traffic_stats = NULL;
+        radio_report->vap_reports[j].sta_traffic_stats = NULL;
         // Traffic stats
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Traffic Stats");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
-            em_ap_report->vap_reports[j].is_sta_traffic_stats_enabled = true;
-            em_ap_report->vap_reports[j].sta_traffic_stats = (assoc_sta_traffic_stats_t *)malloc(
-                em_ap_report->vap_reports[j].sta_cnt * sizeof(assoc_sta_traffic_stats_t));
+            radio_report->vap_reports[j].is_sta_traffic_stats_enabled = true;
+            radio_report->vap_reports[j].sta_traffic_stats = (assoc_sta_traffic_stats_t *)malloc(
+                radio_report->vap_reports[j].sta_cnt * sizeof(assoc_sta_traffic_stats_t));
 
-            for (sta_cnt = 0; sta_cnt < em_ap_report->vap_reports[j].sta_cnt; sta_cnt++) {
+            for (sta_cnt = 0; sta_cnt < radio_report->vap_reports[j].sta_cnt; sta_cnt++) {
                 param_obj = cJSON_GetArrayItem(assoc_sta_arr, sta_cnt);
                 if (param_obj == NULL) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Null array item\n", __func__,
@@ -6225,7 +6246,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     return webconfig_error_decode;
                 }
                 assoc_sta_traffic_stats_t *traffic_stats =
-                    &em_ap_report->vap_reports[j].sta_traffic_stats[sta_cnt];
+                    &radio_report->vap_reports[j].sta_traffic_stats[sta_cnt];
 
                 decode_param_allow_optional_string(param_obj, "STA MacAddress", value_object);
                 str_to_mac_bytes(value_object->valuestring, traffic_stats->sta_mac);
@@ -6253,12 +6274,12 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             }
         }
 
-        em_ap_report->vap_reports[j].sta_link_metrics = NULL;
+        radio_report->vap_reports[j].sta_link_metrics = NULL;
         // Decode AP Extended Metrics
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Link Metrics Report");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
-            em_ap_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)malloc(
-                em_ap_report->vap_reports[j].sta_cnt * sizeof(per_sta_metrics_t));
+            radio_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)malloc(
+                radio_report->vap_reports[j].sta_cnt * sizeof(per_sta_metrics_t));
             for (sta_cnt = 0; sta_cnt < cJSON_GetArraySize(assoc_sta_arr); sta_cnt++) {
                 link_metrics_obj = cJSON_GetArrayItem(assoc_sta_arr, sta_cnt);
                 if (link_metrics_obj == NULL) {
@@ -6266,20 +6287,20 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                         __LINE__);
                     return webconfig_error_decode;
                 }
-                em_ap_report->vap_reports[j].is_sta_link_metrics_enabled = true;
+                radio_report->vap_reports[j].is_sta_link_metrics_enabled = true;
 
-                sta_link_metrics_data = em_ap_report->vap_reports[j]
+                sta_link_metrics_data = radio_report->vap_reports[j]
                                             .sta_link_metrics[sta_cnt]
                                             .assoc_sta_link_metrics.assoc_sta_link_metrics_data;
 
                 decode_param_allow_optional_string(link_metrics_obj, "STA MAC", value_object);
                 str_to_mac_bytes(value_object->valuestring,
-                    em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
+                    radio_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
 
                 decode_param_allow_optional_string(link_metrics_obj, "Client Type", value_object);
-                strncpy(em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
+                strncpy(radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
                     value_object->valuestring, strlen(value_object->valuestring));
-                em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
+                radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
 
                 param_obj = cJSON_GetObjectItem(link_metrics_obj, "Associated STA Link Metrics");
                 if (param_obj == NULL) {
@@ -6288,13 +6309,13 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     return webconfig_error_decode;
                 }
                 decode_param_integer(param_obj, "Number of BSSIDs", value_object);
-                em_ap_report->vap_reports[j]
+                radio_report->vap_reports[j]
                     .sta_link_metrics[sta_cnt]
                     .assoc_sta_link_metrics.num_bssid = value_object->valuedouble;
 
                 bssid_arr = cJSON_GetObjectItem(param_obj, "Per BSSID Metrics");
                 if (bssid_arr != NULL && cJSON_IsArray(bssid_arr)) {
-                    for (int bssid_cnt = 0; bssid_cnt < em_ap_report->vap_reports[j]
+                    for (int bssid_cnt = 0; bssid_cnt < radio_report->vap_reports[j]
                                                             .sta_link_metrics[sta_cnt]
                                                             .assoc_sta_link_metrics.num_bssid;
                          bssid_cnt++) {
@@ -6333,18 +6354,18 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     return webconfig_error_decode;
                 }
                 decode_param_integer(param_obj, "Number of BSSIDs", value_object);
-                em_ap_report->vap_reports[j]
+                radio_report->vap_reports[j]
                     .sta_link_metrics[sta_cnt]
                     .assoc_sta_ext_link_metrics.num_bssid = value_object->valuedouble;
 
                 bssid_arr = cJSON_GetObjectItem(param_obj, "Per BSSID Metrics");
                 if (bssid_arr != NULL && cJSON_IsArray(bssid_arr)) {
                     sta_ext_link_metrics_data =
-                        em_ap_report->vap_reports[j]
+                        radio_report->vap_reports[j]
                             .sta_link_metrics[sta_cnt]
                             .assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data;
 
-                    for (int bssid_cnt = 0; bssid_cnt < em_ap_report->vap_reports[j]
+                    for (int bssid_cnt = 0; bssid_cnt < radio_report->vap_reports[j]
                                                             .sta_link_metrics[sta_cnt]
                                                             .assoc_sta_ext_link_metrics.num_bssid;
                          bssid_cnt++) {
@@ -6378,6 +6399,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             }
         }
     }
+    return webconfig_error_none;
 }
 
 #endif
