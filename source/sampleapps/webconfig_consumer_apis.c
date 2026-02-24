@@ -1647,7 +1647,7 @@ void consumer_app_all_test_sequence(webconfig_consumer_t *consumer)
             consumer->xfinity_test_pending_count++;
             if (consumer->xfinity_test_pending_count > MAX_WAIT) {
                 printf("%s:%d: vap xfinity test failed, timed out, proceeding with home test\n", __func__, __LINE__);
-                consumer->mesh_test_pending_count = 0;
+                consumer->xfinity_test_pending_count = 0;
                 consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
             }
             break;
