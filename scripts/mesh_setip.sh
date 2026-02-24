@@ -312,9 +312,9 @@ if [ "$MODEL_NUM" == "$X50" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" 
             if [ "$ifbr403" == "" ]; then
                 sysevent set meshbhaul-setup 10
             else
-                 if [ -z "$ipbr403" ]; then
-                     sysevent set meshbhaul-setup 10
-                 fi
+                if [ -z "$ipbr403" ]; then
+                    sysevent set meshbhaul-setup 10
+                fi
             fi
             if [ "$secBhaulEnable" == "1" ]; then
                 if [ "$ifbr412" == "" ]; then
