@@ -895,6 +895,10 @@ int sm_init(wifi_app_t *app, unsigned int create_flag)
         return RETURN_ERR;
     }
     rc = sm_report_init(app);
+    if (rc != RETURN_OK) {
+        free(client_assoc_stats);
+        client_assoc_stats = NULL;
+    }
 
     wifi_util_info_print(WIFI_SM, "%s:%d: Init SM app %s\n", __func__, __LINE__,
         rc ? "failure" : "success");
