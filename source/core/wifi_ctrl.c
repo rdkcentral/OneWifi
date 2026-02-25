@@ -2884,14 +2884,9 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     for (i = 0; i < map->num_vaps; i++) {
         if (map->vap_array[i].vap_index == index) {
             found = true;
-        if (map->vap_array[i].u.sta_info.ignite_enabled == true) {
-            snprintf(ssid, sizeof(ssid_t), "%s",
-                    map->vap_array[i].u.sta_info.repurposed_ssid);
-        } else {
-            snprintf(ssid, sizeof(ssid_t), "%s",
-                    map->vap_array[i].u.sta_info.ssid);
-        }
-        break;
+	    wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(map->vap_array[i]));
+	    strcpy(ssid, get_vap_ssid(map->vap_array[i]));
+            break;
         }
     }
 
