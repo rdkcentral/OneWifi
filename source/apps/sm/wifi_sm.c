@@ -892,12 +892,18 @@ int sm_init(wifi_app_t *app, unsigned int create_flag)
     client_assoc_stats = calloc(radios_count, sizeof(client_assoc_stats_t));
     if (client_assoc_stats == NULL) {
         wifi_util_error_print(WIFI_SM, "%s:%d: calloc failed for client_assoc_stats\n", __func__, __LINE__);
+        hash_map_destroy(app->data.u.sm_data.report_tasks_map);
+        app->data.u.sm_data.report_tasks_map = NULL;
+        free_sm_stats_config_map(app);
         return RETURN_ERR;
     }
     rc = sm_report_init(app);
     if (rc != RETURN_OK) {
         free(client_assoc_stats);
         client_assoc_stats = NULL;
+        hash_map_destroy(app->data.u.sm_data.report_tasks_map);
+        app->data.u.sm_data.report_tasks_map = NULL;
+        free_sm_stats_config_map(app);
     }
 
     wifi_util_info_print(WIFI_SM, "%s:%d: Init SM app %s\n", __func__, __LINE__,
