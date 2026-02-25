@@ -5878,12 +5878,12 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int radio_index, wi
         strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.bss_info.bssMaxSta = 20;
     } else if (radio_index == 3) {
-    map->num_vaps = 1;
+	map->num_vaps = 1;
         params->vap_index = 3;
         params->vap_mode = wifi_vap_mode_sta;
         strcpy(params->vap_name, "backhaul_ssid_2g");
         strcpy(params->bridge_name, "br3");
-    strcpy(params->u.sta_info.ssid, "wifi_test_private_2");
+	strcpy(params->u.sta_info.ssid, "wifi_test_private_2");
         params->u.sta_info.scan_params.period = 10;
         params->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.sta_info.security.encr = wifi_encryption_aes_tkip;
