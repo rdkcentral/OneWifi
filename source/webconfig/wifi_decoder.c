@@ -218,7 +218,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     cJSON *statsList = cJSON_AddArrayToObject(statsMainEntry, "ANQPResponse");
     if(!anqp || !interworking_info){
         wifi_util_dbg_print(WIFI_WEBCONFIG,"Anqp entry is NULL\n");
-    	cJSON_Delete(passPointStats);
+	cJSON_Delete(passPointStats);
         return webconfig_error_decode;
     }
 
