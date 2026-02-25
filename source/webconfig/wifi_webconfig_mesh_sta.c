@@ -460,3 +460,4 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
 
     return webconfig_error_none;
 }
+
