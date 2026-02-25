@@ -63,16 +63,12 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
                              __FUNCTION__, __LINE__, vap_info->vap_index);
         return -1;
     }
-
-    if (band == WIFI_FREQUENCY_2_4_BAND) {
-        if (convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &rIdx) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to convert freq to band\n", __FUNCTION__, __LINE__);
-            return -1;
-        }
-        hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE));
-    } else {
-        hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(vap_info->radio_index, VAP_PREFIX_HOTSPOT_SECURE));
+    
+    if (convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &rIdx) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to convert freq to band\n", __FUNCTION__, __LINE__);
+        return -1;
     }
+    hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE));
 
     if (hotspot_vap_info == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get hotspot_vap_info for vap_index=%d\n", 

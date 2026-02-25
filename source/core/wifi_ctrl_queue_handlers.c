@@ -817,7 +817,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info = { 0 };
+    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_6g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info = { 0 };
     wifi_platform_property_t *wifi_prop = (&(get_wifimgr_obj())->hal_cap.wifi_prop);
     uint8_t num_radios = getNumberRadios();
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
@@ -837,6 +837,9 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(getApFromRadioIndex(radio_indx, VAP_PREFIX_LNF_PSK));
         if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
             lnf_2g_vap = lnf_vap_info;
+        }
+        if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_6_G) != NULL) {
+            lnf_6g_vap = lnf_vap_info;
         }
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
             if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
@@ -911,7 +914,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     tmp_vap_map = NULL;
                     return;
                 }
-                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && should_process_hotspot_config_change(lnf_vap_info, &tmp_vap_map->vap_array[0])) {
+                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && !strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_6_G) && should_process_hotspot_config_change(lnf_vap_info, &tmp_vap_map->vap_array[0])) {
                     if (update_vap_params_to_hal_and_db(lnf_vap_info, tmp_vap_map->vap_array[0].u.bss_info.enabled) == -1) {
                         wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
                         free(tmp_vap_map);
@@ -937,13 +940,18 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     {
         wifi_util_error_print(WIFI_CTRL,"%s:%d LnF 2.4GHz VAP is NULL\n", __func__,__LINE__);
         return;
-    }
-    if (should_process_hotspot_config_change(lnf_2g_vap, &hotspot_5g_vap_info)) {
-        if (update_vap_params_to_hal_and_db(lnf_2g_vap, hotspot_5g_vap_info.u.bss_info.enabled) == -1)
-        {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
+    } else if (should_process_hotspot_config_change(lnf_2g_vap, &hotspot_5g_vap_info)) {
+        if (update_vap_params_to_hal_and_db(lnf_2g_vap, lnf_2g_vap->u.bss_info.enabled) == -1) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF 2G vaps\n", __func__,__LINE__);
         }
-        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name ,wifi_hotspot_action_to_string(param));
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s RADIUS config updated from Hotspot 5G\n",__func__,__LINE__,lnf_2g_vap->vap_name);
+    }
+    if (lnf_6g_vap && should_process_hotspot_config_change(lnf_6g_vap, &hotspot_5g_vap_info)) {
+        if (update_vap_params_to_hal_and_db(lnf_6g_vap, hotspot_5g_vap_info.u.bss_info.enabled) == -1)
+        {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF 6g vaps\n", __func__,__LINE__);
+        }
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s RADIUS config updated from Hotspot 5G\n",__func__,__LINE__,lnf_6g_vap->vap_name);
     }
 }
 
