@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define WEB_SERVER_PATH "/usr/www2/data"
+#define WEB_SERVER_PATH "/www/data"
 
 typedef struct web_t web_t;
 typedef struct csimgr_t csimgr_t;
