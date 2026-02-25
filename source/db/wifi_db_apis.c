@@ -88,6 +88,7 @@
 #define DEFAULT_WHIX_LOGINTERVAL 3600
 #define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100042
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100043
+#define ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG 100044
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -655,7 +656,6 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
         }
 
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        l_security_cfg->mode = new_rec->security_mode;
         l_security_cfg->mode = new_rec->security_mode_new;
         l_security_cfg->encr = new_rec->encryption_method;
 
@@ -1712,7 +1712,7 @@ int wifidb_update_interworking_config(char *vap_name, wifi_InterworkingElement_t
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Found %d records with key: %s in Wifi VAP table\n", 
                         __func__, __LINE__, count, vap_name);
-        strcpy(cfg.vap_name, vap_name);
+        snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
         cfg.enable = interworking->interworkingEnabled;
         cfg.access_network_type = interworking->accessNetworkType;
         cfg.internet = interworking->internetAvailable;
@@ -1843,7 +1843,6 @@ void wifidb_print_interworking_config ()
             }
 
             free(pcfg);
-            pcfg = NULL;
         }
     }
 }
@@ -2314,7 +2313,9 @@ int wifidb_get_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table radius server ip =%s  port =%d Secondary radius server ip=%s port=%d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d\n",__func__, __LINE__,config->vap_array[vap_index].u.sta_info.security.u.radius.ip,config->vap_array[vap_index].u.sta_info.security.u.radius.port,config->vap_array[vap_index].u.sta_info.security.u.radius.s_ip,config->vap_array[vap_index].u.sta_info.security.u.radius.s_port,config->vap_array[vap_index].u.sta_info.security.u.radius.max_auth_attempts,config->vap_array[vap_index].u.sta_info.security.u.radius.blacklist_table_timeout,config->vap_array[vap_index].u.sta_info.security.u.radius.identity_req_retry_interval,config->vap_array[vap_index].u.sta_info.security.u.radius.server_retries,address,config->vap_array[vap_index].u.sta_info.security.u.radius.dasport);
                 }
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table vap_name=%s Sec_mode=%d enc_mode=%d mfg_config=%d rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.sta_info.security.mode,config->vap_array[vap_index].u.sta_info.security.encr,config->vap_array[vap_index].u.sta_info.security.mfp,config->vap_array[vap_index].u.sta_info.security.rekey_interval,config->vap_array[vap_index].u.sta_info.security.strict_rekey,config->vap_array[vap_index].u.sta_info.security.eapol_key_timeout,config->vap_array[vap_index].u.sta_info.security.eapol_key_retries,config->vap_array[vap_index].u.sta_info.security.eap_identity_req_timeout,config->vap_array[vap_index].u.sta_info.security.eap_identity_req_retries,config->vap_array[vap_index].u.sta_info.security.eap_req_timeout,config->vap_array[vap_index].u.sta_info.security.eap_req_retries,config->vap_array[vap_index].u.sta_info.security.disable_pmksa_caching);
-            } else {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: Ignite_configs- ssid:%s id:%s key:%s eap:%d phase2:%d ip:%s s_ip:%s ignite_enable:%d enable:%d\n", __func__, __LINE__, config->vap_array[vap_index].u.sta_info.repurposed_ssid, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.identity, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.key, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.eap_type, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.phase2, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.ip, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.s_ip,
+config->vap_array[vap_index].u.sta_info.ignite_enabled, config->vap_array[vap_index].u.sta_info.enabled);           
+        } else {
                 wifidb_get_wifi_security_config(vap_name,&config->vap_array[vap_index].u.bss_info.security);
 
                 if (!security_mode_support_radius(config->vap_array[vap_index].u.bss_info.security.mode)) {
@@ -2347,12 +2348,12 @@ int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
     uint8_t vap_index = 0;
     char name[BUFFER_LENGTH_WIFIDB];
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update for radio index=%d No of Vaps=%d\n",__func__, __LINE__,radio_index,config->num_vaps);
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update for radio index=%d No of Vaps=%d\n",__func__, __LINE__,radio_index,config->num_vaps);
     for(i=0;i<config->num_vaps;i++)
     {
         wifidb_print("%s:%d Updated WIFI DB. vap Config updated successful for radio %s and vap_name %s. \n",__func__, __LINE__,name,config->vap_array[i].vap_name);
@@ -2651,15 +2652,17 @@ void wifidb_get_wifi_macfilter_config()
 
         if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
             tmp_mac = strdup(pcfg->device_mac);
+            if (tmp_mac == NULL) {
+                wifi_util_error_print(WIFI_DB,"%s:%d: Failed to dup str \n", __func__, __LINE__);
+                return;
+            }
             str_tolower(tmp_mac);
             tmp_acl_entry = hash_map_get(l_rdk_vap_array->acl_map, tmp_mac);
             if (tmp_acl_entry == NULL) {
                 tmp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
                 if (tmp_acl_entry == NULL) {
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
-                    if(tmp_mac) {
-                        free(tmp_mac);
-                    }
+                    free(tmp_mac);
                     return;
                 }
                 memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
@@ -2871,7 +2874,7 @@ int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *
         return -1;
     }
 
-    strcpy(cfg.vap_name, vap_name);
+    snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
     strcpy(cfg.rssi_up_threshold, preassoc->rssi_up_threshold);
     strcpy(cfg.snr_threshold, preassoc->snr_threshold);
     strcpy(cfg.cu_threshold, preassoc->cu_threshold);
@@ -2957,7 +2960,7 @@ int wifidb_update_postassoc_ctrl_config(char *vap_name, wifi_postassoc_control_t
         return -1;
     }
 
-    strcpy(cfg.vap_name, vap_name);
+    snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
     strcpy(cfg.rssi_up_threshold, postassoc->rssi_up_threshold);
     strcpy(cfg.sampling_interval, postassoc->sampling_interval);
     strcpy(cfg.snr_threshold, postassoc->snr_threshold);
@@ -3354,7 +3357,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->force_disable_radio_status = pcfg->force_disable_radio_status;
         config->fixed_wmm_params = pcfg->fixed_wmm_params;
         if (strlen(pcfg->wifi_region_code) != 0) {
-            strncpy(config->wifi_region_code,pcfg->wifi_region_code,sizeof(config->wifi_region_code)-1);
+            snprintf(config->wifi_region_code, sizeof(config->wifi_region_code), "%s", pcfg->wifi_region_code);
         }
         config->diagnostic_enable = pcfg->diagnostic_enable;
         config->validate_ssid = pcfg->validate_ssid;
@@ -4713,7 +4716,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     unsigned int total_radios = getNumberRadios();
 
-    if (index < 0 || index >= total_radios)
+    if (index >= total_radios)
     {
         wifi_util_error_print(WIFI_DB,"%s:%d Invalid radio index\n", __func__, __LINE__);
         return;
@@ -4909,6 +4912,20 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     &rdk_config[i]);
             }
         }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG) {
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                // apply mld_link_id from first VAP(private SSID) to all other VAPs on radio
+                if (i != 0) {
+                    wifi_util_info_print(WIFI_DB,
+                        "%s:%d upgrade multi mld unit vap's MLO configuration, db version %d vap name: %s\n",
+                        __func__, __LINE__, g_wifidb->db_version, config->vap_array[i].vap_name);
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id =
+                        config->vap_array[0].u.bss_info.mld_info.common_info.mld_link_id;
+                    wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
+                        &config->vap_array[i], &rdk_config[i]);
+                }
+            }
+        }
     }
 }
 
@@ -4944,12 +4961,14 @@ static void wifidb_vap_config_ext(wifi_vap_info_map_t *config, rdk_wifi_vap_info
   Description : vap config parameters corrections
  *************************************************************************************
 ********************************************** ****************************************/
-void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
+void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_map_param)
 {
     unsigned int index = 0;
     wifi_vap_info_t *vap_config = NULL;
     rdk_wifi_vap_info_t *rdk_vap_config = NULL;
-
+    int band = 0;
+    char password[128] = { 0 };
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
@@ -5009,7 +5028,42 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 __LINE__, vap_config->vap_name);
             continue;
         }
+
+    if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity Mobile") == 0)) {
+        wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
+        convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, r_index, &band);
+        wifi_util_info_print(WIFI_DB, "index : %d band : %d\n", r_index, band);
+        strncpy(vap_config->u.sta_info.ssid, "we.connect.yellowstone", sizeof(vap_config->u.sta_info.ssid)-1);
+        vap_config->u.sta_info.ignite_enabled = false;
+        vap_config->u.sta_info.enabled = false;
+        vap_config->u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
+        vap_config->u.sta_info.security.u.radius.phase2 = 0;
+        memset(vap_config->u.sta_info.security.u.radius.ip, '\0', sizeof(vap_config->u.sta_info.security.u.radius.ip));
+        memset(vap_config->u.sta_info.security.u.radius.s_ip, '\0', sizeof(vap_config->u.sta_info.security.u.radius.s_ip));
+        memset(vap_config->bridge_name, '\0', WIFI_BRIDGE_NAME_LEN);
+        if (band == WIFI_FREQUENCY_6_BAND) {
+            vap_config->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+        } else {
+            vap_config->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+        }
+
+        memset(password, 0, sizeof(password));       
+        if (wifi_hal_get_default_keypassphrase(password, vap_config->vap_index) == 0) { 
+            strncpy(vap_config->u.sta_info.security.u.key.key, password, sizeof(vap_config->u.sta_info.security.u.key.key));
+        } else {
+            strncpy(vap_config->u.sta_info.security.u.key.key, "12345678", sizeof(vap_config->u.sta_info.security.u.key.key));
+        }
+
+        rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+        if (rdk_vap_config == NULL) {
+            wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
+            continue;
+        }
+        update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+        wifidb_update_wifi_security_config(vap_config->vap_name, &vap_config->u.sta_info.security);
+        wifi_util_error_print(WIFI_DB, "%s:%d: wifi-db update done\n");
     }
+   }
 }
 
 /************************************************************************************
@@ -5023,10 +5077,10 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
 void *evloop_func(void *arg)
 {
         wifi_db_t *g_wifidb;
-	prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
         g_wifidb = (wifi_db_t*) get_wifidb_obj();
-	ev_run(g_wifidb->wifidb_ev_loop, 0);
-	return NULL;
+    ev_run(g_wifidb->wifidb_ev_loop, 0);
+    return NULL;
 }
 
 /************************************************************************************
@@ -5237,12 +5291,12 @@ void rdk_wifi_dbg_print(int level, char *format, ...)
 
 int wifidb_get_factory_reset_data(bool *data)
 {
-	return 0;
+    return 0;
 }
 
 int wifidb_set_factory_reset_data(bool data)
 {
-	return 0;
+    return 0;
 }
 
 int wifidb_del_interworking_entry()
@@ -5731,7 +5785,7 @@ int update_wifidb_vap_bss_param(uint8_t vap_index, wifi_front_haul_bss_t *pcfg)
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "wifidb vap info update failure %s vap_index:%d\n", __FUNCTION__, vap_index);
-	return RETURN_ERR;
+    return RETURN_ERR;
     }
     return RETURN_OK;
 }
@@ -6260,8 +6314,8 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     cfg_sec.security_mode = sec->mode;
     if( sec->mode == WPA3_COMPATIBILITY ) {
-	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
-	wifi_util_info_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
+    cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
+    wifi_util_info_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
     }
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
@@ -6310,8 +6364,8 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         cfg_sec.blacklist_table_timeout = (int)sec->u.radius.blacklist_table_timeout;
         cfg_sec.identity_req_retry_interval = (int)sec->u.radius.identity_req_retry_interval;
         cfg_sec.server_retries = (int)sec->u.radius.server_retries;
-	getIpStringFromAdrress(address,&sec->u.radius.dasip);
-	strncpy(cfg_sec.das_ip,address,sizeof(cfg_sec.das_ip)-1);
+    getIpStringFromAdrress(address,&sec->u.radius.dasip);
+    strncpy(cfg_sec.das_ip,address,sizeof(cfg_sec.das_ip)-1);
         cfg_sec.das_port = sec->u.radius.dasport;
         strncpy(cfg_sec.das_key,sec->u.radius.daskey,sizeof(cfg_sec.das_key)-1);
     }
@@ -6366,6 +6420,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
     char *vap_name = NULL;
     json_t *where;
     int ret = 0;
+    int vap_index = -1;
     rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
     wifi_mac_entry_param_t l_mac_entry;
     memset(&l_mac_entry, 0, sizeof(l_mac_entry));
@@ -6377,7 +6432,12 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
     if (!add) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "macfilter_key", OFUNC_EQ, macfilter_key);
         ret = onewifi_ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, where);
-        l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        if (vap_index == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, vap_name);
+            return -1;
+        }
+        l_mac_entry.vap_index = (unsigned char) vap_index;
         wifidb_print("%s:%d vap_name:%s key:%s\n",__func__, __LINE__, vap_name, macfilter_key);
         memset(tmp_mac_str, 0, sizeof(tmp_mac_str));
         to_mac_str(config->mac, tmp_mac_str);
@@ -6417,11 +6477,12 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         snprintf(cfg_mac.macfilter_key, sizeof(cfg_mac.macfilter_key), "%s", macfilter_key);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: updating table wifi_macfilter_config table entry is device_mac %s, device_name %s,macfilter_key %s reason %d and expiry_time %d\n", __func__, __LINE__, cfg_mac.device_mac, cfg_mac.device_name, cfg_mac.macfilter_key,cfg_mac.reason,cfg_mac.expiry_time);
 
-        l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
-        if (l_mac_entry.vap_index == -1) {
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        if (vap_index == -1) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, vap_name);
             return -1;
         }
+        l_mac_entry.vap_index = (unsigned char) vap_index;
         l_rdk_vap_array = get_wifidb_rdk_vap_info(l_mac_entry.vap_index);
         if (l_rdk_vap_array ==  NULL) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to find vap_array for vap_index %d\n", __func__, __LINE__, l_mac_entry.vap_index);
@@ -6835,8 +6896,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->DfsEnabled = true;
 #elif defined (_GREXT02ACTS_PRODUCT_REQ_)
-	    cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
-	    cfg->DfsEnabled = true;
+        cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
+        cfg->DfsEnabled = true;
 #elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
@@ -7018,6 +7079,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     char radius_key[128] = {0};
     char ssid[128] = {0};
     int band;
+    char cm_mac_str[32] = { 0 };
     bool exists = true;
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
     
@@ -7096,14 +7158,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             case WIFI_FREQUENCY_2_4_BAND:
                 if (ctrl->network_mode == rdk_dev_mode_type_em_node)
                     cfg->u.sta_info.scan_params.channel.channel = 6;
-		else
+        else
                     cfg->u.sta_info.scan_params.channel.channel = 1;
                 break;
             case WIFI_FREQUENCY_5_BAND:
             case WIFI_FREQUENCY_5L_BAND:
-		if (ctrl->network_mode == rdk_dev_mode_type_em_node)
+        if (ctrl->network_mode == rdk_dev_mode_type_em_node)
                     cfg->u.sta_info.scan_params.channel.channel = 36;
-		else
+        else
                     cfg->u.sta_info.scan_params.channel.channel = 44;
                 break;
             case WIFI_FREQUENCY_5H_BAND:
@@ -7119,6 +7181,34 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg->u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg->u.sta_info.bssid, 0, sizeof(cfg->u.sta_info.bssid));
+        strncpy(cfg->u.sta_info.repurposed_ssid, "Xfinity Mobile", sizeof(ssid_t)-1);
+        cfg->u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
+        cfg->u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
+        strncpy(cfg->repurposed_bridge_name, "brww0", sizeof(cfg->repurposed_bridge_name)-1);
+        if (band == WIFI_FREQUENCY_6_BAND) {
+            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
+        } else {
+            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_enterprise;
+        }
+        memset(&cfg->u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.ip));
+        memset(&cfg->u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.s_ip));
+        // Convert CM MAC bytes to string "XX:XX:XX:XX:XX:XX"
+        memset(&cfg->u.sta_info.security.repurposed_radius.identity, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.identity));
+        snprintf(cm_mac_str, sizeof(cm_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+                g_wifidb->hal_cap.wifi_prop.cm_mac[0], g_wifidb->hal_cap.wifi_prop.cm_mac[1],
+                g_wifidb->hal_cap.wifi_prop.cm_mac[2], g_wifidb->hal_cap.wifi_prop.cm_mac[3],
+                g_wifidb->hal_cap.wifi_prop.cm_mac[4], g_wifidb->hal_cap.wifi_prop.cm_mac[5]);
+        wifi_util_dbg_print(WIFI_CTRL,
+                "cm-mac : %02X:%02X:%02X:%02X:%02X:%02X mac-str : %s\n",
+                g_wifidb->hal_cap.wifi_prop.cm_mac[0], g_wifidb->hal_cap.wifi_prop.cm_mac[1],
+                g_wifidb->hal_cap.wifi_prop.cm_mac[2], g_wifidb->hal_cap.wifi_prop.cm_mac[3],
+                g_wifidb->hal_cap.wifi_prop.cm_mac[4], g_wifidb->hal_cap.wifi_prop.cm_mac[5], cm_mac_str);
+        strncpy(cfg->u.sta_info.security.repurposed_radius.identity, cm_mac_str, sizeof(cfg->u.sta_info.security.repurposed_radius.identity)-1);
+
+        memset(&cfg->u.sta_info.security.repurposed_radius.key, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.key));
+        strncpy(cfg->u.sta_info.security.repurposed_radius.key, g_wifidb->hal_cap.wifi_prop.serialNo, sizeof(cfg->u.sta_info.security.repurposed_radius.key)-1);
+        wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s key: %s Identity: %s mode: %d eap-type: %d phase: %d\n", cfg->u.sta_info.repurposed_ssid, cfg->u.sta_info.security.repurposed_radius.key, cfg->u.sta_info.security.repurposed_radius.identity, cfg->u.sta_info.security.repurposed_mode, cfg->u.sta_info.security.repurposed_radius.eap_type, cfg->u.sta_info.security.repurposed_radius.phase2);
+
     } else {
         cfg->u.bss_info.wmm_enabled = true;
         cfg->u.bss_info.mbo_enabled = true;
@@ -7868,7 +7958,7 @@ void init_wifidb_data()
                 wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
             }
 
-            wifidb_vap_config_correction(l_vap_param_cfg);
+            wifidb_vap_config_correction(r_index, l_vap_param_cfg);
 
             if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
@@ -8272,7 +8362,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
 #endif // NEWPLATFORM_PORT
     str = p_ccsp_desc->psm_get_value_fn(TR181_WIFIREGION_Code, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(global_cfg->wifi_region_code, str);
+        snprintf(global_cfg->wifi_region_code, sizeof(global_cfg->wifi_region_code), "%s", str);
         wifi_util_dbg_print(WIFI_MGR,"global_cfg->wifi_region_code is %s and str is %s \n", global_cfg->wifi_region_code, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for wifi_region_code:%s \r\n", __func__, __LINE__, str);
@@ -8283,7 +8373,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     str = p_ccsp_desc->psm_get_value_fn(WpsPin, strValue, sizeof(strValue));
     if (str != NULL) {
         // global_cfg->wps_pin = atoi(str);
-        strcpy(global_cfg->wps_pin, str);
+        snprintf(global_cfg->wps_pin, sizeof(global_cfg->wps_pin), "%s", str);
         wifi_util_dbg_print(WIFI_MGR,
             "global_cfg->wps_pin is %s and str is %s and atoi(str) is %d\n", global_cfg->wps_pin,
             str, atoi(str));
@@ -8742,7 +8832,7 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
         snprintf(recName, sizeof(recName), MacFilterDevice, instance_number, index);
         str = p_ccsp_desc->psm_get_value_fn(recName, strValue, sizeof(strValue));
         if (str != NULL) {
-            strcpy(temp_psm_mac_param->device_name, str);
+            snprintf(temp_psm_mac_param->device_name, sizeof(temp_psm_mac_param->device_name), "%s", str);
             wifi_util_dbg_print(WIFI_MGR,"psm get device_name is %s\r\n", str);
         } else {
             wifi_util_dbg_print(WIFI_MGR,"[Failure] psm record_name: %s\n", recName);
@@ -8964,7 +9054,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     snprintf(recName, sizeof(recName), BeaconRateCtl, instance_number);
     str = p_ccsp_desc->psm_get_value_fn(recName, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(bss_cfg->beaconRateCtl,str);
+        snprintf(bss_cfg->beaconRateCtl, sizeof(bss_cfg->beaconRateCtl), "%s", str);
         wifi_util_dbg_print(WIFI_MGR,"bss_cfg->beaconRateCtl is %s and str is %s \r\n", bss_cfg->beaconRateCtl, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for beaconRateCtl:%s \r\n", __func__, __LINE__, str);
@@ -9151,7 +9241,7 @@ int wifi_mgr_bus_subsription(bus_handle_t *handle)
     rc = get_bus_descriptor()->bus_open_fn(handle, component_name);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_MGR, "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n",
-	 __func__, __LINE__, component_name, rc);
+     __func__, __LINE__, component_name, rc);
         return RETURN_ERR;
     }
 

@@ -1645,7 +1645,7 @@ void consumer_app_all_test_sequence(webconfig_consumer_t *consumer)
             consumer->xfinity_test_pending_count++;
             if (consumer->xfinity_test_pending_count > MAX_WAIT) {
                 printf("%s:%d: vap xfinity test failed, timed out, proceeding with home test\n", __func__, __LINE__);
-                consumer->mesh_test_pending_count = 0;
+                consumer->xfinity_test_pending_count = 0;
                 consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
             }
             break;
@@ -1822,7 +1822,7 @@ void generate_tunnel_event(bool status, rbusHandle_t handle)
 void copy_data(char *dest, char *src, unsigned char dest_len)
 {
     if (src != NULL) {
-        strcpy(dest, src);
+        snprintf(dest, dest_len, "%s", src);
     } else {
         memset(dest, 0 , dest_len);
     }

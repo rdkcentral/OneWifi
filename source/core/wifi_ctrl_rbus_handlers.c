@@ -1636,7 +1636,7 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
 #ifdef WIFI_HAL_VERSION_3_PHASE2
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
 #else
-#if defined(_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
             frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);
@@ -2638,6 +2638,7 @@ bus_error_t ap_get_handler(char *name, raw_data_t *p_data, bus_user_data_t *user
             if (p_data->raw_data.bytes == NULL) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                     __LINE__, str_len);
+                pthread_mutex_unlock(&events_bus_data->events_bus_lock);
                 return bus_error_out_of_resources;
             }
             strncpy((char *)p_data->raw_data.bytes, events_bus_data->diag_events_json_buffer[vap_array_index], str_len);
@@ -2676,6 +2677,7 @@ bus_error_t ap_get_handler(char *name, raw_data_t *p_data, bus_user_data_t *user
             if (p_data->raw_data.bytes == NULL) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                     __LINE__, str_len);
+                pthread_mutex_unlock(&events_bus_data->events_bus_lock);
                 return bus_error_out_of_resources;
             }
             strncpy((char *)p_data->raw_data.bytes, harvester_buf[vap_array_index], str_len);
@@ -3055,18 +3057,22 @@ static BOOL events_getSubscribed(char *eventName)
     int i;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
     int count = queue_count(ctrl->events_bus_data.events_bus_queue);
 
     if (count == 0) {
+        pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
         return FALSE;
     }
 
     for (i = 0; i < count; i++) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);
         if ((event != NULL) && (strncmp(event->name, eventName, MAX_EVENT_NAME_SIZE) == 0)) {
+            pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
             return event->subscribed;
         }
     }
+    pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
     return FALSE;
 }
 

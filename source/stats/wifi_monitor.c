@@ -592,6 +592,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDEnable\":\"%d\","
+                        "\"AssociationLink\":\"%d\","
                         "\"DownlinkDataRate\":\"%d\","
                         "\"UplinkDataRate\":\"%d\","
                         "\"BytesSent\":\"%lu\","
@@ -629,6 +630,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                         sta_data->dev_stats.cli_MLDAddr[4],
                         sta_data->dev_stats.cli_MLDAddr[5],
                         sta_data->dev_stats.cli_MLDEnable,
+                        sta_data->primary_link,
                         sta_data->dev_stats.cli_MaxDownlinkRate,
                         sta_data->dev_stats.cli_MaxUplinkRate,
                         sta_data->dev_stats.cli_BytesSent,
@@ -3319,6 +3321,10 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index, vap_name);
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_MON,"%s:%d Invalid radio_index:%d\n", __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
     get_radio_data(radio_index, &chan_stats);
     //Update the assoc frame of the associated_dev in assoc_data
     get_client_assoc_frame(ap_index, associated_dev, &assoc_data);

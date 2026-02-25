@@ -2191,7 +2191,7 @@ int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t *
 
     va_start(args, num_types);
 
-    memset(&vap_names[0], 0, list_size*sizeof(wifi_vap_name_t));
+    memset(vap_names, 0, list_size*sizeof(wifi_vap_name_t));
     TOTAL_INTERFACES(total_vaps, wifi_prop);
     for (int num = 0; num < num_types; num++) {
         vap_type = va_arg(args, char *);
@@ -3940,6 +3940,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         if (IS_STR_CHANGED(vap_info_old->u.sta_info.ssid, vap_info_new->u.sta_info.ssid,
                 sizeof(ssid_t)) ||
             IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
+            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) || 
             IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
                 sizeof(wifi_vap_security_t))) {
             return true;
