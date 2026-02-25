@@ -266,7 +266,7 @@ int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_s
 
                     if(vap->vap_name[0] != '\0') {
                         out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes),"\\n%d,%s,%s,%s",
-                                vap->vap_index, vap->u.sta_info.ssid, (vap->u.sta_info.enabled==TRUE)?"enb":"dis",
+                                vap->vap_index, get_vap_bridge_name(vap), ((vap->u.sta_info.enabled==TRUE) || (vap->u.sta_info.ignite_enabled==TRUE))?"enb":"dis",
                                 (vap->u.sta_info.conn_status==wifi_connection_status_connected)?"con":"discon");
                     }
                 }
