@@ -82,6 +82,7 @@ extern "C" {
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
+#define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
 
 #ifdef CONFIG_IEEE80211BE
 

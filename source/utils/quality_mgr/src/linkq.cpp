@@ -65,7 +65,7 @@ static inline double apply_recovery(double norm,int remaining,
     double factor = 1.0;
     if (total <= 0 || remaining <= 0)
         return norm;
-    wifi_util_info_print(WIFI_APPS,"%s:%d,remaining=%d total=%d\n",__func__,__LINE__,remaining,total);
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d,remaining=%d total=%d\n",__func__,__LINE__,remaining,total);
 
     double progress = (double)(total - remaining) / (double)total;
 
@@ -73,7 +73,7 @@ static inline double apply_recovery(double norm,int remaining,
     if (progress > 1.0) progress = 1.0;
     
     factor = 1.0 - exp(-4.0 * progress);
-    wifi_util_info_print(WIFI_APPS,"%s:%d factor=%f\n",__func__,__LINE__,factor);
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d factor=%f\n",__func__,__LINE__,factor);
     return norm * factor;
 
 }
@@ -92,7 +92,7 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
     const char *mac = get_mac_addr();
     if(strncmp(ignite_station_mac, mac, sizeof(ignite_station_mac)) == 0)
     {
-        wifi_util_info_print(WIFI_APPS,"%s:%d mac=%s and ignite_station_mac=%s\n",
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d mac=%s and ignite_station_mac=%s\n",
 	__func__,__LINE__,mac,ignite_station_mac);
         is_ignite_station = true;
        
@@ -288,7 +288,7 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
         if (v.m_val[11].m_re < m_threshold) {
             m_threshold_cross_counter++;
             if (is_ignite_station && qmgr_is_score_registered()) {
-                wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[11].m_re);   
+                wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[11].m_re);   
                 qmgr_invoke_score(mac,v.m_val[11].m_re,m_threshold);
             }
         }
@@ -298,7 +298,7 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
         if(v.m_val[9].m_re < m_threshold || v.m_val[10].m_re < m_threshold) {
             m_threshold_cross_counter++;
             if (is_ignite_station && qmgr_is_score_registered()) {
-                wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re,v.m_val[10].m_re);   
+                wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re,v.m_val[10].m_re);   
                 if (v.m_val[9].m_re < m_threshold)
                     qmgr_invoke_score(mac,v.m_val[9].m_re,m_threshold);
                 else if (v.m_val[10].m_re < m_threshold)
@@ -310,7 +310,7 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
         if(v.m_val[9].m_re < m_threshold)
             m_threshold_cross_counter++;
             if ( is_ignite_station && qmgr_is_score_registered()) {
-                wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re);   
+                wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re);   
                 qmgr_invoke_score(mac,v.m_val[9].m_re,m_threshold);
 	    }
     } else if (m_quality_flag.uplink_snr || m_quality_flag.uplink_per || m_quality_flag.uplink_phy) {
@@ -318,7 +318,7 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
         if(v.m_val[10].m_re < m_threshold)
             m_threshold_cross_counter++;
             if (is_ignite_station && qmgr_is_score_registered()) {
-                wifi_util_info_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[10].m_re);   
+                wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[10].m_re);   
                 qmgr_invoke_score(mac,v.m_val[10].m_re,m_threshold);
 	    }
     }
@@ -326,7 +326,7 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
     
     if (update_alarm) {
         alarm = (m_threshold_cross_counter >= ceil(0.8 * m_sampled));
-        wifi_util_dbg_print(WIFI_APPS,"Pramod in update alarm = %d counter=%d and threshold=%f\n",alarm,m_threshold_cross_counter,m_threshold);
+        wifi_util_dbg_print(WIFI_APPS," in update alarm = %d counter=%d and threshold=%f\n",alarm,m_threshold_cross_counter,m_threshold);
         m_alarm = alarm;
         m_sampled = 0;
         m_threshold_cross_counter = 0;
@@ -345,7 +345,7 @@ vector_t linkq_t::run_test(bool &alarm, bool update_alarm, bool &rapid_disconnec
     if (m_disconnected) {
         m_disconnect_samples++;
         pthread_mutex_unlock(&m_vec_lock);
-        wifi_util_info_print(WIFI_APPS,"In disconnected\n");
+        wifi_util_dbg_print(WIFI_APPS,"In disconnected\n");
         rapid_disconnect =  true;
         alarm = false;
         return vector_t(0);   // no data while disconnected
@@ -355,7 +355,7 @@ vector_t linkq_t::run_test(bool &alarm, bool update_alarm, bool &rapid_disconnec
     if (!m_disconnected && m_disconnect_samples > 0 && m_recovery_remaining == 0) {
         m_recovery_total     = m_disconnect_samples;
         m_recovery_remaining = m_disconnect_samples;
-        wifi_util_info_print(WIFI_APPS,
+        wifi_util_dbg_print(WIFI_APPS,
             "Reconnect detected: recovery samples=%d\n",
             m_recovery_total);
     }
@@ -442,7 +442,7 @@ void linkq_t::update_window_per()
             ((double)err_recv_delta / (double)(recv_delta + err_recv_delta)) * 100.0;
     else
         m_window_uplink_per = 0.0;
-    wifi_util_info_print(WIFI_APPS,"%s:%d DOWNLINK_PER m_window_downlink_per=%f and m_window_uplink_per=%f\n"
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d DOWNLINK_PER m_window_downlink_per=%f and m_window_uplink_per=%f\n"
         ,__func__,__LINE__,m_window_downlink_per,m_window_uplink_per);
     return;
 
@@ -460,7 +460,7 @@ size_t linkq_t::get_window_samples(sample_t **out_samples)
         const sample_t &s = m_window_samples[i];
 
         wifi_util_dbg_print(
-            WIFI_CTRL,
+            WIFI_APPS,
             "[get_window_samples] [%zu] time=%s score=%.2f snr=%.2f per=%.2f phy=%.2f\n",
             i,
             s.time,
@@ -479,7 +479,6 @@ size_t linkq_t::get_window_samples(sample_t **out_samples)
     memcpy(buf, m_window_samples.data(), count * sizeof(sample_t));
 
     *out_samples = buf;
-    wifi_util_dbg_print(WIFI_CTRL," %s:%d \n",__func__,__LINE__); 
     return count;
 }
 
@@ -579,29 +578,30 @@ int linkq_t::init(double threshold, unsigned int reporting_mult, stats_arg_t *st
 
 int linkq_t::rapid_disconnect(stats_arg_t *stats)
 {
-    wifi_util_error_print(WIFI_APPS,"Pramod %s:%d\n",__func__,__LINE__);
+    wifi_util_error_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
     if(!m_disconnected) {
         m_disconnected = true;
         m_disconnect_samples++;
         m_recovery_remaining = 0;
         m_recovery_total = 0;
-        wifi_util_error_print(WIFI_APPS,"Pramod %s:%d m_disconnected =%d,m_disconnect_samples=%d\n",__func__,__LINE__,m_disconnected,m_disconnect_samples);
+        wifi_util_error_print(WIFI_APPS," %s:%d m_disconnected =%d,m_disconnect_samples=%d\n",__func__,__LINE__,m_disconnected,m_disconnect_samples);
     }
     return 0;
 }
 int linkq_t::set_quality_flags(quality_flags_t *flag)
 {
-    wifi_util_error_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
     m_quality_flag = *flag;
-    wifi_util_error_print(WIFI_APPS,"Pramod %s:%d downlink=:%d:%d:%d uplink =%d:%d:%d aggregate=%d int_reconnect=%d\n",
+    wifi_util_dbg_print(WIFI_APPS," %s:%d downlink=:%d:%d:%d uplink =%d:%d:%d aggregate=%d int_reconnect=%d\n",
          __func__,__LINE__,m_quality_flag.downlink_snr,m_quality_flag.downlink_per,m_quality_flag.downlink_phy,m_quality_flag.uplink_snr,
     m_quality_flag.uplink_per,m_quality_flag.uplink_phy,m_quality_flag.aggregate,m_quality_flag.int_reconn);
     return 0;
 }
 int linkq_t::get_quality_flags(quality_flags_t *flag)
 {
-    wifi_util_error_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
     *flag = m_quality_flag;
+    wifi_util_dbg_print(WIFI_APPS," %s:%d downlink=:%d:%d:%d uplink =%d:%d:%d aggregate=%d int_reconnect=%d\n",
+         __func__,__LINE__,m_quality_flag.downlink_snr,m_quality_flag.downlink_per,m_quality_flag.downlink_phy,m_quality_flag.uplink_snr,
+    m_quality_flag.uplink_per,m_quality_flag.uplink_phy,m_quality_flag.aggregate,m_quality_flag.int_reconn);
     return 0;
 }
 void linkq_t::register_station_mac(const char* str)

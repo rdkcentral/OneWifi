@@ -32,6 +32,17 @@ extern "C" {
 #define REPORTING_INTERVAL 10
 #include "wifi_base.h"
 
+#define LINKQ_DL_SNR        (1 << 0)
+#define LINKQ_DL_PER        (1 << 1)
+#define LINKQ_DL_PHY        (1 << 2)
+#define LINKQ_UL_SNR        (1 << 3)
+#define LINKQ_UL_PER        (1 << 4)
+#define LINKQ_UL_PHY        (1 << 5)
+#define LINKQ_AGGREGATE     (1 << 6)
+#define LINKQ_INT_RECONN    (1 << 7)
+
+#define LINKQ_VALID_MASK    0xFF   /* Only first 8 bits valid */
+
 typedef struct {
     double threshold;
     unsigned int sampling;

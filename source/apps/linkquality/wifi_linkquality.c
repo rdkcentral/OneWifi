@@ -176,7 +176,6 @@ int link_quality_ignite_reinit_param(wifi_app_t *apps, wifi_event_t *arg)
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL arg\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d \n", __func__, __LINE__);
     linkquality_data_t *data = (linkquality_data_t *)arg;
     server_arg_t *args = &data->server_arg;
     reinit_link_metrics(args);
