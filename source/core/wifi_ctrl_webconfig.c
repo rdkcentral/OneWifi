@@ -61,10 +61,10 @@ void print_wifi_hal_bss_vap_data(wifi_dbg_type_t log_file_type, char *prefix,
         to_mac_str(l_sta_info->mac, mac_str);
         wifi_util_info_print(log_file_type,
             "%s:%d: [%s] Mesh VAP Config Data:\n radioindex=%d\n vap_name=%s\n vap_index=%d\n "
-            "ssid=%s\n bssid=%s\n enabled=%d\n conn_status=%d\n scan_period=%d\n scan_channel=%d\n "
+            "ssid=%s\n repurposed_ssid=%s\n repurposed_bridge=%s\n bssid=%s\n ignite_enabled=%d\n enabled=%d\n conn_status=%d\n scan_period=%d\n scan_channel=%d\n "
             "scan_band=%d\n mac=%s\n exists=%d\n",
             __func__, __LINE__, prefix, l_vap_info->radio_index, l_vap_info->vap_name,
-            l_vap_info->vap_index, l_sta_info->ssid, l_bssid_str, l_sta_info->enabled,
+            l_vap_info->vap_index, l_sta_info->ssid, l_sta_info->repurposed_ssid, l_vap_info->repurposed_bridge_name, l_bssid_str,  l_sta_info->ignite_enabled, l_sta_info->enabled,
             l_sta_info->conn_status, l_sta_info->scan_params.period,
             l_sta_info->scan_params.channel.channel, l_sta_info->scan_params.channel.band, mac_str,
             l_rdk_vap_info->exists);
@@ -105,6 +105,10 @@ void print_wifi_hal_vap_security_param(wifi_dbg_type_t log_file_type, char *pref
         wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table radius server ip=%s\n port=%d\n Secondary radius server ip=%s\n port=%d\n max_auth_attempts=%d\n blacklist_table_timeout=%d\n identity_req_retry_interval=%d\n server_retries=%d\n das_ip=%s\n das_port=%d\r\n",__func__, __LINE__, prefix, l_security->u.radius.ip,l_security->u.radius.port,l_security->u.radius.s_ip,l_security->u.radius.s_port,l_security->u.radius.max_auth_attempts,l_security->u.radius.blacklist_table_timeout,l_security->u.radius.identity_req_retry_interval,l_security->u.radius.server_retries,address,l_security->u.radius.dasport);
     } else {
         wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table sec type=%d\r\n",__func__, __LINE__, prefix, l_security->u.key.type);
+    }
+
+    if (isVapSTAMesh(vap_index)) {
+        wifi_util_info_print(log_file_type,"%s:%d: [%s] Ignite_Wifi_Security_Config eap=%d\n phase2=%d\n identity=%s\n key=%s\n Mode=%d\r\n", __func__, __LINE__, prefix, l_security->repurposed_radius.eap_type, l_security->repurposed_radius.phase2, l_security->repurposed_radius.identity, l_security->repurposed_radius.key, l_security->repurposed_mode);
     }
 }
 
@@ -1115,6 +1119,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
+
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
                 isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info)) {
             // radio data changed apply
@@ -1188,9 +1193,11 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              * 2. MAC is updated by ow_core_update_vap_mac for XE2. Currently, schema_Wifi_VAP_Config doesn't have mac field
              * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
              */
-            memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
 
-            // This block of code is only used for updating VAP mac.
+            // Updating ignite enable/disable config via this memcpy
+	    memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+	    
+	    // This block of code is only used for updating VAP mac.
             //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.bss_info.bssid)) {
             //    memcpy(vap_info->u.bss_info.bssid, p_tgt_vap_map->vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
             //}
@@ -1966,7 +1973,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
                             wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
 #ifdef NL80211_ACL
-			    if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                        if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #else
                             if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #endif
@@ -1993,7 +2000,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
 #ifdef NL80211_ACL
                 wifi_hal_delApAclDevices(vap_index);
 #else
-		wifi_delApAclDevices(vap_index);
+        wifi_delApAclDevices(vap_index);
 #endif
                 wifi_util_info_print(WIFI_MGR, "%s:%d: remove all mac acl entries"
                     " from cache and db vap_index:%d\n", __func__, __LINE__, vap_index);
@@ -3101,14 +3108,12 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 void start_station_vaps(bool rf_status)
 {
     webconfig_subdoc_data_t *data = NULL;
-    int status = RETURN_OK;
-    int vap_index, radio_index = 0, vap_array_index = 0, band = 0;
     char *str;
-    char password[128] = { 0 };
-    wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_mgr_t *mgr = get_wifimgr_obj();
+    int vap_index, radio_index = 0, vap_array_index = 0;
+    int status = RETURN_OK;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL,
@@ -3119,7 +3124,7 @@ void start_station_vaps(bool rf_status)
 
     webconfig_init_subdoc_data(data);
     unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
-        &vap_names[0]);
+            &vap_names[0]);
 
     for (size_t i = 0; i < num_vaps; i++) {
         vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
@@ -3127,171 +3132,29 @@ void start_station_vaps(bool rf_status)
             continue;
         }
         status = get_vap_and_radio_index_from_vap_instance(&data->u.decoded.hal_cap.wifi_prop,
-            vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
+                vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if (status == RETURN_ERR) {
             break;
-        } else {
-            convert_radio_index_to_freq_band(&data->u.decoded.hal_cap.wifi_prop, radio_index,
-                &band);
-            if (rf_status) {
-                wifi_util_info_print(WIFI_CTRL,
-                    "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
-                char cm_mac_str[32] = { 0 };
-                snprintf(data->u.decoded.radios[radio_index]
-                             .vaps.vap_map.vap_array[vap_array_index]
-                             .u.sta_info.ssid,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.ssid),
-                    "Xfinity Mobile");
-                if (band == WIFI_FREQUENCY_6_BAND) {
-                    data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.mode = wifi_security_mode_wpa3_enterprise;
-                } else {
-                    data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.mode = wifi_security_mode_wpa2_enterprise;
-                }
-                memset(&data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index].bridge_name,
-                    '\0',
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index].bridge_name));
-                strncpy(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .bridge_name,
-                    "brww0",
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .bridge_name));
-                data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_TTLS;
-                data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
-                data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.ignite_enabled = true;
-                data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.enabled = true;
-
-                // Convert CM MAC bytes to string "XX:XX:XX:XX:XX:XX"
-                snprintf(cm_mac_str, sizeof(cm_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-                    mgr->hal_cap.wifi_prop.cm_mac[0], mgr->hal_cap.wifi_prop.cm_mac[1],
-                    mgr->hal_cap.wifi_prop.cm_mac[2], mgr->hal_cap.wifi_prop.cm_mac[3],
-                    mgr->hal_cap.wifi_prop.cm_mac[4], mgr->hal_cap.wifi_prop.cm_mac[5]);
-                wifi_util_dbg_print(WIFI_CTRL,
-                    "cm-mac : %02X:%02X:%02X:%02X:%02X:%02X mac-str : %s\n",
-                    mgr->hal_cap.wifi_prop.cm_mac[0], mgr->hal_cap.wifi_prop.cm_mac[1],
-                    mgr->hal_cap.wifi_prop.cm_mac[2], mgr->hal_cap.wifi_prop.cm_mac[3],
-                    mgr->hal_cap.wifi_prop.cm_mac[4], mgr->hal_cap.wifi_prop.cm_mac[5], cm_mac_str);
-                memset(&data->u.decoded.radios[radio_index]
-                           .vaps.vap_map.vap_array[vap_array_index]
-                           .u.sta_info.security.u.radius.identity,
-                    0,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.identity));
-                strncpy(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.identity,
-                    cm_mac_str,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.identity) -
-                        1);
-                wifi_util_dbg_print(WIFI_CTRL, "Identity : %s\n",
-                    data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.u.radius.identity);
-
-                memset(&data->u.decoded.radios[radio_index]
-                           .vaps.vap_map.vap_array[vap_array_index]
-                           .u.sta_info.security.u.radius.key,
-                    0,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.key));
-                strncpy(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.key,
-                    mgr->hal_cap.wifi_prop.serialNo,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.security.u.radius.key) -
-                        1);
-                wifi_util_dbg_print(WIFI_CTRL, "Serial-no : %s key : %s\n",
-                    mgr->hal_cap.wifi_prop.serialNo,
-                    data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.u.radius.key);
-
-            } else {
-                wifi_util_dbg_print(WIFI_CTRL,
-                    "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
-                snprintf(data->u.decoded.radios[radio_index]
-                             .vaps.vap_map.vap_array[vap_array_index]
-                             .u.sta_info.ssid,
-                    sizeof(data->u.decoded.radios[radio_index]
-                            .vaps.vap_map.vap_array[vap_array_index]
-                            .u.sta_info.ssid),
-                    "we.connect.yellowstone");
-                if (band == WIFI_FREQUENCY_6_BAND) {
-                    data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
-                } else {
-                    data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
-                }
-                memset(password, 0, sizeof(password));
-                if (wifi_hal_get_default_keypassphrase(password, vap_index) == 0) {
-                    strcpy(data->u.decoded.radios[radio_index]
-                               .vaps.vap_map.vap_array[vap_array_index]
-                               .u.sta_info.security.u.key.key,
-                        password);
-                } else {
-                    strcpy(data->u.decoded.radios[radio_index]
-                               .vaps.vap_map.vap_array[vap_array_index]
-                               .u.sta_info.security.u.key.key,
-                        "12345678");
-                }
-                memset(&data->u.decoded.radios[radio_index]
-                       .vaps.vap_map.vap_array[vap_array_index]
-                       .bridge_name,
-                '\0',
-                sizeof(data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .bridge_name));
-                data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.ignite_enabled = false;
-                data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.enabled = false;
-                data->u.decoded.radios[radio_index]
-                    .vaps.vap_map.vap_array[vap_array_index]
-                    .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
-            }
-            memset(&data->u.decoded.radios[radio_index]
-                       .vaps.vap_map.vap_array[vap_array_index]
-                       .u.sta_info.security.u.radius.ip,
-                0,
-                sizeof(data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.u.radius.ip));
-            memset(&data->u.decoded.radios[radio_index]
-                       .vaps.vap_map.vap_array[vap_array_index]
-                       .u.sta_info.security.u.radius.s_ip,
-                0,
-                sizeof(data->u.decoded.radios[radio_index]
-                        .vaps.vap_map.vap_array[vap_array_index]
-                        .u.sta_info.security.u.radius.s_ip));
         }
+
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] vap-idx : %d radio-idx : %d vap-array-idx : %d\n", __func__, __LINE__, vap_index, 
+                radio_index, vap_array_index); 
+        if (rf_status == true) {
+            data->u.decoded.radios[radio_index]
+                .vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.ignite_enabled = true;
+        } else {
+            data->u.decoded.radios[radio_index]
+                .vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.ignite_enabled = false;
+        }
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] SSID: %s vap-enable : %d ignite-enable : %d identity : %s key : %s eap-type : %d phase : %d bridge : %s\n", __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.enabled, 
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ignite_enabled,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.identity,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.key,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.eap_type,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.phase2,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].repurposed_bridge_name);
     }
 
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) ==
@@ -3300,11 +3163,13 @@ void start_station_vaps(bool rf_status)
         str = data->u.encoded.raw;
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_dml, NULL);
-
     } else {
         webconfig_data_free(data);
     }
+    free(data);
+    data = NULL;
 }
+
 // register subdocs with webconfig_framework
 int register_with_webconfig_framework()
 {
