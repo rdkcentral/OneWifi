@@ -145,11 +145,52 @@ bus_error_t wfa_network_ssid_get_param_value(void *obj_ins_context, char *param_
 bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data)
 {
     mld_group_t *mld_grp = obj_ins_context;
+
     wifi_multi_link_modes_t capab_val = get_wifimgr_obj()->hal_cap.wifi_prop.radiocap[0].mldOperationalCap;
-    
-    if (STR_CMP(param_name, "MLDMACAddress")) {
+    wifi_vap_info_t *vap = NULL;
+    uint32_t affap_index = 0;
+
+    if (strstr(param_name, "AffiliatedAP."))
+        sscanf(param_name, "AffiliatedAP.%d.%s", &affap_index, param_name);
+
+    if (affap_index > 0) {
+        vap = mld_grp->mld_vaps[affap_index - 1];
+        if (!vap) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d cannot find VAP\n", __FUNCTION__, __LINE__);
+            return bus_error_invalid_input;
+        }
+        uint32_t statval = 0;
+        if (STR_CMP(param_name, "BSSID")) {
+            mac_addr_str_t affsta_bssid_str = { 0 };
+            to_mac_str(vap->u.bss_info.bssid, affsta_bssid_str);
+            return set_output_value(param_name, p_data, affsta_bssid_str);
+        } else if (STR_CMP(param_name, "LinkID")) {
+            INT mld_link_id = vap->u.bss_info.mld_info.common_info.mld_link_id;
+            return set_output_value(param_name, p_data, &mld_link_id);
+        } else if (STR_CMP(param_name, "RUID")) {
+            return set_output_value(param_name, p_data, "Not Implemented");
+        } else if (STR_CMP(param_name, "PacketsSent")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "PacketsReceived")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "ErrorsSent")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "UnicastBytesSent")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "UnicastBytesReceived")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "MulticastBytesSent")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "MulticastBytesReceived")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "BroadcastBytesSent")) {
+            return set_output_value(param_name, p_data, &statval);
+        } else if (STR_CMP(param_name, "BroadcastBytesReceived")) {
+            return set_output_value(param_name, p_data, &statval);
+        }
+    } else if (STR_CMP(param_name, "MLDMACAddress")) {
         mac_addr_str_t mld_mac_str = { 0 };
-        wifi_vap_info_t *vap = mld_grp->mld_vaps[0]; /* All affiliated APs share the same MLD MAC address */
+        vap = mld_grp->mld_vaps[0]; /* All affiliated APs share the same MLD MAC address */
         if (!vap) {
             wifi_util_error_print(WIFI_DMCLI, "%s:%d cannot find VAP\n", __FUNCTION__, __LINE__);
             return bus_error_invalid_input;
@@ -165,7 +206,6 @@ bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, r
     } else if (STR_CMP(param_name, "STAMLDNumberOfEntries")) {
         uint32_t num_sta = 0;
         uint8_t apmld_index = get_apmld_index_from_mld_group(mld_grp);
-
         update_dml_stamld_list(apmld_index);
         num_sta = get_total_num_stamld_dml(apmld_index);
         return set_output_value(param_name, p_data, &num_sta);
@@ -187,10 +227,10 @@ bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, r
     } else if (STR_CMP(param_name, "APMLDConfig.TIDLinkMapNegotiation")) {
         bool bool_val = false; /* TODO Implement */
         return set_output_value(param_name, p_data, &bool_val);
-    } else {
-        wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
-        return bus_error_invalid_input;
     }
+
+    wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
+    return bus_error_invalid_input;
 }
 
 /* Generic macro to sum a numeric field across all affiliated STAs in a STAMLD */
