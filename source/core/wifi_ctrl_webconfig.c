@@ -108,7 +108,7 @@ void print_wifi_hal_vap_security_param(wifi_dbg_type_t log_file_type, char *pref
     }
 
     if (isVapSTAMesh(vap_index)) {
-        wifi_util_info_print(log_file_type,"%s:%d: [%s] Ignite_Wifi_Security_Config eap=%d\n phase2=%d\n identity=%s\n key=%s\n Mode=%d\r\n", __func__, __LINE__, prefix, l_security->repurposed_radius.eap_type, l_security->repurposed_radius.phase2, l_security->repurposed_radius.identity, l_security->repurposed_radius.key, l_security->repurposed_mode);
+        wifi_util_info_print(log_file_type,"%s:%d: [%s] Ignite_Wifi_Security_Config eap=%d\n phase2=%d\n Mode=%d\r\n", __func__, __LINE__, prefix, l_security->repurposed_radius.eap_type, l_security->repurposed_radius.phase2, l_security->repurposed_mode);
     }
 }
 
@@ -3148,10 +3148,8 @@ void start_station_vaps(bool rf_status)
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = false;
         }
-        wifi_util_error_print(WIFI_CTRL, "[%s %d] SSID: %s vap-enable : %d ignite-enable : %d identity : %s key : %s eap-type : %d phase : %d bridge : %s\n", __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.enabled, 
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] SSID: %s vap-enable : %d ignite-enable : %d eap-type : %d phase : %d bridge : %s\n", __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.enabled,
                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ignite_enabled,
-                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.identity,
-                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.key,
                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.eap_type,
                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.phase2,
                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].repurposed_bridge_name);
