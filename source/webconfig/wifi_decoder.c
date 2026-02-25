@@ -261,7 +261,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
 	cJSON_AddNumberToObject(realmStats, "Sent", 0);
     	cJSON_AddNumberToObject(realmStats, "Failed", 0);
     	cJSON_AddNumberToObject(realmStats, "Timeout", 0);
-        cJSON_AddItemToArray(statsList, realmStats);
+	cJSON_AddItemToArray(statsList, realmStats);
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += strlen(anqpParam->valuestring);
         venueBuf->length = next_pos - &venueBuf->language[0];
@@ -387,7 +387,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         next_pos += sizeof(realmInfoBuf->realm_length);
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += realmInfoBuf->realm_length;
-	
+
 	cJSON *realmStats = cJSON_CreateObject();
         decode_param_string(anqpEntry,"Realms",anqpParam);
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
@@ -544,7 +544,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         plmnBuf->PLMN[1] = (UCHAR)((mccStr[2] - '0') | ((mncStr[2] - '0') << 4));
         plmnBuf->PLMN[2] = (UCHAR)((mncStr[0] - '0') | ((mncStr[1] - '0') << 4));
         next_pos += sizeof(wifi_plmn_t);
-	
+
 	char  nameStr[8];
 	snprintf(nameStr, sizeof(nameStr), "%s:%s", mccStr, mncStr);
         cJSON *realmStats = cJSON_CreateObject();
