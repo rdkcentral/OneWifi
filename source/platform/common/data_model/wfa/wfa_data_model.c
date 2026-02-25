@@ -176,6 +176,34 @@ bus_error_t de_apmld_table_remove_row_handler(char const* rowName)
     return bus_error_success;
 }
 
+static void de_sync_rows(char const* tableName, uint32_t old_cnt, uint32_t new_cnt, uint32_t *index, bool force)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_bus_desc_t *p_bus_desc = get_bus_descriptor();
+
+    if (!force && (old_cnt == new_cnt))
+        return;
+
+    char *rowPath = malloc(strlen(tableName) + 5);
+    for (UINT i = 1; i <= old_cnt; i++) {
+        sprintf(rowPath, "%s.%d.", tableName, i);
+        if (p_bus_desc->bus_unreg_table_row_fn(&ctrl->handle, rowPath) != bus_error_success) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d remove %s failed\r\n", __func__, __LINE__, rowPath);
+        } else if (index) {
+            (*index)--;
+        }
+    }
+    sprintf(rowPath, "%s.", tableName);
+    for (UINT i = 1; i <= new_cnt; i++) {
+        if (p_bus_desc->bus_reg_table_row_fn(&ctrl->handle, rowPath, i, NULL) != bus_error_success) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d add %s row failed\r\n", __func__, __LINE__, rowPath);
+        } else if (index) {
+            (*index)++;
+        }
+    }
+    free(rowPath);
+}
+
 bus_error_t de_apmld_sync_handler(char const* tableName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
 {
     (void)inParams;
@@ -186,33 +214,30 @@ bus_error_t de_apmld_sync_handler(char const* tableName, raw_data_t *inParams, r
     update_apmld_map();
     UINT num_apmld = get_num_apmld_dml();
     UINT num_row = p_dml_param->table_de_apmld_index;
-    char *tablePath = malloc(strlen(tableName) + 2);
-    sprintf(tablePath, "%s.", tableName);
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %s, numrow %d, numapmld %d\r\n", __func__, __LINE__, tablePath, num_row, num_apmld);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %s, numrow %d, numapmld %d\r\n", __func__, __LINE__, tableName, num_row, num_apmld);
 
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_bus_desc_t *p_bus_desc = get_bus_descriptor();
+    de_sync_rows(tableName, num_row, num_apmld, &p_dml_param->table_de_apmld_index, false);
+    return bus_error_success;
+}
 
-    if (num_row != num_apmld) {
-        char *rowPath = malloc(strlen(tablePath) + 5);
-        for (UINT i = 1; i <= num_row; i++) {
-            sprintf(rowPath, "%s%d.", tablePath, i);
-            if (p_bus_desc->bus_unreg_table_row_fn(&ctrl->handle, rowPath) != bus_error_success) {
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d remove %s failed\r\n", __func__, __LINE__, rowPath);
-            } else {
-                p_dml_param->table_de_apmld_index--;
-            }
-        }
-        for (UINT i = 1; i <= num_apmld; i++) {
-            if (p_bus_desc->bus_reg_table_row_fn(&ctrl->handle, tablePath, i, NULL) != bus_error_success) {
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d add %s row failed\r\n", __func__, __LINE__, tablePath);
-            } else {
-                p_dml_param->table_de_apmld_index++;
-            }
-        }
-        free(rowPath);
+bus_error_t de_affap_sync_handler(char const* tableName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
+{
+    (void)inParams;
+    (void)outParams;
+    (void)asyncHandle;
+    uint32_t device_index = 0;
+    uint32_t index = 0;
+    char     extension[64]    = {0};
+
+    sscanf(tableName, DATAELEMS_NETWORK "Device.%d.APMLD.%d.%s", &device_index, &index, extension);
+    mld_group_t *mld_grp = get_dml_apmld_group(index - 1);
+    if (mld_grp == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong MLDAP index:%d for:[%s]\r\n", __func__,
+            __LINE__, index, tableName);
+        return bus_error_invalid_input;
     }
-    free(tablePath);
+
+    de_sync_rows(tableName, mld_grp->mld_vap_count, mld_grp->mld_vap_count, NULL, true);
     return bus_error_success;
 }
 
@@ -265,35 +290,10 @@ bus_error_t de_stamld_sync_handler(char const* tableName, raw_data_t *inParams, 
 
     UINT num_stamld = get_total_num_stamld_dml(apmld_array_index);
     UINT num_row = p_dml_param->table_de_stamld_index[apmld_array_index];
-    char *tablePath = malloc(strlen(tableName) + 2);
-    sprintf(tablePath, "%s.", tableName);
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %s, apmld_idx:%d, numrow:%d, numstamld:%d\r\n", 
-                        __func__, __LINE__, tablePath, apmld_index, num_row, num_stamld);
+                        __func__, __LINE__, tableName, apmld_index, num_row, num_stamld);
 
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_bus_desc_t *p_bus_desc = get_bus_descriptor();
-
-    if (num_row != num_stamld) {
-        char *rowPath = malloc(strlen(tablePath) + 5);
-        for (UINT i = 1; i <= num_row; i++) {
-            sprintf(rowPath, "%s%d.", tablePath, i);
-            if (p_bus_desc->bus_unreg_table_row_fn(&ctrl->handle, rowPath) != bus_error_success) {
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d remove %s failed\r\n", __func__, __LINE__, rowPath);
-            } else {
-                if (p_dml_param->table_de_stamld_index[apmld_array_index] > 0)
-                    p_dml_param->table_de_stamld_index[apmld_array_index]--;
-            }
-        }
-        for (UINT i = 1; i <= num_stamld; i++) {
-            if (p_bus_desc->bus_reg_table_row_fn(&ctrl->handle, tablePath, i, NULL) != bus_error_success) {
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d add %s row failed\r\n", __func__, __LINE__, tablePath);
-            } else {
-                p_dml_param->table_de_stamld_index[apmld_array_index]++;
-            }
-        }
-        free(rowPath);
-    }
-    free(tablePath);
+    de_sync_rows(tableName, num_row, num_stamld, &(p_dml_param->table_de_stamld_index[apmld_array_index]), false);
     return bus_error_success;
 }
 
@@ -358,34 +358,10 @@ bus_error_t de_affsta_sync_handler(char const* tableName, raw_data_t *inParams, 
     }
 
     UINT num_affsta = stamld_entry->affiliated_sta_count;
-    char *tablePath = malloc(strlen(tableName) + 2);
-    sprintf(tablePath, "%s.", tableName);
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %s, apmld_idx:%d, stamld_idx:%d, numaffsta:%d\r\n", 
-                        __func__, __LINE__, tablePath, apmld_index, stamld_index, num_affsta);
+                        __func__, __LINE__, tableName, apmld_index, stamld_index, num_affsta);
 
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_bus_desc_t *p_bus_desc = get_bus_descriptor();
-
-    /* Remove all existing rows and register current affiliated STAs */
-    char *rowPath = malloc(strlen(tablePath) + 5);
-    
-    /* First, unregister all possible rows to ensure clean state */
-    for (UINT i = 1; i <= MAX_NUM_RADIOS; i++) {
-        sprintf(rowPath, "%s%d.", tablePath, i);
-        p_bus_desc->bus_unreg_table_row_fn(&ctrl->handle, rowPath);
-    }
-
-    /* Now register rows for current affiliated STAs */
-    for (UINT i = 1; i <= num_affsta; i++) {
-        if (p_bus_desc->bus_reg_table_row_fn(&ctrl->handle, tablePath, i, NULL) != bus_error_success) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d add %s row %d failed\r\n", __func__, __LINE__, tablePath, i);
-        } else {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d added %s row %d\r\n", __func__, __LINE__, tablePath, i);
-        }
-    }
-
-    free(rowPath);
-    free(tablePath);
+    de_sync_rows(tableName, MAX_NUM_RADIOS, num_affsta, NULL, true);
     return bus_error_success;
 }
 
@@ -430,14 +406,14 @@ int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_t
         { DE_APMLD_CONFIG, {
             wfa_apmld_get,                   default_set_param_value,
             NULL,                            NULL,
-            default_event_sub_handler,       NULL }
+            NULL,                            NULL }
         },
 
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.AffiliatedAP */
         { DE_AFFAP_TABLE, {
-            default_get_param_value,         default_set_param_value,
+            wfa_apmld_get,                   default_set_param_value,
             NULL,                            NULL,
-            default_event_sub_handler,       NULL }
+            NULL,                            de_affap_sync_handler }
         },
 
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD */
@@ -450,14 +426,14 @@ int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_t
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.WiFi7Capabilities */
         { DE_STAMLD_WIFI7CAPS, {
             default_get_param_value,            default_set_param_value,
-            NULL,   NULL,
+            NULL,                            NULL,
             default_event_sub_handler,       NULL }
         },
 
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.STAMLDConfig */
         { DE_STAMLD_CONFIG, {
             default_get_param_value,            default_set_param_value,
-            NULL,   NULL,
+            NULL,                            NULL,
             default_event_sub_handler,       NULL }
         },
 
