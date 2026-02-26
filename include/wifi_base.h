@@ -1286,6 +1286,14 @@ typedef struct {
 } channel_scan_request_t;
 
 typedef struct {
+    bssid_t    bssid;
+    unsigned char assoc_control;
+    unsigned short validity_period;
+    unsigned char count;
+    mac_address_t sta_mac;
+}client_assoc_ctrl_req_t;
+
+typedef struct {
     bssid_t bssid;
     ssid_t ssid;
     CHAR signal_strength;
