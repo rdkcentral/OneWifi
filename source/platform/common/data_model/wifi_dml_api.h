@@ -134,6 +134,9 @@ int disable_dbg_logs(char *p_input_str);
 
 uint8_t rssi_to_rcpi(int rssi_dbm);
 
+bool rsn_akm_selector_hex(const char *akm, char *out, size_t out_len);
+bool rsn_cipher_selector_hex(const char *cipher, char *out, size_t out_len);
+
 bool is_valid_transmit_rate(char *input_str);
 int radio_wifi_channel_is_valid(uint32_t radio_index, uint32_t input_channel);
 bool is_radio_tx_power_valid(char *p_supported_power_list, int l_tx_power);

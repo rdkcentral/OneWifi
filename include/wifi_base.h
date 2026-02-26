@@ -868,6 +868,7 @@ typedef enum {
 typedef struct {
     char wpa_key_mgmt[WPA_KEY_MGMT_LEN];
     char pairwise_cipher[WPA_KEY_MGMT_LEN];
+    USHORT rsn_capabilities;
 } __attribute__((__packed__)) conn_security_t;
 
 typedef struct {
