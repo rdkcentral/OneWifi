@@ -1183,7 +1183,6 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
                 __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
-
     if (security_info->mode == wifi_security_mode_none ||
         security_info->mode == wifi_security_mode_enhanced_open) {
         obj = cJSON_CreateObject();
@@ -1622,10 +1621,92 @@ webconfig_error_t encode_scan_params_object(const wifi_scan_params_t *scan_info,
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_ignite_radius_object(const wifi_radius_settings_t *radius_info, cJSON *radius)
+{
+    cJSON_AddNumberToObject(radius, "IgniteEAPType", radius_info->eap_type);
+    cJSON_AddNumberToObject(radius, "IgnitePhase2Auth", radius_info->phase2);
+    if (strlen((char *)radius_info->identity) == 0) {
+        cJSON_AddStringToObject(radius, "IgniteIdentity", "username_empty");
+    } else {
+        cJSON_AddStringToObject(radius, "IgniteIdentity", radius_info->identity);
+    }
+
+    if (strlen((char *)radius_info->key) == 0) {
+        cJSON_AddStringToObject(radius, "IgniteKey", INVALID_KEY);
+    } else {
+        cJSON_AddStringToObject(radius, "IgniteKey", radius_info->key);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *security_info, cJSON *security,
+        bool is_6g)
+{
+    cJSON *obj;
+
+    if (is_6g &&
+            security_info->repurposed_mode != wifi_security_mode_wpa3_enterprise) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
+                __func__, __LINE__, security_info->repurposed_mode);
+        return webconfig_error_encode;
+    }
+
+    switch (security_info->repurposed_mode) {
+        case wifi_security_mode_wpa2_enterprise:
+            cJSON_AddStringToObject(security, "IgniteMode", "WPA2-Enterprise");
+            break;
+
+        case wifi_security_mode_wpa3_enterprise:
+            cJSON_AddStringToObject(security, "IgniteMode", "WPA3-Enterprise");
+            break;
+
+        default:
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode security mode: %d\n",
+                    __func__, __LINE__, security_info->repurposed_mode);
+            return webconfig_error_encode;
+    }
+
+    if ((security_info->repurposed_mode == wifi_security_mode_wpa2_enterprise) || (security_info->repurposed_mode == wifi_security_mode_wpa3_enterprise)) {
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToObject(security, "IgniteRadiusSettings", obj);
+
+        if (encode_ignite_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
+                    __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+    }
+    return webconfig_error_none;    
+}
+
+webconfig_error_t encode_ignite_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+{
+    cJSON *obj;
+
+    //SSID
+    cJSON_AddStringToObject(vap_obj, "IgniteSSID", vap_info->u.sta_info.repurposed_ssid);
+
+    //Bridge Name
+    cJSON_AddStringToObject(vap_obj, "IgniteBridgeName", vap_info->repurposed_bridge_name);
+
+    obj = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(vap_obj, "IgniteSecurity", obj);
+
+    bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
+
+    if (encode_ignite_security_object(&vap_info->u.sta_info.security, obj, is_6g) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }    
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
-    cJSON *obj;
+    cJSON *obj, *ignite_obj;
     char mac_str[32];
 
     //VAP Name
@@ -1657,9 +1738,9 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     // Enabled
     cJSON_AddBoolToObject(vap_obj, "Enabled", vap_info->u.sta_info.enabled);
     
-    // Ignite Status
+    // Ignite Enabled
     cJSON_AddBoolToObject(vap_obj, "Ignite_Enabled", vap_info->u.sta_info.ignite_enabled);
-
+    
     //ConnectStatus
     if (vap_info->u.sta_info.conn_status == wifi_connection_status_connected) {
         cJSON_AddBoolToObject(vap_obj, "ConnectStatus", true);
@@ -1675,6 +1756,13 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_security_object(&vap_info->u.sta_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
+    
+    ignite_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "IgniteSettings", ignite_obj);
+    if (encode_ignite_mesh_sta_object(vap_info, ignite_obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh sta vap object\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
