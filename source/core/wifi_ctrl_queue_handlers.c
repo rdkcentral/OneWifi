@@ -895,6 +895,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
             if (isVapHotspotSecure5g(wifi_vap_map->vap_array[j].vap_index))
             {
                 memcpy((unsigned char *)&hotspot_5g_vap_info, (unsigned char *)&tmp_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+				hotspot_5g_found = true;
             }
             if(pub_svc->update_fn(pub_svc,radio_indx, tmp_vap_map, rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to create vaps\n", __func__,__LINE__);
@@ -916,7 +917,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                 }
                 if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && !strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_6_G) && should_process_hotspot_config_change(lnf_vap_info, &tmp_vap_map->vap_array[0])) {
                     if (update_vap_params_to_hal_and_db(lnf_vap_info, tmp_vap_map->vap_array[0].u.bss_info.enabled) == -1) {
-                        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF VAP RADIUS config from Hotspot 5G\n", __func__,__LINE__);
                         free(tmp_vap_map);
                         tmp_vap_map = NULL;
                         return;
@@ -939,16 +940,14 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     if (!lnf_2g_vap)
     {
         wifi_util_error_print(WIFI_CTRL,"%s:%d LnF 2.4GHz VAP is NULL\n", __func__,__LINE__);
-        return;
-    } else if (should_process_hotspot_config_change(lnf_2g_vap, &hotspot_5g_vap_info)) {
+    } else if (hotspot_5g_found && should_process_hotspot_config_change(lnf_2g_vap, &hotspot_5g_vap_info)) {
         if (update_vap_params_to_hal_and_db(lnf_2g_vap, lnf_2g_vap->u.bss_info.enabled) == -1) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF 2G vaps\n", __func__,__LINE__);
         }
         wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s RADIUS config updated from Hotspot 5G\n",__func__,__LINE__,lnf_2g_vap->vap_name);
     }
-    if (lnf_6g_vap && should_process_hotspot_config_change(lnf_6g_vap, &hotspot_5g_vap_info)) {
-        if (update_vap_params_to_hal_and_db(lnf_6g_vap, hotspot_5g_vap_info.u.bss_info.enabled) == -1)
-        {
+    if (hotspot_5g_found && lnf_6g_vap && should_process_hotspot_config_change(lnf_6g_vap, &hotspot_5g_vap_info)) {
+        if (update_vap_params_to_hal_and_db(lnf_6g_vap, lnf_6g_vap->u.bss_info.enabled) == -1){
             wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF 6g vaps\n", __func__,__LINE__);
         }
         wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s RADIUS config updated from Hotspot 5G\n",__func__,__LINE__,lnf_6g_vap->vap_name);
