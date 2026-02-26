@@ -2313,7 +2313,7 @@ int wifidb_get_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table radius server ip =%s  port =%d Secondary radius server ip=%s port=%d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d\n",__func__, __LINE__,config->vap_array[vap_index].u.sta_info.security.u.radius.ip,config->vap_array[vap_index].u.sta_info.security.u.radius.port,config->vap_array[vap_index].u.sta_info.security.u.radius.s_ip,config->vap_array[vap_index].u.sta_info.security.u.radius.s_port,config->vap_array[vap_index].u.sta_info.security.u.radius.max_auth_attempts,config->vap_array[vap_index].u.sta_info.security.u.radius.blacklist_table_timeout,config->vap_array[vap_index].u.sta_info.security.u.radius.identity_req_retry_interval,config->vap_array[vap_index].u.sta_info.security.u.radius.server_retries,address,config->vap_array[vap_index].u.sta_info.security.u.radius.dasport);
                 }
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table vap_name=%s Sec_mode=%d enc_mode=%d mfg_config=%d rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.sta_info.security.mode,config->vap_array[vap_index].u.sta_info.security.encr,config->vap_array[vap_index].u.sta_info.security.mfp,config->vap_array[vap_index].u.sta_info.security.rekey_interval,config->vap_array[vap_index].u.sta_info.security.strict_rekey,config->vap_array[vap_index].u.sta_info.security.eapol_key_timeout,config->vap_array[vap_index].u.sta_info.security.eapol_key_retries,config->vap_array[vap_index].u.sta_info.security.eap_identity_req_timeout,config->vap_array[vap_index].u.sta_info.security.eap_identity_req_retries,config->vap_array[vap_index].u.sta_info.security.eap_req_timeout,config->vap_array[vap_index].u.sta_info.security.eap_req_retries,config->vap_array[vap_index].u.sta_info.security.disable_pmksa_caching);
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: Ignite_configs- ssid:%s id:%s key:%s eap:%d phase2:%d ip:%s s_ip:%s ignite_enable:%d enable:%d\n", __func__, __LINE__, config->vap_array[vap_index].u.sta_info.repurposed_ssid, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.identity, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.key, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.eap_type, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.phase2, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.ip, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.s_ip,
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: Ignite_configs- ssid:%s eap:%d phase2:%d ip:%s s_ip:%s ignite_enable:%d enable:%d\n", __func__, __LINE__, config->vap_array[vap_index].u.sta_info.repurposed_ssid, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.eap_type, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.phase2, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.ip, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.s_ip,
 config->vap_array[vap_index].u.sta_info.ignite_enabled, config->vap_array[vap_index].u.sta_info.enabled);           
         } else {
                 wifidb_get_wifi_security_config(vap_name,&config->vap_array[vap_index].u.bss_info.security);
@@ -7079,7 +7079,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     char radius_key[128] = {0};
     char ssid[128] = {0};
     int band;
-    char cm_mac_str[32] = { 0 };
     bool exists = true;
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
     
@@ -7192,22 +7191,10 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
         memset(&cfg->u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.ip));
         memset(&cfg->u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.s_ip));
-        // Convert CM MAC bytes to string "XX:XX:XX:XX:XX:XX"
-        memset(&cfg->u.sta_info.security.repurposed_radius.identity, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.identity));
-        snprintf(cm_mac_str, sizeof(cm_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-                g_wifidb->hal_cap.wifi_prop.cm_mac[0], g_wifidb->hal_cap.wifi_prop.cm_mac[1],
-                g_wifidb->hal_cap.wifi_prop.cm_mac[2], g_wifidb->hal_cap.wifi_prop.cm_mac[3],
-                g_wifidb->hal_cap.wifi_prop.cm_mac[4], g_wifidb->hal_cap.wifi_prop.cm_mac[5]);
-        wifi_util_dbg_print(WIFI_CTRL,
-                "cm-mac : %02X:%02X:%02X:%02X:%02X:%02X mac-str : %s\n",
-                g_wifidb->hal_cap.wifi_prop.cm_mac[0], g_wifidb->hal_cap.wifi_prop.cm_mac[1],
-                g_wifidb->hal_cap.wifi_prop.cm_mac[2], g_wifidb->hal_cap.wifi_prop.cm_mac[3],
-                g_wifidb->hal_cap.wifi_prop.cm_mac[4], g_wifidb->hal_cap.wifi_prop.cm_mac[5], cm_mac_str);
-        strncpy(cfg->u.sta_info.security.repurposed_radius.identity, cm_mac_str, sizeof(cfg->u.sta_info.security.repurposed_radius.identity)-1);
-
-        memset(&cfg->u.sta_info.security.repurposed_radius.key, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.key));
-        strncpy(cfg->u.sta_info.security.repurposed_radius.key, g_wifidb->hal_cap.wifi_prop.serialNo, sizeof(cfg->u.sta_info.security.repurposed_radius.key)-1);
-        wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s key: %s Identity: %s mode: %d eap-type: %d phase: %d\n", cfg->u.sta_info.repurposed_ssid, cfg->u.sta_info.security.repurposed_radius.key, cfg->u.sta_info.security.repurposed_radius.identity, cfg->u.sta_info.security.repurposed_mode, cfg->u.sta_info.security.repurposed_radius.eap_type, cfg->u.sta_info.security.repurposed_radius.phase2);
+        wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s mode: %d eap-type: %d phase: %d\n",
+                cfg->u.sta_info.repurposed_ssid, cfg->u.sta_info.security.repurposed_mode,
+                cfg->u.sta_info.security.repurposed_radius.eap_type,
+                cfg->u.sta_info.security.repurposed_radius.phase2);
 
     } else {
         cfg->u.bss_info.wmm_enabled = true;
