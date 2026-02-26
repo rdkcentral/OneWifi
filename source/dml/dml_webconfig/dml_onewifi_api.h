@@ -147,7 +147,6 @@ wifi_vap_info_t* get_dml_vap_parameters(uint8_t vapIndex);
 wifi_vap_info_map_t* get_dml_vap_map(uint8_t radio_index);
 wifi_global_param_t* get_dml_wifi_global_param(void);
 wifi_GASConfiguration_t* get_dml_wifi_gas_config(void);
-void set_dml_cache_vap_config_changed(uint8_t vap_index);
 int push_prefer_private_ctrl_queue(bool flag);
 int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin);
 int push_vap_dml_cache_to_one_wifidb();

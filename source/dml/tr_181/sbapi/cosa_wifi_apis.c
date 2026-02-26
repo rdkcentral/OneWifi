@@ -366,7 +366,7 @@ ANSC_STATUS cosaWifiRadioRestart()
         rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(vap);
         if (rdk_vap_info != NULL) {
             rdk_vap_info->force_apply = true;
-            set_dml_cache_vap_config_changed(vap);
+            (vap);
             set_cac_cache_changed(vap);
         }
     }

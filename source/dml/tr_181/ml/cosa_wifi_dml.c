@@ -5788,7 +5788,6 @@ SSID_SetParamBoolValue
             wifi_util_error_print(WIFI_DMCLI,"%s:%d User is Trying to disable SSID for vap_index=%d\n",__FUNCTION__,__LINE__,vapInfo->vap_index);
         }
 #endif
-        set_dml_cache_vap_config_changed(instance_number - 1);
 
         if (isVapSTAMesh(pcfg->vap_index)) {
             if (vapInfo->u.sta_info.enabled == bValue)
@@ -5797,7 +5796,6 @@ SSID_SetParamBoolValue
             }
 
             vapInfo->u.sta_info.enabled = bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -5809,7 +5807,6 @@ SSID_SetParamBoolValue
             }
 
             vapInfo->u.bss_info.enabled = bValue;
-	    set_dml_cache_vap_config_changed(instance_number - 1);
         } else {
             CcspWifiTrace(("RDK_LOG_ERROR, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n" ));
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n",__FUNCTION__,__LINE__,pcfg->vap_name);
@@ -5828,7 +5825,6 @@ SSID_SetParamBoolValue
             }
 
             vapInfo->u.sta_info.enabled = bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -5839,7 +5835,6 @@ SSID_SetParamBoolValue
             }
 
             vapInfo->u.bss_info.enabled = bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
         } else {
             CcspWifiTrace(("RDK_LOG_ERROR, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n" ));
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n",__FUNCTION__,__LINE__,pcfg->vap_name);
@@ -5857,7 +5852,6 @@ SSID_SetParamBoolValue
                 return  TRUE;
             }
             cfg->router_enabled = bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
         else {
@@ -6046,7 +6040,6 @@ SSID_SetParamStringValue
                 return  TRUE;
             }
             snprintf(vapInfo->u.sta_info.ssid,sizeof(vapInfo->u.sta_info.ssid),"%s",pString);
-            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -6068,7 +6061,6 @@ SSID_SetParamStringValue
 	    }
 	}
 	snprintf(vapInfo->u.bss_info.ssid,sizeof(vapInfo->u.bss_info.ssid),"%s",pString);
-	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -7366,7 +7358,7 @@ AccessPoint_SetParamBoolValue
         } else {
             vapInfo->u.bss_info.enabled = bValue;
         }
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7386,7 +7378,7 @@ AccessPoint_SetParamBoolValue
         
         /* save update to backup */
         vapInfo->u.bss_info.isolation = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7399,7 +7391,7 @@ AccessPoint_SetParamBoolValue
         
         /* save update to backup */
         vapInfo->u.bss_info.showSsid = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7412,7 +7404,7 @@ AccessPoint_SetParamBoolValue
 
         /* save update to backup */
         vapInfo->u.bss_info.mld_info.common_info.mld_enable = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7425,7 +7417,7 @@ AccessPoint_SetParamBoolValue
 
         /* save update to backup */
         vapInfo->u.bss_info.mld_info.common_info.mld_apply = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7438,7 +7430,7 @@ AccessPoint_SetParamBoolValue
         
         /* save update to backup */
         vapInfo->u.bss_info.wmm_enabled = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7450,7 +7442,7 @@ AccessPoint_SetParamBoolValue
         }
         /* save update to backup */
         vapInfo->u.bss_info.UAPSDEnabled = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7467,7 +7459,7 @@ AccessPoint_SetParamBoolValue
         }
         /* save update to backup */
         vapInfo->u.bss_info.bssHotspot = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
 
         return TRUE;
     }
@@ -7485,7 +7477,7 @@ AccessPoint_SetParamBoolValue
             return  TRUE;
         }
         vapInfo->u.bss_info.bssTransitionActivated = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Apply BSSTransitionActivated failed \n",__func__, __LINE__);
@@ -7501,7 +7493,7 @@ AccessPoint_SetParamBoolValue
             return  TRUE;
         }
         vapInfo->u.bss_info.rapidReconnectEnable = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
 	return TRUE;
     }
 
@@ -7513,7 +7505,7 @@ AccessPoint_SetParamBoolValue
             return  TRUE;
         }
         vapInfo->u.bss_info.vapStatsEnable = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7525,7 +7517,7 @@ AccessPoint_SetParamBoolValue
             return  TRUE;
         }
         vapInfo->u.bss_info.nbrReportActivated = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Apply NeighborReportActivated failed \n",__func__, __LINE__);
@@ -7542,7 +7534,7 @@ AccessPoint_SetParamBoolValue
             return  TRUE;
         }
         vapInfo->u.bss_info.interworking.interworking.interworkingEnabled = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
 
         return TRUE;
     }
@@ -7571,14 +7563,14 @@ AccessPoint_SetParamBoolValue
         }
         vapInfo->u.bss_info.connected_building_enabled = bValue;
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: connected_building_enabled Value = %d  \n",__func__, __LINE__, vapInfo->u.bss_info.connected_building_enabled);
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_HostapMgtFrameCtrl", TRUE))
     {
         vapInfo->u.bss_info.hostap_mgt_frame_ctrl = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
 
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: hostap_mgt_frame_ctrl value = %d\n", __func__,
             __LINE__, vapInfo->u.bss_info.hostap_mgt_frame_ctrl);
@@ -7588,7 +7580,7 @@ AccessPoint_SetParamBoolValue
     if (AnscEqualString(ParamName, "InteropTelemetryCtrl", TRUE))
     {
         vapInfo->u.bss_info.interop_ctrl = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
 
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: interop_ctrl value = %d\n", __func__,
             __LINE__, vapInfo->u.bss_info.interop_ctrl);
@@ -7673,7 +7665,7 @@ AccessPoint_SetParamIntValue
         }
         /* save update to backup */
         vapInfo->u.bss_info.wmmNoAck = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
 
         return TRUE;
     }
@@ -7693,7 +7685,7 @@ AccessPoint_SetParamIntValue
 
         /* Allow users to set max station for given VAP */
         vapInfo->u.bss_info.bssMaxSta = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return (TRUE);
     }
 
@@ -7712,7 +7704,7 @@ AccessPoint_SetParamIntValue
         vapInfo->u.bss_info.mgmtPowerControl = iValue;
         CcspWifiTrace(("RDK_LOG_INFO,X_RDKCENTRAL-COM_ManagementFramePowerControl:%d\n", iValue));
         CcspTraceWarning(("X_RDKCENTRAL-COM_ManagementFramePowerControl_Get:<%d>\n", iValue));
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7724,7 +7716,7 @@ AccessPoint_SetParamIntValue
         }
         /* save update to backup */
         vapInfo->u.bss_info.rapidReconnThreshold = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7741,7 +7733,7 @@ AccessPoint_SetParamIntValue
         }
         /* Allow users to set max station for given VAP */
         vapInfo->u.bss_info.inum_sta = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return (TRUE);
     }
 
@@ -7837,7 +7829,7 @@ AccessPoint_SetParamUlongValue
 
         /* save update to backup */
         vapInfo->u.bss_info.bssMaxSta = uValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7859,7 +7851,7 @@ AccessPoint_SetParamUlongValue
         }
         /* save update to backup */
         vapInfo->u.bss_info.mld_info.common_info.mld_id = uValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -7896,7 +7888,7 @@ AccessPoint_SetParamUlongValue
                 continue;
             }
             temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
-            set_dml_cache_vap_config_changed(vap_idx);
+            (vap_idx);
         }
         return TRUE;
     }
@@ -7999,7 +7991,7 @@ AccessPoint_SetParamStringValue
             return FALSE;
         }
         vapInfo->u.bss_info.beaconRate = beaconIndex;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 	
@@ -8834,7 +8826,7 @@ Security_SetParamBoolValue
             l_security_cfg->wpa3_transition_disable = bValue;
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value=%d\n",
                 __func__, __LINE__, l_security_cfg->wpa3_transition_disable, bValue);
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -8980,7 +8972,7 @@ Security_SetParamUlongValue
 	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:RekeyingInterval=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->rekey_interval,uValue);
             /* save update to backup */
             l_security_cfg->rekey_interval = uValue;
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+	    (instance_number - 1);
         }
 
         return TRUE;
@@ -8993,7 +8985,7 @@ Security_SetParamUlongValue
 	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:X_CISCO_COM_EncryptionMethod=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->encr,uValue);
             /* collect value */
             l_security_cfg->encr = uValue;
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+	    (instance_number - 1);
         }
         return TRUE;
     }
@@ -9010,7 +9002,7 @@ Security_SetParamUlongValue
 	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:RadiusServerPort=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->u.radius.port,uValue);
             /* save update to backup */
             l_security_cfg->u.radius.port = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -9027,7 +9019,7 @@ Security_SetParamUlongValue
 	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:SecondaryRadiusServerPort=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->u.radius.s_port,uValue);
             /* save update to backup */
             l_security_cfg->u.radius.s_port = uValue;
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+	    (instance_number - 1);
         }
         return TRUE;
     }
@@ -9044,7 +9036,7 @@ Security_SetParamUlongValue
 	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:RadiusDASPort=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->u.radius.dasport,uValue);
             /* save update to backup */
             l_security_cfg->u.radius.dasport   = uValue;
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+	    (instance_number - 1);
         }
         return TRUE;
     }
@@ -9243,7 +9235,7 @@ Security_SetParamStringValue
             default:
                 break;
         }
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Set Value=%d success  \n",__func__, __LINE__,TmpMode);
         CcspWifiTrace(("RDK_LOG_WARN,RDKB_WIFI_CONFIG_CHANGED : Wifi security mode %s is Enabled\n",pString));
         return TRUE;
@@ -9303,7 +9295,7 @@ Security_SetParamStringValue
                  ERR_CHK(rc);
                  return FALSE;
              }
-             set_dml_cache_vap_config_changed(instance_number - 1);
+             (instance_number - 1);
              return TRUE;
          }
     }
@@ -9327,7 +9319,7 @@ Security_SetParamStringValue
              ERR_CHK(rc);
              return FALSE;
         }
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
 
         return TRUE;
     }
@@ -9363,7 +9355,7 @@ Security_SetParamStringValue
            ERR_CHK(rc);
            return FALSE;
         }
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -9391,7 +9383,7 @@ Security_SetParamStringValue
             ERR_CHK(rc);
             return FALSE;
         }
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
 
         return TRUE;
     }
@@ -9419,7 +9411,7 @@ Security_SetParamStringValue
               ERR_CHK(rc);
               return FALSE;
         }
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
         return TRUE;
     }
 
@@ -9446,7 +9438,7 @@ Security_SetParamStringValue
               ERR_CHK(rc);
               return FALSE;
         }
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
         return TRUE;
     }
 
@@ -9473,7 +9465,7 @@ Security_SetParamStringValue
               ERR_CHK(rc);
               return FALSE;
         }
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
         return TRUE;
     }
 
@@ -9505,7 +9497,7 @@ Security_SetParamStringValue
         {
 
             l_security_cfg->mfp = mfp;
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+	    (instance_number - 1);
             return TRUE;
         }
         else
@@ -9541,7 +9533,7 @@ Security_SetParamStringValue
         }
 
         memcpy(&l_security_cfg->u.radius.dasip, &parameterIp, sizeof(ip_addr_t));
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
     rc = strcmp_s("RadiusDASSecret", strlen("RadiusDASSecret"), ParamName, &ind);
@@ -9567,7 +9559,7 @@ Security_SetParamStringValue
             ERR_CHK(rc);
             return FALSE;
         }
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
         return TRUE;
     }
 
@@ -10592,7 +10584,7 @@ PreAssocDeny_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DMCLI value set :%d \n",__func__, __LINE__,iValue);
         vapInfo->u.bss_info.preassoc.time_ms = iValue;
         set_cac_cache_changed(instance_number - 1);
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -10610,7 +10602,7 @@ PreAssocDeny_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DMCLI value set :%d \n",__func__, __LINE__,iValue);
         vapInfo->u.bss_info.preassoc.min_num_mgmt_frames = iValue;
         set_cac_cache_changed(instance_number - 1);
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
 
     }
@@ -10820,7 +10812,7 @@ PreAssocDeny_SetParamStringValue
         if (strcmp(pString, "disabled") == 0) {
           snprintf(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates), "%s", "disabled");
           set_cac_cache_changed(instance_number - 1);
-          set_dml_cache_vap_config_changed(instance_number - 1);
+          (instance_number - 1);
           return TRUE;
         }
           
@@ -10831,7 +10823,7 @@ PreAssocDeny_SetParamStringValue
           }
           snprintf(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates), "%s", pString);
           set_cac_cache_changed(instance_number - 1);
-          set_dml_cache_vap_config_changed(instance_number - 1);
+          (instance_number - 1);
           return TRUE;
       }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Not a valid format\n", __FUNCTION__,__LINE__,pString);
@@ -10849,7 +10841,7 @@ PreAssocDeny_SetParamStringValue
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
             return TRUE;
         }
 
@@ -10861,7 +10853,7 @@ PreAssocDeny_SetParamStringValue
 
           snprintf(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates), "%s", pString);
           set_cac_cache_changed(instance_number - 1);
-          set_dml_cache_vap_config_changed(instance_number - 1);
+          (instance_number - 1);
           return TRUE;
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Not a valid format\n", __FUNCTION__,__LINE__,pString);
@@ -10877,7 +10869,7 @@ PreAssocDeny_SetParamStringValue
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
             return TRUE;
         }
 
@@ -10889,7 +10881,7 @@ PreAssocDeny_SetParamStringValue
 
           snprintf(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates), "%s", pString);
           set_cac_cache_changed(instance_number - 1);
-          set_dml_cache_vap_config_changed(instance_number - 1);
+          (instance_number - 1);
           return TRUE;
       }
       wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Not a valid format\n", __FUNCTION__,__LINE__,pString);
@@ -10905,7 +10897,7 @@ PreAssocDeny_SetParamStringValue
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
             return TRUE;
         }
 
@@ -10923,7 +10915,7 @@ PreAssocDeny_SetParamStringValue
 
         snprintf(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -10937,12 +10929,12 @@ PreAssocDeny_SetParamStringValue
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate), "%s", "disabled");
             set_cac_cache_changed(instance_number - 1);
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
             return TRUE;
         }
         snprintf(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
     
@@ -10961,7 +10953,7 @@ PreAssocDeny_SetParamStringValue
 
         snprintf(vapInfo->u.bss_info.preassoc.tcm_exp_weightage, sizeof(vapInfo->u.bss_info.preassoc.tcm_exp_weightage), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -10973,7 +10965,7 @@ PreAssocDeny_SetParamStringValue
 
         snprintf(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold, sizeof(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold), "%s", pString);
         set_cac_cache_changed(instance_number - 1);
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -12311,7 +12303,7 @@ WPS_SetParamBoolValue
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
         if (vapInfo->u.bss_info.wps.enable != bValue) {
             vapInfo->u.bss_info.wps.enable = bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -12320,7 +12312,7 @@ WPS_SetParamBoolValue
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:key=%d bValue=%d\n", __func__, __LINE__,
                 vapInfo->u.bss_info.wpsPushButton, bValue);
             vapInfo->u.bss_info.wpsPushButton = bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -12529,7 +12521,7 @@ WPS_SetParamIntValue
             if (_ansc_strstr(pString, "NONE")) {
                 match++;
                 vapInfo->u.bss_info.wps.methods = 0;
-                set_dml_cache_vap_config_changed(instance_number - 1);
+                (instance_number - 1);
             }
 
             // If match is not there then return error
@@ -12537,7 +12529,7 @@ WPS_SetParamIntValue
                 return FALSE;
             }
             if (vapInfo->u.bss_info.wps.methods != 0) {
-                set_dml_cache_vap_config_changed(instance_number - 1);
+                (instance_number - 1);
             }
             return TRUE;
         }
@@ -13155,7 +13147,7 @@ InterworkingElement_SetParamBoolValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d internet=%d bValue=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.internetAvailable,bValue);
         vapInfo->u.bss_info.interworking.interworking.internetAvailable = bValue;
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
         return TRUE;
     }
     
@@ -13167,7 +13159,7 @@ InterworkingElement_SetParamBoolValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d asra=%d bValue=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.asra,bValue);
         vapInfo->u.bss_info.interworking.interworking.asra = bValue;
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
         return TRUE;
     }
 
@@ -13179,7 +13171,7 @@ InterworkingElement_SetParamBoolValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d esr=%d bValue=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.esr,bValue);
         vapInfo->u.bss_info.interworking.interworking.esr = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -13191,7 +13183,7 @@ InterworkingElement_SetParamBoolValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d uesa=%d bValue=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.uesa,bValue);
         vapInfo->u.bss_info.interworking.interworking.uesa = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -13203,7 +13195,7 @@ InterworkingElement_SetParamBoolValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d venue=%d bValue=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.venueOptionPresent,bValue);
         vapInfo->u.bss_info.interworking.interworking.venueOptionPresent = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -13215,7 +13207,7 @@ InterworkingElement_SetParamBoolValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d hessOptionPresent=%d bValue=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.hessOptionPresent,bValue);
         vapInfo->u.bss_info.interworking.interworking.hessOptionPresent = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -13337,7 +13329,7 @@ InterworkingElement_SetParamUlongValue
             }
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d accessNetworkType=%d Value=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.accessNetworkType,uValue);
             vapInfo->u.bss_info.interworking.interworking.accessNetworkType = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
             return TRUE;
         }
     }
@@ -13416,7 +13408,7 @@ InterworkingElement_SetParamStringValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d HESSID length is more than expected\n", __FUNCTION__, __LINE__);
             return FALSE;
         }
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
         return TRUE;
     }
     
@@ -13916,7 +13908,7 @@ InterworkingElement_Venue_SetParamUlongValue
             }
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d venueType=%d Value=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.venueType,uValue);
             vapInfo->u.bss_info.interworking.interworking.venueType = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
             return TRUE;
         }
 
@@ -13931,7 +13923,7 @@ InterworkingElement_Venue_SetParamUlongValue
             }
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d venueGroup=%d Value=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.interworking.interworking.venueGroup,uValue);
             vapInfo->u.bss_info.interworking.interworking.venueGroup = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
             return TRUE;
         }
     }
@@ -14809,7 +14801,7 @@ MacFilter_SetParamBoolValue
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d mac_filter_enable=%d Value=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.mac_filter_enable,bValue);
             vapInfo->u.bss_info.mac_filter_enable = bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -14820,7 +14812,7 @@ MacFilter_SetParamBoolValue
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d mac_filter_mode=%d Value=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.mac_filter_mode,!bValue);
             vapInfo->u.bss_info.mac_filter_mode = !bValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
          return TRUE;
     }
@@ -17552,7 +17544,7 @@ RadiusSettings_SetParamBoolValue
             return TRUE;
         }
         l_security_cfg->disable_pmksa_caching = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 return FALSE;
@@ -17615,7 +17607,7 @@ RadiusSettings_SetParamIntValue
         }
         /* save update to backup */
         l_security_cfg->u.radius.server_retries = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -17649,7 +17641,7 @@ RadiusSettings_SetParamIntValue
         }
         /* save update to backup */
         l_security_cfg->u.radius.max_auth_attempts = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         return TRUE;
     }
 
@@ -17660,7 +17652,7 @@ RadiusSettings_SetParamIntValue
         {
             return TRUE;
         }
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         l_security_cfg->u.radius.blacklist_table_timeout = iValue;
         return TRUE;
     }
@@ -17677,7 +17669,7 @@ RadiusSettings_SetParamIntValue
         {
             return TRUE;
         }
-        set_dml_cache_vap_config_changed(instance_number - 1);
+        (instance_number - 1);
         l_security_cfg->u.radius.identity_req_retry_interval = iValue;
         return TRUE;
     }
@@ -17834,7 +17826,7 @@ Authenticator_SetParamUlongValue
         {
             /* save update to backup */
             l_security_cfg->eapol_key_timeout = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -17845,7 +17837,7 @@ Authenticator_SetParamUlongValue
         {
             /* save update to backup */
             l_security_cfg->eapol_key_retries = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -17856,7 +17848,7 @@ Authenticator_SetParamUlongValue
         {
             /* save update to backup */
             l_security_cfg->eap_identity_req_timeout = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -17867,7 +17859,7 @@ Authenticator_SetParamUlongValue
         {
             /* save update to backup */
             l_security_cfg->eap_identity_req_retries = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -17878,7 +17870,7 @@ Authenticator_SetParamUlongValue
         {
             /* save update to backup */
             l_security_cfg->eap_req_timeout = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -17889,7 +17881,7 @@ Authenticator_SetParamUlongValue
         {
             /* save update to backup */
             l_security_cfg->eap_req_retries  = uValue;
-            set_dml_cache_vap_config_changed(instance_number - 1);
+            (instance_number - 1);
         }
         return TRUE;
     }
@@ -20455,7 +20447,7 @@ InterworkingService_SetParamStringValue
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Input string too long for vap %s\n", __FUNCTION__, __LINE__, pcfg->vap_name);
                 return FALSE;
             }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+	    (instance_number - 1);
             return TRUE;
         }
     }
@@ -20743,7 +20735,7 @@ Passpoint_SetParamBoolValue
             return FALSE;
         }
 	vapInfo->u.bss_info.interworking.passpoint.enable = bValue;
-	set_dml_cache_vap_config_changed(instance_number - 1);
+	(instance_number - 1);
 	return TRUE;
     }
     return FALSE;
@@ -20828,7 +20820,7 @@ Passpoint_SetParamStringValue
                 cJSON_Delete(p_root);
                 return FALSE;
             }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+	    (instance_number - 1);
             return TRUE;
         }
     }
