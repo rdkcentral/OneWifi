@@ -3234,6 +3234,19 @@ ie_parse_rsn(const uint8_t *ie, size_t len, assoc_dev_data_t *data)
     memset(data->conn_security.wpa_key_mgmt, 0, sizeof(data->conn_security.wpa_key_mgmt));
     get_key_mgmt(pos, data->conn_security.wpa_key_mgmt, sizeof(data->conn_security.wpa_key_mgmt));
     wifi_util_dbg_print(WIFI_MON, "%s:%d key_mgmt[%s]\n", __func__, __LINE__, data->conn_security.wpa_key_mgmt);
+
+    for (i = 0; i < cnt; i++) {
+        pos += RSN_SELECTOR_LEN;
+        left -= RSN_SELECTOR_LEN;
+    }
+
+    if (left < 2) {
+        wifi_util_error_print(WIFI_MON, "%s:%d No rsn_capabilities. Left [%d]\n", __func__, __LINE__, left);
+        return;
+    }
+
+    data->conn_security.rsn_capabilities = WPA_GET_LE16(pos);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d rsn_capabilities[0x%x]\n", __func__, __LINE__, data->conn_security.rsn_capabilities);
 }
 
 static void parse_assoc_ies(const uint8_t *ies, size_t ies_len, assoc_dev_data_t *data)

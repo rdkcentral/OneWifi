@@ -1053,6 +1053,15 @@
                 },
                 "IsbSTA": {
                     "type": "boolean"
+                },
+                "PairwiseAKM": {
+                    "type": "string"
+                },
+                "PairwiseCipher": {
+                    "type": "string"
+                },
+                "RSNCapabilities": {
+                    "$ref": "#/definitions/uint16_t"
                 }
             }
         },
