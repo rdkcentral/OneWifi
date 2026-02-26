@@ -46,7 +46,6 @@ int vap_svc_private_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info
 
 static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
 {
-    int band;
     wifi_vap_info_t *hotspot_vap_info = NULL;
     int rIdx = 0;
     if (!vap_info) {
