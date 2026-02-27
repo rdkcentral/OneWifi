@@ -7865,7 +7865,6 @@ AccessPoint_SetParamUlongValue
                 continue;
             }
             temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
-            (vap_idx);
         }
         return TRUE;
     }
