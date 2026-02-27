@@ -395,7 +395,6 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
     element_t *e;
     hash_element_t *he;
     hash_map_t *dst_map;
-    void *key, *data = NULL;
 
     if (src_map == NULL ||
         src_map->queue == NULL ||
@@ -410,6 +409,10 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
 
     e = src_map->queue->head;
     while (e != NULL) {
+
+        char *key = NULL;
+        void *data = NULL;
+
         he = (hash_element_t *)e->data;
         if (he == NULL || he->key == NULL) {
             hash_map_destroy(dst_map);
@@ -422,20 +425,24 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
             return NULL;
         }
 
-        if (data_size != 0 && (data = malloc(data_size)) == NULL) {
-            hash_map_destroy(dst_map);
-            return NULL;
-        }
-
-        if (he->data) {
+        if (data_size && he->data) {
+            data = malloc(data_size);
+            if (data == NULL) {
+                free(key);
+                hash_map_destroy(dst_map);
+                return NULL;
+            }
             memcpy(data, he->data, data_size);
         }
 
         if (hash_map_put(dst_map, key, data) == -1) {
+            /* ownership not transferred → safe to destroy map */
             hash_map_destroy(dst_map);
             return NULL;
         }
+
         e = e->next;
     }
+
     return dst_map;
 }
