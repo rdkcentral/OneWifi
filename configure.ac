@@ -280,6 +280,8 @@ AC_CONFIG_FILES(
     source/Makefile
     source/sampleapps/Makefile
     source/utils/Makefile
+    source/utils/quality_mgr/Makefile
+    source/utils/math_utils/Makefile
     Makefile
 )
 

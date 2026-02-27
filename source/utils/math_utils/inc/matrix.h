@@ -65,7 +65,7 @@ public:
 
     matrix_t(unsigned int rows, unsigned int cols, number_t n[]);
     matrix_t(unsigned int rows, unsigned int cols);
-    matrix_t(const matrix_t &m);
+    matrix_t(const matrix_t& m);
     matrix_t(vector_t v, bool as_row);
     matrix_t();
     ~matrix_t();

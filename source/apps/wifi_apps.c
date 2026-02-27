@@ -26,7 +26,7 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_apps_mgr.h"
-
+#include "wifi_linkquality.h"
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
 extern int analytics_init(wifi_app_t *app, unsigned int create_flag);
 extern int analytics_deinit(wifi_app_t *app);
@@ -81,6 +81,9 @@ int csi_analytics_update(wifi_app_t *app)
 }
 #endif
 
+extern int link_quality_init(wifi_app_t *app, unsigned int create_flag);
+extern int link_quality_deinit(wifi_app_t *app);
+extern int link_quality_event(wifi_app_t *app, wifi_event_t *event);
 #ifdef ONEWIFI_CAC_APP_SUPPORT
 extern int cac_init(wifi_app_t *app, unsigned int create_flag);
 extern int cac_deinit(wifi_app_t *app);
@@ -313,6 +316,14 @@ wifi_app_descriptor_t app_desc[] = {
         cac_mgmt_frame_hook,NULL
     },
 #endif
+ {
+         wifi_app_inst_link_quality, 0,
+         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
+         true, true,
+         "LinkQuality",
+         link_quality_init, link_quality_event, link_quality_deinit,
+         NULL, NULL
+},
 #if SM_APP
     {
         wifi_app_inst_sm, 0,

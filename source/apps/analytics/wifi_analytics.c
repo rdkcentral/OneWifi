@@ -74,6 +74,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_beacon_report)
         DOC2S(webconfig_subdoc_type_em_channel_stats)
 #endif
+        DOC2S(webconfig_subdoc_type_link_report)
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             type);

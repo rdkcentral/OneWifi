@@ -3846,6 +3846,103 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
 
     return webconfig_error_none;
 }
+webconfig_error_t decode_link_report(cJSON *json,report_batch_t **out_report)
+{
+    if (!json || !out_report) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    cJSON *link_array = cJSON_GetObjectItem(json, "LinkReport");
+    if (!cJSON_IsArray(link_array)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    size_t link_count = cJSON_GetArraySize(link_array);
+
+    report_batch_t *report = calloc(1, sizeof(report_batch_t));
+    if (!report) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: report calloc Failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    report->link_count = link_count;
+    report->links = calloc(link_count, sizeof(link_report_t));
+    if (!report->links) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: report->links calloc Failed\n", __func__, __LINE__);
+        free(report);
+        return webconfig_error_decode;
+    }
+
+    for (size_t i = 0; i < link_count; i++) {
+
+        cJSON *link_obj = cJSON_GetArrayItem(link_array, i);
+        link_report_t *lr = &report->links[i];
+
+        /* Mac */
+        cJSON *mac = cJSON_GetObjectItem(link_obj, "Mac");
+        if (cJSON_IsString(mac)) {
+            strncpy(lr->mac, mac->valuestring, sizeof(lr->mac) - 1);
+        }
+
+        /* VapIndex */
+        cJSON *vap = cJSON_GetObjectItem(link_obj, "VapIndex");
+        lr->vap_index = cJSON_IsNumber(vap) ? vap->valueint : 0;
+
+        /* Threshold */
+        cJSON *threshold = cJSON_GetObjectItem(link_obj, "Threshold");
+        lr->threshold = cJSON_IsNumber(threshold) ? threshold->valuedouble : 0.0;
+
+        /* Alarm */
+        cJSON *alarm = cJSON_GetObjectItem(link_obj, "Alarm");
+        lr->alarm = cJSON_IsBool(alarm) ? cJSON_IsTrue(alarm) : 0;
+
+        /* ReportingTime */
+        cJSON *rt = cJSON_GetObjectItem(link_obj, "ReportingTime");
+        if (cJSON_IsString(rt)) {
+            strncpy(lr->reporting_time, rt->valuestring,
+                    sizeof(lr->reporting_time) - 1);
+        }
+
+        /* Samples */
+        cJSON *samples_array = cJSON_GetObjectItem(link_obj, "Samples");
+        if (cJSON_IsArray(samples_array)) {
+
+            size_t sample_count = cJSON_GetArraySize(samples_array);
+            lr->sample_count = sample_count;
+            lr->samples = calloc(sample_count, sizeof(sample_t));
+
+            for (size_t j = 0; j < sample_count; j++) {
+
+                cJSON *sobj = cJSON_GetArrayItem(samples_array, j);
+                sample_t *s = &lr->samples[j];
+
+                cJSON *v;
+
+                v = cJSON_GetObjectItem(sobj, "Score");
+                s->score = cJSON_IsNumber(v) ? v->valuedouble : 0.0;
+
+                v = cJSON_GetObjectItem(sobj, "SNR");
+                s->snr = cJSON_IsNumber(v) ? v->valuedouble : 0.0;
+
+                v = cJSON_GetObjectItem(sobj, "PER");
+                s->per = cJSON_IsNumber(v) ? v->valuedouble : 0.0;
+
+                v = cJSON_GetObjectItem(sobj, "PHY");
+                s->phy = cJSON_IsNumber(v) ? v->valuedouble : 0.0;
+
+                v = cJSON_GetObjectItem(sobj, "Time");
+                if (cJSON_IsString(v)) {
+                    strncpy(s->time, v->valuestring,sizeof(s->time) - 1);
+                }
+            }
+        }
+    }
+
+    *out_report = report;
+    return webconfig_error_none;
+}
 
 webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *obj_array )
 {

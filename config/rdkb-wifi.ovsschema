@@ -1871,6 +1871,15 @@
             "max": 1
           }
         },
+        "link_quality_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        }, 
       "rfc_id": {
           "type": "string"
         }

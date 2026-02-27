@@ -1577,7 +1577,29 @@ webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info,
         return webconfig_error_encode;
 
     }
+     return webconfig_error_none;
+}
 
+
+webconfig_error_t encode_link_score_sample_object(const link_report_t *link,
+    cJSON *link_obj)
+{
+    unsigned int i = 0 ,sample_count = 0;
+    cJSON *obj_array, *obj;
+    obj_array = cJSON_CreateArray();
+    sample_count = link->sample_count;
+     for (i = 0; i < sample_count; i++) {
+        obj = cJSON_CreateObject();
+	cJSON_AddItemToArray(obj_array, obj);
+        sample_t s = link->samples[i];
+        cJSON_AddNumberToObject(obj, "Score", s.score);
+        cJSON_AddStringToObject(obj, "Time", s.time);
+        cJSON_AddNumberToObject(obj, "SNR", s.snr);
+        cJSON_AddNumberToObject(obj, "PER", s.per);
+        cJSON_AddNumberToObject(obj, "PHY", s.phy);
+
+    }
+    cJSON_AddItemToObject(link_obj, "Samples", obj_array); 
     return webconfig_error_none;
 }
 

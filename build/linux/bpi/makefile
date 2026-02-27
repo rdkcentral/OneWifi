@@ -38,6 +38,8 @@ ONEWIFI_STA_MGR_APP_SUPPORT = 1
 HAL_LIBRARY = $(INSTALLDIR)/lib/libwifihal.a
 WEBCONFIG_LIBRARY = $(INSTALLDIR)/lib/libwebconfig.a
 HE_BUS_LIBRARY = $(INSTALLDIR)/lib/libhebus.a
+MATH_UTIL_LIBRARY = $(INSTALLDIR)/lib/libwifi_math_utils.la
+QUALITY_MANAGER_LIBRARY = $(INSTALLDIR)/lib/libwifi_quality_manager.la
 
 INCLUDE_HAL_LIB_DIRS = \
     -I$(ONE_WIFI_HOME)/include \
@@ -263,6 +265,9 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/whix \
     -I$(ONE_WIFI_HOME)/source/apps/easyconnect \
     -I$(ONE_WIFI_HOME)/source/apps/em \
+    -I$(ONE_WIFI_HOME)/source/apps/linkquality \
+    -I$(ONE_WIFI_HOME)/source/utils/quality_mgr/inc/ \
+    -I$(ONE_WIFI_HOME)/source/utils/math_utils/inc/ \
     -I$(ONE_WIFI_HOME)/source/core/services \
     -I$(ONE_WIFI_HOME)/include/tr_181/ml \
     -I$(ONE_WIFI_HOME)/include \
@@ -319,6 +324,7 @@ LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3
 CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(filter-out $(ONE_WIFI_HOME)/source/core/services/vap_svc_mesh_pod.c,$(wildcard $(ONE_WIFI_HOME)/source/core/services/*.c)) \
     $(wildcard $(ONE_WIFI_HOME)/source/apps/*.c) \
+    $(wildcard $(ONE_WIFI_HOME)/source/apps/linkquality/*.c)  \
     $(wildcard $(ONE_WIFI_HOME)/source/stubs/*.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/stats/*.c)	\
     $(ONE_WIFI_HOME)/lib/common/util.c		\
@@ -370,6 +376,11 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
         $(ONE_WIFI_HOME)/source/utils/wifi_util.c	\
+
+
+MATH_UTIL_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/utils/math_utils/src/*.cpp) \
+
+QUALITY_MANAGER_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/utils/quality_mgr/src/*.cpp) \
 
 HEBUS_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/platform/linux/he_bus/src/*.c)  \
 
@@ -433,16 +444,24 @@ ifdef EM_APP
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_sta_link_metrics.c \
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_ap_metrics_report.c
 endif
+	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_link_report.c
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
 
 WEBCONFIG_OBJECTS = $(WEBCONFIG_SOURCES:.c=.o)  # expands to list of object files
 ALL_WEBCFG_LIB_OBJECTS = $(WEBCONFIG_OBJECTS)
 
+
+MATH_UTIL_OBJECTS = $(MATH_UTIL_SOURCES:.cpp=.o)  # expands to list of object files
+ALL_MATH_UTIL_LIB_OBJECTS = $(MATH_UTIL_OBJECTS)
+
+QUALITY_MANAGER_OBJECTS = $(QUALITY_MANAGER_SOURCES:.cpp=.o)  # expands to list of object files
+ALL_QUALITY_MANAGER_LIB_OBJECTS = $(QUALITY_MANAGER_OBJECTS)
+
 HEBUS_OBJECTS = $(HEBUS_SOURCES:.c=.o)  # expands to list of object files
 ALL_HEBUS_LIB_OBJECTS = $(HEBUS_OBJECTS)
 
-ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(HEBUS_OBJECTS)
+ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(MATH_UTIL_OBJECTS) $(QUALITY_MANAGER_OBJECTS) $(HEBUS_OBJECTS)
 
 CFLAGS += $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DBANANA_PI_PORT  -DNL80211_ACL -D_PLATFORM_BANANAPI_R4_ -DFEATURE_SINGLE_PHY -DEASY_MESH_NODE -DEM_APP
 
@@ -463,7 +482,7 @@ $(BUILD_DIR):
 #
 
 
-all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY) $(PROGRAM)
+all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY)   $(MATH_UTIL_LIBRARY)  $(QUALITY_MANAGER_LIBRARY) $(PROGRAM)
 
 $(CMN_LIBRARY): $(ALL_CMN_LIB_OBJECTS)
 	$(AR)  $@  $^
@@ -472,6 +491,13 @@ $(HAL_LIBRARY): $(ALL_HAL_LIB_OBJECTS)
 	$(AR)  $@  $^
 
 $(WEBCONFIG_LIBRARY): $(ALL_WEBCFG_LIB_OBJECTS)
+	$(AR)  $@  $^
+
+
+$(MATH_UTIL_LIBRARY): $(ALL_MATH_UTIL_LIB_OBJECTS)
+	$(AR)  $@  $^
+
+$(QUALITY_MANAGER_LIBRARY): $(ALL_QUALITY_MANAGER_LIB_OBJECTS)
 	$(AR)  $@  $^
 
 $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
@@ -500,7 +526,7 @@ $(PROGRAM): $(ALLOBJECTS)
 #
 
 clean:
-	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
+	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY)$(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
 
 #
 # Run target: "make -f Makefile.Linux run" to execute the application

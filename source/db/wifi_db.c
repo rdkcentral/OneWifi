@@ -39,6 +39,7 @@ extern int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_
 extern int wifidb_init_global_config_default(wifi_global_param_t *config);
 extern int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config, rdk_wifi_vap_info_t *rdk_config);
+extern void  wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config);
 extern int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec);
 extern int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
@@ -649,6 +650,7 @@ void init_wifidb_data(void)
 	init_gas_config_default(&g_wifidb->global_config.gas_config);
 
     }
+    wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
 
 }
 
@@ -831,7 +833,18 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 {
     return 0;
 }
-
+void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
+{
+    wifi_rfc_dml_parameters_t rfc_config = {0};
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+    rfc_config.link_quality_rfc = true;
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    return ;
+} 
 int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 {
     return 0;
@@ -934,6 +947,7 @@ void wifidb_init(wifi_db_t *db)
     db->desc.init_global_config_default_fn = wifidb_init_global_config_default;
     db->desc.init_radio_config_default_fn = wifidb_init_radio_config_default;
     db->desc.init_vap_config_default_fn = wifidb_init_vap_config_default;
+    db->desc.init_rfc_config_default_fn = wifidb_init_rfc_config_default;
     db->desc.update_wifi_security_config_fn = wifidb_update_wifi_security_config;
     db->desc.get_gas_config_fn = wifidb_get_gas_config;
     db->desc.update_gas_config_fn = wifidb_update_gas_config;
