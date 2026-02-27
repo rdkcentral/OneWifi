@@ -142,6 +142,95 @@ UINT get_num_radio_dml()
     }
 }
 
+void update_apmld_map()
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+    apmld_map_t *apmld_map = &dml->apmld_map;
+    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
+    unsigned int num_radios = getNumberRadios();
+    int mld_id_to_idx[MLD_UNIT_COUNT];
+
+    memset(apmld_map, 0, sizeof(apmld_map_t));
+    memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
+
+    for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
+        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
+        if (mgr_vap_info_map == NULL) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
+            apmld_map->mld_group_count = 0;
+            return;
+        }
+
+        for (unsigned int k = 0; k < mgr_vap_info_map->num_vaps; k++) {
+            wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
+            wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
+            unsigned int id = mld_info->mld_id;
+            unsigned int mld_idx;
+
+            if (!mld_info->mld_enable) {
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            if (id >= MLD_UNIT_COUNT) {
+                wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid MLD ID: %u\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            // Check if MLD ID already has an index
+            if (mld_id_to_idx[id] == -1) {
+                // New MLD ID
+                if (apmld_map->mld_group_count >= MLD_UNIT_COUNT) {
+                    wifi_util_error_print(WIFI_DMCLI, "%s:%d MLD count exceeds maximum\n", __func__, __LINE__);
+                    continue;
+                }
+                mld_idx = apmld_map->mld_group_count;
+                mld_id_to_idx[id] = mld_idx;
+                apmld_map->mld_group_count++;
+            } else {
+                // Existing MLD ID
+                mld_idx = mld_id_to_idx[id];
+            }
+
+            // Store VAP in MLD group
+            mld_group_t *mld_group = &apmld_map->mld_groups[mld_idx];
+            if (mld_group->mld_vap_count < MAX_NUM_RADIOS) {
+                mld_group->mld_vaps[mld_group->mld_vap_count] = vap_config;
+                mld_group->mld_vap_count++;
+            }
+        }
+    }
+
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d Total MLD count = %d\n", __func__, __LINE__, apmld_map->mld_group_count);
+}
+
+UINT get_num_apmld_dml()
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    return dml->apmld_map.mld_group_count;
+}
+
+mld_group_t* get_dml_apmld_group(uint8_t index)
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    if (index >= dml->apmld_map.mld_group_count) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index %u\n", __func__, __LINE__, index);
+        return NULL;
+    }
+
+    return &dml->apmld_map.mld_groups[index];
+}
+
+UINT get_total_num_affiliated_ap_dml(mld_group_t *mld_group)
+{
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d get_total_num_affiliated_ap_dml called. Number:%u\n",
+        __func__, __LINE__, mld_group->mld_vap_count);
+
+    return mld_group->mld_vap_count;
+}
+
 UINT get_total_num_vap_dml()
 {
     webconfig_dml_t* pwebconfig = get_webconfig_dml();
@@ -622,6 +711,210 @@ void get_associated_devices_data(unsigned int radio_index)
     webconfig_data_free(data);
     free(data);
     data = NULL;
+}
+
+/* Get APMLD index from mld_group pointer */
+uint8_t get_apmld_index_from_mld_group(mld_group_t *mld_group)
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    /* Validate that the mld_group pointer is within the bounds of the apmld_map's mld_groups array */
+    if (mld_group < dml->apmld_map.mld_groups || mld_group >= dml->apmld_map.mld_groups + MLD_UNIT_COUNT) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid mld_group pointer\n", __func__, __LINE__);
+        return 0xFF; // Return an invalid index
+    }
+
+    return mld_group - dml->apmld_map.mld_groups;
+}
+
+hash_map_t* get_dml_stamld_hash_map(uint8_t apmld_index)
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    if (apmld_index >= dml->apmld_map.mld_group_count) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index %u\n", __func__, __LINE__, apmld_index);
+        return NULL;
+    }
+
+    return dml->apmld_map.stamld[apmld_index];
+}
+
+void update_dml_stamld_list(uint8_t apmld_index)
+{
+    webconfig_dml_t *dml = get_webconfig_dml();
+    apmld_map_t *apmld_map = &dml->apmld_map;
+    stamld_data_t *stamld_entry = NULL;
+    hash_map_t **stamld_map = NULL;
+    mld_group_t *mld_group = NULL;
+    unsigned int vap_idx;
+    int i = 0;
+
+    if (apmld_index >= apmld_map->mld_group_count) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index: %d\n", __func__, __LINE__,
+            apmld_index);
+        return;
+    }
+
+    get_associated_devices_data(0);
+
+    mld_group = &apmld_map->mld_groups[apmld_index];
+    stamld_map = &apmld_map->stamld[apmld_index];
+
+    /* Clear existing STAMLD hash map for this APMLD */
+    if (*stamld_map != NULL) {
+        hash_map_destroy(*stamld_map);
+        *stamld_map = NULL;
+    }
+
+    /* Create new hash map for this APMLD's STAMLDs */
+    *stamld_map = hash_map_create();
+    if (*stamld_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to create STAMLD hash map\n", __func__,
+            __LINE__);
+        return;
+    }
+
+    pthread_mutex_lock(&dml->assoc_dev_lock);
+
+    for (vap_idx = 0; vap_idx < mld_group->mld_vap_count; vap_idx++) {
+        hash_map_t *assoc_vap_info_map = NULL;
+        assoc_dev_data_t *assoc_dev_temp = NULL;
+        wifi_vap_info_t *vap_info = mld_group->mld_vaps[vap_idx];
+
+        if (vap_info == NULL) {
+            continue;
+        }
+
+        assoc_vap_info_map = get_associated_devices_hash_map(vap_info->vap_index);
+        if (assoc_vap_info_map == NULL) {
+            wifi_util_info_print(WIFI_DMCLI, "%s:%d No assoc_vap_info_map for vap_index %d\n",
+                __func__, __LINE__, vap_info->vap_index);
+            continue;
+        }
+
+        /* Iterate through associated devices for this VAP */
+        assoc_dev_temp = hash_map_get_first(assoc_vap_info_map);
+        while (assoc_dev_temp != NULL) {
+            if (assoc_dev_temp->dev_stats.cli_MLDEnable && assoc_dev_temp->dev_stats.cli_Active == true) {
+                mac_addr_str_t stamld_addr;
+
+                to_mac_str(assoc_dev_temp->dev_stats.cli_MLDAddr, stamld_addr);
+                str_tolower(stamld_addr);
+                /* Find which unique STAMLD index this device belongs to */
+                stamld_entry = hash_map_get(*stamld_map, stamld_addr);
+
+                /* Store this link for the STAMLD */
+                if (stamld_entry == NULL) {
+                    stamld_entry = (stamld_data_t *)malloc(sizeof(stamld_data_t));
+                    if (stamld_entry == NULL) {
+                        wifi_util_error_print(WIFI_DMCLI,
+                            "%s:%d Failed to allocate STAMLD entry for index %d\n", __func__,
+                            __LINE__, i);
+                        continue;
+                    }
+                    memset(stamld_entry, 0, sizeof(stamld_data_t));
+
+                    stamld_entry->affiliated_sta_count = 0;
+                    stamld_entry->affiliated_sta[stamld_entry->affiliated_sta_count] =
+                        assoc_dev_temp;
+                    stamld_entry->affiliated_sta_count++;
+
+                    hash_map_put(*stamld_map, strdup(stamld_addr), stamld_entry);
+
+                    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Added new STAMLD: %s\n", __func__, __LINE__, stamld_addr);
+                } else {
+                    stamld_entry->affiliated_sta[stamld_entry->affiliated_sta_count] = assoc_dev_temp;
+                    stamld_entry->affiliated_sta_count++;
+                    wifi_util_dbg_print(WIFI_DMCLI,
+                        "%s:%d Added affiliated sta for STAMLD[%s], link count: %d\n", __func__,
+                        __LINE__, stamld_addr, stamld_entry->affiliated_sta_count);
+                }
+            }
+            assoc_dev_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_temp);
+        }
+    }
+
+    pthread_mutex_unlock(&dml->assoc_dev_lock);
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d STAMLD hash map updated for APMLD[%d]\n", __func__,
+        __LINE__, apmld_index);
+}
+
+UINT get_total_num_stamld_dml(uint8_t apmld_index)
+{
+    hash_map_t *stamld_map = get_dml_stamld_hash_map(apmld_index);
+    
+    if (stamld_map == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d No STAMLD hash map for APMLD index %d\n", __func__, __LINE__, apmld_index);
+        return 0;
+    }
+
+    return hash_map_count(stamld_map);
+}
+
+assoc_dev_data_t* create_copy_assoc_dev_data(assoc_dev_data_t* src_assoc_dev_data)
+{
+    assoc_dev_data_t *assoc_dev_data = NULL;
+
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+    if (NULL == assoc_dev_data) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d assoc_dev_data - allocation failed!\n", __func__, __LINE__);
+        return NULL;
+    }
+    memcpy(assoc_dev_data, src_assoc_dev_data, sizeof(assoc_dev_data_t));
+
+    return assoc_dev_data;
+}
+
+stamld_data_t *get_stamld_entry(uint8_t apmld_index, uint32_t stamld_index)
+{
+    hash_map_t *stamld_map = NULL;
+    stamld_data_t *stamld_entry = NULL;
+
+    if (apmld_index >= get_num_apmld_dml()) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index: %d\n", __func__, __LINE__, apmld_index);
+        return NULL;
+    }
+
+    if (stamld_index >= get_total_num_stamld_dml(apmld_index)) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid STAMLD index: %d\n", __func__, __LINE__, stamld_index);
+        return NULL;
+    }
+
+    stamld_map = get_dml_stamld_hash_map(apmld_index);
+    if (stamld_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d No STAMLD hash map for APMLD index %d\n", __func__, __LINE__, apmld_index);
+        return NULL;
+    }
+
+    stamld_entry = hash_map_get_first(stamld_map);
+    for (uint32_t itr = 0; itr < stamld_index && stamld_entry != NULL; itr++) {
+        stamld_entry = hash_map_get_next(stamld_map, stamld_entry);
+    }
+
+    return stamld_entry;
+}
+
+/* Get AffiliatedSTA info - returns assoc_dev_data_t pointer directly from hash map */
+assoc_dev_data_t* get_dml_apmld_stamld_affiliated_sta(uint8_t apmld_index, uint32_t stamld_index, unsigned int affiliated_sta_index)
+{
+    stamld_data_t *stamld_entry = NULL;
+
+    if (affiliated_sta_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid AffiliatedSTA index: %d\n", __func__, __LINE__, affiliated_sta_index);
+        return NULL;
+    }
+
+    /* Get the STAMLD entry from hash map */
+    stamld_entry = get_stamld_entry(apmld_index, stamld_index);
+    if (stamld_entry == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to get STAMLD entry for APMLD[%d] STAMLD[%d]\n", 
+            __func__, __LINE__, apmld_index, stamld_index);
+        return NULL;
+    }
+
+    /* Return the associated device pointer directly from the link */
+    return stamld_entry->affiliated_sta[affiliated_sta_index];
 }
 
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
