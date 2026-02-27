@@ -185,7 +185,6 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
     // Add the mac address of the primary vapname
     for (unsigned int j = 0; j < map->num_vaps; j++) {
         vap = &map->vap_array[j];
-        rdk_vap = &radio->vaps.rdk_vap_array[j];
         if (is_vap_private(&params->hal_cap.wifi_prop, vap->vap_index) &&
             (strlen(vap->vap_name) != 0)) {
             // Obtain the mac and add

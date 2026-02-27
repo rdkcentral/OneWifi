@@ -222,6 +222,12 @@ static bool DeviceCpuUtil_DataGet(unsigned int *util_cpu)
         }
 
         hz_total = (hz_user - prev_hz_user) + (hz_nice - prev_hz_nice) + (hz_system - prev_hz_system) + (hz_idle - prev_hz_idle);
+
+        if (hz_total == 0) {
+            *util_cpu = 0;
+            break;
+        }
+
         busy = (1.0 - ((double)(hz_idle - prev_hz_idle) / (double)hz_total)) * 100.0;
         *util_cpu = (unsigned int) (busy + 0.5);
 

@@ -225,6 +225,11 @@ int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_s
         * is received by the handle_webconfig_event() function and decode is not happened yet
         * to determine the subdoc type.
         */
+        if (analytics_format == NULL) {
+            wifi_util_error_print(WIFI_ANALYTICS, "%s:%d: Unknown sub_type(0x%x) and doc is NULL\n", __func__, __LINE__, sub_type);
+            return RETURN_ERR;
+        }
+
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format, "set", "webconfig");
         return RETURN_OK;
     }

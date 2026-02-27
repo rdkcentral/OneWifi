@@ -3346,7 +3346,7 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
     }
 
     ret = sscanf(name, "Device.WiFi.AccessPoint.%d.RawFrame.Mgmt.Action.Tx", &idx);
-    if (ret != 1 || idx < 0 || idx > num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+    if (ret != 1 || idx > num_of_radios * MAX_NUM_VAP_PER_RADIO) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid index : %s\r\n", __func__, __LINE__, name);
         return bus_error_invalid_event;
     }
