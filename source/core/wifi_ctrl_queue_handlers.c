@@ -182,7 +182,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
             l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-            if (l_rdk_vap_array->acl_map != NULL) {
+            if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                 acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
                 while (acl_entry != NULL) {
@@ -199,7 +199,6 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                              __func__, __LINE__, l_rdk_vap_array->vap_index, mac_str);
-                            ret = RETURN_ERR;
                         }
                            acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
 
