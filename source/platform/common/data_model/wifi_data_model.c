@@ -1670,54 +1670,6 @@ bus_error_t wifi_region_code_set_param_value(char *event_name, raw_data_t *p_dat
     return status;
 }
 
-bus_error_t default_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
-{
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s, data type:%d\r\n", __func__, __LINE__, event_name, p_data->data_type);
-
-    switch(p_data->data_type) {
-        case bus_data_type_string:
-            scratch_data_buff_t temp_buff = { 0 };
-            set_output_string(&temp_buff, " ");
-
-            p_data->raw_data.bytes = temp_buff.buff;
-            p_data->raw_data_len   = temp_buff.buff_len;
-            break;
-        default:
-            break;
-    }
-
-    return bus_error_success;
-}
-
-bus_error_t default_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
-{
-    (void)p_data;
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, event_name);
-    return bus_error_success;
-}
-
-bus_error_t default_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum)
-{
-    (void)instNum;
-    (void)aliasName;
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter\r\n", __func__, __LINE__);
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Added table:%s\r\n", __func__, __LINE__, tableName);
-    return bus_error_success;
-}
-
-bus_error_t default_table_remove_row_handler(char const* rowName)
-{
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, rowName);
-    return bus_error_success;
-}
-
-bus_error_t default_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish)
-{
-    (void)autoPublish;
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s: action:%d interval:%d\r\n", __func__, __LINE__, eventName, action, interval);
-    return bus_error_success;
-}
-
 int wifi_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table)
 {
     bus_data_cb_func_t bus_data_cb[] = {

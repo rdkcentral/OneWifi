@@ -72,6 +72,7 @@ OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/common/
 
 if ONEWIFI_DML_SUPPORT
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/source/dml/tr_181/ml -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/include/tr_181/ml
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/common/data_model/
 else
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/common/data_model/
 endif
@@ -167,17 +168,26 @@ OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/cac/
 endif
 
 if USE_DML_SOURCES
-if ONEWIFI_DML_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_loop.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c  $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_without_seshat.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_with_seshat.c  $(top_srcdir)/source/dml/tr_181/sbapi/cosa_dbus_api.c
-else
-OneWifi_SOURCES += $(top_srcdir)/source/platform/common/data_model/wifi_data_model.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_json_parser.c \
-                   $(top_srcdir)/source/platform/common/data_model/wifi_dml_cb.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_api.c \
-                   $(top_srcdir)/source/platform/common/data_model/wfa/wfa_data_model.c $(top_srcdir)/source/platform/common/data_model/wfa/wfa_dml_cb.c
+# Common WFA DML sources (used in both ONEWIFI_DML_SUPPORT and ONEWIFI_JSON_DML_SUPPORT)
+WFA_JSON_DML_SOURCES = $(top_srcdir)/source/platform/common/data_model/wifi_dml_json_parser.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_api.c \
+                       $(top_srcdir)/source/platform/common/data_model/wfa/wfa_data_model.c $(top_srcdir)/source/platform/common/data_model/wfa/wfa_dml_cb.c
+
 #we need this file for new dml implementation
-OneWifi_SOURCES += $(top_srcdir)/source/dml/dml_webconfig/dml_onewifi_api.c
+WFA_JSON_DML_SOURCES += $(top_srcdir)/source/dml/dml_webconfig/dml_onewifi_api.c
+
+if ONEWIFI_DML_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/dml/rdkb/wifi_dml.c
+OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_loop.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c  $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_without_seshat.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_with_seshat.c  $(top_srcdir)/source/dml/tr_181/sbapi/cosa_dbus_api.c
+# WFA DML registration for ONEWIFI_DML_SUPPORT (JSON-based)
+OneWifi_SOURCES += $(WFA_JSON_DML_SOURCES)
 endif
 
+if ONEWIFI_JSON_DML_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/dml/rdkb/wifi_dml.c
+OneWifi_SOURCES += $(WFA_JSON_DML_SOURCES) \
+                   $(top_srcdir)/source/platform/common/data_model/wifi_data_model.c  $(top_srcdir)/source/platform/common/data_model/wifi_dml_cb.c
+endif
+
 endif
 
 OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/util.c $(top_srcdir)/lib/common/monitor.c $(top_srcdir)/lib/common/os.c $(top_srcdir)/lib/common/os_util.c $(top_srcdir)/lib/common/os_exec.c $(top_srcdir)/lib/const/const.c $(top_srcdir)/lib/ds/ds_tree.c $(top_srcdir)/lib/json_util/string.c $(top_srcdir)/lib/json_util/memdbg.c $(top_srcdir)/lib/json_util/future.c $(top_srcdir)/lib/log/log.c $(top_srcdir)/lib/log/log_syslog.c $(top_srcdir)/lib/log/log_stdout.c $(top_srcdir)/lib/log/log_traceback.c $(top_srcdir)/lib/osa/os_backtrace.c $(top_srcdir)/lib/osa/os_socket.c $(top_srcdir)/lib/osa/os_nif_linux.c $(top_srcdir)/lib/osa/os_regex.c $(top_srcdir)/lib/osa/os_proc.c $(top_srcdir)/lib/osa/os_file_ops.c $(top_srcdir)/lib/osa/os_file.c $(top_srcdir)/lib/osa/os_random.c $(top_srcdir)/lib/ovsdb/ovsdb.c $(top_srcdir)/lib/ovsdb/ovsdb_method.c $(top_srcdir)/lib/ovsdb/ovsdb_update.c $(top_srcdir)/lib/ovsdb/ovsdb_sync.c $(top_srcdir)/lib/ovsdb/ovsdb_sync_api.c $(top_srcdir)/lib/ovsdb/ovsdb_table.c $(top_srcdir)/lib/ovsdb/ovsdb_cache.c $(top_srcdir)/lib/ovsdb/ovsdb_utils.c $(top_srcdir)/lib/pjs/pjs_array.c $(top_srcdir)/lib/pjs/pjs_ovs_basic.c $(top_srcdir)/lib/pjs/pjs_basic.c $(top_srcdir)/lib/pjs/pjs_types.c $(top_srcdir)/lib/pjs/pjs_ovs_set.c $(top_srcdir)/lib/pjs/pjs_ovs_map.c $(top_srcdir)/lib/qm/qm_conn.c $(top_srcdir)/lib/schema/schema.c $(top_srcdir)/lib/pktgen/pktgen.c $(top_srcdir)/lib/datapipeline/dppline.c $(top_srcdir)/lib/datapipeline/opensync_stats.pb-c.c $(top_srcdir)/lib/datapipeline/osp_unit_rdk.c $(top_srcdir)/lib/datapipeline/devinfo.c

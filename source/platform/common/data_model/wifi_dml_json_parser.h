@@ -68,6 +68,7 @@ int parse_json_schema_and_register(bus_handle_t *handle, const char *json_schema
  */
 int parse_and_register_wfa_schema(bus_handle_t *handle, const char *json_schema_filename);
 
+#ifdef ONEWIFI_JSON_DML_SUPPORT
 /**
  * @brief Parse and register native WiFi data model JSON schema
  *
@@ -79,5 +80,6 @@ int parse_and_register_wfa_schema(bus_handle_t *handle, const char *json_schema_
  * @return RETURN_OK on success, RETURN_ERR on failure
  */
 int parse_and_register_native_dml_schema(bus_handle_t *handle, const char *json_schema_filename);
+#endif // ONEWIFI_JSON_DML_SUPPORT
 
 #endif // WIFI_DML_JSON_PARSER_H

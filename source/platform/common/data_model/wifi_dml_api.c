@@ -147,6 +147,7 @@ bool rsn_cipher_selector_hex(const char *cipher, char *out, size_t out_len)
     return rsn_selector_lookup(cipher_map, cipher, out, out_len);
 }
 
+#ifdef ONEWIFI_JSON_DML_SUPPORT
 uint32_t get_sec_mode_string_from_int(wifi_security_modes_t security_mode, char *security_name)
 {
     uint32_t index;
@@ -2050,7 +2051,56 @@ int push_data_to_ssp_queue(const void *msg, unsigned int len, uint32_t type, uin
 {
     return RETURN_OK;
 }
+#endif // ONEWIFI_JSON_DML_SUPPORT
 
+/* Default bus callback handlers */
+bus_error_t default_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+{
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s, data type:%d\r\n", __func__, __LINE__, event_name, p_data->data_type);
+
+    switch(p_data->data_type) {
+        case bus_data_type_string:
+            scratch_data_buff_t temp_buff = { 0 };
+            set_output_string(&temp_buff, " ");
+
+            p_data->raw_data.bytes = temp_buff.buff;
+            p_data->raw_data_len   = temp_buff.buff_len;
+            break;
+        default:
+            break;
+    }
+
+    return bus_error_success;
+}
+
+bus_error_t default_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+{
+    (void)p_data;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, event_name);
+    return bus_error_success;
+}
+
+bus_error_t default_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum)
+{
+    (void)instNum;
+    (void)aliasName;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter\r\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Added table:%s\r\n", __func__, __LINE__, tableName);
+    return bus_error_success;
+}
+
+bus_error_t default_table_remove_row_handler(char const* rowName)
+{
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, rowName);
+    return bus_error_success;
+}
+
+bus_error_t default_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish)
+{
+    (void)autoPublish;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s: action:%d interval:%d\r\n", __func__, __LINE__, eventName, action, interval);
+    return bus_error_success;
+}
 
 int set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table,
                                        const bus_data_cb_func_t *bus_data_cb, uint32_t bus_data_cb_size)

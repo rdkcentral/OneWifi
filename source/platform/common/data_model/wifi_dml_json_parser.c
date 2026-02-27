@@ -45,9 +45,16 @@ static int bus_register_namespace(bus_handle_t *handle, char *full_namespace, bu
 
     if (element_type == bus_element_type_table) {
         uint32_t num_of_table_rows = 0;
-        if (wifi_elem_num_of_table_row(full_namespace, &num_of_table_rows) == bus_error_success) {
+        bus_error_t rc = bus_error_invalid_input;
+
+#ifdef ONEWIFI_JSON_DML_SUPPORT
+        rc = wifi_elem_num_of_table_row(full_namespace, &num_of_table_rows);
+#endif // ONEWIFI_JSON_DML_SUPPORT
+
+        if (rc == bus_error_success) {
             dataElements.num_of_table_row = num_of_table_rows;
-        } else if (wfa_elem_num_of_table_row(full_namespace, &num_of_table_rows) == bus_error_success) {
+        } else 
+        if (wfa_elem_num_of_table_row(full_namespace, &num_of_table_rows) == bus_error_success) {
             dataElements.num_of_table_row = num_of_table_rows;
         } else {
             dataElements.num_of_table_row = num_of_rows;
@@ -786,9 +793,11 @@ int parse_and_register_wfa_schema(bus_handle_t *handle, const char *json_schema_
                                           wfa_set_bus_callbackfunc_pointers);
 }
 
+#ifdef ONEWIFI_JSON_DML_SUPPORT
 int parse_and_register_native_dml_schema(bus_handle_t *handle, const char *json_schema_filename)
 {
     return parse_json_schema_and_register(handle, json_schema_filename, 
                                           NULL, NULL,
                                           wifi_set_bus_callbackfunc_pointers);
 }
+#endif // ONEWIFI_JSON_DML_SUPPORT

@@ -194,12 +194,6 @@ bus_error_t wifi_client_def_report_get_param_value(char *event_name, raw_data_t 
 bus_error_t wifi_client_def_report_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
 bus_error_t wifi_client_def_report_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
 
-bus_error_t default_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
-bus_error_t default_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
-bus_error_t default_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum);
-bus_error_t default_table_remove_row_handler(char const* rowName);
-bus_error_t default_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
-
 bus_error_t wifi_region_code_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
 bus_error_t wifi_region_code_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
 
