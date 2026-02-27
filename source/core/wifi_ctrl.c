@@ -608,7 +608,7 @@ bool check_for_greylisted_mac_filter(void)
                     if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                         acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
                         while(acl_entry != NULL) {
-                            if (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
+                            if (acl_entry->mac[0] != '\0' && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
                                 return true;
                             }
                             acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
