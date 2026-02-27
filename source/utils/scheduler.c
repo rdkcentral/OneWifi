@@ -77,7 +77,7 @@ struct scheduler * scheduler_init(void)
 
 int scheduler_deinit(struct scheduler **sched)
 {
-    if (sched == NULL && *sched == NULL) {
+    if (sched == NULL || *sched == NULL) {
         return -1;
     }
     pthread_mutex_lock(&(*sched)->lock);
