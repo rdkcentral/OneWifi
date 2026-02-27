@@ -1888,7 +1888,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->hotspot_open_5g_last_enabled= pcfg->hotspot_open_5g_last_enabled;
     rfc_info->hotspot_open_6g_last_enabled= pcfg->hotspot_open_6g_last_enabled;
     rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_2g_last_enabled;
-    rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_5g_last_enabled;
+    rfc_info->hotspot_secure_5g_last_enabled= pcfg->hotspot_secure_5g_last_enabled;
     rfc_info->hotspot_secure_6g_last_enabled= pcfg->hotspot_secure_6g_last_enabled;
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
