@@ -29,8 +29,12 @@
 #include "wifi_util.h"
 
 extern "C" void qmgr_invoke_score(const char *str, double score, double threshold);
+// static member initialization
+
 linkq_params_t linkq_t::m_linkq_params[MAX_LINKQ_PARAMS] = {{"DOWNLINK_SNR", true}, {"DOWNLINK_PER", false}, {"DOWNLINK_PHY", true},{"UPLINK_SNR", true}, {"UPLINK_PER", false}, {"UPLINK_PHY", true}};
+
 mac_addr_str_t linkq_t::ignite_station_mac = "";
+
 linkq_params_t linkq_t::m_score_params[] = {
     // ---------- Aggregate metrics ----------
     { "SNR",   true  },
@@ -57,7 +61,7 @@ linkq_params_t* linkq_t::get_score_params() {
     return m_score_params;
 }
 
-quality_flags_t linkq_t::m_quality_flag = { true, true, true, false, false, false, false,false };
+quality_flags_t linkq_t::m_quality_flag = { true, true, true, false, false, false, false,true };
 
 static inline double apply_recovery(double norm,int remaining,
                                     int total)
@@ -345,7 +349,7 @@ vector_t linkq_t::run_test(bool &alarm, bool update_alarm, bool &rapid_disconnec
     if (m_disconnected) {
         m_disconnect_samples++;
         pthread_mutex_unlock(&m_vec_lock);
-        wifi_util_dbg_print(WIFI_APPS,"In disconnected\n");
+        wifi_util_dbg_print(WIFI_APPS,"In disconnect lost %d\n",m_disconnect_samples);
         rapid_disconnect =  true;
         alarm = false;
         return vector_t(0);   // no data while disconnected

@@ -32,6 +32,7 @@
 #define MAX_SCORE_PARAMS    12
 #define PER_WINDOW_SIZE   36
 #define UPLINK_PHY_WINDOW  5
+
 typedef struct {
     const char *name;
     bool booster;
@@ -46,8 +47,6 @@ class linkq_t {
     sequence_t m_seq[MAX_LINKQ_PARAMS];
     pthread_mutex_t m_vec_lock; 
     pthread_mutex_t m_deque_lock; 
-    // test parameters
-    //cJSON *m_test_obj;
     unsigned int m_recs;
     unsigned int m_current;
     double m_threshold;

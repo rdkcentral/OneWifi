@@ -39,12 +39,12 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     bus_error_t status;
     raw_data_t rdata;
     wifi_app_t *wifi_app = NULL;
-    wifi_util_dbg_print(WIFI_CTRL," %s:%d link_count=%d\n",__func__,__LINE__,report->link_count);
+    wifi_util_dbg_print(WIFI_WEBCONFIG," %s:%d link_count=%d\n",__func__,__LINE__,report->link_count);
 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Error in allocation memory\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Error in allocation memory\n", __func__, __LINE__);
         return ;
     }
  
@@ -56,7 +56,7 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     data->u.decoded.qmgr_report =  (report_batch_t *)report;
     subdoc_type = webconfig_subdoc_type_link_report;
     if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding link report\n", __func__,
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Error in encoding link report\n", __func__,
               __LINE__);
         free(data);
         return;
@@ -75,7 +75,7 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     }
     status = get_bus_descriptor()->bus_event_publish_fn(&wifi_app->ctrl->handle, WIFI_QUALITY_LINKREPORT, &rdata);
     if (status != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, status);
         free(data);
         return ;
@@ -134,10 +134,9 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
     if ( ctrl->network_mode == rdk_dev_mode_type_em_node
       || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         qmgr_register_batch_callback(publish_qmgr_subdoc);
-    wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n", __func__, __LINE__,ctrl->network_mode);
+        wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n", __func__, __LINE__,ctrl->network_mode);
     } 
     start_link_metrics();
-    wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -277,7 +276,6 @@ int link_quality_event_exec_timeout(wifi_app_t *apps, void *arg, int len)
 
     /* The number of devices is stored in the first element */
     int num_devs = len;
-    wifi_util_dbg_print(WIFI_APPS, "%s:%d num_devs =%d\n", __func__, __LINE__,num_devs);
 
     for (int i = 0; i < num_devs; i++) {
 
@@ -349,7 +347,7 @@ int exec_event_webconfig_event(wifi_app_t *apps, wifi_event_t *event)
             link_quality_param_reinit(apps, event);
             break;
         default:
-            wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(event->sub_type));
             break;
     }
@@ -370,7 +368,7 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             link_quality_hal_rapid_connect(apps, arg,len);
             break;
         default:
-            wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
             break;
     }

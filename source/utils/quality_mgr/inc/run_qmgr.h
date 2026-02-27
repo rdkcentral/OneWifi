@@ -22,7 +22,6 @@
 extern "C" {
 #endif
 #define MAX_LINE_SIZE   1024
-//#define MAX_BUFF_SIZE   MAX_LINE_SIZE*1000
  #define MAX_FILE_NAME_SZ 1024
 
 #define MAX_LINKQ_PARAMS    6

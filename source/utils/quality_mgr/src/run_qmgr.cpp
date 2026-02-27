@@ -24,6 +24,7 @@
 #include "wifi_util.h"
 #include "qmgr.h"
 #include "run_qmgr.h"
+
 //Static callback functions
 static qmgr_report_batch_cb_t qmgr_batch_cb = NULL;
 static qmgr_report_score_cb_t qmgr_score_cb = NULL;
