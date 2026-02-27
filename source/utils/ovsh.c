@@ -1082,7 +1082,7 @@ bool json_stringify(json_t *jval, char *dst, size_t dst_sz)
 {
     if (jval == NULL)
     {
-        return "(null)";
+        return false;
     }
     else if (json_is_string(jval))
     {
@@ -1266,7 +1266,7 @@ static bool ovsh_parse_where(json_t *where, char *_str, bool is_parent_where)
     if (!is_parent_where)
     {
         ovsh_where_num++;
-        ovsh_where_expr = (char**)realloc(ovsh_where_expr, sizeof(char**) * ovsh_where_num);
+        ovsh_where_expr = (char**)realloc(ovsh_where_expr, sizeof(char*) * ovsh_where_num);
         assert(ovsh_where_expr);
         ovsh_where_expr[ovsh_where_num-1] = strdup(_str);
     }

@@ -1231,7 +1231,7 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                     goto done;
                 }
                 if (strlen(repurposed_vap_name) != 0) {
-                    strncpy(vap_info->repurposed_vap_name, repurposed_vap_name, (strlen(repurposed_vap_name) + 1));
+                    snprintf(vap_info->repurposed_vap_name, sizeof(vap_info->repurposed_vap_name), "%s", repurposed_vap_name);
                 }
                 strncpy(vap_info->repurposed_bridge_name, "brlan15",
                     sizeof(vap_info->repurposed_bridge_name) - 1);
@@ -1683,6 +1683,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_Delete(root);
         goto finished;
     }
+    free(execRetVal);
     execRetVal = xfinity_exec_common_handler(vap_blob, webconfig_subdoc_type_xfinity);
 
 finished:

@@ -1834,7 +1834,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         is_radio_config_changed = TRUE;
     }
 
-    remove(WIFI_STUCK_DETECT_FILE_NAME);
+    (void)remove(WIFI_STUCK_DETECT_FILE_NAME);
     wifi_util_info_print(WIFI_MGR,"%s:%d removed selfHeal wifi stuck file:%s\n", __FUNCTION__,__LINE__, WIFI_STUCK_DETECT_FILE_NAME);
 
     if (factory_reset_all_vaps) {

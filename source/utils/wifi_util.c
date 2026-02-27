@@ -1543,9 +1543,6 @@ int country_code_conversion(wifi_countrycode_type_t *country_code, char *country
         }
 
     } else if (conv_type == ENUM_TO_STRING) {
-        if ( i >= MAX_WIFI_COUNTRYCODE) {
-            return RETURN_ERR;
-        }
         snprintf(country, country_len, "%s", wifiCountryMapMembers[*country_code].countryStr);
         return RETURN_OK;
     }
@@ -3036,7 +3033,7 @@ int get_steering_cfg_id(char *key, int key_len, unsigned char * id, int id_len, 
     }
 
     for (i=0; i < st_cfg->vap_name_list_len; i++) {
-        if ((st_cfg->vap_name_list[i] == NULL) || (strlen(st_cfg->vap_name_list[i]) == 0)) {
+        if (strlen(st_cfg->vap_name_list[i]) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap_name_list failed!!!\n", __func__, __LINE__);
             return RETURN_ERR;
 
@@ -3940,6 +3937,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         if (IS_STR_CHANGED(vap_info_old->u.sta_info.ssid, vap_info_new->u.sta_info.ssid,
                 sizeof(ssid_t)) ||
             IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
+            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) || 
             IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
                 sizeof(wifi_vap_security_t))) {
             return true;
@@ -4720,7 +4718,7 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
 
     memset(&ifr, 0, sizeof(struct ifreq));
     ifr.ifr_addr.sa_family = AF_INET;
-    strcpy(ifr.ifr_name, ifname);
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
     if (ioctl(sock, SIOCGIFHWADDR, &ifr) != 0) {
         close(sock);
         wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: ioctl failed to get hardware address for interface:%s\n", __func__, __LINE__, ifname);
