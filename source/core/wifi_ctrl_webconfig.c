@@ -566,6 +566,14 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
                 return RETURN_OK;
             }
             break;
+        case ctrl_webconfig_state_cac_cfg_rsp_pending:
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapHotspot) == false) {
+                type = webconfig_subdoc_type_cac;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+            break;
         case ctrl_webconfig_state_radio_24G_rsp_pending:
         case ctrl_webconfig_state_radio_5G_rsp_pending:
         case ctrl_webconfig_state_radio_6G_rsp_pending:
@@ -1590,7 +1598,13 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
         l_vap_maps = get_wifidb_vap_map(radio_index);
         for (vap_index = 0; vap_index < getNumberVAPsPerRadio(radio_index); vap_index++) {
             wifi_util_dbg_print(WIFI_CTRL,"Comparing cac config\n");
-
+            unsigned int tgt_vap_index = l_vap_maps->vap_array[vap_index].vap_index;
+            if (!isVapHotspot(tgt_vap_index)) {
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d Skipping cac config apply for non hotspot vap: %d \n", __func__,
+                    __LINE__, tgt_vap_index);
+                continue;
+            }
             if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
                 || is_postassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])) {
                 // cac or tcm data changed apply
@@ -2760,8 +2774,15 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_cac:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: cac webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
-                wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of cac webconfig subdoc\n", __func__, __LINE__);
+                if (ctrl->webconfig_state & ctrl_webconfig_state_cac_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_cac_cfg_rsp_pending;
+                    wifi_util_info_print(WIFI_MGR, "%s:%d: Bus Publish of cac webconfig subdoc\n",
+                        __func__, __LINE__);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+                }
             } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_cac_cfg_rsp_pending;
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: webconfig cac apply \n", __func__, __LINE__);
                 ret = webconfig_cac_apply(ctrl, &data->u.decoded);
             }
             break;
