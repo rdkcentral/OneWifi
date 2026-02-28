@@ -32,7 +32,7 @@ extern "C" {
 
 #define wifi_event_type_base    0x1
 #define CLIENTDIAG_JSON_BUFFER_SIZE 665
-
+//mahesh testing
 typedef enum {
     wifi_sub_component_core = wifi_sub_component_base << 2,
     wifi_sub_component_mon = wifi_sub_component_base << 3,
