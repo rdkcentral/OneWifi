@@ -1832,7 +1832,7 @@ void update_speedtest_tout_value()
     rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data);
     if (data.data_type != bus_data_type_uint32) {
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
             LAST_REBOOT_REASON_NAMESPACE, data.data_type, rc);
         return;
     }
