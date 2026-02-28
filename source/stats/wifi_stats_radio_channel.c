@@ -957,14 +957,13 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         if (args->channel_list.num_channels == 0) {
             return RETURN_ERR;
         }
-        // dont run offchan scan if device current using dfs channel
+        // off channel scan not executed due to 160MHz channel in use 
         if (radioOperation->band == WIFI_FREQUENCY_5L_BAND ||
             radioOperation->band == WIFI_FREQUENCY_5H_BAND ||
             radioOperation->band == WIFI_FREQUENCY_5_BAND) {
-            if (is_5g_20M_channel_in_dfs(radioOperation->channel) ||
-                radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+            if (radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
                 wifi_util_dbg_print(WIFI_MON,
-                    "%s:%d  off channel scan not executed duo to DFS channel in use for radio "
+                    "%s:%d  off channel scan not executed due to 160MHz channel in use for radio "
                     "index %d\n",
                     __func__, __LINE__, args->radio_index);
                 return RETURN_OK;
