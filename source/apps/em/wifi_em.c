@@ -1993,23 +1993,25 @@ static int em_process_scan_init_command(unsigned int radio_index, channel_scan_r
         wifi_util_error_print(WIFI_EM, "%s:%d data allocation failed\r\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-
+    
     memset(data, 0, sizeof(wifi_monitor_data_t));
 
-    get_coutry_str_from_code(mgr->radio_config[radio_index].oper.countryCode, country);
-    global_op_class = country_to_global_op_class(country,
-        mgr->radio_config[radio_index].oper.operatingClass);
-
+    /*
+     * The operating class received from the Controller should not be
+     * validated against the current operating class of the radio,
+     * as they may differ and could otherwise force an unintended
+     * FULL mode scan.
+     *
+     * If the incoming operating class is invalid, the channel count
+     * will be zero, and the scan will not be triggered.
+     */
     for (int i = 0; i < scan_req->num_operating_classes; i++) {
-        if (scan_req->operating_classes[i].operating_class == global_op_class) {
-            for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
-                data->u.mon_stats_config.args.channel_list.channels_list[valid_chan_count] =
+        for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
+            data->u.mon_stats_config.args.channel_list.channels_list[valid_chan_count] =
                     scan_req->operating_classes[i].channels[j];
-                wifi_util_dbg_print(WIFI_EM, "%s:%d channel number:%u\n", __func__, __LINE__,
+            wifi_util_dbg_print(WIFI_EM, "%s:%d channel number:%u\n", __func__, __LINE__,
                     scan_req->operating_classes[i].channels[j]);
-                valid_chan_count++;
-            }
-            break;
+            valid_chan_count++;
         }
     }
 
