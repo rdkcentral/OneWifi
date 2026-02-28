@@ -4904,8 +4904,16 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
                 __func__, __LINE__, g_wifidb->db_version);
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+#if defined(_PLATFORM_BANANAPI_R4_)
+                if (isVapPrivate(config->vap_array[i].vap_index)) {
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 1;
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 0;
+                }
+#else
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 0;
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 255;
+
+#endif
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
@@ -7318,11 +7326,19 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg->u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg->u.bss_info.beaconRateCtl)-1);
         cfg->vap_mode = wifi_vap_mode_ap;
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (isVapPrivate(vap_index)) {
+            cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
+            cfg->u.bss_info.mld_info.common_info.mld_id = 0;
+        }
         /*TODO: Are values correct? */
+#else
         cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
+#endif
         cfg->u.bss_info.mld_info.common_info.mld_link_id = 255;
         cfg->u.bss_info.mld_info.common_info.mld_apply = 1;
+
         memset(&cfg->u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg->u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
             cfg->u.bss_info.showSsid = true;
