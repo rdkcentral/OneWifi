@@ -1789,6 +1789,9 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
 
+        //clearing wpa3_personal_compatibility mode after wifi restore
+        rfc_param->wpa3_compatibility_enable = FALSE;
+
         //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
         if (WIFI_FREQUENCY_2_4_BAND == rcfg->band) {
             if(rfc_param->twoG80211axEnable_rfc) {
