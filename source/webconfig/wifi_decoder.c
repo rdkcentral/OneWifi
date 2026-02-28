@@ -5876,9 +5876,9 @@ webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
 
 webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_config)
 {
-    const cJSON *param, *disallowed_sta_array, *sta_obj, *radio_metrics_obj;
+    const cJSON *param, *disallowed_sta_array, *sta_obj, *radio_metrics_obj, *traffic_sep_obj;
     const cJSON *policy_obj, *local_steering_policy, *btm_steering_policy, *backhaul_policy,
-        *channel_scan_policy, *radio_metrics_array;
+        *channel_scan_policy, *radio_metrics_array,*traffic_sep_policy, *traffic_sep_array;
 
     policy_obj = cJSON_GetObjectItem(em_cfg, "Policy");
     if (policy_obj == NULL) {
@@ -6052,6 +6052,44 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status =
             (param->type & cJSON_True) ? true : false;
     }
+
+    // Traffic Separation Policy
+    traffic_sep_policy = cJSON_GetObjectItem(policy_obj, "Traffic Separation Policy");
+    if (traffic_sep_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] Traffic Separation Policy is NULL\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    traffic_sep_array = cJSON_GetObjectItem(traffic_sep_policy, "Traffic Separation");
+    if (traffic_sep_array == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] NULL Json pointer\n", __func__, __LINE__);
+    }
+
+    if (cJSON_IsArray(traffic_sep_array) == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d:[TRAFFIC_SEP] Traffic Separation Policy object not present\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] Traffic Separation count: %d\n", __func__, __LINE__,
+        cJSON_GetArraySize(traffic_sep_array));
+    em_config->traffic_separation_policy.ssids_num = cJSON_GetArraySize(traffic_sep_array);
+    for (int i = 0; i < em_config->traffic_separation_policy.ssids_num; i++) {
+        unsigned char ssid_len;
+        traffic_sep_obj = cJSON_GetArrayItem(traffic_sep_array, i);
+        decode_param_allow_optional_string(traffic_sep_obj, "SSID Name", param);
+        ssid_len = strlen(param->valuestring);
+        em_config->traffic_separation_policy.ssids[i].ssid_len = ssid_len;
+        strncpy(em_config->traffic_separation_policy.ssids[i].ssid, param->valuestring, ssid_len);
+        em_config->traffic_separation_policy.ssids[i].ssid[ssid_len] = '\0';
+
+        decode_param_integer(traffic_sep_obj, "VLAN ID", param);
+        em_config->traffic_separation_policy.ssids[i].vlan_id = param->valuedouble;
+
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] Traffic Separation SSID=%s, SSID Len=%d, VLAN=%d\n", __func__, __LINE__,
+                em_config->traffic_separation_policy.ssids[i].ssid, em_config->traffic_separation_policy.ssids[i].ssid_len,
+                em_config->traffic_separation_policy.ssids[i].vlan_id);
+    }
+
     return webconfig_error_none;
 }
 

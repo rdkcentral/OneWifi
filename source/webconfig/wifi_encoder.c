@@ -2937,6 +2937,36 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
             em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status);
     }
 
+    // Traffic Separation Policy
+    param_obj = cJSON_CreateObject();
+    if (param_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:[TRAFFIC_SEP] json create object failed\n", __func__,
+                __LINE__);
+    }
+    cJSON_AddItemToObject(policy_obj, "Traffic Separation Policy", param_obj);
+    param_arr = cJSON_CreateArray();
+    if (param_arr == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] json create object failed\n", __func__,
+            __LINE__);
+    }
+    cJSON_AddItemToObject(param_obj, "Traffic Separation", param_arr);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d [TRAFFIC_SEP] Traffic Separation num SSID %d\n", __func__, __LINE__,
+            em_config->traffic_separation_policy.ssids_num);
+    for (int i = 0; i < em_config->traffic_separation_policy.ssids_num; i++) {
+        param_obj = cJSON_CreateObject();
+        if (param_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:[TRAFFIC_SEP] json create object failed\n", __func__,
+                __LINE__);
+        }
+        cJSON_AddItemToArray(param_arr, param_obj);
+        cJSON_AddNumberToObject(param_obj, "VLAN ID", em_config->traffic_separation_policy.ssids[i].vlan_id);
+        cJSON_AddStringToObject(param_obj, "SSID Name", em_config->traffic_separation_policy.ssids[i].ssid);
+           wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] Traffic Separation SSID=%s, SSID_LEN=%d, VLAN=%d\n", __func__, __LINE__,
+                em_config->traffic_separation_policy.ssids[i].ssid,
+                em_config->traffic_separation_policy.ssids[i].ssid_len,
+                               em_config->traffic_separation_policy.ssids[i].vlan_id);
+    }
+
     return webconfig_error_none;
 }
 

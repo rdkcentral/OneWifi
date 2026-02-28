@@ -1902,6 +1902,111 @@ int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
+#ifdef EM_APP
+int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    vap_svc_t *svc;
+    UINT apIdx = 0, ret, index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    wifi_vap_info_map_t tgt_vap_map;
+    wifi_vap_info_t *vapInfo = NULL;
+    char update_status[128];
+    for(index = 0; index < getTotalNumberVAPs(); index++)
+    {
+        int idx=0;
+        apIdx = VAP_INDEX(mgr->hal_cap, index);
+        vapInfo =  get_wifidb_vap_parameters(apIdx);
+
+        if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
+            continue;
+        }
+
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: ssids_num =%d  \n",__func__, __LINE__,data->em_config.traffic_separation_policy.ssids_num);
+
+        if(isVapPrivate(apIdx))
+        {
+            if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[0].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid))==0) 
+			&& (vapInfo->vlan_id == data->em_config.traffic_separation_policy.ssids[0].vlan_id))
+            {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[0].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid));
+            vapInfo->vlan_id = data->em_config.traffic_separation_policy.ssids[0].vlan_id;
+        }
+        else if(isVapMesh(apIdx))
+        {
+            if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[0].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid))==0) 
+		&& (vapInfo->vlan_id == data->em_config.traffic_separation_policy.ssids[1].vlan_id))
+            {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[1].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[1].ssid));
+            vapInfo->vlan_id = data->em_config.traffic_separation_policy.ssids[1].vlan_id;
+        }
+        else if(isVapXhs(apIdx))
+        {
+            if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[2].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid))==0)
+		 && (vapInfo->vlan_id == data->em_config.traffic_separation_policy.ssids[2].vlan_id))
+            {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[2].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[2].ssid));
+            vapInfo->vlan_id = data->em_config.traffic_separation_policy.ssids[2].vlan_id;
+    	} 
+        else if(isVapLnf(apIdx))
+        {
+            if(strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[3].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid))==0)
+            {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[3].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid));
+            vapInfo->vlan_id = data->em_config.traffic_separation_policy.ssids[3].vlan_id;
+        }
+        else if(isVapHotspot(apIdx))
+        {
+            if(strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[4].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid))==0)
+            {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[4].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid));
+            vapInfo->vlan_id = data->em_config.traffic_separation_policy.ssids[4].vlan_id;
+        }
+        else
+        {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d:  : No matching VAP type  \n",__func__, __LINE__);
+            continue;
+        }
+
+        if(strlen(vapInfo->u.bss_info.ssid)==0)
+        {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",__func__, __LINE__, apIdx);
+            continue;
+        }
+
+
+        memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        tgt_vap_map.num_vaps = 1;
+        memcpy(&tgt_vap_map.vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
+        rdk_vap_info = get_wifidb_rdk_vap_info(apIdx);
+        if (rdk_vap_info == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",__func__, __LINE__, apIdx);
+            continue;
+        }
+        ret = svc->update_fn(svc, vapInfo->radio_index, &tgt_vap_map, rdk_vap_info);
+        memset(update_status, 0, sizeof(update_status));
+        snprintf(update_status, sizeof(update_status), "%s %s", vapInfo->vap_name, (ret == RETURN_OK)?"success":"fail");
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d: Private vaps service update_fn failed \n",__func__, __LINE__);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Private vaps service update_fn success apIdx %d  \n",__func__,__LINE__,apIdx);
+        }
+    }
+    return RETURN_OK;
+}
+#endif
+
 static int remove_all_mac_acl_entries_from_cache_and_db(rdk_wifi_vap_info_t *current_config)
 {
     if (current_config == NULL || current_config->acl_map == NULL) {
@@ -3094,7 +3199,26 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 }
             }
         break;
-
+#ifdef EM_APP
+       case webconfig_subdoc_type_em_config:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & radio_state_pending) {
+                    ctrl->webconfig_state &= ~radio_state_pending;
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= radio_state_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_em_subdoc_config_apply(ctrl, &data->u.decoded);
+                }
+            }
+           break;
+#endif
         default:
             break;
     }
