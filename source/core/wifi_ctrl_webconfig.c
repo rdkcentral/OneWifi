@@ -2036,7 +2036,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, true);
                     } else {
                         if (strncmp(check_acl_entry->device_name, new_acl_entry->device_name, sizeof(check_acl_entry->device_name)-1) != 0) {
-                            strncpy(check_acl_entry->device_name, new_acl_entry->device_name, sizeof(check_acl_entry->device_name)-1);
+                            snprintf(check_acl_entry->device_name, sizeof(check_acl_entry->device_name), "%s", new_acl_entry->device_name);
                             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, new_mac_str);
 
                             wifidb_update_wifi_macfilter_config(macfilterkey, check_acl_entry, true);

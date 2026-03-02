@@ -424,6 +424,7 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
 
         if (data_size != 0 && (data = malloc(data_size)) == NULL) {
             hash_map_destroy(dst_map);
+            free(key);
             return NULL;
         }
 
@@ -433,6 +434,7 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
 
         if (hash_map_put(dst_map, key, data) == -1) {
             hash_map_destroy(dst_map);
+            free(key);
             return NULL;
         }
         e = e->next;
