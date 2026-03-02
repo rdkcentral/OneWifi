@@ -378,8 +378,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.scan_params.channel.channel = 0;
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
-	strncpy(cfg.u.sta_info.repurposed_ssid, "Xfinity Mobile", sizeof(ssid_t)-1);
-	cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
+        strncpy(cfg.u.sta_info.repurposed_ssid, "Xfinity Mobile", sizeof(ssid_t)-1);
+        cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
         cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
         strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
         if (band == WIFI_FREQUENCY_6_BAND) {
