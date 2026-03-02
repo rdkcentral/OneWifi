@@ -2584,7 +2584,6 @@ bool security_set_param_bool_value(void *obj_ins_context, char *param_name, bool
         p_dm_sec_cfg->wpa3_transition_disable = output_value;
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value=%d\n",__func__,
             __LINE__, p_dm_sec_cfg->wpa3_transition_disable, output_value);
-        (vap_index);
     } else if (STR_CMP(param_name, "Reset")) {
     } else {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
