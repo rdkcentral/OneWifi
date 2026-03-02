@@ -42,11 +42,12 @@ bus_error_t set_output_value(char *param_name, raw_data_t *p_data, void *p_value
         case bus_data_type_uint32:
             p_data->raw_data.u32 = *((uint32_t *)p_value);
         break;
-        case bus_data_type_string:
+        case bus_data_type_string: {
             scratch_data_buff_t temp_buff = { 0 };
             set_output_string(&temp_buff, (char *)p_value);
             p_data->raw_data.bytes = temp_buff.buff;
             p_data->raw_data_len   = temp_buff.buff_len;
+        }
         break;
         case bus_data_type_none:
         default:

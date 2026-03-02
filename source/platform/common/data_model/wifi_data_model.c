@@ -126,7 +126,7 @@ bus_error_t dml_get_set_param_value(dml_callback_table_t *p_dml_cb, uint8_t cb_t
                 status = bus_error_invalid_input;
             }
         break;
-        case bus_data_type_string:
+        case bus_data_type_string: {
             scratch_data_buff_t temp_buff = { 0 };
             if ((cb_table_type == DML_GET_CB) && (p_dml_cb->get_string_value != NULL)) {
 
@@ -150,6 +150,7 @@ bus_error_t dml_get_set_param_value(dml_callback_table_t *p_dml_cb, uint8_t cb_t
                     __LINE__, cb_table_type, param_name);
                 status = bus_error_invalid_input;
             }
+        }
         break;
         case bus_data_type_none:
             wifi_util_error_print(WIFI_DMCLI,"%s:%d unsupported param failed for [%s]\n", __func__, __LINE__, param_name);
