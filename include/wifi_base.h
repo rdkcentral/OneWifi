@@ -880,17 +880,11 @@ typedef struct {
 } eht_radio_capability_t;
 
 typedef struct {
-    he_radio_capability_t he_cap;
-    eht_radio_capability_t eht_cap;
-} __attribute__((packed)) rdk_wifi_radio_capability_t;
-
-typedef struct {
     char    name[16];
     wifi_radio_operationParam_t oper;
     rdk_wifi_vap_map_t          vaps;
     wifi_radio_feature_param_t  feature;
     radarInfo_t                  radarInfo;
-    rdk_wifi_radio_capability_t radio_capability;
 //  schema_wifi_radio_state_t   radio_state;
 } rdk_wifi_radio_t;
 

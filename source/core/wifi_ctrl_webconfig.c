@@ -35,6 +35,7 @@
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
 #include "wifi_webconfig_consumer.h"
 #endif
+
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
 bool is_sta_set = false;
 struct ow_conf_vif_config_cb_arg
