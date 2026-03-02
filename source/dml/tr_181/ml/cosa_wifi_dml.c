@@ -7469,7 +7469,6 @@ AccessPoint_SetParamBoolValue
             return  TRUE;
         }
         vapInfo->u.bss_info.bssTransitionActivated = bValue;
-
         if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Apply BSSTransitionActivated failed \n",__func__, __LINE__);
@@ -12468,7 +12467,6 @@ WPS_SetParamIntValue
             if (match == 0) { // Might have passed value that is invalid
                 return FALSE;
             }
-
             return TRUE;
         }
 
@@ -17757,7 +17755,6 @@ Authenticator_SetParamUlongValue
         {
             /* save update to backup */
             l_security_cfg->eapol_key_retries = uValue;
-
         }
         return TRUE;
     }
