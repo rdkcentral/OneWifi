@@ -395,7 +395,7 @@ typedef struct wfa_dml_data_model {
     uint32_t table_de_sta_index;
     uint32_t table_de_ssid_index;
     uint32_t table_de_apmld_index;
-    uint32_t table_de_stamld_index;
+    uint32_t table_de_stamld_index[MLD_UNIT_COUNT];
 } wfa_dml_data_model_t;
 
 /**

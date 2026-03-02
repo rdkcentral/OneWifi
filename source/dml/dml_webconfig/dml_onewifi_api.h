@@ -35,6 +35,11 @@ typedef struct {
 } acl_data_t;
 
 typedef struct {
+    assoc_dev_data_t *affiliated_sta[MAX_NUM_RADIOS];
+    UINT affiliated_sta_count;
+} stamld_data_t;
+
+typedef struct {
     wifi_vap_info_t *mld_vaps[MAX_NUM_RADIOS];
     UINT mld_vap_count;
 } mld_group_t;
@@ -42,6 +47,7 @@ typedef struct {
 typedef struct {
     mld_group_t mld_groups[MLD_UNIT_COUNT];
     UINT mld_group_count;
+    hash_map_t *stamld[MLD_UNIT_COUNT]; /* Hash map keyed by MLD MAC address, contains stamld_data_t */
 } apmld_map_t;
 
 typedef struct {
@@ -133,11 +139,16 @@ queue_t** get_dml_acl_new_entry_queue(unsigned int radio_index, unsigned int vap
 void** get_acl_vap_context();
 UINT get_num_radio_dml();
 void update_apmld_map();
+/* Update STAMLD list for a specific APMLD index by iterating through VAPs and associated devices */
 UINT get_num_apmld_dml();
 mld_group_t* get_dml_apmld_group(uint8_t apmld_index);
+/* Get APMLD index from mld_group pointer */
+uint8_t get_apmld_index_from_mld_group(mld_group_t *mld_group);
 UINT get_total_num_affiliated_ap_dml(mld_group_t *mld_group);
-unsigned long get_mld_associated_devices_count(mld_group_t *mld_group);
-assoc_dev_data_t *get_mld_associated_device(mld_group_t *mld_group, unsigned int dev_index);
+UINT get_total_num_stamld_dml(uint8_t apmld_index);
+void update_dml_stamld_list(uint8_t apmld_index);
+stamld_data_t *get_stamld_entry(uint8_t apmld_index, uint32_t stamld_index);
+assoc_dev_data_t* get_dml_apmld_stamld_affiliated_sta(uint8_t apmld_index, uint32_t stamld_index, unsigned int affiliated_sta_index);
 UINT get_total_num_vap_dml();
 void get_associated_devices_data(unsigned int radio_index);
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info);
