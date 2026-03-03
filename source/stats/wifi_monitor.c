@@ -3702,8 +3702,11 @@ void deinit_wifi_monitor()
 #endif
     csi_pinger_data_t *pinger_data = NULL, *tmp_pinger_data = NULL;
     mac_addr_str_t mac_str = { 0 };
+
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     if(g_monitor_module.queue != NULL)
         queue_destroy(g_monitor_module.queue);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
     scheduler_deinit(&(g_monitor_module.sched));
     if(g_events_monitor.csi_pinger_map != NULL) {
