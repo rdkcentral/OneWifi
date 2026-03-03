@@ -2752,11 +2752,11 @@ void process_link_quality_rfc(bool type)
     wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
         rfc_param->link_quality_rfc);
     if( rfc_param->link_quality_rfc) {
-         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
-        wifi_util_error_print(WIFI_CTRL, "After run_web_server %s:%d\n", __func__, __LINE__);
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        wifi_util_error_print(WIFI_CTRL, "started link quality app %s:%d\n", __func__, __LINE__);
     } else {
-        wifi_util_error_print(WIFI_CTRL, "After stop_web_server %s:%d\n", __func__, __LINE__);
-         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        wifi_util_error_print(WIFI_CTRL, "stopped link quality app %s:%d\n", __func__, __LINE__);
     }
     return;
 }

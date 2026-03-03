@@ -316,14 +316,14 @@ wifi_app_descriptor_t app_desc[] = {
         cac_mgmt_frame_hook,NULL
     },
 #endif
- {
-         wifi_app_inst_link_quality, 0,
-         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
-         true, true,
-         "LinkQuality",
-         link_quality_init, link_quality_event, link_quality_deinit,
-         NULL, NULL
-},
+    {
+        wifi_app_inst_link_quality, 0,
+        wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
+        true, true,
+        "LinkQuality",
+        link_quality_init, link_quality_event, link_quality_deinit,
+        NULL, NULL
+    },
 #if SM_APP
     {
         wifi_app_inst_sm, 0,

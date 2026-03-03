@@ -287,8 +287,7 @@ int link_quality_event_exec_timeout(wifi_app_t *apps, void *arg, int len)
             i,
             stats->mac_str,
             stats->dev.cli_SNR,
-            stats->dev.cli_LastDataDownlinkRate,
-            stats->vap_index
+            stats->dev.cli_LastDataDownlinkRate
         );
 
         add_stats_metrics(stats);

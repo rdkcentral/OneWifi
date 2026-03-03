@@ -1590,7 +1590,7 @@ webconfig_error_t encode_link_score_sample_object(const link_report_t *link,
     sample_count = link->sample_count;
      for (i = 0; i < sample_count; i++) {
         obj = cJSON_CreateObject();
-	cJSON_AddItemToArray(obj_array, obj);
+        cJSON_AddItemToArray(obj_array, obj);
         sample_t s = link->samples[i];
         cJSON_AddNumberToObject(obj, "Score", s.score);
         cJSON_AddStringToObject(obj, "Time", s.time);

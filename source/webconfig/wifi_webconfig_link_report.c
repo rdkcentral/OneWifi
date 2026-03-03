@@ -89,7 +89,7 @@ webconfig_error_t encode_link_report_subdoc(webconfig_t *config, webconfig_subdo
         return webconfig_error_encode;
     }
 
-     data->u.encoded.json = json;
+    data->u.encoded.json = json;
     cJSON_AddStringToObject(json, "Version", "1.0");
     cJSON_AddStringToObject(json, "SubDocName", "LinkReport");
     obj_array = cJSON_CreateArray();

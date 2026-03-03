@@ -679,7 +679,7 @@ matrix_t::matrix_t(unsigned int rows, unsigned int cols)
     }
 }
 
-matrix_t::matrix_t(const matrix_t& m)
+matrix_t::matrix_t(const matrix_t &m)
 {
     unsigned int i, j;
 

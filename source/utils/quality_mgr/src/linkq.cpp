@@ -189,7 +189,8 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
         if (m_quality_flag.downlink_phy) { v.m_val[2].m_re += norm[2]; cnt++; }
         if (m_quality_flag.uplink_phy)   { v.m_val[2].m_re += norm[5]; cnt++; }
         if (cnt) v.m_val[2].m_re /= cnt;
-	m_data_sample.snr   = v.m_val[0].m_re;
+
+        m_data_sample.snr   = v.m_val[0].m_re;
         m_data_sample.per   = v.m_val[1].m_re;
         m_data_sample.phy   = v.m_val[2].m_re;
          
@@ -210,7 +211,7 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
             ? pow(v.m_val[3].m_re, 2)
             : -pow(v.m_val[3].m_re, 2);
         cnt++;
-	m_data_sample.snr   = v.m_val[3].m_re;
+        m_data_sample.snr   = v.m_val[3].m_re;
     }
     if (m_quality_flag.downlink_per) {
         v.m_val[9].m_re += m_linkq_params[1].booster
@@ -313,18 +314,18 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
         m_data_sample.score = v.m_val[9].m_re;
         if(v.m_val[9].m_re < m_threshold)
             m_threshold_cross_counter++;
-            if ( is_ignite_station && qmgr_is_score_registered()) {
-                wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re);   
-                qmgr_invoke_score(mac,v.m_val[9].m_re,m_threshold);
-	    }
+        if ( is_ignite_station && qmgr_is_score_registered()) {
+            wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[9].m_re);   
+            qmgr_invoke_score(mac,v.m_val[9].m_re,m_threshold);
+        }
     } else if (m_quality_flag.uplink_snr || m_quality_flag.uplink_per || m_quality_flag.uplink_phy) {
         m_data_sample.score = v.m_val[10].m_re;
         if(v.m_val[10].m_re < m_threshold)
             m_threshold_cross_counter++;
-            if (is_ignite_station && qmgr_is_score_registered()) {
-                wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[10].m_re);   
-                qmgr_invoke_score(mac,v.m_val[10].m_re,m_threshold);
-	    }
+        if (is_ignite_station && qmgr_is_score_registered()) {
+            wifi_util_dbg_print(WIFI_APPS,"%s:%d score=%f Invoking the score callback for ignite\n",__func__,__LINE__,v.m_val[10].m_re);   
+            qmgr_invoke_score(mac,v.m_val[10].m_re,m_threshold);
+        }
     }
     m_window_samples.push_back(m_data_sample);
     
@@ -434,7 +435,8 @@ void linkq_t::update_window_per()
     if (last.err_recv >= first.err_recv)
         err_recv_delta = last.err_recv - first.err_recv;
     pthread_mutex_unlock(&m_deque_lock);
-    wifi_util_dbg_print(WIFI_APPS,"DOWNLINK_PER last.pkt_sent=%d first.pkt_sent=%d sent_delta=%d err_sent_delta=%d\n",last.pkt_sent,first.pkt_sent,sent_delta,err_sent_delta);
+    wifi_util_dbg_print(WIFI_APPS,"DOWNLINK_PER last.pkt_sent=%d first.pkt_sent=%d sent_delta=%d err_sent_delta=%d\n",
+        last.pkt_sent,first.pkt_sent,sent_delta,err_sent_delta);
     if (sent_delta > 0)
         m_window_downlink_per =
             ((double)err_sent_delta / (double)(sent_delta + err_sent_delta)) * 100.0;

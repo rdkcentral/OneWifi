@@ -335,10 +335,7 @@ void qmgr_t::deinit()
     pthread_cond_signal(&m_cond);
 
     // Wait for thread to finish
-    if (m_run_started) {
-        pthread_join(m_thread, nullptr);
-        m_run_started = false;
-    }
+    pthread_join(m_thread, nullptr);
     pthread_cond_destroy(&m_cond);
     hash_map_destroy(m_link_map);
     wifi_util_info_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);

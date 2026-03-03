@@ -359,9 +359,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     memcpy(hal_sta->cli_MACAddress, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
                 }
                 if (sta->rapid_disconnect_flag) {
-		   wifi_util_info_print(WIFI_MON,"%s:%d  rapid_disconnect_flag =%d\n",__func__,__LINE__,sta->rapid_disconnect_flag);
-		   sta->rapid_disconnect_flag = false;
-		}
+                    wifi_util_info_print(WIFI_MON,"%s:%d  rapid_disconnect_flag =%d\n",__func__,__LINE__,sta->rapid_disconnect_flag);
+                    sta->rapid_disconnect_flag = false;
+                }
 
             }
             memcpy((unsigned char *)&sta->dev_stats, (unsigned char *)hal_sta,
@@ -479,10 +479,10 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     "status:%d\n",
                     __func__, __LINE__, to_sta_key(sta->sta_mac, sta_key), args->vap_index,
                     disconnected_time, sta->dev_stats.cli_Active);
-		//Rapid disconnect event to linkstats
-	        if (link_quality_measurement && !sta->rapid_disconnect_flag && !is_zero_mac(sta->dev_stats.cli_MACAddress)) {
+                //Rapid disconnect event to linkstats
+                if (link_quality_measurement && !sta->rapid_disconnect_flag && !is_zero_mac(sta->dev_stats.cli_MACAddress)) {
                     link_data =(linkquality_data_t *) malloc (sizeof(linkquality_data_t));
-		    sta->rapid_disconnect_flag = true;
+                    sta->rapid_disconnect_flag = true;
                     if (link_data != NULL) {
                         memset(link_data, 0, sizeof(linkquality_data_t));
                         to_sta_key(sta->dev_stats.cli_MACAddress, link_data->stats.mac_str);
@@ -514,8 +514,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
             to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-                wifi_util_dbg_print(WIFI_APPS, "%s:%d::\n", __func__, __LINE__);
-	    if(!is_zero_mac(tmp_sta->dev_stats.cli_MACAddress) && link_quality_measurement) {
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d::\n", __func__, __LINE__);
+            if(!is_zero_mac(tmp_sta->dev_stats.cli_MACAddress) && link_quality_measurement) {
                 link_data =(linkquality_data_t *) malloc (sizeof(linkquality_data_t));
                 if (link_data != NULL) {
                     memset(link_data, 0, sizeof(linkquality_data_t));

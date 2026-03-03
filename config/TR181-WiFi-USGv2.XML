@@ -290,7 +290,7 @@
             <writable>true</writable>
         </parameter>
         <parameter>
-            <name>LinkQuality_RFC</name>
+            <name>LinkQuality</name>
             <type>boolean</type>
             <syntax>bool</syntax>
             <writable>true</writable>

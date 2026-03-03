@@ -3901,8 +3901,8 @@ webconfig_error_t decode_link_report(cJSON *json,report_batch_t **out_report)
         /* ReportingTime */
         cJSON *rt = cJSON_GetObjectItem(link_obj, "ReportingTime");
         if (cJSON_IsString(rt)) {
-            strncpy(lr->reporting_time, rt->valuestring,
-                    sizeof(lr->reporting_time) - 1);
+            snprintf(lr->reporting_time,sizeof(lr->reporting_time),"%s",
+                rt->valuestring);
         }
 
         /* Samples */
@@ -3912,7 +3912,12 @@ webconfig_error_t decode_link_report(cJSON *json,report_batch_t **out_report)
             size_t sample_count = cJSON_GetArraySize(samples_array);
             lr->sample_count = sample_count;
             lr->samples = calloc(sample_count, sizeof(sample_t));
-
+            if (lr->samples == NULL) {
+                // Allocation failed – handle early exit
+                wifi_util_error_print(WIFI_WEBCONFIG,"Failed to allocate memory for %zu samples\n", sample_count);
+                lr->sample_count = 0;
+                return webconfig_error_decode;
+            }
             for (size_t j = 0; j < sample_count; j++) {
 
                 cJSON *sobj = cJSON_GetArrayItem(samples_array, j);

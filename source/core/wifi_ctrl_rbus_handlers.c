@@ -695,7 +695,7 @@ bus_error_t wifi_get_link_quality_data(char *event_name, raw_data_t *p_data, bus
     p_data->raw_data_len = bytes_size;
     wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
     if (str)
-        free(str);
+        cJSON_free(str); //Since the memory is allocated from cJSON_PrintUnformatted
 
     wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
     return RETURN_OK;
