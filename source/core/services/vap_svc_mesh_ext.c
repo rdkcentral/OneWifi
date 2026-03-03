@@ -1994,8 +1994,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
         }
     } else if (candidate != NULL) {
-        if ((found_candidate == false && (ext->conn_state != connection_state_connected)) ||
-                ((found_candidate == true) && (candidate->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT))) {
+        if ((ext->conn_state != connection_state_connected) && (found_candidate == true) && (candidate->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT)) {
             // fallback to last connected bssid if new bssid fails
             if (ext->conn_state == connection_state_connection_to_nb_in_progress &&
                 is_connected_to_bssid(ext)) {

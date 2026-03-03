@@ -62,6 +62,10 @@ typedef enum {
 
 #define SEC_MODE_STR_MAX 32
 
+static inline bool is_zero_mac(const unsigned char *mac) {
+    return (mac[0] | mac[1] | mac[2] | mac[3] | mac[4] | mac[5]) == 0;
+}
+
 int convert_sec_mode_enable_int_str(int sec_mode_enable, char *secModeStr) {
 
     switch(sec_mode_enable) {
@@ -1135,7 +1139,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
     while (acl_entry != NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Iterating over ACL entries\n", __func__, __LINE__);
 
-        if (acl_entry->mac != NULL &&
+        if (!is_zero_mac(acl_entry->mac) &&
             memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
             acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
 
