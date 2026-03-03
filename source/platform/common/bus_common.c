@@ -827,11 +827,17 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
 {
     bus_data_prop_t *next, *prev, *cur;
 
+    if (p_data_prop == NULL) {
+        return;
+    }
+
     if (p_data_prop->ref_count == 1) {
         free_bus_raw_data(&p_data_prop->value);
         p_data_prop->is_data_set = false;
         p_data_prop->ref_count = 0;
-        (*num_prop)--;
+        if (num_prop && (*num_prop > 0)) {
+            (*num_prop)--;
+        }
     } else if (p_data_prop->ref_count > 1) {
         wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
                 __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
@@ -848,7 +854,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         if (cur->ref_count == 1) {
             free_bus_raw_data(&cur->value);
             free(cur);
-            (*num_prop)--;
+            if (num_prop && (*num_prop > 0)) {
+                (*num_prop)--;
+            }
             prev->next_data = next;
         } else if (cur->ref_count > 1) {
             wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
@@ -863,7 +871,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         cur = next;
     }
 
-    wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    if (num_prop) {
+        wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    }
 }
 
 void bus_release_data_obj(bus_data_obj_t *p_bus_obj)
@@ -884,6 +894,28 @@ int clone_raw_data(raw_data_t *dst, raw_data_t *src)
         memcpy(dst->raw_data.bytes, src->raw_data.bytes, dst->raw_data_len);
     }
     return RETURN_OK;
+}
+
+int bus_get_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, raw_data_t *p_raw_data)
+{
+    BUS_CHECK_NULL_WITH_RC(p_bus_prop, RETURN_ERR);
+    BUS_CHECK_NULL_WITH_RC(p_raw_data, RETURN_ERR);
+
+    if (event_name == NULL) {
+        *p_raw_data = p_bus_prop->value;
+    } else {
+        uint32_t str_len = MIN_VAL(strlen(event_name) + 1, BUS_MAX_NAME_LENGTH);
+
+        while(p_bus_prop) {
+            if (!strncmp(event_name, p_bus_prop->name, str_len)) {
+                *p_raw_data = p_bus_prop->value;
+                return RETURN_OK;
+            }
+            p_bus_prop = p_bus_prop->next_data;
+        }
+    }
+
+    return RETURN_ERR;
 }
 
 int bus_set_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, raw_data_t *p_raw_data)
