@@ -1235,19 +1235,6 @@ void set_dml_cache_vap_config_changed(uint8_t vap_index)
     }
 }
 
-void set_cac_cache_changed(uint8_t vap_index)
-{
-    unsigned int num_radios = get_num_radio_dml();
-
-    if (vap_index <  (num_radios * MAX_NUM_VAP_PER_RADIO)) {
-        is_vap_cac_config_changed = 1;
-        return;
-    } else {
-        wifi_util_error_print(WIFI_DMCLI, "%s: wrong vap_index %d\n", __FUNCTION__, vap_index);
-        return;
-    }
-}
-
 int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
     webconfig_subdoc_data_t *data = NULL;
