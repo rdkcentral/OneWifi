@@ -436,6 +436,8 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
         }
 
         if (hash_map_put(dst_map, key, data) == -1) {
+            free(key);
+            free(data);
             hash_map_destroy(dst_map);
             return NULL;
         }
