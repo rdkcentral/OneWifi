@@ -1732,7 +1732,7 @@ static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t 
         return;
 
     }
-    snprintf(tmp_str, sizeof(tmp_str), "%d-%s-0", (index-1),mac);
+    snprintf(tmp_str, sizeof(tmp_str), "%d-%s-20", (index-1),mac);
     push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
 }
 
