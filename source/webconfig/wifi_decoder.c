@@ -3642,7 +3642,11 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
-            assoc_dev_data.conn_security.rsn_capabilities = value_object->valuedouble;
+            if ((value_object->valuedouble < 0) || (value_object->valuedouble > 0xffff)) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed for RSNCapabilities range\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            assoc_dev_data.conn_security.rsn_capabilities = (USHORT)value_object->valuedouble;
 
             value_object = cJSON_GetObjectItem(assoc_client, "AuthenticationState");
             if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {

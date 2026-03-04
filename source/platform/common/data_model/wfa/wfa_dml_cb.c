@@ -310,7 +310,7 @@ bus_error_t wfa_stamld_get_param_value(void *obj_ins_context, char *param_name, 
         char selector_hex[9] = { 0 };
 
         if (!rsn_akm_selector_hex(stamld->affiliated_sta[0]->conn_security.wpa_key_mgmt, selector_hex, sizeof(selector_hex))) {
-            wifi_util_error_print(WIFI_DMCLI,"%s:%d:PairwiseAKM:%d conversion failure\n",
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d:PairwiseAKM:%s conversion failure\n",
                 __func__, __LINE__, stamld->affiliated_sta[0]->conn_security.wpa_key_mgmt);
             return set_output_value(param_name, p_data, " ");
         }
@@ -321,7 +321,7 @@ bus_error_t wfa_stamld_get_param_value(void *obj_ins_context, char *param_name, 
         char selector_hex[9] = { 0 };
 
         if (!rsn_cipher_selector_hex(stamld->affiliated_sta[0]->conn_security.pairwise_cipher, selector_hex, sizeof(selector_hex))) {
-            wifi_util_error_print(WIFI_DMCLI,"%s:%d:PairwiseCipher:%d conversion failure\n",
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d:PairwiseCipher:%s conversion failure\n",
                 __func__, __LINE__, stamld->affiliated_sta[0]->conn_security.pairwise_cipher);
             return set_output_value(param_name, p_data, " ");
         }

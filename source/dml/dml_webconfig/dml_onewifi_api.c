@@ -150,7 +150,8 @@ void update_apmld_map()
     unsigned int num_radios = getNumberRadios();
     int mld_id_to_idx[MLD_UNIT_COUNT];
 
-    memset(apmld_map, 0, sizeof(apmld_map_t));
+    apmld_map->mld_group_count = 0;
+    memset(apmld_map->mld_groups, 0, sizeof(apmld_map->mld_groups));
     memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
 
     for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {

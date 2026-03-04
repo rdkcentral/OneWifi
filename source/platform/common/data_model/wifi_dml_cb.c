@@ -2313,7 +2313,7 @@ bool ssid_set_param_int_value(void *obj_ins_context, char *param_name, int input
             wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
             return false;
         }
-        if (input_value < -1 || input_value > MLD_UNIT_COUNT) {
+        if (input_value < -1 || input_value >= MLD_UNIT_COUNT) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,__LINE__,input_value);
             return false;
         }
@@ -2381,8 +2381,8 @@ bool ssid_set_param_uint_value(void *obj_ins_context, char *param_name, uint32_t
             }
             temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = output_value;
             set_dml_cache_vap_config_changed(vap_idx);
-            return true;
         }
+        return true;
     } else {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
         return false;
