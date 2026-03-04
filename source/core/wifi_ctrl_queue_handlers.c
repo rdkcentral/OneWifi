@@ -1853,6 +1853,7 @@ void process_wifi_host_sync()
                         hosts.host[hosts.count].Status = FALSE;
                     }
                     hosts.host[hosts.count].RSSI = assoc_dev_data->dev_stats.cli_RSSI;
+                    hosts.host[hosts.count].mld_sta = assoc_dev_data->dev_stats.cli_MLDEnable;
                     (hosts.count)++;
                     count++;
                     assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
@@ -1895,7 +1896,7 @@ void lm_notify_disassoc(assoc_dev_data_t *assoc_dev_data, unsigned int vap_index
     strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
     hosts.host[0].Status = FALSE;
     hosts.host[0].RSSI = 0;
-
+    hosts.host[0].mld_sta = assoc_dev_data->dev_stats.cli_MLDEnable;
     if (isVapHotspot(vap_index)) {
         if (notify_hotspot(&p_wifi_mgr->ctrl, assoc_dev_data) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to Hotspot\n", __func__, __LINE__);
@@ -2153,8 +2154,16 @@ void process_assoc_device_event(void *data)
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
     str_tolower(mac_str);
 
-    //check and remove mac_str from other vaps if device is steering
-    check_and_remove_mac_on_other_vaps(rdk_vap_info, assoc_data);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d:assoc_dev_ev: vap_name: %s cli_MACAddress %s mld_enable %d \n",
+        __func__, __LINE__, rdk_vap_info->vap_name, mac_str, assoc_data->dev_stats.cli_MLDEnable);
+    if (!assoc_data->dev_stats.cli_MLDEnable) {
+        /* Check and remove mac_str from other vaps if device is steering
+         * MLO STA note:
+         * Remove STA from other VAP only in case non MLO connected STA
+         * In case of MLO connected STA, it is expected that client will be present on multiple VAPS
+        */
+        check_and_remove_mac_on_other_vaps(rdk_vap_info, assoc_data);
+    }
 
     tmp_assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
     if (tmp_assoc_dev_data == NULL) {
@@ -2246,7 +2255,7 @@ void process_assoc_device_event(void *data)
                 hosts.host[0].Status = FALSE;
             }
             hosts.host[0].RSSI = assoc_data->dev_stats.cli_RSSI;
-
+            hosts.host[0].mld_sta = assoc_data->dev_stats.cli_MLDEnable;
             if (notify_LM_Lite(&p_wifi_mgr->ctrl, &hosts, true) != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to LMLite\n", __func__, __LINE__);
             }

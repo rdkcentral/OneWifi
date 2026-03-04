@@ -1041,12 +1041,17 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     hash_map_t *sta_map = NULL;
     sta_data_t *sta_data = NULL;
     sta_key_t sta_key;
+    mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
     getVAPArrayIndexFromVAPIndex((unsigned int)assoc_dev_data->ap_index, &vap_array_index);
     pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     memset(sta_key, 0, STA_KEY_LEN);
-    to_sta_key(assoc_dev_data->dev_stats.cli_MACAddress, sta_key);
+    if (memcmp(assoc_dev_data->dev_stats.cli_MLDAddr, zero_mac, sizeof(mac_address_t)) == 0) {
+        to_sta_key(assoc_dev_data->dev_stats.cli_MACAddress, sta_key);
+    } else {
+        to_sta_key(assoc_dev_data->dev_stats.cli_MLDAddr, sta_key);
+    }
 
     str_tolower(sta_key);
 
@@ -1064,6 +1069,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_Retransmissions = sta_data->dev_stats.cli_Retransmissions;
     assoc_dev_data->dev_stats.cli_Active = sta_data->dev_stats.cli_Active;
     memcpy(assoc_dev_data->dev_stats.cli_MLDAddr, sta_data->dev_stats.cli_MLDAddr, sizeof(mac_address_t));
+    memcpy(assoc_dev_data->dev_stats.cli_MACAddress, sta_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
     memcpy(assoc_dev_data->dev_stats.cli_OperatingStandard, sta_data->dev_stats.cli_OperatingStandard, sizeof(char)*64);
     memcpy(assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth, sta_data->dev_stats.cli_OperatingChannelBandwidth, sizeof(char)*64);
     assoc_dev_data->dev_stats.cli_SNR = sta_data->dev_stats.cli_SNR;
@@ -3308,15 +3314,9 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 
     data->ap_index = ap_index;
     //data->u.dev.reason = reason;
-
-    data->u.dev.sta_mac[0] = associated_dev->cli_MACAddress[0]; data->u.dev.sta_mac[1] = associated_dev->cli_MACAddress[1];
-    data->u.dev.sta_mac[2] = associated_dev->cli_MACAddress[2]; data->u.dev.sta_mac[3] = associated_dev->cli_MACAddress[3];
-    data->u.dev.sta_mac[4] = associated_dev->cli_MACAddress[4]; data->u.dev.sta_mac[5] = associated_dev->cli_MACAddress[5];
-
-    wifi_util_info_print(WIFI_MON, "%s:%d:Device associated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
-            __func__, __LINE__, ap_index,
-            data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
-            data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
+    memcpy(data->u.dev.sta_mac, associated_dev->cli_MACAddress, sizeof(mac_address_t));
+    wifi_util_info_print(WIFI_MON, "%s:%d:Device associated on interface:%d mac: " MACSTR " \n",
+            __func__, __LINE__, ap_index, MAC2STR(data->u.dev.sta_mac));
 
 
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index, vap_name);
@@ -3357,7 +3357,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     snprintf(assoc_data.dev_stats.cli_OperatingStandard, sizeof(assoc_data.dev_stats.cli_OperatingStandard),"%s", associated_dev->cli_OperatingStandard);
     snprintf(assoc_data.dev_stats.cli_OperatingChannelBandwidth, sizeof(assoc_data.dev_stats.cli_OperatingChannelBandwidth),"%s", associated_dev->cli_OperatingChannelBandwidth);
     snprintf(assoc_data.dev_stats.cli_InterferenceSources, sizeof(assoc_data.dev_stats.cli_InterferenceSources),"%s", associated_dev->cli_InterferenceSources);
-
+    assoc_data.dev_stats.cli_MLDEnable = associated_dev->cli_mld_info.cli_mld_sta;
     frame = &assoc_data.sta_data.msg_data;
     if (frame->frame.len != 0) {
         parse_assoc_ies((uint8_t *)(frame->data + ASSOC_REQ_MAC_HEADER_LEN),

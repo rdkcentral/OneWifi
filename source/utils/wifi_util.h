@@ -175,6 +175,7 @@ typedef struct {
     unsigned char phyAddr[32]; /* Byte alignment*/
     int RSSI;
     int Status;
+    bool mld_sta;
 } __attribute__((packed, aligned(1))) LM_wifi_host_t;
 
 typedef struct {
