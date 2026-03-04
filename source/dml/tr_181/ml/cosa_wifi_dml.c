@@ -11567,7 +11567,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.sampling_interval, sizeof(vapInfo->u.bss_info.postassoc.sampling_interval), "%s", pString);
-        set_dml_cache_vap_config_changed(p_dm_vap_info->vap_index);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
