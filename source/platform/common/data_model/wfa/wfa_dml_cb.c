@@ -150,10 +150,11 @@ bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, r
     wifi_multi_link_modes_t capab_val = get_wifimgr_obj()->hal_cap.wifi_prop.radiocap[0].mldOperationalCap;
     wifi_vap_info_t *vap = NULL;
     uint32_t affap_index = 0;
+    int prefix_len = 0;
 
-    if (strstr(param_name, "AffiliatedAP."))
-        sscanf(param_name, "AffiliatedAP.%d.%s", &affap_index, param_name);
-
+    if (sscanf(param_name, "AffiliatedAP.%u.%n", &affap_index, &prefix_len) == 1 && prefix_len > 0) {
+        param_name += prefix_len;  /* now points directly at param_name */
+    }
     if (affap_index > 0) {
         vap = mld_grp->mld_vaps[affap_index - 1];
         if (!vap) {
