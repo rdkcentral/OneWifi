@@ -10741,6 +10741,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold), "%s", pString);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -10769,6 +10770,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.snr_threshold, sizeof(vapInfo->u.bss_info.preassoc.snr_threshold), "%s", pString);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -10798,6 +10800,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.cu_threshold, sizeof(vapInfo->u.bss_info.preassoc.cu_threshold), "%s", pString);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
     /* check the parameter name and return the corresponding value */
@@ -11564,6 +11567,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.sampling_interval, sizeof(vapInfo->u.bss_info.postassoc.sampling_interval), "%s", pString);
+        set_dml_cache_vap_config_changed(p_dm_vap_info->vap_index);
         return TRUE;
     }
 
@@ -11592,6 +11596,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.snr_threshold, sizeof(vapInfo->u.bss_info.postassoc.snr_threshold), "%s", pString);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -11615,6 +11620,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.sampling_count, sizeof(vapInfo->u.bss_info.postassoc.sampling_count), "%s", pString);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -11626,6 +11632,7 @@ PostAssocDisc_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.postassoc.cu_threshold, sizeof(vapInfo->u.bss_info.postassoc.cu_threshold), "%s", "disabled");
+            set_dml_cache_vap_config_changed(instance_number - 1);  
             return TRUE;
         }
 
@@ -11643,6 +11650,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.cu_threshold, sizeof(vapInfo->u.bss_info.postassoc.cu_threshold), "%s", pString);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
