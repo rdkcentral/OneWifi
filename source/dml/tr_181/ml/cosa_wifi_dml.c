@@ -10724,6 +10724,7 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold), "%s", "disabled");
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -10753,6 +10754,7 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.snr_threshold, sizeof(vapInfo->u.bss_info.preassoc.snr_threshold), "%s", "disabled");
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -10783,6 +10785,7 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.cu_threshold, sizeof(vapInfo->u.bss_info.preassoc.cu_threshold), "%s", "disabled");
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -11527,6 +11530,7 @@ PostAssocDisc_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.postassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold), "%s", "disabled");
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -11544,6 +11548,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold), "%s", pString);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -11579,6 +11584,7 @@ PostAssocDisc_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.postassoc.snr_threshold, sizeof(vapInfo->u.bss_info.postassoc.snr_threshold), "%s", "disabled");
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
