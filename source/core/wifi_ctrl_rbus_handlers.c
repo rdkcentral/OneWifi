@@ -411,7 +411,11 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t *phosts, bool sync)
                 "NULL",
             ('\0' != phosts->host[0].ssid[0]) ? (char *)phosts->host[0].ssid : "NULL",
             phosts->host[0].RSSI, (phosts->host[0].Status == TRUE) ? 1 : 0);
-
+#ifdef CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+            size_t current_len = strlen(str);
+            if (current_len < sizeof(str) - 1 )
+                snprintf(str + current_len, sizeof(str) - current_len, ",%d", phosts->host[0].mld_sta);
+#endif
         rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
         if (rc != bus_error_success) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__, __LINE__,
@@ -426,7 +430,11 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t *phosts, bool sync)
                     "NULL",
                 ('\0' != phosts->host[itr].ssid[0]) ? (char *)phosts->host[0].ssid : "NULL",
                 phosts->host[itr].RSSI, (phosts->host[itr].Status == TRUE) ? 1 : 0);
-
+#ifdef CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+            size_t current_len = strlen(str);
+            if (current_len < sizeof(str) - 1 )
+                snprintf(str + current_len, sizeof(str) - current_len, ",%d", phosts->host[itr].mld_sta);
+#endif
             rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
             if (rc != bus_error_success) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__,

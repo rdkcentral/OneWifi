@@ -315,16 +315,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                         to_sta_key(hal_sta->cli_MLDAddr, mld_sta_key));
                     memcpy(sta->sta_mac, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
                     memcpy(sta->link_mac, hal_sta->cli_MACAddress, sizeof(mac_address_t));
-                    memcpy(hal_sta->cli_MACAddress, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
                     sta->primary_link = 0;
                 }
                 hash_map_put(sta_map, strdup(sta_key), sta);
                 sta->last_connected_time.tv_sec = tv_now.tv_sec;
                 sta->last_connected_time.tv_nsec = tv_now.tv_nsec;
-            } else {
-                if (mld_mac_present != 0) {
-                    memcpy(hal_sta->cli_MACAddress, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
-                }
             }
             memcpy((unsigned char *)&sta->dev_stats, (unsigned char *)hal_sta,
                 sizeof(wifi_associated_dev3_t));
