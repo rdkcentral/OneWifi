@@ -54,7 +54,7 @@ extern "C" {
 #ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 #include "wifi_easyconnect.h"
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
-
+#include "wifi_linkquality.h"
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
 
@@ -101,6 +101,7 @@ typedef struct {
 #ifdef EM_APP
         em_data_t            em_data;
 #endif //EM_APP
+        linkquality_data_t linkquality; 
         memwraptool_config_t memwraptool;
     } u;
 } wifi_app_data_t;
