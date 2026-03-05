@@ -511,6 +511,7 @@ void ext_start_scan(vap_svc_t *svc)
     vap_svc_ext_t   *ext;
     wifi_ctrl_t *ctrl;
     unsigned int radio_index;
+    ssid_t ssid;
     wifi_channels_list_t channels;
     wifi_radio_operationParam_t *radio_oper_param;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -548,9 +549,6 @@ void ext_start_scan(vap_svc_t *svc)
             continue;
         }
 
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
-            radio_index);
-
         if (ext->is_on_channel) {
             mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
         }
@@ -565,8 +563,19 @@ void ext_start_scan(vap_svc_t *svc)
                sizeof(*channels_list) * num_channels);
         channels.num_channels = num_channels;
 
-        wifi_hal_startScan(radio_index, mode, dwell_time, channels.num_channels,
-            channels.channels_list);
+        if (get_sta_ssid_from_radio_config_by_radio_index(radio_index, ssid)) {
+            // Didn't find a STA for this radio index
+            continue;
+        }
+        if (strlen(ssid) == 0) {
+            // SSID is wildcard SSID
+            continue;
+        }
+
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
+            radio_index);
+        wifi_hal_startScan(radio_index, mode, dwell_time,
+            channels.num_channels, channels.channels_list);
     }
     ext->is_on_channel = false;
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_timeout_handler_id,
@@ -1094,6 +1103,9 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     // HAL error. On different band try to connect to new BSSID before disconnection.
     // disconnect will be executed if new bssid is found in the scan results
     if (ext->connected_vap_index == vap_info->vap_index) {
+        if (ext->conn_state != connection_state_connected_wait_for_csa) {
+            ext->go_to_channel = channel;
+        }
         ext_set_conn_state(ext, connection_state_connected_scan_list, __func__, __LINE__);
     } else {
         ext->is_radio_ignored = true;
@@ -1352,6 +1364,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     mac_addr_str_t bssid_str;
     vap_svc_ext_t *ext;
     wifi_ctrl_t *ctrl;
+    ssid_t sta_ssid;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -1369,6 +1382,22 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     if (ext->conn_state >= connection_state_disconnected_scan_list_all) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Received scan resuts when already have result or connection in progress, should not happen\n",
                         __FUNCTION__,__LINE__);
+        return 0;
+    }
+
+    if (get_sta_ssid_from_radio_config_by_radio_index(results->radio_index, sta_ssid)) {
+        // Didn't find a STA for this radio index
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d Received scan resuts but couldn't find STA for radio index: %d\n", __FUNCTION__,
+            __LINE__, results->radio_index);
+        return 0;
+    }
+    if (strlen(sta_ssid) == 0) {
+        // SSID is wildcard SSID.
+        //  We cannot possibly know the password for whichever network is closest so ignore
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d Recieved scan results for station with wildcard SSID (%d). Ignoring...\n",
+            __FUNCTION__, __LINE__, results->radio_index);
         return 0;
     }
 
@@ -1609,9 +1638,11 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 ext->ext_trigger_disconnection_timeout_handler_id = 0;
             }
 
-            scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
-                process_udhcp_ip_check, svc, EXT_UDHCP_IP_CHECK_INTERVAL,
-                EXT_UDHCP_IP_CHECK_NUM + 1, FALSE);
+            if (ctrl->network_mode != rdk_dev_mode_type_em_node) {
+                scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
+                    process_udhcp_ip_check, svc, EXT_UDHCP_IP_CHECK_INTERVAL,
+                    EXT_UDHCP_IP_CHECK_NUM + 1, FALSE);
+            }
 
             /* Make Self Heal Timeout to flase once connected */
             ext->selfheal_status = false;

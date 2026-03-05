@@ -38,10 +38,20 @@ extern "C" {
 #include "wifi_whix.h"
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
+#ifdef EM_APP
+#include "wifi_em.h"
+#endif
 
+#ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+#include "wifi_sta_mgr.h"
+#endif
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
 #include "wifi_blaster.h"
 #endif
+
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+#include "wifi_easyconnect.h"
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
@@ -81,6 +91,12 @@ typedef struct {
         off_channel_param_t  ocs[MAX_NUM_RADIOS];
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
         memwraptool_config_t memwraptool;
+#ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+        sta_mgr_data_t sta_mgr;
+#endif //ONEWIFI_STA_MGR_APP_SUPPORT
+#ifdef EM_APP
+        em_data_t            em_data;
+#endif //EM_APP
     } u;
 } wifi_app_data_t;
 

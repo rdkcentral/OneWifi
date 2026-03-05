@@ -280,7 +280,8 @@ bool is_sta_enabled(void)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d\r\n",
     //    __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check);
-    return ((ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->active_gw_check == true) &&
+    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
+                ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true) &&
         ctrl->eth_bh_status == false);
 }
 
@@ -641,14 +642,25 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     get_wifidb_obj()->desc.get_wifi_global_param_fn(&global_param);
     // set all default return values first
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
-#ifdef EASY_MESH_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
-
-#elif EASY_MESH_COLOCATED_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
-
+#if defined EASY_MESH_NODE
+        wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+        int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
+        /* Initially assign this to em_node mode to start with */
+        *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
+        while (colocated_mode == -1) {
+            /* sleep for 1 second and re-read the wifi_hal_getHalCapability till we get 
+               a valid colocated_mode */
+            sleep(1);
+            total_slept++;
+            wifi_hal_getHalCapability(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap);
+            colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
+        }
+        if (colocated_mode == 1) {
+            *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
+        } else if (colocated_mode == 0) {
+            *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: network_mode:%d.\n", __func__, __LINE__, *ret_val);
 #else
        wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
 #ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
@@ -664,12 +676,19 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #else
         ctrl->dev_type = dev_subtype_rdk;
 #endif
-
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
 
-    while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
+#if defined EASY_MESH_NODE
+   if (ctrl->network_mode == rdk_dev_mode_type_em_node ) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Don't need to proceed for DML fetch for RemoteAgent case, NetworkMode: %d\n",
+                __func__, __LINE__, ctrl->network_mode);
+            return;
+   }
+#endif
+
+   while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
         bus_error_success) {
         sleep(1);
         total_slept++;
@@ -859,6 +878,7 @@ int start_wifi_services(void)
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
         start_radios(rdk_dev_mode_type_gw);
+        start_gateway_vaps();
     }
 
     return RETURN_OK;
@@ -1113,25 +1133,33 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     frame_data_t wifi_mgmt_frame;
 
     memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
-
+    wifi_mgmt_frame.frame.ap_index = ap_index;
+    memcpy(wifi_mgmt_frame.frame.sta_mac, frame->sta_mac, sizeof(mac_address_t));
+    wifi_mgmt_frame.frame.type = frame->type;
+    wifi_mgmt_frame.frame.dir = frame->dir; 
+    wifi_mgmt_frame.frame.sig_dbm = frame->sig_dbm;
+    wifi_mgmt_frame.frame.phy_rate = frame->phy_rate;
+    wifi_mgmt_frame.frame.token = frame->token;
+    wifi_mgmt_frame.frame.recv_freq = frame->recv_freq;
+    wifi_mgmt_frame.frame.len = frame->len;
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
-    memcpy(&mgmt_frame.frame, frame, sizeof(wifi_frame_t));
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }
 #else
 #if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
-int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate)
+int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate, unsigned int recv_freq)
 #else
-int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir)
+int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, unsigned int recv_freq)
 #endif
 {
     wifi_actionFrameHdr_t *paction = NULL;
     frame_data_t mgmt_frame;
     wifi_event_subtype_t evt_subtype = wifi_event_hal_unknown_frame;
+    wifi_monitor_data_t *data = NULL;
 
     if (len == 0) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived zero length frame\n", __func__, __LINE__);
@@ -1178,6 +1206,34 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_dpp_public_action_frame;
+
+        data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+        if (data == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        memset(data, 0, sizeof(wifi_monitor_data_t));
+
+        data->ap_index = ap_index;
+        data->u.msg.frame.ap_index = ap_index;
+        memcpy(data->u.msg.frame.sta_mac, sta_mac, sizeof(mac_address_t));
+        data->u.msg.frame.type = type;
+        data->u.msg.frame.dir = dir;
+#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
+    mgmt_frame.frame.sig_dbm = sig_dbm;
+    mgmt_frame.frame.phy_rate = phy_rate;
+#endif
+        data->u.msg.frame.len = len;
+        data->u.msg.frame.recv_freq = recv_freq;
+
+        memcpy(&data->u.msg.data, frame, len);
+        push_event_to_monitor_queue(data, wifi_event_monitor_action_frame, NULL);
+        free(data);
+        data = NULL;
+
         paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
         switch (paction->cat) {
             case wifi_action_frame_type_public:
@@ -1186,6 +1242,10 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
             default:
                 break;
         }
+    } else if (type == WIFI_MGMT_FRAME_TYPE_BEACON) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_csa_beacon_frame;
     }
     if (evt_subtype != wifi_event_hal_unknown_frame) {
         push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
@@ -1453,11 +1513,17 @@ int wifi_hal_platform_post_init()
     int ret = RETURN_OK;
     unsigned int num_of_radios = getNumberRadios();
     unsigned int index = 0;
-    wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
+    wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_map_t *p_vap_map = NULL;
     wifi_hal_post_init_t post_init_struct;
 
-    memset(vap_map, 0, sizeof(vap_map));
+    vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t) * MAX_NUM_RADIOS);
+    if (vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory for vap_map\n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(vap_map, 0, sizeof(wifi_vap_info_map_t) * MAX_NUM_RADIOS);
 
     for (index = 0; index < num_of_radios; index++) {
         p_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(index);
@@ -1475,6 +1541,9 @@ int wifi_hal_platform_post_init()
 
     if (!post_init_struct.app_info){
         wifi_util_error_print(WIFI_CTRL,"%s failed to allocate memory for wifi_app_info_t\n",__FUNCTION__);
+        free(vap_map);
+        vap_map = NULL;
+        return RETURN_ERR;
     }
     post_init_struct.app_info->app_get_ap_assoc_dev_diag_res3_fn = onewifi_get_ap_assoc_dev_diag_res3;
     post_init_struct.app_info->app_get_neighbor_ap2_fn = onewifi_get_neighbor_ap2;
@@ -1484,6 +1553,8 @@ int wifi_hal_platform_post_init()
     ret = wifi_hal_post_init(&post_init_struct);
   
     free(post_init_struct.app_info);
+    free(vap_map);
+    vap_map = NULL;
     
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s start wifi apps failed, ret:%d\n",__FUNCTION__, ret);
@@ -1498,11 +1569,17 @@ int wifi_hal_platform_post_init()
     int ret = RETURN_OK;
     unsigned int num_of_radios = getNumberRadios();
     unsigned int index = 0;
-    wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
+    wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_map_t *p_vap_map = NULL;
     wifi_global_param_t *global_param;
 
-    memset(vap_map, 0, sizeof(vap_map));
+    vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t) * MAX_NUM_RADIOS);
+    if (vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory for vap_map\n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(vap_map, 0, sizeof(wifi_vap_info_map_t) * MAX_NUM_RADIOS);
 
     for (index = 0; index < num_of_radios; index++) {
         p_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(index);
@@ -1518,6 +1595,8 @@ int wifi_hal_platform_post_init()
     ret = wifi_hal_post_init(vap_map);
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s start wifi apps failed, ret:%d\n",__FUNCTION__, ret);
+        free(vap_map);
+        vap_map = NULL;
         return RETURN_ERR;
     }
 
@@ -1528,6 +1607,8 @@ int wifi_hal_platform_post_init()
             global_param->mgt_frame_rate_limit_cooldown_time);
     }
 
+    free(vap_map);
+    vap_map = NULL;
     return RETURN_OK;
 }
 #endif // HAL_IPC
@@ -1572,18 +1653,26 @@ int init_wireless_interface_mac()
     unsigned int j = 0;
     unsigned int k = 0;
     int ret = RETURN_OK;
-    wifi_vap_info_map_t  hal_vap_info_map;
+    wifi_vap_info_map_t  *hal_vap_info_map = NULL;
     wifi_vap_info_t *wifi_vap_info = NULL;
     wifi_vap_info_map_t *mgr_vap_info_map = NULL;
 
+    hal_vap_info_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (hal_vap_info_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory for hal_vap_info_map\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
     for (itr=0; itr < getNumberRadios(); itr++) {
-        memset(&hal_vap_info_map, 0, sizeof(hal_vap_info_map));
+        memset(hal_vap_info_map, 0, sizeof(wifi_vap_info_map_t));
 
         //wifi_hal_getRadioVapInfoMap is used  to get the macaddress of wireless interfaces
-        ret = wifi_hal_getRadioVapInfoMap(itr, &hal_vap_info_map);
+        ret = wifi_hal_getRadioVapInfoMap(itr, hal_vap_info_map);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_hal_getRadioVapInfoMap returned with error %d for radio : %d\n",
                     __FUNCTION__, ret, itr);
+            free(hal_vap_info_map);
+            hal_vap_info_map = NULL;
             return RETURN_ERR;
         }
 
@@ -1592,22 +1681,24 @@ int init_wireless_interface_mac()
         if (mgr_vap_info_map == NULL) {
             wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s get_wifidb_vap_map returned with error %d for radio : %d\n",
                     __FUNCTION__, ret, itr);
+            free(hal_vap_info_map);
+            hal_vap_info_map = NULL;
             return RETURN_ERR;
         }
 
-        for (j = 0; j < hal_vap_info_map.num_vaps; j++) {
+        for (j = 0; j < hal_vap_info_map->num_vaps; j++) {
             for (k = 0; k < mgr_vap_info_map->num_vaps; k++) {
 
                 //compare the vap_names from hal_vap_info_map and mgr_vap_info_map to get the wifi_vap_info structure
-                if (strncmp(hal_vap_info_map.vap_array[j].vap_name, mgr_vap_info_map->vap_array[k].vap_name, strlen(hal_vap_info_map.vap_array[j].vap_name)) == 0) {
+                if (strncmp(hal_vap_info_map->vap_array[j].vap_name, mgr_vap_info_map->vap_array[k].vap_name, strlen(hal_vap_info_map->vap_array[j].vap_name)) == 0) {
                     wifi_vap_info = &mgr_vap_info_map->vap_array[k];
                     break;
                 }
             }
 
             //For backhaul interfaces, update the sta_info.mac
-            if (strncmp((char *)hal_vap_info_map.vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
-                memcpy(wifi_vap_info->u.sta_info.mac, hal_vap_info_map.vap_array[j].u.sta_info.mac, sizeof(wifi_vap_info->u.sta_info.mac));
+            if (strncmp((char *)hal_vap_info_map->vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
+                memcpy(wifi_vap_info->u.sta_info.mac, hal_vap_info_map->vap_array[j].u.sta_info.mac, sizeof(wifi_vap_info->u.sta_info.mac));
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d: vapindex %d vap_name : %s Mac address : %02X:%02X:%02X:%02X:%02X:%02X\n",__func__, __LINE__,
                         wifi_vap_info->vap_index,
                         wifi_vap_info->vap_name,
@@ -1620,7 +1711,7 @@ int init_wireless_interface_mac()
                         );
             } else {
                 //For fronthaul interfaces, update the bss_info.bssid
-                memcpy(wifi_vap_info->u.bss_info.bssid, hal_vap_info_map.vap_array[j].u.bss_info.bssid, sizeof(wifi_vap_info->u.bss_info.bssid));
+                memcpy(wifi_vap_info->u.bss_info.bssid, hal_vap_info_map->vap_array[j].u.bss_info.bssid, sizeof(wifi_vap_info->u.bss_info.bssid));
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d: vapindex %d vap_name : %s Mac address : %02X:%02X:%02X:%02X:%02X:%02X\n",__func__, __LINE__,
                         wifi_vap_info->vap_index,
                         wifi_vap_info->vap_name,
@@ -1631,9 +1722,19 @@ int init_wireless_interface_mac()
                         wifi_vap_info->u.bss_info.bssid[4],
                         wifi_vap_info->u.bss_info.bssid[5]
                         );
+#if defined EASY_MESH_NODE
+                // For fronthaul interfaces, update the mld info
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_enable = hal_vap_info_map->vap_array[j].u.bss_info.mld_info.common_info.mld_enable;
+                memcpy(wifi_vap_info->u.bss_info.mld_info.common_info.mld_addr, hal_vap_info_map->vap_array[j].u.bss_info.mld_info.common_info.mld_addr, sizeof(wifi_vap_info->u.bss_info.mld_info.common_info.mld_addr));
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_link_id = hal_vap_info_map->vap_array[j].u.bss_info.mld_info.common_info.mld_link_id;
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_id = hal_vap_info_map->vap_array[j].u.bss_info.mld_info.common_info.mld_id;
+                wifi_vap_info->u.bss_info.mld_info.common_info.mld_apply = hal_vap_info_map->vap_array[j].u.bss_info.mld_info.common_info.mld_apply;
+#endif
             }
         }
     }
+    free(hal_vap_info_map);
+    hal_vap_info_map = NULL;
     return RETURN_OK;
 }
 int validate_and_sync_private_vap_credentials()

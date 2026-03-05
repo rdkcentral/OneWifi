@@ -212,8 +212,61 @@ int blaster_event(wifi_app_t *app, wifi_event_t *event)
     return 0;
 }
 
-#endif
+#endif // ONEWIFI_BLASTER_APP_SUPPORT
 
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+extern int easyconnect_init(wifi_app_t *app, unsigned int create_flag);
+extern int easyconnect_deinit(wifi_app_t *app);
+extern int easyconnect_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int easyconnect_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int easyconnect_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+
+#ifdef EM_APP
+extern int em_init(wifi_app_t *app, unsigned int create_flag);
+extern int em_deinit(wifi_app_t *app);
+extern int em_update(wifi_app_t *app);
+extern int em_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int em_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int em_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int em_update(wifi_app_t *app)
+{
+    return 0;
+}
+
+int em_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif // EM_APP
+
+#ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+extern int sta_mgr_init(wifi_app_t *app, unsigned int create_flag);
+extern int sta_mgr_deinit(wifi_app_t *app);
+extern int sta_mgr_event(wifi_app_t *app, wifi_event_t *event);
+#endif
 
 wifi_app_descriptor_t app_desc[] = {
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT

@@ -3065,6 +3065,12 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name,
             case wifi_security_mode_wpa3_compatibility:
                 p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+                if(strstr(pcfg->radio_index, "6g")) {
+                    p_dm_sec_cfg->u.key.type = wifi_security_key_type_sae;
+                    p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
+                }
+#endif /* CONFIG_IEEE80211BE */
                 break;
             default:
                 break;
@@ -4380,6 +4386,8 @@ bool associated_sta_get_param_uint_value(void *obj_ins_context, char *param_name
         *output_value = assoc_dev_data->dev_stats.cli_Disassociations;
     } else if (STR_CMP(param_name, "X_COMCAST-COM_AuthenticationFailures")) {
         *output_value = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
+    } else if( STR_CMP(param_name, "X_RDK_CapSpaStr")) {
+        *output_value = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);

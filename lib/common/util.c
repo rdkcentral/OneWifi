@@ -69,14 +69,14 @@ int csnprintf(char **str, size_t *size, const char *fmt, ...)
 {
     va_list va;
     int ret;
-    int len;
+    size_t len;
 
     va_start(va, fmt);
 
     ret = vsnprintf(*str, *size, fmt, va);
-    len = ret;
+    len = (size_t)ret;
     if (ret < 0) len = 0;
-    if (len >= (int)*size)
+    if (len >= *size)
     {
         len = *size - 1;
     }
@@ -261,7 +261,7 @@ char* strargv(char **cmd, bool with_quotes)
  */
 int strcmp_len(char *a, size_t alen, char *b, size_t blen)
 {
-    if (alen != blen) return alen - blen;
+    if (alen != blen) return (int)(alen - blen);
 
     return strncmp(a, b, alen);
 }
@@ -299,13 +299,13 @@ ssize_t base64_encode(char *out, ssize_t out_sz, void *input, ssize_t input_sz)
                 /* Falls through. */
 
             case 2:
-                m[2] |= pin[1] << 2;
+                m[2] |= (uint8_t)(pin[1] << 2);
                 m[1] |= pin[1] >> 4;
                 pout[2] = base64_table[m[2] & 63];
                 /* Falls through. */
 
             case 1:
-                m[1] |= pin[0] << 4;
+                m[1] |= (uint8_t)(pin[0] << 4);
                 m[0] |= pin[0] >> 2;
 
                 pout[1] = base64_table[m[1] & 63];
@@ -336,7 +336,7 @@ ssize_t base64_encode(char *out, ssize_t out_sz, void *input, ssize_t input_sz)
 ssize_t base64_decode(void *out, ssize_t out_sz, char *input)
 {
     int ii;
-    ssize_t input_sz = strlen(input);
+    ssize_t input_sz = (ssize_t)strlen(input);
 
     if (input_sz == 0) return 0;
     if ((input_sz % 4) != 0) return -1;
@@ -356,7 +356,7 @@ ssize_t base64_decode(void *out, ssize_t out_sz, char *input)
         uint8_t m[4] = {0};
 
         /* Calculate number of bytes to process this round */
-        int isz = (input_sz > 4) ? 4 : input_sz;
+        int isz = (int)((input_sz > 4) ? 4 : input_sz);
 
         /* Translate a single character to it's base64 value according to base64_table */
         for (ii = 0; ii < isz; ii++)
@@ -366,20 +366,20 @@ ssize_t base64_decode(void *out, ssize_t out_sz, char *input)
             /* Invalid character found -- error*/
             if (p == NULL) return -1;
 
-            m[ii] = p - base64_table;
+            m[ii] = (uint8_t)(p - base64_table);
         }
 
         /* Process a 4-byte (or less) block */
         switch (isz)
         {
             default:
-                pout[2] = (m[2] << 6) | m[3];
+                pout[2] = (uint8_t)((m[2] << 6) | m[3]);
                 /* Falls through. */
             case 3:
-                pout[1] = (m[1] << 4) | (m[2] >> 2);
+                pout[1] = (uint8_t)((m[1] << 4) | (m[2] >> 2));
                 /* Falls through. */
             case 2:
-                pout[0] = (m[0] << 2) | (m[1] >> 4);
+                pout[0] = (uint8_t)((m[0] << 2) | (m[1] >> 4));
                 /* Falls through. */
         }
 
@@ -431,7 +431,7 @@ char *strchomp(char *str, char *delim)
     if (!str)
         return NULL;
 
-    len = strlen(str);
+    len = (int)strlen(str);
     while (len > 0 &&
             (strchr(delim, str[len - 1]) != NULL))
     {
@@ -541,7 +541,7 @@ void delimiter_append(char *dest, int size, char *src, int i, char d)
 {
     if (i > 0)
     {
-        int len = strlen(dest);
+        int len = (int)strlen(dest);
         dest += len;
         size -= len;
         if (size <= 1) return;
@@ -550,7 +550,7 @@ void delimiter_append(char *dest, int size, char *src, int i, char d)
         size--;
         if (size <= 1) return;
     }
-    strscpy(dest, src, size);
+    strscpy(dest, src, (size_t)size);
 }
 
 
@@ -578,7 +578,7 @@ void remove_character(char *str, const char character)
 int fsa_find_str(const void *array, int size, int len, const char *str)
 {
     for (len--; len >= 0; len--)
-        if (strcmp(array + len * size, str) == 0)
+        if (strcmp((const char*)array + len * size, str) == 0)
             return len;
     return -1;
 }
@@ -594,7 +594,7 @@ void fsa_copy(const void *array, int size, int len, int num, void *dest, int dsi
         }
         const char *s = fsa_item(array, size, len, i);
         char *d = fsa_item(dest, dsize, dlen, i);
-        strscpy(d, s, dsize);
+        strscpy(d, s, (size_t)dsize);
     }
     *dnum = i;
 }
@@ -603,14 +603,14 @@ void fsa_copy(const void *array, int size, int len, int num, void *dest, int dsi
 char *str_tolower(char *str)
 {
     unsigned char *s = (unsigned char*)str;
-    while (s && *s) { *s = tolower(*s); s++; }
+    while (s && *s) { *s =(unsigned char) tolower(*s); s++; }
     return str;
 }
 
 char *str_toupper(char *str)
 {
     unsigned char *s = (unsigned char*)str;
-    while (s && *s) { *s = toupper(*s); s++; }
+    while (s && *s) { *s = (unsigned char)toupper(*s); s++; }
     return str;
 }
 
@@ -736,7 +736,7 @@ ssize_t strscpy(char *dest, const char *src, size_t size)
     memcpy(dest, src, len);
     dest[len] = 0;
     if (src[len]) return -E2BIG;
-    return len;
+    return (ssize_t)len;
 }
 
 /**
@@ -757,7 +757,7 @@ ssize_t strscpy_len(char *dest, const char *src, size_t size, ssize_t src_len)
     // get actual src_len
     if (src_len < 0) {
         // using (size - str_len) to limit to size
-        src_len = strnlen(src, size - src_len) + src_len;
+        src_len =(ssize_t) strnlen(src, size -(size_t) src_len) + src_len;
         // check if offset is larger than actual src len
         if (src_len < 0) {
             *dest = 0;
@@ -765,9 +765,9 @@ ssize_t strscpy_len(char *dest, const char *src, size_t size, ssize_t src_len)
         }
     } else {
         // limit to src_len
-        src_len = strnlen(src, src_len);
+        src_len = (ssize_t)strnlen(src, (size_t)src_len);
     }
-    len = src_len;
+    len = (size_t)src_len;
     // trim if too big
     if (len > size - 1) len = size - 1;
     // copy the substring
@@ -777,7 +777,7 @@ ssize_t strscpy_len(char *dest, const char *src, size_t size, ssize_t src_len)
     // return error if src len was too big
     if ((size_t)src_len > len) return -E2BIG;
     // return len on success
-    return len;
+    return (ssize_t)len;
 }
 
 ssize_t strscat(char *dest, const char *src, size_t size)
@@ -788,7 +788,7 @@ ssize_t strscat(char *dest, const char *src, size_t size)
     if (free == 0) return -E2BIG;
     ssize_t slen = strscpy(dest + dlen, src, free);
     if (slen < 0) return slen;
-    return dlen + slen;
+    return (ssize_t)dlen + slen;
 }
 
 char *strschr(const char *s, int c, size_t n)
@@ -813,9 +813,9 @@ char *strfmt(const char *fmt, ...)
     va_start(ap, fmt);
     n = vsnprintf(&c, 1, fmt, ap);
     va_end(ap);
-    if (n >= 0 && (p = malloc(++n))) {
+    if (n >= 0 && (p = malloc((size_t)++n))) {
         va_start(ap, fmt);
-        vsnprintf(p, n, fmt, ap);
+        vsnprintf(p, (size_t)n, fmt, ap);
         va_end(ap);
         return p;
     }
@@ -833,8 +833,8 @@ char *vstrfmt(const char *fmt, va_list args)
     n = vsnprintf(&c, 1, fmt, args_copy);
     va_end(args_copy);
 
-    if (n >= 0 && (p = malloc(++n))) {
-        vsnprintf(p, n, fmt, args);
+    if (n >= 0 && (p = malloc((size_t)++n))) {
+        vsnprintf(p, (size_t)n, fmt, args);
         return p;
     }
 
@@ -844,7 +844,8 @@ char *vstrfmt(const char *fmt, va_list args)
 char *argvstr(const char *const*argv)
 {
     char *q;
-    int i, n;
+    int i;
+    size_t n;
     if (!argv)
         return NULL;
     for (n=1, i=0; argv[i]; i++)
@@ -885,7 +886,7 @@ char *strexread(const char *prog, const char *const*argv)
             close(fd[0]);
             close(fd[1]);
             for (n=0; argv[n]; n++);
-            args = calloc(++n, sizeof(args[0]));
+            args = calloc((size_t)++n, sizeof(args[0]));
             for (n=0; argv[n]; n++) args[n] = strdup(argv[n]);
             args[n] = 0;
             execvp(prog, args);
@@ -895,12 +896,12 @@ char *strexread(const char *prog, const char *const*argv)
             close(fd[1]);
             for (n=0,i=0,p=0;;) {
                 if (i+1 >= n) {
-                    if ((q = realloc(p, (n+=4096))))
+                    if ((q = realloc(p,(size_t)(n+=4096))))
                         p = q;
                     else
                         break;
                 }
-                if ((j = read(fd[0], p+i, n-i-1)) <= 0)
+                if ((j = (int)read(fd[0], p+i, (size_t)(n-i-1))) <= 0)
                     break;
                 i += j;
             }
@@ -972,7 +973,7 @@ char** str_split_lines(char *s, int *count)
     *count = 0;
     int num = str_count_lines(s);
     if (!num) return NULL;
-    char **lines = calloc(num, sizeof(char*));
+    char **lines = calloc((size_t)num, sizeof(char*));
     if (!lines) return NULL;
     str_split_lines_to(s, lines, num, count);
     return lines;
@@ -983,7 +984,7 @@ char** str_split_lines(char *s, int *count)
 bool str_join(char *str, int size, char **list, int num, char *delim)
 {
     char *p = str;
-    size_t s = size;
+    size_t s = (size_t)size;
     int i, r;
     for (i=0; i<num; i++) {
         r = csnprintf(&p, &s, "%s%s", list[i], i < num - 1 ? delim : "");
@@ -997,7 +998,7 @@ bool str_join(char *str, int size, char **list, int num, char *delim)
 bool str_join_int(char *str, int size, int *list, int num, char *delim)
 {
     char *p = str;
-    size_t s = size;
+    size_t s = (size_t)size;
     int i, r;
     for (i=0; i<num; i++) {
         r = csnprintf(&p, &s, "%d%s", list[i], i < num - 1 ? delim : "");
@@ -1019,7 +1020,7 @@ bool str_startswith(const char *str, const char *start)
  */
 bool str_endswith(const char *str, const char *end)
 {
-    int i = strlen(str) - strlen(end);
+    int i =(int)(strlen(str) - strlen(end));
     if (i < 0) return false;
     return strcmp(str + i, end) == 0;
 }
@@ -1040,12 +1041,12 @@ char *ini_get(const char *buf, const char *key)
 
 int file_put(const char *path, const char *buf)
 {
-    ssize_t len = strlen(buf);
+    ssize_t len = (ssize_t)strlen(buf);
     ssize_t n;
     int fd;
     if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0)
         return -1;
-    if ((n = write(fd, buf, len)) != len)
+    if ((n = write(fd, buf, (size_t)len)) != len)
         goto err_close;
     close(fd);
     LOGT("%s: wrote %-100s", path, buf);
@@ -1068,10 +1069,10 @@ char *file_get(const char *path)
     if ((fd = open(path, O_RDONLY)) < 0)
         goto err;
     while ((n = read(fd, hunk, sizeof(hunk))) > 0) {
-        if (!(nbuf = realloc(buf, (size += n) + 1)))
+        if (!(nbuf = realloc(buf, (size_t)(size += n) + 1)))
             goto err_free;
         buf = nbuf;
-        memcpy(buf + len, hunk, n);
+        memcpy(buf + len, hunk, (size_t)n);
         len += n;
         buf[len] = 0;
     }

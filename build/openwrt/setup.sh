@@ -14,6 +14,7 @@ SRCREV_2_11="96e48a05aa0a82e91e3cab75506297e433e253d0"
 cd ..
 git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
 git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
+git clone https://github.com/xmidt-org/trower-base64.git trower-base64
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
@@ -91,3 +92,10 @@ cp build/openwrt/Makefile_package ../Makefile
 cp build/openwrt/MT7966.config ../../../.config
 #Copy the avro dependency to package/libs
 cp -r build/openwrt/avro ../../libs/.
+
+#Applying kernel patch from openwrt root directory
+cd $OPENWRT_ROOT
+if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch; then
+        patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
+fi
+cd $ONEWIFI_DIR

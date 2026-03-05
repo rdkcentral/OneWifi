@@ -204,7 +204,7 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
             __func__, __LINE__, bytes_read, client->identity, bus_msg_id,
             HE_BUS_MSG_IDENTIFICATION_NUM);
         if (bus_msg_id != HE_BUS_MSG_IDENTIFICATION_NUM) {
-            he_bus_conn_error_print("bus msg varification falied for client identity:%s\r\n",
+            he_bus_conn_error_print("bus msg verification falied for client identity:%s\r\n",
                 client->identity);
             return HE_BUS_ERROR_MSG_VARIFICATION;
         } else {
@@ -214,9 +214,18 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
                 __func__, __LINE__, total_recv_data_len, client->identity);
             p_recv_data->buff_len = total_recv_data_len;
             p_recv_data->buff = he_bus_malloc(total_recv_data_len);
-            memcpy(p_recv_data->buff, read_buffer, bytes_read);
-            p_data = p_recv_data->buff;
-            p_data += bytes_read;
+            if (bytes_read <= total_recv_data_len) {
+                    memcpy(p_recv_data->buff, read_buffer, bytes_read);
+                    p_data = p_recv_data->buff;
+                    p_data += bytes_read;
+            } else {
+                    memcpy(p_recv_data->buff, read_buffer, total_recv_data_len);
+                    p_data = p_recv_data->buff;
+                    p_data += total_recv_data_len;
+                    he_bus_conn_info_print("%s:%d recv more data (%d) than needs recv (%d)"
+                                ". ignoring %d bytes", __func__, __LINE__, bytes_read,
+                                total_recv_data_len, bytes_read - total_recv_data_len);
+            }
         }
     }
 
@@ -235,6 +244,16 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
             return HE_BUS_ERROR_STREAM_CLOSED;
         } else {
             he_bus_conn_dbg_print("%s:%d rem data recv:%ld\r\n", __func__, __LINE__, bytes_read);
+
+            if ((total_bytes_read + bytes_read) > total_recv_data_len) {
+                // Recieved more data than would fit in the buffer/the message told us was there.
+                // Ignore the other bytes
+                he_bus_conn_info_print("%s:%d recv more data (%d) than needs recv (%d)"
+                                    ". ignoring %d bytes", __func__, __LINE__, 
+                                    bytes_read, (total_recv_data_len-total_bytes_read), 
+                                    total_bytes_read + bytes_read - total_recv_data_len);
+                bytes_read = (total_recv_data_len - total_bytes_read);
+            }
             total_bytes_read += bytes_read;
             memcpy(p_data, read_buffer, bytes_read);
             p_data += bytes_read;

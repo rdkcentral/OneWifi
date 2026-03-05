@@ -87,6 +87,22 @@ AC_ARG_ENABLE([sm_app],
 AM_CONDITIONAL([SM_APP_SUPPORT], [test x$SM_APP_ENABLE = xtrue])
 AC_SUBST(SM_APP_FLAG)
 
+EM_APP_FLAG = " "
+AC_ARG_ENABLE([em_app],
+             AS_HELP_STRING([--enable-em-app],[enable em app (default is no)]),
+             [
+              case "${enableval}" in
+               yes) EM_APP_ENABLE=true
+                    EM_APP_FLAG="-DEM_APP"
+                    ;;
+               no)  EM_APP_ENABLE=false AC_MSG_ERROR([em app is disabled]);;
+               *)   AC_MSG_ERROR([bad value ${enableval} for --enable-em-app ]);;
+              esac
+             ],
+             [echo "em app is disabled"])
+AM_CONDITIONAL([EM_APP_SUPPORT], [test x$EM_APP_ENABLE = xtrue])
+AC_SUBST(EM_APP_FLAG)
+
 JOURNALCTL_ENABLE_FLAG = " "
 AC_ARG_ENABLE([journalctl],
              AS_HELP_STRING([--enable-journalctl],[enable journalctl logging support (default is no)]),
@@ -117,6 +133,7 @@ AM_CONDITIONAL([EASYCONNECT_SUPPORT], [test x$EASYCONNECT_SUPPORT_ENABLE = xtrue
 
 AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
 AM_CONDITIONAL([ONEWIFI_CAC_APP_SUPPORT], [test x$ONEWIFI_CAC_APP_SUPPORT = xtrue])
+AM_CONDITIONAL([ONEWIFI_STA_MGR_APP_SUPPORT], [test x$ONEWIFI_STA_MGR_APP_SUPPORT  = xtrue])
 AM_CONDITIONAL([ONEWIFI_DML_SUPPORT], [test x$ONEWIFI_DML_SUPPORT_MAKEFILE = xtrue])
 AM_CONDITIONAL([ONEWIFI_DBUS_SUPPORT], [test x$ONEWIFI_DBUS_SUPPORT = xtrue])
 AM_CONDITIONAL([ONEWIFI_ANALYTICS_APP_SUPPORT], [test x$ONEWIFI_ANALYTICS_APP_SUPPORT = xtrue])

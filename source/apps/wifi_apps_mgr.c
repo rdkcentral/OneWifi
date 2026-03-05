@@ -25,7 +25,9 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
-#include "wifi_apps_mgr.h"
+#ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+#include "wifi_sta_mgr.h"
+#endif
 
 wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps_mgr, wifi_app_inst_t inst)
 {
