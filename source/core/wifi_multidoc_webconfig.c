@@ -1684,6 +1684,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_Delete(root);
         goto finished;
     }
+    free(execRetVal);
     execRetVal = xfinity_exec_common_handler(vap_blob, webconfig_subdoc_type_xfinity);
 
 finished:
