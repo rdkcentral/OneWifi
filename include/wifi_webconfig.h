@@ -142,6 +142,7 @@ typedef enum {
     webconfig_subdoc_type_em_ap_metrics_report,
 #endif
     webconfig_subdoc_type_memwraptool,
+    webconfig_subdoc_type_link_report,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -169,6 +170,7 @@ typedef enum {
     webconfig_subdoc_object_type_beacon_report,
     webconfig_subdoc_object_type_em_sta_link_metrics,
     webconfig_subdoc_object_type_em_ap_metrics_report,
+    webconfig_subdoc_object_type_link_report,
 
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
@@ -226,6 +228,7 @@ typedef struct {
     em_assoc_sta_link_metrics_rsp_t em_sta_link_metrics_rsp;
     em_ap_metrics_report_t em_ap_metrics_report;
 #endif
+    report_batch_t *qmgr_report;
 } webconfig_subdoc_decoded_data_t;
 
 typedef char  * webconfig_subdoc_encoded_raw_t;
@@ -673,6 +676,14 @@ webconfig_error_t       decode_em_ap_metrics_report_subdoc(webconfig_t *config, 
 webconfig_error_t       encode_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Qmgr Link Report
+webconfig_error_t       init_link_report_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 #ifdef __cplusplus
 }
