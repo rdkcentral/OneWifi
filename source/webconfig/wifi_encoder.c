@@ -843,6 +843,9 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     // MemwrapToolEnable
     cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
 
+    cJSON_AddNumberToObject(global_obj, "IgniteLinkQualityThreshold",
+        global_info->ignite_link_quality_threshold);
+
     return webconfig_error_none;
 }
 

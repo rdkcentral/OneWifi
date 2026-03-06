@@ -1916,6 +1916,7 @@ int publish_endpoint_status_to_wan(wifi_ctrl_t *ctrl, int connection_status)
     }
     return RETURN_OK;
 }
+#define MAC_ADDR_STR_LEN 18
 
 int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 {
@@ -1936,6 +1937,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     wifi_sta_conn_info_t sta_conn_info;
     char name[64] = {'\0'};
     char *bridge_name = "brww0";
+    char *bssid_mac_str = NULL;
     int ret = 0;
 
     ctrl = svc->ctrl;
@@ -2038,6 +2040,15 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 } else {
                     wifi_util_info_print(WIFI_CTRL,"IGNITE_RF_DOWN: Connect status sent successfully to the WM\n");
                 }
+                bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
+                if (bssid_mac_str != NULL) {
+                    memset(bssid_mac_str, '\0', MAC_ADDR_STR_LEN);
+                    uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_mac_str);
+                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bssid mac=%s\n", __func__, __LINE__,
+                        bssid_mac_str);
+                    apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                        wifi_event_exec_register_station, bssid_mac_str, MAC_ADDR_STR_LEN);
+                }
             }
         /* Self heal to check if the connected interface received valid ip after a timeout if not trigger a reconnection */
 
@@ -2108,11 +2119,14 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     } else if (sta_data->stats.connect_status == wifi_connection_status_ap_not_found || sta_data->stats.connect_status == wifi_connection_status_disconnected) {
         apply_pending_channel_change(svc, sta_data->stats.vap_index);
 
+        memcpy(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid,
+            sizeof(temp_vap_info->u.sta_info.bssid));
+
         if (ctrl->rf_status_down) {
             bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
             if (bssid_mac_str != NULL) {
                 memset(bssid_mac_str, '\0', MAC_ADDR_STR_LEN);
-                uint8_mac_to_string_mac(sta_data->bss_info.bssid, bssid_mac_str);
+                uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_mac_str);
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d bssid mac=%s\n", __func__, __LINE__,
                     bssid_mac_str);
                 apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,

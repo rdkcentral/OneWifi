@@ -1354,6 +1354,12 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             new_rec->mgt_frame_rate_limit_window_size;
         g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_cooldown_time =
             new_rec->mgt_frame_rate_limit_cooldown_time;
+        if (strlen(new_rec->ignite_link_quality_threshold) != 0) {
+            g_wifidb->global_config.global_parameters.ignite_link_quality_threshold = strtod(
+                new_rec->ignite_link_quality_threshold, NULL);
+        } else {
+            g_wifidb->global_config.global_parameters.ignite_link_quality_threshold = 0.0;
+        }
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d notify_wifi_changes %d prefer_private %d prefer_private_configure %d "
@@ -1371,7 +1377,7 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             "normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s "
             "mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d mgt_frame_window_size %d"
             "mgt_frame_cooldown_time %d rss_check_interval %d rss_threshold %d rss_maxlimit %d "
-            "heapwalk_duration %d heapwalk_interval %d\n",
+            "heapwalk_duration %d heapwalk_interval %d ignite_link_quality_threshold %s\n",
             __func__, __LINE__, new_rec->notify_wifi_changes, new_rec->prefer_private,
             new_rec->prefer_private_configure, new_rec->factory_reset,
             new_rec->tx_overflow_selfheal, new_rec->inst_wifi_client_enabled,
@@ -1391,8 +1397,8 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             new_rec->mgt_frame_rate_limit_enable, new_rec->mgt_frame_rate_limit,
             new_rec->mgt_frame_rate_limit_window_size, new_rec->mgt_frame_rate_limit_cooldown_time,
             new_rec->rss_check_interval, new_rec->rss_threshold, new_rec->rss_maxlimit,
-            new_rec->heapwalk_duration, new_rec->heapwalk_interval);
-
+            new_rec->heapwalk_duration, new_rec->heapwalk_interval,
+            new_rec->ignite_link_quality_threshold);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -3368,7 +3374,8 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     cfg.mgt_frame_rate_limit = config->mgt_frame_rate_limit;
     cfg.mgt_frame_rate_limit_window_size = config->mgt_frame_rate_limit_window_size;
     cfg.mgt_frame_rate_limit_cooldown_time = config->mgt_frame_rate_limit_cooldown_time;
-
+    snprintf(cfg.ignite_link_quality_threshold, sizeof(cfg.ignite_link_quality_threshold), "%lf",
+        config->ignite_link_quality_threshold);
 
 #if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
@@ -3392,7 +3399,8 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         "txrx_rate_list %s mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d "
         "mgt_frame_rate_limit_window_size %d mgt_frame_rate_limit_cooldown_time %d"
         "rss_check_interval %d rss_threshold %d rss_maxlimit %d "
-        "heapwalk_duration %d heapwalk_interval %d\n",
+        "heapwalk_duration %d heapwalk_interval %d "
+        "ignite_link_quality_threshold %f\n",
         __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
         config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
         config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
@@ -3411,7 +3419,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time,
         config->memwraptool.rss_check_interval, config->memwraptool.rss_threshold,
         config->memwraptool.rss_maxlimit, config->memwraptool.heapwalk_duration,
-        config->memwraptool.heapwalk_interval);
+        config->memwraptool.heapwalk_interval, config->ignite_link_quality_threshold);
 
 
     if (wifidb_update_table_entry(NULL,NULL,OCLM_UUID,&table_Wifi_Global_Config,&cfg,filter_global) <= 0)
@@ -3561,6 +3569,12 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->mgt_frame_rate_limit = pcfg->mgt_frame_rate_limit;
         config->mgt_frame_rate_limit_window_size = pcfg->mgt_frame_rate_limit_window_size;
         config->mgt_frame_rate_limit_cooldown_time = pcfg->mgt_frame_rate_limit_cooldown_time;
+        if (strlen(pcfg->ignite_link_quality_threshold) != 0) {
+            config->ignite_link_quality_threshold = strtod(pcfg->ignite_link_quality_threshold,
+                NULL);
+        } else {
+            config->ignite_link_quality_threshold = 0.0;
+        }
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d notify_wifi_changes %d prefer_private %d prefer_private_configure %d "
@@ -3579,7 +3593,8 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             "snr list %s txrx_rate_list %s cli_stat_list %s mgt_frame_rate_limit_enable %d"
             "mgt_frame_rate_limit %d mgt_frame_rate_limit_window_size %d "
             "mgt_frame_rate_limit_cooldown_time %d rss_check_interval %d rss_threshold %d "
-            "rss_maxlimit %d heapwalk_duration %d heapwalk_interval %d\n",
+            "rss_maxlimit %d heapwalk_duration %d heapwalk_interval %d "
+            "ignite_link_quality_threshold %f\n",
             __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
             config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
             config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
@@ -3599,7 +3614,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time,
             config->memwraptool.rss_check_interval, config->memwraptool.rss_threshold,
             config->memwraptool.rss_maxlimit, config->memwraptool.heapwalk_duration,
-            config->memwraptool.heapwalk_interval);
+            config->memwraptool.heapwalk_interval, config->ignite_link_quality_threshold);
     }
     free(pcfg);
     return 0;

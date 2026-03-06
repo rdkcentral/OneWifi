@@ -28,9 +28,18 @@ extern "C" {
 #include "wifi_webconfig.h"
 
 typedef struct {
+    double last_score;
+    double last_threshold;
+    int score_log_timer_id;
+    int last_service_state;
+    int iteration_count;
+} ignite_lq_state_t;
+
+typedef struct {
     stats_arg_t stats;
     server_arg_t server_arg;
     int size;
+    ignite_lq_state_t ignite;
 } linkquality_data_t;
 
 #ifdef __cplusplus

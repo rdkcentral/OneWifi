@@ -167,6 +167,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int disconnected_time;
     bool link_quality_measurement = false;
+    bool rf_down_mesh_sta = false;
     linkquality_data_t *link_data = NULL;
     wifi_rfc_dml_parameters_t *rfc_param = NULL;
     
@@ -232,6 +233,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         link_quality_measurement = true;
     }
 
+    if (ctrl->rf_status_down && isVapSTAMesh(args->vap_index)) {
+        rf_down_mesh_sta = true;
+        wifi_util_dbg_print(WIFI_MON, "%s:%d link_quality_rfc=%d rf_down_mesh_sta=%d\n", __func__,
+            __LINE__, link_quality_measurement, rf_down_mesh_sta);
+    }
+
     ret = wifi_getApAssociatedDeviceDiagnosticResult3(args->vap_index, &dev_array, &num_devs);
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON,
@@ -243,7 +250,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         }
         return RETURN_ERR;
     }
-    if (num_devs && link_quality_measurement) {
+
+    if (num_devs && ((link_quality_measurement) || (rf_down_mesh_sta))) {
         link_data =(linkquality_data_t *) malloc (num_devs * sizeof(linkquality_data_t));
     }
     if (link_data == NULL) {
@@ -281,18 +289,22 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
             dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
             dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
-            if (link_data && link_quality_measurement) {
-                memset(&link_data[i], 0, sizeof(linkquality_data_t));
-                link_data[i].size = num_devs;
-                to_sta_key(dev_array[i].cli_MACAddress, link_data[i].stats.mac_str);
-                link_data[i].stats.dev = dev_array[i];
-                link_data[i].stats.vap_index = args->vap_index ;
-                wifi_util_dbg_print(WIFI_MON,"cli_SNR: %d,cli_PacketsSent: %lu,cli_ErrorsSent: %lu,cli_LastDataDownlinkRate: %d  cli_MaxDownlinkRate=%d vap_index=%d\n",
-                    dev_array[i].cli_SNR,dev_array[i].cli_PacketsSent,dev_array[i].cli_ErrorsSent,dev_array[i].cli_LastDataDownlinkRate,dev_array[i].cli_MaxDownlinkRate,link_data[i].stats.vap_index);
-            }
 
-    } 
-    if(link_data && num_devs != 0 && link_quality_measurement) {
+        if (link_data && ((link_quality_measurement) || (rf_down_mesh_sta))) {
+            memset(&link_data[i], 0, sizeof(linkquality_data_t));
+            link_data[i].size = num_devs;
+            to_sta_key(dev_array[i].cli_MACAddress, link_data[i].stats.mac_str);
+            link_data[i].stats.dev = dev_array[i];
+            link_data[i].stats.vap_index = args->vap_index;
+            wifi_util_dbg_print(WIFI_MON,
+                "cli_SNR:%d cli_PacketsSent:%lu cli_ErrorsSent:%lu cli_LastDataDownlinkRate:%d "
+                "cli_MaxDownlinkRate=%d vap_index=%d\n",
+                dev_array[i].cli_SNR, dev_array[i].cli_PacketsSent, dev_array[i].cli_ErrorsSent,
+                dev_array[i].cli_LastDataDownlinkRate, dev_array[i].cli_MaxDownlinkRate,
+                link_data[i].stats.vap_index);
+        }
+    }
+    if (link_data && num_devs != 0 && ((link_quality_measurement) || (rf_down_mesh_sta))) {
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, link_data, num_devs);
     }
     events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
@@ -480,14 +492,28 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     __func__, __LINE__, to_sta_key(sta->sta_mac, sta_key), args->vap_index,
                     disconnected_time, sta->dev_stats.cli_Active);
                 //Rapid disconnect event to linkstats
-                if (link_quality_measurement && !sta->rapid_disconnect_flag && !is_zero_mac(sta->dev_stats.cli_MACAddress)) {
-                    link_data =(linkquality_data_t *) malloc (sizeof(linkquality_data_t));
-                    sta->rapid_disconnect_flag = true;
-                    if (link_data != NULL) {
-                        memset(link_data, 0, sizeof(linkquality_data_t));
-                        to_sta_key(sta->dev_stats.cli_MACAddress, link_data->stats.mac_str);
-                        wifi_util_dbg_print(WIFI_MON, "  %s:%d: diag client disassociated  sta mac=%s:\n", __func__, __LINE__,link_data->stats.mac_str);
-                        apps_mgr_link_quality_event(&ctrl->apps_mgr,wifi_event_type_hal_ind, wifi_event_exec_timeout,link_data, 0);
+                if (!is_zero_mac(sta->dev_stats.cli_MACAddress)) {
+                    bool link_qm_case = link_quality_measurement && !sta->rapid_disconnect_flag &&
+                        !rf_down_mesh_sta;
+
+                    if (link_qm_case || rf_down_mesh_sta) {
+                        link_data = (linkquality_data_t *)malloc(sizeof(linkquality_data_t));
+                        if (link_data != NULL) {
+                            memset(link_data, 0, sizeof(linkquality_data_t));
+                            to_sta_key(sta->dev_stats.cli_MACAddress, link_data->stats.mac_str);
+                            wifi_util_dbg_print(WIFI_MON,
+                                "%s:%d: diag client disassociated sta mac=%s\n", __func__, __LINE__,
+                                link_data->stats.mac_str);
+
+                            if (rf_down_mesh_sta) {
+                                apps_mgr_link_quality_event(&ctrl->apps_mgr,
+                                    wifi_event_type_hal_ind, wifi_event_exec_stop, link_data, 0);
+                            } else {
+                                sta->rapid_disconnect_flag = true;
+                                apps_mgr_link_quality_event(&ctrl->apps_mgr,
+                                    wifi_event_type_hal_ind, wifi_event_exec_timeout, link_data, 0);
+                            }
+                        }
                     }
                 }
 
@@ -520,8 +546,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 if (link_data != NULL) {
                     memset(link_data, 0, sizeof(linkquality_data_t));
                     to_sta_key(tmp_sta->dev_stats.cli_MACAddress, link_data->stats.mac_str);
-                    apps_mgr_link_quality_event(&ctrl->apps_mgr,wifi_event_type_hal_ind, wifi_event_exec_stop, link_data, 0);
                     wifi_util_dbg_print(WIFI_MON, "%s:%d:  diag client disassociated  sta mac=%s:\n", __func__, __LINE__,link_data->stats.mac_str);
+                    apps_mgr_link_quality_event(&ctrl->apps_mgr,wifi_event_type_hal_ind, wifi_event_exec_stop, link_data, 0);
                 }
             }
             if (send_disconnect_event == 1) {

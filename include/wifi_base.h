@@ -89,6 +89,7 @@ extern "C" {
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
+#define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -583,6 +584,7 @@ typedef struct {
     int mgt_frame_rate_limit;
     int mgt_frame_rate_limit_window_size;
     int mgt_frame_rate_limit_cooldown_time;
+    double ignite_link_quality_threshold;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
