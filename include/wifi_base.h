@@ -85,16 +85,12 @@ extern "C" {
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 
-#ifdef CONFIG_IEEE80211BE
-
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
 #endif /*MAX_NUM_MLD_LINKS*/
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
-
-#endif /* CONFIG_IEEE80211BE */
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -902,6 +898,7 @@ typedef enum {
 typedef struct {
     char wpa_key_mgmt[WPA_KEY_MGMT_LEN];
     char pairwise_cipher[WPA_KEY_MGMT_LEN];
+    USHORT rsn_capabilities;
 } __attribute__((__packed__)) conn_security_t;
 
 typedef struct {
