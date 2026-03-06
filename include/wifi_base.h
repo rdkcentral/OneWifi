@@ -80,6 +80,9 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
+#define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
+#define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
+#define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -162,7 +165,8 @@ typedef enum {
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_csi_analytics = wifi_app_inst_base << 19,
-    wifi_app_inst_max = wifi_app_inst_base << 20
+    wifi_app_inst_link_quality = wifi_app_inst_base << 20,
+    wifi_app_inst_max = wifi_app_inst_base << 21
 } wifi_app_inst_t;
 
 typedef struct {
@@ -448,6 +452,29 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
+    double score;
+    double snr;
+    double per;
+    double phy;
+    char time[1024];
+} sample_t;
+
+typedef struct {
+    char   mac[18];
+    int    vap_index;
+    double threshold;
+    int    alarm;
+    char   reporting_time[32];
+    size_t sample_count;
+    sample_t *samples;   
+} link_report_t;
+
+typedef struct {
+    size_t link_count;
+    link_report_t *links;
+} report_batch_t;
+
+typedef struct {
     unsigned int rss_check_interval; //minutes
     unsigned int rss_threshold; //kbytes
     unsigned int rss_maxlimit; //kbytes
@@ -486,6 +513,7 @@ typedef struct {
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
+    bool link_quality_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -919,6 +947,7 @@ typedef struct {
     long            deauth_gate_time;
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
+    bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
 
     /* wifi7 client specific data */
@@ -1148,11 +1177,13 @@ typedef struct {
 
 typedef char marker_name[32];
 
+
 typedef struct {
-    char collection_start_time[32];
+    char collection_start_time[128];
     unsigned int reporting_interval;
     float link_quality_threshold;
 } alarm_report_policy_t;
+
 
 typedef struct {
     int interval;
