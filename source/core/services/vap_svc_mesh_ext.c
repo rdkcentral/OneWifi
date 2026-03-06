@@ -1121,7 +1121,7 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already stopped\n", __func__, __LINE__);
     }
 
-    if (radio_index >= MAX_NUM_RADIOS) {
+    if ((radio_index != WIFI_ALL_RADIO_INDICES) && (radio_index >= MAX_NUM_RADIOS)) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d failed to stop mesh service: wrong radio index %d\n", __func__, __LINE__,
             radio_index);
