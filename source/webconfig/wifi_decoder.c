@@ -2610,6 +2610,11 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     snprintf(global_info->txrx_rate_list, sizeof(global_info->txrx_rate_list), "%s", param->valuestring);
 #endif
 
+    param = cJSON_GetObjectItem(global_cfg, "IgniteLinkQualityThreshold");
+    if (param != NULL && cJSON_IsNumber(param)) {
+        global_info->ignite_link_quality_threshold = param->valuedouble;
+    }
+
     wifi_util_dbg_print(WIFI_WEBCONFIG,"wifi global Parameters decode successfully\n");
     return webconfig_error_none;
 }
