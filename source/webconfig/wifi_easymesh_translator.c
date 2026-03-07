@@ -274,6 +274,7 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
 
     return webconfig_error_none;
 }
+
 // This routine converts Radio webconfig subdoc values to em_radio_list_t,em_radio_info_t easymesh structures
 webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_data_t *data)
 {
@@ -506,6 +507,108 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_radio_info->associated_sta_link_mterics_inclusion_policy = 0;
         strncpy (em_radio_info->chip_vendor, wifi_prop->manufacturer, strlen(em_radio_info->chip_vendor));
 
+	em_radio_cap_info_t *radio_cap = proto->get_radio_cap(proto->data_model, index);
+        memcpy(radio_cap->ruid.mac, em_radio_info->intf.mac, sizeof(mac_address_t));
+
+        translate_radio_capability_to_easymesh(radio, radio_cap, proto);
+    }
+
+    return webconfig_error_none;
+}
+
+/* Helper function to translate radio capabilities from OneWifi to EasyMesh */
+static webconfig_error_t translate_radio_capability_to_easymesh(
+    rdk_wifi_radio_t *radio,
+    em_radio_cap_info_t *cap_info,
+    webconfig_external_easymesh_t *proto)
+{
+    void *radio_cap_ptr;
+    rdk_wifi_radio_capability_t *radio_cap;
+    em_radio_wifi6_cap_data_t *wifi6_cap;
+    em_wifi7_agent_cap_t *wifi7_cap;
+    em_radio_wifi7_radio_t *wifi7_radio;
+    unsigned int i;
+    const unsigned char *phy;
+    const unsigned char *mac;
+
+    if (cap_info == NULL || proto == NULL || proto->get_radio_cap == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer or get_radio_cap not set\n", __func__, __LINE__);
+        //return webconfig_error_translate_to_easymesh;
+    }
+
+    radio_cap = &radio->radio_capability;
+    wifi6_cap = &cap_info->wifi6_cap;
+    wifi7_cap = &cap_info->wifi7_cap;
+
+    memset(wifi6_cap, 0, sizeof(*wifi6_cap));
+
+    if (radio_cap->he_cap.wifi6_supported) {
+        phy = radio_cap->he_cap.phy_cap;
+        mac = radio_cap->he_cap.mac_cap;
+
+        wifi6_cap->num_role = 1;
+        wifi6_cap->agent_role = 0; /* AP */
+
+        /* HE PHY: Channel width (byte 0) */
+        wifi6_cap->he_160  = (phy[0] & (1u << HE_PHY_CHAN_WIDTH_160_BIT)) ? 1 : 0;
+        wifi6_cap->he_8080 = (phy[0] & (1u << HE_PHY_CHAN_WIDTH_80P80_BIT)) ? 1 : 0;
+
+        /* HE PHY: Beamforming (bytes 3, 4, 5, 6) */
+        wifi6_cap->su_beam_former = (phy[3] & (1u << HE_PHY_SU_BEAMFORMER_BIT)) ? 1 : 0;
+        wifi6_cap->su_beam_formee = (phy[4] & (1u << HE_PHY_SU_BEAMFORMEE_BIT)) ? 1 : 0;
+        wifi6_cap->mu_beam_former  = (phy[4] & (1u << HE_PHY_MU_BEAMFORMER_BIT)) ? 1 : 0;
+        wifi6_cap->beam_formee_sts_l80 = (phy[5] & 0x38u) ? 1 : 0;  /* Nr bits 3-5 */
+        wifi6_cap->beam_formee_sts_g80 = (phy[6] & 0x38u) ? 1 : 0;  /* Nr bits 3-5 for >80MHz */
+
+        /* HE PHY byte 8: Number of RX/TX HE-MIMO-LTF (4 bits each) */
+        wifi6_cap->max_ul_mumimo_rx = phy[8] & 0x0Fu;
+        wifi6_cap->max_dl_mumimo_tx = (phy[8] >> 4) & 0x0Fu;
+
+        /* HE MAC: OFDMA (byte 2); UL MU-MIMO inferred from PHY (byte 4 of 6-byte MAC not in rdk) */
+        wifi6_cap->dl_ofdma = (mac[2] & (1u << HE_MAC_OFDMA_RA_BIT)) ? 1 : 0;
+        wifi6_cap->ul_ofdma = (mac[2] & (1u << HE_MAC_OFDMA_RA_BIT)) ? 1 : 0;
+        wifi6_cap->ul_mumimo = (wifi6_cap->max_ul_mumimo_rx != 0) ? 1 : 0;
+
+        /* HE MAC byte 5 (not in rdk 4-byte mac_cap): max OFDMA RU; use 0 or skip */
+        wifi6_cap->max_dl_ofdma_tx = 0;
+        wifi6_cap->max_ul_ofdma_rx = 0;
+
+        /* HE MAC: TWT (byte 0) */
+        wifi6_cap->twt_req  = (mac[0] & (1u << HE_MAC_TWT_REQ_BIT)) ? 1 : 0;
+        wifi6_cap->twt_resp = (mac[0] & (1u << HE_MAC_TWT_RESP_BIT)) ? 1 : 0;
+
+        wifi6_cap->anticipated_channel_usage = 0;
+        wifi6_cap->spatial_reuse = 0;
+        wifi6_cap->mu_edca = 0;
+        wifi6_cap->multi_bssid = 0;
+        wifi6_cap->mu_rts = 0;
+        wifi6_cap->rts = 0;
+
+        /* MCS NSS: rdk has mcs_nss_set[6] -> 3 x uint16 (LE) */
+        wifi6_cap->mcs_nss_num = 3;
+        for (i = 0; i < 3 && i < MAX_MCS_NSS; i++) {
+            wifi6_cap->mcs_nss[i] = (unsigned short)radio_cap->he_cap.mcs_nss_set[i * 2]
+                | ((unsigned short)radio_cap->he_cap.mcs_nss_set[i * 2 + 1] << 8);
+        }
+    }
+
+    memset(wifi7_cap, 0, sizeof(*wifi7_cap));
+    if (radio_cap->eht_cap.wifi7_supported) {
+        wifi7_cap->radios_num = 1;
+        wifi7_radio = &wifi7_cap->radios[0];
+        memset(wifi7_radio, 0, sizeof(*wifi7_radio));
+
+        unsigned short eht_mac = (unsigned short)radio_cap->eht_cap.mac_cap;
+        (void)eht_mac;
+
+        wifi7_radio->ap_str_support    = 1;
+        wifi7_radio->ap_nstr_support   = 0;
+        wifi7_radio->ap_emlsr_support = 0;
+        wifi7_radio->ap_emlmr_support = 0;
+        wifi7_radio->bsta_str_support    = 1;
+        wifi7_radio->bsta_nstr_support   = 0;
+        wifi7_radio->bsta_emlsr_support  = 0;
+        wifi7_radio->bsta_emlmr_support  = 0;
     }
 
     return webconfig_error_none;
@@ -3011,7 +3114,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac,
         ext_proto_put_scan_results_t put_scan_res, ext_proto_update_ap_mld_info_t update_ap_mld,
         ext_proto_update_bsta_mld_info_t update_bsta_mld, ext_proto_update_assoc_sta_mld_info_t update_assoc_sta_mld,
-        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid)
+        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid, ext_proto_get_radio_cap_t get_radio_cap)
 {
     proto->data_model = data_model;
     proto->m2ctrl_radioconfig = m2ctrl_radioconfig;
@@ -3038,4 +3141,5 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
     proto->update_bsta_mld_info = update_bsta_mld;
     proto->update_assoc_sta_mld_info = update_assoc_sta_mld;
     proto->get_ap_mld_frm_bssid = get_ap_mld_frm_bssid;
+    proto->get_radio_cap = get_radio_cap;
 }
