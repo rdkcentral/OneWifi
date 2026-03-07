@@ -3237,6 +3237,11 @@ void dump_subdoc(const char *str, webconfig_subdoc_type_t type)
         return;
     }
 
+    if (str == NULL) {
+        printf("%s:%d: null string or file pointer\n", __func__, __LINE__);
+        fclose(fp);
+        return;
+    }
     fputs(str, fp);
     fclose(fp);
 

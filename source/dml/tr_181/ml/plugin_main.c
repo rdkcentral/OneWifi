@@ -400,14 +400,11 @@ COSA_MemoryCheck
 
     returnStatus  =  CosaBackEndManagerRemove(g_pCosaBEManager);
         
-    if ( returnStatus == ANSC_STATUS_SUCCESS )
+    if ( returnStatus != ANSC_STATUS_SUCCESS )
     {
-        g_pCosaBEManager = NULL;
+        printf("CosaBackEndManagerRemove failed with status: %ld\n", returnStatus);
     }
-    else
-    {
-        g_pCosaBEManager = NULL;
-    }
+    g_pCosaBEManager = NULL;
 
     COSA_MemoryUsage();
     COSA_MemoryTable();
