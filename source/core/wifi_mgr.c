@@ -174,6 +174,25 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
     radios_cfg->vaps.radio_index = radio_index;
     radios_cfg->vaps.num_vaps = vap_array_index;
     radios_cfg->vaps.vap_map.num_vaps = vap_array_index;
+
+    /* Populate radio capabilities from HAL */
+#if 0
+    wifi_freq_bands_t band;
+    if (convert_radio_index_to_freq_band(&wifi_hal_cap_obj->wifi_prop, radio_index, &band) == RETURN_OK) {
+        if (wifi_getRadioCapabilityData(radio_index, band, &wifi_hal_cap_obj->wifi_prop.radiocap[radio_index]) == RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Successfully collected radio capability data for radio %d and i=%d\n", 
+                __func__, __LINE__, radio_index, i );
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to get radio capability data for radio %d\n", 
+                __func__, __LINE__, radio_index);
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to convert radio index %d to band\n", 
+            __func__, __LINE__, radio_index);
+    }
+#endif
+    // dump_hw_caps(radios_cfg);
+
     return RETURN_OK;
 }
 

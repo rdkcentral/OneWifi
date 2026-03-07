@@ -2197,6 +2197,62 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          }
 
          cJSON_AddNumberToObject(object, "RadioPresence", wifi_prop->radio_presence[i]);
+
+#ifdef CONFIG_IEEE80211AX
+        /* WiFi6 (HE) capabilities */
+        cJSON_AddBoolToObject(object, "WiFi6Supported", wifi_prop->radiocap[i].wifi6_supported);
+        
+        cJSON *he_phy_cap_array = cJSON_CreateArray();
+        for (int i = 0; i < 11; i++) {
+            cJSON_AddItemToArray(he_phy_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_phy_cap[i]));
+        }
+        cJSON_AddItemToObject(object, "HEPHYCap", he_phy_cap_array);
+
+        cJSON *he_mac_cap_array = cJSON_CreateArray();
+        for (int i = 0; i < 6; i++) {
+            cJSON_AddItemToArray(he_mac_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_mac_cap[i]));
+        }
+        cJSON_AddItemToObject(object, "HEMACCap", he_mac_cap_array);
+
+        cJSON *he_mcs_nss_array = cJSON_CreateArray();
+        for (int i = 0; i < 12; i++) {
+            cJSON_AddItemToArray(he_mcs_nss_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_mcs_nss_set[i]));
+        }
+        cJSON_AddItemToObject(object, "HEMCSNSSSet", he_mcs_nss_array);
+
+        cJSON *he_ppet_array = cJSON_CreateArray();
+        for (int i = 0; i < 25; i++) {
+            cJSON_AddItemToArray(he_ppet_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_ppet[i]));
+        }
+        cJSON_AddItemToObject(object, "HEPPET", he_ppet_array);
+
+        //cJSON_AddNumberToObject(object, "HE6GHzCapa", wifi_prop->radiocap[i].6ghz_capa);
+#endif /* CONFIG_IEEE80211AX */
+
+#ifdef CONFIG_IEEE80211BE
+        /* WiFi7 (EHT) capabilities */
+        cJSON_AddBoolToObject(object, "WiFi7Supported", wifi_prop->radiocap[i].wifi7_supported);
+
+        cJSON_AddNumberToObject(object, "EHTMACCap", wifi_prop->radiocap[i].eht_mac_cap);
+
+        cJSON *eht_phy_cap_array = cJSON_CreateArray();
+        for (int i = 0; i < 9; i++) {
+            cJSON_AddItemToArray(eht_phy_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].eht_phy_cap[i]));
+        }
+        cJSON_AddItemToObject(object, "EHTPHYCap", eht_phy_cap_array);
+
+        cJSON *eht_mcs_array = cJSON_CreateArray();
+        for (int i = 0; i < 9; i++) {
+            cJSON_AddItemToArray(eht_mcs_array, cJSON_CreateNumber(wifi_prop->radiocap[i].eht_mcs[i]));
+        }
+        cJSON_AddItemToObject(object, "EHTMCS", eht_mcs_array);
+
+        cJSON *eht_ppet_array = cJSON_CreateArray();
+        for (int i = 0; i < 62; i++) {
+            cJSON_AddItemToArray(eht_ppet_array, cJSON_CreateNumber(wifi_prop->radiocap[i].eht_ppet[i]));
+        }
+        cJSON_AddItemToObject(object, "EHTPPET", eht_ppet_array);
+#endif /* CONFIG_IEEE80211BE */
     }
     return webconfig_error_none;
 }
