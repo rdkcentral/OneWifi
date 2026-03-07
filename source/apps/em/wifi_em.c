@@ -2313,6 +2313,42 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data)
     return bus_error_success;
 }
 
+static he_bus_error_t easymesh_client_assoc_ctrl_handler(char *event_name, raw_data_t *p_data, void *userData)
+{
+    (void)userData;
+    client_assoc_ctrl_req_t *assoc_ctrl_req;
+    unsigned int i;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n", __func__, __LINE__);
+
+    if (strcmp(event_name, WIFI_EM_CLIENT_ASSOC_CTRL_REQ) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Not EasyMesh client assoc ctrl event, %s\n", __func__, __LINE__, event_name);
+        return he_bus_error_invalid_namespace;
+    }
+
+    if (p_data->data_type != bus_data_type_bytes) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Received:%s data type:%x",
+                __func__, __LINE__, event_name, p_data->data_type);
+        return he_bus_error_invalid_input;
+    }
+
+    assoc_ctrl_req = (client_assoc_ctrl_req_t *)p_data->raw_data.bytes;
+
+    /* perform the actual block/disassociation as specified */
+    if (assoc_ctrl_req->assoc_control == 0x00) { /* block */
+        for (i = 0; i < assoc_ctrl_req->count; i++) {
+           printf("%s:%d Blocking %d STAs on BSSID %s for %d seconds\n", __func__, __LINE__,
+           assoc_ctrl_req->count, assoc_ctrl_req->bssid, assoc_ctrl_req->validity_period);
+	   //TODO Blocking Mechanish
+        }
+    } else {
+        /* un-block; nothing to do at the moment */
+	//TODO UnBlocking Mechanish
+    }
+
+    return he_bus_error_success;
+}
+
 bus_error_t set_disconn_steady_state(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)p_data;
@@ -2380,7 +2416,11 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { bus_data_type_byte, false, 0, 0, 0, NULL } } ,
         { WIFI_EM_AP_METRICS_REPORT, bus_element_type_method,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-            { bus_data_type_string, false, 0, 0, 0, NULL } }
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
+	{ WIFI_EM_CLIENT_ASSOC_CTRL_REQ, bus_element_type_event,
+            { NULL, easymesh_client_assoc_ctrl_handler, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } }
+
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;
