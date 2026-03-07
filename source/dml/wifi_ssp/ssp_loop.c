@@ -1383,7 +1383,6 @@ void ssp_loop()
             while (queue_count(g_ssp_loop.queue)) {
                 queue_data = queue_pop(g_ssp_loop.queue);
                 if (queue_data == NULL) {
-                    pthread_mutex_unlock(&g_ssp_loop.lock);
                     continue;
                 }
                 switch (queue_data->event_type) {
