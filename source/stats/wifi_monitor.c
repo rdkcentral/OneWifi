@@ -215,7 +215,7 @@ static int refresh_task_period(void *arg);
 int associated_device_diagnostics_send_event(void *arg);
 static void scheduler_telemetry_tasks(void);
 static void update_interop_interval(void);
-int process_eap_status(int ap_index, mac_address_t sta_mac, int reason, int vlan_id);
+int process_eap_status(int ap_index, mac_address_t sta_mac, int reason);
 int csi_sendPingData(void * arg);
 static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinger);
 static int clientdiag_sheduler_enable(int ap_index);
@@ -3179,7 +3179,7 @@ int increment_mgmt_count(interop_data_t *telemetry, wifi_mgmtFrameType_t type)
     return 0;
 }
 
-int process_eap_status(int ap_index, mac_address_t sta_mac, int reason, int vlan_id)
+int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
 {
     mac_addr_str_t sta_mac_str;
     hash_map_t *sta_map;
@@ -3206,7 +3206,6 @@ int process_eap_status(int ap_index, mac_address_t sta_mac, int reason, int vlan
             return RETURN_ERR;
     }
     wifi_eap_status_code_t reason_code = (wifi_eap_status_code_t)reason;
-	sta->vlan_id = vlan_id;
     if (increment_eap_status_count(sta, reason_code) == -1) {
         wifi_util_dbg_print(WIFI_MON, " exit %s:%d as particular reason is not there\n", __func__, __LINE__);
         return 0;
@@ -3394,14 +3393,14 @@ void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_d
     }
 }
 
-int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, int reason, int vlan_id)
+int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, int reason)
 {
 
     radius_eap_data_t radius_eap_data;
     radius_eap_data.apIndex = apIndex;
     radius_eap_data.failure_reason = reason;
     push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
-    process_eap_status(apIndex, mac_addr, reason, vlan_id);
+    process_eap_status(apIndex, mac_addr, reason);
      return 0;
 }
 
