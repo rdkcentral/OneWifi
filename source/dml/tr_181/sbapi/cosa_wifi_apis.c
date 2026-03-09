@@ -367,7 +367,6 @@ ANSC_STATUS cosaWifiRadioRestart()
         if (rdk_vap_info != NULL) {
             rdk_vap_info->force_apply = true;
             set_dml_cache_vap_config_changed(vap);
-            set_cac_cache_changed(vap);
         }
     }
     wifi_util_info_print(WIFI_DMCLI, "%s:%d Resetting Radio and VAP stats success\n", __func__,
