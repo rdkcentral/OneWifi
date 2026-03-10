@@ -107,6 +107,8 @@ typedef struct bus_data_cb_func {
 } bus_data_cb_func_t;
 
 int set_output_string(scratch_data_buff_t *output_value, char *str);
+char    *wifi_dml_bus_get_param_string(char const *param_name);
+uint32_t wifi_dml_bus_get_param_uint32(char const *param_name);
 
 uint8_t rssi_to_rcpi(int rssi_dbm);
 

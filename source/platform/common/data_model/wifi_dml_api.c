@@ -67,6 +67,60 @@ int set_output_string(scratch_data_buff_t *output_value, char *str)
     return RETURN_OK;
 }
 
+char *wifi_dml_bus_get_param_string(char const *param_name)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    raw_data_t data = { 0 };
+    bus_error_t rc;
+    char num_buf[32] = { 0 };
+    char *out = NULL;
+
+    if ((param_name == NULL) || (ctrl == NULL)) {
+        return NULL;
+    }
+
+    rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, param_name, &data);
+    if (rc == bus_error_success) {
+        if ((data.data_type == bus_data_type_string || data.data_type == bus_data_type_bytes) &&
+            (data.raw_data.bytes != NULL)) {
+            out = strdup((char *)data.raw_data.bytes);
+        } else if (data.data_type == bus_data_type_uint32) {
+            snprintf(num_buf, sizeof(num_buf), "%u", data.raw_data.u32);
+            out = strdup(num_buf);
+        } else if (data.data_type == bus_data_type_int32) {
+            snprintf(num_buf, sizeof(num_buf), "%d", data.raw_data.i32);
+            out = strdup(num_buf);
+        } else if (data.data_type == bus_data_type_boolean) {
+            out = strdup(data.raw_data.b ? "true" : "false");
+        }
+    }
+
+    get_bus_descriptor()->bus_data_free_fn(&data);
+
+    return out;
+}
+
+uint32_t wifi_dml_bus_get_param_uint32(char const *param_name)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    raw_data_t data = { 0 };
+    bus_error_t rc;
+    uint32_t value = 0;
+
+    if ((param_name == NULL) || (ctrl == NULL)) {
+        return 0;
+    }
+
+    rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, param_name, &data);
+    if ((rc == bus_error_success) && (data.data_type == bus_data_type_uint32)) {
+        value = data.raw_data.u32;
+    }
+
+    get_bus_descriptor()->bus_data_free_fn(&data);
+
+    return value;
+}
+
 uint8_t rssi_to_rcpi(int rssi_dbm)
 {
     if (rssi_dbm < -110)
