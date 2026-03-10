@@ -1,13 +1,24 @@
 #!/bin/sh
+
 ONEWIFI_DIR=$(pwd)
 OPENWRT_ROOT="$(pwd)/../../.."
 HOSTAP_DIR="$(pwd)/../rdk-wifi-libhostap"
 HOSTAP_SRC_DIR="$HOSTAP_DIR/source"
-HOSTAP_PATCH_DIR="$HOSTAP_DIR/meta-cmf-bananapi/meta-rdk-mtk-bpir4/recipes-ccsp/rdk-wifi-libhostap/files/2.11/kernel_5_4"
+HOSTAP_PATCH_LIST="$ONEWIFI_DIR/build/openwrt/hostap_patch_list.txt"
+HOSTAP_PATCH_DIR_META_CMF_BPI="$HOSTAP_DIR/meta-cmf-bananapi/meta-rdk-mtk-bpir4/recipes-ccsp/rdk-wifi-libhostap/files/2.11/kernel_6_6"
+HOSTAP_PATCH_DIR_META_FILOGIC="$HOSTAP_DIR/meta-filogic/recipes-wifi/hostapd/files/kernel6-6-patches"
+HOSTAP_PATCH_FLAG="$HOSTAP_DIR/.hostap_patched"
 RDK_WIFI_HAL_DIR="$(pwd)/../rdk-wifi-hal"
 KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches/openwrt"
 UPSTREAM_HOSTAP_URL="https://git.w1.fi/hostap.git"
-SRCREV_2_11="96e48a05aa0a82e91e3cab75506297e433e253d0"
+SRCREV_2_11="4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c"
+META_CMF_BPI_URL="https://github.com/rdkcentral/meta-cmf-bananapi.git"
+META_FILOGIC_URL="https://git01.mediatek.com/filogic/rdk-b/meta-filogic"
+SRCREV_META_FILOGIC="c67a32a7c8876b328a8d1eeaca213e860d85b3ce"
+
+# Apply network optimizations for reliable git clone
+export GIT_HTTP_LOW_SPEED_LIMIT=0
+export GIT_HTTP_LOW_SPEED_TIME=999999
 
 #git clone other wifi related components
 cd ..
@@ -31,59 +42,70 @@ if [ -d "$HOSTAP_SRC_DIR" ]; then
     echo "Hostap source directory $HOSTAP_SRC_DIR already exists."
 else
     mkdir -p "$HOSTAP_SRC_DIR"
+    #clone the upstream hostap in HOSTAP_DIR as hostap-x.xx
+    #and move to the relevant commit
+    cd $HOSTAP_SRC_DIR
+    echo "Cloning hostap in $HOSTAP_SRC_DIR"
+    git clone $UPSTREAM_HOSTAP_URL hostap-2.11
+    cd hostap-2.11
+    git reset --hard $SRCREV_2_11
+    cd $HOSTAP_DIR
 fi
 
-#clone the upstream hostap in HOSTAP_DIR as hostap-x.xx
-#and move to the relevant commit
-cd $HOSTAP_SRC_DIR
-echo "Cloning hostap in $HOSTAP_SRC_DIR"
-git clone $UPSTREAM_HOSTAP_URL hostap-2.11
-cd hostap-2.11
-git reset --hard $SRCREV_2_11
-cd $HOSTAP_DIR
+if [ -f "$HOSTAP_PATCH_FLAG" ]; then
+    echo "Hostap patches are already applied. Retry after deleting $HOSTAP_DIR"
+else
+    #Clone meta-cmf-bananapi, meta-filogic and  apply hostap patches
+    [ ! -d "meta-cmf-bananapi" ] && git clone "$META_CMF_BPI_URL" meta-cmf-bananapi
 
-#Clone meta-cmf-bananapi and apply hostap patches
-git clone https://github.com/rdkcentral/meta-cmf-bananapi.git meta-cmf-bananapi
-echo "Applying patches ..."
-patch --forward -p1 < $HOSTAP_PATCH_DIR/Bpi_rdkwifilibhostap_2_11_changes.patch
-patch --forward -p1 -d source/hostap-2.11 < $HOSTAP_PATCH_DIR/0001-mtk-hostapd-patch-all-in-one.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/comcast_changes_merged_to_source_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/onewifi_lib_2_12.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/RDKB-53254_Telemetry_2.11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/wps_term_session.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/cmxb7_dfs.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/cohosted_bss_param_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/ht_rifs_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/vht_oper_basic_mcs_set_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/tx_pwr_envelope_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/pwr_constraint_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/supported_op_classes_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/he_2ghz_40mghz_bw_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/rnr_col_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/tpc_report_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/driver_aid_211.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/sta_assoc_req.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/wps_event_notify_cb.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/nl_attr_rx_phy_rate_info.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/hostapd_bss_link_deinit.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/radius_failover_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/mbssid_support_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/export_valid_chan_func_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/increase_eapol_timeout.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/Dynamic_NAS_IP_Update_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/patch_issues_with2_12.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/wpa3_compatibility_hostap_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/wpa3_compatibility_telem_hostap_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/0002-mtk-disable-sae-commit-status.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/mlo_configuration.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/open_auth_workaround.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/mdu_radius_psk_auth_2_11.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/supplicant_new.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/bpi.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/mlo_fix.patch
-patch --forward -p1 < $HOSTAP_PATCH_DIR/fixed_disassoc_after_assoc_retry.patch
-#Delete the meta-cmf-bananapi directory after applying patches
+    if [ ! -d "meta-filogic" ]; then
+        mkdir -p meta-filogic && cd meta-filogic
+        git init
+        git remote add origin "$META_FILOGIC_URL"
+        #Increased HTTP post buffer to 1GB to prevent "RPC failed" or "Broken pipe" errors.
+        git config http.postBuffer 1048576000
+        git fetch --depth 1 origin "$SRCREV_META_FILOGIC"
+        git reset --hard FETCH_HEAD
+        cd "$HOSTAP_DIR"
+    fi
+
+    echo "Applying hostap patches ..."
+
+    if [ ! -f "$HOSTAP_PATCH_LIST" ]; then
+        echo "$HOSTAP_PATCH_LIST not found!"
+        exit 1
+    fi
+
+    while IFS= read -r line || [ -n "$line" ]; do
+
+        [ -z "$line" ] && continue
+        line=$(echo "$line" | sed 's/\\$//' | xargs)
+        raw_patch_file=$(echo "$line" | cut -d';' -f1)
+        eval patch_file="$raw_patch_file"
+
+        patch_dir=$(echo "$line" | grep -o 'patchdir=[^;]*' | cut -d'=' -f2)
+
+        echo "Applying patch: $patch_file"
+
+        if [ -n "$patch_dir" ]; then
+            patch --forward -p1 -d "$patch_dir" < "$patch_file"
+        else
+            patch --forward -p1 < "$patch_file"
+        fi
+
+        if [ $? -ne 0 ]; then
+            echo "Patch failed: $patch_file"
+            exit 1
+        fi
+
+    done < "$HOSTAP_PATCH_LIST"
+    touch "$HOSTAP_PATCH_FLAG"
+    echo "All patches applied successfully."
+fi
+
+#Delete the meta-cmf-bananapi and meta-filogic directories after applying patches
 rm -rf meta-cmf-bananapi
+rm -rf meta-filogic
 
 #return back to initial directory
 cd $ONEWIFI_DIR
