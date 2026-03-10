@@ -3916,7 +3916,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_IGNITE_APPLY_CONFIG, bus_element_type_property,
                                     { NULL, apply_ignite_config, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_boolean, false, 0, 0, 0, NULL } },
-                                
+                                { WIFI_STA_NAMESPACE, bus_element_type_table,
+                                    { NULL, NULL, events_STAtable_addrowhandler, events_STAtable_removerowhandler, eventSubHandler, NULL}, slow_speed, num_of_radio,
+                                    { bus_data_type_object, false, 0, 0, 0, NULL } }, 
 				{ WIFI_STA_CONNECT_STATUS, bus_element_type_property,
                                     { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, true, 0, 0, 0, NULL } },
