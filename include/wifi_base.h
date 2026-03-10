@@ -872,7 +872,6 @@ typedef struct {
 //  schema_wifi_radio_state_t   radio_state;
 } rdk_wifi_radio_t;
 
-#define  MAC_ADDRESS_LENGTH  18
 typedef struct {
     bool                   b_inst_client_enabled;
     unsigned long          u_inst_client_reporting_period;
