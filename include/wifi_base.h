@@ -1175,7 +1175,6 @@ typedef struct {
 #define EM_MAX_NEIGHBORS 16
 #define EM_MAX_RESULTS 32
 #define EM_MAX_CHANNELS 64
-#define EM_MAX_STA_PER_BSS 64
 
 typedef char marker_name[32];
 
