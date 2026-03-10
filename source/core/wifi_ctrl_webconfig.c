@@ -1669,10 +1669,31 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
 
     if (global_param_changed) {
         param = &data_global_config->global_parameters;
+        wifi_global_config_t *mgr_global_config = get_wifidb_wifi_global_config();
 
         wifi_hal_set_mgt_frame_rate_limit(param->mgt_frame_rate_limit_enable,
             param->mgt_frame_rate_limit, param->mgt_frame_rate_limit_window_size,
             param->mgt_frame_rate_limit_cooldown_time);
+
+        if (mgr_global_config->global_parameters.ignite_link_quality_threshold !=
+            param->ignite_link_quality_threshold) {
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d ignite_link_quality_threshold changed from %lf to %lf\n", __func__, __LINE__,
+                mgr_global_config->global_parameters.ignite_link_quality_threshold,
+                param->ignite_link_quality_threshold);
+
+            linkquality_data_t *lq_data = (linkquality_data_t *)malloc(sizeof(linkquality_data_t));
+            if (lq_data == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate linkquality_data_t\n",
+                    __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            memset(lq_data, 0, sizeof(linkquality_data_t));
+            lq_data->server_arg.threshold = param->ignite_link_quality_threshold;
+
+            apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                wifi_event_exec_link_param_reinit, lq_data, sizeof(linkquality_data_t));
+        }
 
         wifi_util_dbg_print(WIFI_CTRL,
             "Global config value is changed hence update the global config in DB\n");
@@ -2551,40 +2572,30 @@ void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
 
 void process_managed_wifi_enable()
 {
-    wifi_vap_info_t *hotspot5g_vap_info = NULL;
-    for (UINT rIdx = 1; rIdx < getNumberRadios(); rIdx++) {
+   /* Use Hotspot Secure 5G VAP as the RADIUS source for all LnF bands.*/
+    int r5g = 0;
+    if (convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &r5g) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get 5G radio index\n", __func__, __LINE__);
+        return;
+    }
+    UINT hotspot5g_ap = getApFromRadioIndex(r5g, VAP_PREFIX_HOTSPOT_SECURE);
+    wifi_vap_info_t *hotspot5g_vap_info = get_wifidb_vap_parameters(hotspot5g_ap);
+    if (!hotspot5g_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot 5G Secure VAP info not found\n", __func__, __LINE__);
+        return;
+    }
+
+    for (UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         UINT lnf_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_LNF_PSK);
-        UINT hotspot_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE);
-
         wifi_vap_info_t *lnf_vap_info = get_wifidb_vap_parameters(lnf_ap_index);
-        wifi_vap_info_t *hotspot_vap_info = get_wifidb_vap_parameters(hotspot_ap_index);
-
-        if (!lnf_vap_info || !hotspot_vap_info) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF or Hotspot VAP info for radio %u\n", __func__, __LINE__, rIdx);
+        if (!lnf_vap_info) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF VAP info for radio %u\n", __func__, __LINE__, rIdx);
             continue;
         }
-        if (isVapHotspotSecure5g(hotspot_ap_index)) {
-            hotspot5g_vap_info = hotspot_vap_info;
+        if (should_process_hotspot_config_change(lnf_vap_info, hotspot5g_vap_info)) {
+            update_vap_params_to_hal_and_db(lnf_vap_info, lnf_vap_info->u.bss_info.enabled);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s RADIUS config updated from Hotspot 5G\n",__func__,__LINE__,lnf_vap_info->vap_name);
         }
-        if (should_process_hotspot_config_change(lnf_vap_info, hotspot_vap_info)) {
-            update_vap_params_to_hal_and_db(lnf_vap_info, hotspot_vap_info->u.bss_info.enabled);
-            wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, hotspot_vap_info->u.bss_info.enabled?"Hotspot VAP Up":"Hotspot VAP Down");
-        }
-    }
-
-    UINT lnf_ap_index_0 = getApFromRadioIndex(0, VAP_PREFIX_LNF_PSK);
-    wifi_vap_info_t *lnf_vap_info_0 = get_wifidb_vap_parameters(lnf_ap_index_0);
-    if (!lnf_vap_info_0) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF VAP info for index %u\n", __func__, __LINE__, lnf_ap_index_0);
-        return;
-    }
-    if (!hotspot5g_vap_info) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot 5G Secure VAP info not found, cannot update LNF radio 0\n", __func__, __LINE__);
-        return;
-    }
-    if (should_process_hotspot_config_change(lnf_vap_info_0, hotspot5g_vap_info)) {
-        update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
-        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info_0->vap_name, hotspot5g_vap_info->u.bss_info.enabled?"Hotspot VAP Up":"Hotspot VAP Down");
     }
 }
 
