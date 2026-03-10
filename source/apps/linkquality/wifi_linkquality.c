@@ -30,6 +30,14 @@
 #include "wifi_linkquality.h"
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_monitor.h"
+#include "scheduler.h"
+
+#define MAX_STR_LEN 128
+#define MAX_BUFF_LEN 1048
+#define IGNITE_SCORE_LOG_INTERVAL_MS 900000 // 15 mins
+#define IGNITE_INITIAL_PUBLISH_ITERATIONS 5
+
+static char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 /* Register callback BEFORE starting qmgr */
 void publish_qmgr_subdoc(const report_batch_t* report)
@@ -85,9 +93,101 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     return;
 }
 
-void publish_station_score(const char *str, double score, double threshold)
+static int ignite_score_log_timer(void *args)
 {
-    wifi_util_info_print(WIFI_APPS, "%s:%d score =%f threshold=%f\n", __func__, __LINE__,score,threshold);
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_app_t *wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_link_quality);
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    ignite_lq_state_t *ignite = &wifi_app->data.u.linkquality.ignite;
+
+    char tmp[128] = { 0 };
+    char buff[MAX_BUFF_LEN] = { 0 };
+
+    get_formatted_time(tmp);
+    snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY:%f %f\n", tmp, ignite->last_score,
+        ignite->last_threshold);
+    wifi_util_info_print(WIFI_APPS, "%s:%d: %s\n", __func__, __LINE__, buff);
+    write_to_file(wifi_health_log, buff);
+    return RETURN_OK;
+}
+
+void publish_station_score(const char *input_str, double score, double threshold)
+{
+    char str[MAX_STR_LEN] = { '\0' };
+    int current_state = -1;
+    bus_error_t status;
+    raw_data_t rdata;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    wifi_app_t *wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_link_quality);
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return;
+    }
+    ignite_lq_state_t *ignite = &wifi_app->data.u.linkquality.ignite;
+
+    wifi_util_info_print(WIFI_APPS, "%s:%d str =%s score =%f threshold =%f\n", __func__, __LINE__,
+        input_str, score, threshold);
+
+    ignite->last_score = score;
+    ignite->last_threshold = threshold;
+
+    if (threshold != 0.0 && ignite->score_log_timer_id == 0) {
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ignite->score_log_timer_id,
+            ignite_score_log_timer, NULL, IGNITE_SCORE_LOG_INTERVAL_MS, 0, 0);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Started ignite score log timer (15 min)\n",
+            __func__, __LINE__);
+    }
+
+    if (ignite->last_service_state == -1) {
+        ignite->iteration_count++;
+        if (ignite->iteration_count < IGNITE_INITIAL_PUBLISH_ITERATIONS) {
+            wifi_util_info_print(WIFI_APPS,
+                "%s:%d: Waiting for %dth iteration before first publish, current=%d\n",
+                __func__, __LINE__, IGNITE_INITIAL_PUBLISH_ITERATIONS,
+                ignite->iteration_count);
+            return;
+        }
+    }
+
+    if (score < threshold) {
+        current_state = 0;
+        snprintf(str, MAX_STR_LEN, "Non-Serviceable");
+    } else if (score >= threshold) {
+        current_state = 1;
+        snprintf(str, MAX_STR_LEN, "Serviceable");
+    }
+
+    if (current_state != -1 && current_state != ignite->last_service_state) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: ignite status toggled to %s\n", __func__, __LINE__,
+            str);
+        memset(&rdata, 0, sizeof(raw_data_t));
+        rdata.data_type = bus_data_type_string;
+        rdata.raw_data.bytes = (void *)str;
+        rdata.raw_data_len = (strlen(str) + 1);
+
+        status = get_bus_descriptor()->bus_event_publish_fn(&wifi_app->ctrl->handle,
+            WIFI_IGNITE_STATUS, &rdata);
+        if (status != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
+                __func__, __LINE__, status);
+        }
+        if (ignite->last_service_state == -1) {
+            char tmp[128] = { 0 };
+            char buff[MAX_BUFF_LEN] = { 0 };
+            get_formatted_time(tmp);
+            snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY:%f %f\n", tmp,
+                ignite->last_score, ignite->last_threshold);
+            wifi_util_info_print(WIFI_APPS, "%s:%d: Score at first RBUS publish after connection: %s\n", __func__,
+                __LINE__, buff);
+            write_to_file(wifi_health_log, buff);
+        }
+        ignite->last_service_state = current_state;
+    }
+
     return;
 }
 
@@ -122,6 +222,17 @@ int link_quality_unregister_station(wifi_app_t *apps, wifi_event_t *arg)
     if ( ctrl->rf_status_down) {
         unregister_station_mac(str);
     }
+
+    ignite_lq_state_t *ignite = &apps->data.u.linkquality.ignite;
+    if (ignite->score_log_timer_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ignite->score_log_timer_id);
+        ignite->score_log_timer_id = 0;
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Cancelled ignite score log timer\n", __func__,
+            __LINE__);
+    }
+    ignite->last_service_state = -1;
+    ignite->iteration_count = 0;
+
     return RETURN_OK;
 }
 
@@ -144,6 +255,17 @@ int link_quality_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
     stop_link_metrics();
+
+    ignite_lq_state_t *ignite = &apps->data.u.linkquality.ignite;
+    if (ignite->score_log_timer_id != 0) {
+        scheduler_cancel_timer_task(apps->ctrl->sched, ignite->score_log_timer_id);
+        ignite->score_log_timer_id = 0;
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Cancelled ignite score log timer\n", __func__,
+            __LINE__);
+    }
+    ignite->last_service_state = -1;
+    ignite->iteration_count = 0;
+
     return RETURN_OK;
 }
 
@@ -412,6 +534,14 @@ int link_quality_init(wifi_app_t *app, unsigned int create_flag)
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
+
+    ignite_lq_state_t *ignite = &app->data.u.linkquality.ignite;
+    ignite->last_score = 0.0;
+    ignite->last_threshold = 0.0;
+    ignite->score_log_timer_id = 0;
+    ignite->last_service_state = -1;
+    ignite->iteration_count = 0;
+
     rc = get_bus_descriptor()->bus_open_fn(&app->handle, component_name);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_APPS, "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n",
@@ -431,5 +561,12 @@ int link_quality_init(wifi_app_t *app, unsigned int create_flag)
 
 int link_quality_deinit(wifi_app_t *app)
 {
+    ignite_lq_state_t *ignite = &app->data.u.linkquality.ignite;
+    if (ignite->score_log_timer_id != 0) {
+        scheduler_cancel_timer_task(app->ctrl->sched, ignite->score_log_timer_id);
+        ignite->score_log_timer_id = 0;
+    }
+    ignite->last_service_state = -1;
+    ignite->iteration_count = 0;
     return RETURN_OK;
 }

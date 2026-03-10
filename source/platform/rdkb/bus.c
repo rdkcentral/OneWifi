@@ -834,6 +834,26 @@ rbusError_t rbus_table_remove_row_handler(rbusHandle_t handle, char const* rowNa
     return convert_bus_to_rbus_error_code(ret);
 }
 
+rbusError_t rbus_sync_table_handler(rbusHandle_t handle, char const* tableName)
+{
+    bus_error_t ret = bus_error_success;
+
+    wifi_util_info_print(WIFI_BUS,"%s:%d rbus cb triggered for %s\n", __func__, __LINE__, tableName);
+    bus_mux_reg_node_data_t *reg_node_data = get_bus_cb_data_info(get_bus_mux_reg_cb_map(), (char *)tableName);
+    if (reg_node_data == NULL) {
+        wifi_util_error_print(WIFI_BUS,"%s:%d rbus event name:%s, user cb not found\n", __func__, __LINE__, tableName);
+        return RBUS_ERROR_ELEMENT_DOES_NOT_EXIST;
+    }
+    bus_callback_table_t *user_cb = &reg_node_data->cb_table;
+    if (user_cb->method_handler != NULL) {
+        ret = user_cb->method_handler((char *)tableName, NULL, NULL, NULL);
+        if (ret != bus_error_success) {
+            wifi_util_error_print(WIFI_BUS,"%s:%d user cb processing failed:%d for %s\n", __func__, __LINE__, ret, tableName);
+        }
+    }
+    return convert_bus_to_rbus_error_code(ret);
+}
+
 rbusError_t rbus_method_handler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle)
 {
     raw_data_t  bus_input_data = { 0 }, bus_output_data = { 0 };
@@ -959,7 +979,11 @@ static bool map_bus_user_cb_with_rbus(bus_data_element_t *data_element, rbusCall
     }
 
     if (user_cb->method_handler != NULL) {
-        cb_table->methodHandler = rbus_method_handler;
+        if (data_element->type == bus_element_type_table) {
+            cb_table->methodHandler = rbus_sync_table_handler;
+        } else {
+            cb_table->methodHandler = rbus_method_handler;
+        }
         user_cb_set = true;
     }
 
