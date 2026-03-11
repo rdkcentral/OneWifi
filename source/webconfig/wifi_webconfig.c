@@ -771,6 +771,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_em_ap_metrics_report].translate_from_subdoc = translate_from_em_ap_metrics_report_subdoc;
 
 #endif //EM_APP Support
+    //webconfig_subdoc_type_link_report 
+    config->subdocs[webconfig_subdoc_type_link_report].type = webconfig_subdoc_type_link_report;
+    strcpy(config->subdocs[webconfig_subdoc_type_link_report].name, "LinkReport");
+    config->subdocs[webconfig_subdoc_type_link_report].major = 1;
+    config->subdocs[webconfig_subdoc_type_link_report].minor = 1;
+    config->subdocs[webconfig_subdoc_type_link_report].init_subdoc = init_link_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_link_report].access_check_subdoc = access_check_link_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_link_report].encode_subdoc = encode_link_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_link_report].decode_subdoc = decode_link_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_link_report].translate_to_subdoc = translate_to_link_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_link_report].translate_from_subdoc = translate_from_link_report_subdoc;
+    
 
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;
