@@ -2716,6 +2716,21 @@ void process_tcm_rfc(bool type)
         type);
 }
 
+void process_xfi_tel_enable_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Xfi Tel Enable RFC: %d\n", __FUNCTION__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+    rfc_param->xfi_tel_enable_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Xfi Tel Enable RFC: %d\n", __FUNCTION__, __LINE__, 
+        type);
+}
+
 void process_wps_command_event(unsigned int vap_index)
 {
 #ifdef FEATURE_SUPPORT_WPS
@@ -3941,6 +3956,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_rsn_override_rfc:
         process_rsn_override_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_xfi_tel_enable_rfc:
+        process_xfi_tel_enable_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:

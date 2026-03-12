@@ -2181,9 +2181,12 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
     char eventName[1024]={0};
     char telemetry_buf[1024]={0};
     radius_eap_data_t *radius_eap_data = (radius_eap_data_t *) data;
-
     get_formatted_time(tmp);
-
+    if (radius_eap_data->failure_reason == 0 || radius_eap_data->failure_reason ==3) {
+	    wifi_util_info_print(WIFI_APPS, "Entering %s: reasson is %d\n", __func__, radius_eap_data->failure_reason);
+        return;
+    }
+    wifi_util_info_print(WIFI_APPS, "%s:%d ap index:%d failure reeason:%d \n", __func__, __LINE__,(radius_eap_data->apIndex)+1,radius_eap_data->failure_reason);
     if (radius_eap_data->failure_reason == RADIUS_ACCESS_REJECT) {
         if (isVapHotspotSecure5g(radius_eap_data->apIndex) || \
             isVapHotspotSecure6g(radius_eap_data->apIndex) || \
@@ -2194,6 +2197,7 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
             get_stubs_descriptor()->t2_event_d_fn(telemetry_buf, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
             snprintf(eventName, sizeof(eventName), "%s XWIFI_Radius_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
             write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
+	        wifi_util_dbg_print(WIFI_APPS, "%s:%d ap index:%d failure reeason:%d \n", __func__, __LINE__,(radius_eap_data->apIndex)+1,radius_eap_data->failure_reason);
         }
     } else if (radius_eap_data->failure_reason == EAP_FAILURE) {
         if (isVapHotspotSecure5g(radius_eap_data->apIndex) || isVapHotspotSecure6g(radius_eap_data->apIndex)) {
@@ -2202,6 +2206,7 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
             get_stubs_descriptor()->t2_event_d_fn(telemetry_buf, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
             snprintf(eventName, sizeof(eventName), "%s XWIFI_EAP_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
             write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
+	        wifi_util_dbg_print(WIFI_APPS, "%s:%d ap index:%d failure reeason:%d \n", __func__, __LINE__,(radius_eap_data->apIndex)+1,radius_eap_data->failure_reason);
         }
     }
 }

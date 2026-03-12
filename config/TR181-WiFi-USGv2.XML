@@ -349,6 +349,12 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
+        <parameter>
+            <name>Xfi_Tel_Enable</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
 	</parameters>
 	<objects>
         <object>
@@ -2969,7 +2975,7 @@ INSTMSMT_PH2 -->
                                     <type>string</type>
                                     <syntax>string</syntax>
                                     <writable>true</writable>
-                                </parameter>
+			        </parameter>
                             </parameters>
                             <objects>
                                 <object>
