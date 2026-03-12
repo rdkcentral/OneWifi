@@ -667,7 +667,10 @@ CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
             {
                 memset(recName, 0, sizeof(recName));
                 sprintf(recName, MacFilterMode, apIndex+1);
-                PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "2"); 
+                int retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "2");
+                if (retPsmSet != CCSP_SUCCESS) {
+                    CcspTraceInfo(("[%s] PSM_Set_Record_Value2 (%s) returned error %d\n", __FUNCTION__, recName, retPsmSet));
+                }
             }
         }
     }
@@ -683,7 +686,10 @@ CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
             {
                 memset(recName, 0, sizeof(recName));
                 sprintf(recName, MacFilterMode, apIndex+1);
-                PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "1");
+                int retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "1");
+                if (retPsmSet != CCSP_SUCCESS) {
+                    CcspTraceInfo(("[%s] PSM_Set_Record_Value2 (%s) returned error %d\n", __FUNCTION__, recName, retPsmSet));
+                }
             }
         }
     }
@@ -1513,16 +1519,19 @@ CosaDmlWiFiGetFactoryResetPsmData
         retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, FactoryReset, NULL, &strValue);
         if (retPsmGet == CCSP_SUCCESS) {
         printf("%s %s = %s \n",__FUNCTION__, FactoryReset, strValue);
-        CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM GET Success %s = %s \n",__FUNCTION__, FactoryReset, strValue));
+        CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM GET Success %s = %s\n",__FUNCTION__, FactoryReset, strValue));
             *factoryResetFlag = _ansc_atoi(strValue);
             ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
 
         } else if (retPsmGet == CCSP_CR_ERR_INVALID_PARAM) {
             *factoryResetFlag = 0;
             printf("%s PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__, FactoryReset, retPsmGet);
-                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__, FactoryReset, retPsmGet));
+                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM_Get_Record_Value2 (%s) returned error %d\n",__FUNCTION__, FactoryReset, retPsmGet));
             // Set to FALSE
-            PSM_Set_Record_Value2(bus_handle,g_Subsystem, FactoryReset, ccsp_string, "0");
+            int retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, FactoryReset, ccsp_string, "0");
+            if (retPsmSet != CCSP_SUCCESS) {
+                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM_Set_Record_Value2 (%s) returned error %d\n",__FUNCTION__, FactoryReset, retPsmSet));
+            }
         } else {
             printf("%s PSM_Get_Record_Value2 returned error %d retry in 10 seconds \n",__FUNCTION__, retPsmGet);
                 CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :returned error %d retry in 10 seconds\n",__FUNCTION__, retPsmGet));
