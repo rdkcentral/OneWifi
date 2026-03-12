@@ -182,8 +182,8 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
              return RETURN_ERR;
         }
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold ,mgr->ignite_config[radio_index].SNR_threshold ,mgr->ignite_config[radio_index].SNR_difference);
-        ignite_config = &mgr->ignite_config[radio_index];
 
+    ignite_config = &mgr->ignite_config[radio_index];
         float chan_util = (float)scan_list[i].external_ap.chan_utilization;
         float snr = (float)scan_list[i].external_ap.snr;
 
@@ -1726,19 +1726,19 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     ext->scanned_radios++;
     if (ext->scanned_radios >= getNumberRadios()) {
         if ((ctrl->rf_status_down == true) && (ext->ranked_count == 0 )) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d:Retrigger scan\n", __func__, __LINE__);
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-    } else {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d:Retrigger scan\n", __func__, __LINE__);
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        } else {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
             ext->scanned_radios = 0;
         }
         schedule_connect_sm(svc);
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_in_progress, __func__,
-            __LINE__);
+                __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_wait_timeout_handler_id,
-                        scan_result_wait_timeout, svc,
-                        EXT_SCAN_RESULT_WAIT_TIMEOUT, 1, FALSE);
+                scan_result_wait_timeout, svc,
+                EXT_SCAN_RESULT_WAIT_TIMEOUT, 1, FALSE);
     }
 
     return 0;

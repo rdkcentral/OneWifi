@@ -173,8 +173,6 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
             cJSON_Delete(json);
             return webconfig_error_invalid_subdoc;
         }
-	wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Decoded ignite_config[%d]: ignite_name='%s'\n",
-            __func__, __LINE__, i, params->ignite_config[i].ignite_name);
     }
 
     cJSON_Delete(json);

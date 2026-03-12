@@ -2428,9 +2428,8 @@ ignite_config_t *get_wifi_db_ignite_config(char *ignite_name)
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     unsigned int radio_index = getNumberRadios();
     for (unsigned int i =0; i < radio_index; i++) {
-        wifi_util_error_print(WIFI_CTRL, "%s %d Input : %s Ignite : %s\n", __func__, __LINE__, ignite_name, g_wifi_mgr->ignite_config[i].ignite_name);
+        wifi_util_dbg_print(WIFI_CTRL, "%s %d Input : %s Ignite : %s\n", __func__, __LINE__, ignite_name, g_wifi_mgr->ignite_config[i].ignite_name);
         if (strcmp(g_wifi_mgr->ignite_config[i].ignite_name, ignite_name) == 0) {
-            wifi_util_error_print(WIFI_CTRL, "%s %d Input : %s Ignite : %s\n", __func__, __LINE__, ignite_name, g_wifi_mgr->ignite_config[i].ignite_name);
             return &g_wifi_mgr->ignite_config[i];
         }
     } 
@@ -2473,7 +2472,6 @@ wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index)
 ignite_config_t* get_wifidb_ignite_config(uint8_t radio_index)
 {
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    wifi_util_error_print(WIFI_CTRL, "%s %d radio_idx : %u total-radio : %u\n", __func__, __LINE__, radio_index, getNumberRadios());
     if (radio_index < getNumberRadios()) { 
         return &g_wifi_mgr->ignite_config[radio_index];
     } else {
@@ -2930,8 +2928,8 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     for (i = 0; i < map->num_vaps; i++) {
         if (map->vap_array[i].vap_index == index) {
             found = true;
-        wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
-        strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
+            wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
+            strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
             break;
         }
     }
