@@ -2524,7 +2524,7 @@ bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
         return bus_error_invalid_operation;
     }
 
-    g_apply_ignite_config.is_dirty = true;
+    g_apply_ignite_config.is_pending = true;
 
     pthread_mutex_unlock(&g_apply_ignite_config.lock);
 
@@ -2549,7 +2549,7 @@ bus_error_t apply_ignite_config(char *paramName,
 
     pthread_mutex_lock(&g_apply_ignite_config.lock);
 
-    if (!g_apply_ignite_config.is_dirty) {
+    if (!g_apply_ignite_config.is_pending) {
         pthread_mutex_unlock(&g_apply_ignite_config.lock);
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d No pending changes\n", __func__, __LINE__);
         return bus_error_success;
@@ -2564,7 +2564,7 @@ bus_error_t apply_ignite_config(char *paramName,
            num_of_radios * sizeof(ignite_config_t));
 
     // Clear dirty flag
-    g_apply_ignite_config.is_dirty = false;
+    g_apply_ignite_config.is_pending = false;
 
     pthread_mutex_unlock(&g_apply_ignite_config.lock);
 
@@ -2600,14 +2600,14 @@ void init_pending_ignite_config(void)
     for (unsigned int i = 0; i < num_radios; i++) {
          wifi_util_error_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold, g_apply_ignite_config.config[i].SNR_threshold,  g_apply_ignite_config.config[i].SNR_difference);
     }
-    g_apply_ignite_config.is_dirty = false;
+    g_apply_ignite_config.is_pending = false;
 
     pthread_mutex_unlock(&g_apply_ignite_config.lock);
 }
 
 void init_ignite_function(void) {
     memset(&g_apply_ignite_config, 0, sizeof(g_apply_ignite_config));
-    g_apply_ignite_config.is_dirty = false;
+    g_apply_ignite_config.is_pending = false;
     pthread_mutex_init(&g_apply_ignite_config.lock, NULL);
     init_pending_ignite_config();
 }

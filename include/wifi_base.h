@@ -289,7 +289,7 @@ typedef struct {
 // Global pending ignite configuration
 typedef struct {
     ignite_config_t config[MAX_NUM_RADIOS];
-    bool is_dirty;
+    bool is_pending;
     pthread_mutex_t lock;
 } apply_ignite_config_t;
 
