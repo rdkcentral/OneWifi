@@ -132,7 +132,6 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
     params = &data->u.decoded;
     json = data->u.encoded.json;
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Entering decode\n", __func__, __LINE__);
     if (json == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
@@ -150,7 +149,6 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
             __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
         cJSON_Delete(json);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
     // Clear the ignite configs
@@ -169,7 +167,6 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
         if (decode_ignite_object(obj_config, &params->ignite_config[i]) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Config object validation failed for index %d\n",
                 __func__, __LINE__, i);
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             cJSON_Delete(json);
             return webconfig_error_invalid_subdoc;
         }
