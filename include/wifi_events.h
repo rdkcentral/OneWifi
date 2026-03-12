@@ -61,6 +61,9 @@ typedef enum {
         << wifi_event_type_exec, // wifi_event_type_base << 0
     wifi_event_exec_stop,
     wifi_event_exec_timeout,
+    wifi_event_exec_register_station,
+    wifi_event_exec_unregister_station,
+    wifi_event_exec_link_param_reinit,
     wifi_event_exec_max,
 
     // WebConfig event sub types
@@ -165,7 +168,9 @@ typedef enum {
     wifi_event_type_sta_client_info,
     wifi_event_type_start_sta_channel_scan,
     wifi_event_type_csi_analytics_rfc,
+    wifi_event_type_xfi_tel_enable_rfc,
     wifi_event_type_sm_app_enable,
+    wifi_event_type_link_quality_rfc,
     wifi_event_command_max,
 
     wifi_event_monitor_diagnostics = wifi_event_type_base
@@ -202,6 +207,7 @@ typedef enum {
     wifi_event_monitor_auth_req,
     wifi_event_monitor_update_interop_interval,
     wifi_event_monitor_channel_status,
+    wifi_event_monitor_eap_status,
     wifi_event_monitor_max,
 
     // Tunnel

@@ -842,6 +842,9 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     // MemwrapToolEnable
     cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
 
+    cJSON_AddNumberToObject(global_obj, "IgniteLinkQualityThreshold",
+        global_info->ignite_link_quality_threshold);
+
     return webconfig_error_none;
 }
 
@@ -1577,7 +1580,29 @@ webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info,
         return webconfig_error_encode;
 
     }
+     return webconfig_error_none;
+}
 
+
+webconfig_error_t encode_link_score_sample_object(const link_report_t *link,
+    cJSON *link_obj)
+{
+    unsigned int i = 0 ,sample_count = 0;
+    cJSON *obj_array, *obj;
+    obj_array = cJSON_CreateArray();
+    sample_count = link->sample_count;
+     for (i = 0; i < sample_count; i++) {
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToArray(obj_array, obj);
+        sample_t s = link->samples[i];
+        cJSON_AddNumberToObject(obj, "Score", s.score);
+        cJSON_AddStringToObject(obj, "Time", s.time);
+        cJSON_AddNumberToObject(obj, "SNR", s.snr);
+        cJSON_AddNumberToObject(obj, "PER", s.per);
+        cJSON_AddNumberToObject(obj, "PHY", s.phy);
+
+    }
+    cJSON_AddItemToObject(link_obj, "Samples", obj_array); 
     return webconfig_error_none;
 }
 
@@ -1862,16 +1887,23 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
 
             if (print_assoc_client == true) {
                 cJSON *obj_assoc_client;
+                mac_addr_str_t mac_string = { 0 };
+
                 obj_assoc_client = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj_assoc_client);
-
-                char mac_string[18] = {0};
 
                 to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_string);
                 str_tolower(mac_string);
                 cJSON_AddStringToObject(obj_assoc_client, "MACAddress", mac_string);
+
+                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, mac_string);
+                str_tolower(mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", mac_string);
+
+                cJSON_AddBoolToObject(obj_assoc_client, "MLDEnable", assoc_dev_data->dev_stats.cli_MLDEnable);
                 cJSON_AddStringToObject(obj_assoc_client, "WpaKeyMgmt", assoc_dev_data->conn_security.wpa_key_mgmt);
                 cJSON_AddStringToObject(obj_assoc_client, "PairwiseCipher", assoc_dev_data->conn_security.pairwise_cipher);
+                cJSON_AddNumberToObject(obj_assoc_client, "RSNCapabilities", assoc_dev_data->conn_security.rsn_capabilities);
                 cJSON_AddBoolToObject(obj_assoc_client, "AuthenticationState", assoc_dev_data->dev_stats.cli_AuthenticationState);
                 cJSON_AddNumberToObject(obj_assoc_client, "LastDataDownlinkRate", assoc_dev_data->dev_stats.cli_LastDataDownlinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "LastDataUplinkRate", assoc_dev_data->dev_stats.cli_LastDataUplinkRate);
@@ -1899,6 +1931,8 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "FailedRetransCount", assoc_dev_data->dev_stats.cli_FailedRetransCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "RetryCount", assoc_dev_data->dev_stats.cli_RetryCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "MultipleRetryCount", assoc_dev_data->dev_stats.cli_MultipleRetryCount);
+                cJSON_AddNumberToObject(obj_assoc_client, "MaxUplinkRate", assoc_dev_data->dev_stats.cli_MaxUplinkRate);
+                cJSON_AddNumberToObject(obj_assoc_client, "MaxDownlinkRate", assoc_dev_data->dev_stats.cli_MaxDownlinkRate);
                 if (include_frame_data == true &&
                     encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
                         webconfig_error_none) {
