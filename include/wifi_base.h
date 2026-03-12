@@ -83,8 +83,7 @@ extern "C" {
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
-
-#ifdef CONFIG_IEEE80211BE
+#define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -92,8 +91,6 @@ extern "C" {
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
-
-#endif /* CONFIG_IEEE80211BE */
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -564,6 +561,7 @@ typedef struct {
     int mgt_frame_rate_limit;
     int mgt_frame_rate_limit_window_size;
     int mgt_frame_rate_limit_cooldown_time;
+    double ignite_link_quality_threshold;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
@@ -900,6 +898,7 @@ typedef enum {
 typedef struct {
     char wpa_key_mgmt[WPA_KEY_MGMT_LEN];
     char pairwise_cipher[WPA_KEY_MGMT_LEN];
+    USHORT rsn_capabilities;
 } __attribute__((__packed__)) conn_security_t;
 
 typedef struct {
@@ -1176,7 +1175,6 @@ typedef struct {
 #define EM_MAX_NEIGHBORS 16
 #define EM_MAX_RESULTS 32
 #define EM_MAX_CHANNELS 64
-#define EM_MAX_STA_PER_BSS 64
 
 typedef char marker_name[32];
 
