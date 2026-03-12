@@ -84,6 +84,7 @@ extern "C" {
 #define WIFI_COLLECT_STATS_VAP_TABLE                   "Device.WiFi.CollectStats.AccessPoint.{i}."
 #define WIFI_COLLECT_STATS_ASSOC_DEVICE_STATS          "Device.WiFi.CollectStats.AccessPoint.{i}.AssociatedDeviceStats"
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
+#define WIFI_NOTIFY_INTEROP_DETAILS                    "Device.WiFi.AccessPoint.{i}.InteropDetails" 
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
@@ -538,6 +539,7 @@ typedef struct {
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
     bool link_quality_rfc;
+    bool xfi_tel_enable_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -880,11 +882,27 @@ typedef struct {
 typedef struct {
     mac_address_t sta_mac;
     mac_address_t ap_mac;
+    char operating_standard[64];
     int sta_status_counts[6];
-    int sta_reason_counts[9];
+    int sta_reason_counts[5];
     int ap_status_counts[6];
-    int ap_reason_counts[9];
+    int ap_reason_counts[5];
+    int mgmt_reason_counts[4];
+    int status;
+    int channel;
+    int variant;
+    int rssi;
+    int snr;
+    int noise_floor;
+    int channel_util;
+    int vlan_id;
+    int access_accept_counts;
+    int eap_success_counts;
+    int eap_failure_reason_counts;
+    int ap_eap_reason_counts[12];
+    int sta_eap_reason_counts[12];
 } interop_data_t;
+
 
 typedef struct {
     char    name[16];
