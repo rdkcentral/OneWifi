@@ -34,7 +34,6 @@ wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps_mgr, wifi_app_inst_t inst)
     char key_str[32];
     wifi_app_t *node = NULL;
 
-    wifi_util_error_print(WIFI_APPS, "%s %d [DL] Testing\n", __func__, __LINE__);
     snprintf(key_str, sizeof(key_str), "app_%010d", inst);
     node = (wifi_app_t *)hash_map_get(apps_mgr->apps_map, key_str);
 
@@ -151,7 +150,6 @@ int apps_mgr_analytics_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, 
     event->event_type = type;
     event->sub_type = sub_type;
 
-    wifi_util_error_print(WIFI_APPS, "%s %d [DL] Testing\n", __func__, __LINE__);
     app = get_app_by_inst(apps_mgr, wifi_app_inst_analytics);
 
     if (app == NULL) {

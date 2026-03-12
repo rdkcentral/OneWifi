@@ -168,25 +168,22 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
     // Allocate temporary scoring array
     bss_score_entry_t *scores = malloc(count * sizeof(bss_score_entry_t));
     if (!scores) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s %d Memory Allocation failure\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s %d Memory Allocation failure\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
     for (int i = 0; i < count; i++) {
         // Skip entries with CU > 70
         int radio_index = 0;
-        wifi_util_dbg_print(WIFI_CTRL, "%s %d Freq Band : %d BSSID : %s\n", __func__, __LINE__, scan_list[i].external_ap.oper_freq_band, to_mac_str(scan_list[i].external_ap.bssid, bssid_str));
         if (convert_freq_band_to_radio_index(scan_list[i].external_ap.oper_freq_band, &radio_index) == RETURN_ERR) {
              wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get radio index for band %d\n",
                  __func__, __LINE__, scan_list[i].external_ap.oper_freq_band);
              free(scores);
              return RETURN_ERR;
         }
-        wifi_util_dbg_print(WIFI_CTRL, "%s %d Band : %d radio-idx : %d\n", __func__, __LINE__, scan_list[i].external_ap.oper_freq_band, radio_index);
-        wifi_util_info_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold ,mgr->ignite_config[radio_index].SNR_threshold ,mgr->ignite_config[radio_index].SNR_difference);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold ,mgr->ignite_config[radio_index].SNR_threshold ,mgr->ignite_config[radio_index].SNR_difference);
         ignite_config = &mgr->ignite_config[radio_index];
 
-        wifi_util_info_print(WIFI_CTRL, "%s:%d [AFETR CP] Ignite Threshold Values [ %s %f %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_threshold, ignite_config->SNR_difference);
         float chan_util = (float)scan_list[i].external_ap.chan_utilization;
         float snr = (float)scan_list[i].external_ap.snr;
 
@@ -198,7 +195,7 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
         // Allocate memory for candidate(valid entries) and copy data
         scores[valid_count].candidate = malloc(sizeof(bss_candidate_t));
         if (!scores[valid_count].candidate) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s %d Memory Allocation failure for candidate\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s %d Memory Allocation failure for candidate\n", __func__, __LINE__);
             // Free previously allocated candidates
             for (int j = 0; j < valid_count; j++) {
                 free(scores[j].candidate);
@@ -210,10 +207,7 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
         scores[valid_count].bucket = (chan_util < ignite_config->min_chanutil_threshold) ? 1 : 2;
         scores[valid_count].score = snr - (chutil_weighting_factor * chan_util);
 
-        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] BSSID : %s SNR : %f chan-util : %.2f bucket : %d score : %f", __func__, __LINE__, to_mac_str(scan_list[i].external_ap.bssid, bssid_str), snr, chan_util, scores[valid_count].bucket,  scores[valid_count].score);
-
-        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] mac-bucket-snr : %f\n", __func__, __LINE__, max_bucket1_snr);
-        // Track max SNR in bucket 1
+    // Track max SNR in bucket 1
         if (scores[valid_count].bucket == 1 && snr > max_bucket1_snr) {
             max_bucket1_snr = snr;
         }
@@ -221,24 +215,21 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
     }
 
     if (valid_count == 0) {
-        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] No valid scan count..\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] No valid scan count..\n", __func__, __LINE__);
         free(scores);
         return RETURN_OK;  // No valid results
     }
-    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] valid-count : %d\n", __func__, __LINE__, valid_count);
+    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] valid-count : %d max_bucket1_snr : %f\n", __func__, __LINE__, valid_count, max_bucket1_snr);
 
     // Step 2: Apply SNR advantage rule for bucket 2
     for (int i = 0; i < valid_count; i++) {
         float snr_diff = 0.0;
         if (scores[i].bucket == 2) {
-             wifi_util_dbg_print(WIFI_CTRL, "[%s %d] BSSID : %s SNR : %f\n", __func__, __LINE__, to_mac_str(scores[i].candidate->external_ap.bssid, bssid_str), scores[i].candidate->external_ap.snr);
              snr_diff = scores[i].candidate->external_ap.snr - max_bucket1_snr;
-             wifi_util_dbg_print(WIFI_CTRL, "[%s %d] snr-diff : %f\n", __func__, __LINE__, snr_diff);
              if (snr_diff > ignite_config->SNR_difference) {
                  scores[i].score += snr_diff * snr_weighting_factor;
              }
         }
-        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] score : %f\n", __func__, __LINE__, scores[i].score);
     }
 
     // Step 3: Sort by descending score
@@ -403,7 +394,6 @@ void ext_incomplete_scan_list(vap_svc_t *svc)
     vap_svc_ext_t *ext = &svc->u.ext;
 
     ext->wait_scan_result++;
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d wait_scan_res : %u\n", __func__, __LINE__, ext->wait_scan_result);
     if (ext->wait_scan_result > MAX_SCAN_RESULT_WAIT) {
         ext->wait_scan_result = 0;
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
@@ -1547,16 +1537,15 @@ int scan_result_wait_timeout(vap_svc_t *svc)
     if (ext->conn_state == connection_state_disconnected_scan_list_in_progress) {
          wifi_util_dbg_print(WIFI_CTRL,"%s:%d - received only %u radio scan results\r\n", __func__,
             __LINE__, ext->scanned_radios);
-         wifi_util_dbg_print(WIFI_CTRL,"%s:%d rf-status : %d rank-count : %d\n", __func__, __LINE__, ctrl->rf_status_down, ext->ranked_count);
-	 if ((ctrl->rf_status_down == true) && (ext->ranked_count == 0 )) {
+     if ((ctrl->rf_status_down == true) && (ext->ranked_count == 0 )) {
              wifi_util_info_print(WIFI_CTRL, "%s:%d:Retrigger scan\n", __func__, __LINE__);
              ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
          } else {
              wifi_util_info_print(WIFI_CTRL, "%s:%d:Setting connection_state_disconnected_scan_list_all\n", __func__, __LINE__);
 
              ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
-	}
-	ext->scanned_radios = 0;
+    }
+    ext->scanned_radios = 0;
         schedule_connect_sm(svc);
     }
     return 0;
@@ -1718,17 +1707,15 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     }
 
     if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 0)) {
-	if (ctrl->rf_status_down == false) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d:Ignite disabled\n", __func__, __LINE__);
-	    sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
+        if (ctrl->rf_status_down == false) {
+            sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
         } else {
-	    wifi_util_info_print(WIFI_CTRL, "%s:%d: Ignite Enabled Mode.. Radio Index : %u\n", __func__, __LINE__, results->radio_index);
-	    ext->ranked_count = sort_bss_results_by_ranking(
-                                   ext->candidates_list.scan_list,
-                                   ext->candidates_list.scan_count);
-	    ext->candidates_list.scan_count = ext->ranked_count;
-	    wifi_util_info_print(WIFI_CTRL, "%s:%d: rank-count : %d scan-count : %d\n", __func__, __LINE__, ext->ranked_count, ext->candidates_list.scan_count);
-	}
+            ext->ranked_count = sort_bss_results_by_ranking(
+                    ext->candidates_list.scan_list,
+                    ext->candidates_list.scan_count);
+            ext->candidates_list.scan_count = ext->ranked_count;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rank-count : %d scan-count : %d\n", __func__, __LINE__, ext->ranked_count, ext->candidates_list.scan_count);
+        }
     }
 
     if (ext->ext_scan_result_wait_timeout_handler_id != 0) {
@@ -1739,9 +1726,9 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     ext->scanned_radios++;
     if (ext->scanned_radios >= getNumberRadios()) {
         if ((ctrl->rf_status_down == true) && (ext->ranked_count == 0 )) {
-	    wifi_util_info_print(WIFI_CTRL, "%s:%d:Retrigger scan\n", __func__, __LINE__);
-	    ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-	} else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d:Retrigger scan\n", __func__, __LINE__);
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+    } else {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
             ext->scanned_radios = 0;
         }

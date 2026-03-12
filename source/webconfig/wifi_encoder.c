@@ -1653,7 +1653,6 @@ webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *secur
                 __func__, __LINE__, security_info->repurposed_mode);
         return webconfig_error_encode;
     }
-
     switch (security_info->repurposed_mode) {
         case wifi_security_mode_wpa2_enterprise:
             cJSON_AddStringToObject(security, "IgniteMode", "WPA2-Enterprise");
@@ -1668,11 +1667,9 @@ webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *secur
                     __func__, __LINE__, security_info->repurposed_mode);
             return webconfig_error_encode;
     }
-
     if ((security_info->repurposed_mode == wifi_security_mode_wpa2_enterprise) || (security_info->repurposed_mode == wifi_security_mode_wpa3_enterprise)) {
         obj = cJSON_CreateObject();
         cJSON_AddItemToObject(security, "IgniteRadiusSettings", obj);
-
         if (encode_ignite_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
                     __func__, __LINE__);
@@ -2028,7 +2025,7 @@ webconfig_error_t encode_ignite_object(ignite_config_t *ignite_config, cJSON *ig
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Ignite info is NULL\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
-    wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_threshold, ignite_config->SNR_difference);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_threshold, ignite_config->SNR_difference);
 
     cJSON_AddStringToObject(ignite_obj, "ignite_name", ignite_config->ignite_name);
     cJSON_AddNumberToObject(ignite_obj, "ignite_minchutil_threshold", ignite_config->min_chanutil_threshold);

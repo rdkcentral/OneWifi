@@ -2399,11 +2399,7 @@ bus_error_t get_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
         return bus_error_invalid_input;
     }
     
-    wifi_util_dbg_print(WIFI_CTRL, "%s bus property=%s\n", __FUNCTION__, name);
-    
     sscanf(name, "Device.WiFi.Ignite_Control.%d.%s", &index, extension);
-    wifi_util_error_print(WIFI_CTRL, "[%s %d] index : %d extension : %s\n", __func__, __LINE__, index, extension);
-    
     if (index == 0 || index > getNumberRadios()) {
         wifi_util_error_print(WIFI_CTRL, "%s Invalid index %d\n", __FUNCTION__, index);
         return bus_error_invalid_operation;
@@ -2450,12 +2446,7 @@ bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
     char extension[64] = { 0 };
     unsigned int num_of_radios = getNumberRadios();
     
-    wifi_util_dbg_print(WIFI_CTRL, "%s bus property=%s\n", __FUNCTION__, name);
-    
     sscanf(name, "Device.WiFi.Ignite_Control.%d.%s", &index, extension);
-    wifi_util_error_print(WIFI_CTRL, "[%s %d] index : %u extension : %s\n", 
-                         __func__, __LINE__, index, extension);
-    
     if (index == 0 || index > num_of_radios) {
         wifi_util_error_print(WIFI_CTRL, "%s Invalid index %u\n", __FUNCTION__, index);
         return bus_error_invalid_operation;
@@ -2484,12 +2475,7 @@ bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
             return bus_error_invalid_operation;
     }
     
-    wifi_util_error_print(WIFI_CTRL, "[%s %d] Ignite name [%s]\n", __func__, __LINE__, 
-                         g_apply_ignite_config.config[index-1].ignite_name);
-    
-   
     value = p_data->raw_data.u8;
-
     // Validate the uint8_t value (0-100 only)
     ret = validate_ignite_config(extension, value);
     if (ret == RETURN_ERR) {
@@ -2500,22 +2486,22 @@ bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
   // Store in appropriate field (convert uint8_t to float)
     if (strcmp(extension, "MinChutilThreshold") == 0) {
         g_apply_ignite_config.config[index-1].min_chanutil_threshold = (float)value;
-        wifi_util_error_print(WIFI_CTRL, "[%s %d] MinChutilThreshold : %u -> %f\n",
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] MinChutilThreshold : %u -> %f\n",
                              __func__, __LINE__, value, 
                              g_apply_ignite_config.config[index-1].min_chanutil_threshold);
     } else if (strcmp(extension, "MaxChutilThreshold") == 0) {
         g_apply_ignite_config.config[index-1].max_chanutil_threshold = (float)value;
-        wifi_util_error_print(WIFI_CTRL, "[%s %d] MaxChutilThreshold: %u -> %f\n",
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] MaxChutilThreshold: %u -> %f\n",
                              __func__, __LINE__, value,
                              g_apply_ignite_config.config[index-1].max_chanutil_threshold);
     } else if (strcmp(extension, "SNRThreshold") == 0) {
         g_apply_ignite_config.config[index-1].SNR_threshold = (float)value;
-        wifi_util_error_print(WIFI_CTRL, "[%s %d] SNRThreshold : %u -> %f\n",
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRThreshold : %u -> %f\n",
                              __func__, __LINE__, value,
                              g_apply_ignite_config.config[index-1].SNR_threshold);
     } else if (strcmp(extension, "SNRDifference") == 0) {
         g_apply_ignite_config.config[index-1].SNR_difference = (float)value;
-        wifi_util_error_print(WIFI_CTRL, "[%s %d] SNRDifference : %u -> %f\n",
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRDifference : %u -> %f\n",
                              __func__, __LINE__, value,
                              g_apply_ignite_config.config[index-1].SNR_difference);
     } else {
@@ -2523,11 +2509,8 @@ bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
         wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported Parameter\n", __func__, __LINE__);
         return bus_error_invalid_operation;
     }
-
     g_apply_ignite_config.is_pending = true;
-
     pthread_mutex_unlock(&g_apply_ignite_config.lock);
-
     return bus_error_success;
 }
 
@@ -2592,13 +2575,12 @@ void init_pending_ignite_config(void)
 
     pthread_mutex_lock(&g_apply_ignite_config.lock);
 
-    wifi_util_error_print(WIFI_CTRL, "[%s %d] Testing\n", __func__, __LINE__);
     // Initialize with current mgr config
     memcpy(&g_apply_ignite_config.config, &mgr->ignite_config,
            num_radios * sizeof(ignite_config_t));
 
     for (unsigned int i = 0; i < num_radios; i++) {
-         wifi_util_error_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold, g_apply_ignite_config.config[i].SNR_threshold,  g_apply_ignite_config.config[i].SNR_difference);
+         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold, g_apply_ignite_config.config[i].SNR_threshold,  g_apply_ignite_config.config[i].SNR_difference);
     }
     g_apply_ignite_config.is_pending = false;
 
@@ -3985,7 +3967,7 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_STA_NAMESPACE, bus_element_type_table,
                                     { NULL, NULL, events_STAtable_addrowhandler, events_STAtable_removerowhandler, eventSubHandler, NULL}, slow_speed, num_of_radio,
                                     { bus_data_type_object, false, 0, 0, 0, NULL } }, 
-				{ WIFI_STA_CONNECT_STATUS, bus_element_type_property,
+			        { WIFI_STA_CONNECT_STATUS, bus_element_type_property,
                                     { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, true, 0, 0, 0, NULL } },
                                 { WIFI_STA_INTERFACE_NAME, bus_element_type_property,

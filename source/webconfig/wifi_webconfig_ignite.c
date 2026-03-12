@@ -65,7 +65,6 @@ webconfig_error_t encode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
     cJSON *obj, *obj_array;
     char *str;
     webconfig_subdoc_decoded_data_t *params;
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Entering\n", __func__, __LINE__);
     
     if (data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data pointer\n", __func__, __LINE__);
@@ -115,13 +114,9 @@ webconfig_error_t encode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
     }
     
     memcpy(data->u.encoded.raw, str, strlen(str));
-    
-    // FIX: Print before freeing str
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
-    
     cJSON_free(str);
     cJSON_Delete(json);
-    
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Encoded success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
@@ -138,12 +133,10 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
     json = data->u.encoded.json;
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Entering decode\n", __func__, __LINE__);
-
     if (json == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
-
     // Get the Parameters array
     obj_array = cJSON_GetObjectItem(json, "Parameters");
     if (obj_array == NULL || !cJSON_IsArray(obj_array)) {
@@ -151,7 +144,6 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
         cJSON_Delete(json);
         return webconfig_error_decode;
     }
-
     // Get array size
     size = cJSON_GetArraySize(obj_array);
     if (size < MIN_NUM_RADIOS || size > MAX_NUM_RADIOS) {
@@ -161,10 +153,8 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
-
     // Clear the ignite configs
     memset(params->ignite_config, 0, sizeof(ignite_config_t) * params->num_radios);
-
     // Iterate through each array item
     for (unsigned int i = 0; i < params->hal_cap.wifi_prop.numRadios; i++) {
         // Get the i-th object from the array
@@ -175,7 +165,6 @@ webconfig_error_t decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_dat
             cJSON_Delete(json);
             return webconfig_error_decode;
         }
-
         // Decode this specific ignite config
         if (decode_ignite_object(obj_config, &params->ignite_config[i]) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Config object validation failed for index %d\n",

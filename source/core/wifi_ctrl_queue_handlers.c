@@ -1960,13 +1960,13 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
     free(removed_dev);
     if (old_count > 0) {
         *new_count = old_count - 1;
-	}
+    }
     if (((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index)))){
         if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index, *new_count, old_count) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
         }
     }
-	return RETURN_OK;
+    return RETURN_OK;
 }
 
 void process_disassoc_device_event(void *data)
@@ -3823,7 +3823,7 @@ void process_rsn_override_rfc(bool type)
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
             }
 
-	    if(rfc_param->wpa3_rfc) {
+        if(rfc_param->wpa3_rfc) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -4271,23 +4271,23 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         break;
 
     case wifi_event_webconfig_set_ignite_data:
-        wifi_util_error_print(WIFI_APPS, "%s %d [DL] Testing\n", __func__, __LINE__);
         memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-            sizeof(wifi_hal_capability_t));
-	memcpy((unsigned char *)&data->u.decoded.ignite_config, (unsigned char *)&mgr->ignite_config, getNumberRadios() * sizeof(ignite_config_t));
-	if (raw == NULL) {
-	    wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data\n", __func__, __LINE__);
-	}
-	webconfig_decode(config, data, raw);
-        wifi_util_error_print(WIFI_APPS, "%s %d [DL] Testing\n", __func__, __LINE__);
-	apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
-        wifi_util_error_print(WIFI_APPS, "%s %d [DL] Testing\n", __func__, __LINE__);
-	webconfig_data_free(data);
-	break;
+                sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)&data->u.decoded.ignite_config, (unsigned char *)&mgr->ignite_config, getNumberRadios() * sizeof(ignite_config_t));
+        if (raw == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data\n", __func__, __LINE__);
+            free(data);
+            data = NULL;
+            return;
+        }
+        webconfig_decode(config, data, raw);
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
+        webconfig_data_free(data);
+        break;
 
     case wifi_event_webconfig_set_data_tunnel:
         memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-            sizeof(wifi_hal_capability_t));
+                sizeof(wifi_hal_capability_t));
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);

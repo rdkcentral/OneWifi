@@ -1195,9 +1195,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              */
 
             // Updating ignite enable/disable config via this memcpy
-	    memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
-	    
-	    // This block of code is only used for updating VAP mac.
+        memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+        
+        // This block of code is only used for updating VAP mac.
             //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.bss_info.bssid)) {
             //    memcpy(vap_info->u.bss_info.bssid, p_tgt_vap_map->vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
             //}
@@ -1640,25 +1640,6 @@ bool ignite_config_equal(const ignite_config_t *mgr_ignite_config, const ignite_
            (mgr_ignite_config->max_chanutil_threshold == data_ignite_config->max_chanutil_threshold);
 }
 
-
-#if 0
-static bool is_ignite_config_changed(ignite_config_t *data_ignite_config)
-{
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    if (mgr == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "[%s %d] Null data\n", __func__, __LINE__);
-	return false;
-    }
-    for (int i = 0; i < params->num_radios; i++) {
-    if (memcmp(mgr_ignite_config, data_ignite_config, sizeof(memwraptool_config_t)) !=
-        0) {
-        wifi_util_dbg_print(WIFI_CTRL, "Ignite param changed\n");
-        return true;
-    }
-
-    return false;
-}
-#endif
 static int webconfig_ignite_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -1666,30 +1647,27 @@ static int webconfig_ignite_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
         wifi_util_error_print(WIFI_CTRL, "[%s %d] Null data\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-
-        // Validate array bounds
+    // Validate array bounds
     if ((data == NULL) || (data->ignite_config == NULL)) {
         wifi_util_error_print(WIFI_CTRL, "[%s %d] ignite_config array is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    wifi_util_error_print(WIFI_CTRL, "[%s %d] radio-count : %u\n", __func__, __LINE__, getNumberRadios());
     for (UINT index = 0; index < getNumberRadios(); index++){
-	 ignite_config_t *data_ignite_config = &data->ignite_config[index];
-	 if (data_ignite_config->ignite_name[0] == '\0') {
-	    wifi_util_error_print(WIFI_CTRL, "[%s %d] Skipping invalid ignite config at index %u\n", __func__, __LINE__, index);
+        ignite_config_t *data_ignite_config = &data->ignite_config[index];
+        if (data_ignite_config->ignite_name[0] == '\0') {
+            wifi_util_error_print(WIFI_CTRL, "[%s %d] Skipping invalid ignite config at index %u\n", __func__, __LINE__, index);
             continue;
-         }
-         wifi_util_error_print(WIFI_CTRL, "[%s %d] name : %s\n", __func__, __LINE__, data_ignite_config->ignite_name);
-         if (ignite_config_equal(&mgr->ignite_config[index], data_ignite_config)) {
+        }
+        if (ignite_config_equal(&mgr->ignite_config[index], data_ignite_config)) {
             wifi_util_dbg_print(WIFI_CTRL, "Same config - skipping update for %s\n", data_ignite_config->ignite_name);
             continue;
         }
 
-	 wifi_util_error_print(WIFI_CTRL, "[%s %d] Ignite config changed for %s Configs : [%f %f %f %f]\n", __func__, __LINE__, data_ignite_config->ignite_name, data_ignite_config->min_chanutil_threshold, data_ignite_config->max_chanutil_threshold, data_ignite_config->SNR_threshold, data_ignite_config->SNR_difference);
-    
+        wifi_util_info_print(WIFI_CTRL, "[%s %d] Ignite config changed for %s Configs : [%f %f %f %f]\n", __func__, __LINE__, data_ignite_config->ignite_name, data_ignite_config->min_chanutil_threshold, data_ignite_config->max_chanutil_threshold, data_ignite_config->SNR_threshold, data_ignite_config->SNR_difference);
+
         if ((wifidb_update_ignite_config(data_ignite_config)) != 0) {
-           wifi_util_dbg_print(WIFI_CTRL, "Failed to update the ignite config\n");
-	    return RETURN_ERR;
+            wifi_util_dbg_print(WIFI_CTRL, "Failed to update the ignite config\n");
+            return RETURN_ERR;
         }
     }
     wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config updated successfully\n", __func__, __LINE__);
@@ -2984,7 +2962,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             }
             break;
 
-	case webconfig_subdoc_type_ignite:
+    case webconfig_subdoc_type_ignite:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: Ignite webconfig subdoc\n", __func__,
                 __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
