@@ -1931,6 +1931,8 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "MaxUplinkRate", assoc_dev_data->dev_stats.cli_MaxUplinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "MaxDownlinkRate", assoc_dev_data->dev_stats.cli_MaxDownlinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "LastConnectTime", assoc_dev_data->last_connect_time);
+                cJSON_AddNumberToObject(obj_assoc_client, "MLCapabilities", assoc_dev_data->dev_stats.cli_MLModeCapa);
+                cJSON_AddNumberToObject(obj_assoc_client, "TIDLinkMapNegotiation", assoc_dev_data->dev_stats.cli_TIDLinkMapNegotiation);
                 if (include_frame_data == true &&
                     encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
                         webconfig_error_none) {
