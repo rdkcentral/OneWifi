@@ -31,7 +31,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_passpoint.h"
 #include "wifi_stubs.h"
-
+#include "run_qmgr.h"
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
 #define MAX_VAP_INDEX 24
 
@@ -2736,6 +2736,31 @@ void process_csi_analytics_rfc(bool type)
     return;
 }
 
+void process_link_quality_rfc(bool type)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+
+    rfc_param->link_quality_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+        rfc_param->link_quality_rfc);
+    if( rfc_param->link_quality_rfc) {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        wifi_util_error_print(WIFI_CTRL, "started link quality app %s:%d\n", __func__, __LINE__);
+    } else {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        wifi_util_error_print(WIFI_CTRL, "stopped link quality app %s:%d\n", __func__, __LINE__);
+    }
+    return;
+}
+
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -2744,6 +2769,21 @@ void process_tcm_rfc(bool type)
     rfc_param->tcm_enabled_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
+        type);
+}
+
+void process_xfi_tel_enable_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Xfi Tel Enable RFC: %d\n", __FUNCTION__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+    rfc_param->xfi_tel_enable_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Xfi Tel Enable RFC: %d\n", __FUNCTION__, __LINE__, 
         type);
 }
 
@@ -3392,7 +3432,14 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             {
                 for (UINT j = i; j < i+channelsInBlock; j++)
                 {
-                    radio_params->channel_map[j].ch_state = chan_state;
+                    if (radio_params->channel_map[j].ch_state == CHAN_STATE_DFS_NOP_START &&
+                        ch_chg->sub_event != WIFI_EVENT_RADAR_NOP_FINISHED) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s:%d Channel %d already in NOP_START, ignoring state change to %d from radar subtype %d\n",
+                            __func__, __LINE__, ch_chg->channel, chan_state, radio_params->channel_map[j].ch_state);
+                    } else {
+                        radio_params->channel_map[j].ch_state = chan_state;
+                    }
                 }
                 break;
             }
@@ -3950,6 +3997,12 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_link_quality_rfc:
+        process_link_quality_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_xfi_tel_enable_rfc:
+        process_xfi_tel_enable_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
