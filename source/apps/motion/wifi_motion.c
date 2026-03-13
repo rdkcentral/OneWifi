@@ -1085,6 +1085,9 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
     current_config_count = queue_count(current_config);
     for (itr=0; itr<current_config_count; itr++) {
         current_csi_data = (csi_data_t *)queue_peek(current_config, itr);
+        if (current_csi_data == NULL) {
+            continue;
+        }
         found = false;
         if (new_config != NULL) {
             new_config_count = queue_count(new_config);
@@ -1112,6 +1115,9 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
         new_config_count = queue_count(new_config);
         for (itr=0; itr<new_config_count; itr++) {
             new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
+            if (new_csi_data == NULL) {
+                continue;
+            }
             memset(tmp_cli_list, 0, tmp_cli_list_size);
             found = false;
             data_change = false;
