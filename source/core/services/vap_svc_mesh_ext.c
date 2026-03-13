@@ -555,7 +555,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
         }
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_disconnect_event_timeout_handler_id,
             process_udhcp_disconnect_event_timeout, svc, 
-	    EXT_DISCONNECTION_IND_TIMEOUT, 1, FALSE);
+        EXT_DISCONNECTION_IND_TIMEOUT, 1, FALSE);
         return 0;
     }
 
@@ -667,7 +667,7 @@ void ext_process_scan_list(vap_svc_t *svc)
             ext_set_conn_state(ext, connection_state_connection_in_progress, __func__, __LINE__);
         } else {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
-	         __LINE__);
+             __LINE__);
         }
         schedule_connect_sm(svc);
     } else {
@@ -843,6 +843,13 @@ void ext_try_connecting(vap_svc_t *svc)
         candidate->conn_retry_attempt++;
     } else if (ext->conn_state == connection_state_connection_in_progress) {
         candidate = ext->candidates_list.scan_list;
+        bool new_bss_is_set = false;
+        unsigned char zero_mac[6] = {0};
+
+        // Check if new_bss.external_ap.bssid is not empty
+        if (memcmp(ext->new_bss.external_ap.bssid, zero_mac, sizeof(zero_mac)) != 0) {
+            new_bss_is_set = true;
+        }
 
         for (i = 0; i < ext->candidates_list.scan_count; i++) {
             if (temp == NULL && (candidate->conn_attempt == connection_attempt_wait) &&
@@ -862,6 +869,26 @@ void ext_try_connecting(vap_svc_t *svc)
 
             candidate++;
         }
+
+        // If new_bss is set but not found in candidate list, trigger scanning (max 2 times)
+        if (new_bss_is_set && new_bss == NULL && ext->new_bss_scan_retry < 2) {
+            ext->new_bss_scan_retry++;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: new_bss BSSID not found in candidate list, "
+                "triggering scan (attempt %d/2)\n", __func__, __LINE__, ext->new_bss_scan_retry);
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+            schedule_connect_sm(svc);
+            return;
+        }
+
+        // If max retries reached and new_bss still not found, clear it
+        if (new_bss_is_set && new_bss == NULL && ext->new_bss_scan_retry >= 2) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: new_bss BSSID not found after 2 scan attempts, "
+                "clearing new_bss\n", __func__, __LINE__);
+            memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
+            ext->new_bss_scan_retry = 0;
+            new_bss_is_set = false; // Update flag after clearing
+        }
+
         if (new_bss || last_connected_bss || temp) {
             if (new_bss) {
                 candidate = new_bss;
@@ -1139,10 +1166,10 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     }
 
     // Skip zero bssid and disabled vaps
-    if (!is_bssid_valid(vap_info->u.sta_info.bssid) || !vap_info->u.sta_info.enabled) {
+    if (!is_bssid_valid(vap_info->u.sta_info.bssid) ||  (!vap_info->u.sta_info.enabled && !vap_info->u.sta_info.ignite_enabled)) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d skip sta bssid change event, vap: %s, bssid: %s, "
-            "enabled: %d\n", __func__, __LINE__, vap_info->vap_name, bssid_str,
-            vap_info->u.sta_info.enabled);
+                "enabled: %d ignite-enable: %d\n", __func__, __LINE__, vap_info->vap_name, bssid_str,
+                vap_info->u.sta_info.enabled, vap_info->u.sta_info.ignite_enabled);
         return 0;
     }
 
@@ -1158,7 +1185,7 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     ext->new_bss_delayed = false;
     memset(candidate, 0, sizeof(bss_candidate_t));
     memcpy(candidate->external_ap.bssid, vap_info->u.sta_info.bssid, sizeof(bssid_t));
-    strncpy(candidate->external_ap.ssid, vap_info->u.sta_info.ssid, sizeof(ssid_t) - 1);
+    strncpy(candidate->external_ap.ssid, get_vap_ssid(vap_info), sizeof(ssid_t) - 1);
     candidate->vap_index = vap_info->vap_index;
     candidate->external_ap.freq = freq;
     candidate->radio_freq_band = band;
@@ -1250,9 +1277,9 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         tgt_vap_map->num_vaps = 1;
 
         // avoid disabling mesh sta in extender mode
-        if (tgt_vap_map->vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
+        if ((tgt_vap_map->vap_array[0].u.sta_info.enabled == false) && (tgt_vap_map->vap_array[0].u.sta_info.ignite_enabled == false) && (is_sta_enabled())) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
-                __LINE__, tgt_vap_map->vap_array[0].vap_index);
+                    __LINE__, tgt_vap_map->vap_array[0].vap_index);
             tgt_vap_map->vap_array[0].u.sta_info.enabled = true;
         }
 
@@ -1665,6 +1692,8 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
 
 #define MAX_STATUS_LEN 5
 #define MAX_STR_LEN    128
+#define MAC_ADDR_STR_LEN 18
+
 int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 {
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -1685,6 +1714,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     wifi_sta_conn_info_t sta_conn_info;
     char name[64] = {'\0'};
     char *bridge_name = "brww0";
+    char *bssid_mac_str = NULL;
     int ret = 0;
 
     ctrl = svc->ctrl;
@@ -1789,8 +1819,17 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 } else {
                     wifi_util_info_print(WIFI_CTRL,"IGNITE_RF_DOWN: Connect status sent successfully to the WM\n");
                 }
+                bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
+                if (bssid_mac_str != NULL) {
+                    memset(bssid_mac_str, '\0', MAC_ADDR_STR_LEN);
+                    uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_mac_str);
+                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bssid mac=%s\n", __func__, __LINE__,
+                        bssid_mac_str);
+                    apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                        wifi_event_exec_register_station, bssid_mac_str, MAC_ADDR_STR_LEN);
+                }
             }
-	    /* Self heal to check if the connected interface received valid ip after a timeout if not trigger a reconnection */
+        /* Self heal to check if the connected interface received valid ip after a timeout if not trigger a reconnection */
 
             if (ext->ext_udhcp_ip_check_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
@@ -1857,8 +1896,20 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             }
         }
     } else if (sta_data->stats.connect_status == wifi_connection_status_ap_not_found || sta_data->stats.connect_status == wifi_connection_status_disconnected) {
-    	    
         apply_pending_channel_change(svc, sta_data->stats.vap_index);
+
+        memcpy(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid,
+            sizeof(temp_vap_info->u.sta_info.bssid));
+
+        bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
+        if (bssid_mac_str != NULL) {
+            memset(bssid_mac_str, '\0', MAC_ADDR_STR_LEN);
+            uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_mac_str);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bssid mac=%s\n", __func__, __LINE__,
+                bssid_mac_str);
+            apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                wifi_event_exec_unregister_station, bssid_mac_str, MAC_ADDR_STR_LEN);
+        }
 
         if (ext->conn_state == connection_state_connected &&
             ext->connected_vap_index != sta_data->stats.vap_index) {

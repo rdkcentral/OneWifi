@@ -77,7 +77,7 @@ struct scheduler * scheduler_init(void)
 
 int scheduler_deinit(struct scheduler **sched)
 {
-    if (sched == NULL && *sched == NULL) {
+    if (sched == NULL || *sched == NULL) {
         return -1;
     }
     pthread_mutex_lock(&(*sched)->lock);
@@ -123,6 +123,7 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
                                 unsigned int repetitions, bool start_immediately)
 {
     struct timer_task *tt;
+    struct timespec t_now;
     struct
     {
         queue_t *timer_list;
@@ -150,6 +151,9 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
 
     if (start_immediately) {
         clock_gettime(CLOCK_MONOTONIC, &(tt->timeout));
+    } else {
+        clock_gettime(CLOCK_MONOTONIC, &t_now);
+        timespecadd(&t_now, &(tt->interval), &(tt->timeout));
     }
 
     pthread_mutex_lock(&sched->lock);
@@ -484,7 +488,7 @@ static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec 
                 printf("Error: **** Timer task expired again before previous execution to complete  !!!\n");
             }
             tt->execute = timespecisset(&tt->timeout);
-            timespecadd(&t_now, &(tt->interval), &(tt->timeout));
+            timespecadd(&(tt->timeout), &(tt->interval), &(tt->timeout));
         }
     }
     for (i = 0; i < sched->num_hp_tasks; i++) {
@@ -494,7 +498,7 @@ static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec 
                 printf("Error: **** Timer task expired again before previous execution to complete (high priority) !!!\n");
             }
             tt->execute = timespecisset(&tt->timeout);
-            timespecadd(&t_now, &(tt->interval), &(tt->timeout));
+            timespecadd(&(tt->timeout), &(tt->interval), &(tt->timeout));
         }
     }
     return 0;

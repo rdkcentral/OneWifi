@@ -712,7 +712,9 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
 
     if (ret == webconfig_error_none) {
         printf("%s:%d: webconfig consumer radio start test\n", __func__, __LINE__);
-        dump_subdoc(str, webconfig_subdoc_type_radio);
+        if (str != NULL) {
+            dump_subdoc(str, webconfig_subdoc_type_radio);
+        }
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
@@ -1645,7 +1647,7 @@ void consumer_app_all_test_sequence(webconfig_consumer_t *consumer)
             consumer->xfinity_test_pending_count++;
             if (consumer->xfinity_test_pending_count > MAX_WAIT) {
                 printf("%s:%d: vap xfinity test failed, timed out, proceeding with home test\n", __func__, __LINE__);
-                consumer->mesh_test_pending_count = 0;
+                consumer->xfinity_test_pending_count = 0;
                 consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
             }
             break;
@@ -2098,6 +2100,12 @@ int decode_pcap(webconfig_consumer_t *consumer, unsigned int vap_index, char *fi
 
     while ((sz = fread(&pkt_hdr, 1, sizeof(wireshark_pkthdr_t), fp)) == sizeof(wireshark_pkthdr_t)) {
         memset(buff, 0, MAX_FRAME_SZ);
+
+        if (pkt_hdr.caplen == 0 || pkt_hdr.caplen > MAX_FRAME_SZ) {
+            fclose(fp);
+            return -1;
+        }
+
         sz = fread(buff, 1, pkt_hdr.caplen, fp);
 
         frames_parsed++;

@@ -713,7 +713,7 @@ void process_wifiapi_command(char *command, unsigned int len)
 
     for (i=0; i < (sizeof(wifi_api_list)/sizeof(struct hal_api_info)); i++) {
         if (strcmp(args[0], wifi_api_list[i].name) == 0) {
-            if(num_args-1 < wifi_api_list[i].num_args ) {
+            if (num_args == 0 || (num_args-1 < wifi_api_list[i].num_args)) {
                 sprintf(buff, "wifi_api2: Error - Invalid number of arguments\nhelp: %s %s\n", 
                                 wifi_api_list[i].name, wifi_api_list[i].help);
                 goto publish;

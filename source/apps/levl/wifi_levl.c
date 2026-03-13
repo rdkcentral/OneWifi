@@ -207,7 +207,7 @@ void update_probe_map(wifi_app_t *apps, char *mac_key)
 
         if (elem->curr_time_alive > max_probe_map_ttl_cnt) {
             ttl_data.max_probe_ttl_cnt = elem->curr_time_alive;
-            strcpy(ttl_data.mac_str, mac_key);
+            snprintf(ttl_data.mac_str, sizeof(ttl_data.mac_str), "%s", mac_key);
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, wifi_event_hal_potential_misconfiguration, &ttl_data);
 
             if (mac_key != NULL) {
