@@ -269,3 +269,4 @@ $HOSTAP_PATCH_DIR_META_CMF_BPI/mdu_radius_psk_auth_2_11.patch
 $HOSTAP_PATCH_DIR_META_CMF_BPI/supplicant_new.patch
 $HOSTAP_PATCH_DIR_META_CMF_BPI/bpi.patch
 $HOSTAP_PATCH_DIR_META_CMF_BPI/fixed_disassoc_after_assoc_retry.patch
+$HOSTAP_PATCH_DIR_META_CMF_BPI/xfi_tel_compete_2_11.patch
