@@ -83,6 +83,7 @@ patch --forward -p1 < $HOSTAP_PATCH_DIR/supplicant_new.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/bpi.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/mlo_fix.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/fixed_disassoc_after_assoc_retry.patch
+patch --forward -p1 < $HOSTAP_PATCH_DIR/xfi_tel_compete_2_11.patch
 #Delete the meta-cmf-bananapi directory after applying patches
 rm -rf meta-cmf-bananapi
 

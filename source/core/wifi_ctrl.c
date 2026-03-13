@@ -1715,6 +1715,12 @@ int init_wireless_interface_mac()
                 }
             }
 
+            if (wifi_vap_info == NULL) {
+                free(hal_vap_info_map);
+                hal_vap_info_map = NULL;
+                return RETURN_ERR;
+            }
+
             //For backhaul interfaces, update the sta_info.mac
             if (strncmp((char *)hal_vap_info_map->vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
                 memcpy(wifi_vap_info->u.sta_info.mac, hal_vap_info_map->vap_array[j].u.sta_info.mac, sizeof(wifi_vap_info->u.sta_info.mac));
@@ -2824,6 +2830,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
     g_wifi_mgr->ctrl.rfc_params.link_quality_rfc =
         g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
+    g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
+        g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
