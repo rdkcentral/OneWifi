@@ -101,3 +101,6 @@ if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Fr
         patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
 fi
 cd $ONEWIFI_DIR
+
+# Remove the Kernel 6.6 specific flag when building for Kernel 5.4
+sed -i 's/-DKERNEL_6_6//g' build/openwrt/makefile
