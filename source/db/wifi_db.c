@@ -890,6 +890,11 @@ int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_Interworkin
    return 0;
 }
 
+int wifidb_update_ignite_config(ignite_config_t *ignite_cfg)
+{
+   return 0;
+}
+
 int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
    return 0;

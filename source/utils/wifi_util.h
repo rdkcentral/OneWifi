@@ -33,6 +33,8 @@
 #include <sys/prctl.h>
 #include "ccsp.h"
 
+#define MAX_NAME_LEN 32
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -66,6 +66,12 @@ extern "C" {
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
+#define WIFI_IGNITE_NAMESPACE               "Device.WiFi.Ignite_Control.{i}."
+#define WIFI_IGNITE_MIN_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MinChutilThreshold"
+#define WIFI_IGNITE_MAX_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MaxChutilThreshold"
+#define WIFI_IGNITE_SNR_THRESHOLD           "Device.WiFi.Ignite_Control.{i}.SNRThreshold"
+#define WIFI_IGNITE_SNR_DIFFERENCE        "Device.WiFi.Ignite_Control.{i}.SNRDifference"
+#define WIFI_IGNITE_APPLY_CONFIG            "Device.WiFi.ApplyIgniteSettings"
 #define WIFI_COLLECT_STATS_TABLE            "Device.WiFi.CollectStats.Radio.{i}."
 #define WIFI_COLLECT_STATS_RADIO_ON_CHANNEL_STATS      "Device.WiFi.CollectStats.Radio.{i}.ScanMode.on_channel.ChannelStats"
 #define WIFI_COLLECT_STATS_RADIO_OFF_CHANNEL_STATS     "Device.WiFi.CollectStats.Radio.{i}.ScanMode.off_channel.ChannelStats"
@@ -269,6 +275,23 @@ typedef struct {
     trace_headers_t                   t_header;
     unsigned char                     blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
 } active_msmt_t;
+
+typedef struct {
+    char ignite_name[32];
+    float min_chanutil_threshold;
+    float max_chanutil_threshold;
+    float SNR_threshold;
+    float SNR_difference;
+}ignite_config_t;
+
+// Global pending ignite configuration
+typedef struct {
+    ignite_config_t config[MAX_NUM_RADIOS];
+    bool is_pending;
+    pthread_mutex_t lock;
+} apply_ignite_config_t;
+
+extern apply_ignite_config_t g_apply_ignite_config;
 
 typedef struct {
     int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1

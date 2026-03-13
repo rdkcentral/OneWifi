@@ -453,6 +453,17 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_blaster].translate_from_subdoc = translate_from_blaster_subdoc;
 #endif
 
+    config->subdocs[webconfig_subdoc_type_ignite].type = webconfig_subdoc_type_ignite;
+    strcpy(config->subdocs[webconfig_subdoc_type_ignite].name, "ignite config");
+    config->subdocs[webconfig_subdoc_type_ignite].major = 1;
+    config->subdocs[webconfig_subdoc_type_ignite].minor = 1;
+    config->subdocs[webconfig_subdoc_type_ignite].init_subdoc = init_ignite_subdoc;
+    config->subdocs[webconfig_subdoc_type_ignite].access_check_subdoc = access_ignite_subdoc;
+    config->subdocs[webconfig_subdoc_type_ignite].encode_subdoc = encode_ignite_subdoc;
+    config->subdocs[webconfig_subdoc_type_ignite].decode_subdoc = decode_ignite_subdoc;
+    config->subdocs[webconfig_subdoc_type_ignite].translate_to_subdoc = translate_to_ignite_subdoc;
+    config->subdocs[webconfig_subdoc_type_ignite].translate_from_subdoc = translate_from_ignite_subdoc;
+
 #ifdef ONEWIFI_HARVESTER_APP_SUPPORT
     config->subdocs[webconfig_subdoc_type_harvester].type = webconfig_subdoc_type_harvester;
     strcpy(config->subdocs[webconfig_subdoc_type_harvester].name, "instant measurement config");

@@ -142,6 +142,7 @@ typedef enum {
     webconfig_subdoc_type_em_ap_metrics_report,
 #endif
     webconfig_subdoc_type_memwraptool,
+    webconfig_subdoc_type_ignite,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -211,6 +212,7 @@ typedef struct {
     active_msmt_t blaster;
     instant_measurement_config_t  harvester;
     levl_config_t levl;
+    ignite_config_t ignite_config[MAX_NUM_RADIOS];
     hash_map_t  *stats_config_map;
     hash_map_t  *steering_config_map;
     hash_map_t  *steering_client_map;
@@ -491,6 +493,15 @@ webconfig_error_t       decode_blaster_subdoc(webconfig_t *config, webconfig_sub
 webconfig_error_t       encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//Ignite config
+
+webconfig_error_t       init_ignite_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 //harvester
 
