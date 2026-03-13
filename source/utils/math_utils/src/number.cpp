@@ -86,18 +86,19 @@ number_t number_t::operator+(number_t n)
     return number_t(m_re + n.m_re, m_im + n.m_im);
 }
 
-number_t number_t::operator-(number_t n)
+number_t number_t::operator -(number_t n)
 {
-    return number_t(m_re - n.m_re, m_im - n.m_im);
-    ;
+    return number_t(m_re - n.m_re, m_im - n.m_im);;
 }
 
-number_t number_t::operator-(void)
+number_t number_t::operator *(unsigned int n)
 {
-    number_t out;
-    out.m_re = -m_re;
-    out.m_im = -m_im;
-    return out;
+    return number_t(m_re*n, m_im*n);
+}
+
+number_t number_t::operator /(unsigned int n)
+{
+    return number_t(m_re/n, m_im/n);
 }
 
 matrix_t number_t::operator*(matrix_t m)
@@ -114,6 +115,29 @@ matrix_t number_t::operator*(matrix_t m)
 
     return out;
 }
+number_t number_t::operator-(void)
+{
+ number_t out;
+    out.m_re = -m_re;
+    out.m_im = -m_im;
+   return out;
+}
+number_t number_t::sqrt_val(void)
+{
+    double a = m_re;
+    double b = m_im;
+    double r = std::sqrt(a * a + b * b);
+
+    double real = std::sqrt((r + a) / 2.0);
+    double imag = (b >= 0) ? std::sqrt((r - a) / 2.0) : -std::sqrt((r - a) / 2.0);
+
+    return number_t(real, imag);
+}
+double number_t::abs_val() const
+{
+    return sqrt(m_re * m_re + m_im * m_im);
+}
+
 
 number_t number_t::exponential()
 {
@@ -143,11 +167,6 @@ double number_t::mod_z()
     return fabs(sqrt(pow(m_re, 2) + pow(m_im, 2)));
 }
 
-double number_t::abs_val() const
-{
-    return sqrt(m_re * m_re + m_im * m_im);
-}
-
 void number_t::sqroot(number_t n[])
 {
     double d;
@@ -166,17 +185,6 @@ void number_t::sqroot(number_t n[])
     }
 }
 
-number_t number_t::sqrt_val(void)
-{
-    double a = m_re;
-    double b = m_im;
-    double r = std::sqrt(a * a + b * b);
-
-    double real = std::sqrt((r + a) / 2.0);
-    double imag = (b >= 0) ? std::sqrt((r - a) / 2.0) : -std::sqrt((r - a) / 2.0);
-
-    return number_t(real, imag);
-}
 
 number_t::number_t(double r, double i)
 {

@@ -36,6 +36,10 @@ if [ "$MODEL_NUM" == "$TG4" ]; then
 elif [ "$MODEL_NUM" == "VTER11QEL" ]; then
     ssid1="ath0"
     ssid2="ath1"
+elif [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ]; then
+    ssid1="wl0.1"
+    ssid2="wl1.1"
+    ssid3="wl2.1"
 else
     ssid1="wl0.1"
     ssid2="wl1.1"
@@ -100,6 +104,29 @@ echo_t "WIFI_RXDELTA_1:$rx1d_mb"
 echo_t "WIFI_RX_2:$rx2_mb"
 echo_t "WIFI_RXDELTA_2:$rx2d_mb"
 
+if [ -n "$ssid3" ]; then
+    rx17_0=`cat "$logfolder/rx17_0"`
+
+    if [ "$rx17_0" == "" ] ; then
+        rx17_0=0;
+    fi
+
+    rx17=`ifconfig "$ssid3" | grep "RX bytes" | cut -d':' -f2 | cut -d' ' -f1`
+
+    if [ "$rx17" == "" ] ; then
+        rx17=0;
+    fi
+
+    echo "$rx17" > $logfolder/rx17_0;
+
+    rx17d=$(($rx17-$rx17_0))
+
+    rx17_mb=$(($rx17/$oneMB))
+    rx17d_mb=$(($rx17d/$oneMB))
+
+    echo_t "WIFI_RX_17:$rx17_mb"
+    echo_t "WIFI_RXDELTA_17:$rx17d_mb"
+fi
 
 if [ -e "/sbin/iwconfig" ] ; then
 	l1=`iwconfig $ssid1 | grep "Link Quality"`
