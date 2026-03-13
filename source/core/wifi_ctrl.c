@@ -2419,7 +2419,7 @@ rdk_wifi_vap_info_t* get_wifidb_rdk_vaps(uint8_t radio_index)
     }
 }
 
-ignite_config_t *get_wifi_db_ignite_config(char *ignite_name)
+ignite_config_t *get_ignite_config_by_name(char *ignite_name)
 {
     if ((ignite_name == NULL) || (strlen(ignite_name) == 0)) {
         wifi_util_error_print(WIFI_CTRL, "%s %d Ignite name is NUll or empty\n", __func__, __LINE__);

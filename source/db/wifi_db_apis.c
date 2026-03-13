@@ -307,7 +307,7 @@ void callback_Wifi_Ignite_Config(ovsdb_update_monitor_t *mon,
         struct schema_Wifi_Ignite_Config *new_rec)
 
 {
-      ignite_config_t *ignite_cfg = get_wifi_db_ignite_config(new_rec->ignite_name);
+      ignite_config_t *ignite_cfg = get_ignite_config_by_name(new_rec->ignite_name);
       wifi_mgr_t *g_wifidb = get_wifimgr_obj();
 
       if (dbwritten == false) {
