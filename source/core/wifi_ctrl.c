@@ -1890,6 +1890,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     ctrl->exit_ctrl = false;
     ctrl->ctrl_initialized = true;
     register_endpoint_components(ctrl);
+    init_ignite_function();
     ctrl_queue_loop(ctrl);
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
@@ -2424,6 +2425,23 @@ rdk_wifi_vap_info_t* get_wifidb_rdk_vaps(uint8_t radio_index)
     }
 }
 
+ignite_config_t *get_ignite_config_by_name(char *ignite_name)
+{
+    if ((ignite_name == NULL) || (strlen(ignite_name) == 0)) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d Ignite name is NUll or empty\n", __func__, __LINE__);
+        return NULL;
+    }
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    unsigned int radio_index = getNumberRadios();
+    for (unsigned int i =0; i < radio_index; i++) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s %d Input : %s Ignite : %s\n", __func__, __LINE__, ignite_name, g_wifi_mgr->ignite_config[i].ignite_name);
+        if (strcmp(g_wifi_mgr->ignite_config[i].ignite_name, ignite_name) == 0) {
+            return &g_wifi_mgr->ignite_config[i];
+        }
+    } 
+    return NULL;
+}
+
 wifi_vap_info_map_t* get_wifidb_vap_map(uint8_t radio_index)
 {
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
@@ -2455,6 +2473,17 @@ wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index)
         wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
         return NULL;
     }
+}
+
+ignite_config_t* get_wifidb_ignite_config(uint8_t radio_index)
+{
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    if (radio_index < getNumberRadios()) { 
+        return &g_wifi_mgr->ignite_config[radio_index];
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
+        return NULL;
+    }  
 }
 
 wifi_GASConfiguration_t* get_wifidb_gas_config(void)
@@ -2905,8 +2934,8 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     for (i = 0; i < map->num_vaps; i++) {
         if (map->vap_array[i].vap_index == index) {
             found = true;
-	    wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
-	    strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
+            wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
+            strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
             break;
         }
     }
