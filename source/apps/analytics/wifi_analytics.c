@@ -326,6 +326,12 @@ int analytics_event_webconfig_get_data(wifi_app_t *apps, void *arg)
     return RETURN_OK;
 }
 
+int analytics_event_webconfig_set_ignite_data(wifi_app_t *apps, void *arg)
+{
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_webconfig_core, "set", "ignite data");
+    return RETURN_OK;
+}
+
 int analytics_event_webconfig_set_data_tunnel(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_webconfig_core, "set", "webconfig tunnel data");
@@ -699,6 +705,9 @@ int webconfig_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
     case wifi_event_webconfig_data_req_from_dml:
         analytics_event_webconfig_get_data_for_dmlthread(apps, arg, sub_type);
         break;
+    case wifi_event_webconfig_set_ignite_data:
+        analytics_event_webconfig_set_ignite_data(apps,arg);
+	break;
     default:
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
