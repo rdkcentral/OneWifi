@@ -2172,6 +2172,7 @@ webconfig_error_t encode_device_info(wifi_platform_property_t *wifi_prop, cJSON 
 
     return webconfig_error_none; 
 }
+
 webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON *radio_obj, int numRadios)
 {
     unsigned int freq_band_count = 0;
@@ -2221,6 +2222,28 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
          cJSON_AddNumberToObject(object, "RadioPresence", wifi_prop->radio_presence[i]);
 
+        /* "HTCap": 2559,
+        "HTMCSSet": [255,255,0,0,0,0,0,0,0,0,0,0,1,0,0,0],
+        "HTAMPDUParams": 52
+
+        "VHTCap": 865054198,
+        "VHTMCSSet": [234,255,0,0,234,255,0,32] */
+
+        cJSON_AddNumberToObject(object, "HTCap", wifi_prop->radiocap[i].ht_capab);
+        cJSON *ht_mcs_set_array = cJSON_CreateArray();
+        for (int j = 0; j < 16; j++) {
+            cJSON_AddItemToArray(ht_mcs_set_array, cJSON_CreateNumber(wifi_prop->radiocap[i].mcs_set[j]));
+        }
+        cJSON_AddItemToObject(object, "HTMCSSet", ht_mcs_set_array);
+        cJSON_AddNumberToObject(object, "HTAMPDUParams", wifi_prop->radiocap[i].ampdu_params);
+
+        cJSON_AddNumberToObject(object, "VHTCap", wifi_prop->radiocap[i].vht_capab);
+        cJSON *vht_mcs_set_array = cJSON_CreateArray();
+        for (int j = 0; j < 8; j++) {
+            cJSON_AddItemToArray(vht_mcs_set_array, cJSON_CreateNumber(wifi_prop->radiocap[i].vht_mcs_set[j]));
+        }
+        cJSON_AddItemToObject(object, "VHTMCSSet", vht_mcs_set_array);
+
 #ifdef CONFIG_IEEE80211AX
         /* WiFi6 (HE) capabilities */
         cJSON_AddBoolToObject(object, "WiFi6Supported", wifi_prop->radiocap[i].wifi6_supported);
@@ -2248,8 +2271,7 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
             cJSON_AddItemToArray(he_ppet_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_ppet[j]));
         }
         cJSON_AddItemToObject(object, "HEPPET", he_ppet_array);
-
-        //cJSON_AddNumberToObject(object, "HE6GHzCapa", wifi_prop->radiocap[i].6ghz_capa);
+        cJSON_AddNumberToObject(object, "HE6GHzCapa", wifi_prop->radiocap[i].he_6ghz_capa);
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE

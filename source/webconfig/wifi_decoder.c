@@ -4835,6 +4835,48 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          }
          wifi_prop->radio_presence[i] = value_object->valuedouble;
 
+        decode_param_integer(object, "HTCap", value_object);
+        if (value_object != NULL) {
+            radio_cap->ht_capab = (uint16_t)value_object->valuedouble;
+        }
+        value_object = cJSON_GetObjectItem(object, "HTMCSSet");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            array_size = cJSON_GetArraySize(value_object);
+            if ((size_t)array_size > sizeof(radio_cap->mcs_set)) {
+                array_size = sizeof(radio_cap->mcs_set);
+            }
+            for (int j = 0; j < array_size; j++) {
+                array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->mcs_set[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
+        decode_param_integer(object, "HTAMPDUParams", value_object);
+        if (value_object != NULL) {
+            radio_cap->ampdu_params = (uint16_t)value_object->valuedouble;
+        }
+
+        decode_param_integer(object, "VHTCap", value_object);
+        if (value_object != NULL) {
+            radio_cap->vht_capab = (uint16_t)value_object->valuedouble;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "VHTMCSSet");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            array_size = cJSON_GetArraySize(value_object);
+            if ((size_t)array_size > sizeof(radio_cap->vht_mcs_set)) {
+                array_size = sizeof(radio_cap->vht_mcs_set);
+            }
+            for (int j = 0; j < array_size; j++) {
+                array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->vht_mcs_set[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
+
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio cap decode succcess\n", __func__, __LINE__);
 #ifdef CONFIG_IEEE80211AX
         /* WiFi6 (HE) capabilities */
         decode_param_bool(object, "WiFi6Supported", value_object);
@@ -4898,10 +4940,10 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
             }
         }
 
-        //decode_param_integer(cap_obj, "HE6GHzCapa", param);
-        //if (param != NULL && cJSON_IsNumber(param)) {
-        //    radio_cap->he_cap.6ghz_capa = (USHORT)param->valuedouble;
-        //}
+        decode_param_integer(object, "HE6GHzCapa", value_object);
+        if (value_object != NULL && cJSON_IsNumber(value_object)) {
+           radio_cap->he_6ghz_capa = (USHORT)value_object->valuedouble;
+        }
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE

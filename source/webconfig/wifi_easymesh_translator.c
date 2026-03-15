@@ -396,6 +396,9 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
 {
     void *radio_cap_ptr;
     wifi_radio_capabilities_t *radio_cap;
+    em_ap_ht_cap_t  *em_ht_cap;
+    em_ap_vht_cap_t *em_vht_cap;
+    em_ap_he_cap_t  *em_he_cap;
     em_radio_wifi6_cap_data_t *wifi6_cap;
     em_wifi7_agent_cap_t *wifi7_cap;
     em_wifi7_mlo_cap_support_tlv_t *wifi7_radio;
@@ -409,8 +412,112 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
     }
 
     radio_cap = &wifi_prop->radiocap[radio_index];
+    em_ht_cap = &cap_info->ht_cap;
+    em_vht_cap = &cap_info->vht_cap;
+    em_he_cap = &cap_info->he_cap;
     wifi6_cap = &cap_info->wifi6_cap;
     wifi7_cap = &cap_info->wifi7_cap;
+
+    memcpy(em_ht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    memcpy(em_vht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    // memcpy(em_he_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+
+    /* HT capabilities */
+    em_ht_cap->ht_sprt_40mhz = (radio_cap->ht_capab & (1 << 1)) ? 1 : 0;
+    em_ht_cap->gi_sprt_40mhz = (radio_cap->ht_capab & (1 << 6)) ? 1 : 0;
+    em_ht_cap->gi_sprt_20mhz = (radio_cap->ht_capab & (1 << 5)) ? 1 : 0;
+    int rx_streams = 0;
+    int tx_streams = 0;
+    for (int i = 0; i < 4; i++) {
+        if (radio_cap->mcs_set[i])
+            rx_streams = i + 1;
+    }
+    for (int i = 0; i < 4; i++) {
+        if (radio_cap->mcs_set[i])
+            tx_streams = i + 1;
+    }
+    em_ht_cap->max_sprt_rx_streams = rx_streams;
+    em_ht_cap->max_sprt_tx_streams = tx_streams;
+
+    uint16_t rx_map = radio_cap->vht_mcs_set[0] | (radio_cap->vht_mcs_set[1] << 8);
+    uint16_t tx_map = radio_cap->vht_mcs_set[4] | (radio_cap->vht_mcs_set[5] << 8);
+        em_vht_cap->sprt_tx_mcs = tx_map;
+    em_vht_cap->sprt_rx_mcs = rx_map;
+    em_vht_cap->gi_sprt_160mhz = (radio_cap->vht_capab & (1 << 6)) ? 1 : 0;
+    em_vht_cap->gi_sprt_80mhz  = (radio_cap->vht_capab & (1 << 5)) ? 1 : 0;
+    rx_streams = 0;
+    tx_streams = 0;
+    for (int i = 0; i < 8; i++) {
+        if (((rx_map >> (i * 2)) & 0x3) != 3)
+            rx_streams = i + 1;
+
+        if (((tx_map >> (i * 2)) & 0x3) != 3)
+            tx_streams = i + 1;
+    }
+    em_vht_cap->max_sprt_rx_streams = rx_streams;
+    em_vht_cap->max_sprt_tx_streams = tx_streams;
+    em_vht_cap->mu_beamformer_cap = (radio_cap->vht_capab & (1 << 19)) ? 1 : 0;
+    em_vht_cap->su_beamformer_cap = (radio_cap->vht_capab & (1 << 11)) ? 1 : 0;
+    em_vht_cap->sprt_160mhz    = (radio_cap->vht_capab & (1 << 2)) ? 1 : 0;
+    em_vht_cap->sprt_80_80_mhz = (radio_cap->vht_capab & (1 << 3)) ? 1 : 0;
+
+    phy = radio_cap->he_phy_cap;
+    mac = radio_cap->he_mac_cap;
+
+    memset(em_he_cap, 0, sizeof(em_he_cap));
+
+    /* 1. RUID */
+    memcpy(em_he_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+
+    /* 2. MCS (big-endian required) */
+    em_he_cap->sprt_mcs_len = 6;  // typical: 6 bytes (3 x u16)
+    for (int i = 0; i < em_he_cap->sprt_mcs_len / 2; i++) {
+        em_he_cap->sprt_tx_rx_mcs[i] =
+            ((uint16_t)radio_cap->he_mcs_nss_set[i * 2 + 1] << 8) |
+             (uint16_t)radio_cap->he_mcs_nss_set[i * 2];
+    }
+
+    /* 3. Channel width */
+    em_he_cap->sprt_160mhz =
+        (phy[0] & (1 << HE_PHY_CHAN_WIDTH_160_BIT)) ? 1 : 0;
+    em_he_cap->sprt_80_80_mhz =
+        (phy[0] & (1 << HE_PHY_CHAN_WIDTH_80P80_BIT)) ? 1 : 0;
+
+    /* 4. NSS extraction from MCS */
+    uint16_t mcs_map = em_he_cap->sprt_tx_rx_mcs[0];
+    int max_nss = 0;
+    for (int ss = 0; ss < 8; ss++) {
+        uint8_t val = (mcs_map >> (ss * 2)) & 0x3;
+        if (val != 3)  // 3 = not supported
+            max_nss = ss + 1;
+    }
+    em_he_cap->max_sprt_tx_streams = max_nss;
+    em_he_cap->max_sprt_rx_streams = max_nss;
+
+    /* 5. Beamforming */
+    em_he_cap->su_beamformer_cap =
+        (phy[3] & (1 << HE_PHY_SU_BEAMFORMER_BIT)) ? 1 : 0;
+    em_he_cap->mu_beamformer_cap =
+        (phy[4] & (1 << HE_PHY_MU_BEAMFORMER_BIT)) ? 1 : 0;
+
+    /* 6. OFDMA */
+    em_he_cap->ul_ofdma_cap =
+        (mac[4] & (1 << HE_MAC_UL_OFDMA_BIT)) ? 1 : 0;
+    em_he_cap->dl_ofdma_cap =
+        (mac[3] & (1 << HE_MAC_DL_OFDMA_BIT)) ? 1 : 0;
+
+    /* 7. UL MU-MIMO */
+    uint8_t max_ul_mumimo_rx = phy[8] & 0x0F;
+    em_he_cap->ul_mimo_cap = (max_ul_mumimo_rx > 0) ? 1 : 0;
+
+    /* 8. Derived capabilities */
+    em_he_cap->ul_mimo_ofdma_cap =
+        (em_he_cap->ul_mimo_cap && em_he_cap->ul_ofdma_cap) ? 1 : 0;
+    em_he_cap->dl_mimo_ofdma_cap =
+        (em_he_cap->dl_ofdma_cap && em_he_cap->mu_beamformer_cap) ? 1 : 0;
+
+
+
 
     memset(wifi6_cap, 0, sizeof(*wifi6_cap));
 
@@ -419,9 +526,6 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
         uint8_mac_to_string_mac(cap_info->ruid.mac, mac_str);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %d and mac:%s and radio_index:%d\n", __func__,
             __LINE__, radio_index, mac_str, radio_index);
-
-        phy = radio_cap->he_phy_cap;
-        mac = radio_cap->he_mac_cap;
 
         //AP role
         wifi6_cap->num_role = 1;
