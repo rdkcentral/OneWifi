@@ -48,6 +48,8 @@ libCcspWifiAgent_dml_webconfig_la_CPPFLAGS = -I$(top_srcdir)/../CcspCommonLibrar
 
 libCcspWifiAgent_dml_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
 
+libCcspWifiAgent_dml_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+
 libCcspWifiAgent_dml_webconfig_la_CPPFLAGS += $(EM_APP_FLAG)
 libCcspWifiAgent_dml_webconfig_la_SOURCES = dml_onewifi_api.c
 libCcspWifiAgent_dml_webconfig_la_LDFLAGS = -lccsp_common -lsecure_wrapper
