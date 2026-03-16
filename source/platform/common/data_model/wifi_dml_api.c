@@ -67,15 +67,6 @@ int set_output_string(scratch_data_buff_t *output_value, char *str)
     return RETURN_OK;
 }
 
-uint8_t rssi_to_rcpi(int rssi_dbm)
-{
-    if (rssi_dbm < -110)
-        return 0;
-    if (rssi_dbm > 0)
-        return 220;
-    return (rssi_dbm + 110) * 2;
-}
-
 /* Map entry structure for RSN selectors */
 typedef struct {
     const char *name;
