@@ -108,8 +108,6 @@ typedef struct bus_data_cb_func {
 
 int set_output_string(scratch_data_buff_t *output_value, char *str);
 
-uint8_t rssi_to_rcpi(int rssi_dbm);
-
 bool rsn_akm_selector_hex(const char *akm, char *out, size_t out_len);
 bool rsn_cipher_selector_hex(const char *cipher, char *out, size_t out_len);
 
