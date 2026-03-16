@@ -252,6 +252,7 @@ typedef struct wifi_ctrl {
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
     unsigned int        sta_tree_instance_num;
+    unsigned int        ignite_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
     wifi_apps_mgr_t      apps_mgr;
     rdk_dev_mode_type_t  network_mode; /* 0 - gateway, 1 - extender */
@@ -372,6 +373,7 @@ wifi_global_config_t* get_wifidb_wifi_global_config(void);
 wifi_radio_operationParam_t* get_wifidb_radio_map(uint8_t radio_index);
 wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index);
 wifi_vap_info_map_t* get_wifidb_vap_map(uint8_t radio_index);
+ignite_config_t* get_wifidb_ignite_config(uint8_t radio_index);
 wifi_GASConfiguration_t* get_wifidb_gas_config(void);
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex);
 wifi_preassoc_control_t * Get_wifi_object_preassoc_ctrl_parameter(uint8_t vapIndex);
@@ -380,6 +382,7 @@ wifi_front_haul_bss_t * Get_wifi_object_bss_parameter(uint8_t vapIndex);
 wifi_vap_security_t * Get_wifi_object_security_parameter(uint8_t vapIndex);
 wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void);
+ignite_config_t* get_ignite_config_by_name(char *name);
 wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void);
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t r_index);
 int get_device_config_list(char *d_list, int size, char *str);

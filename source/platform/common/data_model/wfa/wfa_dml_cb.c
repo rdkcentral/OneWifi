@@ -227,7 +227,15 @@ bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, r
         bool bool_val = capab_val & NSTR;
         return set_output_value(param_name, p_data, &bool_val);
     } else if (STR_CMP(param_name, "APMLDConfig.TIDLinkMapNegotiation")) {
-        bool bool_val = false; /* TODO Implement */
+        bool bool_val = false;
+        uint32_t radio_index = mld_grp->mld_vaps[0]->radio_index;
+
+        if (radio_index >= 0 && radio_index < MAX_NUM_RADIOS) {
+            bool_val = get_wifimgr_obj()->hal_cap.wifi_prop.radiocap[radio_index].TIDLinkMapNegotiation;
+        } else {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d invalid radio index\n", __FUNCTION__, __LINE__);
+        }
+
         return set_output_value(param_name, p_data, &bool_val);
     }
 
