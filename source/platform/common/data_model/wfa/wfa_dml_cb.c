@@ -43,12 +43,27 @@ typedef enum {
 
 static uint32_t wfa_hosts_find_index_by_mac(char const *sta_mac)
 {
+    /* Cache the last resolved MAC -> host_index mapping to avoid
+     * repeatedly scanning Device.Hosts.Host.{i} for the same MAC
+     * during a series of related parameter reads.
+     */
+    static mac_addr_str_t s_last_sta_mac = { 0 };
+    static uint32_t s_last_host_index = 0;
     bus_name_string_t param_name = { 0 };
     uint32_t num_hosts = 0;
     uint32_t i = 0;
 
     if (sta_mac == NULL) {
         return 0;
+    }
+
+    /* Fast path: if the last lookup was for the same MAC address and
+     * returned a valid index, reuse it instead of doing a full scan.
+     */
+    if ((s_last_host_index != 0) &&
+        (s_last_sta_mac[0] != '\0') &&
+        (strcasecmp(s_last_sta_mac, sta_mac) == 0)) {
+        return s_last_host_index;
     }
 
     num_hosts = wifi_dml_bus_get_param_uint32("Device.Hosts.HostNumberOfEntries");
@@ -72,6 +87,9 @@ static uint32_t wfa_hosts_find_index_by_mac(char const *sta_mac)
         free(phys_addr);
 
         if (match) {
+            /* Update cache for subsequent lookups of the same MAC. */
+            snprintf(s_last_sta_mac, sizeof(s_last_sta_mac), "%s", sta_mac);
+            s_last_host_index = i;
             return i;
         }
     }

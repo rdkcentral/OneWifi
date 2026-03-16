@@ -81,17 +81,38 @@ char *wifi_dml_bus_get_param_string(char const *param_name)
 
     rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, param_name, &data);
     if (rc == bus_error_success) {
-        if ((data.data_type == bus_data_type_string || data.data_type == bus_data_type_bytes) &&
-            (data.raw_data.bytes != NULL)) {
-            out = strdup((char *)data.raw_data.bytes);
-        } else if (data.data_type == bus_data_type_uint32) {
+        switch (data.data_type) {
+        case bus_data_type_string:
+            if (data.raw_data.bytes != NULL) {
+                out = strdup((char *)data.raw_data.bytes);
+            }
+            break;
+        case bus_data_type_bytes:
+            if (data.raw_data.bytes != NULL && data.raw_data_len > 0) {
+                size_t len = (size_t)data.raw_data_len;
+
+                out = (char *)malloc(len + 1);
+                if (out != NULL) {
+                    memcpy(out, data.raw_data.bytes, len);
+                    out[len] = '\0';
+                }
+            }
+            break;
+        case bus_data_type_uint32:
             snprintf(num_buf, sizeof(num_buf), "%u", data.raw_data.u32);
             out = strdup(num_buf);
-        } else if (data.data_type == bus_data_type_int32) {
+            break;
+        case bus_data_type_int32:
             snprintf(num_buf, sizeof(num_buf), "%d", data.raw_data.i32);
             out = strdup(num_buf);
-        } else if (data.data_type == bus_data_type_boolean) {
+            break;
+        case bus_data_type_boolean:
             out = strdup(data.raw_data.b ? "true" : "false");
+            break;
+        default:
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: unsupported data type:%d for param '%s'\n",
+                __func__, __LINE__, data.data_type, param_name);
+            break;
         }
     }
 

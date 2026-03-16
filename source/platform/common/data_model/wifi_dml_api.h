@@ -107,6 +107,13 @@ typedef struct bus_data_cb_func {
 } bus_data_cb_func_t;
 
 int set_output_string(scratch_data_buff_t *output_value, char *str);
+/**
+ * Retrieve the value of a data model parameter as a string.
+ *
+ * The returned string is dynamically allocated (e.g. via strdup) and the
+ * caller is responsible for freeing it using free(). On error or if the
+ * parameter cannot be obtained, NULL is returned.
+ */
 char    *wifi_dml_bus_get_param_string(char const *param_name);
 uint32_t wifi_dml_bus_get_param_uint32(char const *param_name);
 
