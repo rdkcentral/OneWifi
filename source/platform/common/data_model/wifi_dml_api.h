@@ -117,8 +117,6 @@ int set_output_string(scratch_data_buff_t *output_value, char *str);
 char    *wifi_dml_bus_get_param_string(char const *param_name);
 uint32_t wifi_dml_bus_get_param_uint32(char const *param_name);
 
-uint8_t rssi_to_rcpi(int rssi_dbm);
-
 bool rsn_akm_selector_hex(const char *akm, char *out, size_t out_len);
 bool rsn_cipher_selector_hex(const char *cipher, char *out, size_t out_len);
 

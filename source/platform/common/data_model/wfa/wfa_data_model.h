@@ -27,7 +27,6 @@
 
 #define MAX_INSTANCE_LEN        32
 #define MAX_CAPS_STR_LEN        32
-#define ARRAY_SIZE(a)           (sizeof(a) / sizeof(a[0]))
 
 /* Device.WiFi.DataElements.Network */
 #define DE_NETWORK_ID           DATAELEMS_NETWORK       "ID"

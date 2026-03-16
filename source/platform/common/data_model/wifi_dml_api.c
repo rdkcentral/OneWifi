@@ -142,15 +142,6 @@ uint32_t wifi_dml_bus_get_param_uint32(char const *param_name)
     return value;
 }
 
-uint8_t rssi_to_rcpi(int rssi_dbm)
-{
-    if (rssi_dbm < -110)
-        return 0;
-    if (rssi_dbm > 0)
-        return 220;
-    return (rssi_dbm + 110) * 2;
-}
-
 /* Map entry structure for RSN selectors */
 typedef struct {
     const char *name;

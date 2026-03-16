@@ -27,6 +27,8 @@
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include "utils/includes.h"
+#include "utils/common.h"
 #include "bus.h"
 #include "wifi_data_model.h"
 #include "wifi_dml_api.h"
@@ -482,6 +484,15 @@ bus_error_t wfa_stamld_get_param_value(void *obj_ins_context, char *param_name, 
     }
     else if (STR_CMP(param_name, "LastConnectTime")) {
         uint32_t last_connect_time = 0;
+
+        for (UINT i = 0; i < stamld->affiliated_sta_count; i++) {
+            assoc_dev_data_t *aff_sta = stamld->affiliated_sta[i];
+
+            if (aff_sta && aff_sta->last_connect_time > last_connect_time) {
+                last_connect_time = aff_sta->last_connect_time;
+            }
+        }
+
         return set_output_value(param_name, p_data, &last_connect_time);
     } else if (STR_CMP(param_name, "BytesReceived")) {
         uint32_t total = WFA_STAMLD_SUM(stamld, dev_stats.cli_BytesReceived);
