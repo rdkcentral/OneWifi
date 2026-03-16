@@ -3730,11 +3730,18 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 assoc_dev_data.dev_stats.cli_MaxDownlinkRate = value_object->valuedouble;
             }
 
-             value_object = cJSON_GetObjectItem(assoc_client, "MaxUplinkRate");
+            value_object = cJSON_GetObjectItem(assoc_client, "MaxUplinkRate");
             if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
                 wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Missing or invalid MaxUplinkRate\n", __func__, __LINE__);
             } else {
                 assoc_dev_data.dev_stats.cli_MaxUplinkRate = value_object->valuedouble;
+            }
+
+            value_object = cJSON_GetObjectItem(assoc_client, "LastConnectTime");
+            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+                wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Missing or invalid LastConnectTime\n", __func__, __LINE__);
+            } else {
+                assoc_dev_data.last_connect_time = value_object->valuedouble;
             }
 
             if (decode_frame_data(assoc_client, &assoc_dev_data.sta_data.msg_data) !=

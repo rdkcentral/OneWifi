@@ -881,6 +881,7 @@ typedef struct {
     client_state_t client_state;
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
+    unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;
