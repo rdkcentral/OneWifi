@@ -23,6 +23,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "utils/includes.h"
+#include "utils/common.h"
 #include "bus.h"
 #include "wifi_data_model.h"
 #include "wifi_dml_api.h"
