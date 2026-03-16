@@ -66,6 +66,12 @@ extern "C" {
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
+#define WIFI_IGNITE_NAMESPACE               "Device.WiFi.Ignite_Control.{i}."
+#define WIFI_IGNITE_MIN_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MinChutilThreshold"
+#define WIFI_IGNITE_MAX_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MaxChutilThreshold"
+#define WIFI_IGNITE_SNR_THRESHOLD           "Device.WiFi.Ignite_Control.{i}.SNRThreshold"
+#define WIFI_IGNITE_SNR_DIFFERENCE        "Device.WiFi.Ignite_Control.{i}.SNRDifference"
+#define WIFI_IGNITE_APPLY_CONFIG            "Device.WiFi.ApplyIgniteSettings"
 #define WIFI_COLLECT_STATS_TABLE            "Device.WiFi.CollectStats.Radio.{i}."
 #define WIFI_COLLECT_STATS_RADIO_ON_CHANNEL_STATS      "Device.WiFi.CollectStats.Radio.{i}.ScanMode.on_channel.ChannelStats"
 #define WIFI_COLLECT_STATS_RADIO_OFF_CHANNEL_STATS     "Device.WiFi.CollectStats.Radio.{i}.ScanMode.off_channel.ChannelStats"
@@ -78,10 +84,13 @@ extern "C" {
 #define WIFI_COLLECT_STATS_VAP_TABLE                   "Device.WiFi.CollectStats.AccessPoint.{i}."
 #define WIFI_COLLECT_STATS_ASSOC_DEVICE_STATS          "Device.WiFi.CollectStats.AccessPoint.{i}.AssociatedDeviceStats"
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
+#define WIFI_NOTIFY_INTEROP_DETAILS                    "Device.WiFi.AccessPoint.{i}.InteropDetails" 
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
-
-#ifdef CONFIG_IEEE80211BE
+#define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
+#define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
+#define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
+#define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -89,8 +98,6 @@ extern "C" {
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
-
-#endif /* CONFIG_IEEE80211BE */
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -166,7 +173,8 @@ typedef enum {
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_csi_analytics = wifi_app_inst_base << 19,
-    wifi_app_inst_max = wifi_app_inst_base << 20
+    wifi_app_inst_link_quality = wifi_app_inst_base << 20,
+    wifi_app_inst_max = wifi_app_inst_base << 21
 } wifi_app_inst_t;
 
 typedef struct {
@@ -269,6 +277,23 @@ typedef struct {
     trace_headers_t                   t_header;
     unsigned char                     blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
 } active_msmt_t;
+
+typedef struct {
+    char ignite_name[32];
+    float min_chanutil_threshold;
+    float max_chanutil_threshold;
+    float SNR_threshold;
+    float SNR_difference;
+}ignite_config_t;
+
+// Global pending ignite configuration
+typedef struct {
+    ignite_config_t config[MAX_NUM_RADIOS];
+    bool is_pending;
+    pthread_mutex_t lock;
+} apply_ignite_config_t;
+
+extern apply_ignite_config_t g_apply_ignite_config;
 
 typedef struct {
     int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
@@ -452,6 +477,29 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
+    double score;
+    double snr;
+    double per;
+    double phy;
+    char time[1024];
+} sample_t;
+
+typedef struct {
+    char   mac[18];
+    int    vap_index;
+    double threshold;
+    int    alarm;
+    char   reporting_time[32];
+    size_t sample_count;
+    sample_t *samples;   
+} link_report_t;
+
+typedef struct {
+    size_t link_count;
+    link_report_t *links;
+} report_batch_t;
+
+typedef struct {
     unsigned int rss_check_interval; //minutes
     unsigned int rss_threshold; //kbytes
     unsigned int rss_maxlimit; //kbytes
@@ -490,6 +538,8 @@ typedef struct {
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
+    bool link_quality_rfc;
+    bool xfi_tel_enable_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -536,6 +586,7 @@ typedef struct {
     int mgt_frame_rate_limit;
     int mgt_frame_rate_limit_window_size;
     int mgt_frame_rate_limit_cooldown_time;
+    double ignite_link_quality_threshold;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
@@ -831,11 +882,27 @@ typedef struct {
 typedef struct {
     mac_address_t sta_mac;
     mac_address_t ap_mac;
+    char operating_standard[64];
     int sta_status_counts[6];
-    int sta_reason_counts[9];
+    int sta_reason_counts[5];
     int ap_status_counts[6];
-    int ap_reason_counts[9];
+    int ap_reason_counts[5];
+    int mgmt_reason_counts[4];
+    int status;
+    int channel;
+    int variant;
+    int rssi;
+    int snr;
+    int noise_floor;
+    int channel_util;
+    int vlan_id;
+    int access_accept_counts;
+    int eap_success_counts;
+    int eap_failure_reason_counts;
+    int ap_eap_reason_counts[12];
+    int sta_eap_reason_counts[12];
 } interop_data_t;
+
 
 typedef struct {
     char    name[16];
@@ -872,6 +939,7 @@ typedef enum {
 typedef struct {
     char wpa_key_mgmt[WPA_KEY_MGMT_LEN];
     char pairwise_cipher[WPA_KEY_MGMT_LEN];
+    USHORT rsn_capabilities;
 } __attribute__((__packed__)) conn_security_t;
 
 typedef struct {
@@ -922,6 +990,7 @@ typedef struct {
     long            deauth_gate_time;
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
+    bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
 
     /* wifi7 client specific data */
@@ -1147,15 +1216,16 @@ typedef struct {
 #define EM_MAX_NEIGHBORS 16
 #define EM_MAX_RESULTS 32
 #define EM_MAX_CHANNELS 64
-#define EM_MAX_STA_PER_BSS 64
 
 typedef char marker_name[32];
 
+
 typedef struct {
-    char collection_start_time[32];
+    char collection_start_time[128];
     unsigned int reporting_interval;
     float link_quality_threshold;
 } alarm_report_policy_t;
+
 
 typedef struct {
     int interval;
