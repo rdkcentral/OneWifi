@@ -341,6 +341,12 @@ struct wifiEnvironmentEnumStrMap wifiEnviromentMap[] =
     {wifi_operating_env_non_country, "X"}
 };
 
+bool is_zero_mac(const uint8_t *mac)
+{
+    static const uint8_t zero[6] = {0};
+    return memcmp(mac, zero, 6) == 0;
+}
+
 void write_to_file(const char *file_name, char *fmt, ...)
 {
     FILE *fp = NULL;
