@@ -733,7 +733,21 @@ void ext_start_scan(vap_svc_t *svc)
         ext->candidates_list.scan_list = NULL;
     }
     ext->scanned_radios = 0;
-    
+#ifndef FEATURE_SINGLE_PHY
+    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        radio_oper_param = get_wifidb_radio_map(radio_index);
+        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+            if (get_sta_ssid_from_radio_config_by_radio_index(radio_index, ssid) == 0 &&
+                strlen(ssid) > 0) {
+                wifi_hal_rnr_init(radio_index, ssid);
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d [RNR] init with 6G STA ssid=\"%s\" radio=%u\n",
+                    __func__, __LINE__, ssid, radio_index);
+            }
+            break;
+        }
+    }
+#endif
     int dwell_time = get_dwell_time();
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         if (ext->is_radio_ignored == true && radio_index == ext->ignored_radio_index) {
@@ -750,6 +764,13 @@ void ext_start_scan(vap_svc_t *svc)
         }
 
         radio_oper_param = get_wifidb_radio_map(radio_index);
+
+        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+            wifi_util_dbg_print(WIFI_CTRL,
+                "%s:%d [RNR] defer 6G radio %u\n", __func__, __LINE__, radio_index);
+            continue;
+        }
+
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
                 radio_oper_param->DfsEnabled) != RETURN_OK) {
