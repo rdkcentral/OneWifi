@@ -234,7 +234,7 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
                  scores[i].score += snr_diff * snr_weighting_factor;
              }
         }
-	wifi_util_dbg_print(WIFI_CTRL, "[%s %d] score : %f\n", __func__, __LINE__, scores[i].score);
+	    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] score : %f\n", __func__, __LINE__, scores[i].score);
     }
 
     // Step 3: Sort by descending score
