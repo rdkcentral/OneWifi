@@ -4360,11 +4360,13 @@ bool wps_get_param_string_value(void *obj_ins_context, char *param_name, scratch
 
     DM_CHECK_NULL_WITH_RC(p_dm_vap_default, false);
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __func__,
             __LINE__, pcfg->vap_name);
         return true;
     }
+#endif
 
     if (STR_CMP(param_name, "ConfigMethodsSupported")) {
         char buff[128] = {0};
@@ -4407,10 +4409,14 @@ bool wps_set_param_bool_value(void *obj_ins_context, char *param_name, bool outp
         return false;
     }
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return true;
     } else if (is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#else
+    if (!isVapSTAMesh(pcfg->vap_index) && is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#endif
         wifi_util_error_print(WIFI_DMCLI,"%s:%d [%s] does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return false;
     }
@@ -4475,10 +4481,14 @@ bool wps_set_param_int_value(void *obj_ins_context, char *param_name, int output
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)obj_ins_context;
     DM_CHECK_NULL_WITH_RC(pcfg, false);
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return true;
     } else if (is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#else
+    if (!isVapSTAMesh(pcfg->vap_index) && is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#endif
         wifi_util_error_print(WIFI_DMCLI,"%s:%d [%s] does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return false;
     }
@@ -4498,10 +4508,14 @@ bool wps_set_param_uint_value(void *obj_ins_context, char *param_name, uint32_t 
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)obj_ins_context;
     DM_CHECK_NULL_WITH_RC(pcfg, false);
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return true;
     } else if (is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#else
+    if (!isVapSTAMesh(pcfg->vap_index) && is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#endif
         wifi_util_error_print(WIFI_DMCLI,"%s:%d [%s] does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return false;
     }
@@ -4524,10 +4538,14 @@ bool wps_set_param_string_value(void *obj_ins_context, char *param_name, scratch
         return false;
     }
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return true;
     } else if (is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#else
+    if (!isVapSTAMesh(pcfg->vap_index) && is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#endif
         wifi_util_error_print(WIFI_DMCLI,"%s:%d [%s] does not support configuration\n", __func__, __LINE__, pcfg->vap_name);
         return false;
     }
