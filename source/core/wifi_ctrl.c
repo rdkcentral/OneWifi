@@ -423,7 +423,9 @@ unsigned int get_Uptime(void)
     system(cmd);
     fp = fopen(FILE_SYSTEM_UPTIME, "r");
     if (fp != NULL) {
-        fscanf(fp, "%u", &upSecs);
+        if (fscanf(fp, "%u", &upSecs) != 1) {
+            wifi_util_error_print(WIFI_CTRL,"%s : failed to read uptime\n", __FUNCTION__);
+        }
         wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
         fclose(fp);
     }
@@ -604,10 +606,10 @@ bool check_for_greylisted_mac_filter(void)
                     vap_index = wifi_vap_map->vap_array[itrj].vap_index;
                     l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-                    if (l_rdk_vap_array->acl_map != NULL) {
+                    if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                         acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
                         while(acl_entry != NULL) {
-                            if (acl_entry->mac != NULL && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
+                            if (acl_entry->mac[0] != '\0' && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
                                 return true;
                             }
                             acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
@@ -680,7 +682,8 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     }
 
 #if defined EASY_MESH_NODE
-   if (ctrl->network_mode == rdk_dev_mode_type_em_node ) {
+   if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
+       ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Don't need to proceed for DML fetch for RemoteAgent case, NetworkMode: %d\n",
                 __func__, __LINE__, ctrl->network_mode);
             return;
@@ -880,10 +883,11 @@ int start_wifi_services(void)
             start_extender_vaps(radio_index);
         }
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode, VAPs will be created by EasyMesh\n",__func__, __LINE__);
         for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
             start_radios(rdk_dev_mode_type_gw, radio_index);
-            start_gateway_vaps(radio_index);
+            /* Skip VAP creation - EasyMesh controller will configure and create VAPs */
+            /* start_gateway_vaps(radio_index); */
         }
     }
 
@@ -1101,7 +1105,9 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
 
     res->radio_index = radio_index;
     res->num = *num;
-    memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+    if (*num > 0 && *bss != NULL) {
+        memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+    }
 
     if (is_sta_enabled()) {
         if(push_event_to_ctrl_queue(res, sizeof(scan_results_t), wifi_event_type_hal_ind,
@@ -1713,6 +1719,12 @@ int init_wireless_interface_mac()
                 }
             }
 
+            if (wifi_vap_info == NULL) {
+                free(hal_vap_info_map);
+                hal_vap_info_map = NULL;
+                return RETURN_ERR;
+            }
+
             //For backhaul interfaces, update the sta_info.mac
             if (strncmp((char *)hal_vap_info_map->vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
                 memcpy(wifi_vap_info->u.sta_info.mac, hal_vap_info_map->vap_array[j].u.sta_info.mac, sizeof(wifi_vap_info->u.sta_info.mac));
@@ -1882,6 +1894,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     ctrl->exit_ctrl = false;
     ctrl->ctrl_initialized = true;
     register_endpoint_components(ctrl);
+    init_ignite_function();
     ctrl_queue_loop(ctrl);
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
@@ -2416,6 +2429,23 @@ rdk_wifi_vap_info_t* get_wifidb_rdk_vaps(uint8_t radio_index)
     }
 }
 
+ignite_config_t *get_ignite_config_by_name(char *ignite_name)
+{
+    if ((ignite_name == NULL) || (strlen(ignite_name) == 0)) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d Ignite name is NUll or empty\n", __func__, __LINE__);
+        return NULL;
+    }
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    unsigned int radio_index = getNumberRadios();
+    for (unsigned int i =0; i < radio_index; i++) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s %d Input : %s Ignite : %s\n", __func__, __LINE__, ignite_name, g_wifi_mgr->ignite_config[i].ignite_name);
+        if (strcmp(g_wifi_mgr->ignite_config[i].ignite_name, ignite_name) == 0) {
+            return &g_wifi_mgr->ignite_config[i];
+        }
+    } 
+    return NULL;
+}
+
 wifi_vap_info_map_t* get_wifidb_vap_map(uint8_t radio_index)
 {
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
@@ -2447,6 +2477,17 @@ wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index)
         wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
         return NULL;
     }
+}
+
+ignite_config_t* get_wifidb_ignite_config(uint8_t radio_index)
+{
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    if (radio_index < getNumberRadios()) { 
+        return &g_wifi_mgr->ignite_config[radio_index];
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
+        return NULL;
+    }  
 }
 
 wifi_GASConfiguration_t* get_wifidb_gas_config(void)
@@ -2822,6 +2863,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
     g_wifi_mgr->ctrl.rfc_params.link_quality_rfc =
         g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
+    g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
+        g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
@@ -2895,8 +2938,8 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     for (i = 0; i < map->num_vaps; i++) {
         if (map->vap_array[i].vap_index == index) {
             found = true;
-	    wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
-	    strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
+            wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
+            strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
             break;
         }
     }
