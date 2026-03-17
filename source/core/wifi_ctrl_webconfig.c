@@ -1569,31 +1569,10 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
 
     if (global_param_changed) {
         param = &data_global_config->global_parameters;
-        wifi_global_config_t *mgr_global_config = get_wifidb_wifi_global_config();
 
         wifi_hal_set_mgt_frame_rate_limit(param->mgt_frame_rate_limit_enable,
             param->mgt_frame_rate_limit, param->mgt_frame_rate_limit_window_size,
             param->mgt_frame_rate_limit_cooldown_time);
-
-        if (mgr_global_config->global_parameters.ignite_link_quality_threshold !=
-            param->ignite_link_quality_threshold) {
-            wifi_util_info_print(WIFI_CTRL,
-                "%s:%d ignite_link_quality_threshold changed from %lf to %lf\n", __func__, __LINE__,
-                mgr_global_config->global_parameters.ignite_link_quality_threshold,
-                param->ignite_link_quality_threshold);
-
-            linkquality_data_t *lq_data = (linkquality_data_t *)malloc(sizeof(linkquality_data_t));
-            if (lq_data == NULL) {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate linkquality_data_t\n",
-                    __func__, __LINE__);
-                return RETURN_ERR;
-            }
-            memset(lq_data, 0, sizeof(linkquality_data_t));
-            lq_data->server_arg.threshold = param->ignite_link_quality_threshold;
-
-            apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
-                wifi_event_exec_link_param_reinit, lq_data, sizeof(linkquality_data_t));
-        }
 
         wifi_util_dbg_print(WIFI_CTRL,
             "Global config value is changed hence update the global config in DB\n");
