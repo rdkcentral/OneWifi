@@ -186,6 +186,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_monitor_get_radio_temperature)
         DOC2S(wifi_event_monitor_set_subscribe)
         DOC2S(wifi_event_monitor_action_frame)
+        DOC2S(wifi_event_monitor_eap_status)
         DOC2S(wifi_event_monitor_max)
         DOC2S(wifi_event_type_xfinity_tunnel_up)
         DOC2S(wifi_event_type_xfinity_tunnel_down)
@@ -770,14 +771,9 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
         event->route = *rt;
     }
 
-    if (msg != NULL) {
         /* copy msg to data */
         memcpy(event->u.core_data.msg, msg, len);
         event->u.core_data.len = len;
-    } else {
-        event->u.core_data.msg = NULL;
-        event->u.core_data.len = 0;
-    }
 
     pthread_mutex_lock(&ctrl->queue_lock);
     is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
