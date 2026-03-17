@@ -1957,8 +1957,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d cmd : %s\n",__func__,__LINE__, cmd);
                 get_stubs_descriptor()->v_secure_system_fn(cmd);
 
-                ret = publish_endpoint_status_to_wan(ctrl, sta_data->stats.connect_status);
-                if (ret == RETURN_ERR) {
+                rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
+                if (rc != bus_error_success) {
                     wifi_util_error_print(WIFI_CTRL,"IGNITE_RF_DOWN: Failed to publish connect status to WM\n");
                 } else {
                     wifi_util_info_print(WIFI_CTRL,"IGNITE_RF_DOWN: Connect status sent successfully to the WM\n");
@@ -2066,9 +2066,10 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         }
 
         if (ctrl->rf_status_down == true) {
-            ret = publish_endpoint_status_to_wan(ctrl, sta_data->stats.connect_status);
+            rc = 0;
+	    rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
 
-            if (ret == RETURN_ERR) {
+            if (rc != bus_error_success) {
                 wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Failed to publish disconnect status to WM\n");
             } else {
                 wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Disconnect status sent successfully to the WM\n");
@@ -2133,7 +2134,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         data.data_type = bus_data_type_bytes;
         data.raw_data.bytes = (void *)&sta_conn_info;
         data.raw_data_len = sizeof(wifi_sta_conn_info_t);
-
+        rc = 0;
         rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
         if (rc != bus_error_success) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
