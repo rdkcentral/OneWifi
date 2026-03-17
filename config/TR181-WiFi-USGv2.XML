@@ -290,6 +290,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>LinkQuality</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>X_RDKCENTRAL-COM_MemwrapTool_RFC</name>
             <type>boolean</type>
             <syntax>bool</syntax>
@@ -351,6 +357,12 @@
         </parameter>
         <parameter>
             <name>WPA3_Personal_Compatibility</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
+            <name>Xfi_Tel_Enable</name>
             <type>boolean</type>
             <syntax>bool</syntax>
             <writable>true</writable>
@@ -2975,7 +2987,7 @@ INSTMSMT_PH2 -->
                                     <type>string</type>
                                     <syntax>string</syntax>
                                     <writable>true</writable>
-                                </parameter>
+			        </parameter>
                             </parameters>
                             <objects>
                                 <object>

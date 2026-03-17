@@ -31,7 +31,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_passpoint.h"
 #include "wifi_stubs.h"
-
+#include "run_qmgr.h"
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
 #define MAX_VAP_INDEX 24
 
@@ -816,13 +816,15 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info = { 0 };
+    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_6g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info = { 0 };
     wifi_platform_property_t *wifi_prop = (&(get_wifimgr_obj())->hal_cap.wifi_prop);
     uint8_t num_radios = getNumberRadios();
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
     wifi_vap_info_map_t *tmp_vap_map = NULL;
+
+    bool hotspot_5g_found = false;
 
     tmp_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
     if (tmp_vap_map == NULL) {
@@ -836,6 +838,9 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(getApFromRadioIndex(radio_indx, VAP_PREFIX_LNF_PSK));
         if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
             lnf_2g_vap = lnf_vap_info;
+        }
+        if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_6_G) != NULL) {
+            lnf_6g_vap = lnf_vap_info;
         }
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
             if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
@@ -891,6 +896,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
             if (isVapHotspotSecure5g(wifi_vap_map->vap_array[j].vap_index))
             {
                 memcpy((unsigned char *)&hotspot_5g_vap_info, (unsigned char *)&tmp_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+                hotspot_5g_found = true;
             }
             if(pub_svc->update_fn(pub_svc,radio_indx, tmp_vap_map, rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to create vaps\n", __func__,__LINE__);
@@ -910,9 +916,9 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     tmp_vap_map = NULL;
                     return;
                 }
-                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && should_process_hotspot_config_change(lnf_vap_info, &tmp_vap_map->vap_array[0])) {
+                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && !strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_6_G) && should_process_hotspot_config_change(lnf_vap_info, &tmp_vap_map->vap_array[0])) {
                     if (update_vap_params_to_hal_and_db(lnf_vap_info, tmp_vap_map->vap_array[0].u.bss_info.enabled) == -1) {
-                        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF VAP RADIUS config from Hotspot 5G\n", __func__,__LINE__);
                         free(tmp_vap_map);
                         tmp_vap_map = NULL;
                         return;
@@ -935,14 +941,17 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     if (!lnf_2g_vap)
     {
         wifi_util_error_print(WIFI_CTRL,"%s:%d LnF 2.4GHz VAP is NULL\n", __func__,__LINE__);
-        return;
-    }
-    if (should_process_hotspot_config_change(lnf_2g_vap, &hotspot_5g_vap_info)) {
-        if (update_vap_params_to_hal_and_db(lnf_2g_vap, hotspot_5g_vap_info.u.bss_info.enabled) == -1)
-        {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
+    } else if (hotspot_5g_found && should_process_hotspot_config_change(lnf_2g_vap, &hotspot_5g_vap_info)) {
+        if (update_vap_params_to_hal_and_db(lnf_2g_vap, lnf_2g_vap->u.bss_info.enabled) == -1) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF 2G vaps\n", __func__,__LINE__);
         }
-        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name ,wifi_hotspot_action_to_string(param));
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s RADIUS config updated from Hotspot 5G\n",__func__,__LINE__,lnf_2g_vap->vap_name);
+    }
+    if (hotspot_5g_found && lnf_6g_vap && should_process_hotspot_config_change(lnf_6g_vap, &hotspot_5g_vap_info)) {
+        if (update_vap_params_to_hal_and_db(lnf_6g_vap, lnf_6g_vap->u.bss_info.enabled) == -1){
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF 6g vaps\n", __func__,__LINE__);
+        }
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s RADIUS config updated from Hotspot 5G\n",__func__,__LINE__,lnf_6g_vap->vap_name);
     }
 }
 
@@ -1950,13 +1959,13 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
     free(removed_dev);
     if (old_count > 0) {
         *new_count = old_count - 1;
-	}
+    }
     if (((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index)))){
         if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index, *new_count, old_count) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
         }
     }
-	return RETURN_OK;
+    return RETURN_OK;
 }
 
 void process_disassoc_device_event(void *data)
@@ -2386,6 +2395,11 @@ void process_wpa3_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+            __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -2726,6 +2740,31 @@ void process_csi_analytics_rfc(bool type)
     return;
 }
 
+void process_link_quality_rfc(bool type)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+
+    rfc_param->link_quality_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+        rfc_param->link_quality_rfc);
+    if( rfc_param->link_quality_rfc) {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        wifi_util_error_print(WIFI_CTRL, "started link quality app %s:%d\n", __func__, __LINE__);
+    } else {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        wifi_util_error_print(WIFI_CTRL, "stopped link quality app %s:%d\n", __func__, __LINE__);
+    }
+    return;
+}
+
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -2734,6 +2773,21 @@ void process_tcm_rfc(bool type)
     rfc_param->tcm_enabled_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
+        type);
+}
+
+void process_xfi_tel_enable_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Xfi Tel Enable RFC: %d\n", __FUNCTION__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+    rfc_param->xfi_tel_enable_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Xfi Tel Enable RFC: %d\n", __FUNCTION__, __LINE__, 
         type);
 }
 
@@ -3382,7 +3436,14 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             {
                 for (UINT j = i; j < i+channelsInBlock; j++)
                 {
-                    radio_params->channel_map[j].ch_state = chan_state;
+                    if (radio_params->channel_map[j].ch_state == CHAN_STATE_DFS_NOP_START &&
+                        ch_chg->sub_event != WIFI_EVENT_RADAR_NOP_FINISHED) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s:%d Channel %d already in NOP_START, ignoring state change to %d from radar subtype %d\n",
+                            __func__, __LINE__, ch_chg->channel, chan_state, radio_params->channel_map[j].ch_state);
+                    } else {
+                        radio_params->channel_map[j].ch_state = chan_state;
+                    }
                 }
                 break;
             }
@@ -3730,6 +3791,11 @@ void process_rsn_override_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+                __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -3745,7 +3811,8 @@ void process_rsn_override_rfc(bool type)
         memset(new_sec_mode, 0, sizeof(new_sec_mode));
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, old_sec_mode);
         if(ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string for mode %d\n",
+                __func__, __LINE__, vapInfo->u.bss_info.security.mode);
         }
 
         if(type) {
@@ -3766,7 +3833,7 @@ void process_rsn_override_rfc(bool type)
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
             }
 
-	    if(rfc_param->wpa3_rfc) {
+        if(rfc_param->wpa3_rfc) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -3780,7 +3847,7 @@ void process_rsn_override_rfc(bool type)
 
         wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
             __func__, __LINE__, old_sec_mode, new_sec_mode);
-        if( (strcmp(old_sec_mode, new_sec_mode) != 0) && (new_sec_mode != NULL || old_sec_mode != NULL)) {
+        if (strcmp(old_sec_mode, new_sec_mode) != 0) {
             notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
         }
 
@@ -3940,6 +4007,12 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_link_quality_rfc:
+        process_link_quality_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_xfi_tel_enable_rfc:
+        process_xfi_tel_enable_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
@@ -4207,9 +4280,24 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         webconfig_data_free(data);
         break;
 
+    case wifi_event_webconfig_set_ignite_data:
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+                sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)&data->u.decoded.ignite_config, (unsigned char *)&mgr->ignite_config, getNumberRadios() * sizeof(ignite_config_t));
+        if (raw == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data\n", __func__, __LINE__);
+            free(data);
+            data = NULL;
+            return;
+        }
+        webconfig_decode(config, data, raw);
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
+        webconfig_data_free(data);
+        break;
+
     case wifi_event_webconfig_set_data_tunnel:
         memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-            sizeof(wifi_hal_capability_t));
+                sizeof(wifi_hal_capability_t));
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);

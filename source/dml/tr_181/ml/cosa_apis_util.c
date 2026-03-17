@@ -426,6 +426,9 @@ CosaUtilGetLowerLayers
                             if ( ( 0 == CosaGetParamValueString(ucEntryParamName, ucEntryNameValue, &ulEntryNameLen)) &&
                                  AnscEqualString(ucEntryNameValue, (char*)pKeyword , TRUE ) )
                             {
+                                if (pMatchedLowerLayer) {
+                                    AnscFreeMemory(pMatchedLowerLayer);
+                                }
                                 pMatchedLowerLayer =  (PUCHAR)AnscCloneString(ucLowerEntryName);
                                 CcspTraceInfo(("----------CosaUtilGetLowerLayers, J:%ld, LowerLayer:%s\n", j, pMatchedLowerLayer));
                                 break;

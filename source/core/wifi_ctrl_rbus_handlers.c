@@ -26,7 +26,9 @@
 #include "wifi_util.h"
 #include "wifi_monitor.h"
 #include "wifi_webconfig.h"
+#include "run_qmgr.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
@@ -34,6 +36,7 @@
 #define MAX_STR_LEN 128
 #define MAX_STATUS_LEN 5
 
+apply_ignite_config_t g_apply_ignite_config;
 
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
     char *eventName)
@@ -110,6 +113,35 @@ static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_
     }
     return ret;
 }
+static uint32_t quality_flags_to_mask(const quality_flags_t* f)
+{
+    uint32_t mask = 0;
+
+    if(f->downlink_snr) mask |= LINKQ_DL_SNR;
+    if(f->downlink_per) mask |= LINKQ_DL_PER;
+    if(f->downlink_phy) mask |= LINKQ_DL_PHY;
+    if(f->uplink_snr)   mask |= LINKQ_UL_SNR;
+    if(f->uplink_per)   mask |= LINKQ_UL_PER;
+    if(f->uplink_phy)   mask |= LINKQ_UL_PHY;
+    if(f->aggregate)    mask |= LINKQ_AGGREGATE;
+    if(f->int_reconn)   mask |= LINKQ_INT_RECONN;
+
+    return mask;
+}
+
+static void mask_to_quality_flags(uint32_t mask, quality_flags_t* f)
+{
+    memset(f, 0, sizeof(*f));
+
+    f->downlink_snr = mask & LINKQ_DL_SNR;
+    f->downlink_per = mask & LINKQ_DL_PER;
+    f->downlink_phy = mask & LINKQ_DL_PHY;
+    f->uplink_snr   = mask & LINKQ_UL_SNR;
+    f->uplink_per   = mask & LINKQ_UL_PER;
+    f->uplink_phy   = mask & LINKQ_UL_PHY;
+    f->aggregate    = mask & LINKQ_AGGREGATE;
+    f->int_reconn   = mask & LINKQ_INT_RECONN;
+}
 
 bus_error_t get_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
@@ -148,6 +180,32 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
+    if (rf_status) {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+
+        wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
+        if (global_cfg != NULL &&
+            global_cfg->global_parameters.ignite_link_quality_threshold > 0.0) {
+            double threshold = global_cfg->global_parameters.ignite_link_quality_threshold;
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d Applying ignite_link_quality_threshold=%f on EndPoint enable\n",
+                __func__, __LINE__, threshold);
+
+            linkquality_data_t *lq_data =
+                (linkquality_data_t *)malloc(sizeof(linkquality_data_t));
+            if (lq_data != NULL) {
+                memset(lq_data, 0, sizeof(linkquality_data_t));
+                lq_data->server_arg.threshold = threshold;
+                apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                    wifi_event_exec_link_param_reinit, lq_data, sizeof(linkquality_data_t));
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Failed to allocate linkquality_data_t\n", __func__, __LINE__);
+            }
+        }
+    } else {
+       apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+    }
 
     return rc;
 
@@ -473,6 +531,24 @@ int tcm_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t 
     return RETURN_OK;
 }
 
+int interop_notify_deny_association(int ap_index, mac_addr_str_t src_mac,
+ mac_addr_str_t ap_mac, int type, int status, int ap)
+{
+    char str[64];
+    memset(str, 0, 64);
+   wifi_vap_info_t *vap_info = NULL;
+   vap_info = getVapInfo(ap_index);
+   snprintf(str, sizeof(str), "%d,%s,%s,%d,%d,%d", (ap_index + 1), src_mac, ap_mac, type, status, ap);
+
+   if (vap_info != NULL) {
+        strncpy(vap_info->u.bss_info.interop_info, str,
+            sizeof(vap_info->u.bss_info.interop_info));
+   }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: Harsha interop details %s \n", __func__, __LINE__, str);
+    return RETURN_OK;
+}
+
+
 int notify_wifi_sec_mode_enabled(wifi_ctrl_t *ctrl, int ap_index, char *old_mode, char *new_mode) {
     bus_error_t rc;
     char str[2048];
@@ -595,6 +671,78 @@ int set_managed_guest_interfaces(char *interface_name, int radio_index)
     return RETURN_OK;
 }
 
+bus_error_t wifi_get_link_quality_flags(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    quality_flags_t flags;
+    uint32_t mask;
+    get_quality_flags(&flags);
+    mask = quality_flags_to_mask(&flags);
+
+    p_data->data_type = bus_data_type_uint32;
+    p_data->raw_data.u32 = mask;
+    p_data->raw_data_len = sizeof(mask);
+    wifi_util_info_print(WIFI_APPS, "%s:%d linkqualityflags=%d\n",__func__,__LINE__,mask);
+    return bus_error_success;
+}
+
+bus_error_t wifi_set_link_quality_flags(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    quality_flags_t flags;
+    uint32_t mask;
+    
+    if (p_data->data_type != bus_data_type_uint32) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid data input\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+    mask = p_data->raw_data.u32;
+
+    wifi_util_info_print(WIFI_APPS, "%s:%d linkqualityflags=%d \n",__func__,__LINE__,mask);
+    if(mask & ~LINKQ_VALID_MASK)
+    {
+        wifi_util_error_print(WIFI_APPS,
+            "Invalid bits set in LinkQuality Flags: 0x%x\n", mask);
+        return bus_error_invalid_input;
+    }
+    mask_to_quality_flags(mask, &flags);
+    set_quality_flags(&flags);
+
+    return bus_error_success;
+}
+
+bus_error_t wifi_get_link_quality_data(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    uint32_t bytes_size;
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    char *str = get_link_metrics();
+
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d get_link_metrics returned NULL\n",
+                          __func__, __LINE__);
+        return bus_error_general;
+    } 
+    bytes_size =  strlen(str);
+    p_data->data_type = bus_data_type_string;
+    p_data->raw_data.bytes = (uint8_t *)strdup(str);
+    
+    if (!p_data->raw_data.bytes) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+             __LINE__,strlen(str));
+        free(str);     
+        return bus_error_out_of_resources;
+    }
+    p_data->raw_data_len = bytes_size;
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    if (str)
+        cJSON_free(str); //Since the memory is allocated from cJSON_PrintUnformatted
+
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    return RETURN_OK;
+
+}
+
 bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -655,7 +803,12 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
             sizeof(wifi_hal_capability_t));
         data->u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
-	    webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+	    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
+	        wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
+	        free(data);
+	        data = NULL;
+	        return bus_error_general;
+	    }
 
         uint32_t str_size = (strlen(data->u.encoded.raw) + 1);
         p_data->data_type = bus_data_type_string;
@@ -688,9 +841,19 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
 	if (ctrl->dev_type != dev_subtype_pod) {
 		memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config,
 				sizeof(wifi_global_config_t));
-		webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+		if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
+			wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
+			free(data);
+			data = NULL;
+			return bus_error_general;
+		}
 	} else {
-		webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta);
+		if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) != webconfig_error_none) {
+			wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
+			free(data);
+			data = NULL;
+			return bus_error_general;
+		}
 	}
 
         uint32_t str_size = (strlen(data->u.encoded.raw) + 1);
@@ -1496,6 +1659,115 @@ bus_error_t get_home_vap(char *name, raw_data_t *p_data, bus_user_data_t *user_d
     return bus_error_success;
 }
 
+extern void webconf_process_ignitewifi(const char *enb);
+bus_error_t get_ignitewifi(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    char *pTmp = NULL;
+
+    pTmp = (char *)p_data->raw_data.bytes;
+    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
+            p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__,
+        get_current_ms_time());
+    webconf_process_ignitewifi(pTmp);
+
+    return bus_error_success;
+}
+
+bus_error_t get_ignite_link_quality_threshold(char *event_name, raw_data_t *p_data,
+    bus_user_data_t *user_data)
+{
+    (void)user_data;
+    char str[64] = { 0 };
+    unsigned int str_size = 0;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+
+    if (event_name == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    snprintf(str, sizeof(str), "%lf",
+        mgr->global_config.global_parameters.ignite_link_quality_threshold);
+
+    str_size = strlen(str) + 1;
+    p_data->data_type = bus_data_type_string;
+    p_data->raw_data.bytes = malloc(str_size);
+    if (p_data->raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Memory allocation failed:%d\r\n", __func__,
+            __LINE__, str_size);
+        return bus_error_out_of_resources;
+    }
+    strncpy((char *)p_data->raw_data.bytes, str, str_size);
+    p_data->raw_data_len = str_size;
+
+    return bus_error_success;
+}
+
+bus_error_t set_ignite_link_quality_threshold(char *event_name, raw_data_t *p_data,
+    bus_user_data_t *user_data)
+{
+    (void)user_data;
+    char *pTmp = NULL;
+    double threshold = 0.0;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    webconfig_subdoc_data_t *data = NULL;
+
+    if (event_name == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    pTmp = (char *)p_data->raw_data.bytes;
+    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
+            p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    threshold = strtod(pTmp, NULL);
+    if (threshold < 0.0 || threshold > 1.0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d LinkQualityThreshold %f out of range [0.0, 1.0]\n",
+            __func__, __LINE__, threshold);
+        return bus_error_invalid_input;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Setting ignite_link_quality_threshold=%f\n", __func__,
+        __LINE__, threshold);
+
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d malloc failed\n", __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+
+    webconfig_init_subdoc_data(data);
+    data->u.decoded.config.global_parameters.ignite_link_quality_threshold = threshold;
+
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_wifi_config) !=
+        webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to encode wifi_config subdoc\n", __func__,
+            __LINE__);
+        free(data);
+        return bus_error_general;
+    }
+
+    push_event_to_ctrl_queue(data->u.encoded.raw, strlen(data->u.encoded.raw) + 1,
+        wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
+
+    webconfig_data_free(data);
+    free(data);
+
+    return bus_error_success;
+}
+
 #if defined(RDKB_EXTENDER_ENABLED) || defined(WAN_FAILOVER_SUPPORTED)
 static void deviceModeHandler(char *event_name, raw_data_t *p_data, void *userData)
 {
@@ -2104,6 +2376,239 @@ bus_error_t get_sta_connection_timeout(char *name, raw_data_t *p_data, bus_user_
     return bus_error_success;
 }
 
+// Convert float to uint8_t and return as raw data
+static bus_error_t set_float_as_uint8(raw_data_t *p_data, float value, const char *func, int line)
+{
+    uint8_t uint8_value;
+    
+    // Validate float is in range 0-100
+    if (value < 0.0f || value > 100.0f) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Float value out of range [%f]\n", func, line, value);
+        return bus_error_invalid_operation;
+    }
+    
+    // Convert float to uint8_t 
+    uint8_value = (uint8_t)(value);
+    
+    // Set data type and value
+    p_data->data_type = bus_data_type_uint8;
+    p_data->raw_data.u8 = uint8_value;
+    
+    wifi_util_dbg_print(WIFI_CTRL, "[%s:%d] Float Value: %f, uint8_t: %u\n",
+        func, line, value, uint8_value);
+    
+    return bus_error_success;
+}
+
+// Updated get_ignite_attributes function
+bus_error_t get_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    unsigned int index = 0;
+    char extension[64] = { 0 };
+    
+    if (name == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+             __LINE__);
+        return bus_error_invalid_input;
+    }
+    
+    sscanf(name, "Device.WiFi.Ignite_Control.%d.%s", &index, extension);
+    if (index == 0 || index > getNumberRadios()) {
+        wifi_util_error_print(WIFI_CTRL, "%s Invalid index %d\n", __FUNCTION__, index);
+        return bus_error_invalid_operation;
+    }
+    
+    if (strcmp(extension, "MinChutilThreshold") == 0) {
+        return set_float_as_uint8(p_data, mgr->ignite_config[index-1].min_chanutil_threshold,
+            __func__, __LINE__);
+    } else if (strcmp(extension, "MaxChutilThreshold") == 0) {
+        return set_float_as_uint8(p_data, mgr->ignite_config[index-1].max_chanutil_threshold,
+                            __func__, __LINE__);
+    } else if (strcmp(extension, "SNRThreshold") == 0) {
+        return set_float_as_uint8(p_data, mgr->ignite_config[index-1].SNR_threshold,
+                            __func__, __LINE__);
+    } else if (strcmp(extension, "SNRDifference") == 0) {
+        return set_float_as_uint8(p_data, mgr->ignite_config[index-1].SNR_difference,
+                            __func__, __LINE__);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "[%s:%d] Unsupported command [%s]\n",
+             __func__, __LINE__, extension);
+        return bus_error_invalid_operation;
+    }
+    
+    return bus_error_success;
+}
+
+// Validation function for uint8_t values (0-100 only)
+int validate_ignite_config(char *extension, uint8_t value) {
+    if (value > 100) {
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] %s configured out of range [%u]\n",
+                             __func__, __LINE__, extension, value);
+        return RETURN_ERR;
+    }
+    
+    return RETURN_OK;
+}
+
+bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    uint8_t value = 0;
+    unsigned int index = 0;
+    int ret = RETURN_OK;
+    char extension[64] = { 0 };
+    unsigned int num_of_radios = getNumberRadios();
+    
+    sscanf(name, "Device.WiFi.Ignite_Control.%d.%s", &index, extension);
+    if (index == 0 || index > num_of_radios) {
+        wifi_util_error_print(WIFI_CTRL, "%s Invalid index %u\n", __FUNCTION__, index);
+        return bus_error_invalid_operation;
+    }
+    
+    pthread_mutex_lock(&g_apply_ignite_config.lock);
+    
+    // Set ignite_name based on index
+    switch (index) {
+        case 1:
+            strncpy(g_apply_ignite_config.config[index-1].ignite_name, "ignite_2g", 
+                    sizeof(g_apply_ignite_config.config[index-1].ignite_name) - 1);
+            break;
+        case 2:
+            strncpy(g_apply_ignite_config.config[index-1].ignite_name, "ignite_5g", 
+                    sizeof(g_apply_ignite_config.config[index-1].ignite_name) - 1);
+            break;
+        case 3:
+            strncpy(g_apply_ignite_config.config[index-1].ignite_name, "ignite_6g", 
+                    sizeof(g_apply_ignite_config.config[index-1].ignite_name) - 1);
+            break;
+        default:
+            pthread_mutex_unlock(&g_apply_ignite_config.lock);
+            wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported index [%u]\n", 
+                                 __func__, __LINE__, index);
+            return bus_error_invalid_operation;
+    }
+    
+    value = p_data->raw_data.u8;
+    // Validate the uint8_t value (0-100 only)
+    ret = validate_ignite_config(extension, value);
+    if (ret == RETURN_ERR) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid config for %s\n", __func__, __LINE__, extension);
+        pthread_mutex_unlock(&g_apply_ignite_config.lock);
+        return bus_error_invalid_operation;
+    }
+  // Store in appropriate field (convert uint8_t to float)
+    if (strcmp(extension, "MinChutilThreshold") == 0) {
+        g_apply_ignite_config.config[index-1].min_chanutil_threshold = (float)value;
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] MinChutilThreshold : %u -> %f\n",
+                             __func__, __LINE__, value, 
+                             g_apply_ignite_config.config[index-1].min_chanutil_threshold);
+    } else if (strcmp(extension, "MaxChutilThreshold") == 0) {
+        g_apply_ignite_config.config[index-1].max_chanutil_threshold = (float)value;
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] MaxChutilThreshold: %u -> %f\n",
+                             __func__, __LINE__, value,
+                             g_apply_ignite_config.config[index-1].max_chanutil_threshold);
+    } else if (strcmp(extension, "SNRThreshold") == 0) {
+        g_apply_ignite_config.config[index-1].SNR_threshold = (float)value;
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRThreshold : %u -> %f\n",
+                             __func__, __LINE__, value,
+                             g_apply_ignite_config.config[index-1].SNR_threshold);
+    } else if (strcmp(extension, "SNRDifference") == 0) {
+        g_apply_ignite_config.config[index-1].SNR_difference = (float)value;
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRDifference : %u -> %f\n",
+                             __func__, __LINE__, value,
+                             g_apply_ignite_config.config[index-1].SNR_difference);
+    } else {
+        pthread_mutex_unlock(&g_apply_ignite_config.lock);
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported Parameter\n", __func__, __LINE__);
+        return bus_error_invalid_operation;
+    }
+    g_apply_ignite_config.is_pending = true;
+    pthread_mutex_unlock(&g_apply_ignite_config.lock);
+    return bus_error_success;
+}
+
+
+bus_error_t apply_ignite_config(char *paramName,
+                                raw_data_t *value,
+                                bus_user_data_t *user_data)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    webconfig_subdoc_data_t data;
+    char *str;
+    unsigned int num_of_radios = getNumberRadios();
+
+    if (mgr == NULL || ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+
+    pthread_mutex_lock(&g_apply_ignite_config.lock);
+
+    if (!g_apply_ignite_config.is_pending) {
+        pthread_mutex_unlock(&g_apply_ignite_config.lock);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d No pending changes\n", __func__, __LINE__);
+        return bus_error_success;
+    }
+
+    // Prepare data for encoding
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data.u.decoded.num_radios = num_of_radios;
+
+    // Copy pending config to data
+    memcpy(&data.u.decoded.ignite_config, &g_apply_ignite_config.config,
+           num_of_radios * sizeof(ignite_config_t));
+
+    // Clear dirty flag
+    g_apply_ignite_config.is_pending = false;
+
+    pthread_mutex_unlock(&g_apply_ignite_config.lock);
+
+    // Encode and push to queue
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_ignite)
+        == webconfig_error_none) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
+        str = (char *)data.u.encoded.raw;
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+                                 wifi_event_webconfig_set_ignite_data, NULL);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig_encode failed\n", __func__, __LINE__);
+        webconfig_data_free(&data);
+        return bus_error_general;
+    }
+
+    webconfig_data_free(&data);
+    return bus_error_success;
+}
+
+void init_pending_ignite_config(void)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    unsigned int num_radios = getNumberRadios();
+
+    pthread_mutex_lock(&g_apply_ignite_config.lock);
+
+    // Initialize with current mgr config
+    memcpy(&g_apply_ignite_config.config, &mgr->ignite_config,
+           num_radios * sizeof(ignite_config_t));
+
+    for (unsigned int i = 0; i < num_radios; i++) {
+         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold, g_apply_ignite_config.config[i].SNR_threshold,  g_apply_ignite_config.config[i].SNR_difference);
+    }
+    g_apply_ignite_config.is_pending = false;
+
+    pthread_mutex_unlock(&g_apply_ignite_config.lock);
+}
+
+void init_ignite_function(void) {
+    memset(&g_apply_ignite_config, 0, sizeof(g_apply_ignite_config));
+    g_apply_ignite_config.is_pending = false;
+    pthread_mutex_init(&g_apply_ignite_config.lock, NULL);
+    init_pending_ignite_config();
+}
+
 bus_error_t get_sta_attribs(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -2233,6 +2738,32 @@ bus_error_t events_STAtable_addrowhandler(char const *tableName, char const *ali
 
     return bus_error_success;
 }
+
+bus_error_t ignite_table_removerowhandler(char const *rowName)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    ctrl->ignite_tree_instance_num--;
+
+    wifi_util_info_print(WIFI_CTRL, "%s() called:\n\t rowName=%s: instance_num:%d\n", __func__,
+        rowName, ctrl->ignite_tree_instance_num);
+
+    return bus_error_success;
+}
+
+bus_error_t ignite_table_addrowhandler(char const *tableName, char const *aliasName,
+    uint32_t *instNum)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: tableAddRowHandler1 called. tableName=%s, aliasName=%s\n",
+        __FUNCTION__, __LINE__, tableName, aliasName);
+
+    *instNum = ++ctrl->ignite_tree_instance_num;
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d instance_num:%d\r\n",__func__, __LINE__, ctrl->ignite_tree_instance_num);
+
+    return bus_error_success;
+}
+
 static event_bus_element_t *events_getEventElement(char *eventName)
 {
     int i;
@@ -2644,6 +3175,44 @@ bus_error_t ap_get_handler(char *name, raw_data_t *p_data, bus_user_data_t *user
     return bus_error_invalid_input;
 }
 
+bus_error_t ap_get_interop_details(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    unsigned int idx = 0;
+    int ret;
+    unsigned int num_of_radios = getNumberRadios();
+if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, name);
+uint32_t str_len;
+ret = sscanf(name, "Device.WiFi.AccessPoint.%d.InteropDetails", &idx);
+    if (ret == 1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+        wifi_front_haul_bss_t *vap_bss =  Get_wifi_object_bss_parameter(idx - 1);
+        if(vap_bss->enabled){
+            str_len = strlen((char*)vap_bss->interop_info) + 1;
+            p_data->data_type = bus_data_type_string;
+            p_data->raw_data.bytes = malloc(str_len);
+            if (p_data->raw_data.bytes == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+                __LINE__, str_len);
+             return bus_error_out_of_resources;
+            }
+            strcpy((char *)p_data->raw_data.bytes, (char*)vap_bss->interop_info);
+            p_data->raw_data_len = str_len;
+        }
+        else
+        {
+            wifi_util_dbg_print(WIFI_CTRL, "%s(): else case\n", __FUNCTION__);
+       }
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "%s(): exit\n", __FUNCTION__);
+    return bus_error_success;
+}
+
+
 bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -2777,6 +3346,16 @@ bus_error_t ap_table_addrowhandler(char const *tableName, char const *aliasName,
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.Security.ConnectedRadiusEndpoint", *instNum);
         event->idx = vap_index;
         event->type =  wifi_event_radius_fallback_and_failover;
+        event->subscribed = FALSE;
+        event->num_subscribers = 0;
+        queue_push(ctrl->events_bus_data.events_bus_queue, event);
+    }
+
+    event = (event_bus_element_t *)malloc(sizeof(event_bus_element_t));
+    if (event != NULL) {
+        sprintf(event->name, "Device.WiFi.AccessPoint.%d.InteropDetails", *instNum);
+        event->idx = vap_index;
+        event->type =  wifi_event_radius_eap_failure;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(ctrl->events_bus_data.events_bus_queue, event);
@@ -2940,14 +3519,14 @@ static bus_error_t stats_table_addrowhandler(char const *tableName, char const *
 
 bus_error_t ap_table_removerowhandler(char const *rowName)
 {
-    int i = 0;
+    int i = 0, count = 0;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int count = queue_count(ctrl->events_bus_data.events_bus_queue);
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
+    count = queue_count(ctrl->events_bus_data.events_bus_queue);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, rowName);
 
-    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
 
     while (i < count) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);
@@ -2971,13 +3550,13 @@ bus_error_t ap_table_removerowhandler(char const *rowName)
 
 static bus_error_t stats_table_removerowhandler(char const *rowName)
 {
-    int i = 0;
+    int i = 0, count = 0;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int count = queue_count(ctrl->events_bus_data.events_bus_queue);
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
+    count = queue_count(ctrl->events_bus_data.events_bus_queue);
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, rowName);
 
-    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
 
     while (i < count) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);
@@ -3366,7 +3945,7 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
     int num_of_radio = getNumberRadios();
     int num_of_vaps = getTotalNumberVAPs(NULL);
     int num_elements;
-        bus_data_element_t dataElements[] = {
+    bus_data_element_t dataElements[] = {
                                 { WIFI_WEBCONFIG_DOC_DATA_SOUTH, bus_element_type_method,
                                     { NULL, webconfig_set_subdoc, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
@@ -3382,10 +3961,28 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_WEBCONFIG_GET_ASSOC, bus_element_type_method,
                                     { get_assoc_clients_data, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNITE_NAMESPACE, bus_element_type_table,
+                                    { NULL, NULL, ignite_table_addrowhandler, ignite_table_removerowhandler, eventSubHandler, NULL}, slow_speed, num_of_radio,
+                                    { bus_data_type_object, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNITE_MIN_CHUTIL_THRESHOLD, bus_element_type_property,
+                                    { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
+                                    { bus_data_type_uint8, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNITE_MAX_CHUTIL_THRESHOLD, bus_element_type_property,
+                                    { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
+                                    { bus_data_type_uint8, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNITE_SNR_THRESHOLD, bus_element_type_property,
+                                    { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
+                                    { bus_data_type_uint8, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNITE_SNR_DIFFERENCE, bus_element_type_property,
+                                    { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
+                                    { bus_data_type_uint8, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNITE_APPLY_CONFIG, bus_element_type_property,
+                                    { NULL, apply_ignite_config, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_boolean, false, 0, 0, 0, NULL } },
                                 { WIFI_STA_NAMESPACE, bus_element_type_table,
                                     { NULL, NULL, events_STAtable_addrowhandler, events_STAtable_removerowhandler, eventSubHandler, NULL}, slow_speed, num_of_radio,
-                                    { bus_data_type_object, false, 0, 0, 0, NULL } },
-                                { WIFI_STA_CONNECT_STATUS, bus_element_type_property,
+                                    { bus_data_type_object, false, 0, 0, 0, NULL } }, 
+			        { WIFI_STA_CONNECT_STATUS, bus_element_type_property,
                                     { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, true, 0, 0, 0, NULL } },
                                 { WIFI_STA_INTERFACE_NAME, bus_element_type_property,
@@ -3411,6 +4008,12 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
                                 { WIFI_WEBCONFIG_HOME_VAP, bus_element_type_method,
                                     { NULL, get_home_vap, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_WEBCONFIG_IGNITEWIFI, bus_element_type_method,
+                                    { NULL, get_ignitewifi, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_WEBCONFIG_IGNITE_LQ_THRESHOLD, bus_element_type_method,
+                                    { get_ignite_link_quality_threshold, set_ignite_link_quality_threshold, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
                                 { WIFI_BUS_HOTSPOT_UP, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, hotspot_event_handler, NULL}, slow_speed, ZERO_TABLE,
@@ -3444,6 +4047,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
                                 { WIFI_ACCESSPOINT_RADIUS_CONNECTED_ENDPOINT, bus_element_type_method,
                                     { ap_get_radius_connected_endpoint, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false , 0, 0, 0, NULL } },
+                                { WIFI_NOTIFY_INTEROP_DETAILS, bus_element_type_method,
+                                    { ap_get_interop_details, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false , 0, 0, 0, NULL } },
                                 { WIFI_ACCESSPOINT_DIAGDATA, bus_element_type_event,
                                     { ap_get_handler, NULL, NULL, NULL, eventSubHandler, NULL}, slow_speed, ZERO_TABLE,
@@ -3499,6 +4105,15 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_CSA_BEACON_FRAME_RECEIVED, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, eventSubHandler, NULL}, high_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+                                { WIFI_LINK_QUALITY_DATA, bus_element_type_method,
+                                    { wifi_get_link_quality_data, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_LINK_QUALITY_FLAGS, bus_element_type_method,
+                                    { wifi_get_link_quality_flags, wifi_set_link_quality_flags, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    {bus_data_type_uint32, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNITE_STATUS, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);
