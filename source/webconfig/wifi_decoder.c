@@ -3868,11 +3868,18 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 assoc_dev_data.dev_stats.cli_MaxDownlinkRate = value_object->valuedouble;
             }
 
-             value_object = cJSON_GetObjectItem(assoc_client, "MaxUplinkRate");
+            value_object = cJSON_GetObjectItem(assoc_client, "MaxUplinkRate");
             if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
                 wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Missing or invalid MaxUplinkRate\n", __func__, __LINE__);
             } else {
                 assoc_dev_data.dev_stats.cli_MaxUplinkRate = value_object->valuedouble;
+            }
+
+            value_object = cJSON_GetObjectItem(assoc_client, "LastConnectTime");
+            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+                wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Missing or invalid LastConnectTime\n", __func__, __LINE__);
+            } else {
+                assoc_dev_data.last_connect_time = value_object->valuedouble;
             }
 
             if (decode_frame_data(assoc_client, &assoc_dev_data.sta_data.msg_data) !=
@@ -4093,6 +4100,35 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     decode_param_integer(levl_cfg, "Interval", param);
     levl_config->levl_publish_interval = param->valuedouble;
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_ignite_object(const cJSON *ignite_cfg,
+    ignite_config_t *ignite_info)
+{
+    const cJSON *param;
+
+    cJSON *ignite_name_item = cJSON_GetObjectItem(ignite_cfg, "ignite_name");
+    if (ignite_name_item != NULL && cJSON_IsString(ignite_name_item)) {
+        if (strlen(ignite_name_item->valuestring) != 0) {
+            strncpy(ignite_info->ignite_name, ignite_name_item->valuestring, 
+                    sizeof(ignite_info->ignite_name) - 1);
+            ignite_info->ignite_name[sizeof(ignite_info->ignite_name) - 1] = '\0';
+        }
+    }
+    decode_param_integer(ignite_cfg, "ignite_minchutil_threshold", param);
+    ignite_info->min_chanutil_threshold = param->valuedouble; 
+
+    decode_param_integer(ignite_cfg, "ignite_maxchutil_threshold", param);
+    ignite_info->max_chanutil_threshold = param->valuedouble;
+
+    decode_param_integer(ignite_cfg, "ignite_snr_threshold", param);
+    ignite_info->SNR_threshold = param->valuedouble;
+
+    decode_param_integer(ignite_cfg, "ignite_snr_difference", param);
+    ignite_info->SNR_difference = param->valuedouble;
+    
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] Ch_util [%f %f] SNR [%f %f]\n", __func__, __LINE__,  ignite_info->min_chanutil_threshold, ignite_info->max_chanutil_threshold, ignite_info->SNR_threshold, ignite_info->SNR_difference); 
     return webconfig_error_none;
 }
 

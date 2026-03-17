@@ -2495,9 +2495,10 @@ dpp_client_record_t* dpp_client_record_alloc()
     dpp_client_record_t *record = NULL;
 
     record = malloc(sizeof(dpp_client_record_t));
-    if (record) {
-        memset(record, 0, sizeof(dpp_client_record_t));
+    if (record == NULL) {
+        return NULL;
     }
+    memset(record, 0, sizeof(dpp_client_record_t));
 
     // init stats_rx dlist
     ds_dlist_init(&record->stats_rx, dpp_client_stats_rx_t, node);
