@@ -3065,6 +3065,7 @@ void start_station_vaps(bool rf_status)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     int vap_index, radio_index = 0, vap_array_index = 0;
     int status = RETURN_OK;
+    int band = 0;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {

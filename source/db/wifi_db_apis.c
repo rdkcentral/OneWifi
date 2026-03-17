@@ -321,7 +321,8 @@ void callback_Wifi_Ignite_Config(ovsdb_update_monitor_t *mon,
       if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
           wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config newly added or updated\n", __func__, __LINE__);
           pthread_mutex_lock(&g_wifidb->data_cache_lock);
-          strcpy(ignite_cfg->ignite_name, new_rec->ignite_name);
+          strncpy(ignite_cfg->ignite_name, new_rec->ignite_name, sizeof(ignite_cfg->ignite_name) - 1);
+          ignite_cfg->ignite_name[sizeof(ignite_cfg->ignite_name) - 1] = '\0';
           ignite_cfg->min_chanutil_threshold = (float)new_rec->min_chanutil_threshold;
           ignite_cfg->max_chanutil_threshold = (float)new_rec->max_chanutil_threshold;
           ignite_cfg->SNR_threshold = (float)new_rec->snr_threshold;
@@ -3450,7 +3451,8 @@ int wifidb_get_wifi_ignite_config(ignite_config_t *ignite_cfg)
         pcfg->max_chanutil_threshold,
         pcfg->snr_threshold,
         pcfg->snr_difference);
-    strncpy(ignite_cfg->ignite_name, pcfg->ignite_name, MAX_NAME_LEN);
+    strncpy(ignite_cfg->ignite_name, pcfg->ignite_name, MAX_NAME_LEN - 1);
+    ignite_cfg->ignite_name[MAX_NAME_LEN - 1] = '\0';
     ignite_cfg->min_chanutil_threshold = (float)pcfg->min_chanutil_threshold;
     ignite_cfg->max_chanutil_threshold = (float)pcfg->max_chanutil_threshold;
     ignite_cfg->SNR_threshold          = (float)pcfg->snr_threshold;
@@ -4804,7 +4806,7 @@ static void wifidb_upgrade_wifi_ignite_config(int r_index)
                 strncpy(g_wifidb->ignite_config[r_index].ignite_name, "ignite_6g", MAX_NAME_LEN);
                 break;
             default:
-                wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported index [%d]\n", __func__, __LINE__, index);
+                wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported index [%d]\n", __func__, __LINE__, r_index);
         }
         g_wifidb->ignite_config[r_index].min_chanutil_threshold = IGNITE_MIN_CHUTIL_THRESHOLD;
         g_wifidb->ignite_config[r_index].max_chanutil_threshold = IGNITE_MAX_CHUTIL_THRESHOLD;
@@ -7084,7 +7086,7 @@ int wifidb_init_ignite_config_default(int radio_index, ignite_config_t *ignite_c
             strncpy(local_ignite_config.ignite_name, "ignite_6g", MAX_NAME_LEN);
             break;
         default:
-            wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported index [%d]\n", __func__, __LINE__, index);
+            wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported index [%d]\n", __func__, __LINE__, radio_index);
     }
     //Configured commonly for now. Based on the radio, we can update in the above switch cases.
     local_ignite_config.min_chanutil_threshold = IGNITE_MIN_CHUTIL_THRESHOLD;
