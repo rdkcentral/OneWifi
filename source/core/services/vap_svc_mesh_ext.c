@@ -35,6 +35,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
+#define SCORE_TIE_THRESHOLD 0.5
 
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
@@ -135,6 +136,17 @@ void sort_bss_results_by_rssi(bss_candidate_t *bss, int start, int end)
     start_sorting_by_rssi(bss, start, end, rssi_2_4_normalizer_val);
 }
 
+int get_variant_rank(wifi_ieee80211Variant_t variant)
+{
+    if (variant & WIFI_80211_VARIANT_BE) return 8;
+    if (variant & WIFI_80211_VARIANT_AX) return 7;
+    if (variant & WIFI_80211_VARIANT_AC) return 6;
+    if (variant & WIFI_80211_VARIANT_N)  return 5;
+    if (variant & WIFI_80211_VARIANT_G)  return 4;
+    if (variant & WIFI_80211_VARIANT_B)  return 3;
+    if (variant & WIFI_80211_VARIANT_A)  return 2;
+    return 1;
+}
 /**
  * @brief Comparator for qsort - sorts by score (descending)
  */
@@ -240,7 +252,29 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
     // Step 3: Sort by descending score
     qsort(scores, valid_count, sizeof(bss_score_entry_t), compare_bss_scores);
 
-    // Step 4: Copy sorted results back to scan_list
+    //Step 4: Apply the variant logic for neighbor scores less then 0.5
+    for (int i = 0; i < valid_count - 1; i++) {
+        float diff = scores[i].score - scores[i+1].score;
+
+        // Only if scores are very close
+        if (diff <= SCORE_TIE_THRESHOLD) {
+            // Get operating standards or fallback to supported standards
+            wifi_ieee80211Variant_t varA = scores[i].candidate->external_ap.oper_standards;
+            wifi_ieee80211Variant_t varB = scores[i+1].candidate->external_ap.oper_standards;
+
+            int rankA = get_variant_rank(varA);
+            int rankB = get_variant_rank(varB);
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d:rankA=%d and rankB=%d\n",__func__,__LINE__,rankA,rankB);
+            // Swap neighbors if next has higher variant rank
+            if (rankB > rankA) {
+                bss_score_entry_t tmp = scores[i];
+                scores[i] = scores[i+1];
+                scores[i+1] = tmp;
+            }
+        }
+    }
+
+    // Step 5: Copy sorted results back to scan_list
     for (int i = 0; i < valid_count; i++) {
         scan_list[i] = *scores[i].candidate;
         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] List : %d %s %f\n", __func__, __LINE__, i, to_mac_str(scan_list[i].external_ap.bssid, bssid_str), scores[i].score);
