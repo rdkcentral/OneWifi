@@ -35,6 +35,7 @@
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
 #define MAX_STATUS_LEN 5
+#define STA_STATUS_DISCONNECTED 1
 
 apply_ignite_config_t g_apply_ignite_config;
 
@@ -1030,38 +1031,37 @@ bus_error_t get_endpoint_status(char *event_name, raw_data_t *p_data, bus_user_d
 
     return bus_error_success;
 }
-int publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status)
+
+bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status)
 {
     char name[MAX_STR_LEN] = { '\0' };
     bus_error_t rc = bus_error_success;
-    wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__, connection_status);
-    if (ctrl->rf_status_down == true) {
-        raw_data_t data;
-        snprintf(name, MAX_STR_LEN,WIFI_ENDPOINT_CONNECT_STATUS);
-        memset(&data, 0, sizeof(raw_data_t));
-        data.data_type = bus_data_type_string;
-        data.raw_data.bytes = malloc(MAX_STATUS_LEN);
-        data.raw_data_len = MAX_STATUS_LEN;
-        memset(data.raw_data.bytes, '\0', MAX_STATUS_LEN);
-        if (connection_status == 2) { // connected state
-            strncpy((char *)data.raw_data.bytes, "Up", MAX_STATUS_LEN);
-        } else if ((connection_status == 1) || (connection_status == 3)) { // disconnected  or AP not found state
-            strncpy((char *)data.raw_data.bytes, "Down", MAX_STATUS_LEN);
-        }
-        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
-        if (rc != bus_error_success) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
-        if (data.raw_data.bytes) {
-            free(data.raw_data.bytes);
-            data.raw_data.bytes = NULL;
-        }
-    } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint not enabled\n", __func__, __LINE__);
-        return RETURN_OK;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__,
+        connection_status);
+    raw_data_t data;
+    snprintf(name, MAX_STR_LEN, WIFI_ENDPOINT_CONNECT_STATUS);
+    memset(&data, 0, sizeof(raw_data_t));
+    data.data_type = bus_data_type_string;
+    data.raw_data.bytes = malloc(MAX_STATUS_LEN);
+    data.raw_data_len = MAX_STATUS_LEN;
+    memset(data.raw_data.bytes, '\0', MAX_STATUS_LEN);
+    if (connection_status == 2) { // connected state
+        strncpy((char *)data.raw_data.bytes, "Up", MAX_STATUS_LEN);
+    } else if ((connection_status == 1) ||
+        (connection_status == 3)) { // disconnected  or AP not found state
+        strncpy((char *)data.raw_data.bytes, "Down", MAX_STATUS_LEN);
     }
-    return RETURN_OK;
+    rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
+    if (rc != bus_error_success) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__,
+            __LINE__);
+        return rc;
+    }
+    if (data.raw_data.bytes) {
+        free(data.raw_data.bytes);
+        data.raw_data.bytes = NULL;
+    }
+    return rc;
 }
 int publish_endpoint_enable(void)
 {
@@ -3932,6 +3932,24 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
      if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s %dbus: bus_regDataElements failed\n", __FUNCTION__, __LINE__);
         return;
+     }
+     wifi_util_error_print(WIFI_CTRL, "%s:%d To check whether the WAN receive status event\n", __func__, __LINE__);
+     rc = 0;
+     rc = publish_endpoint_status(ctrl, STA_STATUS_DISCONNECTED);
+     if (rc == 0) {
+         wifi_util_error_print(WIFI_CTRL, "%s:%d Endpoint status published successfully. Hence enabling the endpoint\n", __func__, __LINE__);
+         bool ep_enable_after_restart = true;
+         raw_data_t data;
+         memset(&data, 0, sizeof(raw_data_t));
+         data.data_type = bus_data_type_boolean;
+         data.raw_data.b = ep_enable_after_restart;
+
+         rc = get_bus_descriptor()->bus_set_fn(&ctrl->handle, WIFI_ENDPOINT_ENABLE_CHECK, &data);
+         if (rc != bus_error_success) {
+	     wifi_util_error_print(WIFI_CTRL, "bus: bus_set_fn with error rc:%d\n", rc);
+	 }
+     } else {
+         wifi_util_error_print(WIFI_CTRL, "%s:%d EndPoint status not subscribed by WAN manager\n", __func__, __LINE__);
      }
      wifi_util_dbg_print(WIFI_CTRL, "%s %d bus: bus_regDataElements done\n", __FUNCTION__, __LINE__);
      return;
