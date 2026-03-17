@@ -773,6 +773,13 @@ void ext_try_connecting(vap_svc_t *svc)
         candidate->conn_retry_attempt++;
     } else if (ext->conn_state == connection_state_connection_in_progress) {
         candidate = ext->candidates_list.scan_list;
+        bool new_bss_is_set = false;
+        unsigned char zero_mac[6] = {0};
+
+        // Check if new_bss.external_ap.bssid is not empty
+        if (memcmp(ext->new_bss.external_ap.bssid, zero_mac, sizeof(zero_mac)) != 0) {
+            new_bss_is_set = true;
+        }
 
         for (i = 0; i < ext->candidates_list.scan_count; i++) {
             if (temp == NULL && (candidate->conn_attempt == connection_attempt_wait) &&
@@ -792,6 +799,26 @@ void ext_try_connecting(vap_svc_t *svc)
 
             candidate++;
         }
+
+        // If new_bss is set but not found in candidate list, trigger scanning (max 2 times)
+        if (new_bss_is_set && new_bss == NULL && ext->new_bss_scan_retry < 2) {
+            ext->new_bss_scan_retry++;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: new_bss BSSID not found in candidate list, "
+                "triggering scan (attempt %d/2)\n", __func__, __LINE__, ext->new_bss_scan_retry);
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+            schedule_connect_sm(svc);
+            return;
+        }
+
+        // If max retries reached and new_bss still not found, clear it
+        if (new_bss_is_set && new_bss == NULL && ext->new_bss_scan_retry >= 2) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: new_bss BSSID not found after 2 scan attempts, "
+                "clearing new_bss\n", __func__, __LINE__);
+            memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
+            ext->new_bss_scan_retry = 0;
+            new_bss_is_set = false; // Update flag after clearing
+        }
+
         if (new_bss || last_connected_bss || temp) {
             if (new_bss) {
                 candidate = new_bss;
@@ -1032,16 +1059,6 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
 
     uint8_mac_to_string_mac(vap_info->u.sta_info.bssid, bssid_str);
 
-    // Support only connected/wait_for_csa/connected_scan_list -> nb_in_progress state change
-    if (ext->conn_state != connection_state_connected &&
-        ext->conn_state != connection_state_connected_wait_for_csa &&
-        ext->conn_state != connection_state_connected_scan_list) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d skip sta bssid change event: connection state: %s,"
-            "vap: %s, bssid: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state),
-            vap_info->vap_name, bssid_str);
-        return 0;
-    }
-
     // Clear old bssid
     if (candidate->vap_index == vap_info->vap_index) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d clear old sta bssid for vap %s\n", __func__,
@@ -1066,6 +1083,7 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         return -1;
     }
 
+    ext->new_bss_delayed = false;
     memset(candidate, 0, sizeof(bss_candidate_t));
     memcpy(candidate->external_ap.bssid, vap_info->u.sta_info.bssid, sizeof(bssid_t));
     strncpy(candidate->external_ap.ssid, vap_info->u.sta_info.ssid, sizeof(ssid_t) - 1);
@@ -1094,6 +1112,24 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->ext_connected_scan_result_timeout_handler_id = 0;
     }
 
+    if (ext->conn_state == connection_state_connection_in_progress ||
+        ext->conn_state == connection_state_connection_to_lcb_in_progress ||
+        ext->conn_state == connection_state_connection_to_nb_in_progress) {
+        ext->new_bss_delayed = true;
+        return 0;
+    }
+
+    // In disconnected / scanning states we only cache the provided BSSID in new_bss.
+    // Do NOT change the current state here, because the state machine is already
+    // progressing through scan -> connection_in_progress.
+    // When entering connection_in_progress, ext_try_connecting() will prioritize new_bss.
+    if (ext->conn_state == connection_state_disconnected_scan_list_none ||
+        ext->conn_state == connection_state_disconnected_scan_list_in_progress ||
+        ext->conn_state == connection_state_disconnected_scan_list_all ||
+        ext->conn_state == connection_state_disconnection_in_progress) {
+        return 0;
+    }
+
     if (ext->ext_connect_algo_processor_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
         ext->ext_connect_algo_processor_id = 0;
@@ -1112,7 +1148,8 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         ext->ignored_radio_index = get_radio_index_for_vap_index(svc->prop,
             ext->connected_vap_index);
         ext->is_on_channel = true;
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        ext->new_bss_delayed = true;
+        ext_set_conn_state(ext, connection_state_disconnection_in_progress, __func__, __LINE__);
     }
 
     schedule_connect_sm(svc);
@@ -1608,9 +1645,10 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             memcpy(&ext->last_connected_bss.external_ap, &sta_data->bss_info, sizeof(wifi_bss_info_t));
             ext->connected_vap_index = sta_data->stats.vap_index;
 
-            // clear new bssid since it is not used for reconnection
-            memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
-
+            if (!ext->new_bss_delayed) {
+                // clear new bssid since it is not used for reconnection
+                memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
+            }
             convert_radio_index_to_freq_band(svc->prop, index, &radio_freq_band);
             ext->last_connected_bss.radio_freq_band = (wifi_freq_bands_t)radio_freq_band;
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d - connected radio_band:%d\r\n", __func__, __LINE__, ext->last_connected_bss.radio_freq_band);
@@ -1783,7 +1821,21 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         }
     }
 
-    if (candidate != NULL) {
+    if (ext->new_bss_delayed)
+    {
+        ext->new_bss_delayed = false;
+
+        if (ext->conn_state == connection_state_connected &&
+            memcmp(sta_data->bss_info.bssid, ext->new_bss.external_ap.bssid, sizeof(sta_data->bss_info.bssid))) {
+            ext_set_conn_state(ext, connection_state_disconnection_in_progress, __func__, __LINE__);
+            schedule_connect_sm(svc);
+        } else if (ext->conn_state != connection_state_connected) {
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+            schedule_connect_sm(svc);
+        } else {
+            memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
+        }
+    } else if (candidate != NULL) {
         if ((found_candidate == false && (ext->conn_state != connection_state_connected)) ||
                 ((found_candidate == true) && (candidate->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT))) {
             // fallback to last connected bssid if new bssid fails
