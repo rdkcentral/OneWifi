@@ -468,6 +468,7 @@ int update_radio_operating_classes(wifi_radio_operationParam_t *oper);
 int get_partner_id(char *partner_id);
 int interfacename_from_mac(const mac_address_t *mac, char *ifname);
 int mac_address_from_name(const char *ifname, mac_address_t mac);
+bool is_zero_mac(const uint8_t *mac);
 #ifdef __cplusplus
 }
 #endif
