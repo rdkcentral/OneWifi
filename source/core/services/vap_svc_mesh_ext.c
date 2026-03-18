@@ -35,6 +35,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
+#define SCORE_TIE_THRESHOLD 1
 
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
@@ -135,6 +136,17 @@ void sort_bss_results_by_rssi(bss_candidate_t *bss, int start, int end)
     start_sorting_by_rssi(bss, start, end, rssi_2_4_normalizer_val);
 }
 
+int get_variant_rank(wifi_ieee80211Variant_t variant)
+{
+    if (variant & WIFI_80211_VARIANT_BE) return 8;
+    if (variant & WIFI_80211_VARIANT_AX) return 7;
+    if (variant & WIFI_80211_VARIANT_AC) return 6;
+    if (variant & WIFI_80211_VARIANT_N)  return 5;
+    if (variant & WIFI_80211_VARIANT_G)  return 4;
+    if (variant & WIFI_80211_VARIANT_B)  return 3;
+    if (variant & WIFI_80211_VARIANT_A)  return 2;
+    return 1;
+}
 /**
  * @brief Comparator for qsort - sorts by score (descending)
  */
@@ -175,7 +187,6 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
     }
 
     for (int i = 0; i < count; i++) {
-        // Skip entries with CU > 70
         int radio_index = 0;
         if (convert_freq_band_to_radio_index(scan_list[i].external_ap.oper_freq_band, &radio_index) == RETURN_ERR) {
              wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get radio index for band %d\n",
@@ -228,19 +239,62 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
     for (int i = 0; i < valid_count; i++) {
         float snr_diff = 0.0;
         if (scores[i].bucket == 2) {
-             wifi_util_dbg_print(WIFI_CTRL, "[%s %d] BSSID : %s SNR : %f\n", __func__, __LINE__, to_mac_str(scores[i].candidate->external_ap.bssid, bssid_str), scores[i].candidate->external_ap.snr);
-             snr_diff = scores[i].candidate->external_ap.snr - max_bucket1_snr;
-             if (snr_diff > ignite_config->SNR_difference) {
-                 scores[i].score += snr_diff * snr_weighting_factor;
-             }
+            int radio_index = 0;
+            if (convert_freq_band_to_radio_index(scan_list[i].external_ap.oper_freq_band,
+                    &radio_index) == RETURN_ERR) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get radio index for band %d\n",
+                    __func__, __LINE__, scan_list[i].external_ap.oper_freq_band);
+                free(scores);
+                return RETURN_ERR;
+            }
+            wifi_util_dbg_print(WIFI_CTRL,
+                "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__,
+                __LINE__, count, mgr->ignite_config[radio_index].ignite_name,
+                mgr->ignite_config[radio_index].min_chanutil_threshold,
+                mgr->ignite_config[radio_index].max_chanutil_threshold,
+                mgr->ignite_config[radio_index].SNR_threshold,
+                mgr->ignite_config[radio_index].SNR_difference);
+            ignite_config_t *cfg = &mgr->ignite_config[radio_index];
+            snr_diff = scores[i].candidate->external_ap.snr - max_bucket1_snr;
+            wifi_util_dbg_print(WIFI_CTRL, "[%s %d] BSSID : %s SNR : %f snr_diff : %f\n", __func__,
+                __LINE__, to_mac_str(scores[i].candidate->external_ap.bssid, bssid_str),
+                scores[i].candidate->external_ap.snr, snr_diff);
+            if (snr_diff > cfg->SNR_difference) {
+                scores[i].score += snr_diff * snr_weighting_factor;
+            }
         }
-	    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] score : %f\n", __func__, __LINE__, scores[i].score);
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] score : %f\n", __func__, __LINE__, scores[i].score);
     }
 
     // Step 3: Sort by descending score
     qsort(scores, valid_count, sizeof(bss_score_entry_t), compare_bss_scores);
 
-    // Step 4: Copy sorted results back to scan_list
+    float base_score = scores[0].score; /* fixed reference */
+
+    for (int i = 1; i < valid_count; i++) {
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] base-score:%.4f score:%.4f\n", __func__, __LINE__,
+            base_score, scores[i].score);
+        float diff = base_score - scores[i].score;
+
+        if (diff > SCORE_TIE_THRESHOLD)
+            break; /* sorted — everything beyond is also out of range */
+
+        int rank0 = get_variant_rank(scores[0].candidate->external_ap.oper_standards);
+        int rank1 = get_variant_rank(scores[i].candidate->external_ap.oper_standards);
+
+        wifi_util_dbg_print(WIFI_CTRL,
+            "%s:%d variant-check i=%d diff=%.4f base-score=%.4f "
+            "rank[0]=%d rank[i]=%d\n",
+            __func__, __LINE__, i, diff, base_score, rank0, rank1);
+
+        if (rank1 > rank0) {
+            bss_score_entry_t tmp = scores[0];
+            scores[0] = scores[i];
+            scores[i] = tmp;
+        }
+    }
+
+    // Step 5: Copy sorted results back to scan_list
     for (int i = 0; i < valid_count; i++) {
         scan_list[i] = *scores[i].candidate;
         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] List : %d %s %f\n", __func__, __LINE__, i, to_mac_str(scan_list[i].external_ap.bssid, bssid_str), scores[i].score);
