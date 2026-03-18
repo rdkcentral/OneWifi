@@ -291,7 +291,7 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     struct ieee80211_mgmt *frame;
     mac_addr_str_t mac_str = { 0 };
     char *str;
-    probe_req_elem_t *elem, *tmp;
+    probe_req_elem_t *elem;
     char namespace[50];
 
     frame = (struct ieee80211_mgmt *)msg->data;
@@ -307,35 +307,24 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
             __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
     pthread_mutex_lock(&app->data.u.levl.lock);
-    if ((elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str)) == NULL) {
+    elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
+    pthread_mutex_unlock(&app->data.u.levl.lock);
+    if (elem == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d:probe not found for mac address:%s\n", __func__, __LINE__, str);
         //assert(1);
         // assoc request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
-        pthread_mutex_unlock(&app->data.u.levl.lock);
         mgmt_frame_bus_send(&app->handle, namespace, msg);
     } else {
         // prob request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, elem->msg_data.frame.ap_index+1);
-        pthread_mutex_unlock(&app->data.u.levl.lock);
         mgmt_frame_bus_send(&app->handle, namespace, &elem->msg_data);
 
         // assoc request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
         mgmt_frame_bus_send(&app->handle, namespace, msg);
 
-        // remove prob request
-        pthread_mutex_lock(&app->data.u.levl.lock);
-        tmp = elem;
-        frame = (struct ieee80211_mgmt *)tmp->msg_data.data;
-        str = to_mac_str((unsigned char *)frame->sa, mac_str);
-        if (str != NULL) {
-            tmp = hash_map_remove(app->data.u.levl.probe_req_map, str);
-            if (tmp != NULL) {
-                free(tmp);
-            }
-        }
-        pthread_mutex_unlock(&app->data.u.levl.lock);
+        free(elem);
         wifi_util_dbg_print(WIFI_APPS,"%s:%d Send probe and assoc ap_index:%d length:%d type:%d dir:%d rssi:%d\r\n",
                 __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm);
 
@@ -664,6 +653,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
 
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *) data;
     levl_sched_data_t *levl_sc_data = NULL;
+    levl_sched_data_t *p_sc_data = NULL;
     hash_map_t *p_map = NULL, *curr_map = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_apps_mgr_t *apps_mgr = NULL;
@@ -700,7 +690,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         wifi_app->data.u.levl.num_current_sounding = 0;
     }
 
-    levl_sc_data = (levl_sched_data_t *)hash_map_get(curr_map, mac_str);
+    levl_sc_data = (levl_sched_data_t *)hash_map_remove(curr_map, mac_str);
     if (levl_sc_data != NULL) {
         //Cancel scheduler Task
         if (levl_sc_data->sched_handler_id != 0) {
@@ -711,25 +701,19 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         wifi_util_error_print(WIFI_APPS,"%s:%d Disabling Sounding for MAC %02x:...:%02x\n", __func__, __LINE__,
                 assoc_data->dev_stats.cli_MACAddress[0],assoc_data->dev_stats.cli_MACAddress[5]);
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, assoc_data->ap_index, assoc_data->dev_stats.cli_MACAddress, wifi_app_inst_levl);
-        pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
-        levl_csi_status_publish(&wifi_app->handle, assoc_data->dev_stats.cli_MACAddress, 0);
-        pthread_mutex_lock(&wifi_app->data.u.levl.lock);
     }
+    p_sc_data = (levl_sched_data_t *)hash_map_remove(p_map, mac_str);
 
-    levl_sc_data = (levl_sched_data_t *)hash_map_remove(curr_map, mac_str);
-    if (levl_sc_data != NULL) {
-        free(levl_sc_data);
-    }
-
-    levl_sc_data = (levl_sched_data_t *)hash_map_get(p_map, mac_str);
-    if (levl_sc_data  != NULL) {
+    if (p_sc_data != NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d Removing from Pending List\n", __func__, __LINE__);
-        levl_sc_data = (levl_sched_data_t *)hash_map_remove(p_map, mac_str);
-        if (levl_sc_data != NULL) {
-            free(levl_sc_data);
-        }
+        free(p_sc_data);
     }
     pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+
+    if (levl_sc_data != NULL) {
+        levl_csi_status_publish(&wifi_app->handle, assoc_data->dev_stats.cli_MACAddress, 0);
+        free(levl_sc_data);
+    }
     return;
 }
 
@@ -992,10 +976,13 @@ int levl_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void *
 int apps_frame_event_exec_timeout(wifi_app_t *apps)
 {
     time_t l_curr_alive_time_sec, delta_time_sec;
-    hash_map_t *probe_map = apps->data.u.levl.probe_req_map;
+    hash_map_t *probe_map = NULL;
     probe_req_elem_t *l_elem = NULL, *l_temp_elem = NULL;
+    pthread_mutex_lock(&apps->data.u.levl.lock);
+    probe_map = apps->data.u.levl.probe_req_map;
 
     if (probe_map == NULL) {
+        pthread_mutex_unlock(&apps->data.u.levl.lock);
         wifi_util_error_print(WIFI_APPS,"%s:%d probe map is NULL\r\n", __func__, __LINE__);
         return RETURN_ERR;
     }
@@ -1019,6 +1006,7 @@ int apps_frame_event_exec_timeout(wifi_app_t *apps)
     }
 
     wifi_util_info_print(WIFI_APPS,"%s:%d total probe entry:%d\r\n", __func__, __LINE__, hash_map_count(probe_map));
+    pthread_mutex_unlock(&apps->data.u.levl.lock);
     return 0;
 }
 
@@ -1595,7 +1583,7 @@ bus_error_t levl_event_handler(char *eventName, bus_event_sub_action_t action, i
                 return bus_error_general;
             }
 
-            if ((radio < 0) || (radio > MAX_NUM_RADIOS)) {
+            if ((radio == 0) || (radio > MAX_NUM_RADIOS)) {
                 wifi_util_dbg_print(WIFI_APPS, "%s:%d Invalid Radio: %u\n", __func__, __LINE__, radio-1);
                 pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
                 return bus_error_general;

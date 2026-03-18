@@ -842,6 +842,9 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     // MemwrapToolEnable
     cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
 
+    cJSON_AddNumberToObject(global_obj, "IgniteLinkQualityThreshold",
+        global_info->ignite_link_quality_threshold);
+
     return webconfig_error_none;
 }
 
@@ -1183,7 +1186,6 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
                 __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
-
     if (security_info->mode == wifi_security_mode_none ||
         security_info->mode == wifi_security_mode_enhanced_open) {
         obj = cJSON_CreateObject();
@@ -1578,7 +1580,29 @@ webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info,
         return webconfig_error_encode;
 
     }
+     return webconfig_error_none;
+}
 
+
+webconfig_error_t encode_link_score_sample_object(const link_report_t *link,
+    cJSON *link_obj)
+{
+    unsigned int i = 0 ,sample_count = 0;
+    cJSON *obj_array, *obj;
+    obj_array = cJSON_CreateArray();
+    sample_count = link->sample_count;
+     for (i = 0; i < sample_count; i++) {
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToArray(obj_array, obj);
+        sample_t s = link->samples[i];
+        cJSON_AddNumberToObject(obj, "Score", s.score);
+        cJSON_AddStringToObject(obj, "Time", s.time);
+        cJSON_AddNumberToObject(obj, "SNR", s.snr);
+        cJSON_AddNumberToObject(obj, "PER", s.per);
+        cJSON_AddNumberToObject(obj, "PHY", s.phy);
+
+    }
+    cJSON_AddItemToObject(link_obj, "Samples", obj_array); 
     return webconfig_error_none;
 }
 
@@ -1600,10 +1624,89 @@ webconfig_error_t encode_scan_params_object(const wifi_scan_params_t *scan_info,
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_ignite_radius_object(const wifi_radius_settings_t *radius_info, cJSON *radius)
+{
+    cJSON_AddNumberToObject(radius, "IgniteEAPType", radius_info->eap_type);
+    cJSON_AddNumberToObject(radius, "IgnitePhase2Auth", radius_info->phase2);
+    if (strlen((char *)radius_info->identity) == 0) {
+        cJSON_AddStringToObject(radius, "IgniteIdentity", "username_empty");
+    } else {
+        cJSON_AddStringToObject(radius, "IgniteIdentity", radius_info->identity);
+    }
+
+    if (strlen((char *)radius_info->key) == 0) {
+        cJSON_AddStringToObject(radius, "IgniteKey", INVALID_KEY);
+    } else {
+        cJSON_AddStringToObject(radius, "IgniteKey", radius_info->key);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_ignite_security_object(const wifi_vap_security_t *security_info, cJSON *security,
+        bool is_6g)
+{
+    cJSON *obj;
+
+    if (is_6g &&
+            security_info->repurposed_mode != wifi_security_mode_wpa3_enterprise) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
+                __func__, __LINE__, security_info->repurposed_mode);
+        return webconfig_error_encode;
+    }
+    switch (security_info->repurposed_mode) {
+        case wifi_security_mode_wpa2_enterprise:
+            cJSON_AddStringToObject(security, "IgniteMode", "WPA2-Enterprise");
+            break;
+
+        case wifi_security_mode_wpa3_enterprise:
+            cJSON_AddStringToObject(security, "IgniteMode", "WPA3-Enterprise");
+            break;
+
+        default:
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode security mode: %d\n",
+                    __func__, __LINE__, security_info->repurposed_mode);
+            return webconfig_error_encode;
+    }
+    if ((security_info->repurposed_mode == wifi_security_mode_wpa2_enterprise) || (security_info->repurposed_mode == wifi_security_mode_wpa3_enterprise)) {
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToObject(security, "IgniteRadiusSettings", obj);
+        if (encode_ignite_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
+                    __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+    }
+    return webconfig_error_none;    
+}
+
+webconfig_error_t encode_ignite_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+{
+    cJSON *obj;
+
+    //SSID
+    cJSON_AddStringToObject(vap_obj, "IgniteSSID", vap_info->u.sta_info.repurposed_ssid);
+
+    //Bridge Name
+    cJSON_AddStringToObject(vap_obj, "IgniteBridgeName", vap_info->repurposed_bridge_name);
+
+    obj = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(vap_obj, "IgniteSecurity", obj);
+
+    bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
+
+    if (encode_ignite_security_object(&vap_info->u.sta_info.security, obj, is_6g) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }    
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
-    cJSON *obj;
+    cJSON *obj, *ignite_obj;
     char mac_str[32];
 
     //VAP Name
@@ -1635,9 +1738,9 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     // Enabled
     cJSON_AddBoolToObject(vap_obj, "Enabled", vap_info->u.sta_info.enabled);
     
-    // Ignite Status
+    // Ignite Enabled
     cJSON_AddBoolToObject(vap_obj, "Ignite_Enabled", vap_info->u.sta_info.ignite_enabled);
-
+    
     //ConnectStatus
     if (vap_info->u.sta_info.conn_status == wifi_connection_status_connected) {
         cJSON_AddBoolToObject(vap_obj, "ConnectStatus", true);
@@ -1653,6 +1756,13 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_security_object(&vap_info->u.sta_info.security, obj, is_6g, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
+    
+    ignite_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "IgniteSettings", ignite_obj);
+    if (encode_ignite_mesh_sta_object(vap_info, ignite_obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh sta vap object\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -1774,16 +1884,23 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
 
             if (print_assoc_client == true) {
                 cJSON *obj_assoc_client;
+                mac_addr_str_t mac_string = { 0 };
+
                 obj_assoc_client = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj_assoc_client);
-
-                char mac_string[18] = {0};
 
                 to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_string);
                 str_tolower(mac_string);
                 cJSON_AddStringToObject(obj_assoc_client, "MACAddress", mac_string);
+
+                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, mac_string);
+                str_tolower(mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", mac_string);
+
+                cJSON_AddBoolToObject(obj_assoc_client, "MLDEnable", assoc_dev_data->dev_stats.cli_MLDEnable);
                 cJSON_AddStringToObject(obj_assoc_client, "WpaKeyMgmt", assoc_dev_data->conn_security.wpa_key_mgmt);
                 cJSON_AddStringToObject(obj_assoc_client, "PairwiseCipher", assoc_dev_data->conn_security.pairwise_cipher);
+                cJSON_AddNumberToObject(obj_assoc_client, "RSNCapabilities", assoc_dev_data->conn_security.rsn_capabilities);
                 cJSON_AddBoolToObject(obj_assoc_client, "AuthenticationState", assoc_dev_data->dev_stats.cli_AuthenticationState);
                 cJSON_AddNumberToObject(obj_assoc_client, "LastDataDownlinkRate", assoc_dev_data->dev_stats.cli_LastDataDownlinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "LastDataUplinkRate", assoc_dev_data->dev_stats.cli_LastDataUplinkRate);
@@ -1811,6 +1928,9 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "FailedRetransCount", assoc_dev_data->dev_stats.cli_FailedRetransCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "RetryCount", assoc_dev_data->dev_stats.cli_RetryCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "MultipleRetryCount", assoc_dev_data->dev_stats.cli_MultipleRetryCount);
+                cJSON_AddNumberToObject(obj_assoc_client, "MaxUplinkRate", assoc_dev_data->dev_stats.cli_MaxUplinkRate);
+                cJSON_AddNumberToObject(obj_assoc_client, "MaxDownlinkRate", assoc_dev_data->dev_stats.cli_MaxDownlinkRate);
+                cJSON_AddNumberToObject(obj_assoc_client, "LastConnectTime", assoc_dev_data->last_connect_time);
                 if (include_frame_data == true &&
                     encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
                         webconfig_error_none) {
@@ -1897,6 +2017,22 @@ webconfig_error_t encode_memwraptool_object(memwraptool_config_t *memwrap_info, 
     cJSON_AddNumberToObject(memwrap_obj, "heapwalk_duration", memwrap_info->heapwalk_duration);
     cJSON_AddNumberToObject(memwrap_obj, "heapwalk_interval", memwrap_info->heapwalk_interval);
     cJSON_AddBoolToObject(memwrap_obj, "enable", memwrap_info->enable);
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_ignite_object(ignite_config_t *ignite_config, cJSON *ignite_obj)
+{
+    if (ignite_config == NULL || ignite_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Ignite info is NULL\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_threshold, ignite_config->SNR_difference);
+
+    cJSON_AddStringToObject(ignite_obj, "ignite_name", ignite_config->ignite_name);
+    cJSON_AddNumberToObject(ignite_obj, "ignite_minchutil_threshold", ignite_config->min_chanutil_threshold);
+    cJSON_AddNumberToObject(ignite_obj, "ignite_maxchutil_threshold", ignite_config->max_chanutil_threshold);
+    cJSON_AddNumberToObject(ignite_obj, "ignite_snr_threshold", ignite_config->SNR_threshold);
+    cJSON_AddNumberToObject(ignite_obj, "ignite_snr_difference", ignite_config->SNR_difference);
     return webconfig_error_none;
 }
 

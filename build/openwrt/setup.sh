@@ -81,7 +81,9 @@ patch --forward -p1 < $HOSTAP_PATCH_DIR/open_auth_workaround.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/mdu_radius_psk_auth_2_11.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/supplicant_new.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/bpi.patch
-
+patch --forward -p1 < $HOSTAP_PATCH_DIR/mlo_fix.patch
+patch --forward -p1 < $HOSTAP_PATCH_DIR/fixed_disassoc_after_assoc_retry.patch
+patch --forward -p1 < $HOSTAP_PATCH_DIR/xfi_tel_compete_2_11.patch
 #Delete the meta-cmf-bananapi directory after applying patches
 rm -rf meta-cmf-bananapi
 
@@ -99,3 +101,6 @@ if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Fr
         patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
 fi
 cd $ONEWIFI_DIR
+
+# Remove the Kernel 6.6 specific flag when building for Kernel 5.4
+sed -i 's/-DKERNEL_6_6//g' build/openwrt/makefile

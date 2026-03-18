@@ -341,6 +341,12 @@ struct wifiEnvironmentEnumStrMap wifiEnviromentMap[] =
     {wifi_operating_env_non_country, "X"}
 };
 
+bool is_zero_mac(const uint8_t *mac)
+{
+    static const uint8_t zero[6] = {0};
+    return memcmp(mac, zero, 6) == 0;
+}
+
 void write_to_file(const char *file_name, char *fmt, ...)
 {
     FILE *fp = NULL;
@@ -1543,9 +1549,6 @@ int country_code_conversion(wifi_countrycode_type_t *country_code, char *country
         }
 
     } else if (conv_type == ENUM_TO_STRING) {
-        if ( i >= MAX_WIFI_COUNTRYCODE) {
-            return RETURN_ERR;
-        }
         snprintf(country, country_len, "%s", wifiCountryMapMembers[*country_code].countryStr);
         return RETURN_OK;
     }
@@ -2297,22 +2300,22 @@ bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info,
                                          const wifi_vap_info_t *hotspot_vap_info)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s: Entry\n", __func__);
-    
+
     if (!lnf_vap_info || !hotspot_vap_info) {
         wifi_util_error_print(WIFI_CTRL, "%s: NULL pointer check failed - lnf_vap_info=%p, hotspot_vap_info=%p\n", 
                              __func__, lnf_vap_info, hotspot_vap_info);
         return false;
     }
-    
+
     wifi_util_dbg_print(WIFI_CTRL, "%s: lnf_vap_name=%s, hotspot_vap_name=%s\n", 
                        __func__, 
                        lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
                        hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL");
-    
+
     bool is_mdu_enabled = lnf_vap_info->u.bss_info.mdu_enabled;
     wifi_util_dbg_print(WIFI_CTRL, "%s: is_mdu_enabled=%s\n", 
                        __func__, is_mdu_enabled ? "true" : "false");
-    
+
     bool is_secure_hotspot = !strncmp(hotspot_vap_info->vap_name, 
                                      VAP_PREFIX_HOTSPOT_SECURE,
                                      strlen(VAP_PREFIX_HOTSPOT_SECURE));
@@ -2321,39 +2324,28 @@ bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info,
                        is_secure_hotspot ? "true" : "false",
                        hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
                        VAP_PREFIX_HOTSPOT_SECURE);
-    
-    bool lnf_enabled = lnf_vap_info->u.bss_info.enabled;
-    bool hotspot_enabled = hotspot_vap_info->u.bss_info.enabled;
-    bool vap_enabled_changed = (lnf_enabled != hotspot_enabled);
-    wifi_util_dbg_print(WIFI_CTRL, "%s: vap_enabled_changed=%s (lnf_enabled=%s, hotspot_enabled=%s)\n", 
-                       __func__, 
-                       vap_enabled_changed ? "true" : "false",
-                       lnf_enabled ? "true" : "false",
-                       hotspot_enabled ? "true" : "false");
-    
+
     bool radius_config_changed = wifi_radius_config_changed(
         &lnf_vap_info->u.bss_info.security.repurposed_radius,
         &hotspot_vap_info->u.bss_info.security.u.radius);
     wifi_util_dbg_print(WIFI_CTRL, "%s: radius_config_changed=%s\n", 
                        __func__, radius_config_changed ? "true" : "false");
-    
+
     bool result = (is_mdu_enabled &&
                   is_secure_hotspot &&
-                  (vap_enabled_changed || radius_config_changed));
-    
-    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d:%d:%d - result=%s\n", 
+                  radius_config_changed);
+
+    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d - result=%s\n", 
                         __func__,
                         hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
                         lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
                         is_mdu_enabled ? 1 : 0,
                         is_secure_hotspot ? 1 : 0,
-                        vap_enabled_changed ? 1 : 0,
                         radius_config_changed ? 1 : 0,
-                        (vap_enabled_changed || radius_config_changed) ? 1 : 0,
                         result ? "true" : "false");
-    
+
     wifi_util_dbg_print(WIFI_CTRL, "%s: Exit - returning %s\n", __func__, result ? "true" : "false");
-    
+
     return result;
 }
 
@@ -3036,7 +3028,7 @@ int get_steering_cfg_id(char *key, int key_len, unsigned char * id, int id_len, 
     }
 
     for (i=0; i < st_cfg->vap_name_list_len; i++) {
-        if ((st_cfg->vap_name_list[i] == NULL) || (strlen(st_cfg->vap_name_list[i]) == 0)) {
+        if (strlen(st_cfg->vap_name_list[i]) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap_name_list failed!!!\n", __func__, __LINE__);
             return RETURN_ERR;
 
@@ -3940,6 +3932,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         if (IS_STR_CHANGED(vap_info_old->u.sta_info.ssid, vap_info_new->u.sta_info.ssid,
                 sizeof(ssid_t)) ||
             IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
+            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) || 
             IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
                 sizeof(wifi_vap_security_t))) {
             return true;
@@ -4720,7 +4713,7 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
 
     memset(&ifr, 0, sizeof(struct ifreq));
     ifr.ifr_addr.sa_family = AF_INET;
-    strcpy(ifr.ifr_name, ifname);
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
     if (ioctl(sock, SIOCGIFHWADDR, &ifr) != 0) {
         close(sock);
         wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: ioctl failed to get hardware address for interface:%s\n", __func__, __LINE__, ifname);

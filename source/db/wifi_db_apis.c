@@ -89,6 +89,12 @@
 #define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100042
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100043
 #define ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG 100044
+#define ONEWIFI_DB_VERSION_IGNITE_FLAG 100045
+
+#define IGNITE_MIN_CHUTIL_THRESHOLD  50
+#define IGNITE_MAX_CHUTIL_THRESHOLD 100
+#define IGNITE_SNR_THRESHOLD   0
+#define IGNITE_SNR_DIFFERENCE 5
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -104,6 +110,7 @@ ovsdb_table_t table_Wifi_Preassoc_Control_Config;
 ovsdb_table_t table_Wifi_Postassoc_Control_Config;
 ovsdb_table_t table_Wifi_Connection_Control_Config;
 ovsdb_table_t table_Wifi_Rfc_Config;
+ovsdb_table_t table_Wifi_Ignite_Config;
 
 static char *ApMFPConfig         = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.Security.MFPConfig";
 static char *CTSProtection      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.Radio.%d.CTSProtection";
@@ -235,6 +242,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
     } else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
 
         wifi_util_dbg_print(WIFI_DB, "%s:%d:RFC Config New/Modify \n", __func__, __LINE__);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d:%d _Wifi_Rfc_Config table\n", __func__, __LINE__,new_rec->link_quality_rfc);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         strcpy(rfc_param->rfc_id, new_rec->rfc_id);
         rfc_param->wifipasspoint_rfc = new_rec->wifipasspoint_rfc;
@@ -259,6 +267,8 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
         rfc_param->wpa3_compatibility_enable = new_rec->wpa3_compatibility_enable;
         rfc_param->csi_analytics_enabled_rfc = new_rec->csi_analytics_enabled_rfc;
+        rfc_param->link_quality_rfc = new_rec->link_quality_rfc;
+        rfc_param->xfi_tel_enable_rfc = new_rec->xfi_tel_enable_rfc;
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
@@ -268,7 +278,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
             "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
             "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d "
-            "csi_analytics_enabled_rfc=%d\r\n",
+            "csi_analytics_enabled_rfc=%d link_quality_rfc=%d xfi_tel_enable_rfc=%d\r\n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -277,10 +287,55 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
             rfc_param->rfc_id, rfc_param->memwraptool_app_rfc, rfc_param->levl_enabled_rfc,
-            rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable, rfc_param->csi_analytics_enabled_rfc);
+            rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable, rfc_param->csi_analytics_enabled_rfc,
+        rfc_param->link_quality_rfc, rfc_param->xfi_tel_enable_rfc);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 }
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : callback_Wifi_Ignite_Config
+  Parameter   : mon     - Type of modification
+                old_rec - schema_Wifi_Ignite_Config  holds value before modification
+                new_rec - schema_Wifi_Ignite_Config  holds value after modification
+  Description : Callback function called when Wifi_Ignite_Config modified in wifidb
+ *************************************************************************************
+**************************************************************************************/
+void callback_Wifi_Ignite_Config(ovsdb_update_monitor_t *mon,
+        struct schema_Wifi_Ignite_Config *old_rec,
+        struct schema_Wifi_Ignite_Config *new_rec)
+
+{
+      ignite_config_t *ignite_cfg = get_ignite_config_by_name(new_rec->ignite_name);
+      wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+
+      if (dbwritten == false) {
+      wifi_util_info_print(WIFI_CTRL, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+      return;
+      }
+      
+      if (ignite_cfg == NULL) {
+           wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite Config Null\n", __func__, __LINE__);
+       return;
+      }
+
+      wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite-config : [%s %d %d %d %d]\n", __func__, __LINE__, new_rec->ignite_name, new_rec->min_chanutil_threshold, new_rec->max_chanutil_threshold, new_rec->snr_threshold, new_rec->snr_difference);
+      if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
+          wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config newly added or updated\n", __func__, __LINE__);
+          pthread_mutex_lock(&g_wifidb->data_cache_lock);
+          strcpy(ignite_cfg->ignite_name, new_rec->ignite_name);
+          ignite_cfg->min_chanutil_threshold = (float)new_rec->min_chanutil_threshold;
+          ignite_cfg->max_chanutil_threshold = (float)new_rec->max_chanutil_threshold;
+          ignite_cfg->SNR_threshold = (float)new_rec->snr_threshold;
+          ignite_cfg->SNR_difference = (float)new_rec->snr_difference;
+          pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+      }
+      return;
+}
+
+
+
 /************************************************************************************
  ************************************************************************************
   Function    : callback_Wifi_Radio_Config
@@ -1309,6 +1364,12 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             new_rec->mgt_frame_rate_limit_window_size;
         g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_cooldown_time =
             new_rec->mgt_frame_rate_limit_cooldown_time;
+        if (strlen(new_rec->ignite_link_quality_threshold) != 0) {
+            g_wifidb->global_config.global_parameters.ignite_link_quality_threshold = strtod(
+                new_rec->ignite_link_quality_threshold, NULL);
+        } else {
+            g_wifidb->global_config.global_parameters.ignite_link_quality_threshold = 0.0;
+        }
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d notify_wifi_changes %d prefer_private %d prefer_private_configure %d "
@@ -1326,7 +1387,7 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             "normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s "
             "mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d mgt_frame_window_size %d"
             "mgt_frame_cooldown_time %d rss_check_interval %d rss_threshold %d rss_maxlimit %d "
-            "heapwalk_duration %d heapwalk_interval %d\n",
+            "heapwalk_duration %d heapwalk_interval %d ignite_link_quality_threshold %s\n",
             __func__, __LINE__, new_rec->notify_wifi_changes, new_rec->prefer_private,
             new_rec->prefer_private_configure, new_rec->factory_reset,
             new_rec->tx_overflow_selfheal, new_rec->inst_wifi_client_enabled,
@@ -1346,7 +1407,8 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             new_rec->mgt_frame_rate_limit_enable, new_rec->mgt_frame_rate_limit,
             new_rec->mgt_frame_rate_limit_window_size, new_rec->mgt_frame_rate_limit_cooldown_time,
             new_rec->rss_check_interval, new_rec->rss_threshold, new_rec->rss_maxlimit,
-            new_rec->heapwalk_duration, new_rec->heapwalk_interval);
+            new_rec->heapwalk_duration, new_rec->heapwalk_interval,
+            new_rec->ignite_link_quality_threshold);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     } else {
         wifi_util_dbg_print(WIFI_DB, "%s:%d:Unknown\n", __func__, __LINE__);
@@ -1888,13 +1950,15 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->hotspot_open_5g_last_enabled= pcfg->hotspot_open_5g_last_enabled;
     rfc_info->hotspot_open_6g_last_enabled= pcfg->hotspot_open_6g_last_enabled;
     rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_2g_last_enabled;
-    rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_5g_last_enabled;
+    rfc_info->hotspot_secure_5g_last_enabled= pcfg->hotspot_secure_5g_last_enabled;
     rfc_info->hotspot_secure_6g_last_enabled= pcfg->hotspot_secure_6g_last_enabled;
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
     rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
     rfc_info->csi_analytics_enabled_rfc = pcfg->csi_analytics_enabled_rfc;
+    rfc_info->link_quality_rfc = pcfg->link_quality_rfc;
+    rfc_info->xfi_tel_enable_rfc = pcfg->xfi_tel_enable_rfc;
     free(pcfg);
     return 0;
 }
@@ -2313,7 +2377,9 @@ int wifidb_get_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table radius server ip =%s  port =%d Secondary radius server ip=%s port=%d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d\n",__func__, __LINE__,config->vap_array[vap_index].u.sta_info.security.u.radius.ip,config->vap_array[vap_index].u.sta_info.security.u.radius.port,config->vap_array[vap_index].u.sta_info.security.u.radius.s_ip,config->vap_array[vap_index].u.sta_info.security.u.radius.s_port,config->vap_array[vap_index].u.sta_info.security.u.radius.max_auth_attempts,config->vap_array[vap_index].u.sta_info.security.u.radius.blacklist_table_timeout,config->vap_array[vap_index].u.sta_info.security.u.radius.identity_req_retry_interval,config->vap_array[vap_index].u.sta_info.security.u.radius.server_retries,address,config->vap_array[vap_index].u.sta_info.security.u.radius.dasport);
                 }
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table vap_name=%s Sec_mode=%d enc_mode=%d mfg_config=%d rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.sta_info.security.mode,config->vap_array[vap_index].u.sta_info.security.encr,config->vap_array[vap_index].u.sta_info.security.mfp,config->vap_array[vap_index].u.sta_info.security.rekey_interval,config->vap_array[vap_index].u.sta_info.security.strict_rekey,config->vap_array[vap_index].u.sta_info.security.eapol_key_timeout,config->vap_array[vap_index].u.sta_info.security.eapol_key_retries,config->vap_array[vap_index].u.sta_info.security.eap_identity_req_timeout,config->vap_array[vap_index].u.sta_info.security.eap_identity_req_retries,config->vap_array[vap_index].u.sta_info.security.eap_req_timeout,config->vap_array[vap_index].u.sta_info.security.eap_req_retries,config->vap_array[vap_index].u.sta_info.security.disable_pmksa_caching);
-            } else {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: Ignite_configs- ssid:%s eap:%d phase2:%d ip:%s s_ip:%s ignite_enable:%d enable:%d\n", __func__, __LINE__, config->vap_array[vap_index].u.sta_info.repurposed_ssid, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.eap_type, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.phase2, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.ip, config->vap_array[vap_index].u.sta_info.security.repurposed_radius.s_ip,
+config->vap_array[vap_index].u.sta_info.ignite_enabled, config->vap_array[vap_index].u.sta_info.enabled);           
+        } else {
                 wifidb_get_wifi_security_config(vap_name,&config->vap_array[vap_index].u.bss_info.security);
 
                 if (!security_mode_support_radius(config->vap_array[vap_index].u.bss_info.security.mode)) {
@@ -3153,6 +3219,98 @@ int wifidb_update_table_entry(char *key, char *key_name,ovsdb_col_t key_type, ov
     return ret;
 }
 
+int wifidb_update_ignite_config(ignite_config_t *ignite_cfg)
+{
+    if (ignite_cfg == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Ignite config is NULL\n",
+                __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    if (ignite_cfg->ignite_name[0] == '\0') {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid ignite config name\n",
+                __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    struct schema_Wifi_Ignite_Config cfg, *pcfg;
+    json_t *where;
+    bool update = false;
+    int count, ret;
+
+    wifi_db_t *g_wifidb = get_wifidb_obj();
+    memset(&cfg, 0, sizeof(cfg));
+    // Check existing entry
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "ignite_name",
+            OFUNC_EQ, ignite_cfg->ignite_name);
+
+    pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path,
+            &table_Wifi_Ignite_Config,
+            where, &count);
+    if (where) { json_decref(where); where = NULL; }
+    if (pcfg && count > 0) {
+        memcpy(&cfg, pcfg, sizeof(cfg));
+        update = true;
+        free(pcfg);
+    }
+
+    // Set ignite_name
+    strncpy(cfg.ignite_name, ignite_cfg->ignite_name,
+            sizeof(cfg.ignite_name) - 1);
+    cfg.ignite_name[sizeof(cfg.ignite_name) - 1] = '\0';
+    // Convert float → integer
+    cfg.min_chanutil_threshold = (int)ignite_cfg->min_chanutil_threshold;
+    cfg.max_chanutil_threshold = (int)ignite_cfg->max_chanutil_threshold;
+    cfg.snr_threshold = (int)ignite_cfg->SNR_threshold;
+    cfg.snr_difference = (int)ignite_cfg->SNR_difference;
+    wifi_util_dbg_print(WIFI_CTRL,
+            "%s:%d Ignite data → [%s %d %d %d %d]\n", __func__, __LINE__,
+            cfg.ignite_name,
+            cfg.min_chanutil_threshold,
+            cfg.max_chanutil_threshold,
+            cfg.snr_threshold,
+            cfg.snr_difference
+            );
+
+    /* set presence flags */
+    cfg.ignite_name_exists = true;
+    cfg.min_chanutil_threshold_exists = true;
+    cfg.max_chanutil_threshold_exists = true;
+    cfg.snr_threshold_exists = true;
+    cfg.snr_difference_exists = true;
+
+    /* clear uuid/version for insert */
+    cfg._uuid_exists = false;
+    cfg._version_exists = false;
+
+    if (update) {
+        /* recreate where for update */
+        where = onewifi_ovsdb_tran_cond(OCLM_STR, "ignite_name",
+                OFUNC_EQ, ignite_cfg->ignite_name);
+        ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path,
+                &table_Wifi_Ignite_Config,
+                where, &cfg);
+        if (where) { json_decref(where); where = NULL; }
+
+        if (ret <= 0) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Update failed\n",
+                    __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Row updated successfully\n", __func__, __LINE__);
+        }
+    } else {
+        if (!onewifi_ovsdb_table_insert(g_wifidb->wifidb_sock_path,
+                    &table_Wifi_Ignite_Config, &cfg)) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Insert failed\n",
+                    __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Row inserted successfully\n", __func__, __LINE__);
+        }
+    }
+
+    return 0;
+}
+
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_update_wifi_global_config
@@ -3229,7 +3387,8 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     cfg.mgt_frame_rate_limit = config->mgt_frame_rate_limit;
     cfg.mgt_frame_rate_limit_window_size = config->mgt_frame_rate_limit_window_size;
     cfg.mgt_frame_rate_limit_cooldown_time = config->mgt_frame_rate_limit_cooldown_time;
-
+    snprintf(cfg.ignite_link_quality_threshold, sizeof(cfg.ignite_link_quality_threshold), "%lf",
+        config->ignite_link_quality_threshold);
 
 #if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
@@ -3253,7 +3412,8 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         "txrx_rate_list %s mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d "
         "mgt_frame_rate_limit_window_size %d mgt_frame_rate_limit_cooldown_time %d "
         "rss_check_interval %d rss_threshold %d rss_maxlimit %d "
-        "heapwalk_duration %d heapwalk_interval %d\n",
+        "heapwalk_duration %d heapwalk_interval %d "
+        "ignite_link_quality_threshold %f\n",
         __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
         config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
         config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
@@ -3272,7 +3432,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time,
         config->memwraptool.rss_check_interval, config->memwraptool.rss_threshold,
         config->memwraptool.rss_maxlimit, config->memwraptool.heapwalk_duration,
-        config->memwraptool.heapwalk_interval);
+        config->memwraptool.heapwalk_interval, config->ignite_link_quality_threshold);
 
     if (wifidb_update_table_entry(NULL,NULL,OCLM_UUID,&table_Wifi_Global_Config,&cfg,filter_global) <= 0)
     {
@@ -3285,6 +3445,45 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     }
     return 0;
 }
+
+
+int wifidb_get_wifi_ignite_config(ignite_config_t *ignite_cfg)
+{
+    struct schema_Wifi_Ignite_Config *pcfg = NULL;
+    json_t *where;
+    int count;
+    wifi_db_t *g_wifidb = get_wifidb_obj();
+
+    if (ignite_cfg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d ignite_cfg is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "ignite_name", OFUNC_EQ, ignite_cfg->ignite_name);
+    pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path,
+                                            &table_Wifi_Ignite_Config,
+                                            where,
+                                            &count);
+    if (pcfg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Ignite config not found, count=%d\n",
+                              __func__, __LINE__, count);
+        return RETURN_ERR;
+    }
+    wifi_util_dbg_print(WIFI_CTRL,
+        "[%s %d] Ignite raw strings [%s %d %d %d %d]\n",
+        __func__, __LINE__,
+        pcfg->ignite_name,
+        pcfg->min_chanutil_threshold,
+        pcfg->max_chanutil_threshold,
+        pcfg->snr_threshold,
+        pcfg->snr_difference);
+    strncpy(ignite_cfg->ignite_name, pcfg->ignite_name, MAX_NAME_LEN);
+    ignite_cfg->min_chanutil_threshold = (float)pcfg->min_chanutil_threshold;
+    ignite_cfg->max_chanutil_threshold = (float)pcfg->max_chanutil_threshold;
+    ignite_cfg->SNR_threshold          = (float)pcfg->snr_threshold;
+    ignite_cfg->SNR_difference         = (float)pcfg->snr_difference;
+    return 0;
+}
+
 
 /************************************************************************************
  ************************************************************************************
@@ -3380,6 +3579,12 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->mgt_frame_rate_limit = pcfg->mgt_frame_rate_limit;
         config->mgt_frame_rate_limit_window_size = pcfg->mgt_frame_rate_limit_window_size;
         config->mgt_frame_rate_limit_cooldown_time = pcfg->mgt_frame_rate_limit_cooldown_time;
+        if (strlen(pcfg->ignite_link_quality_threshold) != 0) {
+            config->ignite_link_quality_threshold = strtod(pcfg->ignite_link_quality_threshold,
+                NULL);
+        } else {
+            config->ignite_link_quality_threshold = 0.0;
+        }
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d notify_wifi_changes %d prefer_private %d prefer_private_configure %d "
@@ -3389,7 +3594,8 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             "wifi_active_msmt_pktsize %d wifi_active_msmt_num_samples %d "
             "wifi_active_msmt_sample_duration %d vlan_cfg_version %d wps_pin %s "
             "bandsteering_enable %d good_rssi_threshold %d assoc_count_threshold %d "
-            "assoc_gate_time %d rss_memory_restart_threshold_low %d rss_memory_restart_threshold_high %d "
+            "assoc_gate_time %d rss_memory_restart_threshold_low %d "
+            "rss_memory_restart_threshold_high %d "
             "assoc_monitor_duration %d rapid_reconnect_enable %d "
             "vap_stats_feature %d mfp_config_feature %d force_disable_radio_feature %d "
             "force_disable_radio_status %d fixed_wmm_params %d wifi_region_code %s "
@@ -3397,7 +3603,8 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             "snr list %s txrx_rate_list %s cli_stat_list %s mgt_frame_rate_limit_enable %d"
             "mgt_frame_rate_limit %d mgt_frame_rate_limit_window_size %d "
             "mgt_frame_rate_limit_cooldown_time %d rss_check_interval %d rss_threshold %d "
-            "rss_maxlimit %d heapwalk_duration %d heapwalk_interval %d\n",
+            "rss_maxlimit %d heapwalk_duration %d heapwalk_interval %d "
+            "ignite_link_quality_threshold %f\n",
             __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
             config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
             config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
@@ -3417,7 +3624,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time,
             config->memwraptool.rss_check_interval, config->memwraptool.rss_threshold,
             config->memwraptool.rss_maxlimit, config->memwraptool.heapwalk_duration,
-            config->memwraptool.heapwalk_interval);
+            config->memwraptool.heapwalk_interval, config->ignite_link_quality_threshold);
     }
     free(pcfg);
     return 0;
@@ -4606,10 +4813,41 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.tcm_enabled_rfc = false;
     rfc_config.wpa3_compatibility_enable = false;
     rfc_config.csi_analytics_enabled_rfc = false;
+    rfc_config.link_quality_rfc = false;
+    rfc_config.xfi_tel_enable_rfc = false;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
+}
+
+static void wifidb_upgrade_wifi_ignite_config(int r_index)
+{
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    if (g_wifidb->db_version == 0) {
+        return;
+    }
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IGNITE_FLAG) {
+        switch (r_index) {
+            case 0:
+                strncpy(g_wifidb->ignite_config[r_index].ignite_name, "ignite_2g", MAX_NAME_LEN);
+                break;
+            case 1:
+                strncpy(g_wifidb->ignite_config[r_index].ignite_name, "ignite_5g", MAX_NAME_LEN);
+                break;
+            case 2:
+                strncpy(g_wifidb->ignite_config[r_index].ignite_name, "ignite_6g", MAX_NAME_LEN);
+                break;
+            default:
+                wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported index [%d]\n", __func__, __LINE__, index);
+        }
+        g_wifidb->ignite_config[r_index].min_chanutil_threshold = IGNITE_MIN_CHUTIL_THRESHOLD;
+        g_wifidb->ignite_config[r_index].max_chanutil_threshold = IGNITE_MAX_CHUTIL_THRESHOLD;
+        g_wifidb->ignite_config[r_index].SNR_threshold = IGNITE_SNR_THRESHOLD;
+        g_wifidb->ignite_config[r_index].SNR_difference = IGNITE_SNR_DIFFERENCE;
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite name [%s] Ch-util-threshold [%f %f] SNR [%f %f]\n", __func__, __LINE__, g_wifidb->ignite_config[r_index].ignite_name, g_wifidb->ignite_config[r_index].min_chanutil_threshold, g_wifidb->ignite_config[r_index].max_chanutil_threshold, g_wifidb->ignite_config[r_index].SNR_threshold, g_wifidb->ignite_config[r_index].SNR_difference);
+    }
+    return;
 }
 
 static void wifidb_global_config_upgrade()
@@ -4959,12 +5197,14 @@ static void wifidb_vap_config_ext(wifi_vap_info_map_t *config, rdk_wifi_vap_info
   Description : vap config parameters corrections
  *************************************************************************************
 ********************************************** ****************************************/
-void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
+void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_map_param)
 {
     unsigned int index = 0;
     wifi_vap_info_t *vap_config = NULL;
     rdk_wifi_vap_info_t *rdk_vap_config = NULL;
-
+    int band = 0;
+    char password[128] = { 0 };
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
@@ -5024,7 +5264,42 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 __LINE__, vap_config->vap_name);
             continue;
         }
+
+    if ((isVapSTAMesh(vap_config->vap_index)) && (strcmp(vap_config->u.sta_info.ssid, "Xfinity Mobile") == 0)) {
+        wifi_util_info_print(WIFI_DB, "Mesh Sta vap configured in ignite mode\n Resetting configuration\n");
+        convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, r_index, &band);
+        wifi_util_info_print(WIFI_DB, "index : %d band : %d\n", r_index, band);
+        strncpy(vap_config->u.sta_info.ssid, "we.connect.yellowstone", sizeof(vap_config->u.sta_info.ssid)-1);
+        vap_config->u.sta_info.ignite_enabled = false;
+        vap_config->u.sta_info.enabled = false;
+        vap_config->u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
+        vap_config->u.sta_info.security.u.radius.phase2 = 0;
+        memset(vap_config->u.sta_info.security.u.radius.ip, '\0', sizeof(vap_config->u.sta_info.security.u.radius.ip));
+        memset(vap_config->u.sta_info.security.u.radius.s_ip, '\0', sizeof(vap_config->u.sta_info.security.u.radius.s_ip));
+        memset(vap_config->bridge_name, '\0', WIFI_BRIDGE_NAME_LEN);
+        if (band == WIFI_FREQUENCY_6_BAND) {
+            vap_config->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+        } else {
+            vap_config->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+        }
+
+        memset(password, 0, sizeof(password));       
+        if (wifi_hal_get_default_keypassphrase(password, vap_config->vap_index) == 0) { 
+            strncpy(vap_config->u.sta_info.security.u.key.key, password, sizeof(vap_config->u.sta_info.security.u.key.key));
+        } else {
+            strncpy(vap_config->u.sta_info.security.u.key.key, "12345678", sizeof(vap_config->u.sta_info.security.u.key.key));
+        }
+
+        rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+        if (rdk_vap_config == NULL) {
+            wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
+            continue;
+        }
+        update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+        wifidb_update_wifi_security_config(vap_config->vap_name, &vap_config->u.sta_info.security);
+        wifi_util_error_print(WIFI_DB, "%s:%d: wifi-db update done\n");
     }
+   }
 }
 
 /************************************************************************************
@@ -5038,10 +5313,10 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
 void *evloop_func(void *arg)
 {
         wifi_db_t *g_wifidb;
-	prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
         g_wifidb = (wifi_db_t*) get_wifidb_obj();
-	ev_run(g_wifidb->wifidb_ev_loop, 0);
-	return NULL;
+    ev_run(g_wifidb->wifidb_ev_loop, 0);
+    return NULL;
 }
 
 /************************************************************************************
@@ -5252,12 +5527,12 @@ void rdk_wifi_dbg_print(int level, char *format, ...)
 
 int wifidb_get_factory_reset_data(bool *data)
 {
-	return 0;
+    return 0;
 }
 
 int wifidb_set_factory_reset_data(bool data)
 {
-	return 0;
+    return 0;
 }
 
 int wifidb_del_interworking_entry()
@@ -5746,7 +6021,7 @@ int update_wifidb_vap_bss_param(uint8_t vap_index, wifi_front_haul_bss_t *pcfg)
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "wifidb vap info update failure %s vap_index:%d\n", __FUNCTION__, vap_index);
-	return RETURN_ERR;
+    return RETURN_ERR;
     }
     return RETURN_OK;
 }
@@ -5839,12 +6114,12 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int radio_index, wi
         strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.bss_info.bssMaxSta = 20;
     } else if (radio_index == 3) {
-	map->num_vaps = 1;
+    map->num_vaps = 1;
         params->vap_index = 3;
         params->vap_mode = wifi_vap_mode_sta;
         strcpy(params->vap_name, "backhaul_ssid_2g");
         strcpy(params->bridge_name, "br3");
-	strcpy(params->u.sta_info.ssid, "wifi_test_private_2");
+    strcpy(params->u.sta_info.ssid, "wifi_test_private_2");
         params->u.sta_info.scan_params.period = 10;
         params->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.sta_info.security.encr = wifi_encryption_aes_tkip;
@@ -5900,6 +6175,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
         wifi_util_error_print(WIFI_DB, "%s:%d: rfc_param is NULL\n", __func__, __LINE__);
         return -1;
     }
+    wifi_util_error_print(WIFI_DB, "%s:%d:rfc_param->link_quality_rfc =%d\n", __func__, __LINE__,rfc_param->link_quality_rfc);
 
     sprintf(index,"%d",rfc_id);
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index);
@@ -5930,11 +6206,14 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
     cfg.wpa3_compatibility_enable = rfc_param->wpa3_compatibility_enable;
     cfg.csi_analytics_enabled_rfc = rfc_param->csi_analytics_enabled_rfc;
+    cfg.link_quality_rfc = rfc_param->link_quality_rfc;
+    cfg.xfi_tel_enable_rfc = rfc_param->xfi_tel_enable_rfc;
     if (update == true) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
         ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &cfg);
         if (ret == -1) {
             wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi Rfc Config table \n",__func__, __LINE__);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: DB update error table_Wifi_Rfc_Config table\n", __func__, __LINE__);
             return -1;
         } else if (ret == 0) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_Rfc_Config table\n", __func__, __LINE__);
@@ -6275,8 +6554,8 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     cfg_sec.security_mode = sec->mode;
     if( sec->mode == WPA3_COMPATIBILITY ) {
-	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
-	wifi_util_info_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
+    cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
+    wifi_util_info_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
     }
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
@@ -6325,8 +6604,8 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         cfg_sec.blacklist_table_timeout = (int)sec->u.radius.blacklist_table_timeout;
         cfg_sec.identity_req_retry_interval = (int)sec->u.radius.identity_req_retry_interval;
         cfg_sec.server_retries = (int)sec->u.radius.server_retries;
-	getIpStringFromAdrress(address,&sec->u.radius.dasip);
-	strncpy(cfg_sec.das_ip,address,sizeof(cfg_sec.das_ip)-1);
+    getIpStringFromAdrress(address,&sec->u.radius.dasip);
+    strncpy(cfg_sec.das_ip,address,sizeof(cfg_sec.das_ip)-1);
         cfg_sec.das_port = sec->u.radius.dasport;
         strncpy(cfg_sec.das_key,sec->u.radius.daskey,sizeof(cfg_sec.das_key)-1);
     }
@@ -6772,6 +7051,45 @@ int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *confi
 
 /************************************************************************************
  ************************************************************************************
+  Function    : wifidb_init_ignite_config_default
+  Parameter   : radio_index - Index of radio
+  Description : Update global cache with default value for ignite_config_t
+ *************************************************************************************
+********************************************** ****************************************/
+int wifidb_init_ignite_config_default(int radio_index, ignite_config_t *ignite_cfg)
+{
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+    ignite_config_t local_ignite_config;
+    memset(&local_ignite_config, 0, sizeof(local_ignite_config));
+
+    switch (radio_index) {
+        case 0:
+            strncpy(local_ignite_config.ignite_name, "ignite_2g", MAX_NAME_LEN);
+            break;
+        case 1:
+            strncpy(local_ignite_config.ignite_name, "ignite_5g", MAX_NAME_LEN);
+            break;
+        case 2:
+            strncpy(local_ignite_config.ignite_name, "ignite_6g", MAX_NAME_LEN);
+            break;
+        default:
+            wifi_util_error_print(WIFI_CTRL, "[%s %d] Unsupported index [%d]\n", __func__, __LINE__, index);
+    }
+    //Configured commonly for now. Based on the radio, we can update in the above switch cases.
+    local_ignite_config.min_chanutil_threshold = IGNITE_MIN_CHUTIL_THRESHOLD;
+    local_ignite_config.max_chanutil_threshold = IGNITE_MAX_CHUTIL_THRESHOLD;
+    local_ignite_config.SNR_threshold = IGNITE_SNR_THRESHOLD;
+    local_ignite_config.SNR_difference = IGNITE_SNR_DIFFERENCE;
+    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite name [%s] Ch-util-threshold [%f %f] SNR [%f %f]\n", __func__, __LINE__, local_ignite_config.ignite_name, local_ignite_config.min_chanutil_threshold, local_ignite_config.max_chanutil_threshold, local_ignite_config.SNR_threshold, local_ignite_config.SNR_difference);
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(ignite_cfg,&local_ignite_config,sizeof(local_ignite_config));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    return RETURN_OK;
+}
+
+/************************************************************************************
+ ************************************************************************************
   Function    : wifidb_init_radio_config_default
   Parameter   : radio_index - Index of radio
   Description : Update global cache with default value for wifi_radio_operationParam_t
@@ -6857,8 +7175,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->DfsEnabled = true;
 #elif defined (_GREXT02ACTS_PRODUCT_REQ_)
-	    cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
-	    cfg->DfsEnabled = true;
+        cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
+        cfg->DfsEnabled = true;
 #elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
@@ -7118,14 +7436,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             case WIFI_FREQUENCY_2_4_BAND:
                 if (ctrl->network_mode == rdk_dev_mode_type_em_node)
                     cfg->u.sta_info.scan_params.channel.channel = 6;
-		else
+        else
                     cfg->u.sta_info.scan_params.channel.channel = 1;
                 break;
             case WIFI_FREQUENCY_5_BAND:
             case WIFI_FREQUENCY_5L_BAND:
-		if (ctrl->network_mode == rdk_dev_mode_type_em_node)
+        if (ctrl->network_mode == rdk_dev_mode_type_em_node)
                     cfg->u.sta_info.scan_params.channel.channel = 36;
-		else
+        else
                     cfg->u.sta_info.scan_params.channel.channel = 44;
                 break;
             case WIFI_FREQUENCY_5H_BAND:
@@ -7141,6 +7459,22 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg->u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg->u.sta_info.bssid, 0, sizeof(cfg->u.sta_info.bssid));
+        strncpy(cfg->u.sta_info.repurposed_ssid, "Xfinity Mobile", sizeof(ssid_t)-1);
+        cfg->u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
+        cfg->u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
+        strncpy(cfg->repurposed_bridge_name, "brww0", sizeof(cfg->repurposed_bridge_name)-1);
+        if (band == WIFI_FREQUENCY_6_BAND) {
+            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
+        } else {
+            cfg->u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_enterprise;
+        }
+        memset(&cfg->u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.ip));
+        memset(&cfg->u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg->u.sta_info.security.repurposed_radius.s_ip));
+        wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s mode: %d eap-type: %d phase: %d\n",
+                cfg->u.sta_info.repurposed_ssid, cfg->u.sta_info.security.repurposed_mode,
+                cfg->u.sta_info.security.repurposed_radius.eap_type,
+                cfg->u.sta_info.security.repurposed_radius.phase2);
+
     } else {
         cfg->u.bss_info.wmm_enabled = true;
         cfg->u.bss_info.mbo_enabled = true;
@@ -7532,6 +7866,7 @@ void wifidb_init_default_value()
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
     wifi_radio_feature_param_t *f_radio_cfg = NULL;
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
+    ignite_config_t *ignite_cfg;
     mac_address_t temp_mac_address[MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO];
     int l_vap_index = 0;
 
@@ -7613,6 +7948,17 @@ void wifidb_init_default_value()
             return;
         }
         wifidb_init_radio_config_default(r_index, l_radio_cfg, f_radio_cfg);
+    }
+
+    for (r_index = 0; r_index < num_radio; r_index++)
+    {
+        ignite_cfg = NULL;
+        ignite_cfg = get_wifidb_ignite_config(r_index);
+        if (ignite_cfg == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_ignite_config \n",__func__, __LINE__,index);
+            return;
+        }
+        wifidb_init_ignite_config_default(r_index, ignite_cfg);
     }
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++)
@@ -7776,6 +8122,7 @@ void init_wifidb_data()
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
     wifi_radio_feature_param_t *f_radio_cfg = NULL;
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+    ignite_config_t *ignite_cfg;
     char country_code[COUNTRY_CODE_LEN] = {0};
 
     wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
@@ -7832,6 +8179,19 @@ void init_wifidb_data()
             wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
 
             wifidb_update_wifi_cac_config(l_vap_param_cfg);
+            ignite_cfg = NULL;
+            ignite_cfg = get_wifidb_ignite_config(r_index);
+            if (ignite_cfg == NULL) {
+                wifi_util_error_print(WIFI_DB,"%s:%d: %d Invalid get_wifidb_ignite_config \n",__func__, __LINE__,index);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+                return;
+            }
+            wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite entries : [%s %f %f %f %f]\n", __func__, __LINE__, ignite_cfg->ignite_name, ignite_cfg->min_chanutil_threshold, ignite_cfg->max_chanutil_threshold, ignite_cfg->SNR_threshold, ignite_cfg->SNR_difference);
+            if (wifidb_update_ignite_config(ignite_cfg) != RETURN_OK) {
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: Failed to update ignite config\n", __func__, __LINE__);
+                return;
+            }
         }
         if (country_code[0] != 0) {
             if (strcmp(country_code, g_wifidb->global_config.global_parameters.wifi_region_code) != 0) {
@@ -7890,7 +8250,7 @@ void init_wifidb_data()
                 wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
             }
 
-            wifidb_vap_config_correction(l_vap_param_cfg);
+            wifidb_vap_config_correction(r_index, l_vap_param_cfg);
 
             if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
@@ -7924,6 +8284,23 @@ void init_wifidb_data()
             }
         }
 
+        for (r_index = 0; r_index < num_radio; r_index++) {
+            ignite_cfg = NULL; 
+            ignite_cfg = get_wifidb_ignite_config(r_index);
+            if (ignite_cfg == NULL) {
+                wifi_util_error_print(WIFI_DB,"%s:%d: %d Invalid get_wifidb_ignite_config \n",__func__, __LINE__,index);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+                return;
+            }
+            wifidb_get_wifi_ignite_config(ignite_cfg); 
+            wifidb_upgrade_wifi_ignite_config(r_index);        
+            wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite entries : [%s %f %f %f %f]\n", __func__, __LINE__, ignite_cfg->ignite_name, ignite_cfg->min_chanutil_threshold, ignite_cfg->max_chanutil_threshold, ignite_cfg->SNR_threshold, ignite_cfg->SNR_difference);
+            if (wifidb_update_ignite_config(ignite_cfg) != RETURN_OK) {
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+                wifi_util_error_print(WIFI_DB,"%s:%d: Failed to update ignite config\n", __func__, __LINE__);
+                return;
+            }
+        }
         /* This is system-wide (file) flag. Hence, open the file after number of radio loop only in reboot case */
         file = fopen(ONEWIFI_BSS_MAXASSOC_FLAG, "a");
         if (file != NULL) {
@@ -7983,6 +8360,7 @@ int start_wifidb_monitor()
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Global_Config, true);
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Passpoint_Config, true);
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Anqp_Config, true);
+    ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Ignite_Config, true);
     return 0;
 }
 
@@ -8028,6 +8406,7 @@ int init_wifidb_tables()
     ONEWIFI_OVSDB_TABLE_INIT_NO_KEY(Wifi_Global_Config);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Passpoint_Config, vap_name);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Anqp_Config, vap_name);
+    ONEWIFI_OVSDB_TABLE_INIT(Wifi_Ignite_Config, ignite_name);
     //connect to wifidb with sock path
     if (is_db_consolidated()) {
         snprintf(g_wifidb->wifidb_sock_path, sizeof(g_wifidb->wifidb_sock_path), WIFIDB_CONSOLIDATED_PATH);
@@ -9173,7 +9552,7 @@ int wifi_mgr_bus_subsription(bus_handle_t *handle)
     rc = get_bus_descriptor()->bus_open_fn(handle, component_name);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_MGR, "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n",
-	 __func__, __LINE__, component_name, rc);
+     __func__, __LINE__, component_name, rc);
         return RETURN_ERR;
     }
 

@@ -26,6 +26,8 @@
 #include <unistd.h>
 #include "wifi_data_model.h"
 #include "wifi_hal.h"
+#include "wifi_dml_json_parser.h"
+#include "bus.h"
 
 #define REG_DOMAIN_SZ  3
 #define ENV_SZ         1
@@ -46,6 +48,7 @@
         strncat((DEST), (SRC), sizeof(DEST) - strlen(DEST) - 1); \
     } while (0)
 
+#ifdef ONEWIFI_JSON_DML_SUPPORT
 typedef struct wifi_freq_band_hal_map {
     wifi_freq_bands_t hal_wifi_freq_band;
     char              str_wifi_freq_band[16];
@@ -96,7 +99,28 @@ typedef struct table_index_timer_arg {
     char     table_row[64];
 } table_index_timer_arg_t;
 
+#endif // ONEWIFI_JSON_DML_SUPPORT
+
+typedef struct bus_data_cb_func {
+    char                  *cb_table_name;
+    bus_callback_table_t  cb_func;
+} bus_data_cb_func_t;
+
 int set_output_string(scratch_data_buff_t *output_value, char *str);
+/**
+ * Retrieve the value of a data model parameter as a string.
+ *
+ * The returned string is dynamically allocated (e.g. via strdup) and the
+ * caller is responsible for freeing it using free(). On error or if the
+ * parameter cannot be obtained, NULL is returned.
+ */
+char    *wifi_dml_bus_get_param_string(char const *param_name);
+uint32_t wifi_dml_bus_get_param_uint32(char const *param_name);
+
+bool rsn_akm_selector_hex(const char *akm, char *out, size_t out_len);
+bool rsn_cipher_selector_hex(const char *cipher, char *out, size_t out_len);
+
+#ifdef ONEWIFI_JSON_DML_SUPPORT
 uint32_t get_sec_mode_string_from_int(wifi_security_modes_t security_mode, char *security_name);
 int get_sec_mode_int_from_string(const char *p_sec_name, wifi_security_modes_t *p_sec_mode);
 int get_sec_modes_supported(int vap_index, int *mode);
@@ -126,7 +150,6 @@ uint32_t get_total_dbg_log_enable_str_value(char *p_output_str);
 int disable_dbg_logs(char *p_input_str);
 
 bool is_valid_transmit_rate(char *input_str);
-
 int radio_wifi_channel_is_valid(uint32_t radio_index, uint32_t input_channel);
 bool is_radio_tx_power_valid(char *p_supported_power_list, int l_tx_power);
 int enable_wifi_telnet(bool enabled);
@@ -150,5 +173,17 @@ int get_wifi_region_update_source(char *str_output);
 int set_wifi_region_update_source(char *str_input);
 int update_json_param(char *p_key, char *partner_id, char *p_value, char *p_source, char *p_current_time);
 int push_data_to_ssp_queue(const void *msg, unsigned int len, uint32_t type, uint32_t sub_type);
+
+#endif // ONEWIFI_JSON_DML_SUPPORT
+
+/* Default bus callback handlers */
+bus_error_t default_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
+bus_error_t default_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
+bus_error_t default_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum);
+bus_error_t default_table_remove_row_handler(char const* rowName);
+bus_error_t default_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
+
+int set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table,
+                                  const bus_data_cb_func_t *bus_data_cb, uint32_t bus_data_cb_size);
 
 #endif//WIFI_DML_API_H

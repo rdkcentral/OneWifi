@@ -18,6 +18,7 @@
  **************************************************************************/
 
 #include <stdio.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include "const.h"
 #include "wifi_hal.h"
@@ -712,7 +713,9 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
 
     if (ret == webconfig_error_none) {
         printf("%s:%d: webconfig consumer radio start test\n", __func__, __LINE__);
-        dump_subdoc(str, webconfig_subdoc_type_radio);
+        if (str != NULL) {
+            dump_subdoc(str, webconfig_subdoc_type_radio);
+        }
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
@@ -775,11 +778,29 @@ void test_null_subdoc_change(webconfig_consumer_t *consumer)
     data = NULL;
 }
 
+static int secure_rand_mod(int mod)
+{
+    int fd;
+    unsigned int val;
+ 
+    fd = open("/dev/urandom", O_RDONLY);
+    if (fd < 0) {
+        return 0;  // safe fallback
+    }
+ 
+    if (read(fd, &val, sizeof(val)) != sizeof(val)) {
+        close(fd);
+        return 0;
+    }
+ 
+    close(fd);
+    return val % mod;
+}
+
 void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret=webconfig_error_none;
-    time_t t;
 
     char *str;
     str = NULL;
@@ -790,7 +811,6 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
         return;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
-    srand((unsigned) time(&t));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
@@ -809,7 +829,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
                 data = NULL;
                 return;
             }
-            vap_info->u.sta_info.scan_params.period = rand() % 10;
+            vap_info->u.sta_info.scan_params.period = secure_rand_mod(10);
             vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "mesh_sta");
             if (vap_info == NULL) {
                 printf("%s:%d: vap_info is NULL \n", __func__, __LINE__);
@@ -817,7 +837,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
                 data = NULL;
                 return;
             }
-            vap_info->u.sta_info.scan_params.period = rand() % 10;
+            vap_info->u.sta_info.scan_params.period = secure_rand_mod(10);
         }
 
         // clearing the descriptor and raw json data
@@ -863,7 +883,6 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
     webconfig_subdoc_data_t *data = NULL;
     webconfig_error_t ret=webconfig_error_none;
     char test_mac[18];
-    time_t t;
     rdk_wifi_vap_info_t *rdk_vap;
     mac_address_t mac;
     acl_entry_t *acl_entry;
@@ -877,8 +896,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
         return;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
-    srand((unsigned) time(&t));
-    snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xaa, rand() % 25, rand() % 50);
+    snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xaa, secure_rand_mod(25), secure_rand_mod(50));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
@@ -979,7 +997,6 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
     rdk_wifi_vap_info_t *rdk_vap;
     mac_address_t mac;
     acl_entry_t *acl_entry;
-    time_t t;
 
     char *str;
     str = NULL;
@@ -990,9 +1007,8 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
         return;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
-    srand((unsigned) time(&t));
 
-    snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xdd, rand() % 25, rand() % 50);
+    snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xdd, secure_rand_mod(25), secure_rand_mod(50));
 
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
@@ -2098,6 +2114,12 @@ int decode_pcap(webconfig_consumer_t *consumer, unsigned int vap_index, char *fi
 
     while ((sz = fread(&pkt_hdr, 1, sizeof(wireshark_pkthdr_t), fp)) == sizeof(wireshark_pkthdr_t)) {
         memset(buff, 0, MAX_FRAME_SZ);
+
+        if (pkt_hdr.caplen == 0 || pkt_hdr.caplen > MAX_FRAME_SZ) {
+            fclose(fp);
+            return -1;
+        }
+
         sz = fread(buff, 1, pkt_hdr.caplen, fp);
 
         frames_parsed++;
@@ -3229,6 +3251,11 @@ void dump_subdoc(const char *str, webconfig_subdoc_type_t type)
         return;
     }
 
+    if (str == NULL) {
+        printf("%s:%d: null string or file pointer\n", __func__, __LINE__);
+        fclose(fp);
+        return;
+    }
     fputs(str, fp);
     fclose(fp);
 
