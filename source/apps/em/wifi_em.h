@@ -32,6 +32,7 @@ extern "C" {
 #define WIFI_EM_AP_METRICS_REPORT             "Device.WiFi.EM.APMetricsReport"
 #define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
+#define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
 
 typedef struct wifi_app wifi_app_t;
 
