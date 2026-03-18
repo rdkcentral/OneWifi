@@ -59,7 +59,12 @@ int validate_assoc_client_args(wifi_mon_stats_args_t *args)
         wifi_util_error_print(WIFI_MON,"RDK_LOG_ERROR, %s Input apIndex = %d not found, Out of range\n", __FUNCTION__, args->vap_index);
         return RETURN_ERR;
     }
-
+#if defined(_GREXT02ACTS_PRODUCT_REQ_)
+    if (isVapSTAMesh(args->vap_index)) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input vap_index %d is STA mesh interface\n",__func__,__LINE__, args->vap_index);
+        return RETURN_ERR;
+    }
+#endif
     return RETURN_OK;
 }
 
@@ -137,11 +142,6 @@ int process_assoc_dev_stats(wifi_mon_stats_args_t *args, hash_map_t *sta_map, vo
     *stat_array_size = count;
 
     return RETURN_OK;
-}
-static inline bool is_zero_mac(const uint8_t *mac)
-{
-    static const uint8_t zero[6] = {0};
-    return memcmp(mac, zero, 6) == 0;
 }
 
 int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data,

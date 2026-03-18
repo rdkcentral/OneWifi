@@ -1134,7 +1134,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
     while (acl_entry != NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Iterating over ACL entries\n", __func__, __LINE__);
 
-        if (acl_entry->mac != NULL &&
+        if (!is_zero_mac(acl_entry->mac) &&
             memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
             acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
 
@@ -3729,8 +3729,15 @@ static void process_monitor_init_command(void)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+#if defined(_GREXT02ACTS_PRODUCT_REQ_)
+            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
+                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+            }
+#else
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);
             push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+#endif
         }
     }
     free(data);
