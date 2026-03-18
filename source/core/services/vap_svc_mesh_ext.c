@@ -35,7 +35,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
-#define SCORE_TIE_THRESHOLD 0.5
+#define SCORE_TIE_THRESHOLD 1
 
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
