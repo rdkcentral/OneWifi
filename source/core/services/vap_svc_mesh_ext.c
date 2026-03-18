@@ -2120,13 +2120,11 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     } else if (sta_data->stats.connect_status == wifi_connection_status_ap_not_found || sta_data->stats.connect_status == wifi_connection_status_disconnected) {
         apply_pending_channel_change(svc, sta_data->stats.vap_index);
 
-        memcpy(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid,
-            sizeof(temp_vap_info->u.sta_info.bssid));
-
         bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
         if (bssid_mac_str != NULL) {
             memset(bssid_mac_str, '\0', MAC_ADDR_STR_LEN);
-            uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_mac_str);
+            uint8_mac_to_string_mac(sta_data->bss_info.bssid,
+                bssid_mac_str);
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d bssid mac=%s\n", __func__, __LINE__,
                 bssid_mac_str);
             apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
