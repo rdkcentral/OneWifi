@@ -1260,6 +1260,18 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     vap_svc_stop(svc);
     vap_svc_mesh_ext_clear_variable(svc);
     ext->is_started = false;
+
+    if ((radio_index != WIFI_ALL_RADIO_INDICES) && (radio_index >= MAX_NUM_RADIOS)) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d failed to stop mesh service: wrong radio index %d\n", __func__, __LINE__,
+            radio_index);
+        return -1;
+    }
+
+    if (ext->is_vap_started[radio_index]) {
+        vap_svc_stop(svc, radio_index);
+        ext->is_vap_started[radio_index] = false;
+    }
     return 0;
 }
 
@@ -2148,10 +2160,14 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         data.raw_data_len = sizeof(wifi_sta_conn_info_t);
         rc = 0;
         rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
-        if (rc != bus_error_success) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
+		if (ctrl->rf_status_down == false) {
+            if (rc != bus_error_success) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+		} else {
+			wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn() status rc:%d\n", __func__, __LINE__, rc);
+		}
     }
 
     if (ext->new_bss_delayed)

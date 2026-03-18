@@ -145,6 +145,34 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
+    if (rf_status) {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+
+        wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
+        if (global_cfg != NULL &&
+            global_cfg->global_parameters.ignite_link_quality_threshold > 0.0) {
+            double threshold = global_cfg->global_parameters.ignite_link_quality_threshold;
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d Applying ignite_link_quality_threshold=%f on EndPoint enable\n",
+                __func__, __LINE__, threshold);
+
+            linkquality_data_t *lq_data =
+                (linkquality_data_t *)malloc(sizeof(linkquality_data_t));
+            if (lq_data != NULL) {
+                memset(lq_data, 0, sizeof(linkquality_data_t));
+                lq_data->server_arg.threshold = threshold;
+                apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                    wifi_event_exec_link_param_reinit, lq_data, sizeof(linkquality_data_t));
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Failed to allocate linkquality_data_t\n", __func__, __LINE__);
+            }
+        }
+    } else {
+       apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+       //Stop station vaps
+       stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
+    }
 
     return rc;
 
@@ -3532,7 +3560,7 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_STA_NAMESPACE, bus_element_type_table,
                                     { NULL, NULL, events_STAtable_addrowhandler, events_STAtable_removerowhandler, eventSubHandler, NULL}, slow_speed, num_of_radio,
                                     { bus_data_type_object, false, 0, 0, 0, NULL } }, 
-			        { WIFI_STA_CONNECT_STATUS, bus_element_type_property,
+			                    { WIFI_STA_CONNECT_STATUS, bus_element_type_property,
                                     { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, true, 0, 0, 0, NULL } },
                                 { WIFI_STA_INTERFACE_NAME, bus_element_type_property,
