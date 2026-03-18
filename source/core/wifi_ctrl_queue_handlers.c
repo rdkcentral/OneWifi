@@ -1133,7 +1133,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
     while (acl_entry != NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Iterating over ACL entries\n", __func__, __LINE__);
 
-        if (acl_entry->mac != NULL &&
+        if (!is_zero_mac(acl_entry->mac) &&
             memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
             acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
 
