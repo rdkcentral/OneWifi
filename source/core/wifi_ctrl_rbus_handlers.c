@@ -452,13 +452,47 @@ int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
     }
     return RETURN_OK;
 }
+/*
+MLO ready notify_LM_Lite - CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+b2:6c:4a:2f:0d:e5[mld MAC],Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, mld_enable
+
+b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, 1 - MLO
+b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.1],[-38],1, 0 - Non MLO
+*/
+static int notify_LM_Lite_host(wifi_ctrl_t *ctrl, LM_wifi_host_t *host, bool sync)
+{
+    bus_error_t rc;
+    char str[2048];
+
+    memset(str, 0, 2048);
+#ifndef CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+    snprintf(str, sizeof(str), "%s,%s,%s,%s,%d", (char *)host->phyAddr,
+        ('\0' != host->AssociatedDevice[0]) ?
+            (char *)host->AssociatedDevice :
+            "NULL",
+        ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
+        (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0);
+#else /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
+    snprintf(str, sizeof(str), "%s,%s,[%s],[%s],%d,%d", (char *)host->phyAddr,
+        ('\0' != host->AssociatedDevice[0]) ?
+            (char *)host->AssociatedDevice :
+            "NULL",
+        ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
+        (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0, host->mld_sta);
+#endif /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
+
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__, __LINE__,
+            rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
 
 int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t *phosts, bool sync)
 {
     int itr;
-    bus_error_t rc;
-    char str[2048];
-    memset(str, 0, 2048);
 
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
@@ -466,32 +500,16 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t *phosts, bool sync)
     }
 
     if (sync) {
-        snprintf(str, sizeof(str), "%s,%s,%s,%d,%d", (char *)phosts->host[0].phyAddr,
-            ('\0' != phosts->host[0].AssociatedDevice[0]) ?
-                (char *)phosts->host[0].AssociatedDevice :
-                "NULL",
-            ('\0' != phosts->host[0].ssid[0]) ? (char *)phosts->host[0].ssid : "NULL",
-            phosts->host[0].RSSI, (phosts->host[0].Status == TRUE) ? 1 : 0);
-
-        rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
-        if (rc != bus_error_success) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__, __LINE__,
-                rc);
+        if (notify_LM_Lite_host(ctrl, &phosts->host[0], sync) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to notify LM Lite for host %s\n",
+                __func__, __LINE__, phosts->host[0].phyAddr);
             return RETURN_ERR;
         }
     } else {
         for (itr = 0; itr < phosts->count; itr++) {
-            snprintf(str, sizeof(str), "%s,%s,%s,%d,%d", (char *)phosts->host[itr].phyAddr,
-                ('\0' != phosts->host[itr].AssociatedDevice[0]) ?
-                    (char *)phosts->host[itr].AssociatedDevice :
-                    "NULL",
-                ('\0' != phosts->host[itr].ssid[0]) ? (char *)phosts->host[0].ssid : "NULL",
-                phosts->host[itr].RSSI, (phosts->host[itr].Status == TRUE) ? 1 : 0);
-
-            rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
-            if (rc != bus_error_success) {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__,
-                    __LINE__, rc);
+            if (notify_LM_Lite_host(ctrl, &phosts->host[itr], sync) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to notify LM Lite for host %s itr: %d\n",
+                    __func__, __LINE__, phosts->host[itr].phyAddr, itr);
                 return RETURN_ERR;
             }
         }
