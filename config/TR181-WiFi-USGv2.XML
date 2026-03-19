@@ -355,6 +355,19 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
+        <parameter>
+            <name>WPA3_Personal_Compatibility</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
+            <name>Xfi_Tel_Enable</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+	</parameters>
 <object>
 			<name>TCM</name>
 			<objectType>object</objectType>
@@ -401,19 +414,6 @@
 				</parameter>
 			</parameters>
 		</object>
-        <parameter>
-            <name>WPA3_Personal_Compatibility</name>
-            <type>boolean</type>
-            <syntax>bool</syntax>
-            <writable>true</writable>
-        </parameter>
-        <parameter>
-            <name>Xfi_Tel_Enable</name>
-            <type>boolean</type>
-            <syntax>bool</syntax>
-            <writable>true</writable>
-        </parameter>
-	</parameters>
 	<objects>
         <object>
             <name>X_RDKCENTRAL-COM_GASConfig</name>
