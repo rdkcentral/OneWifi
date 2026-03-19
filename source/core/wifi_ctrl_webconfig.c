@@ -1111,10 +1111,10 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         // WPS change is handled by event to avoid extra wifi_hal_createVAP()
         webconfig_send_wps_change_event(tgt_vap_index, mgr_vap_info, vap_info);
 
-        // Ignore exists flag change because STA interfaces always enabled in HAL. This allows to
-        // avoid redundant reconfiguration with STA disconnection.
-        // For pods, STA is just like any other AP interface, deletion is allowed.
-        if (isVapSTAMesh(tgt_vap_index)) {
+        // Ignore exists flag change for GW mesh STA interfaces to avoid redundant reconfiguration
+        // and station disconnections when cloud sends interface delete updates.
+        // For pods/extenders, exists changes are valid and should not be ignored.
+        if (ctrl->network_mode == rdk_dev_mode_type_gw && isVapSTAMesh(tgt_vap_index)) {
             mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
 
