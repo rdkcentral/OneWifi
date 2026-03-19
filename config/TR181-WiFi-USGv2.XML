@@ -3933,6 +3933,52 @@ INSTMSMT_PH2 -->
 					<writable>true</writable> 
 				</parameter>
 			</parameters>				
-		</object>			
+		</object>
+		<object>
+			<name>TCM</name>
+			<objectType>object</objectType>
+			<functions>
+				<func_GetParamBoolValue>TCM_GetParamBoolValue</func_GetParamBoolValue>
+				<func_SetParamBoolValue>TCM_SetParamBoolValue</func_SetParamBoolValue>
+			</functions>
+			<parameters>
+				<parameter>
+					<name>Open2G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Open5G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Open6G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Secure2G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Secure5G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Secure6G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+			</parameters>
+		</object>
     </objects>
 </dataModelInfo>
