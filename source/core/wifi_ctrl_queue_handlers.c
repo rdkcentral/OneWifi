@@ -62,6 +62,9 @@ typedef enum {
 
 #define SEC_MODE_STR_MAX 32
 
+void update_lm_wifi_host_SSID(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data, unsigned int vap_index);
+void update_lm_wifi_host_RSSI(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data);
+
 int convert_sec_mode_enable_int_str(int sec_mode_enable, char *secModeStr) {
 
     switch(sec_mode_enable) {
@@ -182,7 +185,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
             l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-            if (l_rdk_vap_array->acl_map != NULL) {
+            if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                 acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
                 while (acl_entry != NULL) {
@@ -199,7 +202,6 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                              __func__, __LINE__, l_rdk_vap_array->vap_index, mac_str);
-                            ret = RETURN_ERR;
                         }
                            acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
 
@@ -1135,7 +1137,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
     while (acl_entry != NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Iterating over ACL entries\n", __func__, __LINE__);
 
-        if (acl_entry->mac != NULL &&
+        if (!is_zero_mac(acl_entry->mac) &&
             memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
             acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
 
@@ -1810,14 +1812,12 @@ void process_wifi_host_sync()
     LM_wifi_hosts_t hosts;
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     mac_addr_str_t mac_str;
-    char ssid[256];
     char assoc_device[256];
     unsigned int itr, itrj=0, count;
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     assoc_dev_data_t *assoc_dev_data = NULL;
 
     memset(&hosts, 0, sizeof(LM_wifi_hosts_t));
-    memset(ssid, 0, sizeof(ssid));
     memset(assoc_device, 0, sizeof(assoc_device));
 
     for (itr=0; itr<getTotalNumberVAPs(); itr++) {
@@ -1840,20 +1840,23 @@ void process_wifi_host_sync()
             if (rdk_vap_info->associated_devices_map != NULL) {
                 assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
                 while (assoc_dev_data != NULL) {
-                    snprintf(ssid, sizeof(ssid), "Device.WiFi.SSID.%d", rdk_vap_info->vap_index+1);
-                    snprintf((char *)hosts.host[hosts.count].ssid, sizeof(hosts.host[hosts.count].ssid), "%s", ssid);
-                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
-                    str_tolower(mac_str);
-                    snprintf((char *)hosts.host[hosts.count].phyAddr, sizeof(hosts.host[hosts.count].phyAddr), "%s", mac_str);
-                    snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj+1);
-                    snprintf((char *)hosts.host[hosts.count].AssociatedDevice, sizeof(hosts.host[hosts.count].AssociatedDevice), "%s", assoc_device);
-                    if (assoc_dev_data->dev_stats.cli_Active) {
-                        hosts.host[hosts.count].Status = TRUE;
-                    } else {
-                        hosts.host[hosts.count].Status = FALSE;
+                    if (assoc_dev_data->dev_stats.cli_MLDEnable == false ||
+                        (assoc_dev_data->dev_stats.cli_MLDEnable == true && assoc_dev_data->association_link == true)) {
+                        update_lm_wifi_host_SSID(&hosts.host[hosts.count], assoc_dev_data, rdk_vap_info->vap_index);
+                        to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
+                        str_tolower(mac_str);
+                        snprintf((char *)hosts.host[hosts.count].phyAddr, sizeof(hosts.host[hosts.count].phyAddr), "%s", mac_str);
+                        snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj+1);
+                        snprintf((char *)hosts.host[hosts.count].AssociatedDevice, sizeof(hosts.host[hosts.count].AssociatedDevice), "%s", assoc_device);
+                        if (assoc_dev_data->dev_stats.cli_Active) {
+                            hosts.host[hosts.count].Status = TRUE;
+                        } else {
+                            hosts.host[hosts.count].Status = FALSE;
+                        }
+                        update_lm_wifi_host_RSSI(&hosts.host[hosts.count], assoc_dev_data);
+                        hosts.host[hosts.count].mld_sta = assoc_dev_data->dev_stats.cli_MLDEnable;
+                        (hosts.count)++;
                     }
-                    hosts.host[hosts.count].RSSI = assoc_dev_data->dev_stats.cli_RSSI;
-                    (hosts.count)++;
                     count++;
                     assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
                 }
@@ -1874,9 +1877,6 @@ void process_wifi_host_sync()
 
 void lm_notify_disassoc(assoc_dev_data_t *assoc_dev_data, unsigned int vap_index)
 {
-    char ssid[256]= {0};
-    mac_addr_str_t mac_str;
-    LM_wifi_hosts_t hosts;
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
 
     if (assoc_dev_data == NULL) {
@@ -1884,24 +1884,30 @@ void lm_notify_disassoc(assoc_dev_data_t *assoc_dev_data, unsigned int vap_index
         return;
     }
 
-    memset(ssid, 0, sizeof(ssid));
-    snprintf(ssid, sizeof(ssid), "Device.WiFi.SSID.%d", vap_index +1);
-
-    memset(&hosts, 0, sizeof(LM_wifi_hosts_t));
-    strncpy((char *)hosts.host[0].ssid, ssid, sizeof(hosts.host[0].ssid));
-
-    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
-    str_tolower(mac_str);
-    strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
-    hosts.host[0].Status = FALSE;
-    hosts.host[0].RSSI = 0;
-
     if (isVapHotspot(vap_index)) {
         if (notify_hotspot(&p_wifi_mgr->ctrl, assoc_dev_data) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to Hotspot\n", __func__, __LINE__);
         }
     } else if ((isVapPrivate(vap_index)) || (isVapXhs(vap_index))) {
         //Code to Publish to LMLite
+        if (assoc_dev_data->dev_stats.cli_MLDEnable == true && assoc_dev_data->association_link == false) {
+            return;
+        }
+        mac_addr_str_t mac_str;
+        LM_wifi_hosts_t hosts;
+
+        memset(&hosts, 0, sizeof(LM_wifi_hosts_t));
+        update_lm_wifi_host_SSID(&hosts.host[0], assoc_dev_data, vap_index);
+        to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
+        str_tolower(mac_str);
+        strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
+        hosts.host[0].Status = FALSE;
+        assoc_dev_data->dev_stats.cli_RSSI = 0;
+        for (int link_idx = 0; link_idx < MAX_NUM_RADIOS; link_idx++) {
+                assoc_dev_data->mld_info.cli_LinkInfo[link_idx].cli_RSSI = 0;
+        }
+        update_lm_wifi_host_RSSI(&hosts.host[0], assoc_dev_data);
+        hosts.host[0].mld_sta = assoc_dev_data->dev_stats.cli_MLDEnable;
         if (notify_LM_Lite(&p_wifi_mgr->ctrl, &hosts, true) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to LMLite", __func__, __LINE__);
         }
@@ -1960,13 +1966,13 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
     free(removed_dev);
     if (old_count > 0) {
         *new_count = old_count - 1;
-	}
+    }
     if (((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index)))){
         if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index, *new_count, old_count) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
         }
     }
-	return RETURN_OK;
+    return RETURN_OK;
 }
 
 void process_disassoc_device_event(void *data)
@@ -2060,8 +2066,7 @@ void process_disassoc_device_event(void *data)
     pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
 }
 
-void check_and_remove_mac_on_other_vaps(rdk_wifi_vap_info_t *current_vap_info, 
-                                        assoc_dev_data_t *assoc_data)
+void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data)
 {
     if (assoc_data == NULL) {
         return;
@@ -2113,27 +2118,146 @@ void check_and_remove_mac_on_other_vaps(rdk_wifi_vap_info_t *current_vap_info,
         pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
     }
 }
+void update_lm_wifi_host_SSID(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data, unsigned int vap_index)
+{
+#ifndef CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+    snprintf((char *)host->ssid, sizeof(host->ssid), "Device.WiFi.SSID.%d", vap_index+1);
+#else
+    if (!assoc_data->dev_stats.cli_MLDEnable) {
+        snprintf((char *)host->ssid, sizeof(host->ssid), "Device.WiFi.SSID.%d", vap_index+1);
+    } else {
+        int written;
+        size_t remaining = sizeof(host->ssid);
+        char *ptr = (char*)host->ssid;
+        for (int link_idx = 0; link_idx < MAX_NUM_RADIOS; link_idx++) {
+            if (assoc_data->mld_info.cli_LinkInfo[link_idx].cli_Valid) {
+                UINT link_vap_index = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_VapIndex;
+                written = snprintf(ptr, remaining, "Device.WiFi.SSID.%d;", link_vap_index+1);
+                if (written < 0 || (size_t)written >= remaining) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d SSID string truncated for host %s\n",
+                        __func__, __LINE__, host->phyAddr);
+                    break;
+                }
+                ptr += written;
+                remaining -= written;
+            }
+        }
+        // Remove trailing separator
+        size_t str_len = strlen((char*)host->ssid);
+        if (str_len > 0 && str_len < sizeof(host->ssid) && host->ssid[str_len - 1] == ';') {
+            host->ssid[str_len - 1] = '\0';
+        }
+    }
+#endif
+}
 
-void process_assoc_device_event(void *data)
+void update_lm_wifi_host_RSSI(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data)
+{
+#ifndef CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+    snprintf((char *)host->RSSI, sizeof(host->RSSI), "%d", assoc_data->dev_stats.cli_RSSI);
+#else
+    if (!assoc_data->dev_stats.cli_MLDEnable) {
+        snprintf((char *)host->RSSI, sizeof(host->RSSI), "%d", assoc_data->dev_stats.cli_RSSI);
+    } else {
+        int written;
+        size_t remaining = sizeof(host->RSSI);
+        char *ptr = (char*)host->RSSI;
+        for (int link_idx = 0; link_idx < MAX_NUM_RADIOS; link_idx++) {
+            if (assoc_data->mld_info.cli_LinkInfo[link_idx].cli_Valid) {
+                int rssi = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_RSSI;
+                written = snprintf(ptr, remaining, "%d;", rssi);
+                if (written < 0 || (size_t)written >= remaining) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d RSSI string truncated for host %s\n",
+                        __func__, __LINE__, host->phyAddr);
+                    break;
+                }
+                ptr += written;
+                remaining -= written;
+            }
+        }
+        // Remove trailing separator
+        size_t str_len = strlen((char*)host->RSSI);
+        if (str_len > 0 && str_len < sizeof(host->RSSI) && host->RSSI[str_len - 1] == ';') {
+            host->RSSI[str_len - 1] = '\0';
+        }
+    }
+#endif
+}
+
+//Code to publish event to LMLite.
+static void assoc_dev_notify_LM_lite(rdk_wifi_vap_info_t *rdk_vap_info, assoc_dev_data_t *assoc_data)
+{
+    int itrj = 0;
+    mac_addr_str_t mac_str, temp_mac_str;
+    assoc_dev_data_t *p_assoc_data;
+    char assoc_device[256] = {0};
+    wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
+
+    memset(temp_mac_str, 0, sizeof(temp_mac_str));
+    memset(mac_str, 0, sizeof(mac_str));
+    to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
+    str_tolower(mac_str);
+
+    if ((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index))) {
+        LM_wifi_hosts_t hosts;
+        memset(&hosts, 0, sizeof(LM_wifi_hosts_t));
+        update_lm_wifi_host_SSID(&hosts.host[0], assoc_data, rdk_vap_info->vap_index);
+
+        pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+        if (rdk_vap_info->associated_devices_map != NULL) {
+            str_tolower(mac_str);
+            itrj = hash_map_count(rdk_vap_info->associated_devices_map);
+            p_assoc_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
+            while (p_assoc_data != NULL) {
+                to_mac_str(p_assoc_data->dev_stats.cli_MACAddress, temp_mac_str);
+                str_tolower(temp_mac_str);
+                if (strcmp(mac_str, temp_mac_str) == 0) {
+                    break;
+                }
+                itrj--;
+                p_assoc_data = hash_map_get_next(rdk_vap_info->associated_devices_map, p_assoc_data);
+            }
+
+            strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
+            if (itrj > 0) {
+                snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj);
+                wifi_util_info_print(WIFI_CTRL,"%s:%d LMLite notify:%s mac:%s\n", __func__, __LINE__, assoc_device, mac_str);
+            } else {
+                itrj = hash_map_count(rdk_vap_info->associated_devices_map);
+                snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, (itrj + 1));
+                wifi_util_info_print(WIFI_CTRL,"%s:%d LMLite_notify:%s mac:%s\n", __func__, __LINE__, assoc_device, mac_str);
+            }
+            strncpy((char *)hosts.host[0].AssociatedDevice, assoc_device, sizeof(hosts.host[0].AssociatedDevice));
+            if (assoc_data->dev_stats.cli_Active) {
+                hosts.host[0].Status = TRUE;
+            } else {
+                hosts.host[0].Status = FALSE;
+            }
+            update_lm_wifi_host_RSSI(&hosts.host[0], assoc_data);
+            hosts.host[0].mld_sta = assoc_data->dev_stats.cli_MLDEnable;
+            if (notify_LM_Lite(&p_wifi_mgr->ctrl, &hosts, true) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to LMLite\n", __func__, __LINE__);
+            }
+        }
+        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+    }
+}
+
+static void assoc_dev_event(assoc_dev_data_t *assoc_data)
 {
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     mac_addr_str_t mac_str, temp_mac_str;
-    char ssid[256]= {0};
-    char assoc_device[256] = {0};
     ULONG old_count = 0, new_count = 0;
-    assoc_dev_data_t *p_assoc_data;
-    int itrj = 0;
     vap_svc_t  *pub_svc;
     mac_addr_t prefer_private_mac;
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_wifidb_wifi_global_param();
     assoc_dev_data_t *tmp_assoc_dev_data;
 
-    if (data == NULL) {
-        return;
-    }
-
-    assoc_dev_data_t *assoc_data = (assoc_dev_data_t *) data;
+    memset(temp_mac_str, 0, sizeof(temp_mac_str));
+    memset(mac_str, 0, sizeof(mac_str));
+    to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
+    str_tolower(mac_str);
 
     rdk_vap_info = get_wifidb_rdk_vap_info(assoc_data->ap_index);
     if (rdk_vap_info == NULL) {
@@ -2147,14 +2271,6 @@ void process_assoc_device_event(void *data)
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL  associated_devices_map  pointer  for  %d\n", __func__, __LINE__, rdk_vap_info->vap_index);
         return;
     }
-
-    memset(temp_mac_str, 0, sizeof(temp_mac_str));
-    memset(mac_str, 0, sizeof(mac_str));
-    to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
-    str_tolower(mac_str);
-
-    //check and remove mac_str from other vaps if device is steering
-    check_and_remove_mac_on_other_vaps(rdk_vap_info, assoc_data);
 
     tmp_assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
     if (tmp_assoc_dev_data == NULL) {
@@ -2208,50 +2324,36 @@ void process_assoc_device_event(void *data)
         }
     }
 
-    //Code to publish event to LMLite.
-    if ((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index))) {
-        snprintf(ssid, sizeof(ssid), "Device.WiFi.SSID.%d", rdk_vap_info->vap_index+1);
-        LM_wifi_hosts_t hosts;
-        memset(&hosts, 0, sizeof(LM_wifi_hosts_t));
-        strncpy((char *)hosts.host[0].ssid, ssid, sizeof(hosts.host[0].ssid));
+    if (assoc_data->dev_stats.cli_MLDEnable == false ||
+        (assoc_data->dev_stats.cli_MLDEnable == true && assoc_data->association_link == true)) {
+        // notify only 1x per MLO STA
+        assoc_dev_notify_LM_lite(rdk_vap_info, assoc_data);
+    }
+}
 
-        pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
-        if (rdk_vap_info->associated_devices_map != NULL) {
-            str_tolower(mac_str);
-            itrj = hash_map_count(rdk_vap_info->associated_devices_map);
-            p_assoc_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
-            while (p_assoc_data != NULL) {
-                to_mac_str(p_assoc_data->dev_stats.cli_MACAddress, temp_mac_str);
-                str_tolower(temp_mac_str);
-                if (strcmp(mac_str, temp_mac_str) == 0) {
-                    break;
-                }
-                itrj--;
-                p_assoc_data = hash_map_get_next(rdk_vap_info->associated_devices_map, p_assoc_data);
-            }
+void process_assoc_device_event(void *data)
+{
+    if (data == NULL) {
+        return;
+    }
 
-            strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
-            if (itrj > 0) {
-                snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj);
-                wifi_util_info_print(WIFI_CTRL,"%s:%d LMLite notify:%s mac:%s\n", __func__, __LINE__, assoc_device, mac_str);
-            } else {
-                itrj = hash_map_count(rdk_vap_info->associated_devices_map);
-                snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, (itrj + 1));
-                wifi_util_info_print(WIFI_CTRL,"%s:%d LMLite_notify:%s mac:%s\n", __func__, __LINE__, assoc_device, mac_str);
-            }
-            strncpy((char *)hosts.host[0].AssociatedDevice, assoc_device, sizeof(hosts.host[0].AssociatedDevice));
-            if (assoc_data->dev_stats.cli_Active) {
-                hosts.host[0].Status = TRUE;
-            } else {
-                hosts.host[0].Status = FALSE;
-            }
-            hosts.host[0].RSSI = assoc_data->dev_stats.cli_RSSI;
+    assoc_dev_data_t *assoc_data = (assoc_dev_data_t *) data;
 
-            if (notify_LM_Lite(&p_wifi_mgr->ctrl, &hosts, true) != RETURN_OK) {
-                wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to LMLite\n", __func__, __LINE__);
+    //check and remove mac_str from other vaps if device is steering
+    check_and_remove_mac_on_other_vaps(assoc_data);
+
+    if (assoc_data->mld_info.cli_MLDSta == true) {
+        for (int link_idx = 0; link_idx < MAX_NUM_RADIOS; link_idx++) {
+            if (assoc_data->mld_info.cli_LinkInfo[link_idx].cli_Valid) {
+                UINT link_vap_index = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_VapIndex;
+                assoc_data->ap_index = link_vap_index;
+                assoc_data->dev_stats.cli_RSSI = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_RSSI;
+                assoc_data->association_link = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink;
+                assoc_dev_event(assoc_data);
             }
         }
-        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+    } else {
+        assoc_dev_event(assoc_data);
     }
 }
 
@@ -2396,6 +2498,11 @@ void process_wpa3_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+            __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -3725,8 +3832,15 @@ static void process_monitor_init_command(void)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+#if defined(_GREXT02ACTS_PRODUCT_REQ_)
+            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
+                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+            }
+#else
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);
             push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+#endif
         }
     }
     free(data);
@@ -3787,6 +3901,11 @@ void process_rsn_override_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+                __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -3802,7 +3921,8 @@ void process_rsn_override_rfc(bool type)
         memset(new_sec_mode, 0, sizeof(new_sec_mode));
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, old_sec_mode);
         if(ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string for mode %d\n",
+                __func__, __LINE__, vapInfo->u.bss_info.security.mode);
         }
 
         if(type) {
@@ -3823,7 +3943,7 @@ void process_rsn_override_rfc(bool type)
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
             }
 
-	    if(rfc_param->wpa3_rfc) {
+        if(rfc_param->wpa3_rfc) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -3837,7 +3957,7 @@ void process_rsn_override_rfc(bool type)
 
         wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
             __func__, __LINE__, old_sec_mode, new_sec_mode);
-        if( (strcmp(old_sec_mode, new_sec_mode) != 0) && (new_sec_mode != NULL || old_sec_mode != NULL)) {
+        if (strcmp(old_sec_mode, new_sec_mode) != 0) {
             notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
         }
 
@@ -4270,9 +4390,24 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         webconfig_data_free(data);
         break;
 
+    case wifi_event_webconfig_set_ignite_data:
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+                sizeof(wifi_hal_capability_t));
+        memcpy((unsigned char *)&data->u.decoded.ignite_config, (unsigned char *)&mgr->ignite_config, getNumberRadios() * sizeof(ignite_config_t));
+        if (raw == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data\n", __func__, __LINE__);
+            free(data);
+            data = NULL;
+            return;
+        }
+        webconfig_decode(config, data, raw);
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
+        webconfig_data_free(data);
+        break;
+
     case wifi_event_webconfig_set_data_tunnel:
         memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-            sizeof(wifi_hal_capability_t));
+                sizeof(wifi_hal_capability_t));
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);

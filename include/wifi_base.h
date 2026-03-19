@@ -66,6 +66,12 @@ extern "C" {
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
+#define WIFI_IGNITE_NAMESPACE               "Device.WiFi.Ignite_Control.{i}."
+#define WIFI_IGNITE_MIN_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MinChutilThreshold"
+#define WIFI_IGNITE_MAX_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MaxChutilThreshold"
+#define WIFI_IGNITE_SNR_THRESHOLD           "Device.WiFi.Ignite_Control.{i}.SNRThreshold"
+#define WIFI_IGNITE_SNR_DIFFERENCE        "Device.WiFi.Ignite_Control.{i}.SNRDifference"
+#define WIFI_IGNITE_APPLY_CONFIG            "Device.WiFi.ApplyIgniteSettings"
 #define WIFI_COLLECT_STATS_TABLE            "Device.WiFi.CollectStats.Radio.{i}."
 #define WIFI_COLLECT_STATS_RADIO_ON_CHANNEL_STATS      "Device.WiFi.CollectStats.Radio.{i}.ScanMode.on_channel.ChannelStats"
 #define WIFI_COLLECT_STATS_RADIO_OFF_CHANNEL_STATS     "Device.WiFi.CollectStats.Radio.{i}.ScanMode.off_channel.ChannelStats"
@@ -223,6 +229,7 @@ typedef struct {
     mac_address_t  sta_mac;
     int        reason;
     wifi_associated_dev3_t dev_stats;
+    wifi_mld_sta_info_t mld_info;
 } auth_deauth_dev_t;
 
 #define MAX_MQTT_TOPIC_LEN 256
@@ -271,6 +278,23 @@ typedef struct {
     trace_headers_t                   t_header;
     unsigned char                     blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
 } active_msmt_t;
+
+typedef struct {
+    char ignite_name[32];
+    float min_chanutil_threshold;
+    float max_chanutil_threshold;
+    float SNR_threshold;
+    float SNR_difference;
+}ignite_config_t;
+
+// Global pending ignite configuration
+typedef struct {
+    ignite_config_t config[MAX_NUM_RADIOS];
+    bool is_pending;
+    pthread_mutex_t lock;
+} apply_ignite_config_t;
+
+extern apply_ignite_config_t g_apply_ignite_config;
 
 typedef struct {
     int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
@@ -943,6 +967,9 @@ typedef struct {
     client_state_t client_state;
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
+    unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
+    wifi_mld_sta_info_t mld_info;
+    bool association_link;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;
@@ -971,7 +998,7 @@ typedef struct {
     assoc_req_elem_t assoc_frame_data;
 
     /* wifi7 client specific data */
-    bool            primary_link; /* TRUE for auth/primary link, FALSE for secondary links */
+    bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */
     mac_address_t   link_mac;     /* link mac addr */
 } sta_data_t;
 

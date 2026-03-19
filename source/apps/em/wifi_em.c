@@ -1967,26 +1967,10 @@ int handle_em_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 
 static int em_process_scan_init_command(unsigned int radio_index, channel_scan_request_t *scan_req)
 {
-    wifi_mgr_t *mgr;
-    wifi_ctrl_t *ctrl;
     wifi_monitor_data_t *data;
     int valid_chan_count = 0;
-    char country[8] = { 0 };
-    unsigned int global_op_class;
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d radio_index: %d \n", __func__, __LINE__, radio_index);
-
-    mgr = get_wifimgr_obj();
-    if (mgr == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Mgr object is NULL \r\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    if (ctrl == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: ctrl is NULL\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     if (data == NULL) {
@@ -1995,21 +1979,29 @@ static int em_process_scan_init_command(unsigned int radio_index, channel_scan_r
     }
 
     memset(data, 0, sizeof(wifi_monitor_data_t));
-
-    get_coutry_str_from_code(mgr->radio_config[radio_index].oper.countryCode, country);
-    global_op_class = country_to_global_op_class(country,
-        mgr->radio_config[radio_index].oper.operatingClass);
-
+    /*
+     * The operating class received from the Controller is not validated
+     * against the current operating class of the radio, since they may
+     * legitimately differ and validating them could unintentionally
+     * trigger a FULL scan.
+     *
+     * Channels provided in the request are directly collected for the
+     * scan. If no channels are present in the request.
+     * the scan falls back to FULL scan mode.
+     */
     for (int i = 0; i < scan_req->num_operating_classes; i++) {
-        if (scan_req->operating_classes[i].operating_class == global_op_class) {
-            for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
-                data->u.mon_stats_config.args.channel_list.channels_list[valid_chan_count] =
-                    scan_req->operating_classes[i].channels[j];
-                wifi_util_dbg_print(WIFI_EM, "%s:%d channel number:%u\n", __func__, __LINE__,
-                    scan_req->operating_classes[i].channels[j]);
-                valid_chan_count++;
+        for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
+            if (valid_chan_count >= MAX_CHANNELS) {
+                wifi_util_dbg_print(WIFI_EM,
+                                     "%s:%d channel list full (%d). Ignoring extra channels from controller\n",
+                                      __func__, __LINE__, MAX_CHANNELS);
+                break;
             }
-            break;
+            data->u.mon_stats_config.args.channel_list.channels_list[valid_chan_count] =
+                    scan_req->operating_classes[i].channels[j];
+            wifi_util_dbg_print(WIFI_EM, "%s:%d channel number:%u\n", __func__, __LINE__,
+                    scan_req->operating_classes[i].channels[j]);
+            valid_chan_count++;
         }
     }
 

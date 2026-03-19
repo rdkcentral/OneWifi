@@ -628,7 +628,10 @@ int ActiveMsmtConfValidation(active_msmt_t *cfg)
     int len;
     char msg[256] = {};
 
-    if (!cfg->PlanId || ((len = strlen((char *)cfg->PlanId) < 1) || len > PLAN_ID_LENGTH - 2)) {
+    if (cfg == NULL) {
+        return RETURN_ERR;
+    }
+    if (((len = strlen((char *)cfg->PlanId)) < 1) || len > PLAN_ID_LENGTH - 2) {
         snprintf(msg, sizeof(msg), "Invalid length of PlanID [%d]. Expected in range [1..%d]",
             len, PLAN_ID_LENGTH - 2);
         goto Error;
@@ -670,7 +673,7 @@ int ActiveMsmtConfValidation(active_msmt_t *cfg)
             continue;
         }
 
-        if (cfg->Step[i].StepId < 0 || cfg->Step[i].StepId > INT_MAX) {
+        if (cfg->Step[i].StepId > INT_MAX) {
             snprintf(msg, sizeof(msg), "Invalid StepID [%d]. Expected in range [0..INT_MAX]", cfg->Step[i].StepId);
             active_msmt_report_error(__func__, cfg->PlanId, &cfg->Step[i], msg, ACTIVE_MSMT_STATUS_WRONG_ARG);
             active_msmt_set_step_status(__func__, i, ACTIVE_MSMT_STEP_INVALID);

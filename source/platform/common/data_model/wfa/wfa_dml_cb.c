@@ -23,6 +23,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include "utils/includes.h"
+#include "utils/common.h"
 #include "bus.h"
 #include "wifi_data_model.h"
 #include "wifi_dml_api.h"
@@ -30,6 +36,188 @@
 #include "wifi_ctrl.h"
 #include "dml_onewifi_api.h"
 #include "wifi_mgr.h"
+
+typedef enum {
+    wfa_stamld_identity_hostname = 0,
+    wfa_stamld_identity_ipv4,
+    wfa_stamld_identity_ipv6
+} wfa_stamld_identity_type_t;
+
+static uint32_t wfa_hosts_find_index_by_mac(char const *sta_mac)
+{
+    /* Cache the last resolved MAC -> host_index mapping to avoid
+     * repeatedly scanning Device.Hosts.Host.{i} for the same MAC
+     * during a series of related parameter reads.
+     */
+    static mac_addr_str_t s_last_sta_mac = { 0 };
+    static uint32_t s_last_host_index = 0;
+    bus_name_string_t param_name = { 0 };
+    uint32_t num_hosts = 0;
+    uint32_t i = 0;
+
+    if (sta_mac == NULL) {
+        return 0;
+    }
+
+    /* Fast path: if the last lookup was for the same MAC address and
+     * returned a valid index, reuse it instead of doing a full scan.
+     */
+    if ((s_last_host_index != 0) &&
+        (s_last_sta_mac[0] != '\0') &&
+        (strcasecmp(s_last_sta_mac, sta_mac) == 0)) {
+        return s_last_host_index;
+    }
+
+    num_hosts = wifi_dml_bus_get_param_uint32("Device.Hosts.HostNumberOfEntries");
+    if (num_hosts == 0) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: Device.Hosts.HostNumberOfEntries is 0\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    for (i = 1; i <= num_hosts; i++) {
+        char *phys_addr = NULL;
+        bool match = false;
+
+        snprintf(param_name, sizeof(param_name), "Device.Hosts.Host.%u.PhysAddress", i);
+        phys_addr = wifi_dml_bus_get_param_string(param_name);
+        if (phys_addr == NULL) {
+            continue;
+        }
+
+        match = (strcasecmp(phys_addr, sta_mac) == 0);
+        free(phys_addr);
+
+        if (match) {
+            /* Update cache for subsequent lookups of the same MAC. */
+            snprintf(s_last_sta_mac, sizeof(s_last_sta_mac), "%s", sta_mac);
+            s_last_host_index = i;
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+static bool ipv6_is_link_local(const char *addr_str)
+{
+    struct in6_addr addr;
+
+    return (inet_pton(AF_INET6, addr_str, &addr) == 1) && IN6_IS_ADDR_LINKLOCAL(&addr);
+}
+
+static bool wfa_hosts_get_ip_from_table(uint32_t host_index, bool ipv6, char *out, size_t out_len)
+{
+    bus_name_string_t param_name = { 0 };
+    uint32_t entries = 0;
+    uint32_t addr_index = 0;
+    char link_local_fallback[IP_STR_LEN] = { 0 };
+
+    if ((host_index == 0) || (out == NULL) || (out_len == 0)) {
+        return false;
+    }
+
+    out[0] = '\0';
+
+    snprintf(param_name, sizeof(param_name),
+        ipv6 ? "Device.Hosts.Host.%u.IPv6AddressNumberOfEntries" :
+               "Device.Hosts.Host.%u.IPv4AddressNumberOfEntries",
+        host_index);
+    entries = wifi_dml_bus_get_param_uint32(param_name);
+
+    for (addr_index = 1; addr_index <= entries; addr_index++) {
+        char *value = NULL;
+        char *p = NULL;
+
+        snprintf(param_name, sizeof(param_name),
+            ipv6 ? "Device.Hosts.Host.%u.IPv6Address.%u.IPAddress" :
+                   "Device.Hosts.Host.%u.IPv4Address.%u.IPAddress",
+            host_index, addr_index);
+        value = wifi_dml_bus_get_param_string(param_name);
+        if (value == NULL) {
+            continue;
+        }
+
+        /* Skip leading whitespace; discard whitespace-only values */
+        for (p = value; isspace((unsigned char)*p); p++) {}
+        if (*p == '\0') {
+            free(value);
+            continue;
+        }
+
+        if (ipv6 && ipv6_is_link_local(p)) {
+            /* Save link-local as fallback, prefer global address */
+            if (link_local_fallback[0] == '\0') {
+                snprintf(link_local_fallback, sizeof(link_local_fallback), "%s", p);
+            }
+            free(value);
+            continue;
+        }
+
+        snprintf(out, out_len, "%s", p);
+        free(value);
+        return true;
+    }
+
+    /* No global address found — fall back to link-local if available */
+    if (ipv6 && (link_local_fallback[0] != '\0')) {
+        snprintf(out, out_len, "%s", link_local_fallback);
+        return true;
+    }
+
+    return false;
+}
+
+static bool wfa_stamld_get_identity(stamld_data_t *stamld, wfa_stamld_identity_type_t id_type,
+    char *out, size_t out_len)
+{
+    mac_addr_str_t sta_mac_l = { 0 };
+    uint32_t host_index = 0;
+
+    if ((out == NULL) || (out_len == 0)) {
+        return false;
+    }
+
+    out[0] = '\0';
+
+    if ((stamld == NULL) || (stamld->affiliated_sta_count == 0) ||
+        (stamld->affiliated_sta[0] == NULL)) {
+        return false;
+    }
+
+    to_mac_str(stamld->affiliated_sta[0]->dev_stats.cli_MLDAddr, sta_mac_l);
+
+    host_index = wfa_hosts_find_index_by_mac(sta_mac_l);
+    if (host_index == 0) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: no Hosts entry for STAMLD MAC: %s\n", __func__,
+            __LINE__, sta_mac_l);
+        return false;
+    }
+
+    switch (id_type) {
+    case wfa_stamld_identity_hostname: {
+        bus_name_string_t param_name = { 0 };
+        char *value = NULL;
+
+        snprintf(param_name, sizeof(param_name), "Device.Hosts.Host.%u.HostName", host_index);
+        value = wifi_dml_bus_get_param_string(param_name);
+        if (value == NULL) {
+            return false;
+        }
+        snprintf(out, out_len, "%s", value);
+        free(value);
+        return (out[0] != '\0');
+    }
+    case wfa_stamld_identity_ipv4:
+        return wfa_hosts_get_ip_from_table(host_index, false, out, out_len);
+    case wfa_stamld_identity_ipv6:
+        return wfa_hosts_get_ip_from_table(host_index, true, out, out_len);
+    default:
+        break;
+    }
+
+    return false;
+}
 
 bus_error_t set_output_value(char *param_name, raw_data_t *p_data, void *p_value) {
     switch(p_data->data_type) {
@@ -227,7 +415,15 @@ bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, r
         bool bool_val = capab_val & NSTR;
         return set_output_value(param_name, p_data, &bool_val);
     } else if (STR_CMP(param_name, "APMLDConfig.TIDLinkMapNegotiation")) {
-        bool bool_val = false; /* TODO Implement */
+        bool bool_val = false;
+        uint32_t radio_index = mld_grp->mld_vaps[0]->radio_index;
+
+        if (radio_index >= 0 && radio_index < MAX_NUM_RADIOS) {
+            bool_val = get_wifimgr_obj()->hal_cap.wifi_prop.radiocap[radio_index].TIDLinkMapNegotiation;
+        } else {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d invalid radio index\n", __FUNCTION__, __LINE__);
+        }
+
         return set_output_value(param_name, p_data, &bool_val);
     }
 
@@ -264,20 +460,39 @@ bus_error_t wfa_stamld_get_param_value(void *obj_ins_context, char *param_name, 
         return set_output_value(param_name, p_data, mld_mac_str);
     }
     else if (STR_CMP(param_name, "Hostname")) {
-        return set_output_value(param_name, p_data, " ");
+        char hostname[256] = { 0 };
+
+        (void)wfa_stamld_get_identity(stamld, wfa_stamld_identity_hostname, hostname,
+            sizeof(hostname));
+        return set_output_value(param_name, p_data, (hostname[0] != '\0') ? hostname : " ");
     }
     else if (STR_CMP(param_name, "IPv4Address")) {
-        return set_output_value(param_name, p_data, " ");
+        char ipv4[IP_STR_LEN] = { 0 };
+
+        (void)wfa_stamld_get_identity(stamld, wfa_stamld_identity_ipv4, ipv4, sizeof(ipv4));
+        return set_output_value(param_name, p_data, (ipv4[0] != '\0') ? ipv4 : " ");
     }
     else if (STR_CMP(param_name, "IPv6Address")) {
-        return set_output_value(param_name, p_data, " ");
-    } 
+        char ipv6[IP_STR_LEN] = { 0 };
+
+        (void)wfa_stamld_get_identity(stamld, wfa_stamld_identity_ipv6, ipv6, sizeof(ipv6));
+        return set_output_value(param_name, p_data, (ipv6[0] != '\0') ? ipv6 : " ");
+    }
     else if (STR_CMP(param_name, "IsbSTA")) {
         bool is_bsta = false;
         return set_output_value(param_name, p_data, &is_bsta);
     }
     else if (STR_CMP(param_name, "LastConnectTime")) {
         uint32_t last_connect_time = 0;
+
+        for (UINT i = 0; i < stamld->affiliated_sta_count; i++) {
+            assoc_dev_data_t *aff_sta = stamld->affiliated_sta[i];
+
+            if (aff_sta && aff_sta->last_connect_time > last_connect_time) {
+                last_connect_time = aff_sta->last_connect_time;
+            }
+        }
+
         return set_output_value(param_name, p_data, &last_connect_time);
     } else if (STR_CMP(param_name, "BytesReceived")) {
         uint32_t total = WFA_STAMLD_SUM(stamld, dev_stats.cli_BytesReceived);
