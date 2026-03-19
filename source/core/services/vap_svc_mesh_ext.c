@@ -35,7 +35,16 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
+
 #define SCORE_TIE_THRESHOLD 1
+#define WIFI_VARIANT_BE 7
+#define WIFI_VARIANT_AX 6
+#define WIFI_VARIANT_AC 5
+#define WIFI_VARIANT_N  4
+#define WIFI_VARIANT_G  3
+#define WIFI_VARIANT_B  2
+#define WIFI_VARIANT_A  1
+#define WIFI_VARIANT_ERROR 0
 
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
@@ -138,14 +147,14 @@ void sort_bss_results_by_rssi(bss_candidate_t *bss, int start, int end)
 
 int get_variant_rank(wifi_ieee80211Variant_t variant)
 {
-    if (variant & WIFI_80211_VARIANT_BE) return 8;
-    if (variant & WIFI_80211_VARIANT_AX) return 7;
-    if (variant & WIFI_80211_VARIANT_AC) return 6;
-    if (variant & WIFI_80211_VARIANT_N)  return 5;
-    if (variant & WIFI_80211_VARIANT_G)  return 4;
-    if (variant & WIFI_80211_VARIANT_B)  return 3;
-    if (variant & WIFI_80211_VARIANT_A)  return 2;
-    return 1;
+    if (variant & WIFI_80211_VARIANT_BE) return WIFI_VARIANT_BE;
+    if (variant & WIFI_80211_VARIANT_AX) return WIFI_VARIANT_AX;
+    if (variant & WIFI_80211_VARIANT_AC) return WIFI_VARIANT_AC;
+    if (variant & WIFI_80211_VARIANT_N)  return WIFI_VARIANT_N;
+    if (variant & WIFI_80211_VARIANT_G)  return WIFI_VARIANT_G;
+    if (variant & WIFI_80211_VARIANT_B)  return WIFI_VARIANT_B;
+    if (variant & WIFI_80211_VARIANT_A)  return WIFI_VARIANT_A;
+    return WIFI_VARIANT_ERROR;
 }
 /**
  * @brief Comparator for qsort - sorts by score (descending)
@@ -194,7 +203,7 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
              free(scores);
              return RETURN_ERR;
         }
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold ,mgr->ignite_config[radio_index].SNR_threshold ,mgr->ignite_config[radio_index].SNR_difference);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold , mgr->ignite_config[radio_index].SNR_difference);
 
         ignite_config = &mgr->ignite_config[radio_index];
         float chan_util = (float)scan_list[i].external_ap.chan_utilization;
@@ -248,11 +257,10 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
                 return RETURN_ERR;
             }
             wifi_util_dbg_print(WIFI_CTRL,
-                "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__,
+                "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f]\n", __func__,
                 __LINE__, count, mgr->ignite_config[radio_index].ignite_name,
                 mgr->ignite_config[radio_index].min_chanutil_threshold,
                 mgr->ignite_config[radio_index].max_chanutil_threshold,
-                mgr->ignite_config[radio_index].SNR_threshold,
                 mgr->ignite_config[radio_index].SNR_difference);
             ignite_config_t *cfg = &mgr->ignite_config[radio_index];
             snr_diff = scores[i].candidate->external_ap.snr - max_bucket1_snr;
