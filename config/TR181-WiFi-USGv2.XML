@@ -384,7 +384,7 @@
                     <name>Open2G</name>
                     <type>boolean</type>
                     <syntax>bool</syntax>
-                    <writable>true</writable
+                    <writable>true</writable>
 				</parameter>
 				<parameter>
 					<name>Open5G</name>
