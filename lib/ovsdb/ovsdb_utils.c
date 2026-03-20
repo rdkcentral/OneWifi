@@ -194,9 +194,6 @@ schema2tree(size_t key_size, size_t value_size, size_t nelems,
         key = keys[i];
         value = values[i];
         pair = get_pair(key, value);
-        if (pair == NULL) {
-            goto err_free_tree;
-        }
         loop = (pair != NULL);
         ds_tree_insert(tree, pair, pair->key);
         i++;
@@ -374,9 +371,6 @@ schema2itree(size_t elem_size, size_t nelems,
         key = keys[i];
         value = values[i];
         pair = get_ipair(key, value);
-        if (pair == NULL) {
-            goto err_free_tree;
-        }
         loop = (pair != NULL);
         ds_tree_insert(tree, pair, pair->key);
         i++;
