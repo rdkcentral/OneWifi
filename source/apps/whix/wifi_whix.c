@@ -1545,7 +1545,7 @@ void update_clientdiagdata(wifi_app_t *app, unsigned int num_devs, int vap_idx,
         vap_idx, num_devs);
 
     // check call
-    upload_client_debug_stats_whix(num_devs, vap_idx, assoc_stats);
+    upload_client_debug_stats_whix(vap_idx);
     if (isVapHotspotSecure(vap_idx)) {
         upload_ap_telemetry_anqp_whix(vap_idx);
     }
