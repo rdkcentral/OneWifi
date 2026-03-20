@@ -225,6 +225,13 @@ onewifi_conn_clients_count() {
 
 check_lnf_status()
 {
+    #if LnF is not enabled and wl0.4/wl1.4 are not enabled, dmcli call will
+    #create extra log in the cloud, which we want to avoid
+    lnf_2g_enabled="$(nvram get wl0.4_bss_enabled)"
+    lnf_5g_enabled"=$(nvram get wl1.4_bss_enabled)"
+    if [ "$lnf_2g_enabled" = "0" ] && [ "$lnf_5g_enabled" = "0" ]; then
+        return
+    fi
     radio_status_2g=`dmcli eRT retv Device.WiFi.Radio.$radio_2g_instance.Enable`
     if [ "$radio_status_2g" == "true" ]; then
         if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
@@ -530,7 +537,10 @@ do
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
     if [ "$MODEL_NUM" != "SR213" ] && [ "$MODEL_NUM" != "GR-EXT02A-CTS" ] && [ "$MODEL_NUM" != "SR203" ] && [ "$MODEL_NUM" != "$TG4" ]; then
-        check_lnf_status
+        customerId="$(syscfg get PartnerID | tr '[:upper:]' '[:lower:]')"
+        if [ "$customerId" != "sky-uk" ]; then
+            check_lnf_status
+        fi
     fi
     sleep 5m
     ((check_count++))
