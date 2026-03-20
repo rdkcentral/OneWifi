@@ -383,6 +383,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
         cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
         strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.identity, "username_empty", sizeof(cfg.u.sta_info.security.repurposed_radius.identity)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.repurposed_radius.key));
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
