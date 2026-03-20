@@ -368,19 +368,23 @@
             <writable>true</writable>
         </parameter>
 	</parameters>
-<object>
-			<name>TCM</name>
-			<objectType>object</objectType>
-			<functions>
-				<func_GetParamBoolValue>TCM_GetParamBoolValue</func_GetParamBoolValue>
-				<func_SetParamBoolValue>TCM_SetParamBoolValue</func_SetParamBoolValue>
-			</functions>
-			<parameters>
-				<parameter>
-					<name>Open2G</name>
-					<type>boolean</type>
-					<syntax>bool</syntax>
-					<writable>true</writable>
+
+   <objects>
+        <object>
+            <name>TCM</name>
+            <objectType>object</objectType>
+
+            <functions>
+                <func_GetParamBoolValue>TCM_GetParamBoolValue</func_GetParamBoolValue>
+                <func_SetParamBoolValue>TCM_SetParamBoolValue</func_SetParamBoolValue>
+            </functions>
+
+            <parameters>
+                <parameter>
+                    <name>Open2G</name>
+                    <type>boolean</type>
+                    <syntax>bool</syntax>
+                    <writable>true</writable
 				</parameter>
 				<parameter>
 					<name>Open5G</name>
@@ -413,8 +417,8 @@
 					<writable>true</writable>
 				</parameter>
 			</parameters>
-		</object>
-	<objects>
+        </object>
+    </objects>
         <object>
             <name>X_RDKCENTRAL-COM_GASConfig</name>
             <objectType>dynamicTable</objectType>
