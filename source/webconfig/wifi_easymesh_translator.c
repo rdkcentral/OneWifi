@@ -970,7 +970,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     // Copy basic info
     snprintf(vap_row->ssid, sizeof(vap_row->ssid), "%s", vap->u.sta_info.ssid);
     memcpy(vap_row->bssid.mac, vap->u.sta_info.bssid, sizeof(mac_address_t));
-    snprintf(vap_row->bssid.name, sizeof(vap_row->bssid.name), vap->vap_name);
+    snprintf(vap_row->bssid.name, sizeof(vap_row->bssid.name), "%s", vap->vap_name);
     memcpy(vap_row->sta_mac, vap->u.sta_info.mac, sizeof(mac_address_t));
     uint8_mac_to_string_mac( vap_row->sta_mac, mac_str);
     wifi_util_info_print(WIFI_WEBCONFIG, "Backhaul sta mac: %s\n", mac_str);
