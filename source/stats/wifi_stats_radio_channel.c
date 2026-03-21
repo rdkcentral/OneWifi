@@ -1060,6 +1060,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         }
     }
 
+    args->dwell_time = dwell_time;
+
     int buffer_size = sizeof(char) * num_channels * 5;
     channel_buff = (char *)malloc(buffer_size);
     if (channel_buff != NULL) {

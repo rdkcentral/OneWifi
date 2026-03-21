@@ -2212,8 +2212,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
         em_scan_result.util = src->utilization;
         em_scan_result.noise = src->noise;
         em_scan_result.num_neighbors = src->num_neighbors;
-        em_scan_result.aggr_scan_duration = 0;
-        em_scan_result.scan_type = 0;
+        em_scan_result.aggr_scan_duration = src->aggregate_scan_duration;
+        em_scan_result.scan_type = src->scan_type;
 
         for (j = 0; j < src->num_neighbors && j < EM_MAX_NEIGHBORS; j++) {
             neighbor_bss_t *src_neighbor = &src->neighbors[j];
@@ -2233,8 +2233,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
             } else if (strncmp(src_neighbor->channel_bandwidth, "320", strlen("320")) == 0) {
                 dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_320MHZ;
             }
-            dst_neighbor->bss_color = 0x8f;
-            dst_neighbor->channel_util = 00;
+            dst_neighbor->bss_color = src_neighbor->bss_color;
+            dst_neighbor->channel_util = src_neighbor->channel_utilization;
             dst_neighbor->sta_count = (unsigned short)src_neighbor->station_count;
         }
         count++;
