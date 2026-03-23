@@ -175,9 +175,9 @@ void default_em_bss_info(em_bss_info_t  *vap_row)
 // sets the default values in em_device_info_t Easymesh structure
 void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_security_info_t *security_info)
 {
-    strcpy(device_info->id.net_id,"OneWifiMesh");
-    strcpy(device_info->multi_ap_cap,"4A==");
-    strcpy(device_info->exec_env,"testEnv");
+    snprintf(device_info->id.net_id, sizeof(device_info->id.net_id),"OneWifiMesh");
+    snprintf(device_info->multi_ap_cap, sizeof(device_info->multi_ap_cap), "4A==");
+    snprintf(device_info->exec_env, sizeof(device_info->exec_env), "testEnv");
     memset(device_info->primary_device_type,'\0',sizeof(device_info->primary_device_type));
     memset(device_info->secondary_device_type,'\0',sizeof(device_info->secondary_device_type));
     device_info->traffic_sep_cap = false;
@@ -255,7 +255,7 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     memcpy(device_info->backhaul_alid.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
     interfacename_from_mac((const mac_address_t *)device_info->backhaul_alid.mac,device_info->backhaul_alid.name);
     //proto->set_num_radio(proto->data_model, wifi_prop->numRadios);
-    strcpy(device_info->country_code, "US");
+    snprintf(device_info->country_code, sizeof(device_info->country_code), "US");
     for (unsigned int i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         dfs_enable  = radio->oper.DfsEnabled;
