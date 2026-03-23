@@ -368,7 +368,8 @@
             <writable>true</writable>
         </parameter>
 	</parameters>
-        <object>
+<objects>
+<object>
             <name>TCM</name>
             <objectType>object</objectType>
 
