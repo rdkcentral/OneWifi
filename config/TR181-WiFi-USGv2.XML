@@ -368,8 +368,6 @@
             <writable>true</writable>
         </parameter>
 	</parameters>
-
-   <objects>
         <object>
             <name>TCM</name>
             <objectType>object</objectType>
@@ -418,7 +416,6 @@
 				</parameter>
 			</parameters>
         </object>
-    </objects>
         <object>
             <name>X_RDKCENTRAL-COM_GASConfig</name>
             <objectType>dynamicTable</objectType>
