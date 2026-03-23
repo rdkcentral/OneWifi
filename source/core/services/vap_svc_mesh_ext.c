@@ -1315,17 +1315,6 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     vap_svc_mesh_ext_clear_variable(svc);
     ext->is_started = false;
 
-    if ((radio_index != WIFI_ALL_RADIO_INDICES) && (radio_index >= MAX_NUM_RADIOS)) {
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d failed to stop mesh service: wrong radio index %d\n", __func__, __LINE__,
-            radio_index);
-        return -1;
-    }
-
-    if (ext->is_vap_started[radio_index]) {
-        vap_svc_stop(svc, radio_index);
-        ext->is_vap_started[radio_index] = false;
-    }
     return 0;
 }
 
