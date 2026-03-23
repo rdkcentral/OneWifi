@@ -64,6 +64,7 @@ typedef enum {
 
 void update_lm_wifi_host_SSID(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data, unsigned int vap_index);
 void update_lm_wifi_host_RSSI(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data);
+void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data);
 
 int convert_sec_mode_enable_int_str(int sec_mode_enable, char *secModeStr) {
 
@@ -1954,6 +1955,7 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
                             ULONG *new_count,
                             ULONG old_count)
 {
+    wifi_util_dbg_print(WIFI_CTRL,"Removing MAC %s from vap_index %d\n", mac_str, rdk_vap_info->vap_index);
     removed_dev->client_state = client_state_disconnected;
     if (add_client_diff_assoclist(&rdk_vap_info->associated_devices_diff_map, mac_str, removed_dev) == RETURN_ERR) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to update diff assoclist for vap %d mac_str : %s\n", __func__, __LINE__, rdk_vap_info->vap_index, mac_str);
@@ -1986,13 +1988,13 @@ void process_disassoc_device_event(void *data)
 
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)data;
     rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(assoc_data->ap_index);
-    
     if (rdk_vap_info == NULL) {
         return;
     }
 
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     mac_addr_str_t mac_str;
+    BOOL mld_sta = false;
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
     bool remove_all = (memcmp(assoc_data->dev_stats.cli_MACAddress, 
                               BROADCAST_MAC, sizeof(mac_address_t)) == 0) ||
@@ -2037,9 +2039,11 @@ void process_disassoc_device_event(void *data)
             "%s:%d Disassoc event for mac: %s - removed all assoclist entries\n",
             __func__, __LINE__, mac_str);
     } else {
-        assoc_dev_data_t *temp = hash_map_remove(rdk_vap_info->associated_devices_map, 
-                                                  mac_str);
+        assoc_dev_data_t *temp = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
         if (temp != NULL) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d vap_index: %d MAC: %s is MLD %d\n",
+                __func__, __LINE__, rdk_vap_info->vap_index, mac_str, temp->mld_info.cli_MLDSta);
+            mld_sta = temp->mld_info.cli_MLDSta;
             if (process_device_removal(rdk_vap_info, mac_str, temp, 
                                       p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
                 pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
@@ -2064,6 +2068,12 @@ void process_disassoc_device_event(void *data)
     }
 
     pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+
+    if (!remove_all && mld_sta) {
+        //remove STA from all other VAPs in case of MLD STA
+        //remove on other VAPs done at the end to avoid locking 2 VAPs at the same time
+        check_and_remove_mac_on_other_vaps(assoc_data);
+    }
 }
 
 void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data)
@@ -2075,47 +2085,57 @@ void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data)
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     mac_addr_str_t mac_str;
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
-    
+
     unsigned int num_radios = getNumberRadios();
-   
-    for (unsigned int vap_idx = 0; vap_idx < num_radios; vap_idx++) {
-        // Skip the VAP where device is currently associated
-        if ((int)vap_idx == assoc_data->ap_index) {
+    for (unsigned int r_itr = 0; r_itr < num_radios; r_itr++) {
+        wifi_vap_info_map_t *wifi_vap_map = get_wifidb_vap_map(r_itr);
+        if (wifi_vap_map == NULL) {
             continue;
         }
-
-        rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap_idx);
-        if (rdk_vap_info == NULL) {
-            continue;
-        }
-
-        pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
-
-        if (rdk_vap_info->associated_devices_map == NULL) {
-            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-            continue;
-        }
-
-        ULONG old_count = hash_map_count(rdk_vap_info->associated_devices_map);
-
-        assoc_dev_data_t *removed_dev = 
-            hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
-
-        if (removed_dev != NULL) {
-            ULONG new_count = old_count;
-         
-            if (process_device_removal(rdk_vap_info, mac_str, removed_dev, 
-                                      p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
-                pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-                return;
+        unsigned int max_vaps = getMaxNumberVAPsPerRadio(r_itr);
+        for (unsigned int v_itr = 0; v_itr < max_vaps; v_itr++) {
+            unsigned int vap_index = wifi_vap_map->vap_array[v_itr].vap_index;
+            // Skip the VAP where device is currently associated
+            if ((int)vap_index == assoc_data->ap_index) {
+                continue;
             }
-            
-            wifi_util_info_print(WIFI_CTRL,
-                "%s:%d Removed MAC %s from VAP %d (roaming to VAP %d)\n",
-                __func__, __LINE__, mac_str, vap_idx, assoc_data->ap_index);
-        }
+            rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+            if (rdk_vap_info == NULL) {
+                continue;
+            }
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+            if (rdk_vap_info->associated_devices_map == NULL) {
+                pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                continue;
+            }
 
-        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+            ULONG old_count = hash_map_count(rdk_vap_info->associated_devices_map);
+
+            assoc_dev_data_t *removed_dev =
+                hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
+
+            if (removed_dev != NULL) {
+                ULONG new_count = old_count;
+                BOOL mld_sta = removed_dev->mld_info.cli_MLDSta;
+
+                if (process_device_removal(rdk_vap_info, mac_str, removed_dev,
+                                        p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
+                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d failed to remove MAC %s from VAP %d\n",
+                        __func__, __LINE__, mac_str, vap_index);
+                    return;
+                }
+                if (mld_sta) {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d Removed MLD MAC %s from VAP %d\n", __func__, __LINE__, mac_str, vap_index);
+                } else {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d Removed MAC %s from VAP %d (roaming to VAP %d)\n",
+                        __func__, __LINE__, mac_str, vap_index, assoc_data->ap_index);
+                }
+            }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+        }
     }
 }
 void update_lm_wifi_host_SSID(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data, unsigned int vap_index)
