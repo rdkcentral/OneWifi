@@ -2559,6 +2559,11 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
         {161, 165, 169, 173, 177, 181, 185, 189},
         {193, 197, 201, 205, 209, 213, 217, 221}
     };
+    int channels_6g_320_mhz[3][16] = {
+        {33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93},
+        {97, 101, 105, 109, 113, 117, 121, 125, 129, 133, 137, 141, 145, 149, 153, 157},
+        {161, 165, 169, 173, 177, 181, 185, 189, 193, 197, 201, 205, 209, 213, 217, 221}
+    };
 
     int found_idx = -1;
     
@@ -2738,7 +2743,27 @@ int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t ban
             } else {
                 return -1;
             }
-        
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_320MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_6g_320_mhz); i++) {
+                for (int j = 0; j < 16; j++) {
+                    if (primary_channel == channels_6g_320_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 16; i++) {
+                    channel_list[i] = channels_6g_320_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
         }
     }
 
@@ -3808,6 +3833,34 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
+#ifdef CONFIG_IEEE80211BE
+static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
+{
+    if ((vap_info_old == NULL) || (vap_info_new == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: input args are NULL vap_info_old : %p vap_info_new : %p\n", __func__, __LINE__,
+            vap_info_old, vap_info_new);
+        return false;
+    }
+    if (vap_info_old->u.bss_info.mld_info.common_info.mld_enable ||
+        vap_info_new->u.bss_info.mld_info.common_info.mld_enable) {
+        if (IS_BIN_CHANGED(&vap_info_old->u.bss_info.mld_info.common_info.mld_addr,
+                &vap_info_new->u.bss_info.mld_info.common_info.mld_addr,
+                sizeof(vap_info_old->u.bss_info.mld_info.common_info.mld_addr))) {
+            mac_addr_str_t old_mld_mac_str = { 0 };
+            mac_addr_str_t new_mld_mac_str = { 0 };
+
+            to_mac_str(vap_info_old->u.bss_info.mld_info.common_info.mld_addr, old_mld_mac_str);
+            to_mac_str(vap_info_new->u.bss_info.mld_info.common_info.mld_addr, new_mld_mac_str);
+            wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: MLD address changed old: %s ,new: %s\n",
+                __func__, __LINE__, old_mld_mac_str, new_mld_mac_str);
+            return true;
+        }
+    }
+    return false;
+}
+#endif /* CONFIG_IEEE80211BE */
+
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3913,6 +3966,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
+#ifdef CONFIG_IEEE80211BE
+            is_mld_addr_changed(vap_info_old, vap_info_new) ||
+#endif /* CONFIG_IEEE80211BE */
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,
