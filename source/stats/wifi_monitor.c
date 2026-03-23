@@ -1416,6 +1416,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_MaxDownlinkRate = sta_data->dev_stats.cli_MaxDownlinkRate;
     assoc_dev_data->dev_stats.cli_MaxUplinkRate = sta_data->dev_stats.cli_MaxUplinkRate;
     assoc_dev_data->dev_stats.cli_MLDEnable = sta_data->dev_stats.cli_MLDEnable;
+    memcpy(assoc_dev_data->link_address, sta_data->link_mac, sizeof(mac_address_t));
     assoc_dev_data->last_connect_time = 0;
     if (sta_data->last_connected_time.tv_sec > 0) {
         struct timespec tv_now;

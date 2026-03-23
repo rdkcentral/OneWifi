@@ -981,8 +981,11 @@ typedef struct {
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
     unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
+
+    /* wifi7 client specific data */
     wifi_mld_sta_info_t mld_info;
     bool association_link;
+    mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;

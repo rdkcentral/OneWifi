@@ -1884,7 +1884,7 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
 
             if (print_assoc_client == true) {
                 cJSON *obj_assoc_client;
-                mac_addr_str_t mac_string = { 0 };
+                mac_addr_str_t mac_string = { 0 }, tmp_mac_string = { 0 };
 
                 obj_assoc_client = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj_assoc_client);
@@ -1893,11 +1893,16 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 str_tolower(mac_string);
                 cJSON_AddStringToObject(obj_assoc_client, "MACAddress", mac_string);
 
-                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, mac_string);
-                str_tolower(mac_string);
-                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", mac_string);
+                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, tmp_mac_string);
+                str_tolower(tmp_mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", tmp_mac_string);
 
                 cJSON_AddBoolToObject(obj_assoc_client, "MLDEnable", assoc_dev_data->dev_stats.cli_MLDEnable);
+
+                to_mac_str(assoc_dev_data->link_address, tmp_mac_string);
+                str_tolower(tmp_mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "LinkAddress", tmp_mac_string);
+
                 cJSON_AddStringToObject(obj_assoc_client, "WpaKeyMgmt", assoc_dev_data->conn_security.wpa_key_mgmt);
                 cJSON_AddStringToObject(obj_assoc_client, "PairwiseCipher", assoc_dev_data->conn_security.pairwise_cipher);
                 cJSON_AddNumberToObject(obj_assoc_client, "RSNCapabilities", assoc_dev_data->conn_security.rsn_capabilities);
