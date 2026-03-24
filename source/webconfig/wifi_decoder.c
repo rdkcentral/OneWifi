@@ -1287,7 +1287,12 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         security_info->mode = wifi_security_mode_wpa3_enterprise;
     } else if (strcmp(param->valuestring, "WPA3-Personal-Compatibility") == 0) {
         security_info->mode = wifi_security_mode_wpa3_compatibility;
-        security_info->u.key.type = wifi_security_key_type_psk_sae;    
+        security_info->u.key.type = wifi_security_key_type_psk_sae;
+#if defined(CONFIG_IEEE80211BE)
+        if(band == WIFI_FREQUENCY_6_BAND) {
+            security_info->u.key.type = wifi_security_key_type_sae;
+        }
+#endif
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode security mode: %s\n",
             __func__, __LINE__, param->valuestring);
@@ -1296,7 +1301,9 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
 
     if (band == WIFI_FREQUENCY_6_BAND &&
         security_info->mode != wifi_security_mode_wpa3_personal &&
+#if defined(CONFIG_IEEE80211BE)
         security_info->mode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
         security_info->mode != wifi_security_mode_wpa3_enterprise &&
         security_info->mode != wifi_security_mode_enhanced_open) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode for 6G interface: %d\n",
@@ -1354,8 +1361,15 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
 #endif // CONFIG_IEEE80211BE
 
     if(security_info->mode == wifi_security_mode_wpa3_compatibility &&
-       security_info->mfp != wifi_mfp_cfg_disabled) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
+#if defined(CONFIG_IEEE80211BE)
+            ((band == WIFI_FREQUENCY_6_BAND &&
+            security_info->mfp != wifi_mfp_cfg_required) ||
+            (band != WIFI_FREQUENCY_6_BAND &&
+            security_info->mfp != wifi_mfp_cfg_disabled))) {
+#else
+            security_info->mfp != wifi_mfp_cfg_disabled) {
+#endif /* CONFIG_IEEE80211BE */
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
             __func__, __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_decode;
     }

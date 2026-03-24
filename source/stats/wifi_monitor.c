@@ -943,20 +943,28 @@ vap_stats_flag_changed(unsigned int ap_index, client_stats_enable_t *flag)
  */
 int wifi_stats_flag_change(int ap_index, bool enable, int type)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = ap_index;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
 
-    data.u.flag.type = type;
-    data.u.flag.enable = enable;
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = ap_index;
+
+    data->u.flag.type = type;
+    data->u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed apIndex=%d enable=%d type=%d\n",
             __func__, __LINE__, ap_index, enable, type);
 
-    push_event_to_monitor_queue(&data, wifi_event_monitor_stats_flag_change, NULL);
+    push_event_to_monitor_queue(data, wifi_event_monitor_stats_flag_change, NULL);
 
+    free(data);
+    data=NULL;
     return 0;
 }
 
@@ -968,18 +976,26 @@ int wifi_stats_flag_change(int ap_index, bool enable, int type)
  */
 int radio_stats_flag_change(int radio_index, bool enable)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = radio_index;	//Radio_Index = 0, 1
-    data.u.flag.enable = enable;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = radio_index;	//Radio_Index = 0, 1
+    data->u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed radioIndex=%d enable=%d\n",
             __func__, __LINE__, radio_index, enable);
 
-    push_event_to_monitor_queue(&data, wifi_event_monitor_radio_stats_flag_change, NULL);
+    push_event_to_monitor_queue(data, wifi_event_monitor_radio_stats_flag_change, NULL);
 
+    free(data);
+    data=NULL;
     return 0;
 }
 
@@ -991,18 +1007,25 @@ int radio_stats_flag_change(int radio_index, bool enable)
  */
 int vap_stats_flag_change(int ap_index, bool enable)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = ap_index;	//vap_Index
-    data.u.flag.enable = enable;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return -1;
+    }
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = ap_index;	//vap_Index
+    data->u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed vapIndex=%d enable=%d \n",
             __func__, __LINE__, ap_index, enable);
-    push_event_to_monitor_queue(&data, wifi_event_monitor_vap_stats_flag_change, NULL);
+    push_event_to_monitor_queue(data, wifi_event_monitor_vap_stats_flag_change, NULL);
 
-
+    free(data);
+    data=NULL;
     return 0;
 }
 
@@ -2503,7 +2526,7 @@ static int clientdiag_sheduler_enable(int ap_index)
 
 int diagdata_set_interval(int interval, unsigned int ap_idx)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
     unsigned int vap_array_index;
     int ret = RETURN_ERR;
 
@@ -2518,11 +2541,19 @@ int diagdata_set_interval(int interval, unsigned int ap_idx)
     wifi_util_dbg_print(WIFI_MON, "%s: ap_idx %d configuring inteval %d\n", __func__, ap_idx, interval);
     pthread_mutex_unlock(&g_events_monitor.lock);
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    data.ap_index = ap_idx;
+    data = malloc(sizeof(wifi_monitor_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
-    ret = push_event_to_monitor_queue(&data, wifi_event_monitor_clientdiag_update_config, NULL);
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
+    data->ap_index = ap_idx;
+
+    ret = push_event_to_monitor_queue(data, wifi_event_monitor_clientdiag_update_config, NULL);
+    free(data);
+    data = NULL;
     if (ret == RETURN_ERR) {
         wifi_util_error_print(WIFI_MON, "%s:%d Error in sending request to monitor queue\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -2813,7 +2844,7 @@ int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int re
 
 int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, int reason)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
     assoc_dev_data_t assoc_data;
     greylist_data_t greylist_data;
     unsigned int mac_addr[MAC_ADDR_LEN];
@@ -2840,17 +2871,25 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
 
     is_sta_active = active_sta_connection_status(ap_index, src_mac);
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
 
-    data.ap_index = ap_index;
+    data->ap_index = ap_index;
     sscanf(src_mac, "%02x:%02x:%02x:%02x:%02x:%02x",
             &mac_addr[0], &mac_addr[1], &mac_addr[2],
             &mac_addr[3], &mac_addr[4], &mac_addr[5]);
-    data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
-    data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
-    data.u.dev.reason = reason;
-    push_event_to_monitor_queue(&data, wifi_event_monitor_disconnect, NULL);
+    data->u.dev.sta_mac[0] = mac_addr[0]; data->u.dev.sta_mac[1] = mac_addr[1]; data->u.dev.sta_mac[2] = mac_addr[2];
+    data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
+    data->u.dev.reason = reason;
+    push_event_to_monitor_queue(data, wifi_event_monitor_disconnect, NULL);
+
+    free(data);
+    data = NULL;
 
     if (is_sta_active == false) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
@@ -2989,7 +3028,7 @@ int device_max_client_rejection(int ap_index, char *mac, int reason)
 
 int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type, int reason)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
     unsigned int mac_addr[MAC_ADDR_LEN];
     greylist_data_t greylist_data;
     assoc_dev_data_t assoc_data;
@@ -3017,17 +3056,25 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
 
     is_sta_active = active_sta_connection_status(ap_index, src_mac);
 
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->id = msg_id++;
 
-    data.ap_index = ap_index;
+    data->ap_index = ap_index;
     sscanf(src_mac, "%02x:%02x:%02x:%02x:%02x:%02x",
             &mac_addr[0], &mac_addr[1], &mac_addr[2],
             &mac_addr[3], &mac_addr[4], &mac_addr[5]);
-    data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
-    data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
-    data.u.dev.reason = reason;
-    push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate, NULL);
+    data->u.dev.sta_mac[0] = mac_addr[0]; data->u.dev.sta_mac[1] = mac_addr[1]; data->u.dev.sta_mac[2] = mac_addr[2];
+    data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
+    data->u.dev.reason = reason;
+    push_event_to_monitor_queue(data, wifi_event_monitor_deauthenticate, NULL);
+
+    free(data);
+    data = NULL;
 
     if (is_sta_active == false) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
@@ -3238,7 +3285,7 @@ static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associat
 
 int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 {
-    wifi_monitor_data_t data;
+    wifi_monitor_data_t *data = NULL;
     assoc_dev_data_t assoc_data;
     wifi_radioTrafficStats2_t chan_stats;
     frame_data_t *frame;
@@ -3246,21 +3293,27 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     char vap_name[32];
 
     memset(&assoc_data, 0, sizeof(assoc_data));
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
-    data.id = msg_id++;
+    memset(data, 0, sizeof(wifi_monitor_data_t));
 
-    data.ap_index = ap_index;
+    data->id = msg_id++;
+
+    data->ap_index = ap_index;
     //data->u.dev.reason = reason;
 
-    data.u.dev.sta_mac[0] = associated_dev->cli_MACAddress[0]; data.u.dev.sta_mac[1] = associated_dev->cli_MACAddress[1];
-    data.u.dev.sta_mac[2] = associated_dev->cli_MACAddress[2]; data.u.dev.sta_mac[3] = associated_dev->cli_MACAddress[3];
-    data.u.dev.sta_mac[4] = associated_dev->cli_MACAddress[4]; data.u.dev.sta_mac[5] = associated_dev->cli_MACAddress[5];
+    data->u.dev.sta_mac[0] = associated_dev->cli_MACAddress[0]; data->u.dev.sta_mac[1] = associated_dev->cli_MACAddress[1];
+    data->u.dev.sta_mac[2] = associated_dev->cli_MACAddress[2]; data->u.dev.sta_mac[3] = associated_dev->cli_MACAddress[3];
+    data->u.dev.sta_mac[4] = associated_dev->cli_MACAddress[4]; data->u.dev.sta_mac[5] = associated_dev->cli_MACAddress[5];
 
     wifi_util_info_print(WIFI_MON, "%s:%d:Device associated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
             __func__, __LINE__, ap_index,
-            data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
-            data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5]);
+            data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
+            data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
 
 
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index, vap_name);
@@ -3269,7 +3322,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     //Update the assoc frame of the associated_dev in assoc_data
     get_client_assoc_frame(ap_index, associated_dev, &assoc_data);
 
-    memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
+    memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
     assoc_data.dev_stats.cli_RSSI = associated_dev->cli_RSSI;
     assoc_data.dev_stats.cli_AuthenticationState = associated_dev->cli_AuthenticationState;
@@ -3307,12 +3360,14 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
         wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len is 0\n", __func__, __LINE__);
     }
 
-    assoc_data.ap_index = data.ap_index;
+    assoc_data.ap_index = data->ap_index;
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_assoc_device, NULL);
 
-    memcpy(&data.u.dev.dev_stats, &assoc_data.dev_stats, sizeof(wifi_associated_dev3_t));
-    push_event_to_monitor_queue(&data, wifi_event_monitor_connect, NULL);
+    memcpy(&data->u.dev.dev_stats, &assoc_data.dev_stats, sizeof(wifi_associated_dev3_t));
+    push_event_to_monitor_queue(data, wifi_event_monitor_connect, NULL);
 
+    free(data);
+    data = NULL;
     return 0;
 }
 static int new_chan_util_period = 0;

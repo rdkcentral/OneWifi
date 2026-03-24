@@ -335,11 +335,11 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_radio_info->enabled = oper_param->enable;
 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
-            em_radio_info->band = 0;
+            em_radio_info->band = em_freq_band_24;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
-            em_radio_info->band = 1;
+            em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
-            em_radio_info->band = 2;
+            em_radio_info->band = em_freq_band_6;
         }
         
         radio_iface_map = NULL;
@@ -444,11 +444,11 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_radio_info->enabled = oper_param->enable;
         //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
-            em_radio_info->band = 0;
+            em_radio_info->band = em_freq_band_24;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
-            em_radio_info->band = 1;
+            em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
-            em_radio_info->band = 2;
+            em_radio_info->band = em_freq_band_6;
         }
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
@@ -1814,6 +1814,9 @@ webconfig_error_t translate_em_bss_to_private_vap_info(wifi_vap_info_t *vap, con
         return webconfig_error_translate_from_easymesh;
     }
 
+    // By default, the VAP remains disabled and will be enabled dynamically depending on the HAULTYPE configuration.
+    vap->u.bss_info.enabled = false;
+
     /*
         if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_fronthaul_akms, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
@@ -1837,6 +1840,10 @@ webconfig_error_t translate_em_bss_to_xhs_vap_info(wifi_vap_info_t *vap,  const 
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_easymesh;
     }
+
+    // By default, the VAP remains disabled and will be enabled dynamically depending on the HAULTYPE configuration.
+    vap->u.bss_info.enabled = false;
+
     /*
         if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_xhs_akms, (char(*)[])vap_row->xhs_akm)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
@@ -1861,6 +1868,9 @@ webconfig_error_t translate_em_bss_to_lnf_psk_vap_info(wifi_vap_info_t *vap, con
         return webconfig_error_translate_from_easymesh;
     }
 
+    // By default, the VAP remains disabled and will be enabled dynamically depending on the HAULTYPE configuration.
+    vap->u.bss_info.enabled = false;
+
     /*
         if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_lnf_psk_akms, (char(*)[])vap_row->lnf_psk_akm)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
@@ -1884,6 +1894,9 @@ webconfig_error_t translate_em_bss_to_lnf_radius_vap_info(wifi_vap_info_t *vap, 
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_easymesh;
     }
+
+    // By default, the VAP remains disabled and will be enabled dynamically depending on the HAULTYPE configuration.
+    vap->u.bss_info.enabled = false;
 
     /*
         if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_lnf_radius_akms, (char(*)[])vap_row->lnf_radius_akm)) != RETURN_OK) {

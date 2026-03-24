@@ -3065,6 +3065,12 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name,
             case wifi_security_mode_wpa3_compatibility:
                 p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+                if(strstr(pcfg->radio_index, "6g")) {
+                    p_dm_sec_cfg->u.key.type = wifi_security_key_type_sae;
+                    p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
+                }
+#endif /* CONFIG_IEEE80211BE */
                 break;
             default:
                 break;
@@ -5185,7 +5191,7 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
 
             STR_COPY(p_dm_pre_assoc->rssi_up_threshold, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "SnrThreshold")) {
         if (STR_CMP(p_input_str, p_dm_pre_assoc->snr_threshold)) {
             return true;
@@ -5208,7 +5214,7 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
 
             STR_COPY(p_dm_pre_assoc->snr_threshold, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "CuThreshold")) {
         if (STR_CMP(p_input_str, p_dm_pre_assoc->cu_threshold)) {
             return true;
@@ -5232,7 +5238,7 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
 
             STR_COPY(p_dm_pre_assoc->cu_threshold, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "BasicDataTransmitRates")) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d %s Rate to set for preassoc\n", __func__, __LINE__,
             p_input_str);
@@ -5256,7 +5262,6 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
                 p_input_str);
             return false;
         }
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "OperationalDataTransmitRates")) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d %s operational Rate to set for preassoc\n", __func__,
@@ -5281,7 +5286,6 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
                 p_input_str);
             return false;
         }
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "SupportedDataTransmitRates")) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d %s Supported Rate to set for preassoc\n", __func__,
@@ -5306,7 +5310,6 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
                 p_input_str);
             return false;
         }
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "MinimumAdvertisedMCS")) {
         if (STR_CMP(p_input_str, p_dm_pre_assoc->minimum_advertised_mcs)) {
@@ -5334,7 +5337,6 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
 
             STR_COPY(p_dm_pre_assoc->minimum_advertised_mcs, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "6GOpInfoMinRate")) {
         if (STR_CMP(p_input_str, p_dm_pre_assoc->sixGOpInfoMinRate)) {
@@ -5342,9 +5344,8 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
         } else if (STR_CMP(p_input_str, "disabled")) {
             STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, "disabled");
         } else {
-            STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, p_input_str);
-        }
-        set_cac_cache_changed(instance_number - 1);
+	    STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, p_input_str);
+	}
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
@@ -5454,7 +5455,7 @@ bool post_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_na
 
             STR_COPY(p_dm_post_assoc->rssi_up_threshold, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "SamplingInterval")) {
         if (STR_CMP(p_input_str, p_dm_post_assoc->sampling_interval)) {
             return true;
@@ -5474,7 +5475,7 @@ bool post_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_na
             }
 
             STR_COPY(p_dm_post_assoc->sampling_interval, p_input_str);
-            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
         }
     } else if (STR_CMP(param_name, "SnrThreshold")) {
         if (STR_CMP(p_input_str, p_dm_post_assoc->snr_threshold)) {
@@ -5499,7 +5500,7 @@ bool post_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_na
 
             STR_COPY(p_dm_post_assoc->snr_threshold, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "SamplingCount")) {
         if (STR_CMP(p_input_str, p_dm_post_assoc->sampling_count) == 0) {
             return true;
@@ -5523,7 +5524,7 @@ bool post_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_na
 
             STR_COPY(p_dm_post_assoc->sampling_count, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "CuThreshold")) {
         if (STR_CMP(p_input_str, p_dm_post_assoc->cu_threshold)) {
             return true;
@@ -5551,7 +5552,7 @@ bool post_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_na
 
             STR_COPY(p_dm_post_assoc->cu_threshold, p_input_str);
         }
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
