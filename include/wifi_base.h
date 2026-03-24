@@ -152,6 +152,19 @@ extern "C" {
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];
 
+/* HE PHY/MAC capability bit positions (IEEE 802.11ax-2021) */
+#define HE_PHY_CHAN_WIDTH_160_BIT   3
+#define HE_PHY_CHAN_WIDTH_80P80_BIT 4
+#define HE_PHY_SU_BEAMFORMER_BIT    7   /* byte 3 */
+#define HE_PHY_SU_BEAMFORMEE_BIT    0   /* byte 4 */
+#define HE_PHY_MU_BEAMFORMER_BIT    1   /* byte 4 */
+#define HE_MAC_TWT_REQ_BIT          0   /* byte 0 */
+#define HE_MAC_TWT_RESP_BIT         1   /* byte 0 */
+#define HE_MAC_DL_MU_MIMO_BIT       0   /* byte 4 */
+#define HE_MAC_UL_MU_MIMO_BIT       1   /* byte 4 */
+#define HE_MAC_UL_OFDMA_BIT         2   /* byte 2 */
+#define HE_MAC_DL_OFDMA_BIT         3   /* byte 2 */
+
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
     wifi_app_inst_harvester = wifi_app_inst_base << 1,
@@ -536,6 +549,12 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool tcm_open_2g_rfc;
+    bool tcm_open_5g_rfc;
+    bool tcm_open_6g_rfc;
+    bool tcm_secure_2g_rfc;
+    bool tcm_secure_5g_rfc;
+    bool tcm_secure_6g_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
