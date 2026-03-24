@@ -2201,7 +2201,8 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          radiocap = &wifi_prop->radiocap[i];
          object =  cJSON_CreateObject();
          cJSON_AddItemToArray(radio_obj, object);
-         cJSON_AddNumberToObject(object, "RadioIndex", radiocap->index);
+         cJSON_AddNumberToObject(object, "PhyIndex", radiocap->index);
+         cJSON_AddNumberToObject(object, "RadioIndex", radiocap->rdk_radio_index);
 
          for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
              (void)memcpy(channels_list, radiocap->channel_list[freq_band_count].channels_list, sizeof(*channels_list) * radiocap->channel_list[freq_band_count].num_channels);
@@ -2249,13 +2250,13 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
         cJSON_AddBoolToObject(object, "WiFi6Supported", wifi_prop->radiocap[i].wifi6_supported);
         
         cJSON *he_phy_cap_array = cJSON_CreateArray();
-        for (int j = 0; j < HE_MAX_MAC_CAPAB_SIZE; j++) {
+        for (int j = 0; j < HE_MAX_PHY_CAPAB_SIZE; j++) {
             cJSON_AddItemToArray(he_phy_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_phy_cap[j]));
         }
         cJSON_AddItemToObject(object, "HEPHYCap", he_phy_cap_array);
 
         cJSON *he_mac_cap_array = cJSON_CreateArray();
-        for (int j = 0; j < HE_MAX_PHY_CAPAB_SIZE; j++) {
+        for (int j = 0; j < HE_MAX_MAC_CAPAB_SIZE; j++) {
             cJSON_AddItemToArray(he_mac_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_mac_cap[j]));
         }
         cJSON_AddItemToObject(object, "HEMACCap", he_mac_cap_array);

@@ -4788,13 +4788,26 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
     for (i = 0; i < size; i++) {
          object  = cJSON_GetArrayItem(obj_wificap, i);
          radio_cap = &wifi_prop->radiocap[i];
+         value_object = cJSON_GetObjectItem(object, "PhyIndex");
+         if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+            /* Fallback to legacy RadioIndex for older producers */
+             cJSON *legacy_radio_index = cJSON_GetObjectItem(object, "RadioIndex");
+             if ((legacy_radio_index == NULL) || (cJSON_IsNumber(legacy_radio_index) == false)) {
+                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+                 return webconfig_error_decode;
+             }
+             radio_cap->index = legacy_radio_index->valuedouble;
+         } else {
+             radio_cap->index = value_object->valuedouble;
+         }
+
          value_object = cJSON_GetObjectItem(object, "RadioIndex");
          if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
              wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
              return webconfig_error_decode;
          }
 
-         radio_cap->index = value_object->valuedouble;
+         radio_cap->rdk_radio_index = value_object->valuedouble;
 
          /*allowed_channels*/
          allowed_channels = cJSON_GetObjectItem(object, "PossibleChannels");

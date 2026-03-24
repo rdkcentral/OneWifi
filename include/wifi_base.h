@@ -162,8 +162,8 @@ typedef char stats_cfg_id_t[CFG_ID_LEN];
 #define HE_MAC_TWT_RESP_BIT         1   /* byte 0 */
 #define HE_MAC_DL_MU_MIMO_BIT       0   /* byte 4 */
 #define HE_MAC_UL_MU_MIMO_BIT       1   /* byte 4 */
-#define HE_MAC_UL_OFDMA_BIT         2   /* byte 4 */
-#define HE_MAC_DL_OFDMA_BIT         3   /* byte 4 */
+#define HE_MAC_UL_OFDMA_BIT         2   /* byte 2 */
+#define HE_MAC_DL_OFDMA_BIT         3   /* byte 2 */
 
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
@@ -242,6 +242,7 @@ typedef struct {
     mac_address_t  sta_mac;
     int        reason;
     wifi_associated_dev3_t dev_stats;
+    wifi_mld_sta_info_t mld_info;
 } auth_deauth_dev_t;
 
 #define MAX_MQTT_TOPIC_LEN 256
@@ -548,6 +549,12 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool tcm_open_2g_rfc;
+    bool tcm_open_5g_rfc;
+    bool tcm_open_6g_rfc;
+    bool tcm_secure_2g_rfc;
+    bool tcm_secure_5g_rfc;
+    bool tcm_secure_6g_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
@@ -980,6 +987,8 @@ typedef struct {
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
     unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
+    wifi_mld_sta_info_t mld_info;
+    bool association_link;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;
@@ -1008,7 +1017,7 @@ typedef struct {
     assoc_req_elem_t assoc_frame_data;
 
     /* wifi7 client specific data */
-    bool            primary_link; /* TRUE for auth/primary link, FALSE for secondary links */
+    bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */
     mac_address_t   link_mac;     /* link mac addr */
 } sta_data_t;
 

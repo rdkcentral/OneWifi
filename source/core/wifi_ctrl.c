@@ -423,7 +423,9 @@ unsigned int get_Uptime(void)
     system(cmd);
     fp = fopen(FILE_SYSTEM_UPTIME, "r");
     if (fp != NULL) {
-        fscanf(fp, "%u", &upSecs);
+        if (fscanf(fp, "%u", &upSecs) != 1) {
+            wifi_util_error_print(WIFI_CTRL,"%s : failed to read uptime\n", __FUNCTION__);
+        }
         wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
         fclose(fp);
     }
@@ -604,10 +606,10 @@ bool check_for_greylisted_mac_filter(void)
                     vap_index = wifi_vap_map->vap_array[itrj].vap_index;
                     l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-                    if (l_rdk_vap_array->acl_map != NULL) {
+                    if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                         acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
                         while(acl_entry != NULL) {
-                            if (acl_entry->mac != NULL && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
+                            if (!is_zero_mac(acl_entry->mac) && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
                                 return true;
                             }
                             acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
@@ -1103,7 +1105,9 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
 
     res->radio_index = radio_index;
     res->num = *num;
-    memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+    if (*num > 0 && *bss != NULL) {
+        memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+    }
 
     if (is_sta_enabled()) {
         if(push_event_to_ctrl_queue(res, sizeof(scan_results_t), wifi_event_type_hal_ind,
@@ -1889,8 +1893,8 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     webconfig_send_full_associate_status(ctrl);
     ctrl->exit_ctrl = false;
     ctrl->ctrl_initialized = true;
-    register_endpoint_components(ctrl);
     init_ignite_function();
+    register_endpoint_components(ctrl);
     ctrl_queue_loop(ctrl);
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
@@ -2853,6 +2857,18 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
     g_wifi_mgr->ctrl.rfc_params.tcm_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_6g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_6g_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =

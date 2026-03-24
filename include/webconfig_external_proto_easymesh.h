@@ -47,7 +47,7 @@ typedef void (*ext_proto_update_ap_mld_info_t)(void *data_model, em_ap_mld_info_
 typedef void (*ext_proto_update_bsta_mld_info_t)(void *data_model, em_bsta_mld_info_t *bsta_mld_info);
 typedef void (*ext_proto_update_assoc_sta_mld_info_t)(void *data_model, em_assoc_sta_mld_info_t *assoc_sta_mld_info);
 typedef em_ap_mld_info_t * (*ext_proto_get_ap_mld_frm_bssid_t)(void *data_model, mac_address_t bss_id);
-typedef void * (*ext_proto_get_radio_cap_t)(void *data_model, int index);
+typedef em_radio_cap_info_t * (*ext_proto_get_radio_cap_t)(void *data_model, int index);
 
 typedef struct {
     void *data_model; /* agent data model dm_easy_mesh_t */
