@@ -3303,6 +3303,14 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
 
         while (assoc_dev_data != NULL) {
+            if (assoc_dev_data->dev_stats.cli_MLDEnable && !assoc_dev_data->association_link) {
+                /* Notify MLD client only on assoc link to be aligned with WebUI
+                 * This is backward compatibility alignment before final MLD client support in WebUI/ovsdb*/
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: MLO STA - Skipping non assoc link, vap_name '%s'\n",
+                    __func__, __LINE__, rdk_vap_info->vap_name);
+                assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
+                continue;
+            }
 
             if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
