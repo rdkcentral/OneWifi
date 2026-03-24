@@ -2857,6 +2857,18 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
     g_wifi_mgr->ctrl.rfc_params.tcm_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_6g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_6g_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =
