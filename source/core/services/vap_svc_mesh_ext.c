@@ -711,13 +711,13 @@ int process_udhcp_ip_check(vap_svc_t *svc)
             (ext->conn_state == connection_state_connected)) {
             char iface[32] = "brww0";
             if (has_valid_ip(iface)) {
-                wifi_util_info_print(WIFI_CTRL, "IGNTE_RF_DOWN: Received Valid IP address on brww0 interface\n");
+                wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Received Valid IP address on brww0 interface\n");
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
                 ext->ext_udhcp_ip_check_id = 0;
                 ip_check_count = 0;
                 return 0;
             } else {
-                wifi_util_error_print(WIFI_CTRL, "IGNTE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
+                wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
             }
         }
     }
