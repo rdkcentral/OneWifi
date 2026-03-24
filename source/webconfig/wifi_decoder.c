@@ -4788,13 +4788,26 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
     for (i = 0; i < size; i++) {
          object  = cJSON_GetArrayItem(obj_wificap, i);
          radio_cap = &wifi_prop->radiocap[i];
+         value_object = cJSON_GetObjectItem(object, "PhyIndex");
+         if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+            /* Fallback to legacy RadioIndex for older producers */
+             cJSON *legacy_radio_index = cJSON_GetObjectItem(object, "RadioIndex");
+             if ((legacy_radio_index == NULL) || (cJSON_IsNumber(legacy_radio_index) == false)) {
+                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+                 return webconfig_error_decode;
+             }
+             radio_cap->index = legacy_radio_index->valuedouble;
+         } else {
+             radio_cap->index = value_object->valuedouble;
+         }
+
          value_object = cJSON_GetObjectItem(object, "RadioIndex");
          if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
              wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
              return webconfig_error_decode;
          }
 
-         radio_cap->index = value_object->valuedouble;
+         radio_cap->rdk_radio_index = value_object->valuedouble;
 
          /*allowed_channels*/
          allowed_channels = cJSON_GetObjectItem(object, "PossibleChannels");
@@ -4834,6 +4847,129 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
              return webconfig_error_decode;
          }
          wifi_prop->radio_presence[i] = value_object->valuedouble;
+
+#ifdef CONFIG_IEEE80211AX
+        /* WiFi6 (HE) capabilities */
+        decode_param_bool(object, "WiFi6Supported", value_object);
+        if (value_object != NULL) {
+            radio_cap->wifi6_supported = (value_object->type & cJSON_True) ? true : false;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "HEPHYCap");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int array_size = cJSON_GetArraySize(value_object);
+            if (array_size > sizeof(radio_cap->he_phy_cap)) {
+                array_size = sizeof(radio_cap->he_phy_cap);
+            }
+            for (int j = 0; j < array_size; j++) {
+                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->he_phy_cap[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
+
+        value_object = cJSON_GetObjectItem(object, "HEMACCap");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int array_size = cJSON_GetArraySize(value_object);
+            if (array_size > sizeof(radio_cap->he_mac_cap)) {
+                array_size = sizeof(radio_cap->he_mac_cap);
+            }
+            for (int j = 0; j < array_size; j++) {
+                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->he_mac_cap[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
+
+        value_object = cJSON_GetObjectItem(object, "HEMCSNSSSet");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int array_size = cJSON_GetArraySize(value_object);
+            if (array_size > sizeof(radio_cap->he_mcs_nss_set)) {
+                array_size = sizeof(radio_cap->he_mcs_nss_set);
+            }
+            for (int j = 0; j < array_size; j++) {
+                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->he_mcs_nss_set[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
+
+        value_object = cJSON_GetObjectItem(object, "HEPPET");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int array_size = cJSON_GetArraySize(value_object);
+            if (array_size > sizeof(radio_cap->he_ppet)) {
+                array_size = sizeof(radio_cap->he_ppet);
+            }
+            for (int j = 0; j < array_size; j++) {
+                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->he_ppet[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
+
+        //decode_param_integer(cap_obj, "HE6GHzCapa", param);
+        //if (param != NULL && cJSON_IsNumber(param)) {
+        //    radio_cap->he_cap.6ghz_capa = (USHORT)param->valuedouble;
+        //}
+#endif /* CONFIG_IEEE80211AX */
+
+#ifdef CONFIG_IEEE80211BE
+        decode_param_bool(object, "WiFi7Supported", value_object);
+        if (value_object != NULL) {
+            radio_cap->wifi7_supported = (value_object->type & cJSON_True) ? true : false;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "EHTMACCap");
+        if (value_object != NULL && cJSON_IsNumber(value_object)) {
+            radio_cap->eht_mac_cap = (UCHAR)value_object->valuedouble;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "EHTPHYCap");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int array_size = cJSON_GetArraySize(value_object);
+            if ((size_t)array_size > sizeof(radio_cap->eht_phy_cap)) {
+                array_size = sizeof(radio_cap->eht_phy_cap);
+            }
+            for (int j = 0; j < array_size; j++) {
+                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->eht_phy_cap[j] = (UCHAR)array_item->valuedouble;
+                }
+            }
+        }
+
+        value_object = cJSON_GetObjectItem(object, "EHTMCS");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int array_size = cJSON_GetArraySize(value_object);
+            if ((size_t)array_size > sizeof(radio_cap->eht_mcs)) {
+                array_size = sizeof(radio_cap->eht_mcs);
+            }
+            for (int j = 0; j < array_size; j++) {
+                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->eht_mcs[j] = (UCHAR)array_item->valuedouble;
+                }
+            }
+        }
+
+        value_object = cJSON_GetObjectItem(object, "EHTPPET");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int array_size = cJSON_GetArraySize(value_object);
+            if ((size_t)array_size > sizeof(radio_cap->eht_ppet)) {
+                array_size = sizeof(radio_cap->eht_ppet);
+            }
+            for (int j = 0; j < array_size; j++) {
+                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->eht_ppet[j] = (UCHAR)array_item->valuedouble;
+                }
+            }
+        }
+#endif /* CONFIG_IEEE80211BE */
     }
     return webconfig_error_none;
 }
