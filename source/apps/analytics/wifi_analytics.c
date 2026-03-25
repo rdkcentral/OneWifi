@@ -74,6 +74,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_beacon_report)
         DOC2S(webconfig_subdoc_type_em_channel_stats)
 #endif
+        DOC2S(webconfig_subdoc_type_link_report)
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             type);
@@ -224,6 +225,11 @@ int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_s
         * is received by the handle_webconfig_event() function and decode is not happened yet
         * to determine the subdoc type.
         */
+        if (analytics_format == NULL) {
+            wifi_util_error_print(WIFI_ANALYTICS, "%s:%d: Unknown sub_type(0x%x) and doc is NULL\n", __func__, __LINE__, sub_type);
+            return RETURN_ERR;
+        }
+
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format, "set", "webconfig");
         return RETURN_OK;
     }
@@ -317,6 +323,12 @@ int analytics_event_webconfig_set_status(wifi_app_t *apps, void *arg)
 
 int analytics_event_webconfig_get_data(wifi_app_t *apps, void *arg)
 {
+    return RETURN_OK;
+}
+
+int analytics_event_webconfig_set_ignite_data(wifi_app_t *apps, void *arg)
+{
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_webconfig_core, "set", "ignite data");
     return RETURN_OK;
 }
 
@@ -693,6 +705,9 @@ int webconfig_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
     case wifi_event_webconfig_data_req_from_dml:
         analytics_event_webconfig_get_data_for_dmlthread(apps, arg, sub_type);
         break;
+    case wifi_event_webconfig_set_ignite_data:
+        analytics_event_webconfig_set_ignite_data(apps,arg);
+	break;
     default:
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));

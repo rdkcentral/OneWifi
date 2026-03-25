@@ -9,6 +9,7 @@
                     "InterfaceList": [
                         {
                             "InterfaceName": "wifi2",
+                            "MldName": "mld0",
                             "Bridge": "br-lan",
                             "vlanId": 0,
                             "vapIndex": 16,
@@ -57,6 +58,7 @@
                     "InterfaceList": [
                         {
                             "InterfaceName": "wifi0",
+                            "MldName": "mld0",
                             "Bridge": "br-lan",
                             "vlanId": 0,
                             "vapIndex": 0,
