@@ -7665,7 +7665,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg->u.bss_info.enabled = false;
         }
 #if defined(_SR213_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
-        cfg->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+        if (isVapHotspot(vap_index)) {
+            cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT;
+        } else {
+            cfg->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+        }
 #else
         cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_SKY;
 #endif //_SR213_PRODUCT_REQ_
@@ -7676,13 +7680,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else if (is_device_type_cbr2() && isVapHotspot(vap_index)) {
             cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT_CBRV2;
         } else if (isVapHotspot(vap_index)) {
-            cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT_XB;
+            cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT;
         } else {
             cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
         }
+#endif //_SKY_HUB_COMMON_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_
         wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d bssMaxSta:%d\n", __func__, __LINE__,
             vap_index, cfg->u.bss_info.bssMaxSta);
-#endif //_SKY_HUB_COMMON_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_
 
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
