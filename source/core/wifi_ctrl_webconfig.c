@@ -1133,13 +1133,12 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             if (isVapSTAMesh(tgt_vap_index)) {
                 // Avoid disabling ignite due to config push from ovsm
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: RF-Status:%d Old_ignite_config:%d New_ignite_config:%d\n", __func__, __LINE__, 
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: RF-Status:%d New_ignite_config:%d Old_ignite_config:%d\n", __func__, __LINE__, 
                                ctrl->rf_status_down, vap_info->u.sta_info.ignite_enabled, mgr_vap_info->u.sta_info.ignite_enabled);
                 if ((ctrl->rf_status_down == true) && (vap_info->u.sta_info.ignite_enabled == false) && (mgr_vap_info->u.sta_info.ignite_enabled == true)){
-                  vap_info->u.sta_info.ignite_enabled = true; 
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d Ignite mode enabled. Skipping ignite configuration update\n", __func__, __LINE__);
+	            vap_info->u.sta_info.ignite_enabled = true; 
                }
-               wifi_util_info_print(WIFI_CTRL, "%s:%d: RF-Status:%d Old_ignite_config:%d New_ignite_config:%d\n", __func__, __LINE__, 
-                               ctrl->rf_status_down, vap_info->u.sta_info.ignite_enabled, mgr_vap_info->u.sta_info.ignite_enabled);
 	        
 	       if (memcmp(&mgr_vap_info->u.sta_info.security, &vap_info->u.sta_info.security, sizeof(wifi_vap_security_t))) {
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.sta_info.security);
@@ -1156,7 +1155,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                     print_wifi_hal_vap_wps_data(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.bss_info.wps);
                 }
 #endif
-            } 
+            }
 
             p_tgt_vap_map = (wifi_vap_info_map_t *) malloc(sizeof(wifi_vap_info_map_t));
             if(p_tgt_vap_map == NULL ) {
