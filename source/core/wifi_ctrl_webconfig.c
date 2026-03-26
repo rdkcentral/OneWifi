@@ -1133,14 +1133,21 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             if (isVapSTAMesh(tgt_vap_index)) {
                 // Avoid disabling ignite due to config push from ovsm
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: RF-Status:%d New_ignite_config:%d Old_ignite_config:%d\n", __func__, __LINE__, 
-                               ctrl->rf_status_down, vap_info->u.sta_info.ignite_enabled, mgr_vap_info->u.sta_info.ignite_enabled);
-                if ((ctrl->rf_status_down == true) && (vap_info->u.sta_info.ignite_enabled == false) && (mgr_vap_info->u.sta_info.ignite_enabled == true)){
-                    wifi_util_info_print(WIFI_CTRL, "%s:%d Ignite mode enabled. Skipping ignite configuration update\n", __func__, __LINE__);
-	            vap_info->u.sta_info.ignite_enabled = true; 
-               }
-	        
-	       if (memcmp(&mgr_vap_info->u.sta_info.security, &vap_info->u.sta_info.security, sizeof(wifi_vap_security_t))) {
+                wifi_util_info_print(WIFI_CTRL,
+                    "%s:%d: RF-Status:%d New_ignite_config:%d Old_ignite_config:%d\n", __func__,
+                    __LINE__, ctrl->rf_status_down, vap_info->u.sta_info.ignite_enabled,
+                    mgr_vap_info->u.sta_info.ignite_enabled);
+                if ((ctrl->rf_status_down == true) &&
+                    (vap_info->u.sta_info.ignite_enabled == false) &&
+                    (mgr_vap_info->u.sta_info.ignite_enabled == true)) {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d Ignite mode enabled. Skipping ignite configuration update\n",
+                        __func__, __LINE__);
+                    vap_info->u.sta_info.ignite_enabled = true;
+                }
+
+                if (memcmp(&mgr_vap_info->u.sta_info.security, &vap_info->u.sta_info.security,
+                        sizeof(wifi_vap_security_t))) {
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.sta_info.security);
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.sta_info.security);
                 }
@@ -3213,12 +3220,10 @@ void start_station_vaps(bool rf_status)
         wifi_util_error_print(WIFI_CTRL, "[%s %d] vap-idx : %d radio-idx : %d vap-array-idx : %d\n", __func__, __LINE__, vap_index, 
                 radio_index, vap_array_index); 
         if (rf_status == true) {
-            wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disbled. Starting Station Vaps\n");
             data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = true;
         } else {
-            wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
             data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = false;
