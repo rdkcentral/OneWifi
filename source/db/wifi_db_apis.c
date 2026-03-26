@@ -208,6 +208,7 @@ void callback_Wifi_Device_Config(ovsdb_update_monitor_t *mon,
 {
     if (mon->mon_type == OVSDB_UPDATE_DEL) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__); 
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Db is de-initialised\n", __func__, __LINE__);
     } else if (mon->mon_type == OVSDB_UPDATE_NEW) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:New\n", __func__, __LINE__);
     } else if (mon->mon_type == OVSDB_UPDATE_MODIFY) {
