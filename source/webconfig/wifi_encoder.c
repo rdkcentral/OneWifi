@@ -1884,7 +1884,7 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
 
             if (print_assoc_client == true) {
                 cJSON *obj_assoc_client;
-                mac_addr_str_t mac_string = { 0 };
+                mac_addr_str_t mac_string = { 0 }, tmp_mac_string = { 0 };
 
                 obj_assoc_client = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj_assoc_client);
@@ -1893,11 +1893,17 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 str_tolower(mac_string);
                 cJSON_AddStringToObject(obj_assoc_client, "MACAddress", mac_string);
 
-                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, mac_string);
-                str_tolower(mac_string);
-                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", mac_string);
+                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, tmp_mac_string);
+                str_tolower(tmp_mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", tmp_mac_string);
 
                 cJSON_AddBoolToObject(obj_assoc_client, "MLDEnable", assoc_dev_data->dev_stats.cli_MLDEnable);
+
+                to_mac_str(assoc_dev_data->link_address, tmp_mac_string);
+                str_tolower(tmp_mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "LinkAddress", tmp_mac_string);
+
+                cJSON_AddBoolToObject(obj_assoc_client, "AssociationLink", assoc_dev_data->association_link);
                 cJSON_AddStringToObject(obj_assoc_client, "WpaKeyMgmt", assoc_dev_data->conn_security.wpa_key_mgmt);
                 cJSON_AddStringToObject(obj_assoc_client, "PairwiseCipher", assoc_dev_data->conn_security.pairwise_cipher);
                 cJSON_AddNumberToObject(obj_assoc_client, "RSNCapabilities", assoc_dev_data->conn_security.rsn_capabilities);
@@ -1931,6 +1937,8 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "MaxUplinkRate", assoc_dev_data->dev_stats.cli_MaxUplinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "MaxDownlinkRate", assoc_dev_data->dev_stats.cli_MaxDownlinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "LastConnectTime", assoc_dev_data->last_connect_time);
+                cJSON_AddNumberToObject(obj_assoc_client, "MLCapabilities", assoc_dev_data->dev_stats.cli_MLModeCapa);
+                cJSON_AddNumberToObject(obj_assoc_client, "TIDLinkMapNegotiation", assoc_dev_data->dev_stats.cli_TIDLinkMapNegotiation);
                 if (include_frame_data == true &&
                     encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
                         webconfig_error_none) {
@@ -2200,7 +2208,8 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          radiocap = &wifi_prop->radiocap[i];
          object =  cJSON_CreateObject();
          cJSON_AddItemToArray(radio_obj, object);
-         cJSON_AddNumberToObject(object, "RadioIndex", radiocap->index);
+         cJSON_AddNumberToObject(object, "PhyIndex", radiocap->index);
+         cJSON_AddNumberToObject(object, "RadioIndex", radiocap->rdk_radio_index);
 
          for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
              (void)memcpy(channels_list, radiocap->channel_list[freq_band_count].channels_list, sizeof(*channels_list) * radiocap->channel_list[freq_band_count].num_channels);
@@ -2220,6 +2229,62 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          }
 
          cJSON_AddNumberToObject(object, "RadioPresence", wifi_prop->radio_presence[i]);
+
+#ifdef CONFIG_IEEE80211AX
+        /* WiFi6 (HE) capabilities */
+        cJSON_AddBoolToObject(object, "WiFi6Supported", wifi_prop->radiocap[i].wifi6_supported);
+        
+        cJSON *he_phy_cap_array = cJSON_CreateArray();
+        for (int j = 0; j < HE_MAX_PHY_CAPAB_SIZE; j++) {
+            cJSON_AddItemToArray(he_phy_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_phy_cap[j]));
+        }
+        cJSON_AddItemToObject(object, "HEPHYCap", he_phy_cap_array);
+
+        cJSON *he_mac_cap_array = cJSON_CreateArray();
+        for (int j = 0; j < HE_MAX_MAC_CAPAB_SIZE; j++) {
+            cJSON_AddItemToArray(he_mac_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_mac_cap[j]));
+        }
+        cJSON_AddItemToObject(object, "HEMACCap", he_mac_cap_array);
+
+        cJSON *he_mcs_nss_array = cJSON_CreateArray();
+        for (int j = 0; j < HE_MAX_MCS_CAPAB_SIZE; j++) {
+            cJSON_AddItemToArray(he_mcs_nss_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_mcs_nss_set[j]));
+        }
+        cJSON_AddItemToObject(object, "HEMCSNSSSet", he_mcs_nss_array);
+
+        cJSON *he_ppet_array = cJSON_CreateArray();
+        for (int j = 0; j < HE_MAX_PPET_CAPAB_SIZE; j++) {
+            cJSON_AddItemToArray(he_ppet_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_ppet[j]));
+        }
+        cJSON_AddItemToObject(object, "HEPPET", he_ppet_array);
+
+        //cJSON_AddNumberToObject(object, "HE6GHzCapa", wifi_prop->radiocap[i].6ghz_capa);
+#endif /* CONFIG_IEEE80211AX */
+
+#ifdef CONFIG_IEEE80211BE
+        /* WiFi7 (EHT) capabilities */
+        cJSON_AddBoolToObject(object, "WiFi7Supported", wifi_prop->radiocap[i].wifi7_supported);
+
+        cJSON_AddNumberToObject(object, "EHTMACCap", wifi_prop->radiocap[i].eht_mac_cap);
+
+        cJSON *eht_phy_cap_array = cJSON_CreateArray();
+        for (int j = 0; j < EHT_PHY_CAPAB_LEN; j++) {
+            cJSON_AddItemToArray(eht_phy_cap_array, cJSON_CreateNumber(wifi_prop->radiocap[i].eht_phy_cap[j]));
+        }
+        cJSON_AddItemToObject(object, "EHTPHYCap", eht_phy_cap_array);
+
+        cJSON *eht_mcs_array = cJSON_CreateArray();
+        for (int j = 0; j < EHT_MCS_NSS_CAPAB_LEN; j++) {
+            cJSON_AddItemToArray(eht_mcs_array, cJSON_CreateNumber(wifi_prop->radiocap[i].eht_mcs[j]));
+        }
+        cJSON_AddItemToObject(object, "EHTMCS", eht_mcs_array);
+
+        cJSON *eht_ppet_array = cJSON_CreateArray();
+        for (int j = 0; j < EHT_PPE_THRESH_CAPAB_LEN; j++) {
+            cJSON_AddItemToArray(eht_ppet_array, cJSON_CreateNumber(wifi_prop->radiocap[i].eht_ppet[j]));
+        }
+        cJSON_AddItemToObject(object, "EHTPPET", eht_ppet_array);
+#endif /* CONFIG_IEEE80211BE */
     }
     return webconfig_error_none;
 }
