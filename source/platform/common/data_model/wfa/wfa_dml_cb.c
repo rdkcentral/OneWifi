@@ -448,15 +448,24 @@ bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, r
 bus_error_t wfa_stamld_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data)
 {
     stamld_data_t *stamld = (stamld_data_t *)obj_ins_context;
-    
-    if (!stamld) {
+    if (!stamld || !(stamld->affiliated_sta[0])) {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Invalid STAMLD\n", __func__, __LINE__);
         return bus_error_invalid_input;
     }
-    
+    wifi_multi_link_modes_t mld_capab_val = stamld->affiliated_sta[0]->dev_stats.cli_MLModeCapa;
+    /* since capabilities might contain more than 1 mode supported
+       use approach similar to drivers to detect active mode negotiated */
+    wifi_multi_link_modes_t mld_conf_val = STR;
+    if (mld_capab_val & eMLSR)
+        mld_conf_val = eMLSR;
+    else if (mld_capab_val & eMLMR)
+        mld_conf_val = eMLMR;
+    else if (mld_capab_val & NSTR)
+        mld_conf_val = NSTR;
+
     if (STR_CMP(param_name, "MLDMACAddress")) {
         mac_addr_str_t mld_mac_str = { 0 };
-        to_mac_str(stamld->affiliated_sta[0]->dev_stats.cli_MACAddress, mld_mac_str);
+        to_mac_str(stamld->affiliated_sta[0]->dev_stats.cli_MLDAddr, mld_mac_str);
         return set_output_value(param_name, p_data, mld_mac_str);
     }
     else if (STR_CMP(param_name, "Hostname")) {
@@ -549,6 +558,36 @@ bus_error_t wfa_stamld_get_param_value(void *obj_ins_context, char *param_name, 
     }
     else if (STR_CMP(param_name, "AffiliatedSTANumberOfEntries")) {
         return set_output_value(param_name, p_data, &stamld->affiliated_sta_count);
+    } else if (STR_CMP(param_name, "WiFi7Capabilities.EMLMRSupport")) {
+        bool bool_val = mld_capab_val & eMLMR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "WiFi7Capabilities.EMLSRSupport")) {
+        bool bool_val = mld_capab_val & eMLSR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "WiFi7Capabilities.STRSupport")) {
+        bool bool_val = mld_capab_val & STR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "WiFi7Capabilities.NSTRSupport")) {
+        bool bool_val = mld_capab_val & NSTR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "WiFi7Capabilities.TIDLinkMapNegotiation")) {
+        bool bool_val = stamld->affiliated_sta[0]->dev_stats.cli_TIDLinkMapNegotiation;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "STAMLDConfig.EMLMREnabled")) {
+        bool bool_val = mld_conf_val & eMLMR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "STAMLDConfig.EMLSREnabled")) {
+        bool bool_val = mld_conf_val & eMLSR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "STAMLDConfig.STREnabled")) {
+        bool bool_val = mld_conf_val & STR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "STAMLDConfig.NSTREnabled")) {
+        bool bool_val = mld_conf_val & NSTR;
+        return set_output_value(param_name, p_data, &bool_val);
+    } else if (STR_CMP(param_name, "STAMLDConfig.TIDLinkMapNegotiation")) {
+        bool bool_val = stamld->affiliated_sta[0]->dev_stats.cli_TIDLinkMapNegotiation;
+        return set_output_value(param_name, p_data, &bool_val);
     }
     else {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);

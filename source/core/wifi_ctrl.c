@@ -682,8 +682,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     }
 
 #if defined EASY_MESH_NODE
-   if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
-       ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ) {
+   if (ctrl->network_mode == rdk_dev_mode_type_em_node ) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Don't need to proceed for DML fetch for RemoteAgent case, NetworkMode: %d\n",
                 __func__, __LINE__, ctrl->network_mode);
             return;
@@ -883,11 +882,10 @@ int start_wifi_services(void)
             start_extender_vaps(radio_index);
         }
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode, VAPs will be created by EasyMesh\n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
         for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
             start_radios(rdk_dev_mode_type_gw, radio_index);
-            /* Skip VAP creation - EasyMesh controller will configure and create VAPs */
-            /* start_gateway_vaps(radio_index); */
+            start_gateway_vaps(radio_index);
         }
     }
 
@@ -2857,6 +2855,18 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
     g_wifi_mgr->ctrl.rfc_params.tcm_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_6g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_6g_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =

@@ -226,8 +226,8 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STA_SKY      64      /**< Max supported stations for SKY HUB specific platforms */
 #define BSS_MAX_NUM_STA_XB8      100     /**< Max supported stations for TCHX8 specific platform */
 #define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
-#define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
-#define BSS_MAX_NUM_STA_HOTSPOT_XB      5      /**< Max supported stations for hotspot vaps in XB platform */
+#define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 (business) platform */
+#define BSS_MAX_NUM_STA_HOTSPOT      5      /**< Max supported stations for hotspot vaps in residential platform */
 
 #define STA_MAX_BSS_ASSOCIATIONS  1
 
@@ -549,6 +549,12 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool tcm_open_2g_rfc;
+    bool tcm_open_5g_rfc;
+    bool tcm_open_6g_rfc;
+    bool tcm_secure_2g_rfc;
+    bool tcm_secure_5g_rfc;
+    bool tcm_secure_6g_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
