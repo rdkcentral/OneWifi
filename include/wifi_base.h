@@ -101,7 +101,7 @@ extern "C" {
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
-#define  MAC_ADDRESS_LENGTH  13
+#define  MAC_ADDRESS_LENGTH  18
 #define WIFI_AP_MAX_WPSPIN_LEN  9
 #define MAX_BUF_LENGTH 128
 
@@ -933,7 +933,6 @@ typedef struct {
 //  schema_wifi_radio_state_t   radio_state;
 } rdk_wifi_radio_t;
 
-#define  MAC_ADDRESS_LENGTH  13
 typedef struct {
     bool                   b_inst_client_enabled;
     unsigned long          u_inst_client_reporting_period;
