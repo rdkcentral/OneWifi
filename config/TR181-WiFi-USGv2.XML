@@ -290,6 +290,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>LinkQuality</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>X_RDKCENTRAL-COM_MemwrapTool_RFC</name>
             <type>boolean</type>
             <syntax>bool</syntax>
@@ -355,8 +361,62 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
+        <parameter>
+            <name>Xfi_Tel_Enable</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
 	</parameters>
-	<objects>
+<objects>
+<object>
+            <name>TCM</name>
+            <objectType>object</objectType>
+
+            <functions>
+                <func_GetParamBoolValue>TCM_GetParamBoolValue</func_GetParamBoolValue>
+                <func_SetParamBoolValue>TCM_SetParamBoolValue</func_SetParamBoolValue>
+            </functions>
+
+            <parameters>
+                <parameter>
+                    <name>Open2G</name>
+                    <type>boolean</type>
+                    <syntax>bool</syntax>
+                    <writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Open5G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Open6G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Secure2G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Secure5G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+				<parameter>
+					<name>Secure6G</name>
+					<type>boolean</type>
+					<syntax>bool</syntax>
+					<writable>true</writable>
+				</parameter>
+			</parameters>
+        </object>
         <object>
             <name>X_RDKCENTRAL-COM_GASConfig</name>
             <objectType>dynamicTable</objectType>
@@ -2981,7 +3041,7 @@ INSTMSMT_PH2 -->
                                     <type>string</type>
                                     <syntax>string</syntax>
                                     <writable>true</writable>
-                                </parameter>
+			        </parameter>
                             </parameters>
                             <objects>
                                 <object>
@@ -3927,6 +3987,6 @@ INSTMSMT_PH2 -->
 					<writable>true</writable> 
 				</parameter>
 			</parameters>				
-		</object>			
+		</object>
     </objects>
 </dataModelInfo>

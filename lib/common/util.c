@@ -1064,7 +1064,7 @@ char *file_get(const char *path)
     ssize_t len = 0;
     char *buf = NULL;
     char *nbuf = NULL;
-    char *hunk[4096];
+    char hunk[4096];
     int fd;
     if ((fd = open(path, O_RDONLY)) < 0)
         goto err;
