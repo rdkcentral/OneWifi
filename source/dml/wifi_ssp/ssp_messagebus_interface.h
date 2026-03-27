@@ -117,14 +117,6 @@ ssp_WifiMbi_SendTransferCompleteSignal
         void
     );
 
-DBusHandlerResult
-CcspPandM_path_message_func
-    (
-        DBusConnection  *conn,
-        DBusMessage     *message,
-        void            *user_data
-    );
-
 /*
 static DBusHandlerResult
 path_message_func 

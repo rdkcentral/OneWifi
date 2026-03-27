@@ -68,6 +68,153 @@ int set_output_string(scratch_data_buff_t *output_value, char *str)
     return RETURN_OK;
 }
 
+char *wifi_dml_bus_get_param_string(char const *param_name)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    raw_data_t data = { 0 };
+    bus_error_t rc;
+    char num_buf[32] = { 0 };
+    char *out = NULL;
+
+    if ((param_name == NULL) || (ctrl == NULL)) {
+        return NULL;
+    }
+
+    rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, param_name, &data);
+    if (rc == bus_error_success) {
+        switch (data.data_type) {
+        case bus_data_type_string:
+            if (data.raw_data.bytes != NULL) {
+                out = strdup((char *)data.raw_data.bytes);
+            }
+            break;
+        case bus_data_type_bytes:
+            if (data.raw_data.bytes != NULL && data.raw_data_len > 0) {
+                size_t len = (size_t)data.raw_data_len;
+
+                out = (char *)malloc(len + 1);
+                if (out != NULL) {
+                    memcpy(out, data.raw_data.bytes, len);
+                    out[len] = '\0';
+                }
+            }
+            break;
+        case bus_data_type_uint32:
+            snprintf(num_buf, sizeof(num_buf), "%u", data.raw_data.u32);
+            out = strdup(num_buf);
+            break;
+        case bus_data_type_int32:
+            snprintf(num_buf, sizeof(num_buf), "%d", data.raw_data.i32);
+            out = strdup(num_buf);
+            break;
+        case bus_data_type_boolean:
+            out = strdup(data.raw_data.b ? "true" : "false");
+            break;
+        default:
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: unsupported data type:%d for param '%s'\n",
+                __func__, __LINE__, data.data_type, param_name);
+            break;
+        }
+    }
+
+    get_bus_descriptor()->bus_data_free_fn(&data);
+
+    return out;
+}
+
+uint32_t wifi_dml_bus_get_param_uint32(char const *param_name)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    raw_data_t data = { 0 };
+    bus_error_t rc;
+    uint32_t value = 0;
+
+    if ((param_name == NULL) || (ctrl == NULL)) {
+        return 0;
+    }
+
+    rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, param_name, &data);
+    if ((rc == bus_error_success) && (data.data_type == bus_data_type_uint32)) {
+        value = data.raw_data.u32;
+    }
+
+    get_bus_descriptor()->bus_data_free_fn(&data);
+
+    return value;
+}
+
+/* Map entry structure for RSN selectors */
+typedef struct {
+    const char *name;
+    uint32_t selector;
+} rsn_map_entry_t;
+
+static bool rsn_selector_lookup(const rsn_map_entry_t *map, const char *name, char *out, size_t out_len)
+{
+    if (!name || !out || out_len < 9 || !map) {
+        return false;
+    }
+
+    while (map->name) {
+        if (strncasecmp(map->name, name, strlen(map->name) + 1) == 0) {
+            snprintf(out, out_len, "%08X", map->selector);
+            return true;
+        }
+        map++;
+    }
+
+    return false;
+}
+
+bool rsn_akm_selector_hex(const char *akm, char *out, size_t out_len)
+{
+    /* AKM Selector Map */
+    const rsn_map_entry_t akm_map[] = {
+        { "wpa-eap", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 1) },
+        { "wpa-eap-128", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 1) },
+        { "wpa-psk", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 2) },
+        { "ft-eap", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 3) },
+        { "ft-psk", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 4) },
+        { "802.1x-sha256", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 5) },
+        { "psk-sha256", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 6) },
+        { "sae", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 8) },
+        { "ft-sae", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 9) },
+        { "wpa-eap-suite-b", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 11) },
+        { "wpa-eap-suite-b-192", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 12) },
+        { "ft-eap-sha384", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 13) },
+        { "sae-ext", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 24) },
+        { NULL, 0 }
+    };
+
+    return rsn_selector_lookup(akm_map, akm, out, out_len);
+}
+
+bool rsn_cipher_selector_hex(const char *cipher, char *out, size_t out_len)
+{
+    /* Cipher Selector Map */
+    const rsn_map_entry_t cipher_map[] = {
+        { "wep", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 1) },
+        { "wep-40", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 1) },
+        { "tkip", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 2) },
+        { "ccmp", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 4) },
+        { "ccmp-128", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 4) },
+        { "wep-104", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 5) },
+        { "bip", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 6) },
+        { "bip-cmac-128", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 6) },
+        { "gcmp", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 8) },
+        { "gcmp-128", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 8) },
+        { "gcmp-256", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 9) },
+        { "ccmp-256", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 10) },
+        { "bip-gmac-128", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 11) },
+        { "bip-gmac-256", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 12) },
+        { "bip-cmac-256", WIFI_HAL_RSN_SELECTOR(0x00, 0x0f, 0xac, 13) },
+        { NULL, 0 }
+    };
+
+    return rsn_selector_lookup(cipher_map, cipher, out, out_len);
+}
+
+#ifdef ONEWIFI_JSON_DML_SUPPORT
 uint32_t get_sec_mode_string_from_int(wifi_security_modes_t security_mode, char *security_name)
 {
     uint32_t index;
@@ -1186,7 +1333,15 @@ int start_dml_main(void *arg)
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    decode_json_obj(&ctrl->handle, BUS_DML_CONFIG_FILE);
+    /* Parse and register Native DM */
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing Native DM schema: %s\n", 
+                         __func__, __LINE__, BUS_DML_CONFIG_FILE);
+    parse_and_register_native_dml_schema(&ctrl->handle, BUS_DML_CONFIG_FILE);
+
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing WFA Data Elements schema: %s\n", 
+                         __func__, __LINE__, BUS_WFA_DML_CONFIG_FILE);
+    parse_and_register_wfa_schema(&ctrl->handle, BUS_WFA_DML_CONFIG_FILE);
+
     print_registered_elems(get_bus_mux_reg_cb_map(), 0);
 
     get_wifidb_obj()->desc.init_data_fn();
@@ -2017,3 +2172,80 @@ int push_data_to_ssp_queue(const void *msg, unsigned int len, uint32_t type, uin
 {
     return RETURN_OK;
 }
+#endif // ONEWIFI_JSON_DML_SUPPORT
+
+/* Default bus callback handlers */
+bus_error_t default_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+{
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s, data type:%d\r\n", __func__, __LINE__, event_name, p_data->data_type);
+
+    switch(p_data->data_type) {
+        case bus_data_type_string: {
+            scratch_data_buff_t temp_buff = { 0 };
+            set_output_string(&temp_buff, " ");
+
+            p_data->raw_data.bytes = temp_buff.buff;
+            p_data->raw_data_len   = temp_buff.buff_len;
+        }
+            break;
+        default:
+            break;
+    }
+
+    return bus_error_success;
+}
+
+bus_error_t default_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+{
+    (void)p_data;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, event_name);
+    return bus_error_success;
+}
+
+bus_error_t default_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum)
+{
+    (void)instNum;
+    (void)aliasName;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter\r\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Added table:%s\r\n", __func__, __LINE__, tableName);
+    return bus_error_success;
+}
+
+bus_error_t default_table_remove_row_handler(char const* rowName)
+{
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s\r\n", __func__, __LINE__, rowName);
+    return bus_error_success;
+}
+
+bus_error_t default_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish)
+{
+    (void)autoPublish;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter:%s: action:%d interval:%d\r\n", __func__, __LINE__, eventName, action, interval);
+    return bus_error_success;
+}
+
+int set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table,
+                                       const bus_data_cb_func_t *bus_data_cb, uint32_t bus_data_cb_size)
+{
+    /* For now, use default handlers */
+    bus_callback_table_t bus_default_cb = {
+        default_get_param_value, default_set_param_value, default_table_add_row_handler,
+        default_table_remove_row_handler, default_event_sub_handler, NULL
+    };
+
+    uint32_t index = 0;
+
+    for (index = 0; index < bus_data_cb_size; index++) {
+        if (STR_CMP(full_namespace, bus_data_cb[index].cb_table_name)) {
+            memcpy(cb_table, &bus_data_cb[index].cb_func, sizeof(bus_callback_table_t));
+            return RETURN_OK;
+        }
+    }
+
+    /* No match found, use default handlers */
+    wifi_util_info_print(WIFI_DMCLI,"%s:%d:default cb set for namespace:[%s]\n", __func__, __LINE__, full_namespace);
+    memcpy(cb_table, &bus_default_cb, sizeof(bus_callback_table_t));
+
+    return RETURN_OK;
+}
+
