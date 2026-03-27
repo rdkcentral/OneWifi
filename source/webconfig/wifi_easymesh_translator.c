@@ -395,12 +395,17 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
     em_radio_cap_info_t *cap_info)
 {
     wifi_radio_capabilities_t *radio_cap;
+    em_ap_ht_cap_t  *em_ht_cap;
+    em_ap_vht_cap_t *em_vht_cap;
+    em_ap_he_cap_t  *em_he_cap;
     em_radio_wifi6_cap_data_t *wifi6_cap;
     em_wifi7_agent_cap_t *wifi7_cap;
     em_wifi7_mlo_cap_support_tlv_t *wifi7_radio;
     unsigned int i;
     const unsigned char *phy;
     const unsigned char *mac;
+    int rx_streams = 0, tx_streams = 0, max_rx_nss = 0, max_tx_nss = 0, idx = 0;
+    uint16_t rx_map = 0, tx_map = 0, rx_mcs = 0, tx_mcs = 0;
 
     if (cap_info == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer or get_radio_cap not set\n", __func__, __LINE__);
@@ -408,19 +413,192 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
     }
 
     radio_cap = &wifi_prop->radiocap[radio_index];
+    em_ht_cap = &cap_info->ht_cap;
+    em_vht_cap = &cap_info->vht_cap;
+    em_he_cap = &cap_info->he_cap;
     wifi6_cap = &cap_info->wifi6_cap;
     wifi7_cap = &cap_info->wifi7_cap;
 
+    memset(em_ht_cap, 0, sizeof(*em_ht_cap));
+    memset(em_vht_cap, 0, sizeof(*em_vht_cap));
+    memset(em_he_cap, 0, sizeof(*em_he_cap));
     memset(wifi6_cap, 0, sizeof(*wifi6_cap));
+    memset(wifi7_cap, 0, sizeof(*wifi7_cap));
+
+    memcpy(em_ht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    memcpy(em_vht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    memcpy(em_he_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+
+    // HT capabilities
+    em_ht_cap->ht_sprt_40mhz = (radio_cap->ht_capab & (1 << 1)) ? 1 : 0;
+    em_ht_cap->gi_sprt_40mhz = (radio_cap->ht_capab & (1 << 6)) ? 1 : 0;
+    em_ht_cap->gi_sprt_20mhz = (radio_cap->ht_capab & (1 << 5)) ? 1 : 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HT caps: 40MHz:%d GI40:%d GI20:%d\n",
+        __func__, __LINE__,
+        em_ht_cap->ht_sprt_40mhz,
+        em_ht_cap->gi_sprt_40mhz,
+        em_ht_cap->gi_sprt_20mhz);
+
+    for (int i = 0; i < 4; i++) {
+        if (radio_cap->mcs_set[i])
+            rx_streams = i + 1;
+    }
+    em_ht_cap->max_sprt_rx_streams = rx_streams;
+    em_ht_cap->max_sprt_tx_streams = tx_streams;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HT streams RX:%d TX:%d\n",
+        __func__, __LINE__, rx_streams, tx_streams);
+
+    // VHT
+    rx_map = radio_cap->vht_mcs_set[0] | (radio_cap->vht_mcs_set[1] << 8);
+    tx_map = radio_cap->vht_mcs_set[4] | (radio_cap->vht_mcs_set[5] << 8);
+    em_vht_cap->sprt_tx_mcs = tx_map;
+    em_vht_cap->sprt_rx_mcs = rx_map;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VHT MCS rx_map:0x%04x tx_map:0x%04x\n",
+        __func__, __LINE__, rx_map, tx_map);
+
+    em_vht_cap->gi_sprt_160mhz = (radio_cap->vht_capab & (1 << 6)) ? 1 : 0;
+    em_vht_cap->gi_sprt_80mhz  = (radio_cap->vht_capab & (1 << 5)) ? 1 : 0;
+
+    for (int i = 0; i < 8; i++) {
+        if (((rx_map >> (i * 2)) & 0x3) != 3)
+            rx_streams = i + 1;
+
+        if (((tx_map >> (i * 2)) & 0x3) != 3)
+            tx_streams = i + 1;
+    }
+    em_vht_cap->max_sprt_rx_streams = rx_streams;
+    em_vht_cap->max_sprt_tx_streams = tx_streams;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VHT streams RX:%d TX:%d\n",
+        __func__, __LINE__, rx_streams, tx_streams);
+
+    em_vht_cap->mu_beamformer_cap = (radio_cap->vht_capab & (1 << 19)) ? 1 : 0;
+    em_vht_cap->su_beamformer_cap = (radio_cap->vht_capab & (1 << 11)) ? 1 : 0;
+    em_vht_cap->sprt_160mhz    = (radio_cap->vht_capab & (1 << 2)) ? 1 : 0;
+    em_vht_cap->sprt_80_80_mhz = (radio_cap->vht_capab & (1 << 3)) ? 1 : 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VHT BF SU:%d MU:%d 160:%d 80+80:%d\n",
+        __func__, __LINE__,
+        em_vht_cap->su_beamformer_cap,
+        em_vht_cap->mu_beamformer_cap,
+        em_vht_cap->sprt_160mhz,
+        em_vht_cap->sprt_80_80_mhz);
+
+    // HE
+    phy = radio_cap->he_phy_cap;
+    mac = radio_cap->he_mac_cap;
+
+    em_he_cap->sprt_160mhz =
+        (phy[0] & (1 << HE_PHY_CHAN_WIDTH_160_BIT)) ? 1 : 0;
+    em_he_cap->sprt_80_80_mhz =
+        (phy[0] & (1 << HE_PHY_CHAN_WIDTH_80P80_BIT)) ? 1 : 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HE BW 160:%d 80+80:%d\n",
+        __func__, __LINE__,
+        em_he_cap->sprt_160mhz,
+        em_he_cap->sprt_80_80_mhz);
+
+    int maps = 1; // 80 MHz always present
+    if (em_he_cap->sprt_160mhz) {
+        maps++;
+    }
+    if (em_he_cap->sprt_80_80_mhz) {
+        maps++;
+    }
+
+    maps = (maps > HE_MAX_MCS_MAPS) ? HE_MAX_MCS_MAPS : maps;
+    em_he_cap->sprt_mcs_len = maps * 4;  // each map = 2-bytes for each TX/RX
+
+    for (int i = 0; i < maps; i++) {
+        // First 2 bytes → RX
+        rx_mcs =
+            ((uint16_t)radio_cap->he_mcs_nss_set[i * 4 + 1] << 8) |
+            (uint16_t)radio_cap->he_mcs_nss_set[i * 4];
+
+        // Next 2 bytes → TX
+        tx_mcs =
+            ((uint16_t)radio_cap->he_mcs_nss_set[i * 4 + 3] << 8) |
+            (uint16_t)radio_cap->he_mcs_nss_set[i * 4 + 2];
+
+        em_he_cap->sprt_tx_rx_mcs[i].rx_he_mcs = rx_mcs;
+        em_he_cap->sprt_tx_rx_mcs[i].tx_he_mcs = tx_mcs;
+
+        wifi_util_dbg_print(WIFI_WEBCONFIG,
+            "%s:%d: HE MCS[%d] TX=0x%04x RX=0x%04x\n",
+            __func__, __LINE__, i, tx_mcs, rx_mcs);
+    }
+
+    // NSS
+    //  Index	Bandwidth
+    //     0	80 MHz
+    //     1	160 MHz
+    //     2	80+80 MHz
+    // Pick the correct MCS map based on channel width
+    em_ap_he_mcs_maps_t selected_map = em_he_cap->sprt_tx_rx_mcs[0];
+    if (em_he_cap->sprt_160mhz && maps >= 2)
+        selected_map = em_he_cap->sprt_tx_rx_mcs[1];
+    if (em_he_cap->sprt_80_80_mhz && maps >= 3)
+        selected_map = em_he_cap->sprt_tx_rx_mcs[2];
+    // Extract max NSS from selected MCS map
+    // TX NSS
+    for (int ss = 0; ss < HE_MCS_MAP_MAX_STREAMS; ss++) {
+        uint8_t val = (selected_map.tx_he_mcs >>
+                    (ss * HE_MCS_MAP_BITS_PER_STREAM)) & 0x3;
+        if (val != 3)  // 3 = not supported
+            max_tx_nss = ss + 1;
+    }
+
+    // RX NSS
+    for (int ss = 0; ss < HE_MCS_MAP_MAX_STREAMS; ss++) {
+        uint8_t val = (selected_map.rx_he_mcs >>
+                    (ss * HE_MCS_MAP_BITS_PER_STREAM)) & 0x3;
+        if (val != 3)
+            max_rx_nss = ss + 1;
+    }
+    em_he_cap->max_sprt_tx_streams = max_tx_nss;
+    em_he_cap->max_sprt_rx_streams = max_rx_nss;
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: HE NSS TX:%d RX:%d\n",
+        __func__, __LINE__,
+        max_tx_nss, max_rx_nss);
+
+    em_he_cap->su_beamformer_cap =
+        (phy[3] & (1 << HE_PHY_SU_BEAMFORMER_BIT)) ? 1 : 0;
+    em_he_cap->mu_beamformer_cap =
+        (phy[4] & (1 << HE_PHY_MU_BEAMFORMER_BIT)) ? 1 : 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HE BF SU:%d MU:%d\n",
+        __func__, __LINE__,
+        em_he_cap->su_beamformer_cap,
+        em_he_cap->mu_beamformer_cap);
+
+    em_he_cap->ul_ofdma_cap =
+        (mac[4] & (1 << HE_MAC_UL_OFDMA_BIT)) ? 1 : 0;
+    em_he_cap->dl_ofdma_cap =
+        (mac[3] & (1 << HE_MAC_DL_OFDMA_BIT)) ? 1 : 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HE OFDMA UL:%d DL:%d\n",
+        __func__, __LINE__,
+        em_he_cap->ul_ofdma_cap,
+        em_he_cap->dl_ofdma_cap);
+
+    uint8_t max_ul_mumimo_rx = phy[8] & 0x0F;
+    em_he_cap->ul_mimo_cap = (max_ul_mumimo_rx > 0) ? 1 : 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HE UL MU-MIMO:%d (raw:%d)\n",
+        __func__, __LINE__,
+        em_he_cap->ul_mimo_cap,
+        max_ul_mumimo_rx);
+
+    em_he_cap->ul_mimo_ofdma_cap =
+        (em_he_cap->ul_mimo_cap && em_he_cap->ul_ofdma_cap) ? 1 : 0;
+    em_he_cap->dl_mimo_ofdma_cap =
+        (em_he_cap->dl_ofdma_cap && em_he_cap->mu_beamformer_cap) ? 1 : 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HE derived UL_MIMO_OFDMA:%d DL_MIMO_OFDMA:%d\n",
+        __func__, __LINE__,
+        em_he_cap->ul_mimo_ofdma_cap,
+        em_he_cap->dl_mimo_ofdma_cap);
 
     if (radio_cap->wifi6_supported) {
         mac_addr_str_t mac_str;
         uint8_mac_to_string_mac(cap_info->ruid.mac, mac_str);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %d and mac:%s and radio_index:%d\n", __func__,
             __LINE__, radio_index, mac_str, radio_index);
-
-        phy = radio_cap->he_phy_cap;
-        mac = radio_cap->he_mac_cap;
 
         //AP role
         wifi6_cap->num_role = 1;
@@ -463,15 +641,19 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
             wifi6_cap->roles[role].role_tail.rts = 0;
 
             /* MCS NSS: rdk has mcs_nss_set[6] -> 3 x uint16 (LE) */
-            wifi6_cap->roles[role].role_head.mcs_nss_num = 3;
-            for (i = 0; i < 3 && i < MAX_MCS_NSS; i++) {
-                wifi6_cap->roles[role].mcs_nss[i] = (unsigned short)radio_cap->he_mcs_nss_set[i * 2]
-                    | ((unsigned short)radio_cap->he_mcs_nss_set[i * 2 + 1] << 8);
+            // wifi6_cap->roles[role].role_head.mcs_nss_num = 3;
+            // for (i = 0; i < 3 && i < MAX_MCS_NSS; i++) {
+            //     wifi6_cap->roles[role].mcs_nss[i] = (unsigned short)radio_cap->he_mcs_nss_set[i * 2]
+            //         | ((unsigned short)radio_cap->he_mcs_nss_set[i * 2 + 1] << 8);
+            // }
+            wifi6_cap->roles[role].role_head.mcs_nss_num = maps * 4;
+            for (i = 0; i < MAX_MCS; i++) {
+                wifi6_cap->roles[role].sprt_tx_rx_mcs[i].rx_he_mcs = rx_mcs;
+                wifi6_cap->roles[role].sprt_tx_rx_mcs[i].tx_he_mcs = tx_mcs;
             }
         }
     }
 
-    memset(wifi7_cap, 0, sizeof(*wifi7_cap));
     if (radio_cap->wifi7_supported) {
         wifi7_radio = &wifi7_cap->mlo_cap_support;
         memset(wifi7_radio, 0, sizeof(*wifi7_radio));
