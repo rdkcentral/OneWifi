@@ -6,7 +6,7 @@ HOSTAP_DIR="$(pwd)/../rdk-wifi-libhostap"
 HOSTAP_SRC_DIR="$HOSTAP_DIR/source"
 HOSTAP_PATCH_DIR="$HOSTAP_DIR/meta-cmf-bananapi/meta-rdk-mtk-bpir4/recipes-ccsp/rdk-wifi-libhostap/files/2.11/kernel_5_4"
 RDK_WIFI_HAL_DIR="$(pwd)/../rdk-wifi-hal"
-KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches/openwrt"
+KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches_5.4/openwrt"
 UPSTREAM_HOSTAP_URL="https://git.w1.fi/hostap.git"
 SRCREV_2_11="96e48a05aa0a82e91e3cab75506297e433e253d0"
 
@@ -81,7 +81,9 @@ patch --forward -p1 < $HOSTAP_PATCH_DIR/open_auth_workaround.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/mdu_radius_psk_auth_2_11.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/supplicant_new.patch
 patch --forward -p1 < $HOSTAP_PATCH_DIR/bpi.patch
-
+patch --forward -p1 < $HOSTAP_PATCH_DIR/mlo_fix.patch
+patch --forward -p1 < $HOSTAP_PATCH_DIR/fixed_disassoc_after_assoc_retry.patch
+patch --forward -p1 < $HOSTAP_PATCH_DIR/xfi_tel_compete_2_11.patch
 #Delete the meta-cmf-bananapi directory after applying patches
 rm -rf meta-cmf-bananapi
 
@@ -99,3 +101,6 @@ if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Fr
         patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
 fi
 cd $ONEWIFI_DIR
+
+# Remove the Kernel 6.6 specific flag when building for Kernel 5.4
+sed -i 's/-DKERNEL_6_6//g' build/openwrt/makefile

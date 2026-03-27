@@ -421,7 +421,7 @@ bool drop_root()
   bool retval = false;
   syscfg_init();
   syscfg_get( NULL, "NonRootSupport", buf, sizeof(buf));
-  if(buf != NULL) {
+  if (buf[0] != '\0') {
      if(strncmp(buf, "true", strlen("true")) == 0) {
         if(init_capability() != NULL) {
            if(drop_root_caps(&appcaps) != -1) {
@@ -521,7 +521,15 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
             /* Coverity Fix */
             if ((idx+1) < argc)
             {
-                AnscCopyString(g_Subsystem, argv[idx+1]);
+                if (strnlen(argv[idx+1], sizeof(g_Subsystem)) < sizeof(g_Subsystem))
+                {
+                    AnscCopyString(g_Subsystem, argv[idx+1]);
+                }
+                else
+                {
+                    wifi_util_dbg_print(WIFI_MGR,"%s:%d: Subsystem string too long\n", __func__, __LINE__);
+                    return -1;
+                }
                 CcspTraceWarning(("\nSubsystem is %s\n", g_Subsystem));
                 wifi_util_dbg_print(WIFI_MGR,"%s:%d: Subsystem is %s\n", __func__, __LINE__, g_Subsystem);
             }
@@ -709,6 +717,7 @@ void *ssp_func(void *arg)
 
 int start_dml_main(wifi_ssp_t *ssp)
 {
+    wifi_ctrl_t *ctrl =  NULL;
 
     if (pthread_create(&ssp->tid, NULL, ssp_func, ssp) != 0) {
         wifi_util_error_print(WIFI_MGR,"%s:%d:ssp_main create failed\n", __func__, __LINE__);
@@ -716,6 +725,11 @@ int start_dml_main(wifi_ssp_t *ssp)
     }
 
     wifi_util_info_print(WIFI_MGR,"%s:%d:ssp_main thread started\n", __func__, __LINE__);
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing WFA Data Elements schema: %s\n", 
+                         __func__, __LINE__, BUS_WFA_DML_CONFIG_FILE);
+    parse_and_register_wfa_schema(&ctrl->handle, BUS_WFA_DML_CONFIG_FILE);
 
     return 0;
 }
