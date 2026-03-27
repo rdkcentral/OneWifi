@@ -159,7 +159,9 @@ struct wifiSecEncrCosaHalMap wifiSecEncrMap[] =
       {wifi_encryption_tkip,        COSA_DML_WIFI_AP_SEC_TKIP,     "TKIP"},
       {wifi_encryption_aes,         COSA_DML_WIFI_AP_SEC_AES,      "AES"},
       {wifi_encryption_aes_tkip,    COSA_DML_WIFI_AP_SEC_AES_TKIP, "AES_TKIP"},
-      {wifi_encryption_aes_gcmp256, COSA_DML_WIFI_AP_SEC_AES_GCMP, "AES_GCMP"}
+#ifdef CONFIG_IEEE80211BE
+      {wifi_encryption_aes_gcmp256, COSA_DML_WIFI_AP_SEC_AES_GCMP, "AES_GCMP"},
+#endif /* CONFIG_IEEE80211BE */
 };
 
 struct wifiSecCosaHalMap wifiSecMap[] =
