@@ -1770,8 +1770,8 @@ bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_sub_t *
     return convert_rbus_to_bus_error_code(ret);
 }
 
-static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name,
-    uint32_t row_index, char const *alias)
+static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name, uint32_t row_index,
+    char const *alias)
 {
     rbusError_t rc;
     VERIFY_NULL_WITH_RC(name);
@@ -1781,12 +1781,17 @@ static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name,
 
     rc = rbusTable_registerRow(p_rbus_handle, name, row_index, alias);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_BUS, "%s:%d bus: rbusTable_registerRow failed for"
-            " [%s] with error [%d] row_index:%d\n", __func__, __LINE__, name, rc, row_index);
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d bus: rbusTable_registerRow failed for"
+            " [%s] with error [%d] row_index:%d\n",
+            __func__, __LINE__, name, rc, row_index);
     } else {
-        if (bus_table_add_row(get_bus_mux_reg_cb_map(), (char *)name, row_index) != bus_error_success) {
-            wifi_util_error_print(WIFI_BUS, "%s:%d bus: mux table add failed for"
-            " [%s] row_index:%d\n", __func__, __LINE__, name, row_index);
+        if (bus_table_add_row(get_bus_mux_reg_cb_map(), (char *)name, row_index) !=
+            bus_error_success) {
+            wifi_util_error_print(WIFI_BUS,
+                "%s:%d bus: mux table add failed for"
+                " [%s] row_index:%d\n",
+                __func__, __LINE__, name, row_index);
         }
     }
 
@@ -1803,12 +1808,16 @@ static bus_error_t bus_unreg_table_row(bus_handle_t *handle, char const *name)
 
     rc = rbusTable_unregisterRow(p_rbus_handle, name);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_BUS, "%s:%d bus: rbusTable_unregisterRow failed for"
-            " [%s] with error [%d]\n", __func__, __LINE__, name, rc);
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d bus: rbusTable_unregisterRow failed for"
+            " [%s] with error [%d]\n",
+            __func__, __LINE__, name, rc);
     } else {
         if (bus_table_remove_row(get_bus_mux_reg_cb_map(), (char *)name) != bus_error_success) {
-            wifi_util_error_print(WIFI_BUS, "%s:%d bus: mux table remove failed for"
-            " [%s]\n", __func__, __LINE__, name);
+            wifi_util_error_print(WIFI_BUS,
+                "%s:%d bus: mux table remove failed for"
+                " [%s]\n",
+                __func__, __LINE__, name);
         }
     }
 
@@ -1854,8 +1863,10 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
 
     rc = rbusTable_removeRow(p_rbus_handle, name);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_BUS, "%s:%d bus: rbusTable_removeRow failed for"
-            " [%s] with error [%d]\n", __func__, __LINE__, name, rc);
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d bus: rbusTable_removeRow failed for"
+            " [%s] with error [%d]\n",
+            __func__, __LINE__, name, rc);
     }
 
     return convert_rbus_to_bus_error_code(rc);
