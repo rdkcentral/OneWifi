@@ -606,7 +606,7 @@ bus_error_t wfa_affiliatedsta_get_param_value(void *obj_ins_context, char *param
     }
     
     if (STR_CMP(param_name, "MACAddress")) {
-        to_mac_str(assoc_dev->dev_stats.cli_MACAddress, mac_str);
+        to_mac_str(assoc_dev->link_address, mac_str);
         return set_output_value(param_name, p_data, mac_str);
     }
     else if (STR_CMP(param_name, "BSSID")) {
