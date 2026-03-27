@@ -3946,6 +3946,8 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     snprintf(assoc_data.dev_stats.cli_OperatingStandard, sizeof(assoc_data.dev_stats.cli_OperatingStandard),"%s", associated_dev->cli_OperatingStandard);
     snprintf(assoc_data.dev_stats.cli_OperatingChannelBandwidth, sizeof(assoc_data.dev_stats.cli_OperatingChannelBandwidth),"%s", associated_dev->cli_OperatingChannelBandwidth);
     snprintf(assoc_data.dev_stats.cli_InterferenceSources, sizeof(assoc_data.dev_stats.cli_InterferenceSources),"%s", associated_dev->cli_InterferenceSources);
+    assoc_data.dev_stats.cli_MLModeCapa = associated_dev->cli_MLDInfo.cli_MLModeCapa;
+    assoc_data.dev_stats.cli_TIDLinkMapNegotiation = associated_dev->cli_MLDInfo.cli_TIDLinkMapNegotiation;
     wifi_util_dbg_print(WIFI_MON, "%s:%d operating standard is %s \n", __func__, __LINE__,associated_dev->cli_OperatingStandard);
     assoc_data.dev_stats.cli_MLDEnable = associated_dev->cli_MLDInfo.cli_MLDSta;
     if (assoc_data.dev_stats.cli_MLDEnable) {
