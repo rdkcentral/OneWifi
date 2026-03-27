@@ -127,6 +127,60 @@ static int wifi_radio_set_enable(bool status)
     return ret;
 }
 
+int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr)
+{
+    unsigned int r_itr = 0, v_itr = 0, vap_index = 0;
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    assoc_dev_data_t *assoc_dev_data = NULL;
+    const mac_address_t zeroarr = { 0 };
+    const size_t mac_size = sizeof(mac_address_t);
+
+    for (r_itr = 0; r_itr < getNumberRadios(); r_itr++) {
+        wifi_vap_map = get_wifidb_vap_map(r_itr);
+        if (wifi_vap_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+            return -1;
+        }
+
+        for (v_itr = 0; v_itr < getMaxNumberVAPsPerRadio(r_itr); v_itr++) {
+            vap_index = wifi_vap_map->vap_array[v_itr].vap_index;
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+                return -1;
+            }
+
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+            if (rdk_vap_info->associated_devices_map) {
+                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
+                while (assoc_dev_data != NULL) {
+                    if (memcmp(assoc_dev_data->link_address, zeroarr, mac_size) == 0) {
+                        assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map,
+                            assoc_dev_data);
+                        continue;
+                    }
+
+                    if (assoc_dev_data->dev_stats.cli_MLDEnable) {
+                        if (memcmp(assoc_dev_data->link_address, in_addr, mac_size) == 0) {
+                            // For MLD devices, MACAddress at
+                            // AssociatedDevice is MLD addr
+                            memcpy(mld_addr, assoc_dev_data->dev_stats.cli_MACAddress,
+                                sizeof(mac_address_t));
+                            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                            return 0;
+                        }
+                    }
+                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map,
+                        assoc_dev_data);
+                }
+            }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+        }
+    }
+    return -ENOENT;
+}
+
 int get_ap_index_from_clientmac(mac_address_t mac_addr)
 {
     unsigned int r_itr = 0, v_itr = 0, vap_index = 0;
@@ -160,8 +214,12 @@ int get_ap_index_from_clientmac(mac_address_t mac_addr)
             if (rdk_vap_info->associated_devices_map) {
                 assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
                 if (assoc_dev_data != NULL) {
-                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-                    return vap_index;
+                    if (!assoc_dev_data->dev_stats.cli_MLDEnable ||
+                        (assoc_dev_data->dev_stats.cli_MLDEnable &&
+                            assoc_dev_data->association_link)) {
+                        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                        return vap_index;
+                    }
                 }
             }
             pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
