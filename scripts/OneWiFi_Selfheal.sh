@@ -228,9 +228,9 @@ check_lnf_status()
     #if LnF is not enabled and wl0.4/wl1.4 are not enabled, dmcli call will
     #create extra log in the cloud, which we want to avoid
     lnf_2g_enabled="$(nvram get wl0.4_bss_enabled)"
-    lnf_5g_enabled"=$(nvram get wl1.4_bss_enabled)"
+    lnf_5g_enabled="$(nvram get wl1.4_bss_enabled)"
     if [ "$lnf_2g_enabled" = "0" ] && [ "$lnf_5g_enabled" = "0" ]; then
-        echo_t "Selfheal 2g&5g LNFs disabled, wont check and bring lnf up" >> /rdklogs/logs/wifi_selfheal.txt
+        echo_t "Selfheal 2g&5g LNFs disabled, won't check and bring lnf up" >> /rdklogs/logs/wifi_selfheal.txt
         return
     fi
     echo_t "Selfheal doing LNF" >> /rdklogs/logs/wifi_selfheal.txt
