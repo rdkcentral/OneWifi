@@ -230,7 +230,7 @@ check_lnf_status()
     lnf_2g_enabled="$(nvram get wl0.4_bss_enabled)"
     lnf_5g_enabled"=$(nvram get wl1.4_bss_enabled)"
     if [ "$lnf_2g_enabled" = "0" ] && [ "$lnf_5g_enabled" = "0" ]; then
-       echo_t "Selfheal 2g&5g LNFs disabled, wont check and bring lnf up" >> /rdklogs/logs/wifi_selfheal.txt
+        echo_t "Selfheal 2g&5g LNFs disabled, wont check and bring lnf up" >> /rdklogs/logs/wifi_selfheal.txt
         return
     fi
     echo_t "Selfheal doing LNF" >> /rdklogs/logs/wifi_selfheal.txt
@@ -541,16 +541,17 @@ do
 
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
-    if [ "$MODEL_NUM" != "SR213" ] && [ "$MODEL_NUM" != "GR-EXT02A-CTS" ] && [ "$MODEL_NUM" != "SR203" ] && [ "$MODEL_NUM" != "$TG4" ]; then
+    # Check LnF vaps, but only on XB7/8
+    if [ "$MODEL_NUM" = "CGM601TCOM" ] || [ "$MODEL_NUM" = "CGM43" ] || [ "$MODEL_NUM" = "$TG4"]; then
         customerId="$(syscfg get PartnerID | tr '[:upper:]' '[:lower:]')"
-        if [ "$customerId" != "sky-uk" ]; then
-            echo_t "Selfheal doing LNF for NOT sky" >> /rdklogs/logs/wifi_selfheal.txt
-            check_lnf_status
-        fi
-        else
-           echo_t "Selfheal skipping LNF for sky" >> /rdklogs/logs/wifi_selfheal.txt
-        fi
-
+        case "$customerId" in
+            sky*)
+                :
+                ;;
+            *)
+                check_lnf_status
+                ;;
+        esac
     fi
     sleep 5m
     ((check_count++))
