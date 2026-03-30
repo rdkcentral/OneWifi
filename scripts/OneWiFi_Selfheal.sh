@@ -539,8 +539,8 @@ do
 
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
-    # Check LnF vaps, but only on XB7/8
-    if [ "$MODEL_NUM" = "CGM601TCOM" ] || [ "$MODEL_NUM" = "CGM43" ] || [ "$MODEL_NUM" = "$TG4"]; then
+    # Check LnF vaps, but only on XB7/8 and XB10
+    if [ "$MODEL_NUM" = "CGM601TCOM" ] || [ "$MODEL_NUM" = "CGM43" ] || [ "$MODEL_NUM" = "CGM49" ] || [ "$MODEL_NUM" = "SG417DBCT" ]; then
         customerId="$(syscfg get PartnerID | tr '[:upper:]' '[:lower:]')"
         case "$customerId" in
             sky*)
