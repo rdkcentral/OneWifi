@@ -345,8 +345,6 @@ onewifi_mem_restart() {
 
 while true
 do
-    echo_t "Executing Onewifi selfheal." >> $LOG_FILE
-
     if [ "$MODEL_NUM" == "$TG4" ]; then
         #CMXB7 onewifi selfheal for Both BSS TX queues full, dropping the frame
         echo_t "Executing Onewifi selfheal for CMXB7" >> $LOG_FILE
