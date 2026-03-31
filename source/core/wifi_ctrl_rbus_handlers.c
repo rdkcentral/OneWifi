@@ -182,6 +182,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
     if (rf_status) {
+	    wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 
         wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
@@ -205,6 +206,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
             }
         }
     } else {
+       wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
        //Stop station vaps
        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
@@ -3539,14 +3541,14 @@ static bus_error_t stats_table_addrowhandler(char const *tableName, char const *
 
 bus_error_t ap_table_removerowhandler(char const *rowName)
 {
-    int i = 0, count = 0;
+    int i = 0;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
-    count = queue_count(ctrl->events_bus_data.events_bus_queue);
+    int count = queue_count(ctrl->events_bus_data.events_bus_queue);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, rowName);
 
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
 
     while (i < count) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);
@@ -3570,13 +3572,13 @@ bus_error_t ap_table_removerowhandler(char const *rowName)
 
 static bus_error_t stats_table_removerowhandler(char const *rowName)
 {
-    int i = 0, count = 0;
+    int i = 0;
     event_bus_element_t *event;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
-    count = queue_count(ctrl->events_bus_data.events_bus_queue);
+    int count = queue_count(ctrl->events_bus_data.events_bus_queue);
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, rowName);
 
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
 
     while (i < count) {
         event = queue_peek(ctrl->events_bus_data.events_bus_queue, i);

@@ -265,6 +265,12 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
+        rfc_param->tcm_open_2g_rfc = new_rec->tcm_open_2g_rfc;
+        rfc_param->tcm_open_5g_rfc = new_rec->tcm_open_5g_rfc;
+        rfc_param->tcm_open_6g_rfc = new_rec->tcm_open_6g_rfc;
+        rfc_param->tcm_secure_2g_rfc = new_rec->tcm_secure_2g_rfc;
+        rfc_param->tcm_secure_5g_rfc = new_rec->tcm_secure_5g_rfc;
+        rfc_param->tcm_secure_6g_rfc = new_rec->tcm_secure_6g_rfc;
         rfc_param->wpa3_compatibility_enable = new_rec->wpa3_compatibility_enable;
         rfc_param->csi_analytics_enabled_rfc = new_rec->csi_analytics_enabled_rfc;
         rfc_param->link_quality_rfc = new_rec->link_quality_rfc;
@@ -1955,6 +1961,12 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
+    rfc_info->tcm_open_2g_rfc = pcfg->tcm_open_2g_rfc;
+    rfc_info->tcm_open_5g_rfc = pcfg->tcm_open_5g_rfc;
+    rfc_info->tcm_open_6g_rfc = pcfg->tcm_open_6g_rfc;
+    rfc_info->tcm_secure_2g_rfc = pcfg->tcm_secure_2g_rfc;
+    rfc_info->tcm_secure_5g_rfc = pcfg->tcm_secure_5g_rfc;
+    rfc_info->tcm_secure_6g_rfc = pcfg->tcm_secure_6g_rfc;
     rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
     rfc_info->csi_analytics_enabled_rfc = pcfg->csi_analytics_enabled_rfc;
     rfc_info->link_quality_rfc = pcfg->link_quality_rfc;
@@ -4811,6 +4823,12 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifi_offchannelscan_app_rfc = false;
     rfc_config.wifi_offchannelscan_sm_rfc = false;
     rfc_config.tcm_enabled_rfc = false;
+    rfc_config.tcm_open_2g_rfc = false;
+    rfc_config.tcm_open_5g_rfc = false;
+    rfc_config.tcm_open_6g_rfc = false;
+    rfc_config.tcm_secure_2g_rfc = false;
+    rfc_config.tcm_secure_5g_rfc = false;
+    rfc_config.tcm_secure_6g_rfc = false;
     rfc_config.wpa3_compatibility_enable = false;
     rfc_config.csi_analytics_enabled_rfc = false;
     rfc_config.link_quality_rfc = false;
@@ -5140,8 +5158,16 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
                 __func__, __LINE__, g_wifidb->db_version);
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+#if defined(_PLATFORM_BANANAPI_R4_)
+                if (isVapPrivate(config->vap_array[i].vap_index)) {
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 1;
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 0;
+                }
+#else
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 0;
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 255;
+
+#endif
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
@@ -6204,6 +6230,12 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.wifi_offchannelscan_app_rfc = rfc_param->wifi_offchannelscan_app_rfc;
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
+    cfg.tcm_open_2g_rfc = rfc_param->tcm_open_2g_rfc;
+    cfg.tcm_open_5g_rfc = rfc_param->tcm_open_5g_rfc;
+    cfg.tcm_open_6g_rfc = rfc_param->tcm_open_6g_rfc;
+    cfg.tcm_secure_2g_rfc = rfc_param->tcm_secure_2g_rfc;
+    cfg.tcm_secure_5g_rfc = rfc_param->tcm_secure_5g_rfc;
+    cfg.tcm_secure_6g_rfc = rfc_param->tcm_secure_6g_rfc;
     cfg.wpa3_compatibility_enable = rfc_param->wpa3_compatibility_enable;
     cfg.csi_analytics_enabled_rfc = rfc_param->csi_analytics_enabled_rfc;
     cfg.link_quality_rfc = rfc_param->link_quality_rfc;
@@ -7597,11 +7629,19 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg->u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg->u.bss_info.beaconRateCtl)-1);
         cfg->vap_mode = wifi_vap_mode_ap;
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (isVapPrivate(vap_index)) {
+            cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
+            cfg->u.bss_info.mld_info.common_info.mld_id = 0;
+        }
         /*TODO: Are values correct? */
+#else
         cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
+#endif
         cfg->u.bss_info.mld_info.common_info.mld_link_id = 255;
         cfg->u.bss_info.mld_info.common_info.mld_apply = 1;
+
         memset(&cfg->u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg->u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
             cfg->u.bss_info.showSsid = true;
@@ -7641,7 +7681,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg->u.bss_info.enabled = false;
         }
 #if defined(_SR213_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
-        cfg->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+        if (isVapHotspot(vap_index)) {
+            cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT;
+        } else {
+            cfg->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+        }
 #else
         cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_SKY;
 #endif //_SR213_PRODUCT_REQ_
@@ -7652,13 +7696,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else if (is_device_type_cbr2() && isVapHotspot(vap_index)) {
             cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT_CBRV2;
         } else if (isVapHotspot(vap_index)) {
-            cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT_XB;
+            cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT;
         } else {
             cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
         }
+#endif //_SKY_HUB_COMMON_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_
         wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d bssMaxSta:%d\n", __func__, __LINE__,
             vap_index, cfg->u.bss_info.bssMaxSta);
-#endif //_SKY_HUB_COMMON_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_
 
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \

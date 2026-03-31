@@ -1416,6 +1416,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_MaxDownlinkRate = sta_data->dev_stats.cli_MaxDownlinkRate;
     assoc_dev_data->dev_stats.cli_MaxUplinkRate = sta_data->dev_stats.cli_MaxUplinkRate;
     assoc_dev_data->dev_stats.cli_MLDEnable = sta_data->dev_stats.cli_MLDEnable;
+    memcpy(assoc_dev_data->link_address, sta_data->link_mac, sizeof(mac_address_t));
     assoc_dev_data->last_connect_time = 0;
     if (sta_data->last_connected_time.tv_sec > 0) {
         struct timespec tv_now;
@@ -1924,27 +1925,9 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     pthread_mutex_unlock(&g_monitor_module.data_lock);
 }
 
-void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
+static void disconnect_sta(sta_data_t *sta, unsigned int vap_array_index)
 {
-    sta_key_t sta_key;
-    sta_data_t *sta;
-    hash_map_t *sta_map;
     struct timespec tv_now, t_diff, t_tmp;
-    instant_msmt_t msmt;
-    unsigned int vap_array_index;
-    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
-    pthread_mutex_lock(&g_monitor_module.data_lock);
-    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
-    wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n",
-        to_sta_key(dev->sta_mac, sta_key), ap_index);
-    str_tolower(sta_key);
-    sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
-    if (sta == NULL) {
-        wifi_util_info_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n",
-            sta_key, ap_index);
-        pthread_mutex_unlock(&g_monitor_module.data_lock);
-        return;
-    }
 
     clock_gettime(CLOCK_MONOTONIC, &tv_now);
     if (timespeccmp(&(sta->last_connected_time),
@@ -1971,7 +1954,59 @@ void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
     wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__,
         (long long)(sta->total_disconnected_time.tv_sec * 1000) +
             (sta->total_disconnected_time.tv_nsec / 1000000));
+}
 
+static void disconnect_mlo_sta(const char* sta_key)
+{
+    unsigned int i = 0;
+    int vap_status = 0;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    hash_map_t *sta_map = NULL;
+    sta_data_t *sta = NULL;
+
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
+
+        vap_status = g_monitor_module.bssid_data[i].ap_params.ap_status;
+        if (vap_status) {
+            sta_map = g_monitor_module.bssid_data[i].sta_map;
+            sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
+            if ((sta != NULL) && (sta->dev_stats.cli_Active == true)) {
+                disconnect_sta(sta, i);
+            }
+        }
+    }
+}
+
+void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
+{
+    sta_key_t sta_key;
+    sta_data_t *sta;
+    hash_map_t *sta_map;
+    instant_msmt_t msmt;
+    unsigned int vap_array_index;
+    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+    wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n",
+        to_sta_key(dev->sta_mac, sta_key), ap_index);
+    str_tolower(sta_key);
+    sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
+    if (sta == NULL) {
+        wifi_util_info_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n",
+            sta_key, ap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return;
+    }
+
+    if (sta->dev_stats.cli_MLDEnable){
+        disconnect_mlo_sta(sta_key);
+    } else {
+        disconnect_sta(sta, vap_array_index);
+    }
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     // stop instant measurements if its going on with this client device
     msmt.ap_index = ap_index;
@@ -3912,6 +3947,8 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     snprintf(assoc_data.dev_stats.cli_OperatingStandard, sizeof(assoc_data.dev_stats.cli_OperatingStandard),"%s", associated_dev->cli_OperatingStandard);
     snprintf(assoc_data.dev_stats.cli_OperatingChannelBandwidth, sizeof(assoc_data.dev_stats.cli_OperatingChannelBandwidth),"%s", associated_dev->cli_OperatingChannelBandwidth);
     snprintf(assoc_data.dev_stats.cli_InterferenceSources, sizeof(assoc_data.dev_stats.cli_InterferenceSources),"%s", associated_dev->cli_InterferenceSources);
+    assoc_data.dev_stats.cli_MLModeCapa = associated_dev->cli_MLDInfo.cli_MLModeCapa;
+    assoc_data.dev_stats.cli_TIDLinkMapNegotiation = associated_dev->cli_MLDInfo.cli_TIDLinkMapNegotiation;
     wifi_util_dbg_print(WIFI_MON, "%s:%d operating standard is %s \n", __func__, __LINE__,associated_dev->cli_OperatingStandard);
     assoc_data.dev_stats.cli_MLDEnable = associated_dev->cli_MLDInfo.cli_MLDSta;
     if (assoc_data.dev_stats.cli_MLDEnable) {

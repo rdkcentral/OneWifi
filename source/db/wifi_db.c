@@ -383,6 +383,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
         cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
         strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.identity, "username_empty", sizeof(cfg.u.sta_info.security.repurposed_radius.identity)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.repurposed_radius.key));
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
@@ -505,9 +507,16 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
         cfg.vap_mode = wifi_vap_mode_ap;
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (isVapPrivate(vap_index)) {
+            cfg.u.bss_info.mld_info.common_info.mld_enable = 1;
+            cfg.u.bss_info.mld_info.common_info.mld_id = 0;
+        }
+#else
         /*TODO: Are values correct?  */
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg.u.bss_info.mld_info.common_info.mld_id = 255;
+#endif
         cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
         cfg.u.bss_info.mld_info.common_info.mld_apply = 1;
 //        strcpy(cfg.u.bss_info.mld_info.common_info.mld_addr, "11:11:11:11:11:11");
