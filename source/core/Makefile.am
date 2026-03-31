@@ -177,6 +177,8 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/web_gui/motion/src/csimgr.cpp \
                    $(top_srcdir)/source/apps/web_gui/motion/src/sounder.cpp \
                    $(top_srcdir)/source/apps/web_gui/motion/src/motion_cpp_wrapper.c
 
+OneWifi_SOURCES += $(top_srcdir)/source/apps/web_gui/motion/src/motion_core.c
+
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/web_gui/webserver/inc -I$(top_srcdir)/source/apps/web_gui
 OneWifi_SOURCES += $(top_srcdir)/source/apps/web_gui/webserver/src/web.cpp \
                    $(top_srcdir)/source/apps/web_gui/webserver/src/utils.cpp

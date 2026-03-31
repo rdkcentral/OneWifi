@@ -711,6 +711,9 @@ matrix_t::matrix_t(unsigned int rows, unsigned int cols, number_t n[])
     m_rows = rows;
     m_cols = cols;
 
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             m_val[i][j] = n[k];
@@ -726,6 +729,9 @@ matrix_t::matrix_t(unsigned int rows, unsigned int cols)
     m_rows = rows;
     m_cols = cols;
 
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             m_val[i][j] = number_t(0, 0);
@@ -740,6 +746,9 @@ matrix_t::matrix_t(const matrix_t &m)
     m_rows = m.m_rows;
     m_cols = m.m_cols;
 
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             m_val[i][j] = m.m_val[i][j];
@@ -750,6 +759,9 @@ matrix_t::matrix_t(const matrix_t &m)
 matrix_t::matrix_t(vector_t v, bool as_row)
 {
     unsigned int i, j;
+
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
 
     if (as_row) {
         m_rows = 1;
@@ -770,6 +782,8 @@ matrix_t::matrix_t()
 {
     m_rows = 0;
     m_cols = 0;
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
 }
 
 matrix_t::~matrix_t()

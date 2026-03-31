@@ -42,6 +42,7 @@
 typedef struct {
     unsigned int algorithm_window;
     unsigned int variance_threshold;
+    bool override_threshold;
     unsigned int consecutive_samples;
     unsigned int antenna_considerations;
 } motion_algorithm_params_t;

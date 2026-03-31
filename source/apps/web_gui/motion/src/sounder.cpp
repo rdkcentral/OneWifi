@@ -25,22 +25,40 @@
 #include <math.h>
 #include <assert.h>
 #include <ctime>
+#include <cstdint>
+#include "wifi_util.h"
 
-#if 0
-vector_t sounder_t::run(wifi_csi_data_t &csi)
+static inline void convert_re_and_im(uint32_t per_tone_data_32bit, double &real, double &img)
+{
+    uint16_t real_u = per_tone_data_32bit & 0xFFFF;
+    uint16_t imag_u = (per_tone_data_32bit >> 16) & 0xFFFF;
+
+    // Convert unsigned to signed 16-bit (two's complement)
+    int16_t real_s = (real_u >= 0x8000) ? static_cast<int16_t>(real_u - 0x10000) : static_cast<int16_t>(real_u);
+    int16_t imag_s = (imag_u >= 0x8000) ? static_cast<int16_t>(imag_u - 0x10000) : static_cast<int16_t>(imag_u);
+
+    // Convert S9.6 fixed-point to double
+    real = real_s / 64.0;
+    img  = imag_s / 64.0;
+}
+
+vector_t sounder_t::process_csi_data(wifi_csi_data_t &csi, gestures_t gestures)
 {
     vector_t v = {0};
     unsigned int i, j;
     vector_t variance_cond;
     unsigned int num_antennas_satisfied = 0;
-    
+    float peak_variance = 0;
+    double real, imag;
+
     variance_cond.m_num = csi.frame_info.Nr;
-    v.m_num = 5*csi.frame_info.Nr + 1;
+    v.m_num = 5*csi.frame_info.Nr + 3;
     
     // calculate the mean magnitude of the signals on each antenna
     for (i = 0; i < csi.frame_info.Nr; i++) {
         for (j = 0; j < csi.frame_info.num_sc; j++) {
-            v.m_val[i].m_re += number_t(csi.csi_matrix[j][i][0].re, csi.csi_matrix[j][i][0].im).mod_z();
+            convert_re_and_im(csi.csi_matrix[j][i][0], real, imag);
+            v.m_val[i].m_re += number_t(real, imag).mod_z();
         }
         
         v.m_val[i].m_re /= csi.frame_info.num_sc;
@@ -51,7 +69,13 @@ vector_t sounder_t::run(wifi_csi_data_t &csi)
         v.m_val[i + 2 * csi.frame_info.Nr] = get_variance(i);
         v.m_val[i + 3 * csi.frame_info.Nr] = get_kurtosis(i);
         v.m_val[i + 4 * csi.frame_info.Nr] = get_mfilter(i);
+
+        wifi_util_info_print(WIFI_WEB_GUI,"antenna:%d mean:%f variance:%f kurtosis:%f\n",
+            i, get_mean(i), get_variance(i), get_kurtosis(i));
+        m_uber_variance = m_uber_variance + get_variance(i);
     }
+    
+    v.m_val[5 * csi.frame_info.Nr].m_re = gestures;
     
     for (j = 1; j < m_antenna_variance.m_cols; j++) {
         for (i = 0; i < m_antenna_variance.m_rows; i++) {
@@ -64,13 +88,24 @@ vector_t sounder_t::run(wifi_csi_data_t &csi)
     }
     
     //m_antenna_variance.print();
+    //m_uber_variance.get_mean().print();
     //printf("\n");
     
     for (i = 0; i < m_antenna_variance.m_rows; i++) {
         variance_cond.m_val[i] = number_t(1, 0);
         for (j = 0; j < m_antenna_variance.m_cols; j++) {
-            variance_cond.m_val[i] = variance_cond.m_val[i]*(m_antenna_variance.m_val[i][j].m_re > m_test_params.algo_params.variance_threshold);
-            //printf("%f\t%d\t%f\n", m_antenna_variance.m_val[i][j].m_re, m_test_params.algo_params.variance_threshold, variance_cond.m_val[i].m_re);
+            if (m_test_params.algo_params.override_threshold == true) {
+                if ((m_antenna_variance.m_val[i][j].m_re - m_test_params.algo_params.variance_threshold) > peak_variance) {
+                    peak_variance = m_antenna_variance.m_val[i][j].m_re - m_test_params.algo_params.variance_threshold;
+                }
+                variance_cond.m_val[i] = variance_cond.m_val[i]*(m_antenna_variance.m_val[i][j].m_re > m_test_params.algo_params.variance_threshold);
+            } else {
+                if ((m_antenna_variance.m_val[i][j].m_re - m_uber_variance.get_mean().m_re) > peak_variance) {
+                    peak_variance = m_antenna_variance.m_val[i][j].m_re - m_uber_variance.get_mean().m_re;
+                }
+                variance_cond.m_val[i] = variance_cond.m_val[i]*(m_antenna_variance.m_val[i][j].m_re > m_uber_variance.get_mean().m_re);
+                
+            }
         }
         
         if (variance_cond.m_val[i] == number_t(1, 0)) {
@@ -80,12 +115,13 @@ vector_t sounder_t::run(wifi_csi_data_t &csi)
     }
     
     //printf("Number of antennas for which condition is satisfied: %d\n", num_antennas_satisfied);
-    
-    v.m_val[5 * csi.frame_info.Nr].m_re = (num_antennas_satisfied >= m_test_params.algo_params.antenna_considerations) ? 1:0;
+    v.m_val[5 * csi.frame_info.Nr + 1].m_re = (num_antennas_satisfied >= m_test_params.algo_params.antenna_considerations) ? 1:0;
+    v.m_val[5 * csi.frame_info.Nr + 2].m_re = peak_variance;
+    wifi_util_info_print(WIFI_WEB_GUI,"Number of antennas for which condition is satisfied:%d peak_variance:%f\n",
+        num_antennas_satisfied, peak_variance);
     
     return v;
 }
-#endif//@TODO TBD ANIKET
 
 void sounder_t::add_sequence(unsigned int rx_index, number_t num)
 {
@@ -120,15 +156,18 @@ void sounder_t::parse_frame_object(cJSON *frame_obj, wifi_frame_info_t *frame_in
     frame_info->channel = cJSON_GetNumberValue(cJSON_GetObjectItem(frame_obj, "channel"));
     frame_info->cfo = cJSON_GetNumberValue(cJSON_GetObjectItem(frame_obj, "cfo"));
     frame_info->time_stamp = cJSON_GetNumberValue(cJSON_GetObjectItem(frame_obj, "time_stamp"));
+
 }
 
 #if 0
 vector_t sounder_t::run_test()
 {
     cJSON *obj, *frame_obj, *csi_matrix_obj, *sc_arr_obj, *sc_obj, *stream_arr_obj, *stream_obj, *antenna_arr_obj, *antenna_obj;
+    cJSON *gestures_arr_obj;
     mac_address_t sta_mac;
     wifi_csi_data_t csi = {0};
     unsigned int i, j, k;
+    gestures_t gestures;
     
     if (0) {
         char now[MAX_LINE_SIZE] = {0};
@@ -149,6 +188,21 @@ vector_t sounder_t::run_test()
     sscanf(cJSON_GetStringValue(cJSON_GetObjectItem(obj, "sta_mac")), "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
            &sta_mac[0], &sta_mac[1], &sta_mac[2], &sta_mac[3], &sta_mac[4], &sta_mac[5]);
     assert(memcmp(sta_mac, m_mac, sizeof(mac_address_t)) == 0);
+    
+    gestures = gesture_idle;
+    
+    if ((gestures_arr_obj = cJSON_GetObjectItem(obj, "gesture")) != NULL) {
+        for (i = 0; i < cJSON_GetArraySize(gestures_arr_obj); i++) {
+            if (strncmp(cJSON_GetStringValue(cJSON_GetArrayItem(gestures_arr_obj, i)), "idle", strlen("idle")) == 0) {
+                gestures = gesture_idle;
+            } else if (strncmp(cJSON_GetStringValue(cJSON_GetArrayItem(gestures_arr_obj, i)), "finger movement", strlen("finger movement")) == 0) {
+                gestures |= gesture_finger;
+            } else if (strncmp(cJSON_GetStringValue(cJSON_GetArrayItem(gestures_arr_obj, i)), "hand movement", strlen("hand movement")) == 0) {
+                gestures |= gesture_hand;
+            }
+        }
+        
+    }
     
     if ((frame_obj = cJSON_GetObjectItem(obj, "frame_info")) == NULL) {
         printf("%s:%d: Sounder: %s\tnull frame info array index: %d\n", __func__, __LINE__, m_mac_str, m_current);
@@ -190,7 +244,7 @@ vector_t sounder_t::run_test()
         
     }
     
-    return run(csi);
+    return process_csi_data(csi, gestures);
 }
 #endif//@TODO TBD ANIKET
 
@@ -217,6 +271,8 @@ void sounder_t::reset()
     for (i = 0; i < MAX_NR; i++) {
         m_sequence[i].reset();
     }
+    
+    m_uber_variance.reset();
 }
 
 int sounder_t::update(cJSON *input_obj, wifi_frame_info_t *frame_info, motion_test_params_t *params)
@@ -253,3 +309,40 @@ sounder_t::~sounder_t()
 
 }
 
+extern "C" sounder_t* create_sounder(const uint8_t *sta_mac)
+{
+    if (!sta_mac)
+        return nullptr;
+
+    sounder_t* sd = new sounder_t(sta_mac);
+    return sd;
+}
+
+extern "C" sounder_t* get_or_create_sounder_from_map(void *map,
+                                            const char *mac_str,
+                                            const uint8_t *sta_mac)
+{
+    if (!map || !mac_str || !sta_mac) {
+        return nullptr;
+    }
+
+    sounder_t *sd = static_cast<sounder_t*>(hash_map_get(map, mac_str));
+
+    if (sd == nullptr) {
+        sd = new sounder_t(sta_mac);
+        hash_map_put(map, strdup(mac_str), sd);
+    } else {
+        sd->reset();
+    }
+
+    return sd;
+}
+
+extern "C" void process_csi_motion_data(sounder_t *sd,
+    wifi_csi_data_t *csi, gestures_t gestures)
+{
+    if (!sd || !csi)
+        return;
+
+    sd->process_csi_data(*csi, gestures);
+}

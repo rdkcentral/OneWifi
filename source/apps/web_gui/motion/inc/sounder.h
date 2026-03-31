@@ -26,6 +26,13 @@
 #include "wifi_hal.h"
 #include "common_defs.h"
 
+
+#define gesture_idle   0
+#define gesture_finger 1
+#define gesture_hand gesture_finger << 1
+
+typedef unsigned int gestures_t;
+
 class sounder_t {
     mac_address_t m_mac;
     mac_addr_str_t m_mac_str;
@@ -38,6 +45,7 @@ class sounder_t {
     matrix_t m_samples;
     sequence_t m_sequence[MAX_NR];
     matrix_t m_antenna_variance;
+    sequence_t m_uber_variance;
     
     motion_test_params_t    m_test_params;
     
@@ -46,12 +54,13 @@ class sounder_t {
 public:
     //vector_t run_test();//@TODO TBD ANIKET
     int update(cJSON *input_obj, wifi_frame_info_t *frame_info, motion_test_params_t *params);
-    //vector_t run(wifi_csi_data_t &csi);//@TODO TBD ANIKET
+    //vector_t run(wifi_csi_data_t &csi, gestures_t gestures);//@TODO TBD ANIKET
     
     void reset();
     
     void push(vector_t v) { m_samples.push(v); }
     matrix_t *get_samples() { return &m_samples; }
+    float get_uber_variance() { return m_uber_variance.get_mean().m_re; }
     void add_sequence(unsigned int rx_index, number_t num);
     number_t get_mean(unsigned int rx_index)  { return m_sequence[rx_index].m_mean; }
     number_t get_variance(unsigned int rx_index) { return m_sequence[rx_index].m_variance; }

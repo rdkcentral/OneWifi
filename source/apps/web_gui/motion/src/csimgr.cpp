@@ -52,7 +52,8 @@ void csimgr_t::update_graph(sounder_t *sd)
     cJSON *sample_arr_obj, *sample_obj, *kurtosis_arr_obj, *kurtosis_obj;
     cJSON *mean_arr_obj, *mean_obj, *variance_arr_obj, *variance_obj;
     cJSON *mfilter_arr_obj, *mfilter_obj;
-    cJSON *algores_arr_obj;
+    cJSON *algores_arr_obj, *algores_obj;
+    cJSON *gestures_arr_obj;
     
     unsigned int i, j;
     bool found = false;
@@ -87,7 +88,10 @@ void csimgr_t::update_graph(sounder_t *sd)
     variance_arr_obj = cJSON_GetObjectItem(sounder_obj, "Variance");
     kurtosis_arr_obj = cJSON_GetObjectItem(sounder_obj, "Kurtosis");
     mfilter_arr_obj = cJSON_GetObjectItem(sounder_obj, "Mfilter");
+    gestures_arr_obj = cJSON_GetObjectItem(sounder_obj, "Gestures");
     algores_arr_obj = cJSON_GetObjectItem(sounder_obj, "AlgorithmResult");
+    
+    cJSON_ReplaceItemInObject(sounder_obj, "UberVariance", cJSON_CreateNumber(sd->get_uber_variance()));
     
     m = sd->get_samples();
     //m->print();
@@ -109,6 +113,8 @@ void csimgr_t::update_graph(sounder_t *sd)
         mfilter_obj = cJSON_CreateArray();
         cJSON_AddItemToArray(mfilter_arr_obj, mfilter_obj);
         
+        algores_obj = cJSON_CreateArray();
+        cJSON_AddItemToArray(algores_arr_obj, algores_obj);
         
         for (j = 0; j < sd->get_num_antennas(); j++) {
             cJSON_AddItemToArray(sample_obj, cJSON_CreateNumber(m->m_val[i][j].m_re));
@@ -130,8 +136,12 @@ void csimgr_t::update_graph(sounder_t *sd)
             cJSON_AddItemToArray(mfilter_obj, cJSON_CreateNumber(m->m_val[i][j].m_re));
         }
         
+        // add gestures
+        cJSON_AddItemToArray(gestures_arr_obj, cJSON_CreateNumber(m->m_val[i][j].m_re));
+        
         // add the algorithm result
-        cJSON_AddItemToArray(algores_arr_obj, cJSON_CreateNumber(m->m_val[i][j].m_re));
+        cJSON_AddItemToArray(algores_obj, cJSON_CreateNumber(m->m_val[i][j + 1].m_re));
+        cJSON_AddItemToArray(algores_obj, cJSON_CreateNumber(m->m_val[i][j + 2].m_re));
         
     }
     
@@ -158,7 +168,7 @@ int csimgr_t::handle_result_object(cJSON *obj)
     unsigned int i;
     unsigned char *out = NULL;
     FILE *fp;
-    //char file_name[MAX_LINE_SIZE];
+    char file_name[MAX_LINE_SIZE];
     png_file_info_t png_info[5];
     size_t size, ret;
     
@@ -172,15 +182,10 @@ int csimgr_t::handle_result_object(cJSON *obj)
             " in result object\n", __func__, __LINE__);
         return -1;
     }
-    //snprintf(file_name, sizeof(file_name), "%s%s.png", m_storage_dir, cJSON_GetStringValue(cJSON_GetObjectItem(obj, "file")));
-    std::string file_name =
-        std::string(m_storage_dir) +
-        cJSON_GetStringValue(cJSON_GetObjectItem(obj, "file")) +
-        ".png";
-
-    if ((fp = fopen(file_name.c_str(), "w")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Could not open file: %s"
-            " for saving\n", __func__, __LINE__, file_name.c_str());
+    snprintf(file_name, sizeof(file_name), "%s%s.png", m_storage_dir, cJSON_GetStringValue(cJSON_GetObjectItem(obj, "file")));
+    
+    if ((fp = fopen(file_name, "w")) == NULL) {
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Could not open file: %s for saving\n", __func__, __LINE__, file_name);
         return -1;
     }
     
@@ -246,7 +251,7 @@ int csimgr_t::read_capture_object(cJSON *obj)
 
 int csimgr_t::read_test_object(cJSON *obj)
 {
-    cJSON *test_obj, *algorithm_param_obj, *arr_obj, *sounder_arr_obj;
+    cJSON *test_obj, *algorithm_param_obj, *arr_obj, *sounder_arr_obj, *variance_threshold_obj;
     unsigned int i;
     mac_address_t sta_mac;
     mac_addr_str_t mac_str;
@@ -258,6 +263,8 @@ int csimgr_t::read_test_object(cJSON *obj)
         return -1;
     }
     
+    //dump_json(obj);
+    
     if ((test_obj = cJSON_GetObjectItem(obj, "Reporting")) == NULL) {
         wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get Reporting object\n", __func__, __LINE__);
         return -1;
@@ -266,76 +273,78 @@ int csimgr_t::read_test_object(cJSON *obj)
     m_test_params.reporting = atoi(cJSON_GetStringValue(test_obj));
     
     if ((algorithm_param_obj = cJSON_GetObjectItem(obj, "AlgorithmParameters")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get algorithm"
-            " parameters object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get algorithm parameters object\n", __func__, __LINE__);
         return -1;
     }
     
     if ((test_obj = cJSON_GetObjectItem(algorithm_param_obj, "AlgorithmSamples")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get"
-            " AlgorithmSamples object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get AlgorithmSamples object\n", __func__, __LINE__);
         return -1;
     }
     
     m_test_params.algo_params.algorithm_window = atoi(cJSON_GetStringValue(test_obj));
     
-    if ((test_obj = cJSON_GetObjectItem(algorithm_param_obj, "VarianceThreshold")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get"
-            " VarianceThreshold object\n", __func__, __LINE__);
+    if ((variance_threshold_obj = cJSON_GetObjectItem(algorithm_param_obj, "VarianceThreshold")) == NULL) {
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get VarianceThreshold object\n", __func__, __LINE__);
+        return -1;
+    }
+    
+    if ((test_obj = cJSON_GetObjectItem(variance_threshold_obj, "Value")) == NULL) {
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get value of VarianceThreshold object\n", __func__, __LINE__);
         return -1;
     }
     
     m_test_params.algo_params.variance_threshold = atoi(cJSON_GetStringValue(test_obj));
     
+    if ((test_obj = cJSON_GetObjectItem(variance_threshold_obj, "Override")) == NULL) {
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get value of VarianceThreshold object\n", __func__, __LINE__);
+        return -1;
+    }
+    
+    m_test_params.algo_params.override_threshold = cJSON_IsTrue(test_obj);
+    
     if ((test_obj = cJSON_GetObjectItem(algorithm_param_obj, "AntennaConsiderations")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get"
-            " AntennaConsiderations object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get AntennaConsiderations object\n", __func__, __LINE__);
         return -1;
     }
     
     m_test_params.algo_params.antenna_considerations = atoi(cJSON_GetStringValue(test_obj));
     
     if ((test_obj = cJSON_GetObjectItem(algorithm_param_obj, "ConsecutiveSamples")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get"
-            " ConsecutiveSamples object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get ConsecutiveSamples object\n", __func__, __LINE__);
         return -1;
     }
     
     m_test_params.algo_params.consecutive_samples = atoi(cJSON_GetStringValue(test_obj));
     
     if ((test_obj = cJSON_GetObjectItem(obj, "Start")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get"
-            " Start object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get Start object\n", __func__, __LINE__);
         return -1;
     }
     
     m_test_params.start_frame = atoi(cJSON_GetStringValue(test_obj));
     
     if ((test_obj = cJSON_GetObjectItem(obj, "End")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get"
-            " End object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get End object\n", __func__, __LINE__);
         return -1;
     }
     
     m_test_params.end_frame = atoi(cJSON_GetStringValue(test_obj));
     
     if ((test_obj = cJSON_GetObjectItem(obj, "CSI")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get"
-            " CSI object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get CSI object\n", __func__, __LINE__);
         return -1;
     }
     
     m_remaining = (m_test_params.end_frame - m_test_params.start_frame) * m_sampling;
     
     if ((test_obj = cJSON_Parse(cJSON_GetStringValue(test_obj))) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to create"
-            " CSI object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to create CSI object\n", __func__, __LINE__);
         return -1;
     }
     
     if ((arr_obj = cJSON_GetObjectItem(test_obj, "SoundingDevices")) == NULL) {
-        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get array"
-            " object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to get array object\n", __func__, __LINE__);
         return -1;
     }
     
@@ -390,8 +399,7 @@ void csimgr_t::periodicity_handler(struct timespec **t_wait)
     m_iters++;
     
     if (m_remaining <= 0) {
-        wifi_util_dbg_print(WIFI_WEB_GUI,"%s:%s:%d: Test Stopping, resetting"
-            " periodcity to infinite\n", get_local_time(scratch, sizeof(scratch)), __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEB_GUI,"%s:%s:%d: Test Stopping, resetting periodcity to infinite\n", get_local_time(scratch, sizeof(scratch)), __func__, __LINE__);
         *t_wait = NULL;
         return;
     }
@@ -407,8 +415,7 @@ void csimgr_t::periodicity_handler(struct timespec **t_wait)
     }
     
     *t_wait = get_periodicity(&time_to_wait);
-    //wifi_util_info_print(WIFI_WEB_GUI,"%s:%s:%d: Test Running\n",
-        //get_local_time(scratch, sizeof(scratch)), __func__, __LINE__);
+    //wifi_util_info_print(WIFI_WEB_GUI,"%s:%s:%d: Test Running\n", get_local_time(scratch, sizeof(scratch)), __func__, __LINE__);
 }
 
 int csimgr_t::run()
@@ -426,7 +433,7 @@ int csimgr_t::run()
     
     pthread_mutex_lock(&m_lock);
     while (m_exit == false) {
-        
+
         clock_gettime(CLOCK_MONOTONIC, &now);
         time_to_wait.tv_sec = now.tv_sec + 5;
         time_to_wait.tv_nsec = now.tv_nsec;
@@ -444,22 +451,14 @@ int csimgr_t::run()
             switch (event->type) {
                 case web_event_type_csi_analyze:
                     if (read_test_object(cJSON_Parse(event->buff)) < 0) {
-                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to read"
-                            " test object\n", __func__, __LINE__);
+                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to read test object\n", __func__, __LINE__);
                         continue;
                     }
                     
-                    wifi_util_info_print(WIFI_WEB_GUI,"%s:%s:%d:Test Started,"
-                        " Reporting Period: %d\tStart Frame: %d\tEnd Frame: %d\t"
-                        " Test Duration: %d\nAlgorithm Samples: %d\tVariance"
-                        " Threshold: %d\tConsecutive Samples: %d\tAntenna"
-                        " Considerations: %d\n", get_local_time(scratch, sizeof(scratch)),
-                        __func__, __LINE__, m_test_params.reporting,
-                        m_test_params.start_frame, m_test_params.end_frame, m_remaining,
-                        m_test_params.algo_params.algorithm_window,
-                        m_test_params.algo_params.variance_threshold,
-                        m_test_params.algo_params.consecutive_samples,
-                        m_test_params.algo_params.antenna_considerations);
+                    wifi_util_error_print(WIFI_WEB_GUI,"%s:%s:%d:Test Started, Reporting Period: %d\tStart Frame: %d\tEnd Frame: %d\tTest Duration: %d\nAlgorithm Samples: %d\tVariance Threshold: %d\tVariance Override: %d\tConsecutive Samples: %d\tAntenna Considerations: %d\n",
+                           get_local_time(scratch, sizeof(scratch)), __func__, __LINE__,
+                           m_test_params.reporting, m_test_params.start_frame, m_test_params.end_frame, m_remaining,
+                           m_test_params.algo_params.algorithm_window, m_test_params.algo_params.variance_threshold, m_test_params.algo_params.override_threshold, m_test_params.algo_params.consecutive_samples, m_test_params.algo_params.antenna_considerations);
                     
                     t_wait = get_periodicity(&time_to_wait);
                     m_iters = 0;
@@ -471,8 +470,7 @@ int csimgr_t::run()
                     
                 case web_event_type_csi_save:
                     if (handle_result_object(cJSON_Parse(event->buff)) < 0) {
-                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to"
-                            " parse result object\n", __func__, __LINE__);
+                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to parse result object\n", __func__, __LINE__);
                     }
                     break;
                     
@@ -482,16 +480,14 @@ int csimgr_t::run()
                     
                 case web_event_type_csi_capture:
                     if (read_capture_object(cJSON_Parse(event->buff)) < 0) {
-                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to"
-                            " read test object\n", __func__, __LINE__);
+                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to read test object\n", __func__, __LINE__);
                         continue;
                     }
                     break;
                     
                 case web_event_type_csi_motion_info:
                     if (read_gesture_object(cJSON_Parse(event->buff)) < 0) {
-                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to"
-                            " read gesture object\n", __func__, __LINE__);
+                        wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Failed to read gesture object\n", __func__, __LINE__);
                         continue;
                     }
                     break;
@@ -510,8 +506,7 @@ int csimgr_t::run()
             periodicity_handler(&t_wait);
             pthread_mutex_lock(&m_lock);
         } else {
-            wifi_util_info_print(WIFI_WEB_GUI,"%s:%d Thead exited"
-                " with rc - %d\n", __func__, __LINE__, rc);
+            wifi_util_error_print(WIFI_WEB_GUI,"%s:%d Thead exited with rc - %d\n",__func__,__LINE__,rc);
             pthread_mutex_unlock(&m_lock);
             return -1;
         }
@@ -546,7 +541,9 @@ void csimgr_t::create_output_template()
         cJSON_AddItemToObject(sounder_obj, "Variance", cJSON_CreateArray());
         cJSON_AddItemToObject(sounder_obj, "Kurtosis", cJSON_CreateArray());
         cJSON_AddItemToObject(sounder_obj, "Mfilter", cJSON_CreateArray());
+        cJSON_AddItemToObject(sounder_obj, "Gestures", cJSON_CreateArray());
         cJSON_AddItemToObject(sounder_obj, "AlgorithmResult", cJSON_CreateArray());
+        cJSON_AddItemToObject(sounder_obj, "UberVariance", cJSON_CreateNumber(sd->get_uber_variance()));
         
         sd = (sounder_t *)hash_map_get_next(m_sounders_map, sd);
     }
@@ -568,7 +565,6 @@ int csimgr_t::init()
     pthread_condattr_init(&cond_attr);
     pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
     pthread_cond_init(&m_cond, &cond_attr);
-
     m_sounders_map = hash_map_create();
     m_queue = queue_create();
     
@@ -591,7 +587,7 @@ char *csimgr_t::get_local_time(char *str, unsigned int len)
 
 csimgr_t::csimgr_t(const char *path)
 {
-    m_sampling = 500;
+    m_sampling = 100;
     m_iters = 0;
     
     m_out_obj = NULL;

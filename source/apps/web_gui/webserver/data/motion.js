@@ -3,45 +3,91 @@ var currentCSIFileName;
 var intervalId;
 const motionTypes = ['Move Finger', 'Move Hands', 'Walk', 'Jump'];
 function drawSamples(data, index) {
-    
+   
+	document.getElementById('UberVariance').innerHTML = Math.trunc(data.Devices[index]['UberVariance']); 
 	var samples = data.Devices[index]['Magnitude'].length;
 	if (samples == 0) {
 		return;
 	}
 
-	let res_data = [];
-	var res_layout = {
-        title: 'Overall Variance',
+	let resData = [];
+	var resLayout = {
+        title: 'Gestures & Detection',
     };
-    let algo_elem = {
+    let algoElem = {
     	type: 'scatter',
         x: [],
         y: [],
-        name: 'Overall Variance',
+        name: 'Detection',
     };
+
 	for (let i = 0; i < samples; i++) {
-		algo_elem.x.push(i*2);
-		algo_elem.y.push(data.Devices[index]['AlgorithmResult'][i]);
+		algoElem.x.push(i);
+		algoElem.y.push(data.Devices[index]['AlgorithmResult'][i][0]);
+
+		var peak_variance_percent = 0;
+		if (data.Devices[index]['AlgorithmResult'][i][0] === 1) {
+			peak_variance_percent = Math.trunc((data.Devices[index]['AlgorithmResult'][i][1]*100)/data.Devices[index]['UberVariance']);
+		}
+			
+		document.getElementById('PeakDeviationPercent').innerHTML = peak_variance_percent; 
 	}
 
-	res_data.push(algo_elem);
+	resData.push(algoElem);
+
+    let gestureElem = {
+    	type: 'scatter',
+        x: [],
+        y: [],
+        name: 'Gesture',
+    };
+	for (let i = 0; i < samples; i++) {
+		gestureElem.x.push(i);
+		gestureElem.y.push(data.Devices[index]['Gestures'][i]);
+	}
+
+	resData.push(gestureElem);
 		
-	Plotly.newPlot('AlgorithmResult', res_data, res_layout);
+	Plotly.newPlot('AlgorithmResult', resData, resLayout);
+	
 
 	let receivers = data.Devices[index]['Magnitude'][0].length;
 
+	let heatMapData = [];
+	var heatMapElem = {
+    	z: [],
+    	type: 'heatmap'
+  	};
+
+	var algorithmSamples = parseInt(document.getElementById('AlgorithmSamples').value, 10);
+
+	if ((samples%algorithmSamples) === 0) {
+			
+		for (let i = 0; i < samples/algorithmSamples; i++) {	
+			heatMapElem.z[i] = [];
+			for (let j = i*algorithmSamples; j < algorithmSamples*(i + 1); j++) {
+				heatMapElem.z[i].push(data.Devices[index]['Variance'][j][0]);		
+			}
+				
+		}
+	
+		heatMapData.push(heatMapElem);
+		Plotly.newPlot('HeatMap', heatMapData);
+	}
+
+
 	for (let i = 0; i < receivers; i++) {
 	
-		let antenna_div = document.getElementById('Antenna' + (i + 1));
+		let antennaDiv = document.getElementById('Antenna' + (i + 1));
 
-		let chart_data = [];
+		let chartData = [];
 		var chart_title = sprintf("%s:Antenna %d", data.Devices[index].MAC, i + 1);
 
 		var layout = {
 			grid: {rows: 1, columns: 4, pattern: 'independent'},
 			title: chart_title,
 		};
-		let mag_elem = {
+		let magElem = {
            		type: 'scatter',
                 x: [],
                 y: [],
@@ -49,26 +95,26 @@ function drawSamples(data, index) {
     	};
 
 		for (let j = 0; j < samples; j++) {
-			mag_elem.x.push(j*2);
-			mag_elem.y.push(data.Devices[index]['Magnitude'][j][i]);
+			magElem.x.push(j);
+			magElem.y.push(data.Devices[index]['Magnitude'][j][i]);
 		}
 		
-		chart_data.push(mag_elem);
+		chartData.push(magElem);
 
-		let mean_elem = {
+		let meanElem = {
            		type: 'scatter',
                 x: [],
                 y: [],
 				name: 'Mean',
     	};
 		for (let j = 0; j < samples; j++) {
-			mean_elem.x.push(j*2);
-			mean_elem.y.push(data.Devices[index]['Mean'][j][i]);
+			meanElem.x.push(j);
+			meanElem.y.push(data.Devices[index]['Mean'][j][i]);
 		}
 		
-		chart_data.push(mean_elem);
+		chartData.push(meanElem);
 		
-		let variance_elem = {
+		let varianceElem = {
            		type: 'scatter',
                 x: [],
                 y: [],
@@ -78,13 +124,13 @@ function drawSamples(data, index) {
     	};
 
 		for (let j = 0; j < samples; j++) {
-			variance_elem.x.push(j*2);
-			variance_elem.y.push(data.Devices[index]['Variance'][j][i]);
+			varianceElem.x.push(j);
+			varianceElem.y.push(data.Devices[index]['Variance'][j][i]);
 		}
 		
-		chart_data.push(variance_elem);
+		chartData.push(varianceElem);
 		
-		let kurtosis_elem = {
+		let kurtosisElem = {
            		type: 'scatter',
                 x: [],
                 y: [],
@@ -94,13 +140,13 @@ function drawSamples(data, index) {
     	};
 
 		for (let j = 0; j < samples; j++) {
-			kurtosis_elem.x.push(j*2);
-			kurtosis_elem.y.push(data.Devices[index]['Kurtosis'][j][i]);
+			kurtosisElem.x.push(j);
+			kurtosisElem.y.push(data.Devices[index]['Kurtosis'][j][i]);
 		}
 		
-		chart_data.push(kurtosis_elem);
+		chartData.push(kurtosisElem);
 		
-		let mfilter_elem = {
+		let mfilterElem = {
            		type: 'scatter',
                 x: [],
                 y: [],
@@ -110,13 +156,13 @@ function drawSamples(data, index) {
     	};
 
 		for (let j = 0; j < samples; j++) {
-			mfilter_elem.x.push(j*2);
-			mfilter_elem.y.push(data.Devices[index]['Mfilter'][j][i]);
+			mfilterElem.x.push(j);
+			mfilterElem.y.push(data.Devices[index]['Mfilter'][j][i]);
 		}
 		
-		chart_data.push(mfilter_elem);
+		chartData.push(mfilterElem);
 		
-		Plotly.newPlot(antenna_div, chart_data, layout);
+		Plotly.newPlot(antennaDiv, chartData, layout);
 	}
 		
 }
@@ -166,7 +212,10 @@ export async function analyzeHandler(event) {
         Reporting: document.getElementById("Reporting").value,
         AlgorithmParameters: {
 			AlgorithmSamples: document.getElementById("AlgorithmSamples").value,
-			VarianceThreshold: document.getElementById("VarianceThreshold").value,
+			VarianceThreshold: {
+				Value: document.getElementById("VarianceThreshold").value,
+				Override: document.getElementById('OverrideVarianceThreshold').checked,
+			},
 			ConsecutiveSamples: document.getElementById("ConsecutiveSamples").value,
 			AntennaConsiderations: document.getElementById("AntennaConsiderations").value,
 		}
@@ -174,7 +223,9 @@ export async function analyzeHandler(event) {
 
     const jsonData = JSON.stringify(formData);
 		
-	var timeoutVal = (parseInt(document.getElementById('EndFrameRange').value, 10) - parseInt(document.getElementById('StartFrameRange').value, 10)) * 500;
+	var timeoutVal = (parseInt(document.getElementById('EndFrameRange').value, 10) - parseInt(document.getElementById('StartFrameRange').value, 10)) * 100;
+	var countDownDate = new Date();
+	countDownDate.setTime(countDownDate.getTime() + timeoutVal);
 
     try {
         const response = await fetch('/analyze-csi', {
@@ -197,11 +248,11 @@ export async function analyzeHandler(event) {
             const result = await response.json();
             if (result.Status === 'Event Pushed') {
                 // Execute fetch every Reporting Time
-                intervalId = setInterval(fetchDataToRender, document.getElementById("Reporting").value);
+                intervalId = setInterval(fetchDataToRender, document.getElementById("Reporting").value, countDownDate);
 				document.getElementById('Analyze').disabled = true;
 				document.getElementById('Abort').disabled = false;
 				document.getElementById('Save').disabled = true;
-				
+					
                 // Stop the interval after analysis duration
                 setTimeout(() => {
                    	clearInterval(intervalId); // Stops the recurring interval
@@ -311,13 +362,14 @@ async function fetchCSIFile(filename) {
 
 }
 
-export async function fetchDataToRender() {
+export async function fetchDataToRender(countDownDate) {
     try {
         const response = await fetch('http://localhost:8081/motion.json');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json(); // Or response.text() for plain text
+		document.getElementById('AnalysisTimeLeft').innerHTML = getCountDownText(countDownDate).text;
         renderMotionChart(data);
 
     } catch (error) {
@@ -508,6 +560,23 @@ function createButton(id, label, class_name, enabled, listener) {
 	return button;
 }
 
+function motionTypeCheckBoxChangeHandler(event) {
+	var al_least_one_motion_type = false;
+
+	for (let i = 0; i < motionTypes.length; i++) {
+		if (document.getElementById(motionTypes[i].replace(/\s/g, '')).checked === true) {
+			al_least_one_motion_type = true;
+			break;
+		}
+	}
+
+	if (al_least_one_motion_type === false) {
+		document.getElementById('MotionStart').disabled = true;
+	} else {
+		document.getElementById('MotionStart').disabled = false;
+	}
+}
+
 function createCheckbox(id, name, value, labelText, checked) {
     const label = document.createElement('label');
     label.htmlFor = id; // Associate the label with the input using the 'for' attribute
@@ -526,6 +595,8 @@ function createCheckbox(id, name, value, labelText, checked) {
     // Append the checkbox and the text to the label
     label.appendChild(textNode);
     label.appendChild(checkbox);
+
+	checkbox.addEventListener('change', motionTypeCheckBoxChangeHandler);
 
     // Return the complete label element containing the checkbox
     return label;
@@ -591,7 +662,7 @@ function getCountDownText(countDownDate)
     var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
 	const text = minutes + "m " + seconds + "s";
-	return text;
+	return { text: text, number: distance };
 }
 
 function addMotionControls(countDownDate) {
@@ -600,7 +671,7 @@ function addMotionControls(countDownDate) {
     var newP = document.createElement('p');
     newP.id = 'CaptureCountdown';
     document.getElementById('CaptureCountDownDiv').appendChild(newP);
-    newP.innerHTML = getCountDownText(countDownDate);
+    newP.innerHTML = getCountDownText(countDownDate).text;
 	newP.style.fontSize = '40px';
 	newP.style.textAlign = 'center';
 	elements.push(newP);
@@ -675,11 +746,11 @@ export async function startNewCaptureHandler() {
 				const elements = addMotionControls(countDownDate);
 				
 				var x = setInterval(function() {
-					const countDownText = getCountDownText(countDownDate);
-  					document.getElementById('CaptureCountdown').innerHTML = countDownText;
+					const countDown = getCountDownText(countDownDate);
+  					document.getElementById('CaptureCountdown').innerHTML = countDown.text;
     
   					// If the count down is over, write some text 
-  					if (countDownText === '0m 0s') {
+  					if (countDown.number <= 0) {
     					clearInterval(x);
 						for (let i = 0; i < elements.length; i++) {
 							elements[i].remove();

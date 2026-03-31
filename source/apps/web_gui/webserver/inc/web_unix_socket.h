@@ -63,7 +63,7 @@ class web_t {
     bool m_exit;
     char m_http_header[MAX_HTTP_HDR_SZ];
     char m_head[PATH_NAME_SZ];
-    struct sockaddr_in m_address;
+    struct sockaddr_un m_address;
     int m_server_fd;
     
 public:

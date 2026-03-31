@@ -50,7 +50,7 @@ hr.dotted {
 
 .grid-container-analyzer {
     display: grid;
-    grid-template-columns: 1fr 3fr;
+    grid-template-columns: 1fr 1.5fr 1.5fr;
     grid-template-rows: 0.5fr 2fr 2fr 2fr 2fr 2fr 2fr;
     gap: 0.2em;
 	height: 2000px;
@@ -77,6 +77,17 @@ hr.dotted {
 	background-color: #edf4f5;
 }
 
+.item-uber-variance-dispaly {
+    grid-column:3/4;
+    grid-row:1/2;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+	padding: 10px;
+	display: flex;
+	justify-content: left; /* Centers horizontally */
+    align-items: center;     /* Centers vertically */
+}
 
 .item-csifile-display {
     grid-column:1/2;
@@ -96,8 +107,16 @@ hr.dotted {
   	border-color: #e0e0e0;
 }
 
+.item-heat-map-display {
+    grid-column:3/4;
+    grid-row:2/3;
+	border-style: solid;
+  	border-width: 1px;
+  	border-color: #e0e0e0;
+}
+
 .item-antenna1-display {
-    grid-column:2/3;
+    grid-column:2/4;
     grid-row:3/4;
 	border-style: solid;
   	border-width: 1px;
@@ -105,7 +124,7 @@ hr.dotted {
 }
 
 .item-antenna2-display {
-    grid-column:2/3;
+    grid-column:2/4;
     grid-row:4/5;
 	border-style: solid;
   	border-width: 1px;
@@ -113,7 +132,7 @@ hr.dotted {
 }
 
 .item-antenna3-display {
-    grid-column:2/3;
+    grid-column:2/4;
     grid-row:5/6;
 	border-style: solid;
   	border-width: 1px;
@@ -121,7 +140,7 @@ hr.dotted {
 }
 
 .item-antenna4-display {
-    grid-column:2/3;
+    grid-column:2/4;
     grid-row:6/7;
 	border-style: solid;
   	border-width: 1px;
@@ -129,7 +148,7 @@ hr.dotted {
 }
 
 .item-antenna5-display {
-    grid-column:2/3;
+    grid-column:2/4;
     grid-row:7/8;
 	border-style: solid;
   	border-width: 1px;
