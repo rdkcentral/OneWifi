@@ -147,7 +147,8 @@ typedef enum {
     ctrl_webconfig_state_radio_24G_rsp_pending = 0x1000000,
     ctrl_webconfig_state_radio_5G_rsp_pending = 0x2000000,
     ctrl_webconfig_state_radio_6G_rsp_pending = 0x4000000,
-    ctrl_webconfig_state_max = 0x8000000
+    ctrl_webconfig_state_cac_cfg_rsp_pending = 0x8000000,
+    ctrl_webconfig_state_max = 0x10000000
 } wifi_ctrl_webconfig_state_t;
 
 #define CTRL_WEBCONFIG_STATE_MASK 0xfffffff
