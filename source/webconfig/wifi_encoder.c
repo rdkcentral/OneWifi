@@ -1245,21 +1245,10 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 
-    if ((security_info->encr != wifi_encryption_aes &&
-        security_info->encr != wifi_encryption_aes_gcmp256) &&
-        (security_info->mode == wifi_security_mode_enhanced_open ||
-        security_info->mode == wifi_security_mode_wpa3_enterprise ||
-        security_info->mode == wifi_security_mode_wpa3_personal)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method for %d mode: %d\n",
+    if (!is_valid_encr_for_mode(security_info->mode, security_info->encr)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption %d for mode %d\n",
             __func__, __LINE__, security_info->encr, security_info->mode);
-        return webconfig_error_decode;
-    }
-
-    if (security_info->encr == wifi_encryption_tkip &&
-        security_info->mode == wifi_security_mode_wpa_wpa2_personal) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method TKIP with "
-            "WPA/WPA2 mode\n", __func__, __LINE__);
-        return webconfig_error_decode;
+        return webconfig_error_encode;
     }
 
     switch (security_info->encr) {
@@ -1274,9 +1263,11 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
+#ifdef CONFIG_IEEE80211BE
         case wifi_encryption_aes_gcmp256:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+GCMP");
             break;
+#endif /* CONFIG_IEEE80211BE */
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode encryption method: %d\n",
                 __func__, __LINE__, security_info->encr);

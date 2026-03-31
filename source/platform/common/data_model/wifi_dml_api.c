@@ -363,7 +363,9 @@ int get_sec_encr_int_from_string(const char *p_sec_encr_name,
         { wifi_encryption_tkip,        "TKIP"     },
         { wifi_encryption_aes,         "AES"      },
         { wifi_encryption_aes_tkip,    "AES+TKIP" },
-        { wifi_encryption_aes_gcmp256, "AES+GCMP" }
+#ifdef CONFIG_IEEE80211BE
+        { wifi_encryption_aes_gcmp256, "AES+GCMP" },
+#endif /* CONFIG_IEEE80211BE */
     };
 
     for (counter = 0; counter < (uint32_t)ARRAY_SZ(wifi_sec_encr_map); ++counter) {
@@ -386,7 +388,9 @@ int get_sec_encr_string_from_int(wifi_encryption_method_t l_sec_encr_type, char 
         { wifi_encryption_tkip,        "TKIP"     },
         { wifi_encryption_aes,         "AES"      },
         { wifi_encryption_aes_tkip,    "AES+TKIP" },
-        { wifi_encryption_aes_gcmp256, "AES+GCMP" }
+#ifdef CONFIG_IEEE80211BE
+        { wifi_encryption_aes_gcmp256, "AES+GCMP" },
+#endif /* CONFIG_IEEE80211BE */
     };
 
     for (index = 0; index < (uint32_t)ARRAY_SZ(wifi_sec_encr_map); index++) {
