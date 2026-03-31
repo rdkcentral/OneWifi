@@ -1961,6 +1961,12 @@ INSTMSMT_PH2 -->
                     </functions>
                     <parameters>
                         <parameter>
+                            <name>MLDUnit</name>
+                            <type>int[-1:24]</type>
+                            <syntax>int</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
                             <name>Enable</name>
                             <type>boolean</type>
                             <syntax>bool</syntax>
