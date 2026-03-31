@@ -4710,6 +4710,8 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
     unsigned int i;
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    bool is_vap_info_upgrade_needed = false;
+    bool is_vap_sec_upgrade_needed = false;
 
     if (g_wifidb->db_version == 0) {
         return;
@@ -4719,11 +4721,12 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         __LINE__, g_wifidb->db_version);
 
     for (i = 0; i < config->num_vaps; i++) {
+        is_vap_info_upgrade_needed = false;
+        is_vap_sec_upgrade_needed = false;
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_EXISTS_FLAG) {
             if (ctrl->network_mode != rdk_dev_mode_type_ext) {
                 rdk_config[i].exists = true;
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                    &rdk_config[i]);
+                is_vap_info_upgrade_needed = true;
             }
         }
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
@@ -4747,8 +4750,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             !isVapSTAMesh(config->vap_array[i].vap_index)) {
             config->vap_array[i].u.bss_info.mbo_enabled = !isVapPrivate(
                 config->vap_array[i].vap_index);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                &rdk_config[i]);
+            is_vap_info_upgrade_needed = true;
         }
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_FLAG) {
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap config, db version %d\n", __func__,
@@ -4768,8 +4770,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__,
                     config->vap_array[i].u.bss_info.security.mode,
                     config->vap_array[i].u.bss_info.security.mfp);
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                    &rdk_config[i]);
+                is_vap_info_upgrade_needed = true;
             }
         }
 
@@ -4783,8 +4784,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
                     config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl,
                     config->vap_array[i].vap_index);
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                    &rdk_config[i]);
+                is_vap_info_upgrade_needed = true;
             }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
@@ -4798,8 +4798,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 "%s:%d Update interop_ctrl:%d inum_sta:%d for vap_index:%d \n", __func__, __LINE__,
                 config->vap_array[i].u.bss_info.interop_ctrl,config->vap_array[i].u.bss_info.inum_sta,
                 config->vap_array[i].vap_index);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                &rdk_config[i]);
+            is_vap_info_upgrade_needed = true;
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG) {
@@ -4808,8 +4807,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_dbg_print(WIFI_DB, "%s:%d Update speed_tier:%d for vap_index:%d \n", __func__,
                 __LINE__, config->vap_array[i].u.bss_info.am_config.npc.speed_tier,
                 config->vap_array[i].vap_index);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                &rdk_config[i]);
+            is_vap_info_upgrade_needed = true;
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG) {
@@ -4823,11 +4821,31 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
             if (sec->wpa3_transition_disable != false) {
                 sec->wpa3_transition_disable = false;
-                int ret = wifidb_update_wifi_security_config(config->vap_array[i].vap_name, sec);
+                is_vap_sec_upgrade_needed = true;
                 wifi_util_info_print(WIFI_DB, "%s:%d force change wpa3 transition"
-                    " disable state to false for vap:%s ret:%d\r\n", __func__, __LINE__,
-                    config->vap_array[i].vap_name, ret);
+                    " disable state to false for vap:%s\r\n", __func__, __LINE__,
+                    config->vap_array[i].vap_name);
             }
+        }
+        if (is_vap_info_upgrade_needed) {
+            int ret = wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
+                        &config->vap_array[i], &rdk_config[i]);
+            wifi_util_info_print(WIFI_DB, "%s:%d wifidb update wifi vap info"
+                " for vap:%s ret:%d\r\n", __func__, __LINE__,
+                config->vap_array[i].vap_name, ret);
+        }
+        if (is_vap_sec_upgrade_needed) {
+            wifi_vap_security_t *sec = NULL;
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                sec = &config->vap_array[i].u.bss_info.security;
+            } else {
+                sec = &config->vap_array[i].u.sta_info.security;
+            }
+
+            int ret = wifidb_update_wifi_security_config(config->vap_array[i].vap_name, sec);
+            wifi_util_info_print(WIFI_DB, "%s:%d wifidb update wifi vap sec"
+                " for vap:%s ret:%d\r\n", __func__, __LINE__,
+                config->vap_array[i].vap_name, ret);
         }
     }
 }
