@@ -120,4 +120,7 @@ cd $OPENWRT_ROOT
 if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch; then
         patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
 fi
+if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0002-get-station-increase-buffer-size.patch; then
+        patch --forward -p1 < $KERNEL_PATCH_DIR/0002-get-station-increase-buffer-size.patch
+fi
 cd $ONEWIFI_DIR
