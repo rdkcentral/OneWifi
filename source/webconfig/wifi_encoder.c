@@ -1124,7 +1124,9 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 
     if (is_6g &&
         security_info->mode != wifi_security_mode_wpa3_personal &&
+#if defined(CONFIG_IEEE80211BE)
         security_info->mode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
         security_info->mode != wifi_security_mode_wpa3_enterprise &&
         security_info->mode != wifi_security_mode_enhanced_open) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
@@ -1221,7 +1223,14 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 #endif // CONFIG_IEEE80211BE
 
     if(security_info->mode == wifi_security_mode_wpa3_compatibility &&
+#if defined(CONFIG_IEEE80211BE)
+        ((is_6g == true &&
+        security_info->mfp != wifi_mfp_cfg_required) ||
+        (is_6g == false &&
+        security_info->mfp != wifi_mfp_cfg_disabled))) {
+#else
         security_info->mfp != wifi_mfp_cfg_disabled) {
+#endif /* CONFIG_IEEE80211BE */
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
             __func__, __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_encode;
@@ -1239,21 +1248,10 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 
-    if ((security_info->encr != wifi_encryption_aes &&
-        security_info->encr != wifi_encryption_aes_gcmp256) &&
-        (security_info->mode == wifi_security_mode_enhanced_open ||
-        security_info->mode == wifi_security_mode_wpa3_enterprise ||
-        security_info->mode == wifi_security_mode_wpa3_personal)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method for %d mode: %d\n",
+    if (!is_valid_encr_for_mode(security_info->mode, security_info->encr)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption %d for mode %d\n",
             __func__, __LINE__, security_info->encr, security_info->mode);
-        return webconfig_error_decode;
-    }
-
-    if (security_info->encr == wifi_encryption_tkip &&
-        security_info->mode == wifi_security_mode_wpa_wpa2_personal) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method TKIP with "
-            "WPA/WPA2 mode\n", __func__, __LINE__);
-        return webconfig_error_decode;
+        return webconfig_error_encode;
     }
 
     switch (security_info->encr) {
@@ -1268,9 +1266,11 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
+#ifdef CONFIG_IEEE80211BE
         case wifi_encryption_aes_gcmp256:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+GCMP");
             break;
+#endif /* CONFIG_IEEE80211BE */
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode encryption method: %d\n",
                 __func__, __LINE__, security_info->encr);
