@@ -302,6 +302,9 @@ sounder_t::sounder_t(mac_address_t mac)
 {
     memcpy(m_mac, mac, sizeof(mac_address_t));
     snprintf(m_mac_str, 18, "%02x:%02x:%02x:%02x:%02x:%02x", m_mac[0], m_mac[1], m_mac[2], m_mac[3], m_mac[4], m_mac[5]);
+    m_enable_status = false;
+    m_last_motion_detected_time = 0.0;
+    m_cal_packets_cnt = 0;
 }
 
 sounder_t::~sounder_t()
@@ -309,18 +312,9 @@ sounder_t::~sounder_t()
 
 }
 
-extern "C" sounder_t* create_sounder(const uint8_t *sta_mac)
-{
-    if (!sta_mac)
-        return nullptr;
-
-    sounder_t* sd = new sounder_t(sta_mac);
-    return sd;
-}
-
-extern "C" sounder_t* get_or_create_sounder_from_map(void *map,
+extern "C" sounder_t* get_or_create_sounder_from_map(hash_map_t *map,
                                             const char *mac_str,
-                                            const uint8_t *sta_mac)
+                                            mac_address_t sta_mac)
 {
     if (!map || !mac_str || !sta_mac) {
         return nullptr;
@@ -339,10 +333,14 @@ extern "C" sounder_t* get_or_create_sounder_from_map(void *map,
 }
 
 extern "C" void process_csi_motion_data(sounder_t *sd,
-    wifi_csi_data_t *csi, gestures_t gestures)
+    wifi_csi_dev_t *csi_dev, gestures_t gestures)
 {
-    if (!sd || !csi)
+    if (!sd || !csi_dev) {
         return;
+    }
+    wifi_csi_data_t csi_local;
 
-    sd->process_csi_data(*csi, gestures);
+    memcpy(&csi_local, &csi_dev->csi, sizeof(wifi_csi_data_t));
+
+    sd->process_csi_data(csi_local, gestures);
 }

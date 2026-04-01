@@ -182,8 +182,20 @@ int csimgr_t::handle_result_object(cJSON *obj)
             " in result object\n", __func__, __LINE__);
         return -1;
     }
-    snprintf(file_name, sizeof(file_name), "%s%s.png", m_storage_dir, cJSON_GetStringValue(cJSON_GetObjectItem(obj, "file")));
-    
+
+    const char *file = cJSON_GetStringValue(cJSON_GetObjectItem(obj, "file"));
+
+    if (!file) {
+        return -1;
+    }
+
+    ret = snprintf(file_name, sizeof(file_name), "%s%s.png", m_storage_dir, file);
+
+    if (ret >= sizeof(file_name)) {
+        wifi_util_error_print(WIFI_WEB_GUI, "file name too long\n");
+        return -1;
+    }
+
     if ((fp = fopen(file_name, "w")) == NULL) {
         wifi_util_error_print(WIFI_WEB_GUI,"%s:%d: Could not open file: %s for saving\n", __func__, __LINE__, file_name);
         return -1;
@@ -589,10 +601,23 @@ csimgr_t::csimgr_t(const char *path)
 {
     m_sampling = 100;
     m_iters = 0;
-    
-    m_out_obj = NULL;
+    m_csi_session_index = 0;
+    m_motion_interval_in_ms = 0;
+    m_pipe_read_fd = -1;
+    m_pipe_thread_running = false;
+    m_motion_enabled = false;
+    memset(m_sta_mac_list, 0, sizeof(m_sta_mac_list));
+    memset(m_gw_mac_str, 0, sizeof(m_gw_mac_str));
+    memset(&m_handle, 0, sizeof(m_handle));
+    m_sounders_map = nullptr;
+
+    m_out_obj = nullptr;
     snprintf(m_output_file, sizeof(m_output_file), "%s/motion.json", path);
     snprintf(m_storage_dir, sizeof(m_storage_dir), "%s/saved/", path);
+}
+
+csimgr_t::csimgr_t() : csimgr_t(WEB_SERVER_PATH)
+{
 }
 
 csimgr_t::~csimgr_t()

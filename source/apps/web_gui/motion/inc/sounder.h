@@ -19,6 +19,7 @@
 #ifndef SOUNDER_H
 #define SOUNDER_H
 
+#include <stdint.h>
 #include "vector.h"
 #include "matrix.h"
 #include "sequence.h"
@@ -50,12 +51,16 @@ class sounder_t {
     motion_test_params_t    m_test_params;
     
     wifi_frame_info_t m_frame_info;
+
+    bool m_enable_status;
+    double m_last_motion_detected_time;
+    uint32_t m_cal_packets_cnt;
     
 public:
     //vector_t run_test();//@TODO TBD ANIKET
     int update(cJSON *input_obj, wifi_frame_info_t *frame_info, motion_test_params_t *params);
-    //vector_t run(wifi_csi_data_t &csi, gestures_t gestures);//@TODO TBD ANIKET
-    
+    vector_t process_csi_data(wifi_csi_data_t &csi, gestures_t gestures);
+
     void reset();
     
     void push(vector_t v) { m_samples.push(v); }
@@ -71,6 +76,13 @@ public:
     unsigned char* get_mac_addr() { return m_mac; }
     char *get_mac_str(){ return m_mac_str; }
     unsigned int get_num_antennas() { return m_frame_info.Nr; }
+
+    void set_enable_status(bool status) { m_enable_status = status; }
+    bool get_enable_status() const { return m_enable_status; }
+    void set_last_motion_detected_time(double t) { m_last_motion_detected_time = t; }
+    double get_last_motion_detected_time() const { return m_last_motion_detected_time; }
+    void set_cal_packets_cnt(uint32_t cnt) { m_cal_packets_cnt = cnt; }
+    uint32_t get_cal_packets_cnt() const { return m_cal_packets_cnt; }
     
     static char *get_local_time(char *buff, unsigned int len);
     static void parse_frame_object(cJSON *frame_obj, wifi_frame_info_t *frame_info);

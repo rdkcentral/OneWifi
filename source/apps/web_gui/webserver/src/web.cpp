@@ -411,18 +411,18 @@ int web_t::server(int sock)
     if (valread <= 0) {
         wifi_util_error_print(WIFI_WEB_GUI,"%s:%d client stop:%ld\r\n", __func__, __LINE__, valread);
         close(sock);
-        return 0;
+        return -1;
     }
 
     wifi_util_dbg_print(WIFI_WEB_GUI,"%s:%d buffer:%s\r\n", __func__, __LINE__, buffer);
     if ((method = parse_method(buffer, " ")) == NULL) {  //Try to get the path which the client ask for
         wifi_util_error_print(WIFI_WEB_GUI,"%s:%d buffer:%s\r\n", __func__, __LINE__, buffer);
-        return NULL;
+        return -1;
     }
 
     if ((action = parse(buffer, " ")) == NULL) {
         wifi_util_error_print(WIFI_WEB_GUI,"%s:%d buffer:%s\r\n", __func__, __LINE__, buffer);
-        return NULL;
+        return -1;
     }
 
     wifi_util_dbg_print(WIFI_WEB_GUI,"%s:%d: Method: %s\tString:%s\n", __func__, __LINE__, method, action);
