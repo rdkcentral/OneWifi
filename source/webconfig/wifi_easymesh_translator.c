@@ -1160,7 +1160,9 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
     em_vap_metrics_t *ap_metrics = NULL;
     em_radio_info_t *radio_info = NULL;
     em_sta_info_t *em_sta_dev_info = NULL;
+    radio_metrics_t *radio_metrics = NULL;
     mac_addr_str_t bss_str;
+    uint32_t v;
 
     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: translate_ap_metrics_report_to_easy_mesh_bss_info enter\n", __func__, __LINE__);
     decoded_params = &data->u.decoded;
@@ -1189,14 +1191,36 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
 
     for (unsigned int i = 0; i < em_ap_report->radio_count; i++) {
         radio_index = decoded_params->em_ap_metrics_report.radio_reports[i].radio_index;
+        radio_metrics = &decoded_params->em_ap_metrics_report.radio_reports[i].radio_metrics;
+
         radio = &decoded_params->radios[radio_index];
         vap_map = &radio->vaps.vap_map;
+
+        radio_info = proto->get_radio_info(proto->data_model, radio_index);
+        if (radio_info) {
+            radio_info->noise =  radio_metrics->noise;
+            radio_info->transmit =  radio_metrics->transmit;
+            radio_info->receive_self =  radio_metrics->receive_self;
+            radio_info->receive_other =  radio_metrics->receive_other;
+        }
 
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
-            ap_metrics = &em_ap_report->radio_reports[i].vap_reports[j];
-            if ((vap->vap_mode != wifi_vap_mode_ap) || (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) != 0)) {
+            if ((vap->vap_mode != wifi_vap_mode_ap) ) {
+                continue;
+            }
+
+            int found = 0;
+            for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
+                ap_metrics = &em_ap_report->radio_reports[i].vap_reports[k];
+                if (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) == 0) {
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d vap cannot found\n", __func__, __LINE__);
                 continue;
             }
 
@@ -1206,14 +1230,54 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                 continue;
             }
             em_bss_info->numberofsta = ap_metrics->sta_cnt;
+            em_bss_info->channel_util = ap_metrics->vap_metrics.channel_util;
+
+            em_bss_info->unicast_bytes_sent = ap_metrics->vap_metrics.unicast_bytes_sent;
+            em_bss_info->unicast_bytes_rcvd = ap_metrics->vap_metrics.unicast_bytes_rcvd;
+            em_bss_info->multicast_bytes_sent = ap_metrics->vap_metrics.multicast_bytes_sent;
+            em_bss_info->multicast_bytes_rcvd = ap_metrics->vap_metrics.multicast_bytes_rcvd;
+            em_bss_info->broadcast_bytes_sent = ap_metrics->vap_metrics.broadcast_bytes_sent;
+            em_bss_info->broadcast_bytes_rcvd = ap_metrics->vap_metrics.broadcast_bytes_rcvd;
+
+            em_bss_info->inc_esp_ac_be = ap_metrics->vap_metrics.inc_esp_ac_be;
+            em_bss_info->inc_esp_ac_bk = ap_metrics->vap_metrics.inc_esp_ac_bk;
+            em_bss_info->inc_esp_ac_vo = ap_metrics->vap_metrics.inc_esp_ac_vo;
+            em_bss_info->inc_esp_ac_vi = ap_metrics->vap_metrics.inc_esp_ac_vi;
+
+            if(em_bss_info->inc_esp_ac_be) {
+                v = (uint32_t)ap_metrics->vap_metrics.esp_ac_be;
+                em_bss_info->est_svc_params_be[0] = (v >> 16) & 0xFF;
+                em_bss_info->est_svc_params_be[1] = (v >> 8)  & 0xFF;
+                em_bss_info->est_svc_params_be[2] =  v        & 0xFF;
+            }
+            if (em_bss_info->inc_esp_ac_bk) {
+                v = (uint32_t)ap_metrics->vap_metrics.esp_ac_bk;
+                em_bss_info->est_svc_params_bk[0] = (v >> 16) & 0xFF;
+                em_bss_info->est_svc_params_bk[1] = (v >> 8)  & 0xFF;
+                em_bss_info->est_svc_params_bk[2] =  v        & 0xFF;
+            }
+
+            if (em_bss_info->inc_esp_ac_vo) {
+                v = (uint32_t)ap_metrics->vap_metrics.esp_ac_vo;
+                em_bss_info->est_svc_params_vo[0] = (v >> 16) & 0xFF;
+                em_bss_info->est_svc_params_vo[1] = (v >> 8)  & 0xFF;
+                em_bss_info->est_svc_params_vo[2] =  v        & 0xFF;
+            }
+
+            if (em_bss_info->inc_esp_ac_vi) {
+                v = (uint32_t)ap_metrics->vap_metrics.esp_ac_vi;
+                em_bss_info->est_svc_params_vi[0] = (v >> 16) & 0xFF;
+                em_bss_info->est_svc_params_vi[1] = (v >> 8)  & 0xFF;
+                em_bss_info->est_svc_params_vi[2] =  v        & 0xFF;
+            }
+
+            if (radio_info == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find radio info for index %d\n", __func__, __LINE__, vap->vap_index);
+                continue;
+            }
 
             per_sta_metrics_t *sta_stats = NULL;
             for (unsigned int count = 0; count < em_bss_info->numberofsta; count++) {
-                radio_info = proto->get_radio_info(proto->data_model, radio_index);
-                if (radio_info == NULL) {
-                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find radio info for index %d\n", __func__, __LINE__, vap->vap_index);
-                    continue;
-                }
                 //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Assoc Sta count %d\n", __func__, __LINE__, em_bss_info->numberofsta);
                 sta_stats = &ap_metrics->sta_link_metrics[count];
                 if (sta_stats == NULL) {
@@ -1228,6 +1292,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                         snprintf(em_sta_dev_info->sta_client_type, sizeof(em_sta_dev_info->sta_client_type), "%s", sta_stats->client_type);
                         em_sta_dev_info->last_ul_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
                         em_sta_dev_info->last_dl_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_downlink_rate;
+                        em_sta_dev_info->delta_ms                 = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].time_delta;
                         em_sta_dev_info->est_ul_rate              = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_up;
                         em_sta_dev_info->est_dl_rate              = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_down;
                         em_sta_dev_info->rcpi                     = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
@@ -1243,7 +1308,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                         em_sta_dev_info->bytes_rx                 = ap_metrics->sta_traffic_stats[count].bytes_rcvd;
                         em_sta_dev_info->errors_tx                = ap_metrics->sta_traffic_stats[count].tx_packtes_errs;
                         em_sta_dev_info->errors_rx                = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
-                        em_sta_dev_info->retrans_count            = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
+                        em_sta_dev_info->retrans_count            = ap_metrics->sta_traffic_stats[count].retrans_cnt;
                     }
                 }
             }
