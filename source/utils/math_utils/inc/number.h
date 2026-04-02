@@ -72,6 +72,7 @@ public:
     void print();
 
     number_t(double r, double i);
+    number_t(unsigned int n) : m_re(n), m_im(0) {}
     number_t(char *str);
     number_t();
     ~number_t();
