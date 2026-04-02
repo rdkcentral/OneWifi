@@ -87,16 +87,12 @@ extern "C" {
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
-#ifdef CONFIG_IEEE80211BE
-
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
 #endif /*MAX_NUM_MLD_LINKS*/
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
-
-#endif /* CONFIG_IEEE80211BE */
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -895,6 +891,7 @@ typedef enum {
 typedef struct {
     char wpa_key_mgmt[WPA_KEY_MGMT_LEN];
     char pairwise_cipher[WPA_KEY_MGMT_LEN];
+    USHORT rsn_capabilities;
 } __attribute__((__packed__)) conn_security_t;
 
 typedef struct {
@@ -909,6 +906,7 @@ typedef struct {
     client_state_t client_state;
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
+    unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;

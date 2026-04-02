@@ -158,6 +158,17 @@ int radio_health_telemetry_logger_whix(unsigned int radio_index, int ch_util)
     return RETURN_OK;
 }
 
+static inline unsigned long calculate_counter_delta(unsigned long current, unsigned long previous)
+{
+    unsigned long diff = 0;
+    if (current >= previous) {
+        diff = current - previous;
+    } else {
+        diff = (ULONG_MAX - previous) + current + 1;
+    }
+    return diff;
+}
+
 int whix_upload_ap_telemetry_data(unsigned int radio_index, int noise_floor)
 {
     char buff[1024] = {0};
@@ -556,447 +567,11 @@ static void upload_client_debug_stats_acs_stats(INT apIndex)
     }
 }
 
-int telemetry_stats_timeout_handler(void *arg)
-{
-    whix_stats_op_t *guard = (whix_stats_op_t *)arg;
-
-    if (guard != NULL && guard->is_done == false) {
-        if (guard->fp != NULL) {
-            wifi_util_error_print(WIFI_APPS,
-                "WIFI_TELEMETRY: dmesg hang detected! Force-closing pipe.\n");
-            v_secure_pclose(guard->fp);
-            guard->fp = NULL;
-        }
-    }
-    return 0;
-}
-
-static void upload_client_debug_stats_sta_fa_info(INT apIndex, sta_data_t *sta)
-{
-    INT len = 0;
-    char *value = NULL;
-    char *saveptr = NULL;
-    char *ptr = NULL;
-    FILE *fp = NULL;
-    char tmp[128] = { 0 };
-    sta_key_t sta_key;
-    char buf[CLIENT_STATS_MAX_LEN_BUF] = { 0 };
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int timer_id = -1;
-
-    memset(buf, 0, CLIENT_STATS_MAX_LEN_BUF);
-    if (sta != NULL) {
-        whix_stats_op_t *guard = (whix_stats_op_t *)malloc(sizeof(whix_stats_op_t));
-        if (guard == NULL)
-            return;
-
-        fp = (FILE *)v_secure_popen("r", "dmesg | grep FA_INFO_%s | tail -1",
-            to_sta_key(sta->sta_mac, sta_key));
-
-        if (fp) {
-            guard->fp = fp;
-            guard->is_done = false;
-
-            // start the 2-second safe Timer
-            scheduler_add_timer_task(ctrl->sched, FALSE, &timer_id,
-                telemetry_stats_timeout_handler, guard, 2000, 1, FALSE);
-
-            // This is the line that used to hang forever.
-            // Now, if it hangs, the scheduler will close 'fp' after 2s,
-            // causing fgets to return NULL and allow the thread to continue.
-            if (fgets(buf, CLIENT_STATS_MAX_LEN_BUF, fp) != NULL) {
-                len = strlen(buf);
-            }
-
-            guard->is_done = true;
-            // Cancel the timer task if it hasn't fired yet
-            if (timer_id != -1) {
-                scheduler_cancel_timer_task(ctrl->sched, timer_id);
-            }
-
-            // Close the pipe if the safety handler didn't do it already
-            if (guard->fp) {
-                v_secure_pclose(guard->fp);
-            }
-
-            if (len > 0) {
-                ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':');
-                ptr++;
-
-                value = strtok_r(ptr, ",", &saveptr);
-                if (value) {
-                    memset(tmp, 0, sizeof(tmp));
-                    get_formatted_time(tmp);
-                    write_to_file(wifi_health_log, "\n%s WIFI_AID_%d:%s", tmp, apIndex + 1, value);
-                }
-
-                value = strtok_r(NULL, ",", &saveptr);
-                if (value) {
-                    memset(tmp, 0, sizeof(tmp));
-                    get_formatted_time(tmp);
-                    write_to_file(wifi_health_log, "\n%s WIFI_TIM_%d:%s", tmp, apIndex + 1, value);
-                }
-
-                value = strtok_r(NULL, ",", &saveptr);
-                if (value) {
-                    memset(tmp, 0, sizeof(tmp));
-                    get_formatted_time(tmp);
-                    write_to_file(wifi_health_log, "\n%s WIFI_BMP_SET_CNT_%d:%s", tmp, apIndex + 1,
-                        value);
-                }
-
-                value = strtok_r(NULL, ",", &saveptr);
-                if (value) {
-                    memset(tmp, 0, sizeof(tmp));
-                    get_formatted_time(tmp);
-                    write_to_file(wifi_health_log, "\n%s WIFI_BMP_CLR_CNT_%d:%s", tmp, apIndex + 1,
-                        value);
-                }
-
-                value = strtok_r(NULL, ",", &saveptr);
-                if (value) {
-                    memset(tmp, 0, sizeof(tmp));
-                    get_formatted_time(tmp);
-                    write_to_file(wifi_health_log, "\n%s WIFI_TX_PKTS_CNT_%d:%s", tmp, apIndex + 1,
-                        value);
-                }
-
-                value = strtok_r(NULL, ",", &saveptr);
-                if (value) {
-                    memset(tmp, 0, sizeof(tmp));
-                    get_formatted_time(tmp);
-                    write_to_file(wifi_health_log, "\n%s WIFI_TX_DISCARDS_CNT_%d:%s", tmp,
-                        apIndex + 1, value);
-                }
-
-                // Process WIFI_UAPSD
-                value = strtok_r(NULL, ",", &saveptr);
-                if (value) {
-                    memset(tmp, 0, sizeof(tmp));
-                    get_formatted_time(tmp);
-                    write_to_file(wifi_health_log, "\n%s WIFI_UAPSD_%d:%s", tmp, apIndex + 1,
-                        value);
-                }
-            }
-        } else {
-            wifi_util_error_print(WIFI_APPS, " %s Failed to run popen command\n", __FUNCTION__);
-        }
-
-        free(guard);
-    } else {
-        wifi_util_error_print(WIFI_APPS, "%s NULL sta\n", __FUNCTION__);
-    }
-}
-
-static void upload_client_debug_stats_sta_fa_lmac_data_stats(INT apIndex, sta_data_t *sta)
-{
-    INT len = 0;
-    char *value = NULL, *saveptr = NULL, *ptr = NULL;
-    FILE *fp = NULL;
-    char tmp[128] = { 0 };
-    sta_key_t sta_key;
-    char buf[CLIENT_STATS_MAX_LEN_BUF] = { 0 };
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int timer_id = -1;
-
-    if (sta != NULL) {
-        whix_stats_op_t *guard = (whix_stats_op_t *)malloc(sizeof(whix_stats_op_t));
-        if (guard == NULL)
-            return;
-
-        fp = (FILE *)v_secure_popen("r", "dmesg | grep FA_LMAC_DATA_STATS_%s | tail -1",
-            to_sta_key(sta->sta_mac, sta_key));
-        if (fp) {
-            guard->fp = fp;
-            guard->is_done = false;
-
-            scheduler_add_timer_task(ctrl->sched, FALSE, &timer_id, telemetry_stats_timeout_handler,
-                guard, 2000, 1, TRUE);
-
-            if (fgets(buf, CLIENT_STATS_MAX_LEN_BUF, fp) != NULL) {
-                len = strlen(buf);
-            }
-
-            guard->is_done = true;
-            if (timer_id != -1) {
-                scheduler_cancel_timer_task(ctrl->sched, timer_id);
-            }
-
-            if (guard->fp)
-                v_secure_pclose(guard->fp);
-
-            if (len > 0) {
-                ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':');
-                ptr++;
-                value = strtok_r(ptr, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_DATA_QUEUED_CNT_%d:%s", tmp, apIndex + 1,
-                    value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_DATA_DROPPED_CNT_%d:%s", tmp, apIndex + 1,
-                    value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_DATA_DEQUED_TX_CNT_%d:%s", tmp,
-                    apIndex + 1, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_DATA_DEQUED_DROPPED_CNT_%d:%s", tmp,
-                    apIndex + 1, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_DATA_EXP_DROPPED_CNT_%d:%s", tmp,
-                    apIndex + 1, value);
-            }
-        } else {
-            wifi_util_error_print(WIFI_APPS, "%s Failed to run popen command\n", __FUNCTION__);
-        }
-        free(guard);
-    } else {
-        wifi_util_error_print(WIFI_APPS, "%s NULL sta\n", __FUNCTION__);
-    }
-}
-
-static void upload_client_debug_stats_sta_fa_lmac_mgmt_stats(INT apIndex, sta_data_t *sta)
-{
-    INT len = 0;
-    char *value = NULL;
-    char *saveptr = NULL;
-    char *ptr = NULL;
-    FILE *fp = NULL;
-    sta_key_t sta_key;
-    char tmp[128] = { 0 };
-    char buf[CLIENT_STATS_MAX_LEN_BUF] = { 0 };
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int timer_id = -1;
-
-    memset(buf, 0, CLIENT_STATS_MAX_LEN_BUF);
-
-    if (sta != NULL) {
-        whix_stats_op_t *guard = (whix_stats_op_t *)malloc(sizeof(whix_stats_op_t));
-        if (guard == NULL)
-            return;
-
-        fp = (FILE *)v_secure_popen("r", "dmesg | grep FA_LMAC_MGMT_STATS_%s | tail -1",
-            to_sta_key(sta->sta_mac, sta_key));
-
-        if (fp) {
-            guard->fp = fp;
-            guard->is_done = false;
-
-            scheduler_add_timer_task(ctrl->sched, FALSE, &timer_id, telemetry_stats_timeout_handler,
-                guard, 2000, 1, TRUE);
-
-            if (fgets(buf, CLIENT_STATS_MAX_LEN_BUF, fp) != NULL) {
-                len = strlen(buf);
-            }
-
-            guard->is_done = true;
-
-            if (timer_id != -1) {
-                scheduler_cancel_timer_task(ctrl->sched, timer_id);
-            }
-
-            if (guard->fp) {
-                v_secure_pclose(guard->fp);
-                guard->fp = NULL;
-            }
-
-            if (len) {
-                ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':');
-                ptr++;
-                value = strtok_r(ptr, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_MGMT_QUEUED_CNT_%d:%s", tmp, apIndex + 1,
-                    value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_MGMT_DROPPED_CNT_%d:%s", tmp, apIndex + 1,
-                    value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_MGMT_DEQUED_TX_CNT_%d:%s", tmp,
-                    apIndex + 1, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_MGMT_DEQUED_DROPPED_CNT_%d:%s", tmp,
-                    apIndex + 1, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "\n%s WIFI_MGMT_EXP_DROPPED_CNT_%d:%s", tmp,
-                    apIndex + 1, value);
-            }
-        } else {
-            wifi_util_error_print(WIFI_APPS, "%s Failed to run popen command\n", __FUNCTION__);
-        }
-        free(guard);
-    } else {
-        wifi_util_error_print(WIFI_APPS, "%s NULL sta\n", __FUNCTION__);
-    }
-}
-
-static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
-{
-    INT len = 0;
-    char *value = NULL;
-    char *saveptr = NULL;
-    char *ptr = NULL;
-    FILE *fp  = NULL;
-    char tmp[128] = {0};
-    char buf[CLIENT_STATS_MAX_LEN_BUF] = {0};
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int timer_id = -1;
-
-    // Use apIndex 0 for ath0
-    if (0 == apIndex) {
-        memset (buf, 0, CLIENT_STATS_MAX_LEN_BUF);
-        
-        whix_stats_op_t *guard = (whix_stats_op_t *)malloc(sizeof(whix_stats_op_t));
-        if (guard == NULL) return;
-
-        fp = (FILE *)v_secure_popen("r", "dmesg | grep VAP_ACTIVITY_ath0 | tail -1");
-        if (fp)
-        {
-            guard->fp = fp;
-            guard->is_done = false;
-
-            // Start 2s safety timer
-            scheduler_add_timer_task(ctrl->sched, FALSE, &timer_id, 
-                                     telemetry_stats_timeout_handler, guard, 
-                                     2000, 1, TRUE);
-
-            if (fgets(buf, CLIENT_STATS_MAX_LEN_BUF, fp) != NULL) {
-                len = strlen(buf);
-            }
-
-            guard->is_done = true;
-            if (timer_id != -1) {
-                scheduler_cancel_timer_task(ctrl->sched, timer_id);
-            }
-
-            if (guard->fp) {
-                v_secure_pclose(guard->fp);
-                guard->fp = NULL;
-            }
-
-            if (len)
-            {
-                ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':');
-                ptr += 3;
-                value = strtok_r(ptr, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_1:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_QUEUE_LEN_1:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_QUEUE_BYTES_1:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_FRAME_LEN_1:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_FRAME_COUNT_1:%s\n", tmp, value);
-            }
-        }
-        else {
-            wifi_util_error_print(WIFI_APPS, "%s Failed to run popen command\n", __FUNCTION__ );
-        }
-        free(guard);
-    }
-
-    // Use apIndex 1 for ath1
-    if (1 == apIndex) {
-        memset (buf, 0, CLIENT_STATS_MAX_LEN_BUF);
-        
-        whix_stats_op_t *guard = (whix_stats_op_t *)malloc(sizeof(whix_stats_op_t));
-        if (guard == NULL) return;
-
-        fp = (FILE *)v_secure_popen("r", "dmesg | grep VAP_ACTIVITY_ath1 | tail -1");
-        if (fp)
-        {
-            guard->fp = fp;
-            guard->is_done = false;
-            timer_id = -1; // Reset for second case
-
-            scheduler_add_timer_task(ctrl->sched, FALSE, &timer_id, 
-                                     telemetry_stats_timeout_handler, guard, 
-                                     2000, 1, TRUE);
-
-            if (fgets(buf, CLIENT_STATS_MAX_LEN_BUF, fp) != NULL) {
-                len = strlen(buf);
-            }
-
-            guard->is_done = true;
-            if (timer_id != -1) {
-                scheduler_cancel_timer_task(ctrl->sched, timer_id);
-            }
-
-            if (guard->fp) {
-                v_secure_pclose(guard->fp);
-                guard->fp = NULL;
-            }
-
-            if (len)
-            {
-                ptr = buf + len;
-                while (len-- && ptr-- && *ptr != ':');
-                ptr += 3;
-                value = strtok_r(ptr, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_2:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_QUEUE_LEN_2:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_QUEUE_BYTES_2:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_FRAME_LEN_2:%s\n", tmp, value);
-                value = strtok_r(NULL, ",", &saveptr);
-                memset(tmp, 0, sizeof(tmp));
-                get_formatted_time(tmp);
-                write_to_file(wifi_health_log, "%s WIFI_PS_CLIENTS_DATA_FRAME_COUNT_2:%s\n", tmp, value);
-            }
-        }
-        else
-        {
-            wifi_util_error_print(WIFI_APPS, "%s Failed to run popen command\n", __FUNCTION__);
-        }
-        free(guard);
-    }
-}
 /*
  * This API will Create telemetry and data model for client activity stats
  * like BytesSent, BytesReceived, RetransCount, FailedRetransCount, etc...
 */
-int upload_client_debug_stats_whix(unsigned int num_devs, int vap_index, sta_data_t *sta)
+int upload_client_debug_stats_whix(int vap_index)
 {
     static int vap_status = 0;
     wifi_vap_info_t *vap_info;
@@ -1007,22 +582,9 @@ int upload_client_debug_stats_whix(unsigned int num_devs, int vap_index, sta_dat
     }
     vap_status = vap_info->u.bss_info.enabled;
 
-    if (NULL == sta && num_devs != 0) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d sta is NULL and num_devs %u\n", __func__, __LINE__, num_devs);
-        return -1;
-    }
-
     if (vap_status) {
         if (isVapPrivate(vap_index)) {
             upload_client_debug_stats_chan_stats(vap_index);
-        }
-        for (unsigned int i = 0; i < num_devs; i++) {
-            upload_client_debug_stats_sta_fa_info(vap_index, &sta[i]);
-            upload_client_debug_stats_sta_fa_lmac_data_stats(vap_index, &sta[i]);
-            upload_client_debug_stats_sta_fa_lmac_mgmt_stats(vap_index, &sta[i]);
-            upload_client_debug_stats_sta_vap_activity_stats(vap_index);
-        }
-        if (isVapPrivate(vap_index)) {
             upload_client_debug_stats_transmit_power_stats(vap_index);
             upload_client_debug_stats_acs_stats(vap_index);
         }
@@ -1277,6 +839,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     wifi_mgr_t *wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
     hash_map_t *last_stats_map = app->data.u.whix.last_stats_map;
     wifi_associated_dev3_t *dev_stats_last = NULL;
+    unsigned long del = 0;
 
     if (NULL == sta && num_devs != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d sta is NULL and num_devs %u\n", __func__, __LINE__,
@@ -1660,8 +1223,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                 hash_map_put(app->data.u.whix.last_stats_map, strdup(sta_key), dev_stats_last);
             }
             if (sta[i].dev_stats.cli_Active == true) {
-                snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_BytesSent - dev_stats_last->cli_BytesSent);
+                del = calculate_counter_delta(sta[i].dev_stats.cli_BytesSent,
+                    dev_stats_last->cli_BytesSent);
+                snprintf(tmp, 32, "%lu,", del);
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
         }
@@ -1682,8 +1246,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_BytesReceived - dev_stats_last->cli_BytesReceived);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_BytesReceived,
+                        dev_stats_last->cli_BytesReceived);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1706,8 +1271,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_PacketsSent - dev_stats_last->cli_PacketsSent);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_PacketsSent,
+                        dev_stats_last->cli_PacketsSent);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1738,8 +1304,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_PacketsReceived - dev_stats_last->cli_PacketsReceived);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_PacketsReceived,
+                        dev_stats_last->cli_PacketsReceived);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1762,8 +1329,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_ErrorsSent - dev_stats_last->cli_ErrorsSent);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_ErrorsSent,
+                        dev_stats_last->cli_ErrorsSent);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1794,8 +1362,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_RetransCount - dev_stats_last->cli_RetransCount);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_RetransCount,
+                        dev_stats_last->cli_RetransCount);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1825,9 +1394,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_FailedRetransCount -
-                            dev_stats_last->cli_FailedRetransCount);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_FailedRetransCount,
+                        dev_stats_last->cli_FailedRetransCount);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1849,8 +1418,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_RetryCount - dev_stats_last->cli_RetryCount);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_RetryCount,
+                        dev_stats_last->cli_RetryCount);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1872,9 +1442,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         __LINE__);
                     snprintf(tmp, 32, "%u,", 0);
                 } else {
-                    snprintf(tmp, 32, "%lu,",
-                        sta[i].dev_stats.cli_MultipleRetryCount -
-                            dev_stats_last->cli_MultipleRetryCount);
+                    del = calculate_counter_delta(sta[i].dev_stats.cli_MultipleRetryCount,
+                        dev_stats_last->cli_MultipleRetryCount);
+                    snprintf(tmp, 32, "%lu,", del);
                 }
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1976,7 +1546,7 @@ void update_clientdiagdata(wifi_app_t *app, unsigned int num_devs, int vap_idx,
         vap_idx, num_devs);
 
     // check call
-    upload_client_debug_stats_whix(num_devs, vap_idx, assoc_stats);
+    upload_client_debug_stats_whix(vap_idx);
     if (isVapHotspotSecure(vap_idx)) {
         upload_ap_telemetry_anqp_whix(vap_idx);
     }

@@ -115,6 +115,7 @@ extern "C" {
 #define LNF 0b1000000
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
+#define BUS_WFA_DML_CONFIG_FILE "Data_Elements_JSON_Schema_v3.0.json"
 
 #define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
