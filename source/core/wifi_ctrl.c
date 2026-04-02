@@ -37,6 +37,7 @@
 #define FILE_SYSTEM_UPTIME         "/tmp/systemUptime.txt"
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
+#include "run_qmgr.h"
 
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
@@ -422,7 +423,9 @@ unsigned int get_Uptime(void)
     system(cmd);
     fp = fopen(FILE_SYSTEM_UPTIME, "r");
     if (fp != NULL) {
-        fscanf(fp, "%u", &upSecs);
+        if (fscanf(fp, "%u", &upSecs) != 1) {
+            wifi_util_error_print(WIFI_CTRL,"%s : failed to read uptime\n", __FUNCTION__);
+        }
         wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
         fclose(fp);
     }
@@ -603,10 +606,10 @@ bool check_for_greylisted_mac_filter(void)
                     vap_index = wifi_vap_map->vap_array[itrj].vap_index;
                     l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-                    if (l_rdk_vap_array->acl_map != NULL) {
+                    if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                         acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
                         while(acl_entry != NULL) {
-                            if (acl_entry->mac != NULL && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
+                            if (!is_zero_mac(acl_entry->mac) && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
                                 return true;
                             }
                             acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
@@ -835,7 +838,7 @@ void stop_gateway_vaps(unsigned int radio_index)
 void stop_extender_vaps(unsigned int radio_index)
 {
     wifi_ctrl_t *ctrl;
-    vap_svc_t *ext_svc;	
+    vap_svc_t *ext_svc; 
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
@@ -1100,7 +1103,9 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
 
     res->radio_index = radio_index;
     res->num = *num;
-    memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+    if (*num > 0 && *bss != NULL) {
+        memcpy((unsigned char *)res->bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
+    }
 
     if (is_sta_enabled()) {
         if(push_event_to_ctrl_queue(res, sizeof(scan_results_t), wifi_event_type_hal_ind,
@@ -1166,7 +1171,7 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     return RETURN_OK;
 }
 #else
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
+#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate, unsigned int recv_freq)
 #else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, unsigned int recv_freq)
@@ -1192,7 +1197,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
     mgmt_frame.frame.type = type;
     mgmt_frame.frame.dir = dir;
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
+#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
     mgmt_frame.frame.phy_rate = phy_rate;
 #endif
@@ -1238,7 +1243,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(data->u.msg.frame.sta_mac, sta_mac, sizeof(mac_address_t));
         data->u.msg.frame.type = type;
         data->u.msg.frame.dir = dir;
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_)
+#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
     mgmt_frame.frame.phy_rate = phy_rate;
 #endif
@@ -1467,7 +1472,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 #if HAL_IPC
 int onewifi_get_ap_assoc_dev_diag_res3(int ap_index, 
                                        wifi_associated_dev3_t *assoc_dev_array, 
-						               unsigned int *output_array_size)
+                                       unsigned int *output_array_size)
 {
     return get_sta_stats_for_vap(ap_index, assoc_dev_array, output_array_size);
 }
@@ -1513,7 +1518,7 @@ typedef int (* app_get_radio_traffic_stats_t) (int radio_index,
 
 typedef struct {
     unsigned int version;
-    app_get_ap_assoc_dev_diag_res3_t app_get_ap_assoc_dev_diag_res3_fn;		
+    app_get_ap_assoc_dev_diag_res3_t app_get_ap_assoc_dev_diag_res3_fn;     
     app_get_neighbor_ap2_t           app_get_neighbor_ap2_fn;
     app_get_radio_channel_stats_t    app_get_radio_channel_stats_fn;
     app_get_radio_traffic_stats_t    app_get_radio_traffic_stats_fn;
@@ -1712,6 +1717,12 @@ int init_wireless_interface_mac()
                 }
             }
 
+            if (wifi_vap_info == NULL) {
+                free(hal_vap_info_map);
+                hal_vap_info_map = NULL;
+                return RETURN_ERR;
+            }
+
             //For backhaul interfaces, update the sta_info.mac
             if (strncmp((char *)hal_vap_info_map->vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
                 memcpy(wifi_vap_info->u.sta_info.mac, hal_vap_info_map->vap_array[j].u.sta_info.mac, sizeof(wifi_vap_info->u.sta_info.mac));
@@ -1866,12 +1877,21 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
+    wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
+    if (rfc_param->link_quality_rfc || ctrl->network_mode == rdk_dev_mode_type_em_node 
+     || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node || ctrl->rf_status_down == true) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d LinkQuality RFC is enabled \n", __func__, __LINE__);
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d LinkQuality RFC is disabled \n", __func__, __LINE__);
+    }
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
     ctrl->webconfig_state = ctrl_webconfig_state_associated_clients_full_cfg_rsp_pending;
     webconfig_send_full_associate_status(ctrl);
     ctrl->exit_ctrl = false;
     ctrl->ctrl_initialized = true;
+    init_ignite_function();
     register_endpoint_components(ctrl);
     ctrl_queue_loop(ctrl);
 
@@ -2019,8 +2039,8 @@ int wifi_sched_timeout(void *arg)
             handler_id = sched_id->wifi_acs_sched_handler_id;
             break;
         default:
-            free(args);
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, args->index, args->type);
+            free(args);
             return TIMER_TASK_ERROR;
     }
 
@@ -2407,6 +2427,23 @@ rdk_wifi_vap_info_t* get_wifidb_rdk_vaps(uint8_t radio_index)
     }
 }
 
+ignite_config_t *get_ignite_config_by_name(char *ignite_name)
+{
+    if ((ignite_name == NULL) || (strlen(ignite_name) == 0)) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d Ignite name is NUll or empty\n", __func__, __LINE__);
+        return NULL;
+    }
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    unsigned int radio_index = getNumberRadios();
+    for (unsigned int i =0; i < radio_index; i++) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s %d Input : %s Ignite : %s\n", __func__, __LINE__, ignite_name, g_wifi_mgr->ignite_config[i].ignite_name);
+        if (strcmp(g_wifi_mgr->ignite_config[i].ignite_name, ignite_name) == 0) {
+            return &g_wifi_mgr->ignite_config[i];
+        }
+    } 
+    return NULL;
+}
+
 wifi_vap_info_map_t* get_wifidb_vap_map(uint8_t radio_index)
 {
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
@@ -2438,6 +2475,17 @@ wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index)
         wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
         return NULL;
     }
+}
+
+ignite_config_t* get_wifidb_ignite_config(uint8_t radio_index)
+{
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    if (radio_index < getNumberRadios()) { 
+        return &g_wifi_mgr->ignite_config[radio_index];
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
+        return NULL;
+    }  
 }
 
 wifi_GASConfiguration_t* get_wifidb_gas_config(void)
@@ -2807,10 +2855,26 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
     g_wifi_mgr->ctrl.rfc_params.tcm_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_open_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_open_6g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_2g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_2g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_5g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_5g_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_secure_6g_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_secure_6g_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.link_quality_rfc =
+        g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
+    g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
+        g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
@@ -2884,7 +2948,8 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
     for (i = 0; i < map->num_vaps; i++) {
         if (map->vap_array[i].vap_index == index) {
             found = true;
-            strcpy(ssid, map->vap_array[i].u.sta_info.ssid);
+            wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
+            strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
             break;
         }
     }

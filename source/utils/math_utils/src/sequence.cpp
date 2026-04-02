@@ -69,10 +69,16 @@ sequence_t sequence_t::operator +(number_t n)
         m_mean = m_mean/m_total_samples;
         
         m_variance = number_t(0, 0);
+#if 0
         for (i = 0; i < m_total_samples; i++) {
             m_variance = m_variance + (m_last[i].power(2) - m_mean.power(2));
         }
-        
+#else
+        for (i = 0; i < m_total_samples; i++) {
+            m_variance = m_variance + (m_last[i] - m_mean).power(2);
+        }
+#endif
+
         m_variance = m_variance/m_total_samples;
         
         m_kurtosis = number_t(0, 0);
@@ -125,9 +131,36 @@ sequence_t sequence_t::operator +(number_t n)
     if ((m_sampling_window > 0) && (m_total_samples >= m_sampling_window)) {
         m_total_samples = m_sampling_window;
     }
+  
+    return *this;
+}
+#if 0
+sequence_t sequence_t::operator +(number_t n)
+{
+    sequence_t seq;
+    number_t num[2];
+    m_last = n;
+    
+    m_mean = (m_mean * m_samples + m_last)/(m_samples + 1);
+    (((m_variance.power(2) * m_samples) + (m_last - m_mean).power(2))/(m_samples + 1)).sqroot(num);
+    m_variance = num[0];
+   #if 0 
+    if (m_max.m_re <= n.m_re) {
+        m_max = n;
+    }
+    
+    if (m_min.m_re >= n.m_re) {
+        m_min = n;
+    }
+    #endif
+    //m_variance.print();
+    //printf("\n");
+    
+    m_samples++;
     
     return *this;
 }
+#endif
 
 void sequence_t::reset()
 {
@@ -164,6 +197,8 @@ sequence_t::sequence_t(int sampling_window)
     
     m_total_samples = 0;
     m_sampling_window = sampling_window;
+  
+    m_samples = 0;
 }
 
 sequence_t::sequence_t()
@@ -183,6 +218,8 @@ sequence_t::sequence_t()
     
     m_total_samples = 0;
     m_sampling_window = 0;
+  
+    m_samples = 0;
     
 }
 

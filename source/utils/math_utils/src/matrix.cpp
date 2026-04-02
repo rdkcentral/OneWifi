@@ -339,16 +339,8 @@ int matrix_t::eigen(vector_t &vals, matrix_t &vecs)
     if (m_rows != m_cols) {
         return -1;
     }
-
-    // polynomial_t(faddeev_leverrier()).resolve(vals);
-    // vals.sort();
-
-    // polynomial_t(faddeev_leverrier()).laguerre_resolve(vals);
-    polynomial_t eq;
-    vals = faddeev_leverrier();
-
-    vals.print();
-    eq.laguerre_resolve(vals);
+    
+    polynomial_t(faddeev_leverrier()).resolve(vals);
     vals.sort();
     vals.print();
 
@@ -460,7 +452,7 @@ number_t matrix_t::determinant()
 matrix_t matrix_t::covariance()
 {
     unsigned int i, j;
-    matrix_t data_h, out(0, 0);
+    matrix_t t(0,0), c, out(0, 0);
 
     if (m_rows == 1) {
         wifi_util_error_print(WIFI_LIB,
@@ -469,15 +461,19 @@ matrix_t matrix_t::covariance()
             __func__, __LINE__);
         return out;
     }
+    
+    c = center();
+    t = c.transpose();
 
-    data_h = hermitian();
-
-    out = (*this) * data_h;
-
+    out.m_rows = m_cols;
+    out.m_cols = m_cols;
+    
+    out = t*c;
+    
     for (j = 0; j < out.m_cols; j++) {
         for (i = 0; i < out.m_rows; i++) {
-            out.m_val[i][j].m_re /= this->m_cols;
-            out.m_val[i][j].m_im /= this->m_cols;
+            out.m_val[i][j].m_re /= (m_rows - 1);
+            out.m_val[i][j].m_im /= (m_rows - 1);
         }
     }
 

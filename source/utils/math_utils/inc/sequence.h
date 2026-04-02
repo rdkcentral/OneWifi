@@ -36,6 +36,10 @@ public:
     number_t    m_min;
 	unsigned int	m_total_samples;
     unsigned int    m_sampling_window;
+#if 0
+    number_t    m_last;
+#endif
+	unsigned int	m_samples;
  
 public:
     
