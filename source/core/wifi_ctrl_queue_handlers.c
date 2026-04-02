@@ -3631,36 +3631,6 @@ static void process_monitor_init_command(void)
     }
     free(data);
 }
-void process_send_action_frame_command(void *data, unsigned int len)
-{
-    action_frame_params_t *params;
-
-    if (data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d NUll data Pointer\n", __func__, __LINE__);
-        return;
-    }
-
-    if (len < sizeof(action_frame_params_t) + 1) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid parameter size \r\n", __func__, __LINE__);
-        return;
-    }
-
-    params = (action_frame_params_t *)data;
-
-    if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
-            params->wait_time_ms, params->frame_data, params->frame_len)) {
-
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d HAL sendActionFrame method failed (ap_index:%d, dest_addr:" MAC_FMT
-            ", frequency:%d, wait_time_ms:%d)\n",
-            __func__, __LINE__, params->ap_index, MAC_ARG(params->dest_addr), params->frequency,
-            params->wait_time_ms);
-        return;
-    }
-
-    return;
-}
-
 void process_rsn_override_rfc(bool type)
 {
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
@@ -3774,6 +3744,36 @@ void process_rsn_override_rfc(bool type)
     }
     free(tgt_vap_map);
     tgt_vap_map = NULL;
+}
+
+void process_send_action_frame_command(void *data, unsigned int len)
+{
+    action_frame_params_t *params;
+
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NUll data Pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    if (len < sizeof(action_frame_params_t) + 1) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid parameter size \r\n", __func__, __LINE__);
+        return;
+    }
+
+    params = (action_frame_params_t *)data;
+
+    if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
+            params->wait_time_ms, params->frame_data, params->frame_len)) {
+
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d HAL sendActionFrame method failed (ap_index:%d, dest_addr:" MAC_FMT
+            ", frequency:%d, wait_time_ms:%d)\n",
+            __func__, __LINE__, params->ap_index, MAC_ARG(params->dest_addr), params->frequency,
+            params->wait_time_ms);
+        return;
+    }
+
+    return;
 }
 
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
