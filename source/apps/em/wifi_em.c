@@ -80,6 +80,13 @@ typedef struct {
     em_ap_radio_report_t radio_report[MAX_NUM_RADIOS];
 } em_ap_metrics_report_cache_t;
 
+typedef struct {
+    mac_addr_t bh_sta_mac_addr;
+    mac_addr_t target_bssid;
+    unsigned char op_class;
+    unsigned char channel_num;
+} bh_steering_req_t;
+
 //em_ap_metrics_report_cache_t em_ap_metrics_report_cache[MAX_NUM_RADIOS] = { 0 };
 em_ap_metrics_report_cache_t em_ap_metrics_report_cache = { 0 };
 client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
@@ -2139,6 +2146,107 @@ static void em_toggle_disconn_steady_state(void *data, unsigned int len)
     return bus_error_success;
 }
 
+static wifi_vap_info_t *get_mesh_sta_vap_by_mac(wifi_mgr_t *mgr, unsigned char *mac)
+{
+    unsigned int r, i, num_vaps;
+
+    for (r = 0; r < MAX_NUM_RADIOS; r++) {
+        num_vaps = mgr->radio_config[r].vaps.vap_map.num_vaps;
+        for (i = 0; i < num_vaps; i++) {
+            wifi_vap_info_t *v = &mgr->radio_config[r].vaps.vap_map.vap_array[i];
+            if (vap_svc_is_mesh_ext(v->vap_index) &&
+                memcmp(v->u.sta_info.mac, mac, sizeof(mac_addr_t)) == 0) {
+                return v;
+            }
+        }
+    }
+    return NULL;
+}
+
+static void em_handle_backhaul_steer(void *data, unsigned int len)
+{
+    bh_steering_req_t *req;
+    wifi_mgr_t *mgr;
+    wifi_ctrl_t *ctrl;
+    vap_svc_t *ext_svc;
+    wifi_vap_info_t *sta_vap;
+    wifi_vap_info_t steer_vap;
+    mac_addr_str_t sta_str, bssid_str;
+
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d NULL data pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    if (len < sizeof(bh_steering_req_t)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Invalid length %u, expected %zu\n",
+            __func__, __LINE__, len, sizeof(bh_steering_req_t));
+        return;
+    }
+
+    req = (bh_steering_req_t *)data;
+    to_mac_str(req->bh_sta_mac_addr, sta_str);
+    to_mac_str(req->target_bssid, bssid_str);
+    wifi_util_info_print(WIFI_EM,
+        "%s:%d BH Steer Request received: sta=%s target_bssid=%s op_class=%d channel=%d\n",
+        __func__, __LINE__, sta_str, bssid_str, req->op_class, req->channel_num);
+
+    mgr = (wifi_mgr_t *)get_wifimgr_obj();
+
+    sta_vap = get_mesh_sta_vap_by_mac(mgr, req->bh_sta_mac_addr);
+    if (sta_vap == NULL) {
+        wifi_util_error_print(WIFI_EM,
+            "%s:%d No mesh STA vap found for sta=%s\n",
+            __func__, __LINE__, sta_str);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_EM,
+        "%s:%d Mesh STA vap_index=%d ssid='%s' -> target_bssid=%s\n",
+        __func__, __LINE__, sta_vap->vap_index,
+        sta_vap->u.sta_info.ssid, bssid_str);
+
+    // Trigger the mesh STA connection state machine with the target BSSID.
+    steer_vap = *sta_vap;
+    memcpy(steer_vap.u.sta_info.bssid, req->target_bssid, sizeof(bssid_t));
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    if (ext_svc == NULL) {
+        wifi_util_error_print(WIFI_EM,
+            "%s:%d mesh ext service not available\n", __func__, __LINE__);
+        return;
+    }
+
+    ext_svc->event_fn(ext_svc, wifi_event_type_webconfig,
+        wifi_event_webconfig_set_data_sta_bssid, vap_svc_event_none, &steer_vap);
+}
+
+bus_error_t em_backhaul_steer(char *name, raw_data_t *p_data)
+{
+    char *pTmp = NULL;
+
+    if (!name) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Property name is not found\n",
+            __func__, __LINE__);
+        return bus_error_element_name_missing;
+    }
+
+    pTmp = (char *)p_data->raw_data.bytes;
+    if ((p_data->data_type != bus_data_type_bytes) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Wrong bus data_type:%x or null data\n",
+            __func__, __LINE__, p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    wifi_util_info_print(WIFI_EM, "%s:%d Pushing event to ctrl queue (len=%u)\n",
+        __func__, __LINE__, p_data->raw_data_len);
+    push_event_to_ctrl_queue(pTmp, p_data->raw_data_len, wifi_event_type_command,
+        wifi_event_type_backhaul_steer, NULL);
+
+    return bus_error_success;
+}
+
 void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
 {
     switch (event->sub_type) {
@@ -2159,6 +2267,11 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
     case wifi_event_type_toggle_disconn_steady_state:
         em_toggle_disconn_steady_state(event->u.core_data.msg, event->u.core_data.len);
         break;
+
+    case wifi_event_type_backhaul_steer:
+        em_handle_backhaul_steer(event->u.core_data.msg, event->u.core_data.len);
+        break;
+
     default:
         break;
     }
@@ -2351,6 +2464,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     bus_data_element_t dataElements[] = {
         { WIFI_EM_CHANNEL_SCAN_REQUEST, bus_element_type_method,
             { NULL, start_channel_scan, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_EM_BACKHAUL_STEER, bus_element_type_method,
+            { NULL, em_backhaul_steer, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, true, 0, 0, 0, NULL } },
         { WIFI_SET_DISCONN_STEADY_STATE, bus_element_type_method,
             { NULL, set_disconn_steady_state, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
