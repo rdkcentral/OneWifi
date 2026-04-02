@@ -3686,28 +3686,23 @@ void process_rsn_override_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
-        if (vapInfo == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
-                __func__, __LINE__, rIdx, apIndex);
-            continue;
-        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
             continue;
         }
 
+#if !defined(CONFIG_IEEE80211BE)
         if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
             wifi_util_info_print(WIFI_CTRL,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
             continue;
         }
-
+#endif
         memset(old_sec_mode, 0, sizeof(old_sec_mode));
         memset(new_sec_mode, 0, sizeof(new_sec_mode));
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, old_sec_mode);
         if(ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string for mode %d\n",
-                __func__, __LINE__, vapInfo->u.bss_info.security.mode);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
         }
 
         if(type) {
@@ -3717,6 +3712,13 @@ void process_rsn_override_rfc(bool type)
             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+
+#if defined(CONFIG_IEEE80211BE)
+            if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
+                vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+                vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+            }
+#endif /* CONFIG_IEEE80211BE */
         } else {
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
                 continue;
@@ -3728,22 +3730,21 @@ void process_rsn_override_rfc(bool type)
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
             }
 
-        if(rfc_param->wpa3_rfc) {
+	    if(rfc_param->wpa3_rfc) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             }
+#if defined(CONFIG_IEEE80211BE)
+            if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
+                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+            }
+#endif
         }
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, new_sec_mode);
         if(ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
-        }
-
-        wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
-            __func__, __LINE__, old_sec_mode, new_sec_mode);
-        if (strcmp(old_sec_mode, new_sec_mode) != 0) {
-            notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
         }
 
         memset(tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
@@ -3764,6 +3765,11 @@ void process_rsn_override_rfc(bool type)
             wifi_util_error_print(WIFI_CTRL,"%s:%d: Private vaps service update_fn failed \n",__func__, __LINE__);
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
+                __func__, __LINE__, old_sec_mode, new_sec_mode);
+            if( (strcmp(old_sec_mode, new_sec_mode) != 0) && (new_sec_mode != NULL || old_sec_mode != NULL)) {
+                notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
+            }
         }
     }
     free(tgt_vap_map);
