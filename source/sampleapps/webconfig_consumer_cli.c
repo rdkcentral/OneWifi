@@ -71,7 +71,7 @@ char *read_subdoc_input_param_from_file(char *file_path)
 {
     FILE *file_ptr = NULL;
     char *read_data = NULL;
-    unsigned int data_len = 0;
+    long data_len = 0;
     // Opening file in reading mode
     file_ptr = fopen(file_path, "r");
     if (file_ptr == NULL) {
@@ -80,6 +80,11 @@ char *read_subdoc_input_param_from_file(char *file_path)
     } else {
         fseek(file_ptr, 0, SEEK_END);
         data_len = ftell(file_ptr);
+        if (data_len < 0) {
+            printf("%s:%d Failed to get file size:%s\r\n", __func__, __LINE__, file_path);
+            fclose(file_ptr);
+            return NULL;
+        }
         fseek(file_ptr, 0, SEEK_SET);
         if (data_len != 0) {
             read_data = (char *)calloc(data_len, sizeof(char));
@@ -88,10 +93,10 @@ char *read_subdoc_input_param_from_file(char *file_path)
                 fclose(file_ptr);
                 return NULL;
             }
-            if (fread(read_data, data_len, 1, file_ptr) != 0) {
-                printf("%s:%d file read success:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
+            if (fread(read_data, data_len, 1, file_ptr) == 1) {
+                printf("%s:%d file read success:%s data len:%ld\r\n", __func__, __LINE__, file_path, data_len);
             } else {
-                printf("%s:%d file read failure:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
+                printf("%s:%d file read failure:%s data len:%ld\r\n", __func__, __LINE__, file_path, data_len);
                 fclose(file_ptr);
                 free(read_data);
                 return NULL;
