@@ -98,7 +98,6 @@ typedef struct {
         em_data_t            em_data;
 #endif //EM_APP
         linkquality_data_t linkquality;
-        memwraptool_config_t memwraptool;
     } u;
 } wifi_app_data_t;
 
