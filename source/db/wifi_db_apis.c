@@ -90,6 +90,7 @@
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100043
 #define ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG 100044
 #define ONEWIFI_DB_VERSION_IGNITE_FLAG 100045
+#define ONEWIFI_DB_VERSION_ENCR_GCMP_FLAG 100048
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -2502,10 +2503,17 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->mfp_config,pcfg->key_type,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->wpa3_transition_disable);
 
     def_mode = sec->mode;
-    if ((band == WIFI_FREQUENCY_6_BAND)  && (pcfg->security_mode != wifi_security_mode_wpa3_personal && \
+    if ((band == WIFI_FREQUENCY_6_BAND)  && (pcfg->security_mode != wifi_security_mode_wpa3_personal &&
+#if defined(CONFIG_IEEE80211BE)
+     pcfg->security_mode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
       pcfg->security_mode != wifi_security_mode_wpa3_enterprise &&  pcfg->security_mode != wifi_security_mode_enhanced_open)) {
         sec->mode = wifi_security_mode_wpa3_personal;
+#ifdef CONFIG_IEEE80211BE
+        sec->encr = wifi_encryption_aes_gcmp256;
+#else
         sec->encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
         wifi_util_error_print(WIFI_DB, "%s:%d Invalid Security mode for 6G %d\n", __func__, __LINE__, pcfg->security_mode);
     } else {
         sec->mode = (pcfg->security_mode_new == WPA3_COMPATIBILITY) ? pcfg->security_mode_new : pcfg->security_mode;
@@ -5042,6 +5050,8 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
     unsigned int i;
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    bool is_vap_info_upgrade_needed = false;
+    bool is_vap_sec_upgrade_needed = false;
 
     if (g_wifidb->db_version == 0) {
         return;
@@ -5051,11 +5061,12 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         __LINE__, g_wifidb->db_version);
 
     for (i = 0; i < config->num_vaps; i++) {
+        is_vap_info_upgrade_needed = false;
+        is_vap_sec_upgrade_needed = false;
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_EXISTS_FLAG) {
             if (ctrl->network_mode != rdk_dev_mode_type_ext) {
                 rdk_config[i].exists = true;
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                    &rdk_config[i]);
+                is_vap_info_upgrade_needed = true;
             }
         }
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
@@ -5075,8 +5086,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             !isVapSTAMesh(config->vap_array[i].vap_index)) {
             config->vap_array[i].u.bss_info.mbo_enabled = !isVapPrivate(
                 config->vap_array[i].vap_index);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                &rdk_config[i]);
+            is_vap_info_upgrade_needed = true;
         }
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_FLAG) {
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap config, db version %d\n", __func__,
@@ -5092,9 +5102,15 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             if( config->vap_array[i].u.bss_info.security.mode == WPA3_COMPATIBILITY) {
                 config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                 config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+                if( ( config->vap_array[i].radio_index == 2) ) {
+                    config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+                    config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                }
+#endif /* CONFIG_IEEE80211BE */			
                 wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__, config->vap_array[i].u.bss_info.security.mode,
                         config->vap_array[i].u.bss_info.security.mfp);
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i], &rdk_config[i]);
+                is_vap_info_upgrade_needed = true;
             }
         }
 
@@ -5108,8 +5124,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
                     config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl,
                     config->vap_array[i].vap_index);
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                    &rdk_config[i]);
+                is_vap_info_upgrade_needed = true;
             }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
@@ -5123,8 +5138,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 "%s:%d Update interop_ctrl:%d inum_sta:%d for vap_index:%d \n", __func__, __LINE__,
                 config->vap_array[i].u.bss_info.interop_ctrl,config->vap_array[i].u.bss_info.inum_sta,
                 config->vap_array[i].vap_index);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                &rdk_config[i]);
+            is_vap_info_upgrade_needed = true;
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG) {
@@ -5133,8 +5147,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_dbg_print(WIFI_DB, "%s:%d Update speed_tier:%d for vap_index:%d \n", __func__,
                 __LINE__, config->vap_array[i].u.bss_info.am_config.npc.speed_tier,
                 config->vap_array[i].vap_index);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                &rdk_config[i]);
+            is_vap_info_upgrade_needed = true;
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG) {
@@ -5148,10 +5161,10 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
             if (sec->wpa3_transition_disable != false) {
                 sec->wpa3_transition_disable = false;
-                int ret = wifidb_update_wifi_security_config(config->vap_array[i].vap_name, sec);
+                is_vap_sec_upgrade_needed = true;
                 wifi_util_info_print(WIFI_DB, "%s:%d force change wpa3 transition"
-                    " disable state to false for vap:%s ret:%d\r\n", __func__, __LINE__,
-                    config->vap_array[i].vap_name, ret);
+                    " disable state to false for vap:%s\r\n", __func__, __LINE__,
+                    config->vap_array[i].vap_name);
             }
         }
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG) {
@@ -5170,8 +5183,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 #endif
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
-                    &rdk_config[i]);
+                is_vap_info_upgrade_needed = true;
             }
         }
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG) {
@@ -5183,10 +5195,52 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                         __func__, __LINE__, g_wifidb->db_version, config->vap_array[i].vap_name);
                     config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id =
                         config->vap_array[0].u.bss_info.mld_info.common_info.mld_link_id;
-                    wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
-                        &config->vap_array[i], &rdk_config[i]);
+                    is_vap_info_upgrade_needed = true;
                 }
             }
+        }
+#ifdef CONFIG_IEEE80211BE
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_ENCR_GCMP_FLAG) {
+            wifi_vap_security_t *sec = NULL;
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                sec = &config->vap_array[i].u.bss_info.security;
+            } else {
+                sec = &config->vap_array[i].u.sta_info.security;
+            }
+
+            if (sec->encr == wifi_encryption_aes &&
+                (sec->mode == wifi_security_mode_enhanced_open ||
+                    sec->mode == wifi_security_mode_wpa3_enterprise ||
+                    sec->mode == wifi_security_mode_wpa3_personal ||
+                    sec->mode == wifi_security_mode_wpa3_compatibility ||
+                    sec->mode == wifi_security_mode_wpa3_transition)) {
+                sec->encr = wifi_encryption_aes_gcmp256;
+                is_vap_sec_upgrade_needed = true;
+                wifi_util_info_print(WIFI_DB,
+                    "%s:%d force change encryption type to AES+GCMP for vap:%s\r\n",
+                    __func__, __LINE__, config->vap_array[i].vap_name);
+            }
+        }
+#endif /* CONFIG_IEEE80211BE */
+        if (is_vap_info_upgrade_needed) {
+            int ret = wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
+                        &config->vap_array[i], &rdk_config[i]);
+            wifi_util_info_print(WIFI_DB, "%s:%d wifidb update wifi vap info"
+                " for vap:%s ret:%d\r\n", __func__, __LINE__,
+                config->vap_array[i].vap_name, ret);
+        }
+        if (is_vap_sec_upgrade_needed) {
+            wifi_vap_security_t *sec = NULL;
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                sec = &config->vap_array[i].u.bss_info.security;
+            } else {
+                sec = &config->vap_array[i].u.sta_info.security;
+            }
+
+            int ret = wifidb_update_wifi_security_config(config->vap_array[i].vap_name, sec);
+            wifi_util_info_print(WIFI_DB, "%s:%d wifidb update wifi vap sec"
+                " for vap:%s ret:%d\r\n", __func__, __LINE__,
+                config->vap_array[i].vap_name, ret);
         }
     }
 }
@@ -6539,16 +6593,25 @@ int wifidb_get_wifi_security_config_old_mode(char *vap_name, int vap_index)
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
     int count, sec_mode_old = 0;
-
+#if defined(CONFIG_IEEE80211BE)
+    bool is_6g = strstr(vap_name, "6g")?true:false;
+#endif /* CONFIG_IEEE80211BE */
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Security_Config, where, &count);
 
     if (pcfg == NULL) {
         wifidb_print("%s:%d Table table_Wifi_Security_Config table not found, entry count=%d \n",__func__, __LINE__, count);
+#if defined(CONFIG_IEEE80211BE)
+        if(is_6g)
+            return wifi_security_mode_wpa3_personal;
+#endif /* CONFIG_IEEE80211BE */		
         return wifi_security_mode_wpa2_personal;
     }
+	
     sec_mode_old = (isVapPrivate(vap_index) && !pcfg->security_mode) ? wifi_security_mode_wpa2_personal : pcfg->security_mode;
-
+#if defined(CONFIG_IEEE80211BE)
+    sec_mode_old = (is_6g && !pcfg->security_mode) ? wifi_security_mode_wpa3_personal : pcfg->security_mode;
+#endif /* CONFIG_IEEE80211BE */
     return sec_mode_old;
 }
 
@@ -6586,8 +6649,8 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     cfg_sec.security_mode = sec->mode;
     if( sec->mode == WPA3_COMPATIBILITY ) {
-    cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
-    wifi_util_info_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
+        cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
+        wifi_util_info_print(WIFI_DB,"%s:%d: vap_index:%d security_mode:%d \n",__func__, __LINE__, vap_index, cfg_sec.security_mode);
     }
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
@@ -7568,7 +7631,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg->u.bss_info.security.mode = wifi_security_mode_enhanced_open;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+#ifdef CONFIG_IEEE80211BE
+                cfg->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 cfg->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             }
             else {
                 cfg->u.bss_info.security.mode = wifi_security_mode_none;
@@ -7578,11 +7645,16 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa3_enterprise;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+#ifdef CONFIG_IEEE80211BE
+                cfg->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             }
             else {
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
             }
-            cfg->u.bss_info.security.encr = wifi_encryption_aes;
         } else if (isVapLnfSecure (vap_index)) {
             cfg->u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
             cfg->u.bss_info.security.encr = wifi_encryption_aes;
@@ -7592,6 +7664,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
@@ -7600,11 +7677,16 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 cfg->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 #else
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
 #endif
             }
-            cfg->u.bss_info.security.encr = wifi_encryption_aes;
             cfg->u.bss_info.bssHotspot = false;
             cfg->u.bss_info.mbo_enabled = false;
         } else  {
@@ -7613,17 +7695,27 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             } else {
 #if defined(NEWPLATFORM_PORT)
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 cfg->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 #else
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                cfg->u.bss_info.security.encr = wifi_encryption_aes;
 #endif
             }
-            cfg->u.bss_info.security.encr = wifi_encryption_aes;
             cfg->u.bss_info.bssHotspot = false;
         }
         cfg->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
