@@ -215,6 +215,36 @@ int apps_mgr_cac_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_e
     return RETURN_OK;
 }
 #endif
+int apps_mgr_link_quality_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_event_subtype_t sub_type, void *arg, int len)
+{
+    wifi_app_t  *app = NULL;
+    wifi_event_t *event;
+
+    event = (wifi_event_t *)create_wifi_event((len), type, sub_type);
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d failed to allocate memory to event\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (arg == NULL) {
+        event->u.core_data.msg = NULL;
+        event->u.core_data.len = 0;
+    } else {
+        /* copy msg to data */
+        event->u.core_data.msg  = arg;
+        event->u.core_data.len = len;
+        event->event_type = type;
+        event->sub_type = sub_type;
+    }
+
+    app = get_app_by_inst(apps_mgr, wifi_app_inst_link_quality);
+
+    app->desc.event_fn(app, event);
+
+    destroy_wifi_event(event);
+
+    return RETURN_OK;
+}
 int app_deinit(wifi_app_t *app, unsigned int create_flag)
 {
     if (create_flag & APP_DETACHED) {

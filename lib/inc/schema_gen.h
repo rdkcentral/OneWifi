@@ -209,6 +209,7 @@
         PJS_OVS_BOOL(wifi_offchannelscan_sm_rfc) \
         PJS_OVS_BOOL(tcm_enabled_rfc) \
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
+        PJS_OVS_BOOL(link_quality_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1643,6 +1644,7 @@
         PJS_OVS_INT(mgt_frame_rate_limit) \
         PJS_OVS_INT(mgt_frame_rate_limit_window_size) \
         PJS_OVS_INT(mgt_frame_rate_limit_cooldown_time) \
+        PJS_OVS_STRING(ignite_link_quality_threshold, 64 + 1) \
     )
 
 #define PJS_SCHEMA_Wifi_Preassoc_Control_Config \
@@ -1683,6 +1685,17 @@
         PJS_OVS_STRING(vap_name, 128 + 1) \
         PJS_OVS_UUID(pre_assoc) \
         PJS_OVS_UUID(post_assoc) \
+    )
+
+#define PJS_SCHEMA_Wifi_Ignite_Config \
+    PJS(schema_Wifi_Ignite_Config, \
+        PJS_OVS_UUID_Q(_uuid) \
+        PJS_OVS_UUID_Q(_version) \
+        PJS_OVS_STRING(ignite_name, 32 + 1) \
+        PJS_OVS_INT(min_chanutil_threshold) \
+        PJS_OVS_INT(max_chanutil_threshold) \
+        PJS_OVS_INT(snr_threshold) \
+        PJS_OVS_INT(snr_difference) \
     )
 
 #define PJS_GEN_TABLE \
@@ -1780,7 +1793,8 @@
      PJS_SCHEMA_MLD_Config \
      PJS_SCHEMA_Reboot_Status \
      PJS_SCHEMA_Service_Announcement \
-     PJS_SCHEMA_Node_Services
+     PJS_SCHEMA_Node_Services \
+     PJS_SCHEMA_Wifi_Ignite_Config 
 
 #define SCHEMA_LIST \
     SCHEMA(AWLAN_Node) \
@@ -1804,6 +1818,7 @@
     SCHEMA(Wifi_Preassoc_Control_Config) \
     SCHEMA(Wifi_Postassoc_Control_Config) \
     SCHEMA(Wifi_Connection_Control_Config) \
+    SCHEMA(Wifi_Ignite_Config) \
     SCHEMA(Wifi_Anqp_Config) \
     SCHEMA(Wifi_Passpoint_Config) \
     SCHEMA(Wifi_Radio_State) \
@@ -1903,6 +1918,7 @@
     SCHEMA(Wifi_Preassoc_Control_Config) \
     SCHEMA(Wifi_Postassoc_Control_Config) \
     SCHEMA(Wifi_Connection_Control_Config) \
+    SCHEMA(Wifi_Ignite_Config) \
     SCHEMA(Wifi_Radio_State) \
     SCHEMA(Wifi_Credential_Config) \
     SCHEMA(Wifi_VIF_Config) \
@@ -2140,7 +2156,8 @@
     COLUMN(wifi_offchannelscan_app_rfc) \
     COLUMN(wifi_offchannelscan_sm_rfc) \
     COLUMN(tcm_enabled_rfc) \
-    COLUMN(wpa3_compatibility_enable)
+    COLUMN(wpa3_compatibility_enable) \
+    COLUMN(link_quality_rfc)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3319,7 +3336,8 @@
     COLUMN(mgt_frame_rate_limit_enable)           \
     COLUMN(mgt_frame_rate_limit)                  \
     COLUMN(mgt_frame_rate_limit_window_size)      \
-    COLUMN(mgt_frame_rate_limit_cooldown_time)
+    COLUMN(mgt_frame_rate_limit_cooldown_time)    \
+    COLUMN(ignite_link_quality_threshold)
 
 #define SCHEMA__Wifi_Preassoc_Control_Config "Wifi_Preassoc_Control_Config"
 #define SCHEMA_COLUMN__Wifi_Preassoc_Control_Config(COLUMN) \
@@ -3351,6 +3369,14 @@
     COLUMN(vap_name) \
     COLUMN(pre_assoc) \
     COLUMN(post_assoc) \
+
+#define SCHEMA__Wifi_Ignite_Config "Wifi_Ignite_Config"
+#define SCHEMA_COLUMN__Wifi_Ignite_Config(COLUMN) \
+    COLUMN(ignite_name) \
+    COLUMN(min_chanutil_threshold) \
+    COLUMN(max_chanutil_threshold) \
+    COLUMN(snr_threshold) \
+    COLUMN(snr_difference) \
 
 #define SCHEMA__AWLAN_Node__id "id"
 #define SCHEMA__AWLAN_Node__model "model"
@@ -3503,6 +3529,7 @@
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
+#define SCHEMA__Wifi_Rfc_Config__link_quality_rfc "link_quality_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
@@ -4592,6 +4619,7 @@
 #define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit "mgt_frame_rate_limit"
 #define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_window_size "mgt_frame_rate_limit_window_size"
 #define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_cooldown_time "mgt_frame_rate_limit_cooldown_time"
+#define SCHEMA__Wifi_Global_Config__ignite_link_quality_threshold "ignite_link_quality_threshold"
 
 #define SCHEMA__Wifi_Preassoc_Control_Config__rssi_up_threshold "rssi_up_threshold"
 #define SCHEMA__Wifi_Preassoc_Control_Config__snr_threshold "snr_threshold"
@@ -4617,3 +4645,9 @@
 #define SCHEMA__Wifi_Connection_Control_Config__vap_name "vap_name"
 #define SCHEMA__Wifi_Connection_Control_Config__pre_assoc "pre_assoc"
 #define SCHEMA__Wifi_Connection_Control_Config__post_assoc "post_assoc"
+
+#define SCHEMA__Wifi_Ignite_Config__ignite_name "ignite_name"
+#define SCHEMA__Wifi_Ignite_Config__min_chanutil_threshold "min_chanutil_threshold"
+#define SCHEMA__Wifi_Ignite_Config__max_chanutil_threshold "max_chanutil_threshold"
+#define SCHEMA__Wifi_Ignite_Config__snr_threshold "snr_threshold"
+#define SCHEMA__Wifi_Ignite_Config__snr_difference "snr_difference"

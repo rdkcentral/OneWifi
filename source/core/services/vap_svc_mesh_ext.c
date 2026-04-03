@@ -24,6 +24,7 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <unistd.h>
 #include "const.h"
 #include <unistd.h>
@@ -32,6 +33,9 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_hal_rdk_framework.h"
+#include "wifi_base.h"
+#include "wifi_stubs.h"
+#define SCORE_TIE_THRESHOLD 1
 
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
@@ -39,6 +43,15 @@
 #define EXT_DISCONNECTION_NO_ACTION 0
 #define EXT_DISCONNECTION_DISCONNECT 1
 #define EXT_DISCONNECTION_DISCONNECT_AND_IGNORE_RADIO 2
+
+/**
+ * @brief Temporary structure for sorting with computed scores
+ */
+typedef struct {
+    bss_candidate_t *candidate;
+    float score;
+    int bucket;
+} bss_score_entry_t;
 
 static void swap_bss(bss_candidate_t *a, bss_candidate_t *b)
 {
@@ -119,6 +132,180 @@ void sort_bss_results_by_rssi(bss_candidate_t *bss, int start, int end)
     get_rssi_normalizer_value(PATH_TO_RSSI_NORMALIZER_FILE, &rssi_2_4_normalizer_val);
     wifi_util_dbg_print(WIFI_CTRL, "%s():[%d] RSSI normalizer value [%d]\n", __FUNCTION__, __LINE__, rssi_2_4_normalizer_val);
     start_sorting_by_rssi(bss, start, end, rssi_2_4_normalizer_val);
+}
+
+int get_variant_rank(wifi_ieee80211Variant_t variant)
+{
+    if (variant & WIFI_80211_VARIANT_BE) return 8;
+    if (variant & WIFI_80211_VARIANT_AX) return 7;
+    if (variant & WIFI_80211_VARIANT_AC) return 6;
+    if (variant & WIFI_80211_VARIANT_N)  return 5;
+    if (variant & WIFI_80211_VARIANT_G)  return 4;
+    if (variant & WIFI_80211_VARIANT_B)  return 3;
+    if (variant & WIFI_80211_VARIANT_A)  return 2;
+    return 1;
+}
+/**
+ * @brief Comparator for qsort - sorts by score (descending)
+ */
+static int compare_bss_scores(const void *a, const void *b) {
+    float scoreA = ((bss_score_entry_t *)a)->score;
+    float scoreB = ((bss_score_entry_t *)b)->score;
+    // Descending order: if scoreA < scoreB, return positive
+    return (scoreA < scoreB) - (scoreA > scoreB);
+}
+
+/**
+ * @brief Sort and rank BSS candidates by computed score
+ * @param scan_list Array of BSS candidates
+ * @param count Number of candidates
+ * @param config Radio-specific ignite configuration
+ * @return Number of valid results on success, -1 on error
+ */
+int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
+{
+    if ((scan_list == NULL) || (count <= 0)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s %d Error in passing the values. Count : %d\n", __func__, __LINE__, count);
+        return RETURN_ERR;
+    }
+
+    int valid_count = 0;
+    float max_bucket1_snr = 0.0;
+    float chutil_weighting_factor = 0.2;
+    float snr_weighting_factor = 0.5;
+    mac_addr_str_t bssid_str;
+    ignite_config_t *ignite_config;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+
+    // Allocate temporary scoring array
+    bss_score_entry_t *scores = malloc(count * sizeof(bss_score_entry_t));
+    if (!scores) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d Memory Allocation failure\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    for (int i = 0; i < count; i++) {
+        int radio_index = 0;
+        if (convert_freq_band_to_radio_index(scan_list[i].external_ap.oper_freq_band, &radio_index) == RETURN_ERR) {
+             wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get radio index for band %d\n",
+                 __func__, __LINE__, scan_list[i].external_ap.oper_freq_band);
+             free(scores);
+             return RETURN_ERR;
+        }
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold ,mgr->ignite_config[radio_index].SNR_threshold ,mgr->ignite_config[radio_index].SNR_difference);
+
+        ignite_config = &mgr->ignite_config[radio_index];
+        float chan_util = (float)scan_list[i].external_ap.chan_utilization;
+        float snr = (float)scan_list[i].external_ap.snr;
+
+        if (chan_util > ignite_config->max_chanutil_threshold) {
+            wifi_util_dbg_print(WIFI_CTRL, "  -> CU %.2f ignored (above %.0f)\n", (float)scan_list[i].external_ap.chan_utilization, ignite_config->max_chanutil_threshold);
+            continue;
+        }
+
+        // Allocate memory for candidate(valid entries) and copy data
+        scores[valid_count].candidate = malloc(sizeof(bss_candidate_t));
+        if (!scores[valid_count].candidate) {
+            wifi_util_error_print(WIFI_CTRL, "%s %d Memory Allocation failure for candidate\n", __func__, __LINE__);
+            // Free previously allocated candidates
+            for (int j = 0; j < valid_count; j++) {
+                free(scores[j].candidate);
+            }
+            free(scores);
+            return RETURN_ERR;
+        }
+        *scores[valid_count].candidate = scan_list[i];
+        scores[valid_count].bucket = (chan_util < ignite_config->min_chanutil_threshold) ? 1 : 2;
+        scores[valid_count].score = snr - (chutil_weighting_factor * chan_util);
+
+	    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] BSSID : %s SNR : %f chan-util : %.2f bucket : %d score : %f", __func__, __LINE__, to_mac_str(scan_list[i].external_ap.bssid, bssid_str), snr, chan_util, scores[valid_count].bucket,  scores[valid_count].score);
+    // Track max SNR in bucket 1
+        if (scores[valid_count].bucket == 1 && snr > max_bucket1_snr) {
+            max_bucket1_snr = snr;
+        }
+        valid_count++;
+    }
+
+    if (valid_count == 0) {
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] No valid scan count..\n", __func__, __LINE__);
+        free(scores);
+        return RETURN_OK;  // No valid results
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] valid-count : %d max_bucket1_snr : %f\n", __func__, __LINE__, valid_count, max_bucket1_snr);
+
+    // Step 2: Apply SNR advantage rule for bucket 2
+    for (int i = 0; i < valid_count; i++) {
+        float snr_diff = 0.0;
+        if (scores[i].bucket == 2) {
+            int radio_index = 0;
+	        float snr_bucket2 = 0.0;
+            if (convert_freq_band_to_radio_index(scan_list[i].external_ap.oper_freq_band,
+                    &radio_index) == RETURN_ERR) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get radio index for band %d\n",
+                    __func__, __LINE__, scan_list[i].external_ap.oper_freq_band);
+                free(scores);
+                return RETURN_ERR;
+            }
+            wifi_util_dbg_print(WIFI_CTRL,
+                "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__,
+                __LINE__, count, mgr->ignite_config[radio_index].ignite_name,
+                mgr->ignite_config[radio_index].min_chanutil_threshold,
+                mgr->ignite_config[radio_index].max_chanutil_threshold,
+                mgr->ignite_config[radio_index].SNR_threshold,
+                mgr->ignite_config[radio_index].SNR_difference);
+            ignite_config_t *cfg = &mgr->ignite_config[radio_index];
+	        snr_bucket2 = (float)scores[i].candidate->external_ap.snr;
+            snr_diff = snr_bucket2 - max_bucket1_snr;
+            wifi_util_dbg_print(WIFI_CTRL, "[%s %d] BSSID : %s SNR : %f snr_diff : %f\n", __func__,
+                __LINE__, to_mac_str(scores[i].candidate->external_ap.bssid, bssid_str),
+                snr_bucket2, snr_diff);
+            if (snr_diff > cfg->SNR_difference) {
+                scores[i].score += snr_diff * snr_weighting_factor;
+            }
+        }
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] score : %f\n", __func__, __LINE__, scores[i].score);
+    }
+
+    // Step 3: Sort by descending score
+    qsort(scores, valid_count, sizeof(bss_score_entry_t), compare_bss_scores);
+
+    float base_score = scores[0].score; /* fixed reference */
+
+    for (int i = 1; i < valid_count; i++) {
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] base-score:%.4f score:%.4f\n", __func__, __LINE__,
+            base_score, scores[i].score);
+        float diff = base_score - scores[i].score;
+
+        if (diff > SCORE_TIE_THRESHOLD)
+            break; /* sorted — everything beyond is also out of range */
+
+        int rank0 = get_variant_rank(scores[0].candidate->external_ap.oper_standards);
+        int rank1 = get_variant_rank(scores[i].candidate->external_ap.oper_standards);
+
+        wifi_util_dbg_print(WIFI_CTRL,
+            "%s:%d variant-check i=%d diff=%.4f base-score=%.4f "
+            "rank[0]=%d rank[i]=%d\n",
+            __func__, __LINE__, i, diff, base_score, rank0, rank1);
+
+        if (rank1 > rank0) {
+            bss_score_entry_t tmp = scores[0];
+            scores[0] = scores[i];
+            scores[i] = tmp;
+        }
+    }
+
+    // Step 5: Copy sorted results back to scan_list
+    for (int i = 0; i < valid_count; i++) {
+        scan_list[i] = *scores[i].candidate;
+        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] List : %d %s %f\n", __func__, __LINE__, i, to_mac_str(scan_list[i].external_ap.bssid, bssid_str), scores[i].score);
+    }
+
+    // Free allocated candidate memory
+    for (int i = 0; i < valid_count; i++) {
+        free(scores[i].candidate);
+    }
+    free(scores);
+    return valid_count;
 }
 
 bool vap_svc_is_mesh_ext(unsigned int vap_index)
@@ -416,6 +603,57 @@ static int process_trigger_disconnection_event_timeout(vap_svc_t *svc)
     return 0;
 }
 
+static int validate_ip(const char *ip, int family) {
+    char buf[sizeof(struct in6_addr)] = {0};
+    wifi_util_info_print(WIFI_CTRL,"%s:%d IP : %s Family : %d\n", __func__, __LINE__, ip, family);
+    return (inet_pton(family, ip, buf) == 1);
+}
+
+int has_valid_ip(const char *iface) {
+    struct ifaddrs *ifaddr, *ifa;
+    char addr[INET6_ADDRSTRLEN];
+    bool found = 0;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed in getifaddrs\n", __func__, __LINE__);
+        return 0; // failure
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (!ifa->ifa_addr)
+            continue;
+
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d ifa-name : %s iface : %s\n", __func__, __LINE__, ifa->ifa_name, iface);
+        if (strcmp(ifa->ifa_name, iface) != 0)
+            continue;
+
+        int family = ifa->ifa_addr->sa_family;
+
+        if (family == AF_INET) {
+            struct sockaddr_in *sin = (struct sockaddr_in *)ifa->ifa_addr;
+            if (inet_ntop(AF_INET, &sin->sin_addr, addr, sizeof(addr))) {
+                if (validate_ip(addr, AF_INET)) {
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d Valid IPv4 on %s: %s\n", __func__, __LINE__, iface, addr);
+                    found = 1;
+                    break; // return immediately if at least one valid IP
+                }
+            }
+        } else if (family == AF_INET6) {
+            struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+            if (inet_ntop(AF_INET6, &sin6->sin6_addr, addr, sizeof(addr))) {
+                if (validate_ip(addr, AF_INET6)) {
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d Valid IPv6 on %s: %s\n", __func__, __LINE__, iface, addr);
+                    found = 1;
+                    break; // return immediately if at least one valid IP
+                }
+            }
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    return found;
+}
+
 int process_udhcp_ip_check(vap_svc_t *svc)
 {
     static int ip_check_count = 0;
@@ -426,44 +664,60 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     size_t len = 0;
     wifi_interface_name_t *interface_name;
     FILE *fp = NULL;
-
-    vap_svc_ext_t   *ext;
+    vap_svc_ext_t *ext;
     wifi_ctrl_t *ctrl;
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
-
-    memset(value, '\0', sizeof(value));
-    memset(value, '\0', sizeof(file_name));
-    memset(command, '\0', sizeof(command));
-
-    interface_name = get_interface_name_for_vap_index(ext->connected_vap_index, svc->prop);
-    if ((interface_name == NULL) && (ip_check_count < EXT_UDHCP_IP_CHECK_NUM)) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Unable to fetch proper Interface name for connected index%d\n", __func__, __LINE__, ext->connected_vap_index);
-        ip_check_count++;
-        return 0;
-    }
-
-    snprintf(file_name, sizeof(file_name), "/var/run/udhcpc-%s.opts", *interface_name);
-    snprintf(command, sizeof(command), "grep \"ip=\" %s | cut -d '=' -f 2", file_name);
-
-    if ((ip_check_count < EXT_UDHCP_IP_CHECK_NUM) &&
-        (ext->conn_state == connection_state_connected)) {
-        if (access(file_name , F_OK) == 0) {
-            fp = popen(command, "r");
-            if (fp != NULL) {
-                fgets(value, sizeof(value), fp);
-                len  = strlen(value);
-                if (len > 0) {
-                    value[len-1] = '\0';
-                    if ((inet_pton(AF_INET, value, &(sa.sin_addr)) == 1) || (inet_pton(AF_INET6, value, &(sa.sin_addr)) == 1)) {
-                        scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
-                        ext->ext_udhcp_ip_check_id = 0;
-                        ip_check_count = 0;
-                        pclose(fp);
-                        return 0;
+    
+    wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status value : %d\n", __func__, __LINE__, ctrl->rf_status_down);
+    if (ctrl->rf_status_down == false) {
+        memset(value, '\0', sizeof(value));
+        memset(value, '\0', sizeof(file_name));
+        memset(command, '\0', sizeof(command));
+        interface_name = get_interface_name_for_vap_index(ext->connected_vap_index, svc->prop);
+        if ((interface_name == NULL) && (ip_check_count < EXT_UDHCP_IP_CHECK_NUM)) {
+            wifi_util_dbg_print(WIFI_CTRL,
+                "%s:%d Unable to fetch proper Interface name for connected index%d\n", __func__,
+                __LINE__, ext->connected_vap_index);
+            ip_check_count++;
+            return 0;
+        }
+        snprintf(file_name, sizeof(file_name), "/var/run/udhcpc-%s.opts", *interface_name);
+        snprintf(command, sizeof(command), "grep \"ip=\" %s | cut -d '=' -f 2", file_name);
+        if ((ip_check_count < EXT_UDHCP_IP_CHECK_NUM) &&
+            (ext->conn_state == connection_state_connected)) {
+            if (access(file_name, F_OK) == 0) {
+                fp = popen(command, "r");
+                if (fp != NULL) {
+                    fgets(value, sizeof(value), fp);
+                    len = strlen(value);
+                    if (len > 0) {
+                        value[len - 1] = '\0';
+                        if ((inet_pton(AF_INET, value, &(sa.sin_addr)) == 1) ||
+                            (inet_pton(AF_INET6, value, &(sa.sin_addr)) == 1)) {
+                            scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+                            ext->ext_udhcp_ip_check_id = 0;
+                            ip_check_count = 0;
+                            pclose(fp);
+                            return 0;
+                        }
                     }
+                    pclose(fp);
                 }
-                pclose(fp);
+            }
+        }
+    } else {
+        if ((ip_check_count < EXT_UDHCP_IP_CHECK_NUM) &&
+            (ext->conn_state == connection_state_connected)) {
+            char iface[32] = "brww0";
+            if (has_valid_ip(iface)) {
+                wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Received Valid IP address on brww0 interface\n");
+                scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+                ext->ext_udhcp_ip_check_id = 0;
+                ip_check_count = 0;
+                return 0;
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
             }
         }
     }
@@ -472,7 +726,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
         ext->ext_udhcp_ip_check_id = 0;
         ip_check_count = 0;
-        wifi_util_error_print(WIFI_CTRL,"%s:%d No IP on connected interface triggering a disconnect\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d No IP on connected interface triggering a disconnect\n", __func__, __LINE__);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_udhcp_ip_fail, ext);
         ext->disconn_retry++;
         wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n",
@@ -481,10 +735,9 @@ int process_udhcp_ip_check(vap_svc_t *svc)
             wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index:%d, "
                 "retry after timeout\n", __func__, __LINE__, ext->connected_vap_index);
         }
-
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_disconnect_event_timeout_handler_id,
-                process_udhcp_disconnect_event_timeout, svc,
-                EXT_DISCONNECTION_IND_TIMEOUT, 1, FALSE);
+            process_udhcp_disconnect_event_timeout, svc, 
+        EXT_DISCONNECTION_IND_TIMEOUT, 1, FALSE);
         return 0;
     }
 
@@ -537,7 +790,21 @@ void ext_start_scan(vap_svc_t *svc)
         ext->candidates_list.scan_list = NULL;
     }
     ext->scanned_radios = 0;
-    
+#ifndef FEATURE_SINGLE_PHY
+    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        radio_oper_param = get_wifidb_radio_map(radio_index);
+        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+            if (get_sta_ssid_from_radio_config_by_radio_index(radio_index, ssid) == 0 &&
+                strlen(ssid) > 0) {
+                wifi_hal_rnr_init(radio_index, ssid);
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d [RNR] init with 6G STA ssid=\"%s\" radio=%u\n",
+                    __func__, __LINE__, ssid, radio_index);
+            }
+            break;
+        }
+    }
+#endif
     int dwell_time = get_dwell_time();
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         if (ext->is_radio_ignored == true && radio_index == ext->ignored_radio_index) {
@@ -554,6 +821,13 @@ void ext_start_scan(vap_svc_t *svc)
         }
 
         radio_oper_param = get_wifidb_radio_map(radio_index);
+
+        if (radio_oper_param->band == WIFI_FREQUENCY_6_BAND) {
+            wifi_util_dbg_print(WIFI_CTRL,
+                "%s:%d [RNR] defer 6G radio %u\n", __func__, __LINE__, radio_index);
+            continue;
+        }
+
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
                 channels_list, &num_channels,
                 radio_oper_param->DfsEnabled) != RETURN_OK) {
@@ -596,9 +870,8 @@ void ext_process_scan_list(vap_svc_t *svc)
             ext_set_conn_state(ext, connection_state_connection_in_progress, __func__, __LINE__);
         } else {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
-                __LINE__);
+             __LINE__);
         }
-
         schedule_connect_sm(svc);
     } else {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi connection already in process state\n",__func__, __LINE__);
@@ -866,15 +1139,18 @@ void ext_try_connecting(vap_svc_t *svc)
             wifi_util_error_print(WIFI_CTRL, "%s:%d sta connect failed for vap index: %d, "
                 "retry after timeout\n", __func__, __LINE__, vap_index);
         }
-
         if (ext->ext_conn_status_ind_timeout_handler_id != 0) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d connect status timer is in progress, cancel\n",
                 __func__, __LINE__);
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
         }
-        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
-            process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
-
+        if (ctrl->rf_status_down == false) {
+            scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
+                process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
+        } else {
+            scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
+                process_ext_connect_event_timeout, svc, EXT_IGNITE_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
+        }
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_sta_connect_in_progress, candidate);
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
@@ -1040,6 +1316,7 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     vap_svc_stop(svc);
     vap_svc_mesh_ext_clear_variable(svc);
     ext->is_started = false;
+
     return 0;
 }
 
@@ -1067,10 +1344,10 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     }
 
     // Skip zero bssid and disabled vaps
-    if (!is_bssid_valid(vap_info->u.sta_info.bssid) || !vap_info->u.sta_info.enabled) {
+    if (!is_bssid_valid(vap_info->u.sta_info.bssid) ||  (!vap_info->u.sta_info.enabled && !vap_info->u.sta_info.ignite_enabled)) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d skip sta bssid change event, vap: %s, bssid: %s, "
-            "enabled: %d\n", __func__, __LINE__, vap_info->vap_name, bssid_str,
-            vap_info->u.sta_info.enabled);
+                "enabled: %d ignite-enable: %d\n", __func__, __LINE__, vap_info->vap_name, bssid_str,
+                vap_info->u.sta_info.enabled, vap_info->u.sta_info.ignite_enabled);
         return 0;
     }
 
@@ -1086,7 +1363,7 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     ext->new_bss_delayed = false;
     memset(candidate, 0, sizeof(bss_candidate_t));
     memcpy(candidate->external_ap.bssid, vap_info->u.sta_info.bssid, sizeof(bssid_t));
-    strncpy(candidate->external_ap.ssid, vap_info->u.sta_info.ssid, sizeof(ssid_t) - 1);
+    strncpy(candidate->external_ap.ssid, get_vap_ssid(vap_info), sizeof(ssid_t) - 1);
     candidate->vap_index = vap_info->vap_index;
     candidate->external_ap.freq = freq;
     candidate->radio_freq_band = band;
@@ -1162,9 +1439,10 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
 {
     unsigned int i;
     wifi_vap_info_map_t *tgt_vap_map = NULL;
+    vap_svc_ext_t *ext = &svc->u.ext;
+    wifi_ctrl_t *ctrl = svc->ctrl;
 
     tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
-
     if (tgt_vap_map == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __FUNCTION__,__LINE__);
         return -1;
@@ -1177,9 +1455,9 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         tgt_vap_map->num_vaps = 1;
 
         // avoid disabling mesh sta in extender mode
-        if (tgt_vap_map->vap_array[0].u.sta_info.enabled == false && is_sta_enabled()) {
+        if ((tgt_vap_map->vap_array[0].u.sta_info.enabled == false) && (tgt_vap_map->vap_array[0].u.sta_info.ignite_enabled == false) && (is_sta_enabled())) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index:%d skip disabling sta\n", __func__,
-                __LINE__, tgt_vap_map->vap_array[0].vap_index);
+                    __LINE__, tgt_vap_map->vap_array[0].vap_index);
             tgt_vap_map->vap_array[0].u.sta_info.enabled = true;
         }
 
@@ -1196,13 +1474,22 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.sta_info.security);
+
+        wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
+
+        if (ctrl->rf_status_down == true) {
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                 __LINE__);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d sta is enabled starting the station vaps\n", __FUNCTION__, __LINE__);
+            schedule_connect_sm(svc);
+            ext->is_started = true;
+        }
     }
 
     if (tgt_vap_map) {
        free(tgt_vap_map);
        tgt_vap_map = NULL;
     }
-
     return 0;
 }
 
@@ -1304,15 +1591,21 @@ int process_ext_exec_timeout(vap_svc_t *svc, void *arg)
 int scan_result_wait_timeout(vap_svc_t *svc)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
-
+    wifi_ctrl_t *ctrl = svc->ctrl;
     ext->ext_scan_result_wait_timeout_handler_id = 0;
 
     if (ext->conn_state == connection_state_disconnected_scan_list_in_progress) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d - received only %u radio scan results\r\n", __func__,
+         wifi_util_dbg_print(WIFI_CTRL,"%s:%d - received only %u radio scan results\r\n", __func__,
             __LINE__, ext->scanned_radios);
+     if ((ctrl->rf_status_down == true) && (ext->ranked_count == 0 )) {
+             wifi_util_info_print(WIFI_CTRL, "%s:%d:Retrigger scan\n", __func__, __LINE__);
+             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+         } else {
+             wifi_util_info_print(WIFI_CTRL, "%s:%d:Setting connection_state_disconnected_scan_list_all\n", __func__, __LINE__);
 
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
-        ext->scanned_radios = 0;
+             ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
+    }
+    ext->scanned_radios = 0;
         schedule_connect_sm(svc);
     }
     return 0;
@@ -1473,8 +1766,17 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         scan_list++;
     }
 
-    if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 1))
-        sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
+    if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 0)) {
+        if (ctrl->rf_status_down == false) {
+            sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
+        } else {
+            ext->ranked_count = sort_bss_results_by_ranking(
+                    ext->candidates_list.scan_list,
+                    ext->candidates_list.scan_count);
+            ext->candidates_list.scan_count = ext->ranked_count;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rank-count : %d scan-count : %d\n", __func__, __LINE__, ext->ranked_count, ext->candidates_list.scan_count);
+        }
+    }
 
     if (ext->ext_scan_result_wait_timeout_handler_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_scan_result_wait_timeout_handler_id);
@@ -1483,16 +1785,20 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
 
     ext->scanned_radios++;
     if (ext->scanned_radios >= getNumberRadios()) {
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
-        ext->scanned_radios = 0;
-
+        if ((ctrl->rf_status_down == true) && (ext->ranked_count == 0 )) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d:Retrigger scan\n", __func__, __LINE__);
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        } else {
+            ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
+            ext->scanned_radios = 0;
+        }
         schedule_connect_sm(svc);
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_in_progress, __func__,
-            __LINE__);
+                __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_wait_timeout_handler_id,
-                        scan_result_wait_timeout, svc,
-                        EXT_SCAN_RESULT_WAIT_TIMEOUT, 1, FALSE);
+                scan_result_wait_timeout, svc,
+                EXT_SCAN_RESULT_WAIT_TIMEOUT, 1, FALSE);
     }
 
     return 0;
@@ -1569,6 +1875,49 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
     return RETURN_OK;
 }
 
+#define MAX_STATUS_LEN 5
+#define MAX_STR_LEN    128
+
+int publish_endpoint_status_to_wan(wifi_ctrl_t *ctrl, int connection_status)
+{
+    char name[MAX_STR_LEN] = { '\0' };
+    bus_error_t rc = bus_error_success;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__, connection_status);
+    if (ctrl->rf_status_down == true) {
+        raw_data_t data;
+        sprintf(name, "Device.WiFi.EndPoint.1.Status");
+        memset(&data, 0, sizeof(raw_data_t));
+        data.data_type = bus_data_type_string;
+        data.raw_data.bytes = malloc(MAX_STATUS_LEN);
+        if (data.raw_data.bytes == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: malloc failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        data.raw_data_len = MAX_STATUS_LEN;
+        memset(data.raw_data.bytes, '\0', MAX_STATUS_LEN);
+        if (connection_status == 2) { // connected state
+            strncpy((char *)data.raw_data.bytes, "Up", MAX_STATUS_LEN);
+        } else if ((connection_status == 1) || (connection_status == 3)) { // disconnected  or AP not found state
+            strncpy((char *)data.raw_data.bytes, "Down", MAX_STATUS_LEN);
+        }
+        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
+        if (rc != bus_error_success) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
+            free(data.raw_data.bytes);
+            return RETURN_ERR;
+        }
+        if (data.raw_data.bytes) {
+            free(data.raw_data.bytes);
+            data.raw_data.bytes = NULL;
+        }
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint not enabled\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+    return RETURN_OK;
+}
+#define MAC_ADDR_STR_LEN 18
+
 int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 {
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -1580,12 +1929,16 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     bss_candidate_t *candidate = NULL;
     bool found_candidate = false, send_event = false;
     unsigned int i = 0, index, j = 0;
-    char name[64];
-    wifi_sta_conn_info_t sta_conn_info;
+    char cmd[MAX_STR_LEN] = {0};
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
-    bus_error_t rc;
     raw_data_t data;
+    bus_error_t rc;
+    wifi_sta_conn_info_t sta_conn_info;
+    char name[64] = {'\0'};
+    char *bridge_name = "brww0";
+    char *bssid_mac_str = NULL;
+    int ret = 0;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -1602,7 +1955,6 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         __func__, __LINE__, index, sta_data->stats.vap_index,
         ext_conn_status_to_str(sta_data->stats.connect_status));
     vap_map = &mgr->radio_config[index].vaps.vap_map;
-
 
     for (i = 0; i < vap_map->num_vaps; i++) {
         if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
@@ -1658,8 +2010,47 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
             // change the state
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
+            if (ctrl->rf_status_down == true) { 
+                char mac_str[32] = {'\0'};
+                uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d Bridge:%s  Using MAC-Str:%s MAC : %02x:%02x:%02x:%02x:%02x:%02x\n",
+                    __func__, __LINE__, bridge_name, mac_str, temp_vap_info->u.sta_info.mac[0],
+                    temp_vap_info->u.sta_info.mac[1], temp_vap_info->u.sta_info.mac[2],
+                    temp_vap_info->u.sta_info.mac[3], temp_vap_info->u.sta_info.mac[4],
+                    temp_vap_info->u.sta_info.mac[5]);
+                snprintf(cmd, sizeof(cmd), "ovs-vsctl set bridge %s other-config:hwaddr=%s",
+                    bridge_name, mac_str);
+                ret = get_stubs_descriptor()->v_secure_system_fn(cmd);
+                if (ret != 0) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Failed to set bridge MAC, ret=%d\n", __func__, __LINE__, ret);
+                } else {
+                    wifi_util_dbg_print(WIFI_CTRL,
+                        "%s:%d Successfully set bridge MAC to %s\n", __func__, __LINE__,
+                        mac_str);
+                }
+                snprintf(cmd, sizeof(cmd), "ip link set dev %s up", bridge_name);
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d cmd : %s\n",__func__,__LINE__, cmd);
+                get_stubs_descriptor()->v_secure_system_fn(cmd);
 
-            /* Self heal to check if the connected interface received valid ip after a timeout if not trigger a reconnection */
+                rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
+                if (rc != bus_error_success) {
+                    wifi_util_error_print(WIFI_CTRL,"IGNITE_RF_DOWN: Failed to publish connect status to WM\n");
+                } else {
+                    wifi_util_info_print(WIFI_CTRL,"IGNITE_RF_DOWN: Connect status sent successfully to the WM\n");
+                }
+                bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
+                if (bssid_mac_str != NULL) {
+                    memset(bssid_mac_str, '\0', MAC_ADDR_STR_LEN);
+                    uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_mac_str);
+                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bssid mac=%s\n", __func__, __LINE__,
+                        bssid_mac_str);
+                    apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                        wifi_event_exec_register_station, bssid_mac_str, MAC_ADDR_STR_LEN);
+                }
+            }
+        /* Self heal to check if the connected interface received valid ip after a timeout if not trigger a reconnection */
 
             if (ext->ext_udhcp_ip_check_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
@@ -1726,8 +2117,19 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             }
         }
     } else if (sta_data->stats.connect_status == wifi_connection_status_ap_not_found || sta_data->stats.connect_status == wifi_connection_status_disconnected) {
-
         apply_pending_channel_change(svc, sta_data->stats.vap_index);
+
+        if (ctrl->rf_status_down) {
+            bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
+            if (bssid_mac_str != NULL) {
+                memset(bssid_mac_str, '\0', MAC_ADDR_STR_LEN);
+                uint8_mac_to_string_mac(sta_data->bss_info.bssid, bssid_mac_str);
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d bssid mac=%s\n", __func__, __LINE__,
+                    bssid_mac_str);
+                apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                    wifi_event_exec_unregister_station, bssid_mac_str, MAC_ADDR_STR_LEN);
+            }
+        }
 
         if (ext->conn_state == connection_state_connected &&
             ext->connected_vap_index != sta_data->stats.vap_index) {
@@ -1761,10 +2163,21 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             ext->ext_disconnection_event_timeout_handler_id = 0;
         }
 
+        if (ctrl->rf_status_down == true) {
+            rc = 0;
+	    rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
+
+            if (rc != bus_error_success) {
+                wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Failed to publish disconnect status to WM\n");
+            } else {
+                wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Disconnect status sent successfully to the WM\n");
+            }
+        }
         if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
             candidate = &ext->new_bss;
             found_candidate = true;
-        } else if ((ext->conn_state == connection_state_connection_to_lcb_in_progress)) {
+        } else if (ext->conn_state == connection_state_connection_to_lcb_in_progress) {
+
             if (ext->is_radio_ignored == true) {
                 candidate = NULL;
                 found_candidate = false;
@@ -1813,12 +2226,16 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         data.data_type = bus_data_type_bytes;
         data.raw_data.bytes = (void *)&sta_conn_info;
         data.raw_data_len = sizeof(wifi_sta_conn_info_t);
-
+        rc = 0;
         rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
-        if (rc != bus_error_success) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
+		if (ctrl->rf_status_down == false) {
+            if (rc != bus_error_success) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+		} else {
+			wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn() status rc:%d\n", __func__, __LINE__, rc);
+		}
     }
 
     if (ext->new_bss_delayed)
@@ -1867,7 +2284,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate null connection state: %s\r\n", __func__,
             __LINE__, ext_conn_state_to_str(ext->conn_state));
     }
-
+    
     return 0;
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.044",
+  "version": "1.00.045",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1862,6 +1862,15 @@
             "max": 1
           }
         },
+        "link_quality_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        }, 
       "rfc_id": {
           "type": "string"
         }
@@ -2317,6 +2326,15 @@
             "min": 0,
             "max": 1
           }
+        },
+        "ignite_link_quality_threshold": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
         }
      },
      "isRoot": true
@@ -2537,6 +2555,56 @@
         }
      },
      "isRoot": true
+    },
+    "Wifi_Ignite_Config": {
+      "columns": {
+        "ignite_name": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "min_chanutil_threshold": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "max_chanutil_threshold": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "snr_threshold": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "snr_difference": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        }
+     },
+    "isRoot": true
     }
   }
-}
+} 
