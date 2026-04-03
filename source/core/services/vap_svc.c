@@ -136,7 +136,7 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
 
         acl_entry = hash_map_get_first(vap_info->acl_map);
         while(acl_entry != NULL) {
-            if (acl_entry->mac != NULL) {
+            if (!is_zero_mac(acl_entry->mac)) {
                 memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
                 to_mac_str(acl_device_mac, mac_str);
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
@@ -189,7 +189,7 @@ int update_lnf_psk_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t 
             } else {
                 if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name, strlen(vap_map->vap_array[j].bridge_name)) != 0) {
                     wifi_util_info_print(WIFI_CTRL,"%s:%d: changed bridge name from :%s to %s\n", __func__, __LINE__, if_prop->bridge_name, vap_map->vap_array[j].bridge_name);
-                    strncpy(if_prop->bridge_name, vap_map->vap_array[j].bridge_name, sizeof(vap_map->vap_array[j].bridge_name));
+                    snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s", vap_map->vap_array[j].bridge_name);
                 }
             }
         }
@@ -224,7 +224,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
     for (i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         rdk_vaps = get_wifidb_rdk_vaps(i);
-        if (vap_map == NULL) {
+        if ((vap_map == NULL) || (rdk_vaps == NULL)) {
             wifi_util_error_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
             free(tgt_vap_map);
             return -1;

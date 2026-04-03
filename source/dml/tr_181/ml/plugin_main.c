@@ -238,7 +238,15 @@ COSA_Init
         
         if ((tmpSubsystemPrefix = g_GetSubsystemPrefix(g_pDslhDmlAgent)))
         {
-            AnscCopyString(g_SubSysPrefix_Irep, tmpSubsystemPrefix);
+            if (strnlen(tmpSubsystemPrefix, sizeof(g_SubSysPrefix_Irep)) < sizeof(g_SubSysPrefix_Irep))
+            {
+                AnscCopyString(g_SubSysPrefix_Irep, tmpSubsystemPrefix);
+            }
+            else
+            {
+                wifi_util_error_print(WIFI_APPS, "%s:%d Subsystem prefix length is more than expected\n", __func__, __LINE__);
+                goto EXIT;
+            }
         }
     }
 
@@ -385,21 +393,12 @@ COSA_MemoryCheck
         void
     )
 {
-    ANSC_STATUS                     returnStatus            = ANSC_STATUS_SUCCESS;
     PCOSA_PLUGIN_INFO               pPlugInfo               = (PCOSA_PLUGIN_INFO)g_pCosaBEManager->hCosaPluginInfo;
 
     /* unload the memory here */
 
-    returnStatus  =  CosaBackEndManagerRemove(g_pCosaBEManager);
-        
-    if ( returnStatus == ANSC_STATUS_SUCCESS )
-    {
-        g_pCosaBEManager = NULL;
-    }
-    else
-    {
-        g_pCosaBEManager = NULL;
-    }
+    CosaBackEndManagerRemove(g_pCosaBEManager);
+    g_pCosaBEManager = NULL;
 
     COSA_MemoryUsage();
     COSA_MemoryTable();

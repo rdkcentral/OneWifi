@@ -782,9 +782,9 @@ int check_scan_complete_read_results(void *arg)
         push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
         free(neighbor_data);
         free(collect_stats);
+    } else {
+        pthread_mutex_unlock(&mon_data->data_lock);
     }
-
-    pthread_mutex_unlock(&mon_data->data_lock);
 
     //Upadte Channel Stats cache
     execute_radio_channel_stats_api(arg, mon_data);
