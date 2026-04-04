@@ -63,10 +63,15 @@ typedef struct {
 } client_assoc_stats_t;
 
 typedef struct {
+    wifi_associated_dev3_t associated_dev3;
+    struct timespec last_update_time; // last_update_time for wifi_associated_dev3_t
+} wifi_associated_dev3_timestamp_t;
+
+typedef struct {
     int vap_index;
     ap_metrics_t ap_metrics;
     int sta_count;
-    hash_map_t *client_stats_map; // wifi_associated_dev3_t
+    hash_map_t *client_stats_map; // wifi_associated_dev3_timestamp_t
 } ap_metrics_data_t;
 
 typedef struct {
@@ -195,10 +200,10 @@ int em_route(wifi_event_route_t *route)
 }
 
 int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int sta_cnt,
-    wifi_associated_dev3_t *dev3)
+    wifi_associated_dev3_t *dev3, struct timespec *timestamp)
 {
-    wifi_associated_dev3_t *stats = NULL;
-    wifi_associated_dev3_t *new_stats = NULL;
+    wifi_associated_dev3_timestamp_t *stats = NULL;
+    wifi_associated_dev3_timestamp_t *new_stats = NULL;
     mac_addr_str_t mac_str = { 0 }, bss_str = { 0 };
     unsigned char key[64] = { 0 };
     int arr_vap_index = -1;
@@ -248,22 +253,28 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
     wifi_util_dbg_print(WIFI_EM, "%s:%d key while updating cache is =%s and arr_vap_index:%d\n",
         __func__, __LINE__, key, arr_vap_index);
 
-    stats = (wifi_associated_dev3_t *)hash_map_get(
+    stats = (wifi_associated_dev3_timestamp_t *)hash_map_get(
         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map, key);
     if (stats == NULL) {
         // add new entries
-        new_stats = (wifi_associated_dev3_t *)malloc(sizeof(wifi_associated_dev3_t));
+        new_stats = (wifi_associated_dev3_timestamp_t *)calloc(1, sizeof(wifi_associated_dev3_timestamp_t));
         if (new_stats == NULL) {
             wifi_util_error_print(WIFI_EM, "%s:%d null stats=%d\n", __func__, __LINE__,
                 radio_index);
             return RETURN_ERR;
         }
+        memcpy(&new_stats->associated_dev3, dev3, sizeof(wifi_associated_dev3_t));
+        if (timestamp != NULL) {
+            new_stats->last_update_time = *timestamp;
+        }
 
-        memcpy(new_stats, dev3, sizeof(wifi_associated_dev3_t));
         hash_map_put(em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map,
             strdup(key), new_stats);
     } else {
-        memcpy(stats, dev3, sizeof(wifi_associated_dev3_t));
+        memcpy(&stats->associated_dev3, dev3, sizeof(wifi_associated_dev3_t));
+        if (timestamp != NULL) {
+            stats->last_update_time = *timestamp;
+        }
     }
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d added sample for radio_index=%d, vap_index=%d, client=%s\n",
@@ -273,7 +284,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
 }
 
 static int prepare_sta_traffic_stats_data(assoc_sta_traffic_stats_t *data,
-    wifi_associated_dev3_t *stats)
+    wifi_associated_dev3_timestamp_t *stats)
 {
     if (data == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d Error in allocating table for encode stats\n",
@@ -282,22 +293,26 @@ static int prepare_sta_traffic_stats_data(assoc_sta_traffic_stats_t *data,
         return RETURN_ERR;
     }
 
-    memcpy(data->sta_mac, stats->cli_MACAddress, sizeof(mac_address_t));
-    data->bytes_sent = stats->cli_BytesSent;
-    data->bytes_rcvd = stats->cli_BytesReceived;
-    data->packets_sent = stats->cli_PacketsSent;
-    data->packets_rcvd = stats->cli_PacketsReceived;
-    data->tx_packtes_errs = stats->cli_ErrorsSent;
-    data->rx_packtes_errs = stats->cli_RxErrors;
-    data->retrans_cnt = stats->cli_RetransCount;
+    memcpy(data->sta_mac, stats->associated_dev3.cli_MACAddress, sizeof(mac_address_t));
+    data->bytes_sent = stats->associated_dev3.cli_BytesSent;
+    data->bytes_rcvd = stats->associated_dev3.cli_BytesReceived;
+    data->packets_sent = stats->associated_dev3.cli_PacketsSent;
+    data->packets_rcvd = stats->associated_dev3.cli_PacketsReceived;
+    data->tx_packtes_errs = stats->associated_dev3.cli_ErrorsSent;
+    data->rx_packtes_errs = stats->associated_dev3.cli_RxErrors;
+    data->retrans_cnt = stats->associated_dev3.cli_RetransCount;
+    return RETURN_OK;
 }
 
-static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associated_dev3_t *stats,
+static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associated_dev3_timestamp_t *stats,
     unsigned int vap_index)
 {
     sta_client_info_t *cli_data = NULL;
     mac_addr_str_t key = { 0 };
     wifi_vap_info_t *vap_info = NULL;
+    struct timespec now;
+    struct timespec diff;
+    uint32_t delta_ms = 0;
 
     vap_info = getVapInfo(vap_index);
     if (vap_info == NULL) {
@@ -313,10 +328,24 @@ static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associate
         return RETURN_ERR;
     }
 
+    if (stats->last_update_time.tv_sec != 0) {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if (((long)now.tv_nsec - (long)stats->last_update_time.tv_nsec) < 0) {
+                diff.tv_sec = now.tv_sec - stats->last_update_time.tv_sec - 1;
+                diff.tv_nsec = now.tv_nsec - stats->last_update_time.tv_nsec + 1000000000L;
+        } else {
+            diff.tv_sec = now.tv_sec - stats->last_update_time.tv_sec;
+            diff.tv_nsec = now.tv_nsec - stats->last_update_time.tv_nsec;
+        }
+        delta_ms = ((uint64_t)diff.tv_sec * 1000) + (diff.tv_nsec / 1000000);
+    } else {
+        delta_ms = 0;
+    }
+
     // Associated STA Link Metrics
-    memcpy(data->sta_mac, stats->cli_MACAddress, sizeof(mac_address_t));
+    memcpy(data->sta_mac, stats->associated_dev3.cli_MACAddress, sizeof(mac_address_t));
     // Retrive client type info
-    to_mac_str(stats->cli_MACAddress, key);
+    to_mac_str(stats->associated_dev3.cli_MACAddress, key);
     cli_data = hash_map_get(client_type_info.sta_client_type.client_type_map, key);
     if (cli_data != NULL) {
         strncpy(data->client_type, cli_data->client_type, sizeof(cli_data->client_type));
@@ -325,25 +354,22 @@ static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associate
     data->assoc_sta_link_metrics.num_bssid = 1; // must be changed for STA multiple associations
     memcpy(data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].bssid,
         vap_info->u.bss_info.bssid, sizeof(mac_address_t));
-    data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].time_delta =
-        0; // How to calculate time Delta (The time delta in ms between the time at
-           // which the earliest measurement that contributed to the data rate estimates
-           // were made, and the time at which this report was sent.)
+    data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].time_delta = delta_ms;
     data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_down =
-        (stats->cli_LastDataDownlinkRate / 1000);
+        (stats->associated_dev3.cli_LastDataDownlinkRate / 1000);
     data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_up =
-        (stats->cli_LastDataUplinkRate / 1000);
+        (stats->associated_dev3.cli_LastDataUplinkRate / 1000);
     data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi = em_rssi_to_rcpi(
-        stats->cli_RSSI);
+        stats->associated_dev3.cli_RSSI);
 
     // Associated STA Extended Link Metrics
     data->assoc_sta_ext_link_metrics.num_bssid = 1; // must be changed for STA multiple associations
     memcpy(data->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].bssid,
         vap_info->u.bss_info.bssid, sizeof(mac_address_t));
     data->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_downlink_rate =
-        stats->cli_LastDataDownlinkRate;
+        stats->associated_dev3.cli_LastDataDownlinkRate;
     data->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate =
-        stats->cli_LastDataUplinkRate;
+        stats->associated_dev3.cli_LastDataUplinkRate;
     data->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive =
         0; // do we have that data?
     data->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit = 0;
@@ -490,7 +516,7 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
 
                     case em_app_event_type_assoc_dev_stats_periodic:
                         em_client_stats_store(radio_index, vap_index, stat_array_size,
-                            &sta_data->dev_stats);
+                            &sta_data->dev_stats, &sta_data->timestamp);
                         break;
 
                     default:
@@ -926,6 +952,71 @@ static int em_process_chan_stats_data(wifi_provider_response_t *provider_respons
     return RETURN_OK;
 }
 
+int vap_stats_response(wifi_provider_response_t *provider_response)
+{
+    unsigned int radio_index = provider_response->args.radio_index;
+    unsigned int vap_index = provider_response->args.vap_index;
+    vap_traffic_stats_t *vap_stats = (vap_traffic_stats_t *)provider_response->stat_pointer;
+    int arr_vap_index = -1;
+    int i;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+
+    if (radio_index > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Invalid radio index %d\n", __func__, __LINE__,
+            radio_index);
+        return RETURN_ERR;
+    }
+
+    if (wifi_mgr == NULL) {
+        wifi_util_error_print(WIFI_EM,"%s:%d Mgr object is NULL \r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (provider_response->stat_array_size <= 0 || vap_stats == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: No VAP stats data\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    for (i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
+        if (vap_index == em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index) {
+            arr_vap_index = i;
+            break;
+        }
+    }
+
+    if (arr_vap_index == -1) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: No arr_vap_index\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    ap_metrics_data_t *ap_data = &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index];
+    ap_data->ap_metrics.unicast_bytes_sent = vap_stats->ssid_UnicastBytesSent;
+    ap_data->ap_metrics.unicast_bytes_rcvd = vap_stats->ssid_UnicastBytesReceived;
+    ap_data->ap_metrics.multicast_bytes_sent = vap_stats->ssid_MulticastBytesSent;
+    ap_data->ap_metrics.multicast_bytes_rcvd = vap_stats->ssid_MulticastBytesReceived;
+    ap_data->ap_metrics.broadcast_bytes_sent = vap_stats->ssid_BroadcastBytesSent;
+    ap_data->ap_metrics.broadcast_bytes_rcvd = vap_stats->ssid_BroadcastBytesReceived;
+    wifi_util_dbg_print(WIFI_EM, "%s:%d: Stored VAP traffic stats for vap_index %d arr_vap_index %d radio index %d \n",
+         __func__, __LINE__, vap_index, arr_vap_index, radio_index);
+
+    int access_category = 1;      // 3 bit
+    int data_format = 3;          // 2 bit
+    int ba_window = 7;            // 3 bit
+    int airtime_fraction = 255;   // 8 bit
+    int ppdu_duration = 0;        // 8 bit
+    // Bit-level packing (24 bit int)
+    int esp_ac_be = 0;
+    esp_ac_be |= (access_category & 0x07) << 21;
+    esp_ac_be |= (data_format & 0x03) << 19;
+    esp_ac_be |= (ba_window & 0x07) << 16;
+    esp_ac_be |= (airtime_fraction & 0xFF) << 8;
+    esp_ac_be |= (ppdu_duration & 0xFF);
+
+    ap_data->ap_metrics.inc_esp_ac_be = 1;
+    ap_data->ap_metrics.esp_ac_be = esp_ac_be;
+    return RETURN_OK;
+}
+
 static int radio_chan_stats_response(wifi_provider_response_t *provider_response)
 {
     int radio_index = -1;
@@ -1012,7 +1103,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
         radio_metrics->noise = channel_stats[count].ch_noise;
         radio_metrics->transmit = channel_stats[count].ch_utilization_busy_tx;
         radio_metrics->receive_self = channel_stats[count].ch_utilization_busy_self;
-        radio_metrics->receive_other = 0;
+        radio_metrics->receive_other = channel_stats[count].ch_utilization_busy_ext;
 
         // now save radio channel util for each vap
         for (j = 0; j < radio->vaps.num_vaps; j++) {
@@ -1093,6 +1184,9 @@ int handle_monitor_provider_response(wifi_app_t *app, wifi_event_t *event)
     case em_app_event_type_ap_metrics_rad_chan_stats:
         ret = radio_chan_stats_response(provider_response);
         break;
+    case em_app_event_type_vap_stats_periodic:
+        ret = vap_stats_response(provider_response);
+        break;
     default:
         wifi_util_error_print(WIFI_EM, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             provider_response->args.app_info);
@@ -1139,7 +1233,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
     int arr_vap_index = -1;
     wifi_vap_info_t *vap_info = NULL;
-    wifi_associated_dev3_t *stats = NULL;
+    wifi_associated_dev3_timestamp_t *stats = NULL;
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d : Sta disassoc event \n", __func__, __LINE__);
 
@@ -1176,7 +1270,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     to_mac_str(vap_info->u.bss_info.bssid, bss_str);
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, sta_mac_str);
     snprintf(key, 64, "%s@%s", bss_str, sta_mac_str);
-    stats = (wifi_associated_dev3_t *)hash_map_remove(
+    stats = (wifi_associated_dev3_timestamp_t *)hash_map_remove(
         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map, key);
     if (stats == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: Sta Mac %s not present in hash map\n", __func__,
@@ -1347,7 +1441,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
     webconfig_subdoc_data_t *data = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     em_vap_metrics_t *vap_report = NULL;
-    wifi_associated_dev3_t *stats = NULL;
+    wifi_associated_dev3_timestamp_t *stats = NULL;
     mac_addr_str_t bss_str, bss_str1;
     em_ap_metrics_report_t *ap_metrics_report = NULL;
     ap_metrics_t *ap_metrics = NULL;
@@ -1627,6 +1721,13 @@ int ap_metrics_collector_config(wifi_app_t *app, wifi_monitor_data_t *data,
     int radio_index = -1;
     int radio_count = -1;
     unsigned int i = 0;
+    unsigned int vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+
+    if (wifi_mgr == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: wifi_mgr is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
     em_route(&route);
 
@@ -1652,12 +1753,33 @@ int ap_metrics_collector_config(wifi_app_t *app, wifi_monitor_data_t *data,
         data[i].u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
         data[i].u.mon_stats_config.args.radio_index = radio_index;
         data[i].u.mon_stats_config.args.app_info = em_app_event_type_ap_metrics_rad_chan_stats;
-        data[i].u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
+        data[i].u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_NONE;
         data[i].u.mon_stats_config.interval_ms =
             em_config->ap_metric_policy.interval * 1000;
         data->u.mon_stats_config.start_immediately = true;
-
         push_event_to_monitor_queue(data + i, wifi_event_monitor_data_collection_config, &route);
+
+        data[i].u.mon_stats_config.data_type = mon_stats_type_vap_stats;
+        data[i].u.mon_stats_config.args.radio_index = radio_index;
+        data[i].u.mon_stats_config.args.app_info = em_app_event_type_vap_stats_periodic;
+        data[i].u.mon_stats_config.interval_ms =
+            em_config->ap_metric_policy.interval * 1000;
+        data->u.mon_stats_config.start_immediately = true;
+        // for each vap push the event to monitor queue
+        // for extended metrics
+        for (vapArrayIndex = 0;
+             vapArrayIndex < getNumberVAPsPerRadio(radio_index);
+             vapArrayIndex++) {
+            data[i].u.mon_stats_config.args.vap_index =
+                wifi_mgr->radio_config[data[i].u.mon_stats_config.args.radio_index]
+                    .vaps.rdk_vap_array[vapArrayIndex]
+                    .vap_index;
+            push_event_to_monitor_queue(data + i, wifi_event_monitor_data_collection_config, &route);
+            wifi_util_dbg_print(WIFI_EM, "%s:%d:configuring mon_stats_type_vap_stats radio=%d vap=%d app_info=%d\n",
+                __func__, __LINE__, data[i].u.mon_stats_config.args.radio_index,
+                data[i].u.mon_stats_config.args.vap_index,
+                data[i].u.mon_stats_config.args.app_info);
+        }
 
         if (em_config->ap_metric_policy.interval == 0 ||
             em_ap_metrics_report_cache.args.sched_id == 0) {

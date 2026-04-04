@@ -881,6 +881,18 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         return RETURN_ERR;
     }
 
+
+    // Update Channel Stats cache
+    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_NONE) {
+        ret = execute_radio_channel_stats_api(c_elem, mon_data);
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_MON,
+                "%s:%d execute_radio_channel_stats_api failed for radio: %d\n",
+                __func__, __LINE__, args->radio_index);
+        }
+        return ret;
+    }
+
     if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
         if (get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth,
                 radioOperation->channel, channels, &num_channels) != 0) {
