@@ -45,6 +45,8 @@ typedef struct {
 
 typedef struct {
     mac_address_t mac_addr;
+    mac_address_t link_addr;
+    bool is_mlo;
     int  ap_index;
     int  subscribed_apps;
 } csi_mac_data_t;
