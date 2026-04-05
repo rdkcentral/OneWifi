@@ -274,4 +274,8 @@ void WriteWiFiLog(char *);
 void AssociatedDevice_callback_register();
 int decode_json_obj(bus_handle_t *handle, const char *json_name);
 int get_partner_id(char *partner_id);
+
+ANSC_STATUS CosaDmlWiFi_getLogEnable(char *pValue, ULONG* pUlSize);
+ANSC_STATUS CosaDmlWiFi_setLogEnable(const char *pValue);
+
 #endif
