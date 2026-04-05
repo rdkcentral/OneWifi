@@ -47,14 +47,14 @@ matrix_t matrix_t::inverse()
     unsigned int i, j;
 
     if (m_rows != m_cols) {
-        wifi_util_error_print(WIFI_LIB, "%s:%d: Cannot be inverted in matrix\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_LIB, const_cast<char*>("%s:%d: Cannot be inverted in matrix\n"), __func__, __LINE__);
         return out;
     }
 
     det = determinant();
 
     if ((det.m_re == 0) && (det.m_im == 0)) {
-        wifi_util_error_print(WIFI_LIB, "%s:%d: Matrix is singular\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_LIB, const_cast<char*>("%s:%d: Matrix is singular\n"), __func__, __LINE__);
         return out;
     }
 
@@ -161,11 +161,11 @@ matrix_t matrix_t::row_reduced_echelon_form()
     matrix_t rref = *this;
 
     this->print();
-    wifi_util_dbg_print(WIFI_LIB, "\n");
+    wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("\n"));
 
     row_reduced_echelon_form(rref, *this);
     rref.print();
-    wifi_util_dbg_print(WIFI_LIB, "\n");
+    wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("\n"));
 
     return rref;
 }
@@ -192,7 +192,7 @@ number_t matrix_t::null_space()
     }
 
     echelon.print();
-    wifi_util_dbg_print(WIFI_LIB, "\n");
+    wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("\n"));
 
     return echelon.minor(0, 0).null_space();
 }
@@ -290,9 +290,9 @@ vector_t matrix_t::faddeev_leverrier()
 
 #if 1
     for (i = 0; i < p.m_num; ++i) {
-        wifi_util_dbg_print(WIFI_LIB, "λ^%d: ", m_cols - i);
+        wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("λ^%d: "), m_cols - i);
         p.m_val[i].print();
-        wifi_util_dbg_print(WIFI_LIB, "\n");
+        wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("\n"));
     }
 #endif
 
@@ -363,7 +363,7 @@ matrix_t matrix_t::adjoint()
     unsigned int i, j;
 
     if (m_rows != m_cols) {
-        wifi_util_error_print(WIFI_LIB, "%s:%d: Can not find inverse of matrix\n", __func__,
+        wifi_util_error_print(WIFI_LIB, const_cast<char*>("%s:%d: Can not find inverse of matrix\n"), __func__,
             __LINE__);
         return out;
     }
@@ -456,8 +456,8 @@ matrix_t matrix_t::covariance()
 
     if (m_rows == 1) {
         wifi_util_error_print(WIFI_LIB,
-            "%s:%d: Cannot calculate covariance"
-            " of insufficient valued matrices\n",
+            const_cast<char*>("%s:%d: Cannot calculate covariance"
+            " of insufficient valued matrices\n"),
             __func__, __LINE__);
         return out;
     }
@@ -521,8 +521,8 @@ matrix_t matrix_t::operator*(matrix_t m)
 
     if (m_cols != m.m_rows) {
         wifi_util_error_print(WIFI_LIB,
-            "%s:%d: Matrices can't be multipled,"
-            " mismatch of 1st Matrix Columns: %d and 2nd Matrix Rows: %d\n",
+            const_cast<char*>("%s:%d: Matrices can't be multipled,"
+            " mismatch of 1st Matrix Columns: %d and 2nd Matrix Rows: %d\n"),
             __func__, __LINE__, m_cols, m.m_rows);
         return out;
     }
@@ -650,12 +650,65 @@ vector_t matrix_t::get_col(unsigned int col)
     return out;
 }
 
+void matrix_t::push(vector_t v)
+{
+    unsigned int i, j;
+
+    if (m_cols == 0) {
+        m_cols = v.m_num;
+    }
+
+    if (v.m_num != m_cols) {
+        return;
+    }
+
+    if (m_rows < m_row_capacity) {
+        for (j = 0; j < m_cols; j++) {
+            m_val[m_rows][j] = v.m_val[j];
+        }
+        m_rows++;
+        return;
+    }
+
+    // remove the top one to add at the end
+    for (i = 0; i < m_rows - 1; i++) {
+        for (j = 0; j < m_cols; j++) {
+            m_val[i][j] = m_val[i + 1][j];
+        }
+    }
+
+    for (j = 0; j < m_cols; j++) {
+        m_val[i][j] = v.m_val[j];
+    }
+}
+
+void matrix_t::push(matrix_t m)
+{
+    unsigned int i;
+    unsigned int rows = m.get_num_rows();
+
+    if (m_cols == 0) {
+        m_cols = m.m_cols;
+    }
+
+    if (m.m_cols != m_cols) {
+        return;
+    }
+
+    for (i = 0; i < rows; i++) {
+        push(m.get_row(i));
+    }
+}
+
 matrix_t::matrix_t(unsigned int rows, unsigned int cols, number_t n[])
 {
     unsigned int i, j, k = 0;
 
     m_rows = rows;
     m_cols = cols;
+
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
 
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
@@ -672,6 +725,9 @@ matrix_t::matrix_t(unsigned int rows, unsigned int cols)
     m_rows = rows;
     m_cols = cols;
 
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             m_val[i][j] = number_t(0, 0);
@@ -686,6 +742,9 @@ matrix_t::matrix_t(const matrix_t &m)
     m_rows = m.m_rows;
     m_cols = m.m_cols;
 
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
+
     for (i = 0; i < m_rows; i++) {
         for (j = 0; j < m_cols; j++) {
             m_val[i][j] = m.m_val[i][j];
@@ -696,6 +755,9 @@ matrix_t::matrix_t(const matrix_t &m)
 matrix_t::matrix_t(vector_t v, bool as_row)
 {
     unsigned int i, j;
+
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
 
     if (as_row) {
         m_rows = 1;
@@ -716,6 +778,8 @@ matrix_t::matrix_t()
 {
     m_rows = 0;
     m_cols = 0;
+    m_row_capacity = MAX_MTRX_LEN;
+    m_col_capacity = MAX_MTRX_LEN;
 }
 
 matrix_t::~matrix_t()

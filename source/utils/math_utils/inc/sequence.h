@@ -22,13 +22,23 @@
 #include "base.h"
 #include "number.h"
 
+#define MAX_SAMPLING_WINDOW  30
+
 class sequence_t {
 public:
    	number_t	m_mean;
 	number_t	m_variance;
-    number_t    m_last;
+    number_t    m_gaussian;
+    number_t    m_kurtosis;
+    number_t    m_mfilter;
+    number_t    m_last[MAX_SAMPLING_WINDOW];
     number_t    m_max;
     number_t    m_min;
+	unsigned int	m_total_samples;
+    unsigned int    m_sampling_window;
+#if 0
+    number_t    m_last;
+#endif
 	unsigned int	m_samples;
  
 public:
@@ -42,8 +52,14 @@ public:
     number_t get_min() { return m_min; }
     number_t get_mean() { return m_mean; }
     number_t get_variance() { return m_variance; }
+    number_t get_kurtosis() { return m_kurtosis; }
+    
+    void reset();
+    
+    void print();
     
     sequence_t();
+    sequence_t(int sampling_window);
 	~sequence_t();
 };
 

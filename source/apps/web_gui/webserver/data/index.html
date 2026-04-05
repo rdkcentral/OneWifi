@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content=
+        "width=device-width, initial-scale=1.0">
+    <title>Channel State Information Analysis</title>
+	<link rel="stylesheet" href="main.css">
+	<script src="https://cdn.plot.ly/plotly-2.31.1.min.js"></script>
+</head>
+
+<body>
+	<h1>Wi‑Fi Motion: Channel State Information & Algorithms</h1>
+
+	<div class="tabs">
+		<span data-tab-value="#tab_1">Analysis</span>
+		<span data-tab-value="#tab_2">Comparison</span>
+	</div>
+
+	<div class="tabs__tab active" id="tab_1" data-tab-info>
+        <div class="grid-container-analyzer">
+            <div id="CSIControls" class="item-csi-analysis-controls">
+                <div class="form-row">
+					<div class="radio-container">
+						<input type="radio" id="SavedCapture" name="choice" value="1">
+  						<label for="SavedCapture">Saved Capture</label>
+					</div>
+
+					<div class="radio-container">
+						<input type="radio" id="NewCapture" name="choice" value="2">
+						<label for="NewCapture">New Capture</label>
+					</div>
+				</div>
+                <div class="form-row" id="CaptureControls">
+                	<!--input type="file" id="CSI" name="CSI" accept=".json" class="hide-file-text">
+                	<button id="Capture" class='button'">Capture</button-->
+				</div>
+
+                <div class="form-row">
+                    <label for="StartFrameRange">Start Frame:</label>
+                    <input type="range" id="StartFrameRange" name="StartFrameRange" min="0" max="500">
+                    <span id="StartFrameSpan">500</span>
+                </div>
+                <div class="form-row">
+                    <label for="EndFrameRange">End Frame:</label>
+                    <input type="range" id="EndFrameRange" name="EndFrameRange" min="0" max="500">
+                    <span id="EndFrameSpan">500</span>
+                </div>
+                <div class="form-row">
+                    <label for="Reporting">Reporting Period:</label>
+                    <input type="number" id="Reporting" name="Reporting" value="2000" min="2000" max="4000"  step="100">
+                </div>
+                        
+                <button id="Analyze" class='button'>Analyze</button>
+                <button id="Abort" class='button'>Abort</button>
+                <button id="Save" class='button'>Save</button>
+            </div>
+            <div id="AlgorithmParameters" class="item-algorithm-parameters">
+                <div class="form-row">
+                    <label for="AlgorithmSamples">Samples for Algorithm:</label>
+                    <input type="number" id="AlgorithmSamples" name="AlgorithmSamples" value="10" min="0" max="100">
+                </div>
+                <div class="form-row">
+                    <label for="VarianceThreshold">Variance Threshold:</label>
+                    <input type="number" id="VarianceThreshold" name="VarianceThreshold" value="20000" min="10000" max="250000" step="10000">
+					<input type="checkbox" id="OverrideVarianceThreshold" name="OverrideVarianceThreshold" value="OverrideVarianceThreshold">
+					<label for="OverrideVarianceThreshold">Override</label>
+                </div>
+                <div class="form-row">
+                    <label for="ConsecutiveSamples">Number of Consecitive Samples:</label>
+                    <input type="number" id="ConsecutiveSamples" name="ConsecutiveSamples" value="3" min="1" max="10">
+                </div>
+                <div class="form-row">
+                    <label for="AntennaConsiderations">Number of Antennas In Consideration:</label>
+                    <input type="number" id="AntennaConsiderations" name="AntennaConsiderations" value="2" min="1" max="5">
+                </div>
+            </div>
+            <div class="item-uber-variance-dispaly">
+				<p style='font-size:25px;'>
+					Time Left: <span id='AnalysisTimeLeft'></span><br>
+					Variance: <span id='UberVariance'></span><br>
+					Current Peak Deviation: <span id='PeakDeviationPercent'></span>%<br>
+					Motion Type: <span id='MotionType'></span>
+				</p>
+			</div>
+            <div id="CSIFileDisplay" class="item-csifile-display"></div>
+            <div id="AlgorithmResult" class="item-algorithm-result-display"></div>
+            <div id="HeatMap" class="item-heat-map-display"></div>
+            <div id="Antenna1" class="item-antenna1-display"></div>
+            <div id="Antenna2" class="item-antenna2-display"></div>
+            <div id="Antenna3" class="item-antenna3-display"></div>
+            <div id="Antenna4" class="item-antenna4-display"></div>
+            <div id="Antenna5" class="item-antenna5-display"></div>
+        </div>
+	</div>
+    <div class="tabs__tab" id="tab_2" data-tab-info>
+        <div class="grid-container-comparison">
+            <div id="comparison-controls" class="item-comparison-controls">
+                <div class="form-row">
+                    <label for="LeftFile" >Left File:</label>
+                    <input type="file" id="LeftFile" name="LeftFile" accept=".png">
+                    <label for="RightFile" >Right File:</label>
+                    <input type="file" id="RightFile" name="RightFile" accept=".png">
+                	<button id="Clear" class='button'>Clear</button>
+                </div>
+
+            </div>
+            <div class="item-comparison-display-left"><img id="comparison-left"></div>
+            <div class="item-comparison-display-right"><img id="comparison-right"></div>
+        </div>
+    </div>
+	<dialog id="NewCaptureParams">
+		<div class="form-row">
+			<label for="GatewayURL">Gateway:</label>
+			<input type="text" id="GatewayURL" name="GatewayURL" placeholder="http://localhost:8081">
+            <button id="AssociatedClients" class='button'>Clients List</button>
+		</div>
+		<label for="SoundingDevices">Select Sounding Devices:</label>
+		<select name="SoundingDevices" id="SoundingDevices" multiple size="4" class='souding-devices-select'>
+		</select>
+		<div class="form-row">
+        	<label for="CaptureDuration">Capture Duration:</label>
+        	<input type="number" id="CaptureDuration" name="CaptureDuration" value="120000" min="60000" max="240000" step="15000">
+		</div>
+    	<button id="StartNewCapture" class='button'>Start</button>
+    	<button id="AbortNewCapture" class='button'>Abort</button>
+    	<button id="CloseNewCapture" class='button'>Close</button>
+		<div id='CaptureCountDownDiv'></div>
+		<div class="form-row" id='MotionTypesDiv'></div>
+		<div id='MotionTypesButtonsDiv'></div>
+	</dialog>
+
+	<script type="module">
+        import { 
+					associatedClientsHandler, 
+					startNewCaptureHandler, 
+					abortNewCaptureHandler, 
+					closeNewCaptureHandler, 
+					newCaptureHandler, 
+					captureTypeHandler, 
+					clearHandler, 
+					leftFileChangeHandler, 
+					rightFileChangeHandler, 
+					fileLoadHandler, 
+					analyzeHandler, 
+					abortHandler, 
+					fileChangeHandler, 
+					sliderInputHandler, 
+					saveHandler 
+		} from './motion.js';
+
+		document.getElementById('Abort').addEventListener('click', abortHandler);        
+		document.getElementById('Analyze').addEventListener('click', analyzeHandler);        
+		document.getElementById('Save').addEventListener('click', saveHandler);        
+		document.getElementById('EndFrameRange').addEventListener('input', sliderInputHandler);
+		document.getElementById('StartFrameRange').addEventListener('input', sliderInputHandler);
+		document.getElementById('LeftFile').addEventListener('change', leftFileChangeHandler);
+		document.getElementById('RightFile').addEventListener('change', rightFileChangeHandler);
+		document.getElementById('Clear').addEventListener('click', clearHandler);        
+		document.getElementById('StartNewCapture').addEventListener('click', startNewCaptureHandler);
+		document.getElementById('AbortNewCapture').addEventListener('click', abortNewCaptureHandler);
+		document.getElementById('CloseNewCapture').addEventListener('click', closeNewCaptureHandler);
+		document.getElementById('AssociatedClients').addEventListener('click', associatedClientsHandler);
+		window.addEventListener('load', fileLoadHandler);
+        
+        const tabs = document.querySelectorAll('[data-tab-value]')
+        const tabInfos = document.querySelectorAll('[data-tab-info]')
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = document.querySelector(tab.dataset.tabValue);
+                tabInfos.forEach(tabInfo => {
+                    tabInfo.classList.remove('active')
+                })
+                target.classList.add('active');
+            })
+        })
+
+		document.querySelectorAll('input[name="choice"]').forEach(radio => {
+    		radio.addEventListener('change', function() {
+        		if (this.checked) {
+					captureTypeHandler(this.value);
+        		}
+    		});
+		});
+
+		document.getElementById('SoundingDevices').addEventListener('change', (event) => {
+			document.getElementById('StartNewCapture').disabled = false;
+		});
+
+		document.getElementById('UberVariance').innerHTML = '0';
+		document.getElementById('PeakDeviationPercent').innerHTML = '0';
+		document.getElementById('MotionType').innerHTML = 'None';
+		document.getElementById('AnalysisTimeLeft').innerHTML = '';
+
+    </script>
+</body>
+</html>
