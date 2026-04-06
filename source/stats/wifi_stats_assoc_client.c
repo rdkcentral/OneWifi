@@ -138,11 +138,6 @@ int process_assoc_dev_stats(wifi_mon_stats_args_t *args, hash_map_t *sta_map, vo
 
     return RETURN_OK;
 }
-static inline bool is_zero_mac(const uint8_t *mac)
-{
-    static const uint8_t zero[6] = {0};
-    return memcmp(mac, zero, 6) == 0;
-}
 
 int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data,
     unsigned long task_interval_ms)
