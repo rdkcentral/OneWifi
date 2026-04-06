@@ -761,7 +761,7 @@ ActiveMeasurements_Plan_SetParamStringValue
          }
          else {
             AnscTraceWarning(("%s : Plan ID is not same\n", __func__));
-            strncpy((char*)pcfg->PlanId, pValue, strlen(pValue));
+            snprintf((char*)pcfg->PlanId, sizeof(pcfg->PlanId), "%s", pValue);
             /* Reset all the step information when plan id changes */
             if (ANSC_STATUS_SUCCESS != CosaDmlWiFiClient_ResetActiveMsmtStep(pcfg)) {
                 AnscTraceWarning(("%s : resetting Active measurement Step Information failed\n", __FUNCTION__));
@@ -982,13 +982,13 @@ ActiveMeasurement_Step_SetParamStringValue
     }
 
     if (AnscEqualString(ParamName, "SourceMac", TRUE)) {
-        strcpy( (char*)pcfg->Step[StepIns].SrcMac,pValue);
+        snprintf((char*)pcfg->Step[StepIns].SrcMac, sizeof(pcfg->Step[StepIns].SrcMac), "%s", pValue);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].SrcMac ,StepIns);
         return TRUE;
     }
 
     if (AnscEqualString(ParamName, "DestMac", TRUE)) {
-        strcpy((char*) pcfg->Step[StepIns].DestMac,pValue);
+        snprintf((char*)pcfg->Step[StepIns].DestMac, sizeof(pcfg->Step[StepIns].DestMac), "%s", pValue);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].DestMac ,StepIns);
         return TRUE;
     }

@@ -69,7 +69,7 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
     cJSON *obj_vaps;
     cJSON *obj_vap;
     unsigned int i, size, vap_array_index, radio_index = 0;
-    unsigned int blob_radio_index, vap_mode = 0;
+    unsigned int blob_radio_index = 0, vap_mode = 0;
     const cJSON  *obj_vap_mode;
     char *name;
     wifi_vap_info_t *vap_info;

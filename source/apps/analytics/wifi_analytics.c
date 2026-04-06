@@ -102,7 +102,7 @@ void device_statistics_info(analytics_data_t *data)
     char         temp_str[128];
     unsigned int radio_index = 0;
     radio_data_t radio_stats;
-    char   client_mac[32], sta_stats_str[256], tm_str[64];
+    char   client_mac[32], sta_stats_str[256], tm_str[128];
     analytics_sta_info_t    *sta_info;
     wifi_associated_dev3_t  *dev_stats;
     sta_data_t *sta_data;
@@ -225,6 +225,11 @@ int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_s
         * is received by the handle_webconfig_event() function and decode is not happened yet
         * to determine the subdoc type.
         */
+        if (analytics_format == NULL) {
+            wifi_util_error_print(WIFI_ANALYTICS, "%s:%d: Unknown sub_type(0x%x) and doc is NULL\n", __func__, __LINE__, sub_type);
+            return RETURN_ERR;
+        }
+
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format, "set", "webconfig");
         return RETURN_OK;
     }
@@ -882,7 +887,8 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         break;
 
     case wifi_event_type_rsn_override_rfc:
-        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d \r\n", __func__, __LINE__, (bool *)arg);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d\r\n",
+            __func__, __LINE__, *(int *)arg);
         break;
 
     default:

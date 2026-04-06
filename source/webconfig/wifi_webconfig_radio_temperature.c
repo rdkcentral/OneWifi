@@ -167,8 +167,6 @@ webconfig_error_t decode_radio_temperature_stats_subdoc(webconfig_t *config, web
     if (decode_radio_temperature_stats_object(temp_st, json) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to decode stats config\n", __func__, __LINE__);
         cJSON_Delete(json);
-        free((*temp_st)->stat_pointer);
-        free(*temp_st);
         return webconfig_error_invalid_subdoc;
     }
 

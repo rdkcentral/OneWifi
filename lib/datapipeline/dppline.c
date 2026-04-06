@@ -1212,7 +1212,7 @@ static void dppline_add_stat_client(Sts__Report *r, dppline_stats_t *s)
             dr->stats->rx_retries = rec->stats.retries_rx;
             dr->stats->has_rx_retries = true;
         }
-        if (rec->stats.retries_rx) {
+        if (rec->stats.retries_tx) {
             dr->stats->tx_retries = rec->stats.retries_tx;
             dr->stats->has_tx_retries = true;
         }
@@ -2495,9 +2495,10 @@ dpp_client_record_t* dpp_client_record_alloc()
     dpp_client_record_t *record = NULL;
 
     record = malloc(sizeof(dpp_client_record_t));
-    if (record) {
-        memset(record, 0, sizeof(dpp_client_record_t));
+    if (record == NULL) {
+        return NULL;
     }
+    memset(record, 0, sizeof(dpp_client_record_t));
 
     // init stats_rx dlist
     ds_dlist_init(&record->stats_rx, dpp_client_stats_rx_t, node);
