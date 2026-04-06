@@ -182,7 +182,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
             l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-            if (l_rdk_vap_array->acl_map != NULL) {
+            if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                 acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
                 while (acl_entry != NULL) {
@@ -199,7 +199,6 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                              __func__, __LINE__, l_rdk_vap_array->vap_index, mac_str);
-                            ret = RETURN_ERR;
                         }
                            acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
 
@@ -1134,7 +1133,7 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
     while (acl_entry != NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Iterating over ACL entries\n", __func__, __LINE__);
 
-        if (acl_entry->mac != NULL &&
+        if (!is_zero_mac(acl_entry->mac) &&
             memcmp(acl_entry->mac, mac_addr, sizeof(mac_address_t)) == 0 &&
             acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) {
 
@@ -1831,7 +1830,7 @@ void process_wifi_host_sync()
                 continue;
             }
 
-            if (hosts.count > LM_MAX_HOSTS_NUM) {
+            if (hosts.count >= LM_MAX_HOSTS_NUM) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d has reached LM_MAX_HOSTS_NUM\n", __func__, __LINE__);
                 break;
             }
@@ -2396,6 +2395,11 @@ void process_wpa3_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+            __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -2991,7 +2995,8 @@ int dfs_nop_start_timer(void *args)
 
     radarDetected_temp[sizeof(radarDetected_temp) - 1] = '\0';
 
-    if( !strcmp(radarDetected_temp, " ") || radarDetected_temp == NULL ) {
+    if (!strcmp(radarDetected_temp, " ") )
+    {
         wifi_util_error_print(WIFI_CTRL, "%s:%d No radar detected \n", __func__, __LINE__);
         return RETURN_ERR;
     }
@@ -3037,7 +3042,7 @@ int dfs_nop_start_timer(void *args)
         radio_channel_param.channelWidth = dfs_radar_ch_bw;
         radio_channel_param.op_class = radio_params->operatingClass;
 
-        dfs_timer_secs = ((time_now - radar_detected_time)<(radio_params->DFSTimer * 60) && (time_now > radar_detected_time)) ? ( (radio_params->DFSTimer * 60) - (time_now - radar_detected_time)) : 0;
+        dfs_timer_secs = ((time_now - radar_detected_time) < ((long long)radio_params->DFSTimer * 60) && (time_now > radar_detected_time)) ? (((long long)radio_params->DFSTimer * 60) - (time_now - radar_detected_time)) : 0;
         if(dfs_timer_secs == 0) {
             update_db_radar_detected(radar_detected_ch_time);
             update_wifi_radio_config(RADIO_INDEX_DFS, radio_params, radio_feat);
@@ -3111,7 +3116,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
 {
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
-    wifi_radio_operationParam_t temp_radio_params;
+    wifi_radio_operationParam_t *temp_radio_params = NULL;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
@@ -3133,11 +3138,17 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     }
 
     if (ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) {
-        memset(&temp_radio_params, 0, sizeof(wifi_radio_operationParam_t));
-        temp_radio_params.band = radio_params->band;
-        temp_radio_params.channel = ch_chg->channel;
-        temp_radio_params.channelWidth = ch_chg->channelWidth;
-        temp_radio_params.DfsEnabled = radio_params->DfsEnabled;
+        temp_radio_params = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+        if (temp_radio_params == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+            return;
+        }
+        memset(temp_radio_params, 0, sizeof(wifi_radio_operationParam_t));
+
+        temp_radio_params->band = radio_params->band;
+        temp_radio_params->channel = ch_chg->channel;
+        temp_radio_params->channelWidth = ch_chg->channelWidth;
+        temp_radio_params->DfsEnabled = radio_params->DfsEnabled;
         // Channel change completed flag
         g_wifidb->channel_change_in_progress[ch_chg->radioIndex] = false;
         wifi_util_dbg_print(WIFI_CTRL,
@@ -3149,10 +3160,10 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext)) {
 
         ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-        if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
+        if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, temp_radio_params) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d: channel: %d bw: %d on radio: %d could not be set\n",
                 __FUNCTION__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
-            return;
+            goto cleanup;
         }
         ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_hal_channel_change, vap_svc_event_none, ch_chg);
     }
@@ -3176,14 +3187,14 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
 
     if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && ((radio_params->channel == ch_chg->channel)
                 && (radio_params->channelWidth == ch_chg->channelWidth))) {
-        return;
+        goto cleanup;
     }
 
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change: old channelWidth:%d new channelWidth:%d\r\n",
                             __func__, __LINE__, radio_params->channelWidth, ch_chg->channelWidth);
 
     if (ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) {
-        if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
+        if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, temp_radio_params) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d: received invalid channel: %d bw: %d from driver on radio %d\n",
                 __FUNCTION__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
             ret = wifi_hal_setRadioOperatingParameters(ch_chg->radioIndex, radio_params);
@@ -3196,7 +3207,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 wifi_util_info_print(WIFI_CTRL,"%s:%d: wifi radio parameter set success: radio_index:%d\n",
                     __FUNCTION__, __LINE__, ch_chg->radioIndex);
             }
-            return;
+            goto cleanup;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         radio_params->channel = ch_chg->channel;
@@ -3220,12 +3231,12 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         if (l_radio == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
                                 __FUNCTION__, __LINE__,  ch_chg->radioIndex);
-            return;
+            goto cleanup;
         }
 
         if( ((ch_chg->channel >= 36 && ch_chg->channel < 52) && (ch_chg->channelWidth != WIFI_CHANNELBANDWIDTH_160MHZ )) || (ch_chg->channel > 144 && ch_chg->channel <= 165) ) {
             wifi_util_error_print(WIFI_CTRL,"%s: Wrong radar in radio_index:%d chan:%u \n",__FUNCTION__, ch_chg->radioIndex, ch_chg->channel);
-            return ;
+            goto cleanup;
         }
 
         switch (ch_chg->sub_event)
@@ -3364,7 +3375,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         }
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
-        return;
+        goto cleanup;
     }
      data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
     if (data == NULL) {
@@ -3383,6 +3394,12 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);
+
+cleanup:
+    if (temp_radio_params != NULL) {
+        free(temp_radio_params);
+    }
+    temp_radio_params = NULL;
 }
 
 #define MAX_NEIGHBOURS 250
@@ -3514,22 +3531,32 @@ int wifidb_vap_status_update(bool status)
 {
     wifi_vap_name_t backhauls[MAX_NUM_RADIOS];
     int count;
-    wifi_vap_info_t vap_config;
+    wifi_vap_info_t *vap_config = NULL;
     rdk_wifi_vap_info_t rdk_vap_config;
-    memset(&vap_config, 0, sizeof(vap_config));
+    
+    vap_config = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (vap_config == NULL) 
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    
+    memset(vap_config, 0, sizeof(wifi_vap_info_t));
     memset(&rdk_vap_config, 0, sizeof(rdk_vap_config));
 
     /* get a list of mesh backhaul names of all radios */
     count = get_list_of_mesh_backhaul(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, sizeof(backhauls)/sizeof(wifi_vap_name_t), backhauls);
 
     for (int i = 0; i < count; i++) {
-        if (get_wifidb_obj()->desc.get_wifi_vpa_info_fn(&backhauls[i][0], &vap_config, &rdk_vap_config) == RETURN_OK) {
-            vap_config.u.bss_info.enabled = status;
+        if (get_wifidb_obj()->desc.get_wifi_vpa_info_fn(&backhauls[i][0], vap_config, &rdk_vap_config) == RETURN_OK) {
+            vap_config->u.bss_info.enabled = status;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi mesh backhaul status save:%d\n", __func__, __LINE__, status);
-            update_wifi_vap_info(&backhauls[i][0], &vap_config, &rdk_vap_config);
+            update_wifi_vap_info(&backhauls[i][0], vap_config, &rdk_vap_config);
         }
     }
 
+    free(vap_config);
+    vap_config = NULL;
     return RETURN_OK;
 }
 
@@ -3659,6 +3686,11 @@ void process_rsn_override_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if (vapInfo == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid VAP for rIndx %u apIndx %u\n",
+                __func__, __LINE__, rIdx, apIndex);
+            continue;
+        }
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
@@ -3675,7 +3707,8 @@ void process_rsn_override_rfc(bool type)
         memset(new_sec_mode, 0, sizeof(new_sec_mode));
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, old_sec_mode);
         if(ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string for mode %d\n",
+                __func__, __LINE__, vapInfo->u.bss_info.security.mode);
         }
 
         if(type) {
@@ -3740,7 +3773,7 @@ void process_rsn_override_rfc(bool type)
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
             wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
                 __func__, __LINE__, old_sec_mode, new_sec_mode);
-            if( (strcmp(old_sec_mode, new_sec_mode) != 0) && (new_sec_mode != NULL || old_sec_mode != NULL)) {
+            if (strcmp(old_sec_mode, new_sec_mode) != 0) {
                 notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
             }
         }

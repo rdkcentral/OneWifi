@@ -138,6 +138,10 @@ static void csi_disable_client(csi_session_t *r_csi)
         return;
     }
     app = get_app_by_inst(apps_mgr, wifi_app_inst_motion);
+    if (app == NULL) {
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d assert - NULL Pointer\n", __func__, __LINE__);
+        return;
+    }
     queue_t *csi_queue = get_csi_session_queue();
     count = queue_count(csi_queue);
 
@@ -214,7 +218,11 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
 
     //Create FIFO fr the session.
     snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", csi_session_number);
-    mkfifo(fifo_path, 0777);
+    if ((mkfifo(fifo_path, 0777) != 0) && (errno != EEXIST)) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Unable to create FIFO path\n", __func__, __LINE__);
+        free(csi);
+        return NULL;
+    }
 
     queue_push(csi_queue, csi);
     return csi;
@@ -278,6 +286,10 @@ static void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_
     }
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_motion);
+    if (app == NULL) {
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d assert - NULL Pointer \n", __func__, __LINE__);
+        return;
+     }
     count = queue_count(csi_queue);
     wifi_util_info_print(WIFI_APPS, "%s: Received Mac %d %d %02x %02x\n",__func__, connected, count, mac[0], mac[5]);
     for (i = 0; i<count; i++) {
@@ -377,7 +389,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
         csi->no_of_mac = 0;
     }
 
-    strncpy(mac_list, r_mac_list, MAX_CSI_CLIENTMACLIST_STR);
+    snprintf(mac_list, MAX_CSI_CLIENTMACLIST_STR, "%s", r_mac_list);
     rest = mac_list;
     if (strlen(mac_list) > 0)  {
         gettimeofday(&t_now, NULL);
@@ -727,7 +739,7 @@ bus_error_t csi_table_removerowhandler(char const *rowName)
     qcount = queue_count(local_csi_queue);
     for (itr=0; itr<qcount; itr++) {
         tmp_csi_data = queue_peek(local_csi_queue, itr);
-        if (tmp_csi_data->csi_session_num == (unsigned long) idx) {
+        if ((tmp_csi_data != NULL) && (tmp_csi_data->csi_session_num == (unsigned long) idx)) {
             tmp_csi_data = queue_remove(local_csi_queue, itr);
             if (tmp_csi_data) {
                 free(tmp_csi_data);
@@ -775,7 +787,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
         qcount = queue_count(local_csi_queue);
         for (itr=0; itr<qcount; itr++) {
             csi_data = queue_peek(local_csi_queue, itr);
-            if (csi_data->csi_session_num == idx) {
+            if ((csi_data != NULL) && (csi_data->csi_session_num == idx)) {
                 break;
             }
         }
@@ -817,7 +829,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
                     str_to_mac_bytes(str, l_client_list[itr]);
                     str = strtok_r(NULL, ",", &cptr);
                     itr++;
-                    if (itr > MAX_NUM_CSI_CLIENTS) {
+                    if (itr >= MAX_NUM_CSI_CLIENTS) {
                         wifi_util_error_print(WIFI_APPS,"%s:%d client list is big %d\n", __func__, __LINE__, itr);
                         if (str_dup) {
                             free(str_dup);
@@ -970,12 +982,12 @@ bus_error_t csi_get_handler(char *event_name, raw_data_t *p_data, bus_user_data_
         qcount = queue_count(csi_data_queue);
         for (itr=0; itr<qcount; itr++) {
             csi_data = queue_peek(csi_data_queue, itr);
-            if (csi_data->csi_session_num == idx) {
+            if ((csi_data != NULL) && (csi_data->csi_session_num == idx)) {
                 break;
             }
         }
 
-        if (csi_data == NULL) {
+        if ((csi_data == NULL) || (itr >= qcount)) {
             wifi_util_error_print(WIFI_APPS,"%s:%d Could not find entry\n", __func__, __LINE__);
             return bus_error_general;
         }
@@ -1073,6 +1085,9 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
     current_config_count = queue_count(current_config);
     for (itr=0; itr<current_config_count; itr++) {
         current_csi_data = (csi_data_t *)queue_peek(current_config, itr);
+        if (current_csi_data == NULL) {
+            continue;
+        }
         found = false;
         if (new_config != NULL) {
             new_config_count = queue_count(new_config);
@@ -1100,6 +1115,9 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
         new_config_count = queue_count(new_config);
         for (itr=0; itr<new_config_count; itr++) {
             new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
+            if (new_csi_data == NULL) {
+                continue;
+            }
             memset(tmp_cli_list, 0, tmp_cli_list_size);
             found = false;
             data_change = false;
@@ -1171,7 +1189,7 @@ csi_session_t *get_csi_session_from_session_num(int session_num)
 
     for (itr=0; itr<queue_count(csi_queue); itr++) {
         tmp_csi_session = (csi_session_t *)queue_peek(csi_queue, itr);
-        if (session_num == tmp_csi_session->csi_sess_number) {
+        if ((tmp_csi_session != NULL) && (session_num == tmp_csi_session->csi_sess_number)) {
             return tmp_csi_session;
         }
     }

@@ -666,7 +666,10 @@ CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
             {
                 memset(recName, 0, sizeof(recName));
                 sprintf(recName, MacFilterMode, apIndex+1);
-                PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "2"); 
+                int retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "2");
+                if (retPsmSet != CCSP_SUCCESS) {
+                    CcspTraceInfo(("[%s] PSM_Set_Record_Value2 (%s) returned error %d\n", __FUNCTION__, recName, retPsmSet));
+                }
             }
         }
     }
@@ -682,7 +685,10 @@ CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
             {
                 memset(recName, 0, sizeof(recName));
                 sprintf(recName, MacFilterMode, apIndex+1);
-                PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "1");
+                int retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "1");
+                if (retPsmSet != CCSP_SUCCESS) {
+                    CcspTraceInfo(("[%s] PSM_Set_Record_Value2 (%s) returned error %d\n", __FUNCTION__, recName, retPsmSet));
+                }
             }
         }
     }
@@ -765,10 +771,14 @@ int readRemoteIP(char *sIP, int size,char *sName)
 
                 // grab URL from string
                 urlPtr = strstr(buf, "=");
+                if (urlPtr == NULL) {
+                    fclose(fp1);
+                    return -1;
+                }
                 urlPtr++;
                 strncpy(sIP, urlPtr, size);
-              ret=0;
-              break;
+                ret=0;
+                break;
             }
         }
 
@@ -1037,7 +1047,7 @@ ANSC_STATUS wifiRadioChannelIsValid(UINT radioIndex, UINT inputChannel)
     UINT bandArrIndex = 0;
     BOOL isBandFound = FALSE;
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
-    wifi_radio_operationParam_t l_pcfg;
+    wifi_radio_operationParam_t *l_pcfg = NULL;
 
     //Get the radio capability for further comparision
     wifiRadioCap = getRadioCapability(radioIndex);
@@ -1054,8 +1064,14 @@ ANSC_STATUS wifiRadioChannelIsValid(UINT radioIndex, UINT inputChannel)
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, radioIndex));
         return ANSC_STATUS_FAILURE;
     }
-    memcpy(&l_pcfg, wifiRadioOperParam, sizeof(l_pcfg));
-    wifiRadioOperParam = &l_pcfg;
+
+    l_pcfg = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (l_pcfg == NULL) {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s:%d: Failed to allocate memory\n", __FUNCTION__, radioIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+    memcpy(l_pcfg, wifiRadioOperParam, sizeof(wifi_radio_operationParam_t));
+    wifiRadioOperParam = l_pcfg;
 
     //Compare the Band from capability and operation
     for (bandArrIndex = 0; bandArrIndex < wifiRadioCap->numSupportedFreqBand; bandArrIndex++)
@@ -1071,8 +1087,13 @@ ANSC_STATUS wifiRadioChannelIsValid(UINT radioIndex, UINT inputChannel)
     if (isBandFound == FALSE)
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d Band=%d is  not found in capability\n", __FUNCTION__, radioIndex, wifiRadioOperParam->band));
+        free(l_pcfg);
+        l_pcfg = NULL;
         return ANSC_STATUS_FAILURE;
     }
+
+    free(l_pcfg);
+    l_pcfg = NULL;
 
     arrayLen = wifiRadioCap->channel_list[bandArrIndex].num_channels;
     for (seqCounter = 0; seqCounter < arrayLen; seqCounter++)
@@ -1497,16 +1518,19 @@ CosaDmlWiFiGetFactoryResetPsmData
         retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, FactoryReset, NULL, &strValue);
         if (retPsmGet == CCSP_SUCCESS) {
         printf("%s %s = %s \n",__FUNCTION__, FactoryReset, strValue);
-        CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM GET Success %s = %s \n",__FUNCTION__, FactoryReset, strValue));
+        CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM GET Success %s = %s\n",__FUNCTION__, FactoryReset, strValue));
             *factoryResetFlag = _ansc_atoi(strValue);
             ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
 
         } else if (retPsmGet == CCSP_CR_ERR_INVALID_PARAM) {
             *factoryResetFlag = 0;
             printf("%s PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__, FactoryReset, retPsmGet);
-                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__, FactoryReset, retPsmGet));
+                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM_Get_Record_Value2 (%s) returned error %d\n",__FUNCTION__, FactoryReset, retPsmGet));
             // Set to FALSE
-            PSM_Set_Record_Value2(bus_handle,g_Subsystem, FactoryReset, ccsp_string, "0");
+            int retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, FactoryReset, ccsp_string, "0");
+            if (retPsmSet != CCSP_SUCCESS) {
+                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM_Set_Record_Value2 (%s) returned error %d\n",__FUNCTION__, FactoryReset, retPsmSet));
+            }
         } else {
             printf("%s PSM_Get_Record_Value2 returned error %d retry in 10 seconds \n",__FUNCTION__, retPsmGet);
                 CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :returned error %d retry in 10 seconds\n",__FUNCTION__, retPsmGet));
