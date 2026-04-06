@@ -6672,7 +6672,11 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     }
     cfg_sec.encryption_method_new = sec->encr;
     /* encryption_method is the downgrade-safe fallback: same as new except GCMP256 -> AES */
+#ifdef CONFIG_IEEE80211BE
     cfg_sec.encryption_method = (sec->encr == wifi_encryption_aes_gcmp256) ? wifi_encryption_aes : sec->encr;
+#else
+    cfg_sec.encryption_method = sec->encr;
+#endif
 
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
     strncpy(cfg_sec.vap_name,vap_name,(sizeof(cfg_sec.vap_name)-1));
