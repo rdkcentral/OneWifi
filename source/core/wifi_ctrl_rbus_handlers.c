@@ -174,6 +174,10 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         return bus_error_general;
     }
     rf_status = p_data->raw_data.b;
+    if (ctrl->rf_status_down == rf_status) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d and value to set are same\n", __func__, __LINE__, ctrl->rf_status_down);
+        return rc;
+    }
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);

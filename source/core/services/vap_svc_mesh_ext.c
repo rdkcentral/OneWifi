@@ -1483,6 +1483,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
 
+	publish_endpoint_enable();
         if (ctrl->rf_status_down == true) {
             ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
                  __LINE__);
@@ -1894,47 +1895,7 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
     return RETURN_OK;
 }
 
-#define MAX_STATUS_LEN 5
 #define MAX_STR_LEN    128
-
-int publish_endpoint_status_to_wan(wifi_ctrl_t *ctrl, int connection_status)
-{
-    char name[MAX_STR_LEN] = { '\0' };
-    bus_error_t rc = bus_error_success;
-    wifi_util_info_print(WIFI_CTRL, "%s:%d Connection status updated as %d\n", __func__, __LINE__, connection_status);
-    if (ctrl->rf_status_down == true) {
-        raw_data_t data;
-        sprintf(name, "Device.WiFi.EndPoint.1.Status");
-        memset(&data, 0, sizeof(raw_data_t));
-        data.data_type = bus_data_type_string;
-        data.raw_data.bytes = malloc(MAX_STATUS_LEN);
-        if (data.raw_data.bytes == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: malloc failed\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
-        data.raw_data_len = MAX_STATUS_LEN;
-        memset(data.raw_data.bytes, '\0', MAX_STATUS_LEN);
-        if (connection_status == 2) { // connected state
-            strncpy((char *)data.raw_data.bytes, "Up", MAX_STATUS_LEN);
-        } else if ((connection_status == 1) || (connection_status == 3)) { // disconnected  or AP not found state
-            strncpy((char *)data.raw_data.bytes, "Down", MAX_STATUS_LEN);
-        }
-        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, name, &data);
-        if (rc != bus_error_success) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus_event_publish_fn(): Event failed\n", __func__, __LINE__);
-            free(data.raw_data.bytes);
-            return RETURN_ERR;
-        }
-        if (data.raw_data.bytes) {
-            free(data.raw_data.bytes);
-            data.raw_data.bytes = NULL;
-        }
-    } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d Endpoint not enabled\n", __func__, __LINE__);
-        return RETURN_OK;
-    }
-    return RETURN_OK;
-}
 #define MAC_ADDR_STR_LEN 18
 
 int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
