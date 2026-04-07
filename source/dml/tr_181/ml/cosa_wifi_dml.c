@@ -445,6 +445,12 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->wpa3_compatibility_enable;
         return TRUE;
     }
+    
+    if (AnscEqualString(ParamName, "Xfi_Tel_Enable", TRUE))
+    {
+        *pBool = rfc_pcfg->xfi_tel_enable_rfc;
+        return TRUE;
+    }
 
     return FALSE;
 }
@@ -1227,6 +1233,15 @@ WiFi_SetParamBoolValue
         if(bValue != rfc_pcfg->wpa3_compatibility_enable) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_rsn_override_rfc);
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d setting WPA3_Personal_Compatibility RFC to %d \n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "Xfi_Tel_Enable", TRUE))
+    {
+        if(bValue != rfc_pcfg->xfi_tel_enable_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_xfi_tel_enable_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Xfi Tel Enable rfc value set bvalue is %d\n", __FUNCTION__,__LINE__,bValue);
         }
         return TRUE;
     }
