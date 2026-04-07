@@ -801,7 +801,7 @@ static void telemetry_event_sta_ap_code_counts(interop_data_t *sta1,
                  "CONN_REJECT_COUNT_%d", vapindex + 1);
 
         snprintf(telemetry_val, sizeof(telemetry_val),
-                 "%d %s, SC:%s\n", vapindex + 1, ap, sc_list);
+                 "%d,%s, SC:%s\n", vapindex + 1, ap, sc_list);
 
         strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
         telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
