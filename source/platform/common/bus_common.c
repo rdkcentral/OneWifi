@@ -832,11 +832,17 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
 {
     bus_data_prop_t *next, *prev, *cur;
 
+    if (p_data_prop == NULL) {
+        return;
+    }
+
     if (p_data_prop->ref_count == 1) {
         free_bus_raw_data(&p_data_prop->value);
         p_data_prop->is_data_set = false;
         p_data_prop->ref_count = 0;
-        (*num_prop)--;
+        if (num_prop && (*num_prop > 0)) {
+            (*num_prop)--;
+        }
     } else if (p_data_prop->ref_count > 1) {
         wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
                 __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
@@ -853,7 +859,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         if (cur->ref_count == 1) {
             free_bus_raw_data(&cur->value);
             free(cur);
-            (*num_prop)--;
+            if (num_prop && (*num_prop > 0)) {
+                (*num_prop)--;
+            }
             prev->next_data = next;
         } else if (cur->ref_count > 1) {
             wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
@@ -868,7 +876,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         cur = next;
     }
 
-    wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    if (num_prop) {
+        wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    }
 }
 
 void bus_release_data_obj(bus_data_obj_t *p_bus_obj)
