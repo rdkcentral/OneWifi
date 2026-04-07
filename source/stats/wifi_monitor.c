@@ -537,8 +537,8 @@ void telemetry_event_interop_extra_details(interop_data_t *sta1, int vapindex, c
 	wifi_util_dbg_print(WIFI_MON, "%s:%d after fetching vapindex is:%d ,vlan_id:%d return:%d \r\n", __func__, __LINE__, vapindex, sta1->vlan_id, ret);
 	snprintf(telemetry_buff, sizeof(telemetry_buff), "INTEROP_EXTRA_DETAILS_%d", vapindex + 1);
     snprintf(telemetry_val, sizeof(telemetry_val),
-        "%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-        ap, mac, sta1->channel, sta1->variant,
+        "%d,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+        vapindex + 1, ap, mac, sta1->channel, sta1->variant,
         sta1->rssi, sta1->noise_floor, sta1->snr, sta1->channel_util, sta1->mgmt_reason_counts[0],sta1->mgmt_reason_counts[1],sta1->mgmt_reason_counts[2],sta1->mgmt_reason_counts[3],sta1->vlan_id);
     wifi_util_dbg_print(WIFI_MON, "%s:%s\n", telemetry_buff, telemetry_val);
     get_formatted_time(tmp);
@@ -616,7 +616,7 @@ void telemetry_event_eap_reason_count(interop_data_t *sta1, int vapindex, char *
     }
     snprintf(telemetry_buff, sizeof(telemetry_buff), "EAPOL_REASON_COUNTS_%d", vapindex + 1);
 
-    snprintf(telemetry_val, sizeof(telemetry_val), "%s,%s,RC:%s", ap, mac, rc_list);
+    snprintf(telemetry_val, sizeof(telemetry_val), "%d,%s,%s,RC:%s", vapindex + 1, ap, mac, rc_list);
 
     strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
     telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
@@ -640,7 +640,7 @@ static void telemetry_event_common(const char *event_name, int count, int vapind
     char buff[256];
     char tmp[64];
     snprintf(telemetry_buff, sizeof(telemetry_buff), "%s_%d", event_name,vapindex + 1);
-    snprintf(telemetry_val, sizeof(telemetry_val), "%s,%s,%d", ap, mac, count);
+    snprintf(telemetry_val, sizeof(telemetry_val), "%d,%s,%s,%d", vapindex + 1, ap, mac, count);
     wifi_util_info_print(WIFI_MON, "%s:%s\n", telemetry_buff, telemetry_val);
     get_formatted_time(tmp);
     snprintf(buff, sizeof(buff), "%s:%s:%s\n", tmp, telemetry_buff, telemetry_val);
@@ -696,7 +696,7 @@ static void telemetry_event_sta_ap_code_counts(interop_data_t *sta1,
                  "DISCONN_COUNT_STA_AP_%d", vapindex + 1);
 
         snprintf(telemetry_val, sizeof(telemetry_val),
-                 "%s, RC:%s\n", mac, rc_list);
+                 "%d,%s, RC:%s\n", vapindex + 1, mac, rc_list);
 
         strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
         telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
@@ -731,7 +731,7 @@ static void telemetry_event_sta_ap_code_counts(interop_data_t *sta1,
                  "CONN_REJECT_STA_%d", vapindex + 1);
 
         snprintf(telemetry_val, sizeof(telemetry_val),
-                 "%s, SC:%s\n", mac, sc_list);
+                 "%d,%s, SC:%s\n", vapindex + 1, mac, sc_list);
 
         strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
         telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
@@ -766,7 +766,7 @@ static void telemetry_event_sta_ap_code_counts(interop_data_t *sta1,
                  "DISCONN_COUNT_AP_STA_%d", vapindex + 1);
 
         snprintf(telemetry_val, sizeof(telemetry_val),
-                 "%s, RC:%s\n", mac, rc_list);
+                 "%d,%s, RC:%s\n", vapindex + 1,mac, rc_list);
 
         strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
         telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
@@ -801,7 +801,7 @@ static void telemetry_event_sta_ap_code_counts(interop_data_t *sta1,
                  "CONN_REJECT_COUNT_%d", vapindex + 1);
 
         snprintf(telemetry_val, sizeof(telemetry_val),
-                 "%s, SC:%s\n", ap, sc_list);
+                 "%d %s, SC:%s\n", vapindex + 1, ap, sc_list);
 
         strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
         telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
@@ -829,11 +829,11 @@ void telemetry_event_code_count(interop_data_t *sta1, int vapindex, char *mac, c
         telemetry_event_access_accept_count(sta1, vapindex, mac, ap);
         telemetry_event_eap_success_count(sta1, vapindex, mac, ap);
         telemetry_event_eap_failure_count(sta1, vapindex, mac, ap);
-        telemetry_event_eap_reason_count(sta1, vapindex, mac, ap);
-	    telemetry_event_eap_ap_reason_count(sta1, vapindex, mac, ap);
-		telemetry_event_handshake_count(sta1, vapindex, mac, ap);
-        telemetry_event_interop_extra_details(sta1, vapindex, mac, ap);
 	}
+	telemetry_event_eap_reason_count(sta1, vapindex, mac, ap);
+	telemetry_event_eap_ap_reason_count(sta1, vapindex, mac, ap);
+	telemetry_event_handshake_count(sta1, vapindex, mac, ap);
+    telemetry_event_interop_extra_details(sta1, vapindex, mac, ap);
     if (vap_bss_info == NULL) {
 	  wifi_util_dbg_print(WIFI_MON, "%s:%d vap_bss_info is null for vap_idex:%d \r\n", __func__, __LINE__, vapindex);
           return;
