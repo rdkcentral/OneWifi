@@ -38,7 +38,9 @@ extern "C" {
 #define WIFI_STA_INTERFACE_NAME             "Device.WiFi.STA.{i}.InterfaceName"
 #define WIFI_STA_CONNECTED_GW_BSSID         "Device.WiFi.STA.{i}.Bssid"
 #define WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT "Device.WiFi.STAConnectionTimeout"
+#define WIFI_ENDPOINT_CONNECT_STATUS        "Device.WiFi.EndPoint.1.Status"
 #define WIFI_ACTIVE_GATEWAY_CHECK           "Device.X_RDK_GatewayManagement.ExternalGatewayPresent"
+#define WIFI_ENDPOINT_ENABLE_CHECK          "Device.WiFi.EndPoint.1.Enable"
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
@@ -64,6 +66,12 @@ extern "C" {
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
+#define WIFI_IGNITE_NAMESPACE               "Device.WiFi.Ignite_Control.{i}."
+#define WIFI_IGNITE_MIN_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MinChutilThreshold"
+#define WIFI_IGNITE_MAX_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MaxChutilThreshold"
+#define WIFI_IGNITE_SNR_THRESHOLD           "Device.WiFi.Ignite_Control.{i}.SNRThreshold"
+#define WIFI_IGNITE_SNR_DIFFERENCE        "Device.WiFi.Ignite_Control.{i}.SNRDifference"
+#define WIFI_IGNITE_APPLY_CONFIG            "Device.WiFi.ApplyIgniteSettings"
 #define WIFI_COLLECT_STATS_TABLE            "Device.WiFi.CollectStats.Radio.{i}."
 #define WIFI_COLLECT_STATS_RADIO_ON_CHANNEL_STATS      "Device.WiFi.CollectStats.Radio.{i}.ScanMode.on_channel.ChannelStats"
 #define WIFI_COLLECT_STATS_RADIO_OFF_CHANNEL_STATS     "Device.WiFi.CollectStats.Radio.{i}.ScanMode.off_channel.ChannelStats"
@@ -79,6 +87,10 @@ extern "C" {
 #define WIFI_NOTIFY_INTEROP_DETAILS                    "Device.WiFi.AccessPoint.{i}.InteropDetails" 
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
+#define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
+#define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
+#define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
+#define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -158,10 +170,11 @@ typedef enum {
     wifi_app_inst_whix = wifi_app_inst_base << 13,
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
-    wifi_app_inst_memwraptool = wifi_app_inst_base << 16,
-    wifi_app_inst_easyconnect = wifi_app_inst_base << 17,
-    wifi_app_inst_sta_mgr = wifi_app_inst_base << 18,
-    wifi_app_inst_max = wifi_app_inst_base << 19
+    wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
+    wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
+    wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
+    wifi_app_inst_link_quality = wifi_app_inst_base << 19,
+    wifi_app_inst_max = wifi_app_inst_base << 20
 } wifi_app_inst_t;
 
 typedef struct {
@@ -264,6 +277,23 @@ typedef struct {
     trace_headers_t                   t_header;
     unsigned char                     blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
 } active_msmt_t;
+
+typedef struct {
+    char ignite_name[32];
+    float min_chanutil_threshold;
+    float max_chanutil_threshold;
+    float SNR_threshold;
+    float SNR_difference;
+}ignite_config_t;
+
+// Global pending ignite configuration
+typedef struct {
+    ignite_config_t config[MAX_NUM_RADIOS];
+    bool is_pending;
+    pthread_mutex_t lock;
+} apply_ignite_config_t;
+
+extern apply_ignite_config_t g_apply_ignite_config;
 
 typedef struct {
     int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
@@ -448,11 +478,34 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
-    unsigned int rss_check_interval; // minutes
-    unsigned int rss_threshold; // kbytes
-    unsigned int rss_maxlimit; // kbytes
-    unsigned int heapwalk_duration; // minutes
-    unsigned int heapwalk_interval; // minutes
+    double score;
+    double snr;
+    double per;
+    double phy;
+    char time[1024];
+} sample_t;
+
+typedef struct {
+    char   mac[18];
+    int    vap_index;
+    double threshold;
+    int    alarm;
+    char   reporting_time[32];
+    size_t sample_count;
+    sample_t *samples;   
+} link_report_t;
+
+typedef struct {
+    size_t link_count;
+    link_report_t *links;
+} report_batch_t;
+
+typedef struct {
+    unsigned int rss_check_interval; //minutes
+    unsigned int rss_threshold; //kbytes
+    unsigned int rss_maxlimit; //kbytes
+    unsigned int heapwalk_duration; //minutes
+    unsigned int heapwalk_interval; //minutes
     bool enable;
 } __attribute__((packed)) memwraptool_config_t;
 
@@ -485,6 +538,7 @@ typedef struct {
     bool tcm_enabled_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
+    bool link_quality_rfc;
     bool xfi_tel_enable_rfc;
 } wifi_rfc_dml_parameters_t;
 
@@ -532,6 +586,7 @@ typedef struct {
     int mgt_frame_rate_limit;
     int mgt_frame_rate_limit_window_size;
     int mgt_frame_rate_limit_cooldown_time;
+    double ignite_link_quality_threshold;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
@@ -936,6 +991,7 @@ typedef struct {
     long            deauth_gate_time;
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
+    bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
 
     /* wifi7 client specific data */
@@ -1163,6 +1219,14 @@ typedef struct {
 #define EM_MAX_CHANNELS 64
 
 typedef char marker_name[32];
+
+
+typedef struct {
+    char collection_start_time[128];
+    unsigned int reporting_interval;
+    float link_quality_threshold;
+} alarm_report_policy_t;
+
 
 typedef struct {
     int interval;

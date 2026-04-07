@@ -36,8 +36,7 @@
 #include "wifi_webconfig_consumer.h"
 #endif
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
-
-
+bool is_sta_set = false;
 struct ow_conf_vif_config_cb_arg
 {
     rdk_wifi_vap_info_t *rdk_vap_info;
@@ -62,10 +61,10 @@ void print_wifi_hal_bss_vap_data(wifi_dbg_type_t log_file_type, char *prefix,
         to_mac_str(l_sta_info->mac, mac_str);
         wifi_util_info_print(log_file_type,
             "%s:%d: [%s] Mesh VAP Config Data:\n radioindex=%d\n vap_name=%s\n vap_index=%d\n "
-            "ssid=%s\n bssid=%s\n enabled=%d\n conn_status=%d\n scan_period=%d\n scan_channel=%d\n "
+            "ssid=%s\n repurposed_ssid=%s\n repurposed_bridge=%s\n bssid=%s\n ignite_enabled=%d\n enabled=%d\n conn_status=%d\n scan_period=%d\n scan_channel=%d\n "
             "scan_band=%d\n mac=%s\n exists=%d\n",
             __func__, __LINE__, prefix, l_vap_info->radio_index, l_vap_info->vap_name,
-            l_vap_info->vap_index, l_sta_info->ssid, l_bssid_str, l_sta_info->enabled,
+            l_vap_info->vap_index, l_sta_info->ssid, l_sta_info->repurposed_ssid, l_vap_info->repurposed_bridge_name, l_bssid_str,  l_sta_info->ignite_enabled, l_sta_info->enabled,
             l_sta_info->conn_status, l_sta_info->scan_params.period,
             l_sta_info->scan_params.channel.channel, l_sta_info->scan_params.channel.band, mac_str,
             l_rdk_vap_info->exists);
@@ -106,6 +105,10 @@ void print_wifi_hal_vap_security_param(wifi_dbg_type_t log_file_type, char *pref
         wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table radius server ip=%s\n port=%d\n Secondary radius server ip=%s\n port=%d\n max_auth_attempts=%d\n blacklist_table_timeout=%d\n identity_req_retry_interval=%d\n server_retries=%d\n das_ip=%s\n das_port=%d\r\n",__func__, __LINE__, prefix, l_security->u.radius.ip,l_security->u.radius.port,l_security->u.radius.s_ip,l_security->u.radius.s_port,l_security->u.radius.max_auth_attempts,l_security->u.radius.blacklist_table_timeout,l_security->u.radius.identity_req_retry_interval,l_security->u.radius.server_retries,address,l_security->u.radius.dasport);
     } else {
         wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table sec type=%d\r\n",__func__, __LINE__, prefix, l_security->u.key.type);
+    }
+
+    if (isVapSTAMesh(vap_index)) {
+        wifi_util_info_print(log_file_type,"%s:%d: [%s] Ignite_Wifi_Security_Config eap=%d\n phase2=%d\n Mode=%d\r\n", __func__, __LINE__, prefix, l_security->repurposed_radius.eap_type, l_security->repurposed_radius.phase2, l_security->repurposed_mode);
     }
 }
 
@@ -1116,6 +1119,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
+
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
                 isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info)) {
             // radio data changed apply
@@ -1128,7 +1132,22 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 rdk_vap_info);
 
             if (isVapSTAMesh(tgt_vap_index)) {
-                if (memcmp(&mgr_vap_info->u.sta_info.security, &vap_info->u.sta_info.security, sizeof(wifi_vap_security_t))) {
+                // Avoid disabling ignite due to config push from ovsm
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d: RF-Status:%d New_ignite_config:%d Old_ignite_config:%d\n", __func__,
+                    __LINE__, ctrl->rf_status_down, vap_info->u.sta_info.ignite_enabled,
+                    mgr_vap_info->u.sta_info.ignite_enabled);
+                if ((ctrl->rf_status_down == true) &&
+                    (vap_info->u.sta_info.ignite_enabled == false) &&
+                    (mgr_vap_info->u.sta_info.ignite_enabled == true)) {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d Ignite mode enabled. Skipping ignite configuration update\n",
+                        __func__, __LINE__);
+                    vap_info->u.sta_info.ignite_enabled = true;
+                }
+
+                if (memcmp(&mgr_vap_info->u.sta_info.security, &vap_info->u.sta_info.security,
+                        sizeof(wifi_vap_security_t))) {
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.sta_info.security);
                     print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.sta_info.security);
                 }
@@ -1143,7 +1162,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                     print_wifi_hal_vap_wps_data(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.bss_info.wps);
                 }
 #endif
-            } 
+            }
 
             p_tgt_vap_map = (wifi_vap_info_map_t *) malloc(sizeof(wifi_vap_info_map_t));
             if(p_tgt_vap_map == NULL ) {
@@ -1189,9 +1208,11 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              * 2. MAC is updated by ow_core_update_vap_mac for XE2. Currently, schema_Wifi_VAP_Config doesn't have mac field
              * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
              */
-            memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
 
-            // This block of code is only used for updating VAP mac.
+            // Updating ignite enable/disable config via this memcpy
+        memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+        
+        // This block of code is only used for updating VAP mac.
             //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.bss_info.bssid)) {
             //    memcpy(vap_info->u.bss_info.bssid, p_tgt_vap_map->vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
             //}
@@ -1607,6 +1628,48 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     return ret;
 }
 
+bool ignite_config_equal(const ignite_config_t *mgr_ignite_config, const ignite_config_t *data_ignite_config) {
+    return (mgr_ignite_config->SNR_threshold == data_ignite_config->SNR_threshold) &&
+           (mgr_ignite_config->SNR_difference == data_ignite_config->SNR_difference) &&
+           (mgr_ignite_config->min_chanutil_threshold == data_ignite_config->min_chanutil_threshold) &&
+           (mgr_ignite_config->max_chanutil_threshold == data_ignite_config->max_chanutil_threshold);
+}
+
+static int webconfig_ignite_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] Null data\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    // Validate array bounds
+    if ((data == NULL) || (data->ignite_config == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] ignite_config array is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    for (UINT index = 0; index < getNumberRadios(); index++){
+        ignite_config_t *data_ignite_config = &data->ignite_config[index];
+        if (data_ignite_config->ignite_name[0] == '\0') {
+            wifi_util_error_print(WIFI_CTRL, "[%s %d] Skipping invalid ignite config at index %u\n", __func__, __LINE__, index);
+            continue;
+        }
+        if (ignite_config_equal(&mgr->ignite_config[index], data_ignite_config)) {
+            wifi_util_dbg_print(WIFI_CTRL, "Same config - skipping update for %s\n", data_ignite_config->ignite_name);
+            continue;
+        }
+
+        wifi_util_info_print(WIFI_CTRL, "[%s %d] Ignite config changed for %s Configs : [%f %f %f %f]\n", __func__, __LINE__, data_ignite_config->ignite_name, data_ignite_config->min_chanutil_threshold, data_ignite_config->max_chanutil_threshold, data_ignite_config->SNR_threshold, data_ignite_config->SNR_difference);
+
+        if ((wifidb_update_ignite_config(data_ignite_config)) != 0) {
+            wifi_util_dbg_print(WIFI_CTRL, "Failed to update the ignite config\n");
+            return RETURN_ERR;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config updated successfully\n", __func__, __LINE__);
+    return RETURN_OK;
+}
+
+
 static int webconfig_memwraptool_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_global_config_t *data_global_config = &data->config;
@@ -1643,10 +1706,31 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
 
     if (global_param_changed) {
         param = &data_global_config->global_parameters;
+        wifi_global_config_t *mgr_global_config = get_wifidb_wifi_global_config();
 
         wifi_hal_set_mgt_frame_rate_limit(param->mgt_frame_rate_limit_enable,
             param->mgt_frame_rate_limit, param->mgt_frame_rate_limit_window_size,
             param->mgt_frame_rate_limit_cooldown_time);
+
+        if (mgr_global_config->global_parameters.ignite_link_quality_threshold !=
+            param->ignite_link_quality_threshold) {
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d ignite_link_quality_threshold changed from %lf to %lf\n", __func__, __LINE__,
+                mgr_global_config->global_parameters.ignite_link_quality_threshold,
+                param->ignite_link_quality_threshold);
+
+            linkquality_data_t *lq_data = (linkquality_data_t *)malloc(sizeof(linkquality_data_t));
+            if (lq_data == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate linkquality_data_t\n",
+                    __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            memset(lq_data, 0, sizeof(linkquality_data_t));
+            lq_data->server_arg.threshold = param->ignite_link_quality_threshold;
+
+            apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec,
+                wifi_event_exec_link_param_reinit, lq_data, sizeof(linkquality_data_t));
+        }
 
         wifi_util_dbg_print(WIFI_CTRL,
             "Global config value is changed hence update the global config in DB\n");
@@ -1947,7 +2031,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
                             wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
 #ifdef NL80211_ACL
-			    if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                        if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #else
                             if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #endif
@@ -1974,7 +2058,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
 #ifdef NL80211_ACL
                 wifi_hal_delApAclDevices(vap_index);
 #else
-		wifi_delApAclDevices(vap_index);
+        wifi_delApAclDevices(vap_index);
 #endif
                 wifi_util_info_print(WIFI_MGR, "%s:%d: remove all mac acl entries"
                     " from cache and db vap_index:%d\n", __func__, __LINE__, vap_index);
@@ -2740,6 +2824,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_mesh_sta_vap_apply(ctrl, &data->u.decoded);
+                    is_sta_set = true;
                 }
             }
             break;
@@ -2792,6 +2877,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                         wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
                         return webconfig_error_apply;
                     }
+                    is_sta_set = true;
                 }
             }
             break;
@@ -2866,6 +2952,18 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     __LINE__);
             } else {
                 ret = webconfig_memwraptool_apply(ctrl, &data->u.decoded);
+            }
+            break;
+
+    case webconfig_subdoc_type_ignite:
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: Ignite webconfig subdoc\n", __func__,
+                __LINE__);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_error_print(WIFI_MGR,
+                    "%s:%d: Not expected publish of ignite webconfig subdoc\n", __func__,
+                    __LINE__);
+            } else {
+                ret = webconfig_ignite_apply(ctrl, &data->u.decoded);
             }
             break;
 
@@ -3063,6 +3161,69 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                                         __func__, __LINE__, ctrl->webconfig_state);
 
     return ((ret == RETURN_OK) ? webconfig_error_none:webconfig_error_apply);
+}
+
+void start_station_vaps(bool rf_status)
+{
+    webconfig_subdoc_data_t *data = NULL;
+    char *str;
+    wifi_ctrl_t *ctrl;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    int vap_index, radio_index = 0, vap_array_index = 0;
+    int status = RETURN_OK;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = { 0 };
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", __func__,
+            sizeof(webconfig_subdoc_data_t));
+        return;
+    }
+
+    webconfig_init_subdoc_data(data);
+    unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
+            &vap_names[0]);
+
+    for (size_t i = 0; i < num_vaps; i++) {
+        vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
+        if (vap_index == RETURN_ERR) {
+            continue;
+        }
+        status = get_vap_and_radio_index_from_vap_instance(&data->u.decoded.hal_cap.wifi_prop,
+                vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
+        if (status == RETURN_ERR) {
+            break;
+        }
+
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] vap-idx : %d radio-idx : %d vap-array-idx : %d\n", __func__, __LINE__, vap_index,
+                radio_index, vap_array_index);
+        if (rf_status == true) {
+            data->u.decoded.radios[radio_index]
+                .vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.ignite_enabled = true;
+        } else {
+            data->u.decoded.radios[radio_index]
+                .vaps.vap_map.vap_array[vap_array_index]
+                .u.sta_info.ignite_enabled = false;
+        }
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] SSID: %s vap-enable : %d ignite-enable : %d eap-type : %d phase : %d bridge : %s\n", __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.repurposed_ssid, data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.enabled,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ignite_enabled,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.eap_type,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.repurposed_radius.phase2,
+                data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].repurposed_bridge_name);
+    }
+
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) ==
+        webconfig_error_none) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
+        str = data->u.encoded.raw;
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+            wifi_event_webconfig_set_data_dml, NULL);
+    } else {
+        webconfig_data_free(data);
+    }
+    free(data);
+    data = NULL;
 }
 
 // register subdocs with webconfig_framework
