@@ -1,0 +1,146 @@
+$minimum-width: 768px;
+$minimum-button-size: 30px;
+
+@mixin no-selection-allowed {
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+    cursor: default;
+}
+
+@mixin transform( $property ) {
+    -webkit-transform: $property;
+    -ms-transform: $property;
+    transform: $property;
+}
+
+@mixin box-sizing {
+    box-sizing: border-box;
+    line-height: normal;
+}
+
+@mixin buttons {
+    button {
+        background-color: var(--json-tree-js-button-background-color);
+        border: var(--json-tree-js-border-size) solid var(--json-tree-js-button-border-color);
+        color: var(--json-tree-js-button-text-color);
+        border-radius: var(--json-tree-js-border-radius);
+        padding-top: 5px;
+        padding-bottom: 5px;
+        padding-left: 9px;
+        padding-right: 9px;
+        outline: none;
+        transition: var(--json-tree-js-transition);
+
+        &:disabled {
+            color: var(--json-tree-js-button-color-disabled);
+        }
+
+        &:not(.active):not(:disabled):active {
+            background: var(--json-tree-js-button-background-color-active) !important;
+            color: var(--json-tree-js-button-text-color-active) !important;
+        }
+
+        &:not(.active):not(:disabled):hover {
+            cursor: pointer;
+            background: var(--json-tree-js-button-background-color-hover);
+            color: var(--json-tree-js-button-text-color-hover);
+        }
+    }
+}
+
+@mixin type-span-colors {
+    span.array {
+        color: var(--json-tree-js-color-array);
+    }
+
+    span.object {
+        color: var(--json-tree-js-color-object);
+    }
+
+    span.map {
+        color: var(--json-tree-js-color-map);
+    }
+
+    span.set {
+        color: var(--json-tree-js-color-set);
+    }
+
+    span.boolean {
+        color: var(--json-tree-js-color-boolean);
+    }
+
+    span.float {
+        color: var(--json-tree-js-color-float);
+    }
+
+    span.number {
+        color: var(--json-tree-js-color-number);
+    }
+
+    span.bigint {
+        color: var(--json-tree-js-color-bigint);
+    }
+
+    span.string {
+        color: var(--json-tree-js-color-string);
+    }
+
+    span.date {
+        color: var(--json-tree-js-color-date);
+    }
+
+    span.symbol {
+        color: var(--json-tree-js-color-symbol);
+    }
+
+    span.function {
+        color: var(--json-tree-js-color-function);
+    }
+
+    span.unknown {
+        color: var(--json-tree-js-color-unknown);
+    }
+
+    span.guid {
+        color: var(--json-tree-js-color-guid);
+    }
+
+    span.regexp {
+        color: var(--json-tree-js-color-regexp);
+    }
+
+    span.url {
+        color: var(--json-tree-js-color-url);
+    }
+
+    span.email {
+        color: var(--json-tree-js-color-email);
+    }
+
+    span.html {
+        color: var(--json-tree-js-color-html);
+    }
+
+    span.lambda {
+        color: var(--json-tree-js-color-lambda);
+    }
+
+    span.null,
+    span.undefined {
+        background-color: var(--json-tree-js-color-null);
+        border-radius: var(--json-tree-js-border-radius-editable);
+        padding-left: 3px;
+        padding-right: 3px;
+        color: var(--json-tree-js-color-dark-black);
+    }
+}
+
+@mixin symbol-buttons {
+    font-weight: var(--json-tree-js-bold-weight-heavy);
+    min-width: $minimum-button-size;
+    min-height: $minimum-button-size;
+    text-align: center;
+}

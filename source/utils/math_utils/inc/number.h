@@ -32,7 +32,8 @@ public:
     bool is_zero(double x, int n);
 
 public:
-    bool operator ==(number_t n);
+    bool operator!=(const number_t& other) const;
+    bool operator==(const number_t& other) const;
     number_t operator *(number_t n);
     number_t operator /(number_t n);
     number_t operator +(number_t n);
@@ -43,7 +44,7 @@ public:
     matrix_t operator *(matrix_t m);
     
     void sqroot(number_t n[]);
-    number_t sqrt_val(void);
+	number_t sqrt_val(void);
     double mod_z();
     number_t absolute();
 	double abs_val() const;

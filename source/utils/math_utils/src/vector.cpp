@@ -179,10 +179,39 @@ vector_t vector_t::invert()
     return out;
 }
 
+void vector_t::push(number_t num)
+{
+    unsigned int i;
+    
+    if (m_num < m_capacity) {
+        m_val[m_num] = num;
+        m_num++;
+        return;
+    }
+    
+    // remove the top one to add at the end
+    for (i = 0; i < m_num - 1; i++) {
+        m_val[i] = m_val[i + 1];
+    }
+    
+    m_val[i] = num;
+}
+
+void vector_t::push(vector_t v)
+{
+    unsigned int i;
+    unsigned int num = v.get_length();
+    
+    for (i = 0; i < num; i++) {
+        push(v.get_value(i));
+    }
+}
+
 vector_t::vector_t(unsigned int num, number_t n[])
 {
     unsigned int i;
 
+    m_capacity = MAX_LEN;
     m_num = num;
 
     for (i = 0; i < num; i++) {
@@ -194,9 +223,10 @@ vector_t::vector_t(unsigned int num)
 {
     unsigned int i;
 
+    m_capacity = MAX_LEN;
     m_num = num;
 
-    for (i = 0; i < MAX_LEN; i++) {
+    for (i = 0; i < m_capacity; i++) {
         m_val[i].m_re = 0;
         m_val[i].m_im = 0;
     }
@@ -204,6 +234,7 @@ vector_t::vector_t(unsigned int num)
 
 vector_t::vector_t()
 {
+    m_capacity = MAX_LEN;
     m_num = 0;
 }
 

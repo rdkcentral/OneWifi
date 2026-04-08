@@ -27,17 +27,17 @@
 void number_t::print()
 {
     if ((is_zero(m_re, 4) == true) && (is_zero(m_im, 4) == false)) {
-        wifi_util_dbg_print(WIFI_LIB, "%0.4fi", m_im);
+        wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("%0.4fi"), m_im);
     } else if ((is_zero(m_re, 4) == false) && (is_zero(m_im, 4) == true)) {
-        wifi_util_dbg_print(WIFI_LIB, "%0.4f", m_re);
+        wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("%0.4f"), m_re);
     } else if ((is_zero(m_re, 4) == false) && (is_zero(m_im, 4) == false)) {
         if (m_im < 0) {
-            wifi_util_dbg_print(WIFI_LIB, "%0.4f%0.4fi", m_re, m_im);
+            wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("%0.4f%0.4fi"), m_re, m_im);
         } else {
-            wifi_util_dbg_print(WIFI_LIB, "%0.4f+%0.4fi", m_re, m_im);
+            wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("%0.4f+%0.4fi"), m_re, m_im);
         }
     } else {
-        wifi_util_dbg_print(WIFI_LIB, "0.0000");
+        wifi_util_dbg_print(WIFI_LIB, const_cast<char*>("0.0000"));
     }
 }
 
@@ -65,9 +65,13 @@ bool number_t::is_zero(int n)
     return (is_zero(m_re, n)) && (is_zero(m_im, n));
 }
 
-bool number_t::operator==(number_t n)
-{
-    return (m_re == n.m_re) && (m_im == n.m_im);
+bool number_t::operator==(const number_t& other) const {
+    return ((m_re == other.m_re) &&
+           (m_im == other.m_im));
+}
+
+bool number_t::operator!=(const number_t& other) const {
+    return !(*this == other);
 }
 
 number_t number_t::operator*(number_t n)

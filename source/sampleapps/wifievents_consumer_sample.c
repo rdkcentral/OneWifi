@@ -35,6 +35,8 @@
 #include <errno.h>
 #include <cjson/cJSON.h>
 
+#include "wifievents_consumer_sample.h"
+
 #define MAX_EVENTS 11
 #define DEFAULT_CSI_INTERVAL 500
 #define DEFAULT_CLIENTDIAG_INTERVAL 5000
@@ -103,6 +105,84 @@ int g_disable_csi_log = 0;
 int g_rbus_direct_enabled = 0;
 int g_num_of_samples = -1;
 int g_sample_counter = 0;
+
+char g_csi_cfg_clients_mac[256];
+char g_gw_str_mac[32];
+static motion_gesture_t g_motion_gesture;
+static pthread_mutex_t g_motion_gesture_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+long long int get_cur_time_in_sec(void)
+{
+    struct timeval tv_now = { 0 };
+    gettimeofday(&tv_now, NULL);
+
+    return (long long int)tv_now.tv_sec;
+}
+
+void remove_colons(char *str)
+{
+    char *src = str, *dst = str;
+
+    while (*src) {
+        if (*src != ':') {
+            *dst++ = *src;
+        }
+        src++;
+    }
+    *dst = '\0';
+}
+
+int get_cm_mac_addr(char *mac, unsigned int mac_size)
+{
+    FILE *f;
+    char ptr[32];
+    char *cmd = "deviceinfo.sh -cmac";
+
+    if (mac == NULL || mac_size == 0) {
+        return -1;
+    }
+
+    memset(ptr, 0, sizeof(ptr));
+
+    f = popen(cmd, "r");
+    if (f == NULL) {
+        return -1;
+    }
+
+    if (fgets(ptr, sizeof(ptr), f) == NULL) {
+        pclose(f);
+        return -1;
+    }
+
+    pclose(f);
+
+    ptr[strcspn(ptr, "\n")] = '\0';
+
+    remove_colons(ptr);
+
+    snprintf(mac, mac_size, "%s", ptr);
+
+    printf("device cm mac: %s\r\n", mac);
+
+    return 0;
+}
+
+motion_gesture_t get_motion_gesture_obj(void)
+{
+    motion_gesture_t val;
+    pthread_mutex_lock(&g_motion_gesture_mutex);
+    val = g_motion_gesture;
+    pthread_mutex_unlock(&g_motion_gesture_mutex);
+    return val;
+}
+
+// Thread-safe setter
+void set_motion_gesture_obj(motion_gesture_t val)
+{
+    pthread_mutex_lock(&g_motion_gesture_mutex);
+    g_motion_gesture = val;
+    pthread_mutex_unlock(&g_motion_gesture_mutex);
+}
 
 static void wifievents_get_device_vaps()
 {
@@ -351,6 +431,20 @@ static void csiMacListHandler(rbusHandle_t handle, rbusEvent_t const *event,
     UNREFERENCED_PARAMETER(handle);
 }
 
+static inline void convert_re_and_im(uint32_t per_tone_data_32bit, double *real, double *img)
+{
+    uint16_t real_u = per_tone_data_32bit & 0xFFFF;
+    uint16_t imag_u = (per_tone_data_32bit >> 16) & 0xFFFF;
+
+    // Convert unsigned to signed 16-bit (two's complement)
+    int16_t real_s = (real_u >= 0x8000) ? (int16_t)(real_u - 0x10000) : (int16_t)real_u;
+    int16_t imag_s = (imag_u >= 0x8000) ? (int16_t)(imag_u - 0x10000) : (int16_t)imag_u;
+
+    // Convert S9.6 fixed-point to float by dividing by 64
+    *real = real_s / 64.0f;
+    *img = imag_s / 64.0f;
+}
+
 void json_add_wifi_csi_frame_info(cJSON *sta_obj, wifi_frame_info_t *frame_info)
 {
     cJSON *obj_array, *number_item;
@@ -413,11 +507,16 @@ void json_add_wifi_csi_matrix_info(cJSON *csi_matrix_obj_wrapper, wifi_csi_data_
                 cJSON *real_imag_object = cJSON_CreateObject();
                 VERIFY_NULL_CHECK(real_imag_object);
 
+#if 0
                 int16_t real_data = (int16_t)((csi->csi_matrix[sc_idx][ant_idx][stream_idx] >> 16) &
                     0xFFFF);
                 int16_t imag_data = (int16_t)(csi->csi_matrix[sc_idx][ant_idx][stream_idx] &
                     0xFFFF);
-
+#else
+                double real_data = 0.0, imag_data = 0.0;
+                convert_re_and_im(csi->csi_matrix[sc_idx][ant_idx][stream_idx],
+                    &real_data, &imag_data);
+#endif
                 cJSON_AddNumberToObject(real_imag_object, "real", real_data);
                 cJSON_AddNumberToObject(real_imag_object, "img", imag_data);
 
@@ -427,12 +526,41 @@ void json_add_wifi_csi_matrix_info(cJSON *csi_matrix_obj_wrapper, wifi_csi_data_
     }
 }
 
+void add_motion_gesture(cJSON *sta_obj)
+{
+    cJSON *gesture_array = cJSON_CreateArray();
+    VERIFY_NULL_CHECK(gesture_array);
+
+    if (g_motion_gesture == GESTURE_IDLE) {
+        cJSON_AddItemToArray(gesture_array, cJSON_CreateString("idle"));
+    } else {
+        motion_gesture_map_t gesture_map[] = {
+            {GESTURE_HAND_MOVEMENT, "hand movement"},
+            {GESTURE_WALKING,      "walking"},
+            {GESTURE_RUNNING,      "running"},
+        };
+
+        size_t num_gestures = sizeof(gesture_map) / sizeof(gesture_map[0]);
+
+        for (size_t i = 0; i < num_gestures; ++i) {
+            if (g_motion_gesture & gesture_map[i].value) {
+                cJSON_AddItemToArray(gesture_array,
+                                 cJSON_CreateString(gesture_map[i].name));
+            }
+        }
+    }
+
+    cJSON_AddItemToObject(sta_obj, "gesture", gesture_array);
+}
+
 void client_csi_data_json_elem_add(cJSON *sta_obj, wifi_csi_data_t *csi,
     char *str_sta_mac)
 {
     cJSON *obj;
 
     cJSON_AddStringToObject(sta_obj, "sta_mac", str_sta_mac);
+
+    //add_motion_gesture(sta_obj);
 
     obj = cJSON_CreateObject();
     VERIFY_NULL_CHECK(obj);
@@ -463,6 +591,7 @@ void csi_data_in_json_format(mac_address_t sta_mac, wifi_csi_data_t *csi)
         p_csi_json_obj->json_csi_obj = cJSON_CreateObject();
         VERIFY_NULL_CHECK(p_csi_json_obj->json_csi_obj);
         cJSON_AddItemToObject(p_csi_json_obj->main_json_obj, "CSI", p_csi_json_obj->json_csi_obj);
+        cJSON_AddNumberToObject(p_csi_json_obj->json_csi_obj, "CsiInterval", g_csi_interval);
     }
 
     if (p_csi_json_obj->json_sounding_devices == NULL) {
@@ -512,14 +641,25 @@ void save_json_data_to_file(void)
             return;
         }
 
-        p_csi_json_obj->json_dump_fptr = fopen("/tmp/csi_samples.json", "a+");
+        char file_name[64] = { 0 };
+        long long int timestamp = get_cur_time_in_sec();
+
+        if (strlen(g_gw_str_mac)) {
+            snprintf(file_name, sizeof(file_name), "/tmp/csi_samples_%s_%llu.json",
+                g_gw_str_mac, timestamp);
+	} else {
+            snprintf(file_name, sizeof(file_name), "/tmp/csi_samples_%llu.json", timestamp);
+        }
+
+
+        p_csi_json_obj->json_dump_fptr = fopen(file_name, "a+");
         if (p_csi_json_obj->json_dump_fptr == NULL) {
-            printf("%s Failed to open file\n", __func__);
+            printf("%s Failed to open file:%s\n", __func__, file_name);
             goto file_error;
         }
 
         if (fputs(json_string, p_csi_json_obj->json_dump_fptr) == EOF) {
-            perror("Failed to write to /tmp/csi_samples.json");
+            perror("Failed to write to csi json file");
             goto file_error;
         }
         fputc('\n', p_csi_json_obj->json_dump_fptr);
@@ -908,13 +1048,54 @@ static void freeSubscription(rbusEventSubscription_t *sub)
     }
 }
 
+bool is_valid_mac(const char *mac)
+{
+    int i;
+
+    if (strlen(mac) != 17)
+        return false;
+
+    for (i = 0; i < 17; i++) {
+        if (((i + 1) % 3 == 0) && (mac[i] != ':')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool validate_mac_list(const char *input)
+{
+    char buffer[256];
+    char *token;
+
+    strncpy(buffer, input, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    token = strtok(buffer, ",");
+
+    while (token != NULL) {
+        // Trim leading spaces
+        while (*token == ' ')
+            token++;
+
+        if (!is_valid_mac(token)) {
+            printf("Invalid MAC address found: %s\n", token);
+            return false;
+        }
+
+        token = strtok(NULL, ",");
+    }
+
+    return true;
+}
+
 static bool parseArguments(int argc, char **argv)
 {
     int c;
     bool ret = true;
     char *p;
 
-    while ((c = getopt(argc, argv, "he:s:v:i:c:f:n:")) != -1) {
+    while ((c = getopt(argc, argv, "he:s:v:i:c:f:n:m:")) != -1) {
         switch (c) {
         case 'h':
             printf("HELP :  wifi_events_consumer -e [numbers] - default all events\n"
@@ -935,6 +1116,7 @@ static bool parseArguments(int argc, char **argv)
                    "-c [client diag interval] - default %dms\n"
                    "-f [debug file name] - default /tmp/wifiEventConsumer\n"
                    "-n [number of samples]"
+                   "-m [All client MAC addresses separated by commas]"
                    "Example: wifi_events_consumer -e 1,2,3,7 -s 1 -v 1,2,13,14\n"
                    "touch /nvram/wifiEventsAppCSILogDisable to disable CSI detail log\n"
                    "touch /nvram/wifiEventsAppCSIRBUSDirect to enable RBUS Direct for CSI data\n",
@@ -991,6 +1173,13 @@ static bool parseArguments(int argc, char **argv)
             g_num_of_samples = atoi(optarg);
             printf(" number of samples to be collected : %d\n", g_num_of_samples);
             break;
+        case 'm':
+            if (!optarg || !validate_mac_list(optarg)) {
+                printf("%s:%d Failed to parse csi mac list:%s\n", __func__, __LINE__, optarg);
+                ret = false;
+            }
+            snprintf(g_csi_cfg_clients_mac, sizeof(g_csi_cfg_clients_mac), "%s", optarg);
+            break;
         case '?':
             printf("Supposed to get an argument for this option or invalid option\n");
             exit(0);
@@ -1046,6 +1235,48 @@ static void termSignalHandler(int sig)
     exit(0);
 }
 
+int set_rbus_csi_sta_maclist(rbusHandle_t bus_handle, int csi_session_index, char *sta_mac)
+{
+    char name[64] = { 0 };
+    int rc = RBUS_ERROR_SUCCESS;
+
+    snprintf(name, sizeof(name), "Device.WiFi.X_RDK_CSI.%d.ClientMaclist", csi_session_index);
+
+    rc = rbus_setStr(bus_handle, name, sta_mac);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        printf("%s:%d: bus:%s bus set string:%s Failed %d\n", __func__,
+            __LINE__, name, sta_mac, rc);
+        return RETURN_ERR;
+    } else {
+        printf("%s:%d: bus:%s bus set string:%s success\n", __func__,
+            __LINE__, name, sta_mac);
+    }
+
+    return rc;
+}
+
+rbusError_t rbus_set_bool_value(rbusHandle_t p_rbus_handle, int csi_session_index, bool bool_value)
+{
+    char name[64] = { 0 };
+    rbusError_t rc = RBUS_ERROR_SUCCESS;
+    rbusValue_t value;
+
+    rbusValue_Init(&value);
+
+    rbusValue_SetBoolean(value, bool_value);
+
+    snprintf(name, sizeof(name), "Device.WiFi.X_RDK_CSI.%d.Enable", csi_session_index);
+
+    rc = rbus_set(p_rbus_handle, name, value, NULL);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        printf("%s:%d bus: rbus_set() failed:%d for name:%s\n",
+          __func__, __LINE__, rc, name);
+    }
+    rbusValue_Release(value);
+
+    return rc;
+}
+
 int main(int argc, char *argv[])
 {
     struct sigaction new_action = { 0 };
@@ -1059,6 +1290,8 @@ int main(int argc, char *argv[])
     /* Add pid to rbus component name */
     g_pid = getpid();
     snprintf(g_component_name, RBUS_MAX_NAME_LENGTH, "%s%d", "WifiEventConsumer", g_pid);
+
+    get_cm_mac_addr(g_gw_str_mac, sizeof(g_gw_str_mac));
 
     rc = rbus_open(&g_handle, g_component_name);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -1127,7 +1360,16 @@ int main(int argc, char *argv[])
             printf("Failed to add CSI\n");
             goto exit;
         }
+        if (strlen(g_csi_cfg_clients_mac) != 0) {
+            usleep(500 * 1000);
+            set_rbus_csi_sta_maclist(g_handle, g_csi_index, g_csi_cfg_clients_mac);
+            usleep(500 * 1000);
+            rbus_set_bool_value(g_handle, g_csi_index, true);
+        }
     }
+
+    //start_cli_thread();
+    //start_csi_web_server();
 
     if (g_sub_total > 0) {
         g_all_subs = malloc(sizeof(rbusEventSubscription_t) * g_sub_total);
@@ -1235,6 +1477,9 @@ int main(int argc, char *argv[])
         if (rc != RBUS_ERROR_SUCCESS) {
             printf("consumer: rbusEvent_SubscribeExNoCopy failed: %d\n", rc);
             goto exit3;
+        } else {
+            printf("%s:%d consumer: rbusEvent_SubscribeEX success: %d\n",
+                __func__, __LINE__, g_csi_sub_total);
         }
     }
 
@@ -1251,6 +1496,9 @@ int main(int argc, char *argv[])
                 WIFI_EVENT_CONSUMER_DGB("Error openning fifo for session number %d %s\n",
                     g_csi_index, strerror(errno));
                 return -1;
+            } else {
+                printf("%s:%d fifo_fd:%d fifo name:%s\n",
+                    __func__, __LINE__, pipe_read_fd, fifo_path);
             }
             max_fd = pipe_read_fd;
             FD_SET(pipe_read_fd, &readfds);
@@ -1268,6 +1516,7 @@ int main(int argc, char *argv[])
             FD_SET(lvel_pipe_read_fd, &readfds);
         }
 
+        printf("%s:%d app waiting for data\n", __func__, __LINE__);
         while (1) {
             int buffer_size = CSI_HEADER_SIZE + sizeof(wifi_csi_data_t);
             char buffer[buffer_size];

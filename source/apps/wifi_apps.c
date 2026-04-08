@@ -295,6 +295,10 @@ extern int sta_mgr_deinit(wifi_app_t *app);
 extern int sta_mgr_event(wifi_app_t *app, wifi_event_t *event);
 #endif
 
+extern int web_gui_app_init(wifi_app_t *app, unsigned int create_flag);
+extern int web_gui_app_deinit(wifi_app_t *app);
+extern int web_gui_app_event(wifi_app_t *app, wifi_event_t *event);
+
 wifi_app_descriptor_t app_desc[] = {
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     {
@@ -316,6 +320,7 @@ wifi_app_descriptor_t app_desc[] = {
         cac_mgmt_frame_hook,NULL
     },
 #endif
+#if 0
     {
         wifi_app_inst_link_quality, 0,
         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
@@ -324,6 +329,7 @@ wifi_app_descriptor_t app_desc[] = {
         link_quality_init, link_quality_event, link_quality_deinit,
         NULL, NULL
     },
+#endif
 #if SM_APP
     {
         wifi_app_inst_sm, 0,
@@ -453,6 +459,14 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+    {
+         wifi_app_inst_web_gui, 0,
+         wifi_event_type_hal_ind | wifi_event_type_exec,
+         true, true,
+         "WebGuiApp",
+         web_gui_app_init, web_gui_app_event, web_gui_app_deinit,
+         NULL, NULL
+    },
 };
 
 wifi_app_descriptor_t* get_app_desc(int *size){
