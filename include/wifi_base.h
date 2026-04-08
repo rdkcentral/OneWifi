@@ -164,6 +164,10 @@ typedef char stats_cfg_id_t[CFG_ID_LEN];
 #define HE_MAC_UL_MU_MIMO_BIT       1   /* byte 4 */
 #define HE_MAC_UL_OFDMA_BIT         2   /* byte 2 */
 #define HE_MAC_DL_OFDMA_BIT         3   /* byte 2 */
+#define HE_MCS_MAP_BITS_PER_STREAM 2
+#define HE_MCS_MAP_MAX_BITS        16
+#define HE_MCS_MAP_MAX_STREAMS     (HE_MCS_MAP_MAX_BITS / HE_MCS_MAP_BITS_PER_STREAM)
+#define HE_MAX_MCS_MAPS 3  // 80MHz + 160MHz + 80+80MHz
 
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
@@ -987,8 +991,11 @@ typedef struct {
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
     unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
+
+    /* wifi7 client specific data */
     wifi_mld_sta_info_t mld_info;
     bool association_link;
+    mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;

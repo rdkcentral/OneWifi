@@ -81,7 +81,7 @@ static pErr create_execRetVal(void);
 static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type);
 static pErr xfinity_exec_common_handler(cJSON *blob, webconfig_subdoc_type_t subdoc_type);
 static int validate_private_home_ssid_param(char *str, pErr execRetVal);
-static int validate_private_home_security_param(char *mode_enabled, char*encryption_method, pErr execRetVal);
+static int validate_private_home_security_param(char *mode_enabled, char*encryption_method, pErr execRetVal, bool is_6g);
 static pErr wifi_ignitewifi_exec_handler(void *blob);
 
 void webconf_free_resources(void *arg)
@@ -127,15 +127,26 @@ pErr webconf_config_handler(void *blob)
     return exec_ret_val;
 }
 
-static int validate_private_home_security_param(char *mode_enabled, char *encryption_method, pErr execRetVal)
+static bool is_wpa3_mode(const char *mode)
+{
+    return strcmp(mode, "WPA3-Personal") == 0 ||
+           strcmp(mode, "WPA3-Personal-Transition") == 0 ||
+           strcmp(mode, "WPA3-Personal-Compatibility") == 0 ||
+           strcmp(mode, "WPA3-Enterprise") == 0;
+}
+
+static int validate_private_home_security_param(char *mode_enabled, char *encryption_method, pErr execRetVal, bool is_6g)
 {
      wifi_util_info_print(WIFI_CTRL,"Enter %s mode_enabled=%s,encryption_method=%s\n",__func__,mode_enabled,encryption_method);
      wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
     if (strcmp(mode_enabled, "None") != 0 &&
         (strcmp(encryption_method, "TKIP") != 0 && strcmp(encryption_method, "AES") != 0 &&
-        strcmp(encryption_method, "AES+TKIP") != 0 && strcmp(encryption_method, "AES+GCMP"))) {
-         wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Method \n",__FUNCTION__);
+#ifdef CONFIG_IEEE80211BE
+        strcmp(encryption_method, "AES+GCMP") != 0 &&
+#endif /* CONFIG_IEEE80211BE */
+        strcmp(encryption_method, "AES+TKIP") != 0)) {
+        wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Method \n",__FUNCTION__);
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg,"Invalid Encryption Method",sizeof(execRetVal->ErrorMsg)-1);
         }
@@ -144,13 +155,24 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
 
     if ((strcmp(mode_enabled, "WPA-WPA2-Enterprise") == 0 || 
         strcmp(mode_enabled, "WPA-WPA2-Personal") == 0) &&
-        (strcmp(encryption_method, "AES+TKIP") != 0 && strcmp(encryption_method, "AES") != 0 &&
-        strcmp(encryption_method, "AES+GCMP") != 0)) {
+        (strcmp(encryption_method, "AES+TKIP") != 0 && strcmp(encryption_method, "AES") != 0)) {
          wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Security Combination\n",__FUNCTION__);
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg,"Invalid Encryption Security Combination",sizeof(execRetVal->ErrorMsg)-1);
         }
      return RETURN_ERR;
+    }
+
+    if (is_wpa3_mode(mode_enabled) &&
+#ifdef CONFIG_IEEE80211BE
+        strcmp(encryption_method, "AES+GCMP") != 0 &&
+#endif /* CONFIG_IEEE80211BE */
+        strcmp(encryption_method, "AES") != 0) {
+        wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Security Combination\n",__FUNCTION__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Encryption Security Combination",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return RETURN_ERR;
     }
 
     if( (strcmp(mode_enabled, "WPA3-Personal-Compatibility") == 0) && !rfc_param->wpa3_compatibility_enable) {
@@ -161,7 +183,16 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
         }
         return RETURN_ERR;
     }
-
+#ifndef CONFIG_IEEE80211BE
+    if( is_6g && (strcmp(mode_enabled, "WPA3-Personal-Compatibility") == 0) ) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Device does not support WPA3-Personal-Compatibility for 6GHz\n",
+            __func__, __LINE__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Security Mode, Device does not support WPA3-Personal-Compatibility for 6GHz\n",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return RETURN_ERR;
+    }
+#endif // CONFIG_IEEE80211BE
      wifi_util_info_print(WIFI_CTRL,"%s: securityparam validation passed \n",__FUNCTION__);
     return RETURN_OK;
 
@@ -332,8 +363,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
     } else if (!strcmp(value, "TKIP")) {
         vap_info->u.bss_info.security.encr = wifi_encryption_tkip;
+#ifdef CONFIG_IEEE80211BE
     } else if (!strcmp(value, "AES+GCMP")) {
         vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#endif /* CONFIG_IEEE80211BE */
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s: unknown \"EncryptionMethod\n: %s\n", __func__, value);
         if (execRetVal) {
@@ -401,6 +434,12 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
         vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
         vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+            if( strstr(vap_info->vap_name, "6g") ) {
+                vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+                vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+            }
+#endif /* CONFIG_IEEE80211BE */  
     } else {
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg, "Invalid Security Mode",
@@ -409,8 +448,8 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         wifi_util_error_print(WIFI_CTRL, "%s: unknown \"ModeEnabled\": %s\n", __func__, value);
         return RETURN_ERR;
     }
-
-    if (validate_private_home_security_param(value, encryption_method, execRetVal) != RETURN_OK) {
+    bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
+    if (validate_private_home_security_param(value,encryption_method,execRetVal, is_6g) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid Encryption Security Combination \n",
             __func__);
         if (execRetVal) {

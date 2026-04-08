@@ -225,6 +225,15 @@ onewifi_conn_clients_count() {
 
 check_lnf_status()
 {
+    #if LnF is not enabled and wl0.4/wl1.4 are not enabled, dmcli call will
+    #create extra log in the cloud, which we want to avoid
+    lnf_2g_enabled="$(nvram get wl0.4_bss_enabled)"
+    lnf_5g_enabled="$(nvram get wl1.4_bss_enabled)"
+    if [ "$lnf_2g_enabled" = "0" ] && [ "$lnf_5g_enabled" = "0" ]; then
+        echo_t "Selfheal 2g&5g LNFs disabled, won't check and bring lnf up" >> /rdklogs/logs/wifi_selfheal.txt
+        return
+    fi
+    echo_t "Selfheal doing LNF" >> /rdklogs/logs/wifi_selfheal.txt
     radio_status_2g=`dmcli eRT retv Device.WiFi.Radio.$radio_2g_instance.Enable`
     if [ "$radio_status_2g" == "true" ]; then
         if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
@@ -370,7 +379,7 @@ do
             cur_timestamp="`date +"%s"` $1"
             #echo_t "cur_timestamp = $cur_timestamp" >> $LOG_FILE
             if [ "$MODEL_NUM" == "SR213" ]; then
-                eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_6g="false"
             elif [ "$MODEL_NUM" == "SCER11BEL" ]  || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
@@ -384,7 +393,7 @@ do
             fi
 
             if [ $eco_mode_2g == "false" ]; then
-                radio_status_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                radio_status_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 if [ $radio_status_2g == "true" ]; then
                     status_2g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                     if [ $status_2g == "true" ]; then
@@ -416,7 +425,7 @@ do
                 fi
             fi
             if [ $eco_mode_5g == "false" ]; then
-                radio_status_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                radio_status_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 if [ $radio_status_5g == "true" ]; then
                     status_5g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_5g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                     if [ $status_5g == "true" ]; then
@@ -450,7 +459,7 @@ do
 
             if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ] || [ "${MODEL_NUM}" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
                 if [ $eco_mode_6g == "false" ]; then
-                    radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                    radio_status_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                     if [ $radio_status_6g == "true" ]; then
                         status_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                         if [ $status_6g == "true" ]; then
@@ -529,8 +538,17 @@ do
 
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
-    if [ "$MODEL_NUM" != "SR213" ] && [ "$MODEL_NUM" != "GR-EXT02A-CTS" ] && [ "$MODEL_NUM" != "SR203" ] && [ "$MODEL_NUM" != "$TG4" ]; then
+    # Check LnF vaps, but only on XB7/8 and XB10
+    if [ "$MODEL_NUM" = "CGM601TCOM" ] || [ "$MODEL_NUM" = "CGM43" ] || [ "$MODEL_NUM" = "CGM49" ] || [ "$MODEL_NUM" = "SG417DBCT" ]; then
+        customerId="$(syscfg get PartnerID | tr '[:upper:]' '[:lower:]')"
+        case "$customerId" in
+            sky*)
+                :
+                ;;
+            *)
         check_lnf_status
+                ;;
+        esac
     fi
     sleep 5m
     ((check_count++))
