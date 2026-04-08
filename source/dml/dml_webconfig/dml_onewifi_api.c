@@ -1817,6 +1817,7 @@ void update_dml_radio_default() {
         radio_cfg[i].DCSSupported = TRUE;
         radio_cfg[i].ExtensionChannel = 3;
         radio_cfg[i].BasicRate = WIFI_BITRATE_DEFAULT;
+        radio_cfg[i].TxRate = WIFI_TXRATE_Auto;
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;
