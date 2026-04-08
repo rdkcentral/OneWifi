@@ -9314,7 +9314,8 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa2_personal:
             case wifi_security_mode_wpa_wpa2_personal:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk;
-                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+                l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%dSneha Set mfp optional for wpa2 personal  \n",__func__, __LINE__);
                 break;
             case wifi_security_mode_wpa_enterprise:
             case wifi_security_mode_wpa2_enterprise:
