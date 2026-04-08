@@ -151,6 +151,23 @@ extern "C" {
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];
 
+/* HE PHY/MAC capability bit positions (IEEE 802.11ax-2021) */
+#define HE_PHY_CHAN_WIDTH_160_BIT   3
+#define HE_PHY_CHAN_WIDTH_80P80_BIT 4
+#define HE_PHY_SU_BEAMFORMER_BIT    7   /* byte 3 */
+#define HE_PHY_SU_BEAMFORMEE_BIT    0   /* byte 4 */
+#define HE_PHY_MU_BEAMFORMER_BIT    1   /* byte 4 */
+#define HE_MAC_TWT_REQ_BIT          0   /* byte 0 */
+#define HE_MAC_TWT_RESP_BIT         1   /* byte 0 */
+#define HE_MAC_DL_MU_MIMO_BIT       0   /* byte 4 */
+#define HE_MAC_UL_MU_MIMO_BIT       1   /* byte 4 */
+#define HE_MAC_UL_OFDMA_BIT         2   /* byte 2 */
+#define HE_MAC_DL_OFDMA_BIT         3   /* byte 2 */
+#define HE_MCS_MAP_BITS_PER_STREAM 2
+#define HE_MCS_MAP_MAX_BITS        16
+#define HE_MCS_MAP_MAX_STREAMS     (HE_MCS_MAP_MAX_BITS / HE_MCS_MAP_BITS_PER_STREAM)
+#define HE_MAX_MCS_MAPS 3  // 80MHz + 160MHz + 80+80MHz
+
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
     wifi_app_inst_harvester = wifi_app_inst_base << 1,
@@ -212,8 +229,8 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STA_SKY      64      /**< Max supported stations for SKY HUB specific platforms */
 #define BSS_MAX_NUM_STA_XB8      100     /**< Max supported stations for TCHX8 specific platform */
 #define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
-#define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
-#define BSS_MAX_NUM_STA_HOTSPOT_XB      5      /**< Max supported stations for hotspot vaps in XB platform */
+#define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 (business) platform */
+#define BSS_MAX_NUM_STA_HOTSPOT      5      /**< Max supported stations for hotspot vaps in residential platform */
 
 #define STA_MAX_BSS_ASSOCIATIONS  1
 
@@ -534,6 +551,12 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool tcm_open_2g_rfc;
+    bool tcm_open_5g_rfc;
+    bool tcm_open_6g_rfc;
+    bool tcm_secure_2g_rfc;
+    bool tcm_secure_5g_rfc;
+    bool tcm_secure_6g_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
@@ -966,8 +989,11 @@ typedef struct {
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
     unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
+
+    /* wifi7 client specific data */
     wifi_mld_sta_info_t mld_info;
     bool association_link;
+    mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;

@@ -879,7 +879,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.sta_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.sta_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.sta_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.sta_info.security.mfp = wifi_mfp_cfg_required;
             }
             continue;
@@ -943,14 +947,22 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             } else {
 #if defined(_XB8_PRODUCT_REQ_)||defined(_PP203X_PRODUCT_REQ_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 #else
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif
@@ -972,7 +984,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
             default_vap_info->u.bss_info.mac_filter_enable = true;
@@ -1004,7 +1020,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
         }
@@ -3310,6 +3330,14 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
 
         while (assoc_dev_data != NULL) {
+            if (assoc_dev_data->dev_stats.cli_MLDEnable && !assoc_dev_data->association_link) {
+                /* Notify MLD client only on assoc link to be aligned with WebUI
+                 * This is backward compatibility alignment before final MLD client support in WebUI/ovsdb*/
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: MLO STA - Skipping non assoc link, vap_name '%s'\n",
+                    __func__, __LINE__, rdk_vap_info->vap_name);
+                assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
+                continue;
+            }
 
             if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);

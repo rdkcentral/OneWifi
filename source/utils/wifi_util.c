@@ -3925,16 +3925,42 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         IS_CHANGED(vap_info_old->vap_mode, vap_info_new->vap_mode)) {
         return true;
     }
-
     if (isSta) {
         // Ignore change of conn_status, scan_params, mac to avoid reconfiguration and disconnection
         // BSSID change is handled by event.
         if (IS_STR_CHANGED(vap_info_old->u.sta_info.ssid, vap_info_new->u.sta_info.ssid,
-                sizeof(ssid_t)) ||
+              sizeof(ssid_t)) ||
             IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
-            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) || 
-            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
-                sizeof(wifi_vap_security_t))) {
+            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) ||
+            IS_CHANGED(vap_info_old->u.sta_info.security.mode, vap_info_new->u.sta_info.security.mode)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.repurposed_mode, vap_info_new->u.sta_info.security.repurposed_mode)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.encr, vap_info_new->u.sta_info.security.encr)||
+#if defined(WIFI_HAL_VERSION_3)
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.mfp, &vap_info_new->u.sta_info.security.mfp, sizeof(wifi_mfp_cfg_t))||
+#else
+            IS_STR_CHANGED(vap_info_old->u.sta_info.security.mfpConfig, vap_info_new->u.sta_info.security.mfpConfig, sizeof(vap_info_new->u.sta_info.security.mfpConfig))||
+#endif
+            IS_CHANGED(vap_info_old->u.sta_info.security.wpa3_transition_disable, vap_info_new->u.sta_info.security.wpa3_transition_disable)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.rekey_interval, vap_info_new->u.sta_info.security.rekey_interval)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.strict_rekey, vap_info_new->u.sta_info.security.strict_rekey)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eapol_key_timeout, vap_info_new->u.sta_info.security.eapol_key_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eapol_key_retries, vap_info_new->u.sta_info.security.eapol_key_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_identity_req_timeout, vap_info_new->u.sta_info.security.eap_identity_req_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_identity_req_retries, vap_info_new->u.sta_info.security.eap_identity_req_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_req_timeout, vap_info_new->u.sta_info.security.eap_req_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_req_retries, vap_info_new->u.sta_info.security.eap_req_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.disable_pmksa_caching, vap_info_new->u.sta_info.security.disable_pmksa_caching)||
+            IS_STR_CHANGED(vap_info_old->u.sta_info.security.key_id, vap_info_new->u.sta_info.security.key_id, sizeof(vap_info_new->u.sta_info.security.key_id))||
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.repurposed_radius, &vap_info_new->u.sta_info.security.repurposed_radius, sizeof(wifi_radius_settings_t))) {
+            return true;
+        }
+
+        if((vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa2_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa_wpa2_enterprise)) {
+            if(IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.u.radius, &vap_info_new->u.sta_info.security.u.radius, sizeof(vap_info_old->u.sta_info.security.u.radius))) {
+            return true;
+            }
+        }
+        else if(IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.u.key, &vap_info_new->u.sta_info.security.u.key, sizeof(vap_info_old->u.sta_info.security.u.key))) {
             return true;
         }
     } else {
@@ -4000,11 +4026,12 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+            //should not be executed for BPi
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
             is_mld_addr_changed(vap_info_old, vap_info_new) ||
 #endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
@@ -4725,4 +4752,48 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
     close(sock);
 
     return 0;
+}
+
+bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr)
+{
+    uint32_t valid_mask = 0;
+
+    switch (mode) {
+    case wifi_security_mode_enhanced_open:
+        valid_mask = (1u << wifi_encryption_none) | (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa3_enterprise:
+    case wifi_security_mode_wpa3_personal:
+    case wifi_security_mode_wpa3_compatibility:
+    case wifi_security_mode_wpa3_transition:
+        valid_mask = (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa2_personal:
+    case wifi_security_mode_wpa2_enterprise:
+    case wifi_security_mode_wpa_wpa2_personal:
+    case wifi_security_mode_wpa_wpa2_enterprise:
+        valid_mask = (1u << wifi_encryption_aes) | (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_wpa_personal:
+    case wifi_security_mode_wpa_enterprise:
+        valid_mask = (1u << wifi_encryption_tkip) | (1u << wifi_encryption_aes) |
+                     (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_none:
+        return true; /* no encryption required */
+    default:
+        return false; /* unknown mode: reject */
+    }
+
+    return (valid_mask & (1u << encr)) != 0;
 }

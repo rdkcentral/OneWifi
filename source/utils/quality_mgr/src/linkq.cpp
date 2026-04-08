@@ -69,7 +69,6 @@ static inline double apply_recovery(double norm,int remaining,
     double factor = 1.0;
     if (total <= 0 || remaining <= 0)
         return norm;
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d,remaining=%d total=%d\n",__func__,__LINE__,remaining,total);
 
     double progress = (double)(total - remaining) / (double)total;
 

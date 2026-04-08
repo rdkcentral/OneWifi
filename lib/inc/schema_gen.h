@@ -96,6 +96,7 @@
         PJS_OVS_INT(server_retries)\
         PJS_OVS_BOOL(wpa3_transition_disable)\
         PJS_OVS_INT(security_mode_new)\
+        PJS_OVS_INT(encryption_method_new)\
     )
 
 #define PJS_SCHEMA_Wifi_VAP_Config \
@@ -208,6 +209,12 @@
         PJS_OVS_BOOL(wifi_offchannelscan_app_rfc) \
         PJS_OVS_BOOL(wifi_offchannelscan_sm_rfc) \
         PJS_OVS_BOOL(tcm_enabled_rfc) \
+        PJS_OVS_BOOL(tcm_open_2g_rfc) \
+        PJS_OVS_BOOL(tcm_open_5g_rfc) \
+        PJS_OVS_BOOL(tcm_open_6g_rfc) \
+        PJS_OVS_BOOL(tcm_secure_2g_rfc) \
+        PJS_OVS_BOOL(tcm_secure_5g_rfc) \
+        PJS_OVS_BOOL(tcm_secure_6g_rfc) \
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
         PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
         PJS_OVS_BOOL(link_quality_rfc) \
@@ -2056,7 +2063,8 @@
     COLUMN(identity_req_retry_interval)\
     COLUMN(server_retries)\
     COLUMN(wpa3_transition_disable)\
-    COLUMN(security_mode_new)
+    COLUMN(security_mode_new)\
+    COLUMN(encryption_method_new)
 
 #define SCHEMA__Wifi_VAP_Config "Wifi_VAP_Config"
 #define SCHEMA_COLUMN__Wifi_VAP_Config(COLUMN) \
@@ -2157,6 +2165,12 @@
     COLUMN(wifi_offchannelscan_app_rfc) \
     COLUMN(wifi_offchannelscan_sm_rfc) \
     COLUMN(tcm_enabled_rfc) \
+    COLUMN(tcm_open_2g_rfc) \
+    COLUMN(tcm_open_5g_rfc) \
+    COLUMN(tcm_open_6g_rfc) \
+    COLUMN(tcm_secure_2g_rfc) \
+    COLUMN(tcm_secure_5g_rfc) \
+    COLUMN(tcm_secure_6g_rfc) \
     COLUMN(wpa3_compatibility_enable) \
     COLUMN(csi_analytics_enabled_rfc) \
     COLUMN(link_quality_rfc) \
@@ -3438,6 +3452,7 @@
 #define SCHEMA__Wifi_Security_Config__server_retries "server_retries"
 #define SCHEMA__Wifi_Security_Config__wpa3_transition_disable "wpa3_transition_disable"
 #define SCHEMA__Wifi_Security_Config__security_mode_new "security_mode_new"
+#define SCHEMA__Wifi_Security_Config__encryption_method_new "encryption_method_new"
 
 #define SCHEMA__Wifi_VAP_Config__vap_name "vap_name"
 #define SCHEMA__Wifi_VAP_Config__radio_name "radio_name"
@@ -3530,6 +3545,12 @@
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_sm_rfc "wifi_offchannelscan_sm_rfc"
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_open_2g_rfc "tcm_open_2g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_open_5g_rfc "tcm_open_5g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_open_6g_rfc "tcm_open_6g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_secure_2g_rfc "tcm_secure_2g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_secure_5g_rfc "tcm_secure_5g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_secure_6g_rfc "tcm_secure_6g_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
 #define SCHEMA__Wifi_Rfc_Config__csi_analytics_enabled_rfc "csi_analytics_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__link_quality_rfc "link_quality_rfc"

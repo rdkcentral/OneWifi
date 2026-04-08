@@ -249,6 +249,7 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
         float snr_diff = 0.0;
         if (scores[i].bucket == 2) {
             int radio_index = 0;
+	        float snr_bucket2 = 0.0;
             if (convert_freq_band_to_radio_index(scan_list[i].external_ap.oper_freq_band,
                     &radio_index) == RETURN_ERR) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get radio index for band %d\n",
@@ -263,10 +264,11 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
                 mgr->ignite_config[radio_index].max_chanutil_threshold,
                 mgr->ignite_config[radio_index].SNR_difference);
             ignite_config_t *cfg = &mgr->ignite_config[radio_index];
-            snr_diff = scores[i].candidate->external_ap.snr - max_bucket1_snr;
+	        snr_bucket2 = (float)scores[i].candidate->external_ap.snr;
+            snr_diff = snr_bucket2 - max_bucket1_snr;
             wifi_util_dbg_print(WIFI_CTRL, "[%s %d] BSSID : %s SNR : %f snr_diff : %f\n", __func__,
                 __LINE__, to_mac_str(scores[i].candidate->external_ap.bssid, bssid_str),
-                scores[i].candidate->external_ap.snr, snr_diff);
+                snr_bucket2, snr_diff);
             if (snr_diff > cfg->SNR_difference) {
                 scores[i].score += snr_diff * snr_weighting_factor;
             }
@@ -719,13 +721,13 @@ int process_udhcp_ip_check(vap_svc_t *svc)
             (ext->conn_state == connection_state_connected)) {
             char iface[32] = "brww0";
             if (has_valid_ip(iface)) {
-                wifi_util_info_print(WIFI_CTRL, "IGNTE_RF_DOWN: Received Valid IP address on brww0 interface\n");
+                wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Received Valid IP address on brww0 interface\n");
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
                 ext->ext_udhcp_ip_check_id = 0;
                 ip_check_count = 0;
                 return 0;
             } else {
-                wifi_util_error_print(WIFI_CTRL, "IGNTE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
+                wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
             }
         }
     }

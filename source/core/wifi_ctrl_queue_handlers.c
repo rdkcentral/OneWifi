@@ -64,6 +64,7 @@ typedef enum {
 
 void update_lm_wifi_host_SSID(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data, unsigned int vap_index);
 void update_lm_wifi_host_RSSI(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data);
+void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data);
 
 int convert_sec_mode_enable_int_str(int sec_mode_enable, char *secModeStr) {
 
@@ -1954,6 +1955,7 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
                             ULONG *new_count,
                             ULONG old_count)
 {
+    wifi_util_dbg_print(WIFI_CTRL,"Removing MAC %s from vap_index %d\n", mac_str, rdk_vap_info->vap_index);
     removed_dev->client_state = client_state_disconnected;
     if (add_client_diff_assoclist(&rdk_vap_info->associated_devices_diff_map, mac_str, removed_dev) == RETURN_ERR) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to update diff assoclist for vap %d mac_str : %s\n", __func__, __LINE__, rdk_vap_info->vap_index, mac_str);
@@ -1986,13 +1988,13 @@ void process_disassoc_device_event(void *data)
 
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)data;
     rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(assoc_data->ap_index);
-    
     if (rdk_vap_info == NULL) {
         return;
     }
 
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     mac_addr_str_t mac_str;
+    BOOL mld_sta = false;
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
     bool remove_all = (memcmp(assoc_data->dev_stats.cli_MACAddress, 
                               BROADCAST_MAC, sizeof(mac_address_t)) == 0) ||
@@ -2037,9 +2039,11 @@ void process_disassoc_device_event(void *data)
             "%s:%d Disassoc event for mac: %s - removed all assoclist entries\n",
             __func__, __LINE__, mac_str);
     } else {
-        assoc_dev_data_t *temp = hash_map_remove(rdk_vap_info->associated_devices_map, 
-                                                  mac_str);
+        assoc_dev_data_t *temp = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
         if (temp != NULL) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d vap_index: %d MAC: %s is MLD %d\n",
+                __func__, __LINE__, rdk_vap_info->vap_index, mac_str, temp->mld_info.cli_MLDSta);
+            mld_sta = temp->mld_info.cli_MLDSta;
             if (process_device_removal(rdk_vap_info, mac_str, temp, 
                                       p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
                 pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
@@ -2064,6 +2068,12 @@ void process_disassoc_device_event(void *data)
     }
 
     pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+
+    if (!remove_all && mld_sta) {
+        //remove STA from all other VAPs in case of MLD STA
+        //remove on other VAPs done at the end to avoid locking 2 VAPs at the same time
+        check_and_remove_mac_on_other_vaps(assoc_data);
+    }
 }
 
 void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data)
@@ -2075,47 +2085,57 @@ void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data)
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     mac_addr_str_t mac_str;
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
-    
+
     unsigned int num_radios = getNumberRadios();
-   
-    for (unsigned int vap_idx = 0; vap_idx < num_radios; vap_idx++) {
-        // Skip the VAP where device is currently associated
-        if ((int)vap_idx == assoc_data->ap_index) {
+    for (unsigned int r_itr = 0; r_itr < num_radios; r_itr++) {
+        wifi_vap_info_map_t *wifi_vap_map = get_wifidb_vap_map(r_itr);
+        if (wifi_vap_map == NULL) {
             continue;
         }
-
-        rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap_idx);
-        if (rdk_vap_info == NULL) {
-            continue;
-        }
-
-        pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
-
-        if (rdk_vap_info->associated_devices_map == NULL) {
-            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-            continue;
-        }
-
-        ULONG old_count = hash_map_count(rdk_vap_info->associated_devices_map);
-
-        assoc_dev_data_t *removed_dev = 
-            hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
-
-        if (removed_dev != NULL) {
-            ULONG new_count = old_count;
-         
-            if (process_device_removal(rdk_vap_info, mac_str, removed_dev, 
-                                      p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
-                pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-                return;
+        unsigned int max_vaps = getMaxNumberVAPsPerRadio(r_itr);
+        for (unsigned int v_itr = 0; v_itr < max_vaps; v_itr++) {
+            unsigned int vap_index = wifi_vap_map->vap_array[v_itr].vap_index;
+            // Skip the VAP where device is currently associated
+            if ((int)vap_index == assoc_data->ap_index) {
+                continue;
             }
-            
-            wifi_util_info_print(WIFI_CTRL,
-                "%s:%d Removed MAC %s from VAP %d (roaming to VAP %d)\n",
-                __func__, __LINE__, mac_str, vap_idx, assoc_data->ap_index);
-        }
+            rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+            if (rdk_vap_info == NULL) {
+                continue;
+            }
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+            if (rdk_vap_info->associated_devices_map == NULL) {
+                pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                continue;
+            }
 
-        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+            ULONG old_count = hash_map_count(rdk_vap_info->associated_devices_map);
+
+            assoc_dev_data_t *removed_dev =
+                hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
+
+            if (removed_dev != NULL) {
+                ULONG new_count = old_count;
+                BOOL mld_sta = removed_dev->mld_info.cli_MLDSta;
+
+                if (process_device_removal(rdk_vap_info, mac_str, removed_dev,
+                                        p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
+                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d failed to remove MAC %s from VAP %d\n",
+                        __func__, __LINE__, mac_str, vap_index);
+                    return;
+                }
+                if (mld_sta) {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d Removed MLD MAC %s from VAP %d\n", __func__, __LINE__, mac_str, vap_index);
+                } else {
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d Removed MAC %s from VAP %d (roaming to VAP %d)\n",
+                        __func__, __LINE__, mac_str, vap_index, assoc_data->ap_index);
+                }
+            }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+        }
     }
 }
 void update_lm_wifi_host_SSID(LM_wifi_host_t *host, assoc_dev_data_t *assoc_data, unsigned int vap_index)
@@ -2877,6 +2897,54 @@ void process_tcm_rfc(bool type)
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
         type);
+}
+
+void process_tcm_open_2g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Open2G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_open_2g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_open_5g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Open5G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_open_5g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_open_6g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Open6G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_open_6g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_secure_2g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Secure2G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_secure_2g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_secure_5g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Secure5G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_secure_5g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_secure_6g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Secure6G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_secure_6g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 }
 
 void process_xfi_tel_enable_rfc(bool type)
@@ -3911,12 +3979,13 @@ void process_rsn_override_rfc(bool type)
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
             continue;
         }
-
+		
+#if !defined(CONFIG_IEEE80211BE)
         if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
             wifi_util_info_print(WIFI_CTRL,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
             continue;
         }
-
+#endif
         memset(old_sec_mode, 0, sizeof(old_sec_mode));
         memset(new_sec_mode, 0, sizeof(new_sec_mode));
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, old_sec_mode);
@@ -3932,6 +4001,13 @@ void process_rsn_override_rfc(bool type)
             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+
+#if defined(CONFIG_IEEE80211BE)
+            if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
+                vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+                vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+            }
+#endif /* CONFIG_IEEE80211BE */
         } else {
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
                 continue;
@@ -3949,6 +4025,11 @@ void process_rsn_override_rfc(bool type)
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             }
+#if defined(CONFIG_IEEE80211BE)
+            if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
+                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+            }
+#endif
         }
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, new_sec_mode);
         if(ret != RETURN_OK) {
@@ -4093,6 +4174,30 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_type_tcm_rfc:
         process_tcm_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_open_2g_rfc:
+        process_tcm_open_2g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_open_5g_rfc:
+        process_tcm_open_5g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_open_6g_rfc:
+        process_tcm_open_6g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_secure_2g_rfc:
+        process_tcm_secure_2g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_secure_5g_rfc:
+        process_tcm_secure_5g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_secure_6g_rfc:
+        process_tcm_secure_6g_rfc(*(bool *)data);
         break;
 
     case wifi_event_type_trigger_disconnection:
