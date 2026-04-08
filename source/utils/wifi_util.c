@@ -717,7 +717,7 @@ char *get_formatted_time(char *time)
     return time;
 }
 
-void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...)
 {
     char buff[256] = {0};
     va_list list;
@@ -840,6 +840,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         case WIFI_EC: {
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
             snprintf(module_filename, sizeof(module_filename), "wifiEc");
+            break;
+        }
+        case WIFI_SENSING: {
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSensing");
+            snprintf(module_filename, sizeof(module_filename), "wifiSensing");
             break;
         }
         default:
