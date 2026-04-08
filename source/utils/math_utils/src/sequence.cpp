@@ -43,22 +43,27 @@ void sequence_t::print()
 
 sequence_t sequence_t::operator+(number_t n)
 {
-    sequence_t seq;
     number_t temp;
     int i = 0;
 
     if (m_sampling_window != 0) {
-        for (i = m_total_samples; i > 0; i--) {
-            m_last[i] = m_last[i - 1];
-        }
+        m_last[m_seq_index] = n;
+        m_seq_index = (m_seq_index + 1) % m_sampling_window;
+    } else {
+        m_last[i] = n;
+    }
+    if (m_total_samples < m_sampling_window) {
+        m_total_samples++;
     }
 
-    m_last[i] = n;
-
-    m_gaussian.m_re = expf((-0.5) * (pow(n.m_re - m_mean.m_re, 2) / (pow(m_variance.m_re, 2)))) /
-        (sqrt(2 * PI * m_variance.m_re));
-    m_gaussian.m_im = expf((-0.5) * (pow(n.m_im - m_mean.m_im, 2) / (pow(m_variance.m_im, 2)))) /
-        (sqrt(2 * PI * m_variance.m_im));
+    if (m_variance.m_re != 0.0) {
+        m_gaussian.m_re = expf((-0.5) * (pow(n.m_re - m_mean.m_re, 2) / (pow(m_variance.m_re, 2)))) /
+            (sqrt(2 * PI * m_variance.m_re));
+    }
+    if (m_variance.m_im != 0.0) {
+        m_gaussian.m_im = expf((-0.5) * (pow(n.m_im - m_mean.m_im, 2) / (pow(m_variance.m_im, 2)))) /
+            (sqrt(2 * PI * m_variance.m_im));
+    }
 
     if (m_sampling_window == 0) {
         m_kurtosis = (n - m_mean).power(4) / m_variance.power(2);
@@ -111,7 +116,9 @@ sequence_t sequence_t::operator+(number_t n)
             m_min = n;
         }
     } else {
-        for (i = 0; i < m_total_samples; i++) {
+        m_max = m_last[0];
+        m_min = m_last[0];
+        for (i = 1; i < m_total_samples; i++) {
             if (m_max.m_re <= m_last[i].m_re) {
                 m_max = m_last[i];
             }
@@ -120,12 +127,6 @@ sequence_t sequence_t::operator+(number_t n)
                 m_min = m_last[i];
             }
         }
-    }
-
-    m_total_samples++;
-
-    if ((m_sampling_window > 0) && (m_total_samples >= m_sampling_window)) {
-        m_total_samples = m_sampling_window;
     }
 
     return *this;
@@ -147,6 +148,7 @@ void sequence_t::reset()
     m_mfilter = { 0, 0 };
 
     m_total_samples = 0;
+    m_seq_index = 0;
 }
 
 sequence_t::sequence_t(int sampling_window)
@@ -165,7 +167,15 @@ sequence_t::sequence_t(int sampling_window)
     m_mfilter = { 0, 0 };
 
     m_total_samples = 0;
-    m_sampling_window = sampling_window;
+    m_seq_index = 0;
+
+    if (sampling_window < 0) {
+        m_sampling_window = 0;
+    } else if (sampling_window > MAX_SAMPLING_WINDOW) {
+        m_sampling_window = MAX_SAMPLING_WINDOW;
+    } else {
+        m_sampling_window = sampling_window;
+    }
 }
 
 sequence_t::sequence_t()
@@ -184,6 +194,7 @@ sequence_t::sequence_t()
     m_mfilter = { 0, 0 };
 
     m_total_samples = 0;
+    m_seq_index = 0;
     m_sampling_window = 0;
 }
 

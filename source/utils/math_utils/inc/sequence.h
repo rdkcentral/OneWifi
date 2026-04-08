@@ -36,7 +36,7 @@ public:
     number_t m_min;
     unsigned int m_total_samples;
     unsigned int m_sampling_window;
-
+    unsigned int m_seq_index;
 public:
     sequence_t operator+(number_t n);
 

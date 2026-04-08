@@ -33,9 +33,9 @@ public:
 
     void set_capacity(unsigned int cap)
     {
-        m_capacity = cap;
+        m_capacity = ((cap < MAX_LEN) ? cap : MAX_LEN);
     }
-    unsigned int get_capacity()
+    unsigned int get_capacity(void)
     {
         return m_capacity;
     }

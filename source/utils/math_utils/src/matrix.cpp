@@ -656,7 +656,7 @@ void matrix_t::push(vector_t v)
     unsigned int i, j;
 
     if (m_cols == 0) {
-        m_cols = v.m_num;
+        m_cols = ((v.m_num < m_col_capacity) ? v.m_num : m_col_capacity);
     }
 
     if (v.m_num != m_cols) {

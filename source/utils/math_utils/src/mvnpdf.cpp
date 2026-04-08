@@ -42,8 +42,6 @@ vector_t mvnpdf_t::mean()
 
 vector_t mvnpdf_t::variance(vector_t v)
 {
-    vector_t new_variance = { 0 };
-
     return m_variance;
 }
 

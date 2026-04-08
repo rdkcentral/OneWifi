@@ -94,7 +94,6 @@ number_t number_t::operator+(number_t n)
 number_t number_t::operator-(number_t n)
 {
     return number_t(m_re - n.m_re, m_im - n.m_im);
-    ;
 }
 
 number_t number_t::operator*(unsigned int n)

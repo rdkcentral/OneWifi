@@ -183,6 +183,11 @@ void vector_t::push(number_t num)
 {
     unsigned int i;
 
+    if (m_capacity <= 0) {
+        wifi_util_error_print(WIFI_LIB, "buffer capacity:%d is small\r\n", m_capacity);
+        return;
+    }
+
     if (m_num < m_capacity) {
         m_val[m_num] = num;
         m_num++;
