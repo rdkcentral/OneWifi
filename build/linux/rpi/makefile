@@ -420,6 +420,7 @@ ifdef EM_APP
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_ap_metrics_report.c
 endif
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_link_report.c
+	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_ignite.c
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
 

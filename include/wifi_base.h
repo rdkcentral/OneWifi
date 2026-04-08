@@ -1227,7 +1227,6 @@ typedef struct {
     float link_quality_threshold;
 } alarm_report_policy_t;
 
-
 typedef struct {
     int interval;
     marker_name managed_client_marker;
@@ -1266,6 +1265,7 @@ typedef struct {
 } radio_metrics_policies_t;
 
 typedef struct {
+    alarm_report_policy_t alarm_report_policy;
     ap_metrics_policy_t ap_metric_policy;
     steering_disallowed_policy_t local_steering_dslw_policy;
     steering_disallowed_policy_t btm_steering_dslw_policy;
