@@ -22,29 +22,61 @@
 #include "base.h"
 #include "number.h"
 
+#define MAX_SAMPLING_WINDOW 30
+
 class sequence_t {
 public:
-   	number_t	m_mean;
-	number_t	m_variance;
-    number_t    m_last;
-    number_t    m_max;
-    number_t    m_min;
-	unsigned int	m_samples;
- 
+    number_t m_mean;
+    number_t m_variance;
+    number_t m_gaussian;
+    number_t m_kurtosis;
+    number_t m_mfilter;
+    number_t m_last[MAX_SAMPLING_WINDOW];
+    number_t m_max;
+    number_t m_min;
+    unsigned int m_total_samples;
+    unsigned int m_sampling_window;
+    unsigned int m_seq_index;
 public:
-    
-    sequence_t operator +(number_t n);
-    
-    void set_max(number_t n) { m_max = n; }
-    void set_min(number_t n) { m_min = n; }
-    
-    number_t get_max() { return m_max; }
-    number_t get_min() { return m_min; }
-    number_t get_mean() { return m_mean; }
-    number_t get_variance() { return m_variance; }
-    
+    sequence_t operator+(number_t n);
+
+    void set_max(number_t n)
+    {
+        m_max = n;
+    }
+    void set_min(number_t n)
+    {
+        m_min = n;
+    }
+
+    number_t get_max()
+    {
+        return m_max;
+    }
+    number_t get_min()
+    {
+        return m_min;
+    }
+    number_t get_mean()
+    {
+        return m_mean;
+    }
+    number_t get_variance()
+    {
+        return m_variance;
+    }
+    number_t get_kurtosis()
+    {
+        return m_kurtosis;
+    }
+
+    void reset();
+
+    void print();
+
     sequence_t();
-	~sequence_t();
+    sequence_t(int sampling_window);
+    ~sequence_t();
 };
 
 #endif
