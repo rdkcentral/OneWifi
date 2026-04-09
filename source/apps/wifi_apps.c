@@ -27,6 +27,8 @@
 #include "wifi_util.h"
 #include "wifi_apps_mgr.h"
 #include "wifi_linkquality.h"
+#include "motion_sensing.h"
+
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
 extern int analytics_init(wifi_app_t *app, unsigned int create_flag);
 extern int analytics_deinit(wifi_app_t *app);
@@ -453,6 +455,14 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+    {
+        wifi_app_inst_wifi_sensing, 0,
+        wifi_event_type_hal_ind,
+        true, true,
+        "WiFiSensing",
+        sensing_app_init, sensing_app_event, sensing_app_deinit,
+        NULL, NULL
+    },
 };
 
 wifi_app_descriptor_t* get_app_desc(int *size){
