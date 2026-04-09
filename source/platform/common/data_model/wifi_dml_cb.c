@@ -3197,7 +3197,7 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name,
                 p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
 #if defined(CONFIG_IEEE80211BE)
-                if(strstr(pcfg->radio_index, "6g")) {
+                if (p_dm_radio_param->band == WIFI_FREQUENCY_6_BAND) {
                     p_dm_sec_cfg->u.key.type = wifi_security_key_type_sae;
                     p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
                 }
