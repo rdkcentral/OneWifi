@@ -1989,7 +1989,7 @@ static void wifi_sta_5g_status_handler(char *event_name, bus_data_prop_t *p_data
 #endif
 
 /**
-* Hotspot app use this to kick stations which won't complete DHCP in time.
+* Hotspot app uses this to kick stations which won't complete DHCP in time.
 * Expected command from hotspot app:
 * Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient <mac>_<vap_index>
 */
@@ -2001,6 +2001,13 @@ static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t 
     char mac[18] = {0};
     int index = 0;
     char tmp_str[128] = {0};
+
+    if (p_data->data_type != bus_data_type_string)
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d event:%s wrong data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+        return;
+    }
        
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
             event_name, p_data->data_type);
@@ -2015,7 +2022,7 @@ static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t 
     char *tmp = strchr(pTmp, '_');
     if (tmp != NULL) {
         // Copy MAC (characters before '_')
-        size_t mac_len = tmp - pTmp;
+        size_t mac_len = (size_t)(tmp - pTmp);
         strncpy(mac, pTmp, mac_len);
         mac[mac_len] = '\0';
 
