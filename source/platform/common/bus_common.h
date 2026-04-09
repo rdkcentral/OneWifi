@@ -228,10 +228,10 @@ typedef bus_error_t (*bus_table_add_row_handler_t)(char const* tableName, char c
 typedef bus_error_t (*bus_table_remove_row_handler_t)(char const* rowName);
 //typedef bus_error_t (*bus_method_handler_t)(char const* method_name, bus_data_prop_t const *in_params,
     //bus_data_prop_t *out_params, void *async_handle);//we need to do it later
-typedef bus_error_t (*bus_method_handler_t)(char const* methodName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle);
+typedef bus_error_t (*bus_method_handler_t)(char const* methodName, bus_data_prop_t *inParams, bus_data_prop_t *outParams, void *asyncHandle);
 typedef bus_error_t (*bus_name_sub_handler_t)(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
 
-typedef bus_error_t (*bus_event_sub_handler_t)(char *event_name, raw_data_t *p_data, void *userData);
+typedef bus_error_t (*bus_event_sub_handler_t)(char *event_name, bus_data_prop_t *p_data, void *userData);
 typedef bus_error_t (*bus_event_sub_ex_async_handler_t)(char *event_name, bus_error_t ret, void *userData);
 
 typedef void (* wifi_bus_method_async_resp_handler_t) (char const* method_name, bus_error_t error, bus_data_prop_t *params, void *user_data);

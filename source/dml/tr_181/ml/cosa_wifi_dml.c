@@ -369,6 +369,12 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->csi_analytics_enabled_rfc;
         return TRUE;
     }
+    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
+    {
+        *pBool = rfc_pcfg->link_quality_rfc;
+        return TRUE;
+    }
+
 
     if (AnscEqualString(ParamName, "DFS", TRUE))
     {
@@ -447,6 +453,12 @@ WiFi_GetParamBoolValue
     if(AnscEqualString(ParamName, "WPA3_Personal_Compatibility", TRUE))
     {
         *pBool = rfc_pcfg->wpa3_compatibility_enable;
+        return TRUE;
+    }
+    
+    if (AnscEqualString(ParamName, "Xfi_Tel_Enable", TRUE))
+    {
+        *pBool = rfc_pcfg->xfi_tel_enable_rfc;
         return TRUE;
     }
 
@@ -1188,6 +1200,15 @@ WiFi_SetParamBoolValue
 
         return TRUE;
     }
+    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
+    {
+        if(bValue != rfc_pcfg->link_quality_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_link_quality_rfc);
+        }
+
+        return TRUE;
+    }
+
 
     if (AnscEqualString(ParamName, "Log_Upload", TRUE))
     {
@@ -1230,6 +1251,15 @@ WiFi_SetParamBoolValue
         if(bValue != rfc_pcfg->wpa3_compatibility_enable) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_rsn_override_rfc);
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d setting WPA3_Personal_Compatibility RFC to %d \n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "Xfi_Tel_Enable", TRUE))
+    {
+        if(bValue != rfc_pcfg->xfi_tel_enable_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_xfi_tel_enable_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Xfi Tel Enable rfc value set bvalue is %d\n", __FUNCTION__,__LINE__,bValue);
         }
         return TRUE;
     }
@@ -5413,10 +5443,28 @@ SSID_GetParamIntValue
     )
 {
     /* check the parameter name and return the corresponding value */
-    UNREFERENCED_PARAMETER(hInsContext);
-    UNREFERENCED_PARAMETER(ParamName);
-    UNREFERENCED_PARAMETER(pInt);
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
 
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    if( AnscEqualString(ParamName, "MLDUnit", TRUE))
+    {
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d VAP %d is sta\n", __FUNCTION__,__LINE__, pcfg->vap_index);
+            *pInt = -1;
+            return TRUE;
+        }
+        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE) {
+            *pInt = -1;
+        } else {
+            *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        }
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -5910,8 +5958,53 @@ SSID_SetParamIntValue
         int                         iValue
     )
 {
-    /* check the parameter name and set the corresponding value */
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
 
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    uint8_t instance_number = (uint8_t)convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name) +1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+
+    if (vapInfo == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        return FALSE;
+    }
+    /* check the parameter name and set the corresponding value */
+    if( AnscEqualString(ParamName, "MLDUnit", TRUE))
+    {
+        BOOL tmp_mld_enable = FALSE;
+
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
+            return FALSE;
+        }
+        if (iValue < -1 || iValue >= MLD_UNIT_COUNT) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,__LINE__,iValue);
+            return FALSE;
+        }
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
+        tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
+            if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
+                return TRUE;
+            if (tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)iValue)
+                return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Updating MLD Unit to value %d\n", __FUNCTION__, __LINE__, iValue);
+        vapInfo->u.bss_info.mld_info.common_info.mld_enable = tmp_mld_enable;
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable)
+            vapInfo->u.bss_info.mld_info.common_info.mld_id = iValue;
+        else
+            vapInfo->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
+
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -8429,6 +8522,9 @@ void get_security_modes_supported(int vap_index, int *mode)
     if (band == WIFI_FREQUENCY_6_BAND) {
         *mode = passpoint_enabled ? COSA_DML_WIFI_SECURITY_WPA3_Enterprise :
             COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Enterprise |
+#if defined(CONFIG_IEEE80211BE)
+            COSA_DML_WIFI_SECURITY_WPA3_Personal_Compatibility |
+#endif
             COSA_DML_WIFI_SECURITY_Enhanced_Open;
         return;
     }
@@ -9169,6 +9265,9 @@ Security_SetParamStringValue
         if (radioOperation->band == WIFI_FREQUENCY_6_BAND &&
             TmpMode != wifi_security_mode_wpa3_personal &&
             TmpMode != wifi_security_mode_wpa3_enterprise &&
+#if defined(CONFIG_IEEE80211BE)
+            TmpMode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
             TmpMode != wifi_security_mode_enhanced_open)
         {
             wifi_util_error_print(WIFI_DMCLI, "%s:%d invalid mode %d for 6GHz\n", __func__,
@@ -9239,6 +9338,12 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa3_compatibility:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+                if( strstr(vapInfo->vap_name, "6g") ) {
+                    l_security_cfg->u.key.type = wifi_security_key_type_sae;
+                    l_security_cfg->mfp = wifi_mfp_cfg_required;
+                }
+#endif /* CONFIG_IEEE80211BE */
                 break;
             default:
                 break;
@@ -10591,7 +10696,6 @@ PreAssocDeny_SetParamIntValue
 
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DMCLI value set :%d \n",__func__, __LINE__,iValue);
         vapInfo->u.bss_info.preassoc.time_ms = iValue;
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -10609,7 +10713,6 @@ PreAssocDeny_SetParamIntValue
 
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DMCLI value set :%d \n",__func__, __LINE__,iValue);
         vapInfo->u.bss_info.preassoc.min_num_mgmt_frames = iValue;
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
 
@@ -10726,7 +10829,7 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -10744,7 +10847,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.preassoc.rssi_up_threshold), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -10756,7 +10859,7 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.snr_threshold, sizeof(vapInfo->u.bss_info.preassoc.snr_threshold), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -10774,7 +10877,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.snr_threshold, sizeof(vapInfo->u.bss_info.preassoc.snr_threshold), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -10787,7 +10890,7 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.cu_threshold, sizeof(vapInfo->u.bss_info.preassoc.cu_threshold), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -10805,7 +10908,7 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.cu_threshold, sizeof(vapInfo->u.bss_info.preassoc.cu_threshold), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
     /* check the parameter name and return the corresponding value */
@@ -10819,7 +10922,6 @@ PreAssocDeny_SetParamStringValue
           
         if (strcmp(pString, "disabled") == 0) {
           snprintf(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates), "%s", "disabled");
-          set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
         }
@@ -10830,7 +10932,6 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
           }
           snprintf(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates), "%s", pString);
-          set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
       }
@@ -10848,7 +10949,6 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
@@ -10860,7 +10960,6 @@ PreAssocDeny_SetParamStringValue
           }
 
           snprintf(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates), "%s", pString);
-          set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
         }
@@ -10876,7 +10975,6 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
@@ -10888,7 +10986,6 @@ PreAssocDeny_SetParamStringValue
           }
 
           snprintf(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates), "%s", pString);
-          set_cac_cache_changed(instance_number - 1);
           set_dml_cache_vap_config_changed(instance_number - 1);
           return TRUE;
       }
@@ -10904,7 +11001,6 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
@@ -10922,7 +11018,6 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -10936,12 +11031,10 @@ PreAssocDeny_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
         snprintf(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -10960,7 +11053,6 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.tcm_exp_weightage, sizeof(vapInfo->u.bss_info.preassoc.tcm_exp_weightage), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -10972,7 +11064,6 @@ PreAssocDeny_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold, sizeof(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -11544,7 +11635,7 @@ PostAssocDisc_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.postassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -11562,7 +11653,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.rssi_up_threshold, sizeof(vapInfo->u.bss_info.postassoc.rssi_up_threshold), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -11586,7 +11677,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.sampling_interval, sizeof(vapInfo->u.bss_info.postassoc.sampling_interval), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -11598,7 +11689,7 @@ PostAssocDisc_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.postassoc.snr_threshold, sizeof(vapInfo->u.bss_info.postassoc.snr_threshold), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
 
@@ -11616,7 +11707,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.snr_threshold, sizeof(vapInfo->u.bss_info.postassoc.snr_threshold), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -11640,7 +11731,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.sampling_count, sizeof(vapInfo->u.bss_info.postassoc.sampling_count), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -11652,7 +11743,7 @@ PostAssocDisc_SetParamStringValue
 
         if (strcmp(pString, "disabled") == 0) {
             snprintf(vapInfo->u.bss_info.postassoc.cu_threshold, sizeof(vapInfo->u.bss_info.postassoc.cu_threshold), "%s", "disabled");
-            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);  
             return TRUE;
         }
 
@@ -11670,7 +11761,7 @@ PostAssocDisc_SetParamStringValue
         }
 
         snprintf(vapInfo->u.bss_info.postassoc.cu_threshold, sizeof(vapInfo->u.bss_info.postassoc.cu_threshold), "%s", pString);
-        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -21106,6 +21197,172 @@ BOOL MgtFrameRateLimit_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamNa
                 __LINE__);
         }
 
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/***********************************************************************
+***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        TCM_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+TCM_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get RFC Config\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Open2G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_2g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open5G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_5g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open6G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_6g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure2G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_2g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure5G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_5g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure6G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_6g_rfc;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        TCM_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to set BOOL parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The updated BOOL value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+TCM_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get RFC Config\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Open2G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_2g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_2g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open2G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open5G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_5g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_5g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open5G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open6G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_6g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_6g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open6G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure2G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_2g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_2g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure2G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure5G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_5g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_5g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure5G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure6G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_6g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_6g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure6G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
         return TRUE;
     }
 
