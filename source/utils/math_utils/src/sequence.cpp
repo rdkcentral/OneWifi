@@ -52,7 +52,8 @@ sequence_t sequence_t::operator+(number_t n)
     } else {
         m_last[i] = n;
     }
-    if (m_total_samples < m_sampling_window) {
+
+    if (m_sampling_window == 0 || m_total_samples < m_sampling_window) {
         m_total_samples++;
     }
 
@@ -67,8 +68,27 @@ sequence_t sequence_t::operator+(number_t n)
 
     if (m_sampling_window == 0) {
         m_kurtosis = (n - m_mean).power(4) / m_variance.power(2);
-        m_mean = (m_mean * m_total_samples + m_last[0]) / (m_total_samples + 1);
-        m_variance = (m_variance * m_total_samples + (n - m_mean).power(2)) / (m_total_samples + 1);
+        //m_mean = (m_mean * m_total_samples + m_last[0]) / (m_total_samples + 1);
+        //m_variance = (m_variance * m_total_samples + (n - m_mean).power(2)) / (m_total_samples + 1);
+        // convert stored values to double
+        double l_mean = m_mean.m_re;
+        double l_variance_running = m_variance_running.m_re;
+        double l_input = n.m_re;
+
+        // Welford update
+        double delta = l_input - l_mean;
+        l_mean += (delta / m_total_samples);
+
+        double delta2 = l_input - l_mean;
+
+        l_variance_running += (delta * delta2);
+
+        double var = l_variance_running / m_total_samples;
+
+        // store back into number_t (imag = 0 always)
+        m_mean = number_t(l_mean, 0.0);
+        m_variance_running = number_t(l_variance_running, 0.0);
+        m_variance = number_t(var, 0.0);
     } else if (m_total_samples > 0) {
         m_mean = number_t(0, 0);
         for (i = 0; i < m_total_samples; i++) {

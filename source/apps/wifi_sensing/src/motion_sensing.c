@@ -112,6 +112,7 @@ int sensing_app_event(wifi_app_t *app, wifi_event_t *event)
 
 int sensing_app_init(wifi_app_t *app, unsigned int create_flag)
 {
+    wifi_util_info_print(WIFI_SENSING,"%s:%d wifi sensing app started...\n", __func__, __LINE__);
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
