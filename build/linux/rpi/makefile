@@ -238,6 +238,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/easyconnect \
     -I$(ONE_WIFI_HOME)/source/apps/em \
     -I$(ONE_WIFI_HOME)/source/apps/linkquality \
+    -I$(ONE_WIFI_HOME)/source/apps/wifi_sensing/inc \
     -I$(ONE_WIFI_HOME)/source/utils/quality_mgr/inc/ \
     -I$(ONE_WIFI_HOME)/source/utils/math_utils/inc/ \
     -I$(ONE_WIFI_HOME)/source/core/services \
@@ -297,6 +298,7 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(filter-out $(ONE_WIFI_HOME)/source/core/services/vap_svc_mesh_pod.c,$(wildcard $(ONE_WIFI_HOME)/source/core/services/*.c)) \
     $(wildcard $(ONE_WIFI_HOME)/source/apps/*.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/apps/linkquality/*.c)  \
+    $(wildcard $(ONE_WIFI_HOME)/source/apps/wifi_sensing/src/*.c)  \
     $(wildcard $(ONE_WIFI_HOME)/source/stubs/*.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/stats/*.c)	\
     $(ONE_WIFI_HOME)/lib/common/util.c		\
