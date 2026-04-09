@@ -20,12 +20,12 @@
 #define MVNPDF_H
 
 #include "base.h"
+#include "matrix.h"
 #include "number.h"
 #include "vector.h"
-#include "matrix.h"
 
-#define MAX_VARIATES    5
-#define MAX_WINDOW    5
+#define MAX_VARIATES 5
+#define MAX_WINDOW 5
 
 class mvnpdf_t {
     unsigned int m_variates;
@@ -34,20 +34,29 @@ class mvnpdf_t {
     vector_t m_mean;
     vector_t m_variance;
     vector_t m_data[MAX_WINDOW];
-    
+
 public:
     void print();
-    vector_t get_mean() { return m_mean; }
-    matrix_t get_covariance() { return m_cov; }
-    matrix_t get_zinverse() { return m_cov.inverse(); }
+    vector_t get_mean()
+    {
+        return m_mean;
+    }
+    matrix_t get_covariance()
+    {
+        return m_cov;
+    }
+    matrix_t get_zinverse()
+    {
+        return m_cov.inverse();
+    }
     double mvnpdf(vector_t v);
     vector_t mean();
     vector_t variance(vector_t v);
     vector_t stddev();
-    
+
 public:
     mvnpdf_t(unsigned int n);
-	~mvnpdf_t();
+    ~mvnpdf_t();
 };
 
 #endif
