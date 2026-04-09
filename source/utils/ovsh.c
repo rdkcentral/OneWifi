@@ -1530,13 +1530,21 @@ void ovsdb_close(int fd)
  */
 json_t *ovsdb_json_exec(char *method, json_t *params)
 {
-    char buf[128*1024];
+    char *buf = (char *)malloc(128*1024);
+    if (buf == NULL) {
+        return NULL;
+    }
 
     char   *str = NULL;
     json_t *jres = NULL;
     int     db = -1;
 
     json_t *jexec = json_pack("{ s:s, s:o, s:i }", "method", method, "params", params, "id", getpid());
+    if (jexec == NULL)
+    {
+        free(buf);
+        return NULL;
+    }
 
     str = json_dumps(jexec, 0);
     DEBUG(">>>>>>> %s\n", str);
@@ -1555,7 +1563,7 @@ json_t *ovsdb_json_exec(char *method, json_t *params)
     }
 
     ssize_t nrd;
-    nrd = read(db, buf, sizeof(buf) - 1);
+    nrd = read(db, buf, 128*1024 - 1);
     if (nrd < 0)
     {
         goto error;
@@ -1569,7 +1577,9 @@ json_t *ovsdb_json_exec(char *method, json_t *params)
 
 error:
     if (str != NULL) free(str);
+    if (jexec != NULL) json_decref(jexec);
     if (db >= 0) ovsdb_close(db);
+    if (buf != NULL) free(buf);
 
     return jres;
 }

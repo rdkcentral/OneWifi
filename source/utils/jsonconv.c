@@ -55,21 +55,10 @@ static char *format_string(const char *input)
     if (input == NULL) {
         return NULL;
     }
-
     for (inptr = input; *inptr; inptr++) {
-        switch (*inptr) {
-        case '\"':
-        case '\\':
-        case '\b':
-        case '\f':
-        case '\n':
-        case '\r':
-        case '\t':
-            /* one character escape sequence */
+        if ((*inptr > 31) && (*inptr != '\"') && (*inptr != '\\')) {     
+        } else {
             escape_characters++;
-            break;
-        default:
-            break;
         }
     }
     output_length = (size_t)(inptr - input) + escape_characters;

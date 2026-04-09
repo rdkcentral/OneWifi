@@ -617,7 +617,7 @@ void WiFi_GetGasConfig(char *pString)
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     if(RETURN_OK != get_wifidb_obj()->desc.get_gas_config_fn(0,&gasConfig_struct)){
 #endif  
-        copy_string(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
+        copy_string(pString, WIFI_PASSPOINT_DEFAULT_GAS_CFG, 1024);
         return;
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     }
@@ -626,7 +626,7 @@ void WiFi_GetGasConfig(char *pString)
     gasCfg = cJSON_CreateObject();
     if (NULL == gasCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to create GAS JSON Object\n");
-        copy_string(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
+        copy_string(pString, WIFI_PASSPOINT_DEFAULT_GAS_CFG, 1024);
         return;
     }
     
@@ -640,7 +640,7 @@ void WiFi_GetGasConfig(char *pString)
     cJSON_AddNumberToObject(mainEntry,"QueryRespLengthLimit",gasConfig_struct.QueryResponseLengthLimit);
     
     cJSON_PrintPreallocated(gasCfg, JSON_STR, sizeof(JSON_STR),false);
-    copy_string(pString,JSON_STR);
+    copy_string(pString, JSON_STR, 1024);
     cJSON_Delete(gasCfg);
     return;
 }
@@ -733,7 +733,7 @@ INT WiFi_DefaultGasConfig(void)
         return RETURN_ERR;
     }
     memset(JSON_STR,0,(strlen(WIFI_PASSPOINT_DEFAULT_GAS_CFG)+1));
-    copy_string(JSON_STR, WIFI_PASSPOINT_DEFAULT_GAS_CFG);
+    copy_string(JSON_STR, WIFI_PASSPOINT_DEFAULT_GAS_CFG, sizeof(JSON_STR));
 
     if(!JSON_STR || (RETURN_OK != WiFi_SetGasConfig(JSON_STR))){
         if(JSON_STR){
@@ -1340,24 +1340,22 @@ INT WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_data, int 
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
-	return RETURN_ERR;
+        return RETURN_ERR;
     }
 
-    //Copy ANQP Parameters.
     memset(pCfg->anqp.anqpParameters, 0, sizeof(pCfg->anqp.anqpParameters));
-    copy_string((char *)pCfg->anqp.anqpParameters, (char *)interworking_data->anqp.anqpParameters);//ONE_WIFI
+    copy_string((char *)pCfg->anqp.anqpParameters, (char *)interworking_data->anqp.anqpParameters, sizeof(pCfg->anqp.anqpParameters));
 
     if(RETURN_ERR == WiFi_SaveANQPCfg(apIns)){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Save ANQP Configuration\n");
-    }//ONE_WIFI
+    }
     
-    //Copy Passpoint Parameters.
     memset(pCfg->passpoint.hs2Parameters, 0, sizeof(pCfg->passpoint.hs2Parameters));
-    copy_string((char *)pCfg->passpoint.hs2Parameters, (char *)interworking_data->passpoint.hs2Parameters);//ONE_WIFI
+    copy_string((char *)pCfg->passpoint.hs2Parameters, (char *)interworking_data->passpoint.hs2Parameters, sizeof(pCfg->passpoint.hs2Parameters));
 
     if(RETURN_ERR == WiFi_SaveHS2Cfg(apIns)){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Save  Configuration\n");
-    }//ONE_WIFI
+    }
 
     pCfg->passpoint.enable = interworking_data->passpoint.enable;
     pCfg->passpoint.gafDisable = interworking_data->passpoint.gafDisable;

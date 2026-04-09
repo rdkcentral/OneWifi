@@ -77,7 +77,7 @@ struct scheduler * scheduler_init(void)
 
 int scheduler_deinit(struct scheduler **sched)
 {
-    if (sched == NULL && *sched == NULL) {
+    if (sched == NULL || *sched == NULL) {
         return -1;
     }
     pthread_mutex_lock(&(*sched)->lock);
@@ -352,7 +352,12 @@ int scheduler_update_timer_task_repetitions(struct scheduler *sched, int id, uns
 
 bool scheduler_timer_task_is_completed(struct scheduler *sched, int id)
 {
-    return (scheduler_find_timer_task(sched, id) ? false : true);
+    struct timer_task *tt;
+    if (sched == NULL) return true;
+    pthread_mutex_lock(&sched->lock);
+    tt = scheduler_find_timer_task(sched, id);
+    pthread_mutex_unlock(&sched->lock);
+    return (tt ? false : true);
 }
 
 int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned int timeout_ms)
@@ -566,6 +571,9 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
                     lp_update_index = 0;
                     sched->index = i-1;
                 }
+                if (tt->arg != NULL) {
+        free(tt->arg);
+    }
                 free(tt);
                 sched->num_tasks--;
                 i--;
@@ -580,6 +588,9 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
                 if (tt->id == hp_id) {
                     hp_update_index = 0;
                     sched->hp_index = i-1;
+                }
+                if (tt->arg != NULL) {
+                    free(tt->arg);
                 }
                 free(tt);
                 sched->num_hp_tasks--;
