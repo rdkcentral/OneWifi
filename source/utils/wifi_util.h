@@ -118,6 +118,7 @@ typedef enum {
     WIFI_EC,
     WIFI_CSI,
     WIFI_MEMWRAPTOOL,
+    WIFI_SENSING,
 } wifi_dbg_type_t;
 
 typedef enum {
