@@ -191,7 +191,8 @@ typedef enum {
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_csi_analytics = wifi_app_inst_base << 19,
     wifi_app_inst_link_quality = wifi_app_inst_base << 20,
-    wifi_app_inst_max = wifi_app_inst_base << 21
+    wifi_app_inst_wifi_sensing = wifi_app_inst_base << 21,
+    wifi_app_inst_max = wifi_app_inst_base << 22
 } wifi_app_inst_t;
 
 typedef struct {
