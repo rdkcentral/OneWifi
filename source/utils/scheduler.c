@@ -571,9 +571,7 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
                     lp_update_index = 0;
                     sched->index = i-1;
                 }
-                if (tt->arg != NULL) {
-        free(tt->arg);
-    }
+
                 free(tt);
                 sched->num_tasks--;
                 i--;
@@ -589,9 +587,7 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
                     hp_update_index = 0;
                     sched->hp_index = i-1;
                 }
-                if (tt->arg != NULL) {
-                    free(tt->arg);
-                }
+
                 free(tt);
                 sched->num_hp_tasks--;
                 i--;

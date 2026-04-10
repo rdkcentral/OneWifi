@@ -116,7 +116,7 @@ void    *queue_peek  (queue_t *q, uint32_t index)
     if (q == NULL) {
         return NULL;
     }
-    if (index >= queue_count(q)|| index > 10000) {
+    if (index >= queue_count(q)) {
         return NULL;
     }
     e = q->head;

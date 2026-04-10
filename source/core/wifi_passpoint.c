@@ -736,7 +736,7 @@ INT WiFi_DefaultGasConfig(void)
         return RETURN_ERR;
     }
     memset(JSON_STR,0,(strlen(WIFI_PASSPOINT_DEFAULT_GAS_CFG)+1));
-    copy_string(JSON_STR, WIFI_PASSPOINT_DEFAULT_GAS_CFG, sizeof(JSON_STR));
+    copy_string(JSON_STR, WIFI_PASSPOINT_DEFAULT_GAS_CFG, strlen(WIFI_PASSPOINT_DEFAULT_GAS_CFG) + 1);
 
     if(!JSON_STR || (RETURN_OK != WiFi_SetGasConfig(JSON_STR))){
         if(JSON_STR){
