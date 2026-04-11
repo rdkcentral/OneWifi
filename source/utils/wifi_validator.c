@@ -343,7 +343,13 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
         UCHAR eap_method_count = 0;
-        size_t remaining_len = sizeof(vap_info->anqp.realmInfo) - (next_pos - (UCHAR *)&vap_info->anqp.realmInfo);
+        size_t offset = next_pos - (UCHAR *)&vap_info->anqp.realmInfo;
+        if (offset >= sizeof(vap_info->anqp.realmInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->anqp.realmInfo) - offset;
         wifi_naiRealm_t *realmInfoBuf = (wifi_naiRealm_t *)next_pos;
 
         // Check space for fixed headers: data_field_length, encoding, realm_length, eap_method_count
@@ -473,6 +479,11 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                         cJSON_Delete(passPointStats);
                         return RETURN_ERR;
                     } else if (subParam_1->valuedouble) {
+                        if (realm_rem < (sizeof(authBuf->length) + 1)) {
+                            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Auth Parameter data. Discarding Configuration\n", __func__, __LINE__);
+                            cJSON_Delete(passPointStats);
+                            return RETURN_ERR;
+                        }
                         authBuf->length = 1;
                         authBuf->val[0] = subParam_1->valuedouble;
                     } else {
@@ -483,6 +494,13 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                             cJSON_Delete(passPointStats);
                             return RETURN_ERR;
                         }
+
+                        if (realm_rem < (sizeof(authBuf->length) + (authStrLen/2))) {
+                            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Auth Parameter data. Discarding Configuration\n", __func__, __LINE__);
+                            cJSON_Delete(passPointStats);
+                            return RETURN_ERR;
+                        }
+
                         copy_string((char *)authStr, subParam_1->valuestring, sizeof(authStr));
                                     
                         //Covert the incoming string to HEX
@@ -503,17 +521,12 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                             authBuf->val[(i/2)] = authStr[i] | (authStr[i-1] << 4);
                         }
                     }
-                    authBuf->length = i/2;
+                    authBuf->length = authStrLen/2;
                 }
-                    realm_rem = sizeof(vap_info->anqp.realmInfo) - (next_pos - (UCHAR *)&vap_info->anqp.realmInfo);
-                    if (realm_rem < (sizeof(authBuf->length) + (i/2))) {
-                        wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Auth Parameter data. Discarding Configuration\n", __func__, __LINE__);
-                        cJSON_Delete(passPointStats);
-                        return RETURN_ERR;
-                    }
-
                     next_pos += sizeof(authBuf->length);
                     next_pos += authBuf->length;
+                    realm_rem -= sizeof(authBuf->length);
+                    realm_rem -= authBuf->length;
             }
             eapBuf->length = next_pos - &eapBuf->method;
         }
@@ -614,7 +627,13 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     next_pos = (UCHAR *)&vap_info->anqp.domainNameInfo;
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
-        size_t remaining_len = sizeof(vap_info->anqp.domainNameInfo) - (next_pos - (UCHAR *)&vap_info->anqp.domainNameInfo);
+        size_t offset = next_pos - (UCHAR *)&vap_info->anqp.domainNameInfo;
+        if (offset >= sizeof(vap_info->anqp.domainNameInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->anqp.domainNameInfo) - offset;
         wifi_domainNameTuple_t *nameBuf = (wifi_domainNameTuple_t *)next_pos;
 
         if (remaining_len <= sizeof(nameBuf->length)) {
@@ -731,7 +750,13 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
 
     next_pos = (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
-        size_t remaining_len = sizeof(vap_info->passpoint.opFriendlyNameInfo) - (next_pos - (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo);
+        size_t offset = next_pos - (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
+        if (offset >= sizeof(vap_info->passpoint.opFriendlyNameInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->passpoint.opFriendlyNameInfo) - offset;
         wifi_HS2_OperatorNameDuple_t *opNameBuf = (wifi_HS2_OperatorNameDuple_t *)next_pos;
 
         if (remaining_len < (sizeof(opNameBuf->length) + sizeof(opNameBuf->languageCode))) {
@@ -789,7 +814,13 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
     }
     next_pos = (UCHAR *)&vap_info->passpoint.connCapabilityInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
-        size_t remaining_len = sizeof(vap_info->passpoint.connCapabilityInfo) - (next_pos - (UCHAR *)&vap_info->passpoint.connCapabilityInfo);
+        size_t offset = next_pos - (UCHAR *)&vap_info->passpoint.connCapabilityInfo;
+        if (offset >= sizeof(vap_info->passpoint.connCapabilityInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->passpoint.connCapabilityInfo) - offset;
         if (remaining_len < sizeof(wifi_HS2_Proto_Port_Tuple_t)) {
              wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Connection Capability entry. Discarding Configuration\n", __func__, __LINE__);
              strncpy(execRetVal->ErrorMsg, "Exceeded Connection Capability buffer size",sizeof(execRetVal->ErrorMsg)-1);
@@ -824,7 +855,13 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
     naiElem->realmCount = cJSON_GetArraySize(anqpList);
     next_pos += sizeof(naiElem->realmCount);
     cJSON_ArrayForEach(anqpEntry, anqpList){
-        size_t remaining_len = sizeof(vap_info->passpoint.realmInfo) - (next_pos - (UCHAR *)&vap_info->passpoint.realmInfo);
+        size_t offset = next_pos - (UCHAR *)&vap_info->passpoint.realmInfo;
+        if (offset >= sizeof(vap_info->passpoint.realmInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->passpoint.realmInfo) - offset;
         wifi_HS2_NAI_Home_Realm_Data_t *realmInfoBuf = (wifi_HS2_NAI_Home_Realm_Data_t *)next_pos;
 
         if (remaining_len < (sizeof(realmInfoBuf->encoding) + sizeof(realmInfoBuf->length))) {

@@ -244,7 +244,13 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
-        size_t remaining_len = sizeof(interworking_info->anqp.venueInfo) - (next_pos - (UCHAR *)&interworking_info->anqp.venueInfo);
+        size_t offset = next_pos - (UCHAR *)&interworking_info->anqp.venueInfo;
+        if (offset >= sizeof(interworking_info->anqp.venueInfo)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Buffer overflow detected in venue loop. Discarding Configuration\n", __func__, __LINE__);
+            cJSON_Delete(passPointStats);
+            return webconfig_error_venue_entries;
+        }
+        size_t remaining_len = sizeof(interworking_info->anqp.venueInfo) - offset;
         wifi_venueName_t *venueBuf = (wifi_venueName_t *)next_pos;
 
         if (remaining_len < (sizeof(venueBuf->length) + 3)) {
@@ -267,6 +273,12 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         remaining_len -= 3;
 
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
+        if ((anqpParam == NULL) || (cJSON_IsString(anqpParam) == false) || 
+            (anqpParam->valuestring == NULL) || (strcmp(anqpParam->valuestring, "") == 0)) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for key:Name\n", __func__, __LINE__);
+            cJSON_Delete(passPointStats);
+            return webconfig_error_decode;
+        }
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
 	    cJSON_Delete(passPointStats);
@@ -688,7 +700,12 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
 
     next_pos = (UCHAR *)&interworking_info->passpoint.opFriendlyNameInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
-        size_t remaining_len = sizeof(interworking_info->passpoint.opFriendlyNameInfo) - (next_pos - (UCHAR *)&interworking_info->passpoint.opFriendlyNameInfo);
+        size_t offset = next_pos - (UCHAR *)&interworking_info->passpoint.opFriendlyNameInfo;
+        if (offset >= sizeof(interworking_info->passpoint.opFriendlyNameInfo)) {
+             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             return webconfig_error_decode;
+        }
+        size_t remaining_len = sizeof(interworking_info->passpoint.opFriendlyNameInfo) - offset;
         wifi_HS2_OperatorNameDuple_t *opNameBuf = (wifi_HS2_OperatorNameDuple_t *)next_pos;
 
         if (remaining_len < (sizeof(opNameBuf->length) + sizeof(opNameBuf->languageCode))) {
