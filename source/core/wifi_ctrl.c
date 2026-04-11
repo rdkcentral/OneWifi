@@ -3226,6 +3226,17 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
     return wifi_mgr->radio_config[radioIndex].vaps.num_vaps;
 }
 
+BOOL isRadioBeEnabled(UINT radio_index)
+{
+#ifdef CONFIG_IEEE80211BE
+    wifi_radio_operationParam_t *radio_param = getRadioOperationParam(radio_index);
+
+    if (radio_param != NULL && radio_param->variant & WIFI_80211_VARIANT_BE) {
+        return TRUE;
+    }
+#endif /* CONFIG_IEEE80211BE */
+    return FALSE;
+}
 
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc)
 {
