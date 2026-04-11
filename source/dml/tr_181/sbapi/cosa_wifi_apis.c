@@ -816,24 +816,256 @@ CosaDmlWiFi_EnableTelnet(BOOL bEnabled)
 
 }
 
-int
-CosaDmlWiFi_Logfiles_validation(char *param)
+static const char *wifi_dbg_flags[] = {
+    /* OneWifi */
+    "wifiDbDbg",
+    "wifiMgrDbg",
+    "wifiWebConfigDbg",
+    "wifiCtrlDbg",
+    "wifiPasspointDbg",
+    "wifiDppDbg",
+    "wifiMonDbg",
+    "wifiDMCLI",
+    "wifiLib",
+    "wifiPsm",
+    "wifiAnalytics",
+    "wifiApps",
+    "wifiServices",
+    "wifiHarvester",
+    "wifiSM",
+    "wifiEM",
+    "wifiBlaster",
+    "wifiOcsDbg",
+    "wifiBusDbg",
+    "wifiTCMDbg",
+    "wifiEc",
+    "wifiCsi",
+    "wifiMemwrapTool",
+    "wifiEventConsumerDbg",  /* added: wifievents_consumer_sample.c */
+    "wifiMQTT",              /* added: qm_mqtt.c                     */
+    /* rdk-wifi-hal */
+    "wifiHalStatsDbg",
+    "wifiAnqpDbg",
+    "wifiHalDbg",
+    /* rdk-wifi-libhostap */
+    "wifiLibhostapDbg",
+    "wifiHostapDbg",         /* added: oneWifiLib.patch, hostapd-logger-module-changes.patch */
+    "wifiHostapDbg2",
+};
+
+static const size_t WIFI_DBG_FLAGS_LEN = (sizeof(wifi_dbg_flags) / sizeof(wifi_dbg_flags[0]));
+
+bool isValidLogModule(const char *module)
 {
-    char * pch = strtok (param,",");
-    while (pch != NULL)
-    {
-        if ((strcmp(pch,"wifiDbDbg")== 0)  || (strcmp(pch,"wifiMgrDbg")== 0)  || (strcmp(pch,"wifiWebConfigDbg")== 0)  ||(strcmp(pch,"wifiCtrlDbg")== 0) \
-          || (strcmp(pch,"wifiPasspointDbg")== 0)  || (strcmp(pch,"wifiDppDbg")== 0)  || (strcmp(pch,"wifiMonDbg")== 0)  ||(strcmp(pch,"wifiDMCLI")== 0)  || (strcmp(pch,"wifiLib")== 0) \
-          || (strcmp(pch,"wifiPsm")== 0)  || (strcmp(pch,"wifiLibhostapDbg")== 0)  || (strcmp(pch,"wifiHalDbg")== 0) ) {
-            wifi_util_dbg_print(WIFI_DMCLI,"continue to strtok %s\n",pch);
-        }
-        else if (strlen(pch)!=0 || (strcmp(pch,"") == 0)) {
-            wifi_util_dbg_print(WIFI_DMCLI,"api invalid param %s\n",pch);
-            return -1;
-        }
-        pch = strtok (NULL, ",");
+    if (!module || *module == '\0') {
+        return FALSE;
     }
-    return 0;
+    for (size_t i = 0; i < WIFI_DBG_FLAGS_LEN; i++) {
+        if (strcmp(module, wifi_dbg_flags[i]) == 0) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+static ANSC_STATUS
+validateLogEnable(const char *pValue)
+{
+    if (!pValue || *pValue == '\0') {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: null or empty input\n",
+                              __func__, __LINE__);
+        return ANSC_STATUS_FAILURE;
+    }
+
+    size_t total_len = strlen(pValue);
+    if (total_len >= 512) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: input too long (%zu bytes)\n",
+                              __func__, __LINE__, total_len);
+        return ANSC_STATUS_FAILURE;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: validating input '%s'\n",
+                        __func__, __LINE__, pValue);
+
+    char buf[512];
+    memcpy(buf, pValue, total_len + 1);
+
+    char *saveptr = NULL;
+    char *token   = strtok_r(buf, ",", &saveptr);
+    int   count   = 0;
+
+    while (token != NULL) {
+        while (*token == ' ') token++;
+        char *end = token + strlen(token) - 1;
+        while (end > token && *end == ' ') *end-- = '\0';
+
+        size_t tok_len = strlen(token);
+
+        if (tok_len == 0) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: empty token at position %d\n",
+                                  __func__, __LINE__, count);
+            return ANSC_STATUS_FAILURE;
+        }
+
+        if (tok_len > 64) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: token too long at position %d\n",
+                                  __func__, __LINE__, count);
+            return ANSC_STATUS_FAILURE;
+        }
+
+        for (size_t i = 0; i < tok_len; i++) {
+            char c = token[i];
+            if (!isalnum((unsigned char)c) && c != '_') {
+                wifi_util_error_print(WIFI_DMCLI, "%s:%d: illegal character '%c' in token '%s'\n",
+                                      __func__, __LINE__, c, token);
+                return ANSC_STATUS_FAILURE;
+            }
+        }
+
+        if (!isValidLogModule(token)) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: unknown module '%s'\n",
+                                  __func__, __LINE__, token);
+            return ANSC_STATUS_FAILURE;
+        }
+
+        if (++count > (int)WIFI_DBG_FLAGS_LEN) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: too many tokens (max %zu)\n",
+                                  __func__, __LINE__, WIFI_DBG_FLAGS_LEN);
+            return ANSC_STATUS_FAILURE;
+        }
+
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: token[%d] '%s' is valid\n",
+                            __func__, __LINE__, count, token);
+
+        token = strtok_r(NULL, ",", &saveptr);
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: validation passed, %d token(s)\n",
+                        __func__, __LINE__, count);
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_getLogEnable(char *pValue, ULONG *pUlSize)
+{
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: entry, buffer size %lu\n",
+                        __func__, __LINE__, *pUlSize);
+
+    char dest[512] = {0};
+    char path[128] = {0};
+
+    for (size_t i = 0; i < WIFI_DBG_FLAGS_LEN; i++) {
+        snprintf(path, sizeof(path), "/nvram/%s", wifi_dbg_flags[i]);
+        if (access(path, F_OK) != 0) { continue; }
+
+        const char *flag    = wifi_dbg_flags[i];
+        size_t      cur_len = strlen(dest);
+        size_t      tok_len = strlen(flag);
+        size_t      needed  = cur_len + (cur_len ? 1 : 0) + tok_len + 1;
+
+        if (needed > sizeof(dest)) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: dest buffer full, truncating at flag '%s'\n",
+                                  __func__, __LINE__, flag);
+            break;
+        }
+
+        if (cur_len > 0) { dest[cur_len++] = ','; }
+        memcpy(&dest[cur_len], flag, tok_len + 1);
+
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: flag '%s' is enabled\n",
+                            __func__, __LINE__, flag);
+    }
+
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: enabled modules: '%s'\n",
+                         __func__, __LINE__, dest);
+
+    if (AnscSizeOfString(dest) < *pUlSize) {
+        AnscCopyString(pValue, dest);
+        return ANSC_STATUS_SUCCESS;
+    }
+
+    *pUlSize = AnscSizeOfString(dest) + 1;
+    wifi_util_error_print(WIFI_DMCLI, "%s:%d: buffer too small, need %lu bytes\n",
+                          __func__, __LINE__, *pUlSize);
+    return ANSC_STATUS_FAILURE;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_setLogEnable(const char *pValue)
+{
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: entry, pValue '%s'\n",
+                        __func__, __LINE__, pValue);
+
+    if (validateLogEnable(pValue) != ANSC_STATUS_SUCCESS) {
+        return ANSC_STATUS_FAILURE;
+    }
+
+    /* Build enable lookup table */
+    bool enable[WIFI_DBG_FLAGS_LEN];
+    memset(enable, 0, sizeof(enable));
+
+    char  buf[512] = {0};
+    snprintf(buf, sizeof(buf), "%s", pValue);
+
+    char *saveptr = NULL;
+    char *token   = strtok_r(buf, ",", &saveptr);
+
+    while (token != NULL) {
+        while (*token == ' ') token++;
+        char *end = token + strlen(token) - 1;
+        while (end > token && *end == ' ') *end-- = '\0';
+
+        for (size_t i = 0; i < WIFI_DBG_FLAGS_LEN; i++) {
+            if (strcmp(token, wifi_dbg_flags[i]) == 0) {
+                enable[i] = true;
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: marking '%s' for enable\n",
+                                    __func__, __LINE__, token);
+                break;
+            }
+        }
+
+        token = strtok_r(NULL, ",", &saveptr);
+    }
+
+    /* Reconcile filesystem state with desired state */
+    char        path[128] = {0};
+    ANSC_STATUS status    = ANSC_STATUS_SUCCESS;
+
+    for (size_t i = 0; i < WIFI_DBG_FLAGS_LEN; i++) {
+        snprintf(path, sizeof(path), "/nvram/%s", wifi_dbg_flags[i]);
+        bool exists = (access(path, F_OK) == 0);
+
+        if (enable[i] && !exists) {
+            int fd = open(path, O_CREAT | O_WRONLY, 0644);
+            if (fd < 0) {
+                wifi_util_error_print(WIFI_DMCLI, "%s:%d: failed to create %s: %s\n",
+                                      __func__, __LINE__, path, strerror(errno));
+                status = ANSC_STATUS_FAILURE;
+            } else {
+                close(fd);
+                wifi_util_info_print(WIFI_DMCLI, "%s:%d: enabled log module '%s'\n",
+                                     __func__, __LINE__, wifi_dbg_flags[i]);
+            }
+        } else if (!enable[i] && exists) {
+            if (unlink(path) != 0) {
+                wifi_util_error_print(WIFI_DMCLI, "%s:%d: failed to remove %s: %s\n",
+                                      __func__, __LINE__, path, strerror(errno));
+                status = ANSC_STATUS_FAILURE;
+            } else {
+                wifi_util_info_print(WIFI_DMCLI, "%s:%d: disabled log module '%s'\n",
+                                     __func__, __LINE__, wifi_dbg_flags[i]);
+            }
+        } else {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: no change for module '%s' (enabled=%d)\n",
+                                __func__, __LINE__, wifi_dbg_flags[i], enable[i]);
+        }
+    }
+
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: set complete, status=%d\n",
+                         __func__, __LINE__, status);
+
+    return status;
 }
 
 ANSC_STATUS
