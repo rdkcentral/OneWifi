@@ -367,15 +367,21 @@ void write_to_file(const char *file_name, char *fmt, ...)
     fclose(fp);
 }
 
-void copy_string(char*  destination, char*  source)
+void copy_string(char* destination, char* source, size_t dest_size)
 {
+    if (destination == NULL || dest_size == 0)
+    {
+        return;
+    }
+
     if ( !source )
     {
         destination[0] = 0;
     }
     else
     {
-        strcpy(destination, source);
+        strncpy(destination, source, dest_size - 1);
+        destination[dest_size - 1] = '\0';
     }
 }
 
