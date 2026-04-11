@@ -244,17 +244,41 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t remaining_len = sizeof(interworking_info->anqp.venueInfo) - (next_pos - (UCHAR *)&interworking_info->anqp.venueInfo);
         wifi_venueName_t *venueBuf = (wifi_venueName_t *)next_pos;
+
+        if (remaining_len < (sizeof(venueBuf->length) + 3)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not enough space for Venue entry header. Discarding Configuration\n", __func__, __LINE__);
+            cJSON_Delete(passPointStats);
+            return webconfig_error_venue_entries;
+        }
+
         next_pos += sizeof(venueBuf->length); //Will be filled at the end
+        remaining_len -= sizeof(venueBuf->length);
+
         decode_param_string(anqpEntry,"Language",anqpParam);
-        strcpy((char*)next_pos, anqpParam->valuestring);
-        next_pos += strlen(anqpParam->valuestring);
+        if (strlen(anqpParam->valuestring) != 3) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Language Code. Discarding Configuration\n", __func__, __LINE__);
+            cJSON_Delete(passPointStats);
+            return webconfig_error_decode;
+        }
+        memcpy(next_pos, anqpParam->valuestring, 3);
+        next_pos += 3;
+        remaining_len -= 3;
+
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
 	    cJSON_Delete(passPointStats);
             return webconfig_error_venue_name_size;
         }
+
+        if (remaining_len < strlen(anqpParam->valuestring)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not enough space for Venue name. Discarding Configuration\n", __func__, __LINE__);
+            cJSON_Delete(passPointStats);
+            return webconfig_error_venue_entries;
+        }
+
         cJSON *realmStats = cJSON_CreateObject();
     	cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
 	cJSON_AddNumberToObject(realmStats, "EntryType", 1); // 1-Venue
@@ -262,7 +286,8 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     	cJSON_AddNumberToObject(realmStats, "Failed", 0);
     	cJSON_AddNumberToObject(realmStats, "Timeout", 0);
 	cJSON_AddItemToArray(statsList, realmStats);
-        strcpy((char*)next_pos, anqpParam->valuestring);
+
+        memcpy(next_pos, anqpParam->valuestring, strlen(anqpParam->valuestring));
         next_pos += strlen(anqpParam->valuestring);
         venueBuf->length = next_pos - &venueBuf->language[0];
     }
@@ -663,25 +688,39 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
 
     next_pos = (UCHAR *)&interworking_info->passpoint.opFriendlyNameInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t remaining_len = sizeof(interworking_info->passpoint.opFriendlyNameInfo) - (next_pos - (UCHAR *)&interworking_info->passpoint.opFriendlyNameInfo);
         wifi_HS2_OperatorNameDuple_t *opNameBuf = (wifi_HS2_OperatorNameDuple_t *)next_pos;
-        next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
 
-        decode_param_string(anqpEntry,"LanguageCode",anqpParam);
-        if(strlen(anqpParam->valuestring) > 3){
+        if (remaining_len < (sizeof(opNameBuf->length) + sizeof(opNameBuf->languageCode))) {
+             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not enough space for OperatorFriendlyName headers. Discarding Configuration\n", __func__, __LINE__);
+             return webconfig_error_decode;
+        }
+
+        next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
+        remaining_len -= sizeof(opNameBuf->length);
+
+        decode_param_string(anqpEntry, "LanguageCode", anqpParam);
+        if (strlen(anqpParam->valuestring) != sizeof(opNameBuf->languageCode)) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Language Code. Discarding Configuration\n", __func__, __LINE__);
-            //strncpy(execRetVal->ErrorMsg, "Invalid Language Code",sizeof(execRetVal->ErrorMsg)-1);
             return webconfig_error_decode;
         }
-        strcpy((char*)next_pos, anqpParam->valuestring);
+
+        memcpy(next_pos, anqpParam->valuestring, sizeof(opNameBuf->languageCode));
         next_pos += sizeof(opNameBuf->languageCode);
+        remaining_len -= sizeof(opNameBuf->languageCode);
 
         decode_param_string(anqpEntry,"OperatorName",anqpParam);
         if(strlen(anqpParam->valuestring) > 252){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid OperatorFriendlyName. Discarding Configuration\n", __func__, __LINE__);
-            //strncpy(execRetVal->ErrorMsg, "Invalid OperatorFriendlyName",sizeof(execRetVal->ErrorMsg)-1);
             return webconfig_error_decode;
         }
-        strcpy((char*)next_pos, anqpParam->valuestring);
+
+        if (remaining_len < strlen(anqpParam->valuestring)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not enough space for OperatorFriendlyName data. Discarding Configuration\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        memcpy(next_pos, anqpParam->valuestring, strlen(anqpParam->valuestring));
         next_pos += strlen(anqpParam->valuestring);
         opNameBuf->length = strlen(anqpParam->valuestring) +  sizeof(opNameBuf->languageCode);
     }

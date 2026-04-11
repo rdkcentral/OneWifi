@@ -610,7 +610,7 @@ INT WiFi_SaveGasCfg(char *buffer, int len)
     return RETURN_OK;
 }
 
-void WiFi_GetGasConfig(char *pString)
+void WiFi_GetGasConfig(char *pString, unsigned int bufLen)
 {   
     cJSON *gasCfg = NULL;
     cJSON *mainEntry = NULL;
@@ -620,7 +620,7 @@ void WiFi_GetGasConfig(char *pString)
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     if(RETURN_OK != get_wifidb_obj()->desc.get_gas_config_fn(0,&gasConfig_struct)){
 #endif  
-        copy_string(pString, WIFI_PASSPOINT_DEFAULT_GAS_CFG, 1024);
+        copy_string(pString, WIFI_PASSPOINT_DEFAULT_GAS_CFG, bufLen);
         return;
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     }
@@ -629,7 +629,7 @@ void WiFi_GetGasConfig(char *pString)
     gasCfg = cJSON_CreateObject();
     if (NULL == gasCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to create GAS JSON Object\n");
-        copy_string(pString, WIFI_PASSPOINT_DEFAULT_GAS_CFG, 1024);
+        copy_string(pString, WIFI_PASSPOINT_DEFAULT_GAS_CFG, bufLen);
         return;
     }
     
@@ -643,7 +643,7 @@ void WiFi_GetGasConfig(char *pString)
     cJSON_AddNumberToObject(mainEntry,"QueryRespLengthLimit",gasConfig_struct.QueryResponseLengthLimit);
     
     cJSON_PrintPreallocated(gasCfg, JSON_STR, sizeof(JSON_STR),false);
-    copy_string(pString, JSON_STR, 1024);
+    copy_string(pString, JSON_STR, bufLen);
     cJSON_Delete(gasCfg);
     return;
 }

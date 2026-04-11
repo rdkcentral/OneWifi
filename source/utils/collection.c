@@ -362,10 +362,13 @@ void  hash_map_cleanup(hash_map_t *map)
     hash_element_t *he;
     element_t    *e, *tmp;
     
-    if (map == NULL || map->queue == NULL || map->queue->head == NULL) {
+    if (map == NULL) {
         return;
     }
     map->itr = NULL;
+    if (map->queue == NULL || map->queue->head == NULL) {
+        return;
+    }
     e = map->queue->head;
     while (e != NULL) {
         tmp = e->next;

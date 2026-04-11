@@ -194,15 +194,15 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
 
         next_pos += sizeof(venueBuf->length); //Will be filled at the end
         validate_param_string(anqpEntry,"Language",anqpParam);
-        if(strlen(anqpParam->valuestring) != 3){
+        if (strlen(anqpParam->valuestring) != 3) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid Language Code. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Language Code",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
 
-        copy_string((char *)next_pos, anqpParam->valuestring, 4);
-        next_pos += strlen((char *)next_pos);
+        memcpy(next_pos, anqpParam->valuestring, 3);
+        next_pos += 3;
 
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
         if(anqpParam == NULL || anqpParam->valuestring == NULL || strlen(anqpParam->valuestring) > 255){
@@ -213,8 +213,17 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         }
 
         venue_remaining = sizeof(vap_info->anqp.venueInfo) - (next_pos - (UCHAR *)&vap_info->anqp.venueInfo);
-        copy_string((char *)next_pos, anqpParam->valuestring, venue_remaining);
-        next_pos += strlen((char *)next_pos);
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (venue_remaining <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Venue name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded Venue buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                cJSON_Delete(passPointStats);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, venue_remaining);
+            next_pos += val_len;
+        }
         venueBuf->length = next_pos - &venueBuf->language[0];
     }
     vap_info->anqp.venueInfoLength = next_pos - (UCHAR *)&vap_info->anqp.venueInfo;
@@ -363,9 +372,18 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         next_pos += sizeof(realmInfoBuf->realm_length);
         remaining_len -= (sizeof(realmInfoBuf->data_field_length) + sizeof(realmInfoBuf->encoding) + sizeof(realmInfoBuf->realm_length));
 
-        copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
-        realmInfoBuf->realm_length = strlen((char *)next_pos);
-        next_pos += realmInfoBuf->realm_length;
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Realm name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded Realm buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                cJSON_Delete(passPointStats);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            realmInfoBuf->realm_length = val_len;
+            next_pos += val_len;
+        }
 
         cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
@@ -617,9 +635,18 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         next_pos += sizeof(nameBuf->length);
         remaining_len -= sizeof(nameBuf->length);
 
-        copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
-        nameBuf->length = strlen((char *)next_pos);
-        next_pos += nameBuf->length;
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Domain name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded Domain Name buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                cJSON_Delete(passPointStats);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            nameBuf->length = val_len;
+            next_pos += val_len;
+        }
 
         cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
@@ -716,14 +743,14 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
         remaining_len -= sizeof(opNameBuf->length);
 
-        validate_param_string(anqpEntry,"LanguageCode",anqpParam);
-        if(strlen(anqpParam->valuestring) != 3){
+        validate_param_string(anqpEntry, "LanguageCode", anqpParam);
+        if (strlen(anqpParam->valuestring) != sizeof(opNameBuf->languageCode)) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid Language Code. Discarding Configuration\n", __func__, __LINE__);
-            strncpy(execRetVal->ErrorMsg, "Invalid Language Code",sizeof(execRetVal->ErrorMsg)-1);
+            strncpy(execRetVal->ErrorMsg, "Invalid Language Code", sizeof(execRetVal->ErrorMsg) - 1);
             return RETURN_ERR;
         }
 
-        copy_string((char *)next_pos, anqpParam->valuestring, sizeof(opNameBuf->languageCode) + 1);
+        memcpy(next_pos, anqpParam->valuestring, sizeof(opNameBuf->languageCode));
         next_pos += sizeof(opNameBuf->languageCode);
         remaining_len -= sizeof(opNameBuf->languageCode);
 
@@ -734,10 +761,18 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
             return RETURN_ERR;
         }
         
-        copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
-        size_t name_len = strlen((char *)next_pos);
-        next_pos += name_len;
-        opNameBuf->length = name_len + sizeof(opNameBuf->languageCode);
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for OperatorFriendlyName data. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded OperatorFriendlyName buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            size_t name_len = val_len;
+            next_pos += name_len;
+            opNameBuf->length = name_len + sizeof(opNameBuf->languageCode);
+        }
     }
     vap_info->passpoint.opFriendlyNameInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
     if(vap_info->passpoint.opFriendlyNameInfoLength) {
@@ -812,9 +847,17 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         next_pos += sizeof(realmInfoBuf->length);
         remaining_len -= (sizeof(realmInfoBuf->encoding) + sizeof(realmInfoBuf->length));
 
-        copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
-        realmInfoBuf->length = strlen((char *)next_pos);
-        next_pos += realmInfoBuf->length;
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for NAI Home Realm Name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded NAI Home Realm buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            realmInfoBuf->length = val_len;
+            next_pos += val_len;
+        }
     }
     vap_info->passpoint.realmInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.realmInfo;
     if(vap_info->passpoint.realmInfoLength) {
