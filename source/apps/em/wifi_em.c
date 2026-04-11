@@ -33,6 +33,8 @@
 #define EM_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC 5 // 5 Seconds
 #define EM_NEIGBOUR_SCAN_INTERVAL_MSEC 60000 // 60 Seconds
 #define EM_DEF_LINK_METRICS_COLLECT_INTERVAL_MSEC 10000 // 10 Seconds
+#define EM_BSS_COLOR_DEFAULT        0x3F
+#define EM_SCAN_TYPE_ACTIVE          1
 
 static bool is_monitor_done = false;
 
@@ -645,6 +647,7 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
     wifi_neighbor_ap2_t *wifi_scan_data = NULL;
     radio_interface_mapping_t *radio_iface_map = NULL;
     char time_str[32] = { 0 };
+    int dwell_time = provider_response->args.dwell_time;
 
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
@@ -744,17 +747,32 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
             neighbor->signal_strength = src->ap_SignalStrength;
             strncpy(neighbor->channel_bandwidth, src->ap_OperatingChannelBandwidth,
                 EM_MAX_CHANNEL_BW_LEN);
-            neighbor->channel_utilization = src->ap_ChannelUtilization;
-            neighbor->bss_load_element_present = 0;
-            neighbor->bss_color = 0;
+            neighbor->bss_color = EM_BSS_COLOR_DEFAULT;
+	    neighbor->bss_load_element_present = 0;
+	    
+	    /* Initialize to defaults to avoid stale/uninitialized data */
+            neighbor->channel_utilization = 0;
             neighbor->station_count = 0;
+	    
+	    /*
+	     * Populate channel utilization, Station count
+	     * only if the bss load element is present.
+	     */
+            if (src->bss_load_element_present) {
+                neighbor->bss_load_element_present = src->bss_load_element_present;
+                neighbor->channel_utilization = src->ap_ChannelUtilization;
+                neighbor->station_count = src->ap_StaCount;
+            }
             res->num_neighbors++;
-            wifi_util_dbg_print(WIFI_EM, "%s:%d BSSID: %s SSID: %s\n", __func__, __LINE__,
-                src->ap_BSSID, src->ap_SSID);
+            wifi_util_dbg_print(WIFI_EM, "bss_color 0x%x ch_util %d bss_element_presnt %d sta_cnt %d for BSSID: %s SSID: %s\n",
+                          neighbor->bss_color, neighbor->channel_utilization, neighbor->bss_load_element_present, 
+			  neighbor->station_count, src->ap_BSSID, src->ap_SSID);
         } else {
             wifi_util_error_print(WIFI_EM, "%s:%d : Maximum number of neighbors reached.\n",
                 __func__, __LINE__);
         }
+        res->aggregate_scan_duration = dwell_time;
+        res->scan_type = EM_SCAN_TYPE_ACTIVE;
     }
     wifi_util_dbg_print(WIFI_EM, "%s:%d Scan results updated for radio mac : %s\n", __func__,
         __LINE__, to_mac_str(radio_mac, mac_str));
