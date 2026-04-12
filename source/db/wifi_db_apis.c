@@ -5147,8 +5147,16 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
                 __func__, __LINE__, g_wifidb->db_version);
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+#if defined(_PLATFORM_BANANAPI_R4_)
+                if (isVapPrivate(config->vap_array[i].vap_index)) {
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 1;
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 0;
+                }
+#else
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 0;
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 255;
+
+#endif
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
@@ -7169,7 +7177,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif  /* defined(_PLATFORM_BANANAPI_R4_) */
 #endif /* defined(CONFIG_IEEE80211BE) */
 
-
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
 #endif
@@ -7216,14 +7223,21 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg->operatingClass = 131;
-            cfg->channel = 5;
-            cfg->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
-            cfg->variant = WIFI_80211_VARIANT_AX;
+            cfg.operatingClass = 134;
+#ifndef _PLATFORM_BANANAPI_R4_
+            cfg.channel = 5;
+#else
+            cfg.channel = 37;
+#endif /* _PLATFORM_BANANAPI_R4_ */
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+            cfg.variant = WIFI_80211_VARIANT_AX;
 
 #ifdef CONFIG_IEEE80211BE
-            cfg->variant |= WIFI_80211_VARIANT_BE;
-            cfg->channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#ifndef _PLATFORM_BANANAPI_R4_
+            cfg.operatingClass = 137;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
             break;
         default:
@@ -7599,11 +7613,19 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg->u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg->u.bss_info.beaconRateCtl)-1);
         cfg->vap_mode = wifi_vap_mode_ap;
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (isVapPrivate(vap_index)) {
+            cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
+            cfg->u.bss_info.mld_info.common_info.mld_id = 0;
+        }
         /*TODO: Are values correct? */
+#else
         cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
+#endif
         cfg->u.bss_info.mld_info.common_info.mld_link_id = 255;
         cfg->u.bss_info.mld_info.common_info.mld_apply = 1;
+
         memset(&cfg->u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg->u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
             cfg->u.bss_info.showSsid = true;
@@ -8003,7 +8025,7 @@ void wifidb_init_default_value()
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 static int get_ap_mac_by_vap_index(wifi_vap_info_map_t *hal_vap_info_map, int vap_index,  mac_address_t mac)
 {
     unsigned int j = 0;
@@ -8097,7 +8119,7 @@ static int wifidb_vap_config_update_mld_mac()
     hal_vap_info_map = NULL;
     return RETURN_OK;
 }
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 /************************************************************************************
  ************************************************************************************
@@ -8328,9 +8350,9 @@ void init_wifidb_data()
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
-        #ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
         wifidb_vap_config_update_mld_mac();
-        #endif
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 
