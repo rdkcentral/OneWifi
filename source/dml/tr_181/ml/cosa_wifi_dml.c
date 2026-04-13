@@ -2744,18 +2744,18 @@ Radio_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wifi variant=%d\n",__func__, __LINE__, pcfg->variant);
         if ( pcfg->variant & WIFI_80211_VARIANT_A )
         {
-            strcat(buf, "a");
+            strncat(buf, "a", sizeof(buf) - strlen(buf) - 1);
         }
 
         if ( pcfg->variant & WIFI_80211_VARIANT_B )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",b");
+                strncat(buf, ",b", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "b");
+                strncat(buf, "b", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2763,11 +2763,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",g");
+                strncat(buf, ",g", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "g");
+                strncat(buf, "g", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2775,11 +2775,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",n");
+                strncat(buf, ",n", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "n");
+                strncat(buf, "n", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2787,11 +2787,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",ac");
+                strncat(buf, ",ac", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "ac");
+                strncat(buf, "ac", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( pcfg->variant & WIFI_80211_VARIANT_AX )
@@ -2800,11 +2800,11 @@ Radio_GetParamStringValue
             if ((instance_number) || (rfc_pcfg && rfc_pcfg->twoG80211axEnable_rfc)) {
                 if (AnscSizeOfString(buf) != 0)
                 {
-                    strcat(buf, ",ax");
+                    strncat(buf, ",ax", sizeof(buf) - strlen(buf) - 1);
                 }
                 else
                 {
-                    strcat(buf, "ax");
+                    strncat(buf, "ax", sizeof(buf) - strlen(buf) - 1);
                 }
             }
         }
@@ -2814,11 +2814,11 @@ Radio_GetParamStringValue
         {
                 if (AnscSizeOfString(buf) != 0)
                 {
-                    strcat(buf, ",be");
+                    strncat(buf, ",be", sizeof(buf) - strlen(buf) - 1);
                 }
                 else
                 {
-                    strcat(buf, "be");
+                    strncat(buf, "be", sizeof(buf) - strlen(buf) - 1);
                 }
         }
 #endif /* CONFIG_IEEE80211BE */
@@ -2901,18 +2901,18 @@ Radio_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates=%d\n",__func__, __LINE__, pcfg->basicDataTransmitRates);
         if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_6MBPS )
         {
-            strcat(buf, "6");
+            strncat(buf, "6", sizeof(buf) - strlen(buf) - 1);
         }
 
         if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_12MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",12");
+                strncat(buf, ",12", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "12");
+                strncat(buf, "12", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2920,11 +2920,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",1");
+                strncat(buf, ",1", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "1");
+                strncat(buf, "1", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2932,11 +2932,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",2");
+                strncat(buf, ",2", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "2");
+                strncat(buf, "2", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2944,11 +2944,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",5.5");
+                strncat(buf, ",5.5", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "5.5");
+                strncat(buf, "5.5", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2956,11 +2956,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",11");
+                strncat(buf, ",11", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "11");
+                strncat(buf, "11", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -2968,11 +2968,11 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",24");
+                strncat(buf, ",24", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "24");
+                strncat(buf, "24", sizeof(buf) - strlen(buf) - 1);
             }
         }
 
@@ -3002,83 +3002,83 @@ Radio_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->operationalDataTransmitRates=%d\n",__func__, __LINE__, pcfg->operationalDataTransmitRates);
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_6MBPS )
         {
-            strcat(buf, "6");
+            strncat(buf, "6", sizeof(buf) - strlen(buf) - 1);
         }
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_9MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",9");
+                strncat(buf, ",9", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "9");
+                strncat(buf, "9", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_12MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",12");
+                strncat(buf, ",12", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "12");
+                strncat(buf, "12", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_18MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",18");
+                strncat(buf, ",18", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "18");
+                strncat(buf, "18", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_24MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",24");
+                strncat(buf, ",24", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "24");
+                strncat(buf, "24", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_36MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",36");
+                strncat(buf, ",36", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "36");
+                strncat(buf, "36", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_48MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",48");
+                strncat(buf, ",48", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "48");
+                strncat(buf, "48", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( pcfg->operationalDataTransmitRates & WIFI_BITRATE_54MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
             {
-                strcat(buf, ",54");
+                strncat(buf, ",54", sizeof(buf) - strlen(buf) - 1);
             }
             else
             {
-                strcat(buf, "54");
+                strncat(buf, "54", sizeof(buf) - strlen(buf) - 1);
             }
         }
         if ( AnscSizeOfString(buf) < *pUlSize)
