@@ -2875,7 +2875,7 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
     g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
         g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
-    strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
+    snprintf(g_wifi_mgr->ctrl.rfc_params.rfc_id, sizeof(g_wifi_mgr->ctrl.rfc_params.rfc_id), "%s", g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
 
