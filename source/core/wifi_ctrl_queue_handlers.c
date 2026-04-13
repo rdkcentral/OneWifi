@@ -32,6 +32,7 @@
 #include "wifi_passpoint.h"
 #include "wifi_stubs.h"
 #include "run_qmgr.h"
+#include "wifi_ctrl_acs.h"
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
 #define MAX_VAP_INDEX 24
 
@@ -4493,7 +4494,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_send_btm_req:
         process_btm_request_send_event(data, len);
-        break; 
+        break;
+    case wifi_event_type_command_start_acs:
+        process_start_acs_command(ctrl, data, len);
+        break;
     case wifi_event_type_multiap_rfc:
         process_multiap_rfc(*(bool *)data);
         break;
