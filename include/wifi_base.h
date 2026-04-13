@@ -86,6 +86,7 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_NOTIFY_INTEROP_DETAILS                    "Device.WiFi.AccessPoint.{i}.InteropDetails" 
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
+#define HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED       "Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
@@ -164,6 +165,10 @@ typedef char stats_cfg_id_t[CFG_ID_LEN];
 #define HE_MAC_UL_MU_MIMO_BIT       1   /* byte 4 */
 #define HE_MAC_UL_OFDMA_BIT         2   /* byte 2 */
 #define HE_MAC_DL_OFDMA_BIT         3   /* byte 2 */
+#define HE_MCS_MAP_BITS_PER_STREAM 2
+#define HE_MCS_MAP_MAX_BITS        16
+#define HE_MCS_MAP_MAX_STREAMS     (HE_MCS_MAP_MAX_BITS / HE_MCS_MAP_BITS_PER_STREAM)
+#define HE_MAX_MCS_MAPS 3  // 80MHz + 160MHz + 80+80MHz
 
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
@@ -187,7 +192,8 @@ typedef enum {
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_csi_analytics = wifi_app_inst_base << 19,
     wifi_app_inst_link_quality = wifi_app_inst_base << 20,
-    wifi_app_inst_max = wifi_app_inst_base << 21
+    wifi_app_inst_wifi_sensing = wifi_app_inst_base << 21,
+    wifi_app_inst_max = wifi_app_inst_base << 22
 } wifi_app_inst_t;
 
 typedef struct {

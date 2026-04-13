@@ -69,7 +69,6 @@ static inline double apply_recovery(double norm,int remaining,
     double factor = 1.0;
     if (total <= 0 || remaining <= 0)
         return norm;
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d,remaining=%d total=%d\n",__func__,__LINE__,remaining,total);
 
     double progress = (double)(total - remaining) / (double)total;
 
@@ -129,7 +128,6 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
 
         if (!enabled) continue;
 
-        m_seq[i] = m_seq[i] + number_t((float)data[i], 0);
         y = m_seq[i].get_max().m_re - m_seq[i].get_min().m_re;
 
         if (y > 0.0) {

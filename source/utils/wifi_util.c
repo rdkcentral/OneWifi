@@ -849,6 +849,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         snprintf(module_filename, sizeof(module_filename), "wifiCsi");
         break;
     }
+    case WIFI_SENSING: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSensing");
+        snprintf(module_filename, sizeof(module_filename), "wifiSensing");
+        break;
+    }
     default:
         return;
     }
@@ -4026,11 +4031,12 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+            //should not be executed for BPi
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
             is_mld_addr_changed(vap_info_old, vap_info_new) ||
 #endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
@@ -4751,4 +4757,48 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
     close(sock);
 
     return 0;
+}
+
+bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr)
+{
+    uint32_t valid_mask = 0;
+
+    switch (mode) {
+    case wifi_security_mode_enhanced_open:
+        valid_mask = (1u << wifi_encryption_none) | (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa3_enterprise:
+    case wifi_security_mode_wpa3_personal:
+    case wifi_security_mode_wpa3_compatibility:
+    case wifi_security_mode_wpa3_transition:
+        valid_mask = (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa2_personal:
+    case wifi_security_mode_wpa2_enterprise:
+    case wifi_security_mode_wpa_wpa2_personal:
+    case wifi_security_mode_wpa_wpa2_enterprise:
+        valid_mask = (1u << wifi_encryption_aes) | (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_wpa_personal:
+    case wifi_security_mode_wpa_enterprise:
+        valid_mask = (1u << wifi_encryption_tkip) | (1u << wifi_encryption_aes) |
+                     (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_none:
+        return true; /* no encryption required */
+    default:
+        return false; /* unknown mode: reject */
+    }
+
+    return (valid_mask & (1u << encr)) != 0;
 }
