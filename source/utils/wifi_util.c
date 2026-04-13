@@ -3825,7 +3825,7 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
 {
     if ((vap_info_old == NULL) || (vap_info_new == NULL)) {
@@ -3851,7 +3851,7 @@ static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *
     }
     return false;
 }
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
@@ -3955,13 +3955,14 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+            //should not be executed for BPi
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-#ifdef CONFIG_IEEE80211BE
             is_mld_addr_changed(vap_info_old, vap_info_new) ||
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,
