@@ -160,8 +160,12 @@ int get_ap_index_from_clientmac(mac_address_t mac_addr)
             if (rdk_vap_info->associated_devices_map) {
                 assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
                 if (assoc_dev_data != NULL) {
-                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-                    return vap_index;
+                    if (!assoc_dev_data->dev_stats.cli_MLDEnable ||
+                        (assoc_dev_data->dev_stats.cli_MLDEnable &&
+                            assoc_dev_data->association_link)) {
+                        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                        return vap_index;
+                    }
                 }
             }
             pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
@@ -2295,7 +2299,8 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
         (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
-        (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false)
+        (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
+        (ctrl->hotspot_client_dhcp_failure_subscribed == false)
 #if defined (RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif
