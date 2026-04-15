@@ -356,6 +356,7 @@ UINT getTotalNumberVAPs();
 UINT getNumberRadios();
 UINT getMaxNumberVAPsPerRadio(UINT radioIndex);
 UINT getNumberVAPsPerRadio(UINT radioIndex);
+BOOL isRadioBeEnabled(UINT radio_index);
 //getVAPArrayIndexFromVAPIndex() need to be used in case of VAPS considered as single array (from 0 to MAX_VAP)
 //In case of to get vap array index per radio, use convert_vap_index_to_vap_array_index()
 int getVAPArrayIndexFromVAPIndex(unsigned int apIndex, unsigned int *vap_array_index);

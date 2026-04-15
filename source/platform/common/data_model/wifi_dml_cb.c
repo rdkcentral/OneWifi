@@ -2218,6 +2218,11 @@ bool ssid_get_param_int_value(void *obj_ins_context, char *param_name, int *outp
     if (STR_CMP(param_name, "MLDUnit")) {
         wifi_mld_common_info_t *mld_common_info = NULL;
 
+        if (!isRadioBeEnabled(pcfg->radio_index)) {
+            *output_value = -1;
+            return true;
+        }
+
         if (isVapSTAMesh(pcfg->vap_index)) {
             mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
         } else {
@@ -2505,6 +2510,14 @@ bool ssid_set_param_int_value(void *obj_ins_context, char *param_name, int input
         wifi_util_info_print(WIFI_DMCLI, "%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__,
             input_value);
         tmp_mld_enable = (input_value == -1) ? false : true;
+
+        if (tmp_mld_enable == true && !isRadioBeEnabled(pcfg->radio_index)) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d Cannot set MLDUnit on VAP %d: radio %d has no BE mode\n", __FUNCTION__,
+                __LINE__, pcfg->vap_index, pcfg->radio_index);
+            return false;
+        }
+
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
             if (tmp_mld_enable == false &&
                 vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
