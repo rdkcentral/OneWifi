@@ -3096,6 +3096,7 @@ void process_multiap_rfc(bool type)
 void process_link_quality_rfc(bool type)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    char *path = "/www/data";
     wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
@@ -3110,10 +3111,13 @@ void process_link_quality_rfc(bool type)
         rfc_param->link_quality_rfc);
     if( rfc_param->link_quality_rfc) {
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        run_web_server();
         wifi_util_error_print(WIFI_CTRL, "started link quality app %s:%d\n", __func__, __LINE__);
     } else {
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
         wifi_util_error_print(WIFI_CTRL, "stopped link quality app %s:%d\n", __func__, __LINE__);
+        stop_web_server(path);
+        wifi_util_error_print(WIFI_CTRL, "After run_web_server %s:%d\n", __func__, __LINE__);
     }
     return;
 }

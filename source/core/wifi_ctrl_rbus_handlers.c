@@ -437,6 +437,28 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
 
 }
 
+bus_error_t set_linkq_gw(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    bus_error_t rc = bus_error_success;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+
+    if (p_data->data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid data input\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d value=%d\n",__func__,__LINE__,p_data->raw_data.b);
+    if (p_data->raw_data.b) {
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_link_quality_rfc, NULL, 0);
+    }
+    return rc;
+}
+
+
 int stats_bus_publish(wifi_ctrl_t *ctrl, void *stats_data)
 {
     webconfig_subdoc_data_t *data;
@@ -4531,6 +4553,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_NASTA_RESPONSE_EVENT, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_LINK_QUALITY_GW, bus_element_type_method,
+                                    { NULL, set_linkq_gw, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_boolean, false, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);

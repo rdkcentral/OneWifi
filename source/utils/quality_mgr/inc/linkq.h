@@ -69,9 +69,10 @@ class linkq_t {
     std::vector<sample_t> m_window_samples;
     char *get_local_time(char *buff, unsigned int len,bool flag); 
     static quality_flags_t m_quality_flag;
+    static radio_max_snr_t max_snr_radio_val;
 public:
     vector_t run_test(bool &alarm,bool update_alarm,bool &rapid_disconnect);
-    vector_t run_algorithm(linkq_data_t data, bool &alarm, bool update_alarm);
+    vector_t run_algorithm(linkq_data_t data, bool &alarm, bool update_alarm,int channel_util);
     int init(double threshold, unsigned int reporting_mult,stats_arg_t *stats);
     size_t get_window_samples(sample_t **out_samples); 
     int reinit(server_arg_t *arg);
@@ -83,9 +84,10 @@ public:
     const char * get_mac_addr() const{ return m_mac; }
     unsigned int get_vap_index() const{ return m_vapindex; }
     bool get_alarm() const{ return m_alarm; }
-    void clear_window_samples(); 
+    void clear_window_samples();
     static void register_station_mac(const char* str);
     static void unregister_station_mac(const char* str);
+    static int set_max_snr_radios(radio_max_snr_t *max_snr_val);
     linkq_t(mac_addr_str_t mac,unsigned int vap_index);
     ~linkq_t();
 };

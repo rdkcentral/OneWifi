@@ -76,6 +76,15 @@ onewifi_restart_wifi()
     echo_t "private_vap self heal executed onewifi restarted" >> $LOG_FILE
 }
 
+ensure_iptables_rule() {
+    RULE="-i erouter0 -p tcp --dport 8082 -j ACCEPT"
+
+    if ! iptables -C INPUT $RULE 2>/dev/null; then
+        iptables -I INPUT 1 $RULE
+        echo_t "Selfheal: iptables rule added for port 8082 on erouter0" >> $LOG_FILE
+    fi
+}
+
 vap_restart()
 {
     # This is to set supported stations in order to restore station cfg but re-visit the Self-Heal reason */
@@ -550,6 +559,7 @@ do
                 ;;
         esac
     fi
-    sleep 5m
+    ensure_iptables_rule
+    sleep 2m
     ((check_count++))
 done

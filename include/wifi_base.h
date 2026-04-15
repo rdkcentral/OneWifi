@@ -94,6 +94,7 @@ extern "C" {
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 #define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
 #define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
+#define WIFI_LINK_QUALITY_GW      "Device.WiFi.LQGateWay"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -537,6 +538,19 @@ typedef struct {
 } link_report_t;
 
 typedef struct {
+    unsigned long cli_PacketsSent;
+    unsigned long cli_PacketsReceived;
+    unsigned long cli_RetransCount;
+    unsigned long long cli_RxRetries;
+    int cli_SNR;
+    unsigned int   cli_MaxDownlinkRate;
+    unsigned int cli_MaxUplinkRate;
+    unsigned int cli_LastDataDownlinkRate;
+    unsigned int cli_LastDataUplinkRate;
+    bool cli_PowerSaveMode;
+} dev_stats_t;
+
+typedef struct {
     size_t link_count;
     link_report_t *links;
 } report_batch_t;
@@ -618,6 +632,9 @@ typedef struct {
     bool link_quality_rfc;
     bool xfi_tel_enable_rfc;
     bool multiap_rfc;
+    int radio_2g_observed_max_snr;
+    int radio_5g_observed_max_snr;
+    int radio_6g_observed_max_snr;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {

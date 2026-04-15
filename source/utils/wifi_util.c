@@ -5004,3 +5004,17 @@ int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsi
 
     return -1;
 }
+ void copy_assocstats_dev_stats(wifi_associated_dev3_t* assoc_dev,dev_stats_t *dev)
+ {
+ 
+    dev->cli_PacketsSent = assoc_dev->cli_PacketsSent;  
+   dev->cli_PacketsReceived = assoc_dev->cli_PacketsReceived;  
+   dev->cli_RetransCount = assoc_dev->cli_RetransCount;  
+   dev->cli_RxRetries = assoc_dev->cli_RxRetries;  
+   dev->cli_SNR = assoc_dev->cli_SNR;  
+   dev->cli_MaxDownlinkRate = assoc_dev->cli_MaxDownlinkRate;  
+   dev->cli_MaxUplinkRate = assoc_dev->cli_MaxUplinkRate;  
+   dev->cli_LastDataDownlinkRate = assoc_dev->cli_LastDataDownlinkRate;  
+   dev->cli_LastDataUplinkRate = assoc_dev->cli_LastDataUplinkRate;  
+ 
+ } 

@@ -68,3 +68,13 @@ bin_PROGRAMS += wifi_events_consumer
 wifi_events_consumer_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats
 wifi_events_consumer_SOURCES = wifievents_consumer_sample.c
 wifi_events_consumer_LDFLAGS = -lrbus
+
+bin_PROGRAMS += wifi_send_multiap
+wifi_send_multiap_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats
+wifi_send_multiap_SOURCES = wifievents_send_multiap.c
+wifi_send_multiap_LDFLAGS = -lrbus
+
+bin_PROGRAMS += wifi_recv_multiap
+wifi_recv_multiap_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats
+wifi_recv_multiap_SOURCES = wifievents_recv_multiap.c
+wifi_recv_multiap_LDFLAGS = -lrbus
