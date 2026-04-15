@@ -69,6 +69,7 @@ static volatile int dhcp_sniffer_exit = 0;
 static char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 
+#if 0
 static int dhcp_get_msg_type(uint8_t *options, ssize_t options_len)
 {
     while (options_len > 0)
@@ -96,14 +97,13 @@ static int dhcp_get_msg_type(uint8_t *options, ssize_t options_len)
 
     return -1;
 }
-
 static void mac_to_key(const unsigned char *mac, char *key)
 {
     snprintf(key, 18,
         "%02x:%02x:%02x:%02x:%02x:%02x",
         mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
 }
-
+#endif
 /* Register callback BEFORE starting qmgr */
 void publish_qmgr_subdoc(const report_batch_t* report)
 {
@@ -158,7 +158,7 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     return;
 }
 
-
+#if 0
 static void dhcp_process_packet(const uint8_t *buffer, ssize_t len)
 {
     struct iphdr *ip_header;
@@ -298,7 +298,7 @@ static void dhcp_process_packet(const uint8_t *buffer, ssize_t len)
     wifi_util_info_print(WIFI_CTRL," DHCP %s:%d Successfully processed %s packet for MAC=%s\n",
         __func__, __LINE__, msg_type_str, mac_key);
 }
-
+#endif
 static int ignite_score_log_timer(void *args)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -319,7 +319,7 @@ static int ignite_score_log_timer(void *args)
     write_to_file(wifi_health_log, buff);
     return RETURN_OK;
 }
-
+#if 0
 static void *sniffer_thread_func(void *arg)
 {
     uint8_t buffer[2048];
@@ -408,7 +408,7 @@ static void *sniffer_thread_func(void *arg)
             }
             
             // If we reach here, either it's a DHCP packet from an associated client,
-            // or it's not a DHCP packet (will be filtered out in dhcp_process_packet)
+            // or it's not a DHCP packet (will be filtered out indhcp_process_packet)
             dhcp_process_packet(buffer, len);
         }
     }
@@ -416,7 +416,6 @@ static void *sniffer_thread_func(void *arg)
     wifi_util_info_print(WIFI_APPS, "%s:%d DHCP sniffer thread exiting\n", __func__, __LINE__);
     return NULL;
 }
-
 static int attach_kernel_bpf_filter(int sock)
 {
     const char *filter_expr =
@@ -457,7 +456,7 @@ static int attach_kernel_bpf_filter(int sock)
 
     return 0;
 }
-
+#endif
 void dhcp_sniffer_start()
 {
 #if 0
