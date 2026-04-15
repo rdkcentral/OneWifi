@@ -460,6 +460,7 @@ static int attach_kernel_bpf_filter(int sock)
 
 void dhcp_sniffer_start()
 {
+#if 0
     struct sockaddr_ll sll;
     struct ifreq ifr;
     pthread_attr_t attr;
@@ -530,6 +531,7 @@ void dhcp_sniffer_start()
 
     dhcp_sniffer_running = 1;
     wifi_util_info_print(WIFI_CTRL, "%s:%d DHCP sniffer started successfully\n", __func__, __LINE__);
+#endif
 }
 
 void dhcp_sniffer_stop()
