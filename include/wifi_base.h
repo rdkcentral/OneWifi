@@ -536,6 +536,12 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool tcm_open_2g_rfc;
+    bool tcm_open_5g_rfc;
+    bool tcm_open_6g_rfc;
+    bool tcm_secure_2g_rfc;
+    bool tcm_secure_5g_rfc;
+    bool tcm_secure_6g_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool link_quality_rfc;
