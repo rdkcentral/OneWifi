@@ -2170,7 +2170,6 @@
     COLUMN(tcm_secure_5g_rfc) \
     COLUMN(tcm_secure_6g_rfc) \
     COLUMN(wpa3_compatibility_enable) \
-    COLUMN(csi_analytics_enabled_rfc) \
     COLUMN(link_quality_rfc) \
     COLUMN(xfi_tel_enable_rfc) \
 
