@@ -69,7 +69,6 @@ static volatile int dhcp_sniffer_exit = 0;
 static char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 
-#if 0
 static int dhcp_get_msg_type(uint8_t *options, ssize_t options_len)
 {
     while (options_len > 0)
@@ -103,7 +102,7 @@ static void mac_to_key(const unsigned char *mac, char *key)
         "%02x:%02x:%02x:%02x:%02x:%02x",
         mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
 }
-#endif
+
 /* Register callback BEFORE starting qmgr */
 void publish_qmgr_subdoc(const report_batch_t* report)
 {
@@ -158,7 +157,6 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     return;
 }
 
-#if 0
 static void dhcp_process_packet(const uint8_t *buffer, ssize_t len)
 {
     struct iphdr *ip_header;
@@ -298,7 +296,6 @@ static void dhcp_process_packet(const uint8_t *buffer, ssize_t len)
     wifi_util_info_print(WIFI_CTRL," DHCP %s:%d Successfully processed %s packet for MAC=%s\n",
         __func__, __LINE__, msg_type_str, mac_key);
 }
-#endif
 static int ignite_score_log_timer(void *args)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -319,7 +316,6 @@ static int ignite_score_log_timer(void *args)
     write_to_file(wifi_health_log, buff);
     return RETURN_OK;
 }
-#if 0
 static void *sniffer_thread_func(void *arg)
 {
     uint8_t buffer[2048];
@@ -416,6 +412,7 @@ static void *sniffer_thread_func(void *arg)
     wifi_util_info_print(WIFI_APPS, "%s:%d DHCP sniffer thread exiting\n", __func__, __LINE__);
     return NULL;
 }
+#if 0
 static int attach_kernel_bpf_filter(int sock)
 {
     const char *filter_expr =
@@ -459,7 +456,6 @@ static int attach_kernel_bpf_filter(int sock)
 #endif
 void dhcp_sniffer_start()
 {
-#if 0
     struct sockaddr_ll sll;
     struct ifreq ifr;
     pthread_attr_t attr;
@@ -479,19 +475,19 @@ void dhcp_sniffer_start()
         wifi_util_error_print(WIFI_CTRL, " SANJI %s:%d Failed to create socket: %s\n", __func__, __LINE__, strerror(errno));
         return;
     }
-
+#if 0
     if (attach_kernel_bpf_filter(dhcp_sniffer_fd) < 0) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to attach BPF filter\n", __func__, __LINE__);
         close(dhcp_sniffer_fd);
         return;
     }
-
+#endif
     /* GW(RPI): backhaul to XB8 is eth0 — receives both DHCP and 1905 frames from XB8.
      * For production GW (LAN-side clients): change to "brlan0". */
     // Bind to backhaul interface
     memset(&sll, 0, sizeof(sll));
     memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, "eth0", IFNAMSIZ - 1);
+    strncpy(ifr.ifr_name, "brlan0", IFNAMSIZ - 1);
     
     if (ioctl(dhcp_sniffer_fd, SIOCGIFINDEX, &ifr) < 0) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get interface index: %s\n", __func__, __LINE__, strerror(errno));
@@ -530,7 +526,6 @@ void dhcp_sniffer_start()
 
     dhcp_sniffer_running = 1;
     wifi_util_info_print(WIFI_CTRL, "%s:%d DHCP sniffer started successfully\n", __func__, __LINE__);
-#endif
 }
 
 void dhcp_sniffer_stop()
@@ -837,7 +832,7 @@ int link_quality_gw_discovery(wifi_app_t *apps, wifi_event_t *arg)
     /* GW: broadcast autoconf_search so EXT learns our MAC and can address
      * subsequent autoconf_resp frames to us.
      * GW(RPI): backhaul to XB8 = eth0; for production GW: change to "brlan0". */
-     lq_send_autoconf_search("eth0");
+     lq_send_autoconf_search("brlan0");
 
     return RETURN_OK;
 

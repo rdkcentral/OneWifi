@@ -55,7 +55,7 @@ static int periodic_caffinity_stats_update_ext(stats_arg_t *stats, int len)
     int frame_len = 0;
     uint8_t g_gw_mac[6] = {0};
     get_gw_mac(g_gw_mac);
-    if (!is_zero_mac(g_gw_mac))  {   
+    if (is_zero_mac(g_gw_mac))  {   
 	wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping periodic_caffinity\n",
          __func__, __LINE__);
         return 0;
@@ -100,7 +100,7 @@ static int disconnect_link_stats_ext(stats_arg_t *stats)
     int frame_len = 0;
     uint8_t g_gw_mac[6] = {0};
     get_gw_mac(g_gw_mac);
-    if (!is_zero_mac(g_gw_mac))  {   
+    if (is_zero_mac(g_gw_mac))  {   
         wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping disconnect_link_stats\n",
          __func__, __LINE__);
         return 0;
@@ -126,7 +126,7 @@ static int remove_link_stats_ext(stats_arg_t *stats)
     int frame_len = 0;
     uint8_t g_gw_mac[6] = {0};
     get_gw_mac(g_gw_mac);
-    if (!is_zero_mac(g_gw_mac))  {   
+    if (is_zero_mac(g_gw_mac))  {   
         wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping remove_link_stats\n",
          __func__, __LINE__);
         return 0;
@@ -145,7 +145,7 @@ static int process_lq_stats_ext(stats_arg_t *stats, int len)
     wifi_util_dbg_print(WIFI_APPS, " SOCKET %s:%d len=%d \n", __func__, __LINE__, len);
     uint8_t g_gw_mac[6] = {0};
     get_gw_mac(g_gw_mac);
-    if (!is_zero_mac(g_gw_mac))  {   
+    if (is_zero_mac(g_gw_mac))  {   
         wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping process_lq_stats\n",
           __func__, __LINE__);
         return 0;
