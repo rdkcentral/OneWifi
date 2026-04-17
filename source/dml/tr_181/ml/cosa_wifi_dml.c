@@ -10895,7 +10895,6 @@ PreAssocDeny_SetParamStringValue
         if (strcmp(pString, TCM_EXP_WEIGHTAGE) == 0) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Trying to set default value \n", __FUNCTION__,__LINE__);
             strncpy(vapInfo->u.bss_info.preassoc.tcm_exp_weightage, TCM_EXP_WEIGHTAGE, sizeof(vapInfo->u.bss_info.preassoc.tcm_exp_weightage));
-            set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
@@ -10914,7 +10913,6 @@ PreAssocDeny_SetParamStringValue
         if (strcmp(pString, TCM_GRADIENT_THRESHOLD) == 0) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d trying to set default value \n", __FUNCTION__,__LINE__);
             strncpy(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold, TCM_GRADIENT_THRESHOLD, sizeof(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold));
-            set_cac_cache_changed(instance_number - 1);
             set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }

@@ -1509,6 +1509,21 @@ wifi_GASConfiguration_t* get_dml_wifi_gas_config(void)
 }
 
 int is_vap_config_changed;
+int is_vap_cac_config_changed;
+
+static void debug_log_onewifi(const char *run_id, const char *hypothesis_id, const char *location, const char *message, int v1, int v2)
+{
+    FILE *f = fopen("/mnt/home/mmalla642/main_q2/.cursor/debug-bfb9c3.log", "a");
+    long long ts_ms = (long long)time(NULL) * 1000;
+
+    if (f == NULL) {
+        return;
+    }
+
+    fprintf(f, "{\"sessionId\":\"bfb9c3\",\"runId\":\"%s\",\"hypothesisId\":\"%s\",\"location\":\"%s\",\"message\":\"%s\",\"data\":{\"v1\":%d,\"v2\":%d},\"timestamp\":%lld}\n",
+        run_id, hypothesis_id, location, message, v1, v2, ts_ms);
+    fclose(f);
+}
 
 void set_dml_cache_vap_config_changed(uint8_t vap_index)
 {
@@ -1529,6 +1544,12 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
     webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
+
+    if (subdoc == webconfig_subdoc_type_cac) {
+        // #region agent log
+        debug_log_onewifi("pre-fix", "H4", "dml_onewifi_api.c:push_subdoc_to_one_wifidb", "CAC subdoc push started", (int)subdoc, 0);
+        // #endregion
+    }
 
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
@@ -1598,8 +1619,11 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 
 int push_vap_dml_cache_to_one_wifidb()
 {
+    // #region agent log
+    debug_log_onewifi("pre-fix", "H3", "dml_onewifi_api.c:push_vap_dml_cache_to_one_wifidb", "Push VAP cache invoked", is_vap_config_changed, is_vap_cac_config_changed);
+    // #endregion
 
-    if(is_vap_config_changed == FALSE)
+    if(is_vap_config_changed == FALSE && is_vap_cac_config_changed == FALSE)
     {
         wifi_util_info_print(WIFI_DMCLI, "%s: No vap DML Modified Return success  \n", __FUNCTION__);
         return RETURN_OK;
@@ -1633,9 +1657,14 @@ int push_vap_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_lnf DML Modified  \n", __FUNCTION__);
         push_subdoc_to_one_wifidb(webconfig_subdoc_type_lnf);
     }
+    if (is_vap_cac_config_changed) {
+        wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_cac DML Modified  \n", __FUNCTION__);
+        push_subdoc_to_one_wifidb(webconfig_subdoc_type_cac);
+    }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
     is_vap_config_changed = FALSE;
+    is_vap_cac_config_changed = FALSE;
     return RETURN_OK;
 }
 
