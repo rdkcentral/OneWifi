@@ -162,15 +162,19 @@ struct wifiEnvironmentEnumStrMap {
 extern struct wifiEnvironmentEnumStrMap wifiEnviromentMap[4];
 extern struct wifiCountryEnumStrMapMember wifiCountryMapMembers[MAX_WIFI_COUNTRYCODE];
 
-#define LM_GEN_STR_SIZE 64
+#define LM_GEN_STR_SIZE 256
 #define LM_MAX_HOSTS_NUM 256
+
+/* MAX_RSSI_STR_LEN_PER_RADIO 4 for RSSI value and 1 for separator */
+#define MAX_RSSI_STR_LEN_PER_RADIO 5
 
 typedef struct {
     unsigned char ssid[LM_GEN_STR_SIZE];
     unsigned char AssociatedDevice[LM_GEN_STR_SIZE];
     unsigned char phyAddr[32]; /* Byte alignment*/
-    int RSSI;
+    unsigned char RSSI[LM_GEN_STR_SIZE]; /* RSSI values for each link separated by ';' */
     int Status;
+    bool mld_sta;
 } __attribute__((packed, aligned(1))) LM_wifi_host_t;
 
 typedef struct {
