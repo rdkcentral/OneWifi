@@ -128,7 +128,6 @@ vector_t linkq_t::run_algorithm(linkq_data_t data,
 
         if (!enabled) continue;
 
-        m_seq[i] = m_seq[i] + number_t((float)data[i], 0);
         y = m_seq[i].get_max().m_re - m_seq[i].get_min().m_re;
 
         if (y > 0.0) {

@@ -17,42 +17,30 @@
   limitations under the License.
  **************************************************************************/
 
-#ifndef WIFI_CSI_H
-#define WIFI_CSI_H
+#ifndef MOTION_SENSING_H
+#define MOTION_SENSING_H
 
-#include "collection.h"
+#include <stdbool.h>
 #include "wifi_base.h"
+#include "wifi_events.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MAX_NUM_CSI_SOUNDING 6
+typedef struct wifi_app wifi_app_t;
 
-typedef int (*csi_start_fn_t) (void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int sounding_app);
-typedef int (*csi_stop_fn_t)  (void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int sounding_app);
+typedef struct sensing_app_obj {
+    bool sensing_enabled;
+} sensing_app_obj_t;
 
-typedef struct {
-    csi_start_fn_t csi_start_fn;
-    csi_stop_fn_t  csi_stop_fn;
-} csi_base_app_t;
 
-typedef struct {
-    hash_map_t           *csi_sounding_mac_map;
-    int                  num_current_sounding;
-    csi_base_app_t       csi_fns;
-} __attribute__((__packed__))  csi_app_t;
-
-typedef struct {
-    mac_address_t mac_addr;
-    mac_address_t link_addr;
-    bool is_mlo;
-    int  ap_index;
-    int  subscribed_apps;
-} csi_mac_data_t;
+int sensing_app_init(wifi_app_t *app, unsigned int create_flag);
+int sensing_app_deinit(wifi_app_t *app);
+int sensing_app_event(wifi_app_t *app, wifi_event_t *event);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif//MOTION_SENSING_H

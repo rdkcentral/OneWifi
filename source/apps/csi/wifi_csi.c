@@ -19,8 +19,9 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#include "stdlib.h"
 #include <sys/time.h>
+#include <errno.h>
+#include "stdlib.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -30,18 +31,52 @@
 
 INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
 {
-    wifi_event_t *event = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    csi_mac_data_t *csi_map_entry = NULL;
+    wifi_event_t *event = NULL;
+    mac_address_t result_mac = { 0 };
+    mac_addr_str_t mac_str = { 0 };
+    const size_t mac_size = sizeof(mac_addr_t);
 
     wifi_util_dbg_print(WIFI_APPS, "%s: CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d No wifi_ctrl present !\n", __func__, __LINE__);
+        return -1;
+    }
+
+    wifi_apps_mgr_t *apps_mgr = &ctrl->apps_mgr;
+    wifi_app_t *wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_csi);
+
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL csi_app pointer\n", __func__, __LINE__);
+        return -1;
+    }
+
+    to_mac_str((unsigned char *)mac_addr, mac_str);
+
+    csi_map_entry = hash_map_get(wifi_app->data.u.csi.csi_sounding_mac_map, mac_str);
+    if (csi_map_entry == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d No entry in CSI map for MAC %s\n", __func__,
+            __LINE__, mac_str);
+        return -1;
+    } else {
+        if (csi_map_entry->is_mlo == true) {
+            memcpy(result_mac, csi_map_entry->mac_addr, mac_size);
+        } else {
+            // non-MLO case
+            memcpy(result_mac, mac_addr, mac_size);
+        }
+    }
 
     event = create_wifi_event(sizeof(wifi_csi_dev_t), wifi_event_type_csi, wifi_event_type_csi_data); 
     if (event == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    memcpy(event->u.csi->sta_mac, mac_addr, sizeof(mac_addr_t));
+
+    memcpy(event->u.csi->sta_mac, result_mac, sizeof(mac_addr_t));
     memcpy(&(event->u.csi->csi), csi_data, sizeof(wifi_csi_data_t));
     apps_mgr_event(&ctrl->apps_mgr, event);
 
@@ -73,19 +108,44 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
     mac_addr_str_t mac_str = { 0 };
     csi_mac_data_t *to_hash_map = NULL;
     bool enable_sounding = false;
+    assoc_dev_data_t *assoc_dev_data = NULL;
+    mac_addr_t link_addr = { 0 };
+    rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(ap_index);
+    const size_t mac_size = sizeof(mac_addr_t);
+    bool is_mlo = false;
 
     wifi_app_t *app = (wifi_app_t *)csi_app;
     if (app == NULL) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
         return -1;
     }
 
+    if (rdk_vap_info == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return -1;
+    }
+
+    if (app->data.u.csi.csi_sounding_mac_map ==  NULL){
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Hash Map\n", __func__, __LINE__);
+        return -1;
+    }
 
     to_mac_str((unsigned char *)mac_addr, mac_str);
-    if (app->data.u.csi.csi_sounding_mac_map ==  NULL){
-        wifi_util_info_print(WIFI_APPS, "%s:%d NULL Hash Map\n", __func__, __LINE__);
-        return -1;
+
+    pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+    if (rdk_vap_info->associated_devices_map != NULL) {
+        assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
+
+        if (assoc_dev_data != NULL && assoc_dev_data->dev_stats.cli_MLDEnable == true &&
+            assoc_dev_data->association_link == true) {
+            // Save it under link_mac as key, as CSI engine returns link
+            // mac addresses
+            memcpy(link_addr, assoc_dev_data->link_address, mac_size);
+            to_mac_str((unsigned char *)link_addr, mac_str);
+            is_mlo = true;
+        }
     }
+    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
 
     to_hash_map = hash_map_get(app->data.u.csi.csi_sounding_mac_map, mac_str);
     if (to_hash_map != NULL) {
@@ -134,7 +194,9 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
 
             memset(to_hash_map, 0, sizeof(csi_mac_data_t));
             to_hash_map->ap_index = ap_index;
-            memcpy(to_hash_map->mac_addr, mac_addr, sizeof(mac_addr_t));
+            memcpy(to_hash_map->mac_addr, mac_addr, mac_size);
+            memcpy(to_hash_map->link_addr, link_addr, mac_size);
+            to_hash_map->is_mlo = is_mlo;
             to_hash_map->subscribed_apps |= sounding_app;
             wifi_util_info_print(WIFI_APPS, "%s:%d Enabling CSI for mac %02x..%02x\n", __func__, __LINE__, to_hash_map->mac_addr[0], to_hash_map->mac_addr[5]);
             wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, TRUE);
