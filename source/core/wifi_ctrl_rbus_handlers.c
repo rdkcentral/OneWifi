@@ -1997,14 +1997,14 @@ static void wifi_sta_5g_status_handler(char *event_name, bus_data_prop_t *p_data
 static void hotspot_client_dhcp_failure_disconnect(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
-    char *pTmp = NULL;
+    /*char *pTmp = NULL;
     char mac[18] = {0};
     int index = 0;
-    char tmp_str[128] = {0};
+    char tmp_str[128] = {0};*/
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s\n", __func__, __LINE__,
             event_name);
-
+    
     if (p_data == NULL)
     {
         wifi_util_error_print(WIFI_CTRL, "%s:%d p_data is NULL for event:%s\n",
@@ -2022,7 +2022,7 @@ static void hotspot_client_dhcp_failure_disconnect(char *event_name, bus_data_pr
             __func__, __LINE__, p_data->value.data_type, bus_data_type_string, event_name);
         return;
     }
-
+#if 0
     pTmp = (char *)p_data->value.raw_data.bytes;
 
     if((strcmp(event_name, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED) != 0) || (pTmp == NULL))
@@ -2059,6 +2059,7 @@ static void hotspot_client_dhcp_failure_disconnect(char *event_name, bus_data_pr
     }
     snprintf(tmp_str, sizeof(tmp_str), "%d-%s-20", (index-1), mac);
     push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
+#endif
 }
 
 #if defined(RDKB_EXTENDER_ENABLED)
