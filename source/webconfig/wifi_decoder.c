@@ -4161,13 +4161,10 @@ webconfig_error_t decode_ignite_object(const cJSON *ignite_cfg,
     decode_param_integer(ignite_cfg, "ignite_maxchutil_threshold", param);
     ignite_info->max_chanutil_threshold = param->valuedouble;
 
-    decode_param_integer(ignite_cfg, "ignite_snr_threshold", param);
-    ignite_info->SNR_threshold = param->valuedouble;
-
     decode_param_integer(ignite_cfg, "ignite_snr_difference", param);
     ignite_info->SNR_difference = param->valuedouble;
     
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] Ch_util [%f %f] SNR [%f %f]\n", __func__, __LINE__,  ignite_info->min_chanutil_threshold, ignite_info->max_chanutil_threshold, ignite_info->SNR_threshold, ignite_info->SNR_difference); 
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] Ch_util [%f %f] SNR [%f]\n", __func__, __LINE__,  ignite_info->min_chanutil_threshold, ignite_info->max_chanutil_threshold, ignite_info->SNR_difference); 
     return webconfig_error_none;
 }
 

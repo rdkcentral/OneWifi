@@ -2508,9 +2508,6 @@ bus_error_t get_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
     } else if (strcmp(extension, "MaxChutilThreshold") == 0) {
         return set_float_as_uint8(p_data, mgr->ignite_config[index-1].max_chanutil_threshold,
                             __func__, __LINE__);
-    } else if (strcmp(extension, "SNRThreshold") == 0) {
-        return set_float_as_uint8(p_data, mgr->ignite_config[index-1].SNR_threshold,
-                            __func__, __LINE__);
     } else if (strcmp(extension, "SNRDifference") == 0) {
         return set_float_as_uint8(p_data, mgr->ignite_config[index-1].SNR_difference,
                             __func__, __LINE__);
@@ -2591,11 +2588,6 @@ bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] MaxChutilThreshold: %u -> %f\n",
                              __func__, __LINE__, value,
                              g_apply_ignite_config.config[index-1].max_chanutil_threshold);
-    } else if (strcmp(extension, "SNRThreshold") == 0) {
-        g_apply_ignite_config.config[index-1].SNR_threshold = (float)value;
-        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRThreshold : %u -> %f\n",
-                             __func__, __LINE__, value,
-                             g_apply_ignite_config.config[index-1].SNR_threshold);
     } else if (strcmp(extension, "SNRDifference") == 0) {
         g_apply_ignite_config.config[index-1].SNR_difference = (float)value;
         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRDifference : %u -> %f\n",
@@ -2677,7 +2669,7 @@ void init_pending_ignite_config(void)
            num_radios * sizeof(ignite_config_t));
 
     for (unsigned int i = 0; i < num_radios; i++) {
-         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold, g_apply_ignite_config.config[i].SNR_threshold,  g_apply_ignite_config.config[i].SNR_difference);
+         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold,g_apply_ignite_config.config[i].SNR_difference);
     }
     g_apply_ignite_config.is_pending = false;
 
@@ -4075,9 +4067,6 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
                                     { bus_data_type_uint8, false, 0, 0, 0, NULL } },
                                 { WIFI_IGNITE_MAX_CHUTIL_THRESHOLD, bus_element_type_property,
-                                    { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
-                                    { bus_data_type_uint8, false, 0, 0, 0, NULL } },
-                                { WIFI_IGNITE_SNR_THRESHOLD, bus_element_type_property,
                                     { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
                                     { bus_data_type_uint8, false, 0, 0, 0, NULL } },
                                 { WIFI_IGNITE_SNR_DIFFERENCE, bus_element_type_property,
