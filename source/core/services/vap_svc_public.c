@@ -271,9 +271,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             &map->vap_array[i].u.bss_info.interworking);
         get_wifidb_obj()->desc.update_wifi_anqp_cfg_fn(map->vap_array[i].vap_name,
              &map->vap_array[i].u.bss_info.interworking);
-        if (isVapHotspot(map->vap_array[i].vap_index)) {
--            get_wifidb_obj()->desc.update_wifi_cac_cfg_fn(p_tgt_vap_map);
--        }
+-       get_wifidb_obj()->desc.update_wifi_cac_cfg_fn(p_tgt_vap_map);
         if(map->vap_array[i].u.bss_info.mgmtPowerControl != 0) {
             scheduler_add_timer_task(ctrl->sched, FALSE, NULL, update_managementFramePower, NULL, MFPC_TIMER * 1000, 1, FALSE);
         }
