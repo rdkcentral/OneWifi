@@ -1994,7 +1994,7 @@ static void wifi_sta_5g_status_handler(char *event_name, bus_data_prop_t *p_data
 * Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient <mac>_<vap_index>
 */
 
-static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t *p_data, void *userData)
+static void hotspot_client_dhcp_failure_disconnect(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
@@ -2002,38 +2002,62 @@ static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t 
     int index = 0;
     char tmp_str[128] = {0};
 
-    if (p_data->data_type != bus_data_type_string)
-    {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d event:%s wrong data type:%x\n", __func__, __LINE__,
-            event_name, p_data->data_type);
-        return;
-    }
-       
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
-            event_name, p_data->data_type);
-    
-    pTmp = (char *)p_data->raw_data.bytes;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s\n", __func__, __LINE__,
+            event_name);
 
-    if((strcmp(event_name, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED) != 0) || (pTmp == NULL)) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->data_type);
+    if (p_data == NULL)
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d p_data is NULL for event:%s\n",
+            __func__, __LINE__, event_name);
         return;
     }
-    // Find the position of the underscore
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d data_type:0x%x, is_data_set:%d, status:%d, raw_data_len:%d\n",
+        __func__, __LINE__, p_data->value.data_type, p_data->is_data_set,
+        p_data->status, p_data->value.raw_data_len);
+
+    if (p_data->value.data_type != bus_data_type_string)
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unexpected data_type:0x%x, expected bus_data_type_string(0x%x) for event:%s\n",
+            __func__, __LINE__, p_data->value.data_type, bus_data_type_string, event_name);
+        return;
+    }
+
+    pTmp = (char *)p_data->value.raw_data.bytes;
+
+    if((strcmp(event_name, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED) != 0) || (pTmp == NULL))
+    {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s\n", __func__, __LINE__, event_name);
+        return;
+    }
+    // Find the position of the underscore in format: <mac>_<vap_index>
     char *tmp = strchr(pTmp, '_');
-    if (tmp != NULL) {
-        // Copy MAC (characters before '_')
+    if (tmp != NULL)
+    {
         size_t mac_len = (size_t)(tmp - pTmp);
-        strncpy(mac, pTmp, mac_len);
+        if (mac_len >= sizeof(mac))
+        {
+            mac_len = sizeof(mac) - 1;
+        }
+        memcpy(mac, pTmp, mac_len);
         mac[mac_len] = '\0';
 
-        // Convert index (characters after '_') to integer
-        index = atoi(tmp + 1);
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid  format:\n", __func__, __LINE__);
-        return;
-
+        char *index_str = tmp + 1;
+        if (*index_str == '\0')
+        {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Missing index after '_' in data:[%s]\n",
+                __func__, __LINE__, pTmp);
+            return;
+        }
+        index = atoi(index_str);
     }
-    snprintf(tmp_str, sizeof(tmp_str), "%d-%s-20", (index-1),mac);
+    else
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid format, expected <mac>_<index> but got:[%s]\n",
+            __func__, __LINE__, pTmp);
+        return;
+    }
+    snprintf(tmp_str, sizeof(tmp_str), "%d-%s-20", (index-1), mac);
     push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
 }
 
