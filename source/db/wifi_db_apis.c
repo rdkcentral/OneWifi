@@ -280,8 +280,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
             "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
             "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d "
-            "link_quality_rfc=%d\r\n",
-            "xfi_tel_enable_rfc=%d\r\n",
+            "link_quality_rfc=%d xfi_tel_enable_rfc=%d\r\n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
