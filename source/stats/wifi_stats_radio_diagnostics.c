@@ -134,7 +134,6 @@ int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wif
     }
 
     memset(radioTrafficStats, 0, sizeof(wifi_radioTrafficStats2_t));
-
     if (radioOperation->enable == true) {
         ret = get_misc_descriptor()->wifi_getRadioTrafficStats2_fn(args->radio_index, radioTrafficStats);
         if (ret != RETURN_OK) {
