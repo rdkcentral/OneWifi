@@ -77,6 +77,7 @@ typedef enum {
     em_app_event_type_neighbor_stats,
     em_app_event_type_ap_metrics_rad_chan_stats,
     em_app_event_type_assoc_dev_stats_periodic,
+    em_app_event_type_vap_stats_periodic,
 
     em_app_event_type_max
 } em_app_event_type_t;

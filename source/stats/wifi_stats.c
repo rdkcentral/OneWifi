@@ -27,7 +27,7 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 
-#define WIFI_STATS_NUM 5
+#define WIFI_STATS_NUM 6
 
 wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
     {
@@ -78,6 +78,16 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_radio_temperature_provider_stats_key,
         execute_radio_temperature_stats_api,
         copy_radio_temperature_stats_from_cache,
+        NULL,
+        NULL
+    },
+    {
+        mon_stats_type_vap_stats,
+        validate_vap_args,
+        generate_vap_clctr_stats_key,
+        generate_vap_provider_stats_key,
+        execute_vap_stats_api,
+        copy_vap_stats_from_cache,
         NULL,
         NULL
     }
