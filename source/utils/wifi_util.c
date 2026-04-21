@@ -4722,3 +4722,47 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
 
     return 0;
 }
+
+bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr)
+{
+    uint32_t valid_mask = 0;
+
+    switch (mode) {
+    case wifi_security_mode_enhanced_open:
+        valid_mask = (1u << wifi_encryption_none) | (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa3_enterprise:
+    case wifi_security_mode_wpa3_personal:
+    case wifi_security_mode_wpa3_compatibility:
+    case wifi_security_mode_wpa3_transition:
+        valid_mask = (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa2_personal:
+    case wifi_security_mode_wpa2_enterprise:
+    case wifi_security_mode_wpa_wpa2_personal:
+    case wifi_security_mode_wpa_wpa2_enterprise:
+        valid_mask = (1u << wifi_encryption_aes) | (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_wpa_personal:
+    case wifi_security_mode_wpa_enterprise:
+        valid_mask = (1u << wifi_encryption_tkip) | (1u << wifi_encryption_aes) |
+                     (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_none:
+        return true; /* no encryption required */
+    default:
+        return false; /* unknown mode: reject */
+    }
+
+    return (valid_mask & (1u << encr)) != 0;
+}
