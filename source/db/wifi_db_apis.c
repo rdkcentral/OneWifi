@@ -5171,29 +5171,6 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 }
             }
         }
-#ifdef CONFIG_IEEE80211BE
-        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_ENCR_GCMP_FLAG) {
-            wifi_vap_security_t *sec = NULL;
-            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
-                sec = &config->vap_array[i].u.bss_info.security;
-            } else {
-                sec = &config->vap_array[i].u.sta_info.security;
-            }
-
-            if (sec->encr == wifi_encryption_aes &&
-                (sec->mode == wifi_security_mode_enhanced_open ||
-                    sec->mode == wifi_security_mode_wpa3_enterprise ||
-                    sec->mode == wifi_security_mode_wpa3_personal ||
-                    sec->mode == wifi_security_mode_wpa3_compatibility ||
-                    sec->mode == wifi_security_mode_wpa3_transition)) {
-                sec->encr = wifi_encryption_aes_gcmp256;
-                is_vap_sec_upgrade_needed = true;
-                wifi_util_info_print(WIFI_DB,
-                    "%s:%d force change encryption type to AES+GCMP for vap:%s\r\n",
-                    __func__, __LINE__, config->vap_array[i].vap_name);
-            }
-        }
-#endif /* CONFIG_IEEE80211BE */
         if (is_vap_info_upgrade_needed) {
             int ret = wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
                         &config->vap_array[i], &rdk_config[i]);
