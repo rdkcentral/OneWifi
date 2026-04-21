@@ -93,6 +93,7 @@
 #define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100043
 #define ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG 100044
 #define ONEWIFI_DB_VERSION_IGNITE_FLAG 100045
+#define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100046
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -268,6 +269,12 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
+        rfc_param->tcm_open_2g_rfc = new_rec->tcm_open_2g_rfc;
+        rfc_param->tcm_open_5g_rfc = new_rec->tcm_open_5g_rfc;
+        rfc_param->tcm_open_6g_rfc = new_rec->tcm_open_6g_rfc;
+        rfc_param->tcm_secure_2g_rfc = new_rec->tcm_secure_2g_rfc;
+        rfc_param->tcm_secure_5g_rfc = new_rec->tcm_secure_5g_rfc;
+        rfc_param->tcm_secure_6g_rfc = new_rec->tcm_secure_6g_rfc;
         rfc_param->wpa3_compatibility_enable = new_rec->wpa3_compatibility_enable;
         rfc_param->link_quality_rfc = new_rec->link_quality_rfc;
         rfc_param->xfi_tel_enable_rfc = new_rec->xfi_tel_enable_rfc;
@@ -1947,6 +1954,12 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
+    rfc_info->tcm_open_2g_rfc = pcfg->tcm_open_2g_rfc;
+    rfc_info->tcm_open_5g_rfc = pcfg->tcm_open_5g_rfc;
+    rfc_info->tcm_open_6g_rfc = pcfg->tcm_open_6g_rfc;
+    rfc_info->tcm_secure_2g_rfc = pcfg->tcm_secure_2g_rfc;
+    rfc_info->tcm_secure_5g_rfc = pcfg->tcm_secure_5g_rfc;
+    rfc_info->tcm_secure_6g_rfc = pcfg->tcm_secure_6g_rfc;
     rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
     rfc_info->link_quality_rfc = pcfg->link_quality_rfc;
     rfc_info->xfi_tel_enable_rfc = pcfg->xfi_tel_enable_rfc;
@@ -4811,6 +4824,12 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifi_offchannelscan_app_rfc = false;
     rfc_config.wifi_offchannelscan_sm_rfc = false;
     rfc_config.tcm_enabled_rfc = false;
+    rfc_config.tcm_open_2g_rfc = false;
+    rfc_config.tcm_open_5g_rfc = false;
+    rfc_config.tcm_open_6g_rfc = false;
+    rfc_config.tcm_secure_2g_rfc = false;
+    rfc_config.tcm_secure_5g_rfc = false;
+    rfc_config.tcm_secure_6g_rfc = false;
     rfc_config.wpa3_compatibility_enable = false;
     rfc_config.link_quality_rfc = false;
     rfc_config.xfi_tel_enable_rfc = false;
@@ -6233,6 +6252,12 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.wifi_offchannelscan_app_rfc = rfc_param->wifi_offchannelscan_app_rfc;
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
+    cfg.tcm_open_2g_rfc = rfc_param->tcm_open_2g_rfc;
+    cfg.tcm_open_5g_rfc = rfc_param->tcm_open_5g_rfc;
+    cfg.tcm_open_6g_rfc = rfc_param->tcm_open_6g_rfc;
+    cfg.tcm_secure_2g_rfc = rfc_param->tcm_secure_2g_rfc;
+    cfg.tcm_secure_5g_rfc = rfc_param->tcm_secure_5g_rfc;
+    cfg.tcm_secure_6g_rfc = rfc_param->tcm_secure_6g_rfc;
     cfg.wpa3_compatibility_enable = rfc_param->wpa3_compatibility_enable;
     cfg.link_quality_rfc = rfc_param->link_quality_rfc;
     cfg.xfi_tel_enable_rfc = rfc_param->xfi_tel_enable_rfc;
