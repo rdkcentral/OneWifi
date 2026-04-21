@@ -2305,6 +2305,203 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data)
     return bus_error_success;
 }
 
+static int del_acl_cb(void *arg)
+{
+    if (!arg) {
+        return -1;
+    }
+
+    kick_details_t *d = (kick_details_t *)arg;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Callback Del ACL, vap_index:%d, MAC: %s\n",
+           __func__, __LINE__, d->vap_index,
+           d->kick_list ? d->kick_list : "NULL");
+
+#ifdef NL80211_ACL
+    INT rc = wifi_hal_delApAclDevice(d->vap_index, d->kick_list);
+#else
+    INT rc = wifi_delApAclDevice(d->vap_index, d->kick_list);
+#endif
+
+    // Restore original filter mode if we changed it
+    if (d->filter_mode_changed) {
+        wifi_hal_setApMacAddressControlMode(d->vap_index, d->original_filter_mode);
+    }
+
+    free(d->kick_list);
+    free(d);
+    return (int)rc;
+}
+
+static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t *p_data, void *userData)
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received Client Assoc Ctrl Event from Agent\n", __func__, __LINE__);
+
+    (void)userData;
+    client_assoc_ctrl_req_t *assoc_ctrl_req;
+    int vap_index=-1;
+    bool success = false;
+    kick_details_t *kick_details = NULL;
+    wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
+    mac_addr_str_t sta_mac_str;
+    mac_addr_str_t bssid_mac_str;
+    wifi_ctrl_t *ctrl;
+    ctrl = &p_wifi_mgr->ctrl;
+    bus_error_t ret = bus_error_success;
+
+    if (strcmp(event_name, WIFI_EM_CLIENT_ASSOC_CTRL_REQ) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Not EasyMesh client assoc ctrl event, %s\n", __func__, __LINE__, event_name);
+        return bus_error_invalid_namespace;
+    }
+
+    if (p_data->data_type != bus_data_type_bytes) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Received:%s data type:%x\n",
+                __func__, __LINE__, event_name, p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    if (p_data->raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Received:%s raw_data.bytes is NULL\n",
+           __func__, __LINE__, event_name);
+        return bus_error_invalid_input;
+    }
+
+    if (p_data->raw_data_len < sizeof(client_assoc_ctrl_req_t)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Received:%s raw_data_len:%zu too small (expected >= %zu)\n",
+           __func__, __LINE__, event_name, p_data->raw_data_len, sizeof(client_assoc_ctrl_req_t));
+        return bus_error_invalid_input;
+    }
+
+    assoc_ctrl_req = (client_assoc_ctrl_req_t *)p_data->raw_data.bytes;
+
+    vap_index = em_get_radio_index_from_mac(assoc_ctrl_req->bssid);
+    if (vap_index == RETURN_ERR) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid BSSID %s, unable to resolve vap index\n",
+           __func__, __LINE__, to_mac_str(assoc_ctrl_req->bssid, bssid_mac_str));
+        return bus_error_invalid_input;
+    }
+
+    /* perform the actual block/disassociation as specified */
+    if (assoc_ctrl_req->assoc_control == 0x00) { /* block */
+
+        kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
+        if (!kick_details) {
+            ret = bus_error_out_of_resources;
+            goto cleanup;
+        }
+        memset(kick_details, 0, sizeof(kick_details_t));
+
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Blocking STAs %s on BSSID %s for %d seconds\n", __func__, __LINE__,
+           to_mac_str(assoc_ctrl_req->sta_mac, sta_mac_str), to_mac_str(assoc_ctrl_req->bssid, bssid_mac_str), 
+	   assoc_ctrl_req->validity_period);
+
+        // Read current filter mode to preserve it
+        wifi_vap_info_t *vap_info = getVapInfo(vap_index);
+        if (vap_info == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get vap info for vap %d\n", __func__, __LINE__, vap_index);
+            ret = bus_error_general;
+            goto cleanup;
+        }
+        int current_filter_mode = 0;
+        if (vap_info->u.bss_info.mac_filter_enable == TRUE) {
+            current_filter_mode = (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) ? 2 : 1;
+        }
+
+        // Only set to blacklist if not already
+        if (current_filter_mode != 2) { // 2 is blacklist mode
+            if (wifi_hal_setApMacAddressControlMode(vap_index, 2) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to set ACL mode to blacklist for vap %d\n", __func__, __LINE__, vap_index);
+                ret = bus_error_general;
+                goto cleanup;
+            }
+            kick_details->filter_mode_changed = true;
+            kick_details->original_filter_mode = current_filter_mode;
+        } else {
+            kick_details->filter_mode_changed = false;
+            kick_details->original_filter_mode = current_filter_mode;
+        }
+
+        // Here passing 2 as argument for Mac Filter black list mode
+        to_mac_str(assoc_ctrl_req->sta_mac, sta_mac_str);
+        #ifdef NL80211_ACL
+	    success = (wifi_hal_addApAclDevice(vap_index, sta_mac_str) == RETURN_OK);
+        #else
+	    success = (wifi_addApAclDevice(vap_index, sta_mac_str) == RETURN_OK);
+        #endif
+        if (!success) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to add ACL device on vap %d\n",
+	      __func__, __LINE__, vap_index);
+            // Restore filter mode if we changed it
+            if (kick_details->filter_mode_changed) {
+                wifi_hal_setApMacAddressControlMode(vap_index, kick_details->original_filter_mode);
+            }
+            ret = bus_error_general;
+            goto cleanup;
+        }
+
+        kick_details->vap_index = vap_index;
+        kick_details->kick_list = strdup(sta_mac_str);
+        if (!kick_details->kick_list) {
+	    // Restore filter mode if we changed it
+            if (kick_details->filter_mode_changed) {
+                wifi_hal_setApMacAddressControlMode(vap_index, kick_details->original_filter_mode);
+            }
+            ret = bus_error_out_of_resources;
+            goto cleanup;
+        }
+
+        if (scheduler_add_timer_task(ctrl->sched, TRUE, NULL, del_acl_cb, kick_details,
+            assoc_ctrl_req->validity_period * 1000, 1, FALSE) != 0) {
+	    wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to schedule timer task for vap %d\n", __func__,
+	       __LINE__, vap_index);
+	    #ifdef NL80211_ACL
+            if (wifi_hal_delApAclDevice(vap_index, sta_mac_str) != RETURN_OK) {
+
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to roll back ACL device on vap %d\n",
+				                    __func__, __LINE__, vap_index);
+	    }
+	    #else
+            if (wifi_delApAclDevice(vap_index, sta_mac_str) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to roll back ACL device on vap %d\n",
+                    __func__, __LINE__, vap_index);
+            }
+            #endif
+            // Restore filter mode if we changed it
+            if (kick_details->filter_mode_changed) {
+                wifi_hal_setApMacAddressControlMode(vap_index, kick_details->original_filter_mode);
+            }
+
+            free(kick_details->kick_list);
+            kick_details->kick_list = NULL;
+            ret = bus_error_general;
+            goto cleanup;
+        }
+    } else {
+        /* un-block; nothing to do at the moment */
+        /* Convert STA MAC from bytes to string before deleting from ACL */
+        to_mac_str(assoc_ctrl_req->sta_mac, sta_mac_str);
+        #ifdef NL80211_ACL
+           //if sta already block then removed it from acl list
+            success = (wifi_hal_delApAclDevice(vap_index, sta_mac_str) == RETURN_OK);
+        #else
+            success = (wifi_delApAclDevice(vap_index, sta_mac_str) == RETURN_OK);
+        #endif
+        if (!success) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to delete ACL device on vap %d\n",
+                __func__, __LINE__, vap_index);
+            ret = bus_error_general;
+            goto cleanup;
+        }
+    }
+
+    return bus_error_success;
+
+cleanup:
+    if (kick_details) {
+        free(kick_details);
+    }
+    return ret;
+}
+
 bus_error_t set_disconn_steady_state(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)p_data;
@@ -2372,7 +2569,11 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { bus_data_type_byte, false, 0, 0, 0, NULL } } ,
         { WIFI_EM_AP_METRICS_REPORT, bus_element_type_method,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-            { bus_data_type_string, false, 0, 0, 0, NULL } }
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_EM_CLIENT_ASSOC_CTRL_REQ, bus_element_type_method,
+            { NULL, controller_set_client_acl_rules, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } }
+
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;
