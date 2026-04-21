@@ -365,6 +365,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
             em_op_class_info->id.type = em_op_class_type_capability;
             em_op_class_info->id.op_class = oper_param->operatingClasses[i].opClass;
             em_op_class_info->op_class = oper_param->operatingClasses[i].opClass;
+            em_op_class_info->tx_power = oper_param->transmitPower;
             em_op_class_info->max_tx_power = oper_param->operatingClasses[i].maxTxPower;
             em_op_class_info->num_channels = oper_param->operatingClasses[i].numberOfNonOperChan;
             for(int k = 0; k < oper_param->operatingClasses[i].numberOfNonOperChan; k++) {
@@ -381,6 +382,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_op_class_info->id.op_class = oper_param->operatingClass;
         em_op_class_info->op_class = oper_param->operatingClass;
         em_op_class_info->channel = oper_param->channel;
+        em_op_class_info->tx_power = oper_param->transmitPower;
         no_of_opclass++;
         proto->set_num_op_class(proto->data_model,no_of_opclass);
     }
@@ -1288,7 +1290,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     enum_sec = vap->u.sta_info.security.mode;
     
 
-    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->fronthaul_akm, NULL)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
         return webconfig_error_translate_to_easymesh;
@@ -1345,7 +1347,7 @@ webconfig_error_t translate_private_vap_info_to_em_bss_config(wifi_vap_info_t *v
 
     // convert akm to its equivalent string
     enum_sec = vap->u.bss_info.security.mode;
-    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->fronthaul_akm, NULL)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
         return webconfig_error_translate_to_easymesh;
@@ -1444,7 +1446,7 @@ webconfig_error_t translate_mesh_backhaul_vap_info_to_em_bss_config(wifi_vap_inf
     vap_row->backhaul_use = true;
 
     enum_sec = vap->u.bss_info.security.mode;
-    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->backhaul_akm)) != RETURN_OK) {
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->backhaul_akm, NULL)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
         return webconfig_error_translate_to_easymesh;
