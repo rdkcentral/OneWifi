@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <msgpack.h>
 #include <errno.h>
@@ -736,15 +737,38 @@ int init(webconfig_dml_t *consumer)
     webconfig_subdoc_data_t *data = NULL;
     char *dbg_str;
     raw_data_t raw_data;
+    int retry_count = 0;
+    const int max_retries = 60;  // Wait up to 60 seconds for OneWifi daemon
 
     memset(&raw_data, 0, sizeof(raw_data));
 
     bus_dmlwebconfig_register(consumer);
-    rc = get_bus_descriptor()->bus_data_get_fn(&consumer->handle, paramNames[0], &raw_data);
-    if (raw_data.data_type != bus_data_type_string) {
+
+    // Retry loop to wait for OneWifi daemon to be ready
+    while (retry_count < max_retries) {
+        rc = get_bus_descriptor()->bus_data_get_fn(&consumer->handle, paramNames[0], &raw_data);
+        if (rc == bus_error_success && raw_data.data_type == bus_data_type_string) {
+            break;  // Success, proceed with initialization
+        }
+
+        if (raw_data.raw_data.bytes) {
+            get_bus_descriptor()->bus_data_free_fn(&raw_data);
+            memset(&raw_data, 0, sizeof(raw_data));
+        }
+
+        retry_count++;
+        if (retry_count < max_retries) {
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d '%s' bus_data_get_fn not ready (data_type:0x%x, rc:%d), retry %d/%d\n",
+                __func__, __LINE__, paramNames[0], raw_data.data_type, rc, retry_count, max_retries);
+            sleep(1);  // Wait 1 second before retrying
+        }
+    }
+
+    if (rc != bus_error_success || raw_data.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
-            paramNames[0], raw_data.data_type, rc);
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d after %d retries\n",
+            __func__, __LINE__, paramNames[0], raw_data.data_type, rc, max_retries);
         return rc;
     }
     str = (char *)raw_data.raw_data.bytes;
