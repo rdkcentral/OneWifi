@@ -566,7 +566,7 @@ int analytics_event_wpa3_rfc(wifi_app_t *apps, void *arg)
     char str[32];
     memset(&str, 0, sizeof(str));
 
-    sprintf(str, "%s", (*rfc == 1)?"True":"False");
+    snprintf(str, sizeof(str), "%s", (*rfc == 1)?"True":"False");
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "wpa3_rfc", str);
     return RETURN_OK;
 }

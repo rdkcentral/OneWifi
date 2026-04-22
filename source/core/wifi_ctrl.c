@@ -954,7 +954,7 @@ int captive_portal_check(void)
     memset(&data, 0, sizeof(raw_data_t));
 
     bool psm_notify_flag = false;
-    char pInValue[32] = "";
+    char inValue[32] = "";
     char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
 
     // Get CONFIG_WIFI
@@ -1011,12 +1011,12 @@ int captive_portal_check(void)
     if (default_private_credentials != psm_notify_flag) {
         wifi_util_dbg_print(WIFI_CTRL, "PSM Notify flag and wifi values are different\n");
         if (default_private_credentials) {
-            strcpy(pInValue, "true");
+            snprintf(inValue, sizeof(inValue), "%s", "true");
         } else {
-            strcpy(pInValue, "false");
+            snprintf(inValue, sizeof(inValue), "%s", "false");
         }
         // set PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
-        set_notify_wifi_to_psm(PsmParamName, pInValue);
+        set_notify_wifi_to_psm(PsmParamName, inValue);
     }
 
     wifi_util_dbg_print(WIFI_CTRL, "CONFIG_WIFI= %d fun %s  and wifi_value %d \n", get_config_wifi,
