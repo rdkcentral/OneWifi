@@ -41,7 +41,7 @@ extern ANSC_HANDLE bus_handle;
 static webpa_interface_t webpa_interface;
 
 static void checkComponentHealthStatus(char *compName, char *dbusPath, char *status,
-    int *retStatus);
+    size_t status_len, int *retStatus);
 static void waitForEthAgentComponentReady();
 static int check_ethernet_wan_status();
 static void *handle_parodus();
@@ -322,7 +322,7 @@ static void waitForEthAgentComponentReady()
     int ret = -1;
     while (1) {
         checkComponentHealthStatus(RDKB_ETHAGENT_COMPONENT_NAME, RDKB_ETHAGENT_DBUS_PATH, status,
-            &ret);
+            sizeof(status), &ret);
         if (ret == CCSP_SUCCESS && (strcmp(status, "Green") == 0)) {
             break;
         } else {
@@ -335,7 +335,7 @@ static void waitForEthAgentComponentReady()
     }
 }
 
-static void checkComponentHealthStatus(char *compName, char *dbusPath, char *status, int *retStatus)
+static void checkComponentHealthStatus(char *compName, char *dbusPath, char *status, size_t status_len, int *retStatus)
 {
     int ret = 0, val_size = 0;
     parameterValStruct_t **parameterval = NULL;
@@ -344,16 +344,20 @@ static void checkComponentHealthStatus(char *compName, char *dbusPath, char *sta
     char str[MAX_PARAMETERNAME_LEN / 2];
     char l_Subsystem[MAX_PARAMETERNAME_LEN / 2] = { 0 };
 
-    sprintf(tmp, "%s.%s", compName, "Health");
+    snprintf(tmp, sizeof(tmp), "%s.%s", compName, "Health");
     parameterNames[0] = tmp;
 
-    strncpy(l_Subsystem, "eRT.", sizeof(l_Subsystem));
+    snprintf(l_Subsystem, sizeof(l_Subsystem), "%s", "eRT.");
     snprintf(str, sizeof(str), "%s%s", l_Subsystem, compName);
 
     ret = CcspBaseIf_getParameterValues(bus_handle, str, dbusPath, parameterNames, 1, &val_size,
         &parameterval);
-    if (ret == CCSP_SUCCESS) {
-        strcpy(status, parameterval[0]->parameterValue);
+    if (ret == CCSP_SUCCESS && val_size > 0 && parameterval && parameterval[0] && parameterval[0]->parameterValue) {
+        snprintf(status, status_len, "%s", parameterval[0]->parameterValue);
+    } else {
+        if (status_len > 0) {
+            status[0] = '\0';
+        }
     }
     free_parameterValStruct_t(bus_handle, val_size, parameterval);
 
@@ -378,12 +382,12 @@ static int check_ethernet_wan_status()
         }
     } else {
         waitForEthAgentComponentReady();
-        sprintf(dst_pathname_cr, "%s%s", "eRT.", CCSP_DBUS_INTERFACE_CR);
+        snprintf(dst_pathname_cr, sizeof(dst_pathname_cr), "%s%s", "eRT.", CCSP_DBUS_INTERFACE_CR);
         ret = CcspBaseIf_discComponentSupportingNamespace(bus_handle, dst_pathname_cr,
             ETH_WAN_STATUS_PARAM, "", &ppComponents, &size);
         if (ret == CCSP_SUCCESS && size >= 1) {
-            strncpy(compName, ppComponents[0]->componentName, sizeof(compName) - 1);
-            strncpy(dbusPath, ppComponents[0]->dbusPath, sizeof(compName) - 1);
+            snprintf(compName, sizeof(compName), "%s", ppComponents[0]->componentName);
+            snprintf(dbusPath, sizeof(dbusPath), "%s", ppComponents[0]->dbusPath);
         } else {
         }
         free_componentStruct_t(bus_handle, size, ppComponents);
