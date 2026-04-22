@@ -1649,8 +1649,7 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
 }
 
 bool ignite_config_equal(const ignite_config_t *mgr_ignite_config, const ignite_config_t *data_ignite_config) {
-    return (mgr_ignite_config->SNR_threshold == data_ignite_config->SNR_threshold) &&
-           (mgr_ignite_config->SNR_difference == data_ignite_config->SNR_difference) &&
+    return (mgr_ignite_config->SNR_difference == data_ignite_config->SNR_difference) &&
            (mgr_ignite_config->min_chanutil_threshold == data_ignite_config->min_chanutil_threshold) &&
            (mgr_ignite_config->max_chanutil_threshold == data_ignite_config->max_chanutil_threshold);
 }
@@ -1678,7 +1677,7 @@ static int webconfig_ignite_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
             continue;
         }
 
-        wifi_util_info_print(WIFI_CTRL, "[%s %d] Ignite config changed for %s Configs : [%f %f %f %f]\n", __func__, __LINE__, data_ignite_config->ignite_name, data_ignite_config->min_chanutil_threshold, data_ignite_config->max_chanutil_threshold, data_ignite_config->SNR_threshold, data_ignite_config->SNR_difference);
+        wifi_util_info_print(WIFI_CTRL, "[%s %d] Ignite config changed for %s Configs : [%f %f %f]\n", __func__, __LINE__, data_ignite_config->ignite_name, data_ignite_config->min_chanutil_threshold, data_ignite_config->max_chanutil_threshold, data_ignite_config->SNR_difference);
 
         if ((wifidb_update_ignite_config(data_ignite_config)) != 0) {
             wifi_util_dbg_print(WIFI_CTRL, "Failed to update the ignite config\n");

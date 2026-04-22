@@ -69,7 +69,6 @@ extern "C" {
 #define WIFI_IGNITE_NAMESPACE               "Device.WiFi.Ignite_Control.{i}."
 #define WIFI_IGNITE_MIN_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MinChutilThreshold"
 #define WIFI_IGNITE_MAX_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MaxChutilThreshold"
-#define WIFI_IGNITE_SNR_THRESHOLD           "Device.WiFi.Ignite_Control.{i}.SNRThreshold"
 #define WIFI_IGNITE_SNR_DIFFERENCE        "Device.WiFi.Ignite_Control.{i}.SNRDifference"
 #define WIFI_IGNITE_APPLY_CONFIG            "Device.WiFi.ApplyIgniteSettings"
 #define WIFI_COLLECT_STATS_TABLE            "Device.WiFi.CollectStats.Radio.{i}."
@@ -86,6 +85,7 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_NOTIFY_INTEROP_DETAILS                    "Device.WiFi.AccessPoint.{i}.InteropDetails" 
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
+#define HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED       "Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
@@ -301,7 +301,6 @@ typedef struct {
     char ignite_name[32];
     float min_chanutil_threshold;
     float max_chanutil_threshold;
-    float SNR_threshold;
     float SNR_difference;
 }ignite_config_t;
 
@@ -355,6 +354,7 @@ typedef enum {
     mon_stats_type_associated_device_stats,
     mon_stats_type_radio_diagnostic_stats,
     mon_stats_type_radio_temperature,
+    mon_stats_type_vap_stats,
     mon_stats_type_max
 } wifi_mon_stats_type_t;
 
@@ -1023,6 +1023,7 @@ typedef struct {
     bool            connection_authorized;
     bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
+    struct timespec timestamp;
 
     /* wifi7 client specific data */
     bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */
@@ -1307,10 +1308,10 @@ typedef struct {
 
 typedef struct {
     mac_addr_t bssid;
-    int time_delta;
-    int est_mac_rate_down;
-    int est_mac_rate_up;
-    int rcpi;
+    unsigned int time_delta;
+    unsigned int est_mac_rate_down;
+    unsigned int est_mac_rate_up;
+    unsigned int rcpi;
 } assoc_sta_link_metrics_data_t;
 
 typedef struct {
@@ -1387,6 +1388,14 @@ typedef struct {
 } channel_scan_request_t;
 
 typedef struct {
+    bssid_t    bssid;
+    unsigned char assoc_control;
+    unsigned short validity_period;
+    unsigned char count;
+    mac_address_t sta_mac;
+} client_assoc_ctrl_req_t;
+
+typedef struct {
     bssid_t bssid;
     ssid_t ssid;
     CHAR signal_strength;
@@ -1418,13 +1427,13 @@ typedef struct {
 
 typedef struct {
     mac_addr_t sta_mac;
-    int bytes_sent;
-    int bytes_rcvd;
-    int packets_sent;
-    int packets_rcvd;
-    int tx_packtes_errs;
-    int rx_packtes_errs;
-    int retrans_cnt;
+    ULONG bytes_sent;
+    ULONG bytes_rcvd;
+    ULONG packets_sent;
+    ULONG packets_rcvd;
+    ULONG tx_packtes_errs;
+    ULONG rx_packtes_errs;
+    ULONG retrans_cnt;
 } assoc_sta_traffic_stats_t;
 
 typedef struct {

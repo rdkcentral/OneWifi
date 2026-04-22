@@ -68,8 +68,6 @@ sequence_t sequence_t::operator+(number_t n)
 
     if (m_sampling_window == 0) {
         m_kurtosis = (n - m_mean).power(4) / m_variance.power(2);
-        //m_mean = (m_mean * m_total_samples + m_last[0]) / (m_total_samples + 1);
-        //m_variance = (m_variance * m_total_samples + (n - m_mean).power(2)) / (m_total_samples + 1);
         // convert stored values to double
         double l_mean = m_mean.m_re;
         double l_variance_running = m_variance_running.m_re;
