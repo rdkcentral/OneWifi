@@ -1988,6 +1988,55 @@ static void wifi_sta_5g_status_handler(char *event_name, raw_data_t *p_data, voi
 }
 #endif
 
+/**
+* Hotspot app uses this to kick stations which won't complete DHCP in time.
+* Expected command from hotspot app:
+* Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient <mac>_<vap_index>
+*/
+
+static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t *p_data, void *userData)
+{
+    (void)userData;
+    char *pTmp = NULL;
+    char mac[18] = {0};
+    int index = 0;
+    char tmp_str[128] = {0};
+
+    if (p_data->data_type != bus_data_type_string)
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d event:%s wrong data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+        return;
+    }
+       
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+    
+    pTmp = (char *)p_data->raw_data.bytes;
+
+    if((strcmp(event_name, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED) != 0) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->data_type);
+        return;
+    }
+    // Find the position of the underscore
+    char *tmp = strchr(pTmp, '_');
+    if (tmp != NULL) {
+        // Copy MAC (characters before '_')
+        size_t mac_len = (size_t)(tmp - pTmp);
+        strncpy(mac, pTmp, mac_len);
+        mac[mac_len] = '\0';
+
+        // Convert index (characters after '_') to integer
+        index = atoi(tmp + 1);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid  format:\n", __func__, __LINE__);
+        return;
+
+    }
+    snprintf(tmp_str, sizeof(tmp_str), "%d-%s-20", (index-1),mac);
+    push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
+}
+
 #if defined(RDKB_EXTENDER_ENABLED)
 static void eth_bh_status_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
@@ -2368,6 +2417,17 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 #endif
+    if(!ctrl->hotspot_client_dhcp_failure_subscribed) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED, hotspot_client_dhcp_failure_disconnect, NULL, 
+            0) != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
+                    __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+        } else {
+            ctrl->hotspot_client_dhcp_failure_subscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+        }
+    }
 }
 
 bus_error_t get_sta_connection_timeout(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
@@ -2447,9 +2507,6 @@ bus_error_t get_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
             __func__, __LINE__);
     } else if (strcmp(extension, "MaxChutilThreshold") == 0) {
         return set_float_as_uint8(p_data, mgr->ignite_config[index-1].max_chanutil_threshold,
-                            __func__, __LINE__);
-    } else if (strcmp(extension, "SNRThreshold") == 0) {
-        return set_float_as_uint8(p_data, mgr->ignite_config[index-1].SNR_threshold,
                             __func__, __LINE__);
     } else if (strcmp(extension, "SNRDifference") == 0) {
         return set_float_as_uint8(p_data, mgr->ignite_config[index-1].SNR_difference,
@@ -2531,11 +2588,6 @@ bus_error_t set_ignite_attributes(char *name, raw_data_t *p_data, bus_user_data_
         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] MaxChutilThreshold: %u -> %f\n",
                              __func__, __LINE__, value,
                              g_apply_ignite_config.config[index-1].max_chanutil_threshold);
-    } else if (strcmp(extension, "SNRThreshold") == 0) {
-        g_apply_ignite_config.config[index-1].SNR_threshold = (float)value;
-        wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRThreshold : %u -> %f\n",
-                             __func__, __LINE__, value,
-                             g_apply_ignite_config.config[index-1].SNR_threshold);
     } else if (strcmp(extension, "SNRDifference") == 0) {
         g_apply_ignite_config.config[index-1].SNR_difference = (float)value;
         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] SNRDifference : %u -> %f\n",
@@ -2617,7 +2669,7 @@ void init_pending_ignite_config(void)
            num_radios * sizeof(ignite_config_t));
 
     for (unsigned int i = 0; i < num_radios; i++) {
-         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold, g_apply_ignite_config.config[i].SNR_threshold,  g_apply_ignite_config.config[i].SNR_difference);
+         wifi_util_dbg_print(WIFI_CTRL, "[%s %d] Ignite config for radio %u : [%s %f %f %f]\n", __func__, __LINE__, i, g_apply_ignite_config.config[i].ignite_name, g_apply_ignite_config.config[i].min_chanutil_threshold, g_apply_ignite_config.config[i].max_chanutil_threshold,g_apply_ignite_config.config[i].SNR_difference);
     }
     g_apply_ignite_config.is_pending = false;
 
@@ -4008,9 +4060,6 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
                                     { bus_data_type_uint8, false, 0, 0, 0, NULL } },
                                 { WIFI_IGNITE_MAX_CHUTIL_THRESHOLD, bus_element_type_property,
-                                    { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
-                                    { bus_data_type_uint8, false, 0, 0, 0, NULL } },
-                                { WIFI_IGNITE_SNR_THRESHOLD, bus_element_type_property,
                                     { get_ignite_attributes, set_ignite_attributes, NULL, NULL, NULL, NULL}, slow_speed, num_of_radio,
                                     { bus_data_type_uint8, false, 0, 0, 0, NULL } },
                                 { WIFI_IGNITE_SNR_DIFFERENCE, bus_element_type_property,

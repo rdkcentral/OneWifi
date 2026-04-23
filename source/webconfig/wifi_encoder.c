@@ -1124,7 +1124,9 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 
     if (is_6g &&
         security_info->mode != wifi_security_mode_wpa3_personal &&
+#if defined(CONFIG_IEEE80211BE)
         security_info->mode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
         security_info->mode != wifi_security_mode_wpa3_enterprise &&
         security_info->mode != wifi_security_mode_enhanced_open) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
@@ -1221,7 +1223,14 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 #endif // CONFIG_IEEE80211BE
 
     if(security_info->mode == wifi_security_mode_wpa3_compatibility &&
+#if defined(CONFIG_IEEE80211BE)
+        ((is_6g == true &&
+        security_info->mfp != wifi_mfp_cfg_required) ||
+        (is_6g == false &&
+        security_info->mfp != wifi_mfp_cfg_disabled))) {
+#else
         security_info->mfp != wifi_mfp_cfg_disabled) {
+#endif /* CONFIG_IEEE80211BE */
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
             __func__, __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_encode;
@@ -1239,21 +1248,10 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 
-    if ((security_info->encr != wifi_encryption_aes &&
-        security_info->encr != wifi_encryption_aes_gcmp256) &&
-        (security_info->mode == wifi_security_mode_enhanced_open ||
-        security_info->mode == wifi_security_mode_wpa3_enterprise ||
-        security_info->mode == wifi_security_mode_wpa3_personal)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method for %d mode: %d\n",
+    if (!is_valid_encr_for_mode(security_info->mode, security_info->encr)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption %d for mode %d\n",
             __func__, __LINE__, security_info->encr, security_info->mode);
-        return webconfig_error_decode;
-    }
-
-    if (security_info->encr == wifi_encryption_tkip &&
-        security_info->mode == wifi_security_mode_wpa_wpa2_personal) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method TKIP with "
-            "WPA/WPA2 mode\n", __func__, __LINE__);
-        return webconfig_error_decode;
+        return webconfig_error_encode;
     }
 
     switch (security_info->encr) {
@@ -1268,9 +1266,11 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
+#ifdef CONFIG_IEEE80211BE
         case wifi_encryption_aes_gcmp256:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+GCMP");
             break;
+#endif /* CONFIG_IEEE80211BE */
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode encryption method: %d\n",
                 __func__, __LINE__, security_info->encr);
@@ -2034,12 +2034,11 @@ webconfig_error_t encode_ignite_object(ignite_config_t *ignite_config, cJSON *ig
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Ignite info is NULL\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_threshold, ignite_config->SNR_difference);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_difference);
 
     cJSON_AddStringToObject(ignite_obj, "ignite_name", ignite_config->ignite_name);
     cJSON_AddNumberToObject(ignite_obj, "ignite_minchutil_threshold", ignite_config->min_chanutil_threshold);
     cJSON_AddNumberToObject(ignite_obj, "ignite_maxchutil_threshold", ignite_config->max_chanutil_threshold);
-    cJSON_AddNumberToObject(ignite_obj, "ignite_snr_threshold", ignite_config->SNR_threshold);
     cJSON_AddNumberToObject(ignite_obj, "ignite_snr_difference", ignite_config->SNR_difference);
     return webconfig_error_none;
 }
@@ -2180,6 +2179,7 @@ webconfig_error_t encode_device_info(wifi_platform_property_t *wifi_prop, cJSON 
 
     return webconfig_error_none; 
 }
+
 webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON *radio_obj, int numRadios)
 {
     unsigned int freq_band_count = 0;
@@ -2230,6 +2230,21 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
          cJSON_AddNumberToObject(object, "RadioPresence", wifi_prop->radio_presence[i]);
 
+        cJSON_AddNumberToObject(object, "HTCap", wifi_prop->radiocap[i].ht_capab);
+        cJSON *ht_mcs_set_array = cJSON_CreateArray();
+        for (int j = 0; j < 16; j++) {
+            cJSON_AddItemToArray(ht_mcs_set_array, cJSON_CreateNumber(wifi_prop->radiocap[i].mcs_set[j]));
+        }
+        cJSON_AddItemToObject(object, "HTMCSSet", ht_mcs_set_array);
+        cJSON_AddNumberToObject(object, "HTAMPDUParams", wifi_prop->radiocap[i].ampdu_params);
+
+        cJSON_AddNumberToObject(object, "VHTCap", wifi_prop->radiocap[i].vht_capab);
+        cJSON *vht_mcs_set_array = cJSON_CreateArray();
+        for (int j = 0; j < 8; j++) {
+            cJSON_AddItemToArray(vht_mcs_set_array, cJSON_CreateNumber(wifi_prop->radiocap[i].vht_mcs_set[j]));
+        }
+        cJSON_AddItemToObject(object, "VHTMCSSet", vht_mcs_set_array);
+
 #ifdef CONFIG_IEEE80211AX
         /* WiFi6 (HE) capabilities */
         cJSON_AddBoolToObject(object, "WiFi6Supported", wifi_prop->radiocap[i].wifi6_supported);
@@ -2257,8 +2272,7 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
             cJSON_AddItemToArray(he_ppet_array, cJSON_CreateNumber(wifi_prop->radiocap[i].he_ppet[j]));
         }
         cJSON_AddItemToObject(object, "HEPPET", he_ppet_array);
-
-        //cJSON_AddNumberToObject(object, "HE6GHzCapa", wifi_prop->radiocap[i].6ghz_capa);
+        cJSON_AddNumberToObject(object, "HE6GHzCapa", wifi_prop->radiocap[i].he_6ghz_capa);
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE
@@ -3422,6 +3436,11 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
             continue;
         }
 
+        if ((vap->vap_mode != wifi_vap_mode_ap)) {
+            continue;
+        }
+
+        vap_arr_index = -1;
         for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
             ap_metrics = &radio_report->vap_reports[k];
             if (strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
@@ -3458,6 +3477,24 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
         cJSON_AddNumberToObject(temp_obj, "Number of Associated STAs",
             ap_metrics->vap_metrics.num_of_assoc_stas);
 
+        cJSON_AddBoolToObject(temp_obj, "Params BE", ap_metrics->vap_metrics.inc_esp_ac_be);
+        cJSON_AddBoolToObject(temp_obj, "Params BK", ap_metrics->vap_metrics.inc_esp_ac_bk);
+        cJSON_AddBoolToObject(temp_obj, "Params VI", ap_metrics->vap_metrics.inc_esp_ac_vi);
+        cJSON_AddBoolToObject(temp_obj, "Params VO", ap_metrics->vap_metrics.inc_esp_ac_vo);
+
+        if(ap_metrics->vap_metrics.inc_esp_ac_be) {
+            cJSON_AddNumberToObject(temp_obj, "AC BE", ap_metrics->vap_metrics.esp_ac_be);
+        }
+        if(ap_metrics->vap_metrics.inc_esp_ac_bk) {
+            cJSON_AddNumberToObject(temp_obj, "AC BK", ap_metrics->vap_metrics.esp_ac_bk);
+        }
+        if(ap_metrics->vap_metrics.inc_esp_ac_vi) {
+            cJSON_AddNumberToObject(temp_obj, "AC VI", ap_metrics->vap_metrics.esp_ac_vi);
+        }
+        if(ap_metrics->vap_metrics.inc_esp_ac_vo) {
+            cJSON_AddNumberToObject(temp_obj, "AC VO", ap_metrics->vap_metrics.esp_ac_vo);
+        }
+
         // Create AP Extended Metrics array
         temp_obj = cJSON_CreateObject();
         if ((temp_obj == NULL)) {
@@ -3470,7 +3507,14 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
             ap_metrics->vap_metrics.unicast_bytes_sent);
         cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesReceived",
             ap_metrics->vap_metrics.unicast_bytes_rcvd);
-
+        cJSON_AddNumberToObject(temp_obj, "BSS.MulticastBytesSent",
+            ap_metrics->vap_metrics.multicast_bytes_sent);
+        cJSON_AddNumberToObject(temp_obj, "BSS.MulticastBytesReceived",
+            ap_metrics->vap_metrics.multicast_bytes_rcvd);
+        cJSON_AddNumberToObject(temp_obj, "BSS.BroadcastBytesSent",
+            ap_metrics->vap_metrics.broadcast_bytes_sent);
+        cJSON_AddNumberToObject(temp_obj, "BSS.BroadcastBytesReceived",
+            ap_metrics->vap_metrics.broadcast_bytes_rcvd);
         // check sta link metrics and traffic stats
         if (ap_metrics->is_sta_traffic_stats_enabled == true) {
             encode_em_sta_traffic_stats_object(ap_metrics->sta_cnt,

@@ -32,38 +32,51 @@ public:
     bool is_zero(double x, int n);
 
 public:
-    bool operator ==(number_t n);
-    number_t operator *(number_t n);
-    number_t operator /(number_t n);
-    number_t operator +(number_t n);
-    number_t operator -(number_t n);
-    
-    number_t operator *(unsigned int n);
-    number_t operator /(unsigned int n);
-    matrix_t operator *(matrix_t m);
-    
+    bool operator!=(const number_t &other) const;
+    bool operator==(const number_t &other) const;
+    number_t operator*(number_t n);
+    number_t operator/(number_t n);
+    number_t operator+(number_t n);
+    number_t operator-(number_t n);
+
+    number_t operator*(unsigned int n);
+    number_t operator/(unsigned int n);
+    matrix_t operator*(matrix_t m);
+
     void sqroot(number_t n[]);
     number_t sqrt_val(void);
     double mod_z();
     number_t absolute();
-	double abs_val() const;
-	number_t operator-(void);
+    double abs_val() const;
+    number_t operator-(void);
     number_t exponential();
     number_t power(unsigned int n);
     bool is_zero(int n);
-    
-    void set_real(double d) {m_re = d;}
-    void set_imag(double d) {m_im = d;}
-    
-    double get_real() {return m_re;}
-    double get_imag() {return m_im;}
-    
+
+    void set_real(double d)
+    {
+        m_re = d;
+    }
+    void set_imag(double d)
+    {
+        m_im = d;
+    }
+
+    double get_real()
+    {
+        return m_re;
+    }
+    double get_imag()
+    {
+        return m_im;
+    }
+
     void print();
-    
-	number_t(double r, double i);
+
+    number_t(double r, double i);
     number_t(char *str);
     number_t();
-	~number_t();
+    ~number_t();
 };
 
 #endif

@@ -5443,10 +5443,29 @@ SSID_GetParamIntValue
     )
 {
     /* check the parameter name and return the corresponding value */
-    UNREFERENCED_PARAMETER(hInsContext);
-    UNREFERENCED_PARAMETER(ParamName);
-    UNREFERENCED_PARAMETER(pInt);
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
 
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    if( AnscEqualString(ParamName, "MLDUnit", TRUE))
+    {
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d VAP %d is sta\n", __FUNCTION__,__LINE__, pcfg->vap_index);
+            *pInt = -1;
+            return TRUE;
+        }
+        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE ||
+            !isRadioBeEnabled(pcfg->radio_index)) {
+            *pInt = -1;
+        } else {
+            *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        }
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -5940,8 +5959,61 @@ SSID_SetParamIntValue
         int                         iValue
     )
 {
-    /* check the parameter name and set the corresponding value */
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
 
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    uint8_t instance_number = (uint8_t)convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name) +1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+
+    if (vapInfo == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        return FALSE;
+    }
+    /* check the parameter name and set the corresponding value */
+    if( AnscEqualString(ParamName, "MLDUnit", TRUE))
+    {
+        BOOL tmp_mld_enable = FALSE;
+
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
+            return FALSE;
+        }
+        if (iValue < -1 || iValue >= MLD_UNIT_COUNT) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,__LINE__,iValue);
+            return FALSE;
+        }
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
+        tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
+
+        if (tmp_mld_enable == TRUE && !isRadioBeEnabled(pcfg->radio_index)) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d Cannot set MLDUnit on VAP %d: radio %d has no BE mode\n", __FUNCTION__,
+                __LINE__, pcfg->vap_index, pcfg->radio_index);
+            return FALSE;
+        }
+
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
+            if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
+                return TRUE;
+            if (tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)iValue)
+                return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Updating MLD Unit to value %d\n", __FUNCTION__, __LINE__, iValue);
+        vapInfo->u.bss_info.mld_info.common_info.mld_enable = tmp_mld_enable;
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable)
+            vapInfo->u.bss_info.mld_info.common_info.mld_id = iValue;
+        else
+            vapInfo->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
+
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -6749,7 +6821,11 @@ AccessPoint_GetParamBoolValue
     if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
     {
         /* collect value */
-        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
+        if (!isRadioBeEnabled(pcfg->radio_index)) {
+            *pBool = FALSE;
+        } else {
+            *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
+        }
         return TRUE;
     }
 
@@ -7117,7 +7193,11 @@ AccessPoint_GetParamUlongValue
 
     if( AnscEqualString(ParamName, "MLD_ID", TRUE))
     {
-        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        if (!isRadioBeEnabled(pcfg->radio_index)) {
+            *puLong = UNDEFINED_MLD_ID;
+        } else {
+            *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        }
         return TRUE;
     }
 
@@ -7276,37 +7356,23 @@ AccessPoint_GetParamStringValue
 
     }
 
-    if( AnscEqualString(ParamName, "MLD_Addr", TRUE))
-    {
-        char buff[24] = {0};
+    if (AnscEqualString(ParamName, "MLD_Addr", TRUE)) {
+        unsigned char *mac;
+        mac_address_t zero_mac = { 0 };
+
         if (isVapSTAMesh(pcfg->vap_index)) {
-            _ansc_sprintf
-            (
-                buff,
-                "%02X:%02X:%02X:%02X:%02X:%02X",
-                0x0,
-                0x0,
-                0x0,
-                0x0,
-                0x0,
-                0x0
-            );
+            mac = zero_mac;
+        } else if (isRadioBeEnabled(pcfg->radio_index)) {
+            mac = pcfg->u.bss_info.mld_info.common_info.mld_addr;
         } else {
-            _ansc_sprintf
-            (
-                buff,
-                "%02X:%02X:%02X:%02X:%02X:%02X",
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[0],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[1],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[2],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[3],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[4],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[5]
-            );
+            mac = pcfg->u.bss_info.bssid;
         }
-        memcpy(pValue, buff, strlen(buff)+1);
+
+        snprintf(pValue, *pUlSize, "%02X:%02X:%02X:%02X:%02X:%02X",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
         return 0;
-     }
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return -1;
 }
@@ -7435,6 +7501,14 @@ AccessPoint_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
     {
+        if (bValue && !isRadioBeEnabled(pcfg->radio_index))
+        {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d Cannot enable MLD on VAP %s: radio %d has no BE mode\n", __FUNCTION__,
+                __LINE__, pcfg->vap_name, pcfg->radio_index);
+            return FALSE;
+        }
+
         if ( vapInfo->u.bss_info.mld_info.common_info.mld_enable == bValue )
         {
             return TRUE;
@@ -7882,6 +7956,11 @@ AccessPoint_SetParamUlongValue
         if (isVapSTAMesh(pcfg->vap_index)) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
             return TRUE;
+        }
+        if (!isRadioBeEnabled(pcfg->radio_index)) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Cannot set MLD_ID on VAP %s: radio %d has no BE mode\n",
+                __FUNCTION__, __LINE__, pcfg->vap_name, pcfg->radio_index);
+            return FALSE;
         }
         if ( vapInfo->u.bss_info.mld_info.common_info.mld_id == (unsigned int)uValue )
         {
@@ -8459,6 +8538,9 @@ void get_security_modes_supported(int vap_index, int *mode)
     if (band == WIFI_FREQUENCY_6_BAND) {
         *mode = passpoint_enabled ? COSA_DML_WIFI_SECURITY_WPA3_Enterprise :
             COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Enterprise |
+#if defined(CONFIG_IEEE80211BE)
+            COSA_DML_WIFI_SECURITY_WPA3_Personal_Compatibility |
+#endif
             COSA_DML_WIFI_SECURITY_Enhanced_Open;
         return;
     }
@@ -9199,6 +9281,9 @@ Security_SetParamStringValue
         if (radioOperation->band == WIFI_FREQUENCY_6_BAND &&
             TmpMode != wifi_security_mode_wpa3_personal &&
             TmpMode != wifi_security_mode_wpa3_enterprise &&
+#if defined(CONFIG_IEEE80211BE)
+            TmpMode != wifi_security_mode_wpa3_compatibility &&
+#endif /* CONFIG_IEEE80211BE */
             TmpMode != wifi_security_mode_enhanced_open)
         {
             wifi_util_error_print(WIFI_DMCLI, "%s:%d invalid mode %d for 6GHz\n", __func__,
@@ -9269,6 +9354,12 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa3_compatibility:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+                if( strstr(vapInfo->vap_name, "6g") ) {
+                    l_security_cfg->u.key.type = wifi_security_key_type_sae;
+                    l_security_cfg->mfp = wifi_mfp_cfg_required;
+                }
+#endif /* CONFIG_IEEE80211BE */
                 break;
             default:
                 break;

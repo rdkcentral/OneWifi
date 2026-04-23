@@ -1495,6 +1495,8 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
     rbusObject_Init(&inParams, NULL);
     rbusValue_Init(&value);
 
+    wifi_util_info_print(WIFI_BUS, "%s:%d: rbus: rbus_method_invoke() is called for event:%s, paramName:%s\n",
+        __func__, __LINE__, event, (char *)paramName);
     if ((input_bus_data == BUS_METHOD_SET) || (input_bus_data == BUS_METHOD_SET_GET)) {
         if (input_data->data_type == bus_data_type_string) {
             if (false ==
@@ -1514,12 +1516,13 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
 
     rbusProperty_Init(&prop, paramName, value);
     rbusObject_SetProperty(inParams, prop);
-    rbusProperty_Release(prop);
 
     rc = rbusMethod_Invoke(p_rbus_handle, event, inParams, &outParams);
     if (inParams) {
         rbusObject_Release(inParams);
     }
+    rbusProperty_Release(prop);
+    rbusValue_Release(value);
 
     if (outParams == NULL) {
         wifi_util_error_print(WIFI_BUS, "%s %d Out param is NULL\n", __func__, __LINE__);
@@ -1579,7 +1582,9 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
         }
         memcpy(output_data->raw_data.bytes, ptr, len);
     }
-    rbusValue_Release(value);
+    if (outParams) {
+        rbusObject_Release(outParams);
+    }
     return convert_rbus_to_bus_error_code(rc);
 }
 
@@ -1770,8 +1775,8 @@ bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_sub_t *
     return convert_rbus_to_bus_error_code(ret);
 }
 
-static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name,
-    uint32_t row_index, char const *alias)
+static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name, uint32_t row_index,
+    char const *alias)
 {
     rbusError_t rc;
     VERIFY_NULL_WITH_RC(name);
@@ -1781,12 +1786,17 @@ static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name,
 
     rc = rbusTable_registerRow(p_rbus_handle, name, row_index, alias);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_BUS, "%s:%d bus: rbusTable_registerRow failed for"
-            " [%s] with error [%d] row_index:%d\n", __func__, __LINE__, name, rc, row_index);
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d bus: rbusTable_registerRow failed for"
+            " [%s] with error [%d] row_index:%d\n",
+            __func__, __LINE__, name, rc, row_index);
     } else {
-        if (bus_table_add_row(get_bus_mux_reg_cb_map(), (char *)name, row_index) != bus_error_success) {
-            wifi_util_error_print(WIFI_BUS, "%s:%d bus: mux table add failed for"
-            " [%s] row_index:%d\n", __func__, __LINE__, name, row_index);
+        if (bus_table_add_row(get_bus_mux_reg_cb_map(), (char *)name, row_index) !=
+            bus_error_success) {
+            wifi_util_error_print(WIFI_BUS,
+                "%s:%d bus: mux table add failed for"
+                " [%s] row_index:%d\n",
+                __func__, __LINE__, name, row_index);
         }
     }
 
@@ -1803,12 +1813,16 @@ static bus_error_t bus_unreg_table_row(bus_handle_t *handle, char const *name)
 
     rc = rbusTable_unregisterRow(p_rbus_handle, name);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_BUS, "%s:%d bus: rbusTable_unregisterRow failed for"
-            " [%s] with error [%d]\n", __func__, __LINE__, name, rc);
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d bus: rbusTable_unregisterRow failed for"
+            " [%s] with error [%d]\n",
+            __func__, __LINE__, name, rc);
     } else {
         if (bus_table_remove_row(get_bus_mux_reg_cb_map(), (char *)name) != bus_error_success) {
-            wifi_util_error_print(WIFI_BUS, "%s:%d bus: mux table remove failed for"
-            " [%s]\n", __func__, __LINE__, name);
+            wifi_util_error_print(WIFI_BUS,
+                "%s:%d bus: mux table remove failed for"
+                " [%s]\n",
+                __func__, __LINE__, name);
         }
     }
 
@@ -1854,8 +1868,10 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
 
     rc = rbusTable_removeRow(p_rbus_handle, name);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_BUS, "%s:%d bus: rbusTable_removeRow failed for"
-            " [%s] with error [%d]\n", __func__, __LINE__, name, rc);
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d bus: rbusTable_removeRow failed for"
+            " [%s] with error [%d]\n",
+            __func__, __LINE__, name, rc);
     }
 
     return convert_rbus_to_bus_error_code(rc);
