@@ -375,6 +375,11 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
+    {
+        *pBool = rfc_pcfg->multiap_rfc;
+        return TRUE;
+    }
 
     if (AnscEqualString(ParamName, "DFS", TRUE))
     {
@@ -1209,6 +1214,13 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
+    {
+        if(bValue != rfc_pcfg->multiap_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_multiap_rfc);
+        }
+        return TRUE;
+    }
 
     if (AnscEqualString(ParamName, "Log_Upload", TRUE))
     {

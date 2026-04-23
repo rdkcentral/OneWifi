@@ -61,6 +61,8 @@ libwifi_webconfig_la_CPPFLAGS = -I$(top_srcdir)/source/apps/em -I/var/tmp/pc-rdk
 
 libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
 
+libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+
 if ONEWIFI_DBUS_SUPPORT
 libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/platform/dbus -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir)/dbus-1.0 -I${PKG_CONFIG_SYSROOT_DIR}/usr/lib/dbus-1.0/include/
 else

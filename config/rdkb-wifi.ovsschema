@@ -1951,7 +1951,16 @@
             "min": 0,
             "max": 1
           }
-        }, 
+        },
+        "multiap_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
       "rfc_id": {
           "type": "string"
         }
