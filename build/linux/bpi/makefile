@@ -380,7 +380,6 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(filter-out $(ONE_WIFI_HOME)/source/core/services/vap_svc_mesh_pod.c,$(wildcard $(ONE_WIFI_HOME)/source/core/services/*.c)) \
     $(wildcard $(ONE_WIFI_HOME)/source/apps/*.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/apps/linkquality/*.c)  \
-    $(wildcard $(ONE_WIFI_HOME)/source/apps/wifi_sensing/src/*.c)  \
     $(wildcard $(ONE_WIFI_HOME)/source/stubs/*.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/stats/*.c)	\
     $(ONE_WIFI_HOME)/lib/common/util.c		\
@@ -506,6 +505,10 @@ ifdef EM_APP
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_ap_metrics_report.c
 endif
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_link_report.c
+
+ifdef WIFI_SENSING_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/wifi_sensing/src/*.c)
+endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
 
