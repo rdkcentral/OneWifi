@@ -128,7 +128,7 @@ typedef enum {
     WIFI_LOG_LVL_MAX
 } wifi_log_level_t;
 
-void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...);
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...);
 
 #define wifi_util_dbg_print(module, format, ...) \
     wifi_util_print(WIFI_LOG_LVL_DEBUG, module, format, ##__VA_ARGS__)
