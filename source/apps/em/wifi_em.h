@@ -32,6 +32,7 @@ extern "C" {
 #define WIFI_EM_AP_METRICS_REPORT             "Device.WiFi.EM.APMetricsReport"
 #define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
+#define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
 
 typedef struct wifi_app wifi_app_t;
 
@@ -76,6 +77,7 @@ typedef enum {
     em_app_event_type_neighbor_stats,
     em_app_event_type_ap_metrics_rad_chan_stats,
     em_app_event_type_assoc_dev_stats_periodic,
+    em_app_event_type_vap_stats_periodic,
 
     em_app_event_type_max
 } em_app_event_type_t;

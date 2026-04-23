@@ -4677,7 +4677,6 @@ int provider_execute_task(void *arg)
     return RETURN_OK;
 }
 
-
 int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_elem)
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
