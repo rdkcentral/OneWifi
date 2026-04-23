@@ -160,8 +160,12 @@ int get_ap_index_from_clientmac(mac_address_t mac_addr)
             if (rdk_vap_info->associated_devices_map) {
                 assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
                 if (assoc_dev_data != NULL) {
-                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-                    return vap_index;
+                    if (!assoc_dev_data->dev_stats.cli_MLDEnable ||
+                        (assoc_dev_data->dev_stats.cli_MLDEnable &&
+                            assoc_dev_data->association_link)) {
+                        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                        return vap_index;
+                    }
                 }
             }
             pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
@@ -3226,6 +3230,17 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
     return wifi_mgr->radio_config[radioIndex].vaps.num_vaps;
 }
 
+BOOL isRadioBeEnabled(UINT radio_index)
+{
+#ifdef CONFIG_IEEE80211BE
+    wifi_radio_operationParam_t *radio_param = getRadioOperationParam(radio_index);
+
+    if (radio_param != NULL && radio_param->variant & WIFI_80211_VARIANT_BE) {
+        return TRUE;
+    }
+#endif /* CONFIG_IEEE80211BE */
+    return FALSE;
+}
 
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc)
 {
