@@ -28,6 +28,7 @@ class sequence_t {
 public:
     number_t m_mean;
     number_t m_variance;
+    number_t m_variance_running;
     number_t m_gaussian;
     number_t m_kurtosis;
     number_t m_mfilter;
