@@ -26,6 +26,7 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "const.h"
 #include <unistd.h>
 #include "vap_svc.h"
@@ -96,11 +97,18 @@ static int partition(bss_candidate_t *bss, int start, int end, int rssi_2_4_norm
 #define DEFAULT_DWELL_TIME_MS 50
 static int get_dwell_time()
 {
+    int fd = -1;
     FILE *fp = NULL;
     int dwell_time = DEFAULT_DWELL_TIME_MS;
 
-    fp = fopen(DWELL_TIME_PATH, "r");
+    fd = open(DWELL_TIME_PATH, O_RDONLY | O_NOFOLLOW);
+    if (fd < 0) {
+        return dwell_time;
+    }
+
+    fp = fdopen(fd, "r");
     if (fp == NULL) {
+        close(fd);
         return dwell_time;
     }
     if (fscanf(fp, "%d", &dwell_time) != 1) {
