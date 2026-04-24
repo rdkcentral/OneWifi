@@ -1391,6 +1391,8 @@ static int schedule_maclist_timeout_task(wifi_ctrl_t *ctrl, rdk_wifi_vap_info_t 
     return RETURN_OK;
 }
 
+#define MAX_MACLIST_BUFFER_SIZE 2048
+
 void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info, wifi_ctrl_t *ctrl,
     wifi_vap_info_t *vap_info)
 {
@@ -1403,7 +1405,7 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
     kick_details_t *kick_details = NULL;
     bool has_successful_operations = false;
 
-    assoc_maclist = (char *)malloc(2048);
+    assoc_maclist = (char *)malloc(MAX_MACLIST_BUFFER_SIZE);
     kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
 
     if (assoc_maclist == NULL || kick_details == NULL) {
@@ -1412,7 +1414,7 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         goto cleanup;
     }
 
-    memset(assoc_maclist, 0, 2048);
+    memset(assoc_maclist, 0, MAX_MACLIST_BUFFER_SIZE);
     memset(kick_details, 0, sizeof(kick_details_t));
 
     if (rdk_vap_info->associated_devices_map == NULL) {
@@ -1427,9 +1429,17 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
 
         if (handle_acl_operation(vap_index, mac_str, vap_info, rdk_vap_info, true) == RETURN_OK) {
-            strcat(assoc_maclist, mac_str);
-            strcat(assoc_maclist, ",");
-            has_successful_operations = true;
+            size_t current_len = strlen(assoc_maclist);
+            if (current_len + strlen(mac_str) + 2 <= MAX_MACLIST_BUFFER_SIZE) {
+                strncat(assoc_maclist, mac_str, MAX_MACLIST_BUFFER_SIZE - current_len - 1);
+                strncat(assoc_maclist, ",", MAX_MACLIST_BUFFER_SIZE - strlen(assoc_maclist) - 1);
+                has_successful_operations = true;
+                } else {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d assoc_maclist buffer overflow avoided, undoing ACL operation for %s\n", __func__, __LINE__, mac_str);
+                    if (handle_acl_operation(vap_index, mac_str, vap_info, rdk_vap_info, false) != RETURN_OK) {
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to undo ACL operation after assoc_maclist overflow for %s\n", __func__, __LINE__, mac_str);
+                    }
+                }
         }
 
         assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
@@ -1582,9 +1592,17 @@ void process_kick_assoc_devices_event(void *data)
                 rdk_vap_info, true);
 
             if (mac_processed_successfully == RETURN_OK) {
-                strcat(assoc_maclist, str_str);
-                strcat(assoc_maclist, ",");
-                has_successful_operations = true;
+                size_t current_len = strlen(assoc_maclist);
+                if (current_len + strlen(str_str) + 2 <= MAX_MACLIST_BUFFER_SIZE) {
+                    strncat(assoc_maclist, str_str, MAX_MACLIST_BUFFER_SIZE - current_len - 1);
+                    strncat(assoc_maclist, ",", MAX_MACLIST_BUFFER_SIZE - strlen(assoc_maclist) - 1);
+                    has_successful_operations = true;
+                } else {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d assoc_maclist buffer overflow avoided, undoing ACL operation for %s\n", __func__, __LINE__, str_str);
+                    if (handle_acl_operation(vap_index, str_str, vap_info, rdk_vap_info, false) != RETURN_OK) {
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to undo ACL operation after assoc_maclist overflow for %s\n", __func__, __LINE__, str_str);
+                    }
+                }
             }
         }
 
