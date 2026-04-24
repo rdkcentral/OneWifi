@@ -120,21 +120,21 @@ void process_eap_data(wifi_8021x_data_t *data, wifi_8021x_t *module, bool new_ev
     }
 
     if (data->dir == wifi_direction_unknown) {
-        strcpy(direction, "unknown");
+        snprintf(direction, sizeof(direction), "%s", "unknown");
     } else if (data->dir == wifi_direction_uplink) {
-        strcpy(direction, "uplink");
+        snprintf(direction, sizeof(direction), "%s", "uplink");
     } else if (data->dir == wifi_direction_downlink) {
-        strcpy(direction, "downlink");
+        snprintf(direction, sizeof(direction), "%s", "downlink");
     }
 
     if (eap->code == wifi_eap_code_request) {
-        strcpy(msg, "request");
+        snprintf(msg, sizeof(msg), "%s", "request");
     } else if (eap->code == wifi_eap_code_response) {
-       strcpy(msg, "response");
+       snprintf(msg, sizeof(msg), "%s", "response");
     } else if (eap->code == wifi_eap_code_success) {
-       strcpy(msg, "success");
+       snprintf(msg, sizeof(msg), "%s", "success");
     } else if (eap->code == wifi_eap_code_failure) {
-       strcpy(msg, "failure");
+       snprintf(msg, sizeof(msg), "%s", "failure");
     }
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Received eap %s  id:%d diretion:%s\n", __func__, __LINE__, msg, eap->id, direction);
