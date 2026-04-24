@@ -1410,7 +1410,7 @@ INT WiFi_DefaultInterworkingConfig(uint8_t vapIndex)
     {
         pCfg->interworking.internetAvailable = 1;
     }
-    strcpy(pCfg->interworking.hessid,"11:22:33:44:55:66");
+    snprintf(pCfg->interworking.hessid, sizeof(pCfg->interworking.hessid), "%s", "11:22:33:44:55:66");
 
     if ( (InstanceNumber == 5) || (InstanceNumber == 6) || (InstanceNumber == 9) || (InstanceNumber == 10) )	//Xfinity hotspot vaps
     {
@@ -1444,26 +1444,33 @@ INT WiFi_InitInterworkingElement (uint8_t vapIndex)
     UINT InstanceNumber = vapIndex;
 
 #if defined(ENABLE_FEATURE_MESHWIFI)        
-    wifi_interworking_t  elem;
-    memset((char *)&elem, 0, sizeof(wifi_interworking_t));
-    //Update OVS DB
-    if(-1 == get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(getVAPName(vapIndex - 1), &elem)) {
+    wifi_interworking_t *elem = NULL;
+
+    elem = (wifi_interworking_t *)malloc(sizeof(wifi_interworking_t));
+    if (elem == NULL) {
+        wifi_util_dbg_print(WIFI_PASSPOINT, "Failed to allocate memory for elem\n");
+        return WiFi_DefaultInterworkingConfig(vapIndex);
+    }
+    memset(elem, 0, sizeof(wifi_interworking_t));
+    if(-1 == wifidb_get_interworking_config(getVAPName(vapIndex - 1), &elem->interworking)) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Initialize Interwokring Configuration from DB for AP: %d. Setting Default\n",InstanceNumber);
+        free(elem);
         return WiFi_DefaultInterworkingConfig(vapIndex);//ONE_WIFI
     }
     
-    pCfg->interworking.interworkingEnabled = elem.interworking.interworkingEnabled;
-    pCfg->interworking.accessNetworkType = elem.interworking.accessNetworkType;
-    pCfg->interworking.internetAvailable = elem.interworking.internetAvailable;
-    pCfg->interworking.asra = elem.interworking.asra;
-    pCfg->interworking.esr = elem.interworking.esr;
-    pCfg->interworking.uesa = elem.interworking.uesa;
-    pCfg->interworking.venueOptionPresent = elem.interworking.venueOptionPresent;
-    pCfg->interworking.venueGroup = elem.interworking.venueGroup;
-    pCfg->interworking.venueType = elem.interworking.venueType;
-    pCfg->interworking.hessOptionPresent = elem.interworking.hessOptionPresent;
-    strcpy(pCfg->interworking.hessid,elem.interworking.hessid);//ONE_WIFI
+    pCfg->interworking.interworkingEnabled = elem->interworking.interworkingEnabled;
+    pCfg->interworking.accessNetworkType = elem->interworking.accessNetworkType;
+    pCfg->interworking.internetAvailable = elem->interworking.internetAvailable;
+    pCfg->interworking.asra = elem->interworking.asra;
+    pCfg->interworking.esr = elem->interworking.esr;
+    pCfg->interworking.uesa = elem->interworking.uesa;
+    pCfg->interworking.venueOptionPresent = elem->interworking.venueOptionPresent;
+    pCfg->interworking.venueGroup = elem->interworking.venueGroup;
+    pCfg->interworking.venueType = elem->interworking.venueType;
+    pCfg->interworking.hessOptionPresent = elem->interworking.hessOptionPresent;
+    snprintf(pCfg->interworking.hessid, sizeof(pCfg->interworking.hessid), "%s", elem->interworking.hessid);//ONE_WIFI
 
+    free(elem);
 #else
     char cfgFile[64];
     char *JSON_STR = NULL;
