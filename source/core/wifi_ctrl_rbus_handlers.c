@@ -1111,6 +1111,43 @@ int publish_endpoint_enable(void)
     }
     return RETURN_OK;
 }
+
+/* Placeholder handler for Device.WiFi.X_RDKCENTRAL-COM_StartACS
+ * Receives ACS exclude-channel subdoc from EasyMesh agent, logs it, and
+ * immediately publishes the current radio subdoc back so the agent gets
+ * the onewifi_radio_cb and can send the Operating Channel Report.
+ * TODO: Replace with real ACS integration. */
+bus_error_t start_acs_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)event_name;
+    (void)user_data;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    const char *json_str = (const char *)p_data->raw_data.bytes;
+
+    if ((p_data->data_type != bus_data_type_string) || (json_str == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: invalid data type or NULL payload\n",
+            __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: StartACS received: %s\n",
+        __func__, __LINE__, json_str);
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: ctrl is NULL\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+
+    /* Placeholder: publish current radio subdoc back to agent as if ACS completed.
+     * webconfig_ctrl_apply only calls webconfig_bus_apply (which publishes NORTH) when
+     * ctrl_webconfig_state_radio_cfg_rsp_pending is set. Set it here so the encode path
+     * reaches the publish call and triggers the agent's onewifi_radio_cb. */
+    ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+    webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
+
+    return bus_error_success;
+}
+
 bus_error_t webconfig_set_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -4040,6 +4077,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
     bus_data_element_t dataElements[] = {
                                 { WIFI_WEBCONFIG_DOC_DATA_SOUTH, bus_element_type_method,
                                     { NULL, webconfig_set_subdoc, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_WEBCONFIG_START_ACS, bus_element_type_method,
+                                    { NULL, start_acs_handler, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
                                 { WIFI_WEBCONFIG_DOC_DATA_NORTH, bus_element_type_method,
                                     { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,

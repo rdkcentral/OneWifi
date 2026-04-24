@@ -36,6 +36,7 @@ extern "C" {
 #define WIFI_WEBCONFIG_GET_ASSOC        "Device.WiFi.AssociatedClients"
 #define WIFI_WEBCONFIG_GET_ACL          "Device.WiFi.MacFilter"
 #define WIFI_WEBCONFIG_GET_CSI          "Device.WiFi.CSI"
+#define WIFI_WEBCONFIG_START_ACS        "Device.WiFi.X_RDKCENTRAL-COM_StartACS"
 
 #define WIFI_WEBCONFIG_PRIVATE_VAP      "Device.WiFi.Private"
 #define WIFI_WEBCONFIG_HOME_VAP         "Device.WiFi.Home"
