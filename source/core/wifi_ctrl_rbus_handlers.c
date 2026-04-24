@@ -2703,7 +2703,10 @@ bus_error_t get_sta_attribs(char *name, raw_data_t *p_data, bus_user_data_t *use
     }
     wifi_util_dbg_print(WIFI_CTRL, "%s bus property=%s\n", __FUNCTION__, name);
 
-    sscanf(name, "Device.WiFi.STA.%d.%s", &index, extension);
+    if (sscanf(name, "Device.WiFi.STA.%u.%63s", &index, extension) != 2 || index < 1) {
+        wifi_util_error_print(WIFI_CTRL, "%s Invalid property name format: %s\n", __FUNCTION__, name);
+        return bus_error_invalid_input;
+     }
     if (index > getNumberRadios()) {
         wifi_util_error_print(WIFI_CTRL, "%s Invalid index %d\n", __FUNCTION__, index);
         return bus_error_invalid_operation;
