@@ -122,7 +122,7 @@ ssp_WifiMbi_MessageBusEngage
 
     if ( g_Subsystem[0] != 0 )
     {
-        _ansc_sprintf(PsmName, "%s%s", g_Subsystem, CCSP_DBUS_PSM);
+        _ansc_snprintf(PsmName, sizeof(PsmName), "%s%s", g_Subsystem, CCSP_DBUS_PSM);
     }
     else
     {
