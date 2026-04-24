@@ -296,7 +296,6 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
 	$(filter-out $(ONE_WIFI_HOME)/source/core/services/vap_svc_mesh_pod.c,$(wildcard $(ONE_WIFI_HOME)/source/core/services/*.c)) \
 	$(wildcard $(ONE_WIFI_HOME)/source/apps/*.c) \
 	$(wildcard $(ONE_WIFI_HOME)/source/apps/linkquality/*.c) \
-	$(wildcard $(ONE_WIFI_HOME)/source/apps/wifi_sensing/src/*.c) \
 	$(wildcard $(ONE_WIFI_HOME)/source/stubs/*.c) \
 	$(wildcard $(ONE_WIFI_HOME)/source/stats/*.c)	\
 	$(ONE_WIFI_HOME)/lib/common/util.c		\
