@@ -109,7 +109,7 @@ int onewifi_pktgen_is_running(void)
 
     if (fgets(str, BUF_LEN_MAX, fp) != NULL)
     {
-        if (sscanf(str, "Running: %s", run_if) == 1)
+        if (sscanf(str, "Running: %31s", run_if) == 1)
         {
             LOGD("%s: Packetgen is already running on interface [%s].", __func__, run_if);
             retval = 1;
