@@ -1523,19 +1523,42 @@ CosaDmlWiFiApMfGetMacList
     (
         UCHAR       *mac,
         CHAR        *maclist,
+        size_t      maclist_len,
         ULONG       numList
     )
 {
     unsigned int i = 0;
     int     j = 0;
-    char macAddr[COSA_DML_WIFI_MAX_MAC_FILTER_NUM][18];
+    int result;
+    size_t offset = 0;
 
+    if (!maclist || maclist_len == 0) {
+        return ANSC_STATUS_FAILURE;
+    }
+
+    offset = strlen(maclist);
     for(i = 0; i<numList; i++) {
-        if(i > 0)
-            strcat(maclist, ",");
-        sprintf(macAddr[i], "%02x:%02x:%02x:%02x:%02x:%02x", mac[j], mac[j+1], mac[j+2], mac[j+3], mac[j+4], mac[j+5]);
-        strcat(maclist, macAddr[i]);
-        j +=6;
+        if (offset >= maclist_len) {
+            return ANSC_STATUS_FAILURE;
+        }
+        if(i > 0) {
+            result = snprintf(maclist + offset, maclist_len - offset, ",");
+            if (result < 0 || (size_t)result >= (maclist_len - offset)) {
+                return ANSC_STATUS_FAILURE;
+            }
+            offset += result;
+        }
+
+        if (offset >= maclist_len) {
+            return ANSC_STATUS_FAILURE;
+        }
+
+        result = snprintf(maclist + offset, maclist_len - offset, "%02x:%02x:%02x:%02x:%02x:%02x", mac[j], mac[j+1], mac[j+2], mac[j+3], mac[j+4], mac[j+5]);
+        if (result < 0 || (size_t)result >= (maclist_len - offset)) {
+            return ANSC_STATUS_FAILURE;
+        }
+        offset += result;
+        j += 6;
     }
     return ANSC_STATUS_SUCCESS;
 }

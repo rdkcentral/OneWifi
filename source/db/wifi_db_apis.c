@@ -245,7 +245,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         wifi_util_dbg_print(WIFI_DB, "%s:%d:RFC Config New/Modify \n", __func__, __LINE__);
             wifi_util_dbg_print(WIFI_DB,"%s:%d:%d _Wifi_Rfc_Config table\n", __func__, __LINE__,new_rec->link_quality_rfc);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        strcpy(rfc_param->rfc_id, new_rec->rfc_id);
+        snprintf(rfc_param->rfc_id, sizeof(rfc_param->rfc_id), "%s", new_rec->rfc_id);
         rfc_param->wifipasspoint_rfc = new_rec->wifipasspoint_rfc;
         rfc_param->wifiinterworking_rfc = new_rec->wifiinterworking_rfc;
         rfc_param->radiusgreylist_rfc = new_rec->radiusgreylist_rfc;

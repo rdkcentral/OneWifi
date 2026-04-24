@@ -3317,7 +3317,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
                 __LINE__, str_len);
              return bus_error_out_of_resources;
             }
-            strcpy((char *)p_data->raw_data.bytes, (char*)vap_bss->security.u.radius.connectedendpoint);
+            snprintf((char *)p_data->raw_data.bytes, str_len, "%s", (char*)vap_bss->security.u.radius.connectedendpoint);
             p_data->raw_data_len = str_len;
 #else
             char temp_str[45] = {0};
@@ -3330,7 +3330,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
                 __LINE__, str_len);
              return bus_error_out_of_resources;
             }
-            strncpy((char *)p_data->raw_data.bytes, temp_str,sizeof(temp_str)-1);
+            snprintf((char *)p_data->raw_data.bytes, str_len, "%s", temp_str);
             p_data->raw_data_len = str_len;
 #endif
         }
@@ -3344,7 +3344,7 @@ bus_error_t ap_get_radius_connected_endpoint(char *name, raw_data_t *p_data, bus
                 __LINE__, str_len);
              return bus_error_out_of_resources;
             }
-            strncpy((char *)p_data->raw_data.bytes, "0.0.0.0", str_len);
+            snprintf((char *)p_data->raw_data.bytes, str_len, "%s", "0.0.0.0");
             p_data->raw_data_len = str_len;
         }
     }
