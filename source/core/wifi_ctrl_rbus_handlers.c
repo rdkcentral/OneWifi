@@ -273,6 +273,7 @@ int stats_bus_publish(wifi_ctrl_t *ctrl, void *stats_data)
             wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding radio stats\n", __func__,
                 __LINE__);
             free(data->u.decoded.collect_stats.stats);
+            webconfig_data_free(data);
             free(data);
             return RETURN_ERR;
         }
@@ -287,10 +288,12 @@ int stats_bus_publish(wifi_ctrl_t *ctrl, void *stats_data)
             wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
                 __func__, __LINE__, status);
             free(data->u.decoded.collect_stats.stats);
+            webconfig_data_free(data);
             free(data);
             return RETURN_ERR;
         }
         free(data->u.decoded.collect_stats.stats);
+        webconfig_data_free(data);
         free(data);
         break;
     default:
@@ -822,7 +825,8 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         // tell webconfig to encode
 	    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
 	        wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
-	        free(data);
+	        webconfig_data_free(data);
+            free(data);
 	        data = NULL;
 	        return bus_error_general;
 	    }
@@ -833,6 +837,7 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         if (p_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                 __LINE__, str_size);
+            webconfig_data_free(data);
             free(data);
             data = NULL;
             return bus_error_out_of_resources;
@@ -860,14 +865,16 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
 				sizeof(wifi_global_config_t));
 		if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
 			wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
-			free(data);
+			webconfig_data_free(data);
+            free(data);
 			data = NULL;
 			return bus_error_general;
 		}
 	} else {
 		if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) != webconfig_error_none) {
 			wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
-			free(data);
+			webconfig_data_free(data);
+            free(data);
 			data = NULL;
 			return bus_error_general;
 		}
@@ -879,6 +886,7 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         if (p_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                 __LINE__, str_size);
+            webconfig_data_free(data);
             free(data);
             data = NULL;
             return bus_error_out_of_resources;
@@ -977,6 +985,7 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) !=
         webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
+        webconfig_data_free(data);
         free(data);
         data = NULL;
         return bus_error_general;
@@ -988,6 +997,7 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     if (p_data->raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d memory allocation is failed:%d\r\n", __func__,
             __LINE__, str_size);
+        webconfig_data_free(data);
         free(data);
         data = NULL;
         return bus_error_out_of_resources;
@@ -1294,6 +1304,7 @@ bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_use
     if (p_data->raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
             __LINE__, str_size);
+        webconfig_data_free(data);
         free(data);
         data = NULL;
         return bus_error_out_of_resources;
@@ -1350,6 +1361,7 @@ bus_error_t get_null_subdoc_data(char *name, raw_data_t *p_data, bus_user_data_t
     if (p_data->raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
             __LINE__, str_size);
+        webconfig_data_free(data);
         free(data);
         data = NULL;
         return bus_error_out_of_resources;
@@ -1613,6 +1625,7 @@ bus_error_t get_acl_device_data(char *name, raw_data_t *p_data, bus_user_data_t 
         if (p_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                 __LINE__, str_size);
+            webconfig_data_free(data);
             free(data);
             data = NULL;
             return bus_error_out_of_resources;
@@ -1771,6 +1784,7 @@ bus_error_t set_ignite_link_quality_threshold(char *event_name, raw_data_t *p_da
         webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to encode wifi_config subdoc\n", __func__,
             __LINE__);
+        webconfig_data_free(data);
         free(data);
         return bus_error_general;
     }
@@ -3967,6 +3981,7 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
         if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding radio stats\n", __func__,
                 __LINE__);
+            webconfig_data_free(data);
             free(data);
             return bus_error_invalid_input;
         }
