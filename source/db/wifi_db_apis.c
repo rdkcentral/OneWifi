@@ -7751,7 +7751,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
              cfg->u.bss_info.enabled = true;
         }
 #endif
-#if defined(_SKY_HUB_COMMON_PRODUCT_REQ_)
+#if defined(_SKY_HUB_COMMON_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 #if !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_)
         if (isVapXhs(vap_index)) {
             cfg->u.bss_info.enabled = false;
@@ -7780,7 +7780,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
         }
-#endif //_SKY_HUB_COMMON_PRODUCT_REQ_
+#endif //_SKY_HUB_COMMON_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_
         wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d bssMaxSta:%d\n", __func__, __LINE__,
             vap_index, cfg->u.bss_info.bssMaxSta);
 
