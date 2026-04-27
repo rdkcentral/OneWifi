@@ -6605,6 +6605,19 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio Index: %d\n", __func__, __LINE__,
         radio_report->radio_index);
 
+    // Decode Radio Metrics
+    param_obj = cJSON_GetObjectItem(em_ap_report_obj, "Radio Metrics");
+    if (param_obj != NULL && cJSON_IsObject(param_obj)) {
+        decode_param_integer(param_obj, "Radio.Noise", value_object);
+        radio_report->radio_metrics.noise = value_object->valueint;
+        decode_param_integer(param_obj, "Radio.Transmit", value_object);
+        radio_report->radio_metrics.transmit = value_object->valueint;
+        decode_param_integer(param_obj, "Radio.ReceiveSelf", value_object);
+        radio_report->radio_metrics.receive_self = value_object->valueint;
+        decode_param_integer(param_obj, "Radio.ReceiveOther", value_object);
+        radio_report->radio_metrics.receive_other = value_object->valueint;
+    }
+
     // Decode Vap Info
     param_arr = cJSON_GetObjectItem(em_ap_report_obj, "Vap Info");
     if (param_arr == NULL || !cJSON_IsArray(param_arr)) {
@@ -6630,6 +6643,31 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
 
             decode_param_integer(param_obj, "Channel Util", value_object);
             radio_report->vap_reports[j].vap_metrics.channel_util = value_object->valueint;
+            decode_param_bool(param_obj, "Params BE", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_be = (value_object->type & cJSON_True) ? true:false;
+            decode_param_bool(param_obj, "Params BK", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_bk = (value_object->type & cJSON_True) ? true:false;
+            decode_param_bool(param_obj, "Params VI", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vi = (value_object->type & cJSON_True) ? true:false;
+            decode_param_bool(param_obj, "Params VO", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vo = (value_object->type & cJSON_True) ? true:false;
+
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_be) {
+                decode_param_integer(param_obj, "AC BE", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_be = value_object->valueint;
+            }
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_bk) {
+                decode_param_integer(param_obj, "AC BK", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_bk = value_object->valueint;
+            }
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vi) {
+                decode_param_integer(param_obj, "AC VI", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_vi = value_object->valueint;
+            }
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vo) {
+                decode_param_integer(param_obj, "AC VO", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_vo = value_object->valueint;
+            }
 
             decode_param_integer(param_obj, "Number of Associated STAs", value_object);
             radio_report->vap_reports[j].sta_cnt =
@@ -6646,7 +6684,19 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             radio_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
 
             decode_param_integer(param_obj, "BSS.UnicastBytesReceived", value_object);
-            radio_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
+            radio_report->vap_reports[j].vap_metrics.unicast_bytes_rcvd = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.MulticastBytesSent", value_object);
+            radio_report->vap_reports[j].vap_metrics.multicast_bytes_sent = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.MulticastBytesReceived", value_object);
+            radio_report->vap_reports[j].vap_metrics.multicast_bytes_rcvd = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.BroadcastBytesSent", value_object);
+            radio_report->vap_reports[j].vap_metrics.broadcast_bytes_sent = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.BroadcastBytesReceived", value_object);
+            radio_report->vap_reports[j].vap_metrics.broadcast_bytes_rcvd = value_object->valueint;
         }
 
         radio_report->vap_reports[j].sta_traffic_stats = NULL;

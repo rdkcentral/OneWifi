@@ -99,7 +99,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc.c  $(top_srcdir)/s
 OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc_mesh_ext.c
 
 OneWifi_SOURCES += $(top_srcdir)/source/utils/jsonconv.c $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c $(top_srcdir)/source/utils/caps.c
-OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c $(top_srcdir)/source/stats/wifi_stats.c $(top_srcdir)/source/stats/wifi_stats_radio_channel.c $(top_srcdir)/source/stats/wifi_stats_neighbor_report.c $(top_srcdir)/source/stats/wifi_stats_radio_diagnostics.c $(top_srcdir)/source/stats/wifi_stats_assoc_client.c $(top_srcdir)/source/stats/wifi_stats_radio_temperature.c
+OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c $(top_srcdir)/source/stats/wifi_stats.c $(top_srcdir)/source/stats/wifi_stats_radio_channel.c $(top_srcdir)/source/stats/wifi_stats_neighbor_report.c $(top_srcdir)/source/stats/wifi_stats_radio_diagnostics.c $(top_srcdir)/source/stats/wifi_stats_assoc_client.c $(top_srcdir)/source/stats/wifi_stats_radio_temperature.c $(top_srcdir)/source/stats/wifi_stats_vap.c
 
 OneWifi_SOURCES += $(top_srcdir)/source/stubs/wifi_stubs.c
 OneWifi_SOURCES += $(top_srcdir)/source/ccsp/ccsp.c
@@ -173,8 +173,23 @@ endif
 OneWifi_SOURCES += $(top_srcdir)/source/apps/linkquality/wifi_linkquality.c
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/linkquality/
 
-OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_sensing/src/motion_sensing.c
+if WIFI_SENSING_APP_SUPPORT
+OneWifi_CXXFLAGS = -I$(STAGING_INCDIR)/ccsp
+OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_sensing/src/motion_sensing.c \
+                   $(top_srcdir)/source/apps/wifi_sensing/src/motion_sensing_core.cpp \
+                   $(top_srcdir)/source/apps/wifi_sensing/src/motion_sensing_events.cpp \
+                   $(top_srcdir)/source/apps/wifi_sensing/src/motion_sensing_zilker.cpp \
+                   $(top_srcdir)/source/apps/wifi_sensing/src/sounder.cpp \
+                   $(top_srcdir)/source/apps/wifi_sensing/src/csi_raw_data_save.c
+
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
+
+OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_sensing/tflite/src/inference.c \
+                   $(top_srcdir)/source/apps/wifi_sensing/tflite/src/tensor.c \
+                   $(top_srcdir)/source/apps/wifi_sensing/tflite/src/wifi_tools.c
+
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/tflite/inc/
+endif
 
 if USE_DML_SOURCES
 # Common WFA DML sources (used in both ONEWIFI_DML_SUPPORT and ONEWIFI_JSON_DML_SUPPORT)
@@ -235,4 +250,7 @@ OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
 OneWifi_LDFLAGS += -lwifi_webconfig 
 OneWifi_LDFLAGS += -lwifi_bus
+if WIFI_SENSING_APP_SUPPORT
+OneWifi_LDFLAGS += -ltensorflowlite_c
+endif
 #OneWifi_LDFLAGS += -llibnl-3.la llibnl-genl-3.la llibnl-route-3.la llibnl-nf-3.la llibnl-idiag-3
