@@ -2278,6 +2278,25 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
     switch (event->sub_type) {
     case wifi_event_type_notify_monitor_done:
         is_monitor_done = TRUE;
+        {
+            wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+            unsigned int num_radios = getNumberRadios();
+            for (unsigned int i = 0; i < num_radios; i++) {
+                ULONG curr_txpower = 0;
+                if (wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower) == RETURN_OK && curr_txpower != 0) {
+
+                    pthread_mutex_lock(&wifi_mgr->data_cache_lock);
+                    wifi_mgr->radio_config[i].oper.transmitPower = (UINT)curr_txpower;
+                    pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
+
+                    wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n",
+                        __func__, __LINE__, i, curr_txpower);
+                } else {
+                    wifi_util_error_print(WIFI_EM, "%s:%d: failed or zero tx power for radio_index=%u\n",
+                        __func__, __LINE__, i);
+                }
+            }
+        }
         break;
 
     case wifi_event_type_start_channel_scan:
