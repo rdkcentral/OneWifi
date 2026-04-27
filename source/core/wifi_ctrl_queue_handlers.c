@@ -881,9 +881,9 @@ void send_hotspot_status(char* vap_name, bool up)
 
 void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
 {
-    rdk_wifi_vap_info_t *rdk_vap_info;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     vap_svc_t  *pub_svc = NULL;
-    wifi_ctrl_t *ctrl;
+    wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_6g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info = { 0 };
     wifi_platform_property_t *wifi_prop = (&(get_wifimgr_obj())->hal_cap.wifi_prop);
@@ -892,6 +892,10 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
     wifi_vap_info_map_t *tmp_vap_map = NULL;
+#if defined(_PLATFORM_BANANAPI_R4_)
+    bool dml_cache_update_needed = false;
+    webconfig_subdoc_data_t *dml_cache_update_subdoc = NULL;
+#endif
 
     bool hotspot_5g_found = false;
 
@@ -911,6 +915,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_6_G) != NULL) {
             lnf_6g_vap = lnf_vap_info;
         }
+
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
             if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
                 continue;
@@ -994,9 +999,38 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     }
                     wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, wifi_hotspot_action_to_string(param));
                 }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+                if (memcmp(&tmp_vap_map->vap_array[0], &wifi_vap_map->vap_array[j],
+                        sizeof(wifi_vap_info_t)) != 0) {
+                    update_global_cache(tmp_vap_map, rdk_vap_info);
+                    if (dml_cache_update_needed == false) {
+                        dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
+                            sizeof(webconfig_subdoc_data_t));
+                        if (dml_cache_update_subdoc == NULL) {
+                            wifi_util_error_print(WIFI_CTRL,
+                                "%s:%d: malloc failed to allocate webconfig_subdoc_data_t, size "
+                                "%d\n",
+                                __func__, __LINE__, sizeof(webconfig_subdoc_data_t));
+                            free(tmp_vap_map);
+                            return;
+                        }
+                    }
+                    dml_cache_update_needed = true;
+                }
+#endif
             }
         }
     }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+    if (dml_cache_update_needed) {
+        webconfig_init_subdoc_data(dml_cache_update_subdoc);
+        update_dml_cache(ctrl, dml_cache_update_subdoc);
+    }
+    free(dml_cache_update_subdoc);
+#endif
+
     free(tmp_vap_map);
     tmp_vap_map = NULL;
     
@@ -2692,6 +2726,10 @@ void process_wpa3_rfc(bool type)
     UINT apIndex = 0, ret;
     rdk_wifi_vap_info_t *rdk_vap_info;
     char update_status[128];
+#if defined(_PLATFORM_BANANAPI_R4_)
+    bool dml_cache_update_needed = false;
+    webconfig_subdoc_data_t *dml_cache_update_subdoc = NULL;
+#endif
 
     tgt_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
     if (tgt_vap_map == NULL) {
@@ -2771,7 +2809,34 @@ void process_wpa3_rfc(bool type)
         } else {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
         }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (ret == RETURN_OK && memcmp(&tgt_vap_map->vap_array[0], vapInfo, sizeof(wifi_vap_info_t)) != 0) {
+            update_global_cache(tgt_vap_map, rdk_vap_info);
+            if (dml_cache_update_needed == false) {
+                dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
+                    sizeof(webconfig_subdoc_data_t));
+                if (dml_cache_update_subdoc == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d: malloc failed to allocate webconfig_subdoc_data_t, size %d\n",
+                        __func__, __LINE__, sizeof(webconfig_subdoc_data_t));
+                    free(tgt_vap_map);
+                    return;
+                }
+            }
+            dml_cache_update_needed = true;
+        }
+#endif
     }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+    if (dml_cache_update_needed) {
+        webconfig_init_subdoc_data(dml_cache_update_subdoc);
+        update_dml_cache(ctrl, dml_cache_update_subdoc);
+    }
+    free(dml_cache_update_subdoc);
+#endif
+
     free(tgt_vap_map);
     tgt_vap_map = NULL;
 }
@@ -4217,6 +4282,10 @@ void process_rsn_override_rfc(bool type)
     rdk_wifi_vap_info_t *rdk_vap_info;
     wifi_vap_info_t *vapInfo = NULL;
     char update_status[128], old_sec_mode[32], new_sec_mode[32];
+#if defined(_PLATFORM_BANANAPI_R4_)
+    bool dml_cache_update_needed = false;
+    webconfig_subdoc_data_t *dml_cache_update_subdoc = NULL;
+#endif
 
     tgt_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
     if (tgt_vap_map == NULL) {
@@ -4323,7 +4392,34 @@ void process_rsn_override_rfc(bool type)
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
         }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (ret == RETURN_OK && memcmp(&tgt_vap_map->vap_array[0], vapInfo, sizeof(wifi_vap_info_t)) != 0) {
+            update_global_cache(tgt_vap_map, rdk_vap_info);
+            if (dml_cache_update_needed == false) {
+                dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
+                    sizeof(webconfig_subdoc_data_t));
+                if (dml_cache_update_subdoc == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d: malloc failed to allocate webconfig_subdoc_data_t, size %d\n",
+                        __func__, __LINE__, sizeof(webconfig_subdoc_data_t));
+                    free(tgt_vap_map);
+                    return;
+                }
+            }
+            dml_cache_update_needed = true;
+        }
+#endif
     }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+    if (dml_cache_update_needed) {
+        webconfig_init_subdoc_data(dml_cache_update_subdoc);
+        update_dml_cache(ctrl, dml_cache_update_subdoc);
+    }
+    free(dml_cache_update_subdoc);
+#endif
+
     free(tgt_vap_map);
     tgt_vap_map = NULL;
 }

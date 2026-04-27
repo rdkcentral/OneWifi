@@ -431,11 +431,14 @@ int publish_endpoint_enable(void);
 int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
 void hotspot_timing_start(void);
 void hotspot_timing_stop(void);
-
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
     char **vap_names, unsigned int vap_names_size, wifi_dbg_type_t log_type);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
+int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info);
+#if defined(_PLATFORM_BANANAPI_R4_)
+void update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc);
+#endif
 
 #ifdef __cplusplus
 }
