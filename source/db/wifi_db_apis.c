@@ -280,24 +280,24 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->xfi_tel_enable_rfc = new_rec->xfi_tel_enable_rfc;
 
         wifi_util_dbg_print(WIFI_DB,
-            "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
-            "dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d "
-            "hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d "
-            "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
-            "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
-            "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
-            "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d "
-            "link_quality_rfc=%d\r\n",
-            "xfi_tel_enable_rfc=%d\r\n",
-            __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
-            rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
-            rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
-            rfc_param->hotspot_open_2g_last_enabled, rfc_param->hotspot_open_5g_last_enabled,
-            rfc_param->hotspot_open_6g_last_enabled, rfc_param->hotspot_secure_2g_last_enabled,
-            rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
-            rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
-            rfc_param->rfc_id, rfc_param->memwraptool_app_rfc, rfc_param->levl_enabled_rfc,
-            rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable, rfc_param->link_quality_rfc, rfc_param->xfi_tel_enable_rfc);
+    "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
+    "dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d "
+    "hotspot_open_2g_last_enabled=%d hotspot_open_5g_last_enabled=%d "
+    "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
+    "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
+    "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
+    "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d "
+    "wpa3_compatibility_enable=%d link_quality_rfc=%d xfi_tel_enable_rfc=%d\r\n",
+    __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
+    rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
+    rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
+    rfc_param->hotspot_open_2g_last_enabled, rfc_param->hotspot_open_5g_last_enabled,
+    rfc_param->hotspot_open_6g_last_enabled, rfc_param->hotspot_secure_2g_last_enabled,
+    rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
+    rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
+    rfc_param->rfc_id, rfc_param->memwraptool_app_rfc, rfc_param->levl_enabled_rfc,
+    rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable,
+    rfc_param->link_quality_rfc, rfc_param->xfi_tel_enable_rfc);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 }
