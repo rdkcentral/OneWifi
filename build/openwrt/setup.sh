@@ -104,3 +104,4 @@ cd $ONEWIFI_DIR
 
 # Remove the Kernel 6.6 specific flag when building for Kernel 5.4
 sed -i 's/-DKERNEL_6_6//g' build/openwrt/makefile
+sed -i 's/-DCONFIG_OCV//g' build/openwrt/makefile
