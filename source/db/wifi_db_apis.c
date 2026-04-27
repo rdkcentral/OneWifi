@@ -1909,29 +1909,6 @@ void wifidb_print_interworking_config ()
     }
 }
 
-static bool wifidb_backfill_tcm_band_rfc(wifi_rfc_dml_parameters_t *rfc_info)
-{
-    if ((rfc_info == NULL) || (rfc_info->tcm_enabled_rfc == false)) {
-        return false;
-    }
-
-    if ((rfc_info->tcm_open_2g_rfc == false) && (rfc_info->tcm_open_5g_rfc == false) &&
-        (rfc_info->tcm_open_6g_rfc == false) &&
-        (rfc_info->tcm_secure_2g_rfc == false) &&
-        (rfc_info->tcm_secure_5g_rfc == false) &&
-        (rfc_info->tcm_secure_6g_rfc == false)) {
-        rfc_info->tcm_open_2g_rfc = true;
-        rfc_info->tcm_open_5g_rfc = true;
-        rfc_info->tcm_open_6g_rfc = true;
-        rfc_info->tcm_secure_2g_rfc = true;
-        rfc_info->tcm_secure_5g_rfc = true;
-        rfc_info->tcm_secure_6g_rfc = true;
-        return true;
-    }
-
-    return false;
-}
-
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_get_rfc_config
@@ -1940,8 +1917,7 @@ static bool wifidb_backfill_tcm_band_rfc(wifi_rfc_dml_parameters_t *rfc_info)
   Description : Get wifidb_get_device_config structure from wifidb
  *************************************************************************************
 **************************************************************************************/
-int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info,
-    bool *tcm_band_rfc_updated)
+int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
 {
     struct schema_Wifi_Rfc_Config  *pcfg;
     json_t *where;
@@ -1949,10 +1925,6 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info,
     char index[4] = {0};
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
-
-    if (tcm_band_rfc_updated != NULL) {
-        *tcm_band_rfc_updated = false;
-    }
 
     sprintf(index,"%d",rfc_id);
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index);
@@ -1989,11 +1961,6 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info,
     rfc_info->tcm_secure_2g_rfc = pcfg->tcm_secure_2g_rfc;
     rfc_info->tcm_secure_5g_rfc = pcfg->tcm_secure_5g_rfc;
     rfc_info->tcm_secure_6g_rfc = pcfg->tcm_secure_6g_rfc;
-    if (tcm_band_rfc_updated != NULL) {
-        *tcm_band_rfc_updated = wifidb_backfill_tcm_band_rfc(rfc_info);
-    } else {
-        wifidb_backfill_tcm_band_rfc(rfc_info);
-    }
     rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
     rfc_info->link_quality_rfc = pcfg->link_quality_rfc;
     rfc_info->xfi_tel_enable_rfc = pcfg->xfi_tel_enable_rfc;
@@ -8298,15 +8265,30 @@ void init_wifidb_data()
     }
     else {
         dbwritten = true;
-        if (wifidb_get_rfc_config(0, rfc_param, &update_rfc_config) != 0) {
+        if (wifidb_get_rfc_config(0, rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+        } else {
+            if ((rfc_param->tcm_enabled_rfc == true) &&
+            (rfc_param->tcm_open_2g_rfc == false) && (rfc_param->tcm_open_5g_rfc == false) &&
+            (rfc_param->tcm_open_6g_rfc == false) &&
+            (rfc_param->tcm_secure_2g_rfc == false) &&
+            (rfc_param->tcm_secure_5g_rfc == false) &&
+            (rfc_param->tcm_secure_6g_rfc == false)) {
+            rfc_param->tcm_open_2g_rfc = true;
+            rfc_param->tcm_open_5g_rfc = true;
+            rfc_param->tcm_open_6g_rfc = true;
+            rfc_param->tcm_secure_2g_rfc = true;
+            rfc_param->tcm_secure_5g_rfc = true;
+            rfc_param->tcm_secure_6g_rfc = true;
+            update_rfc_config = true;
+            }
         }
-#ifdef ALWAYS_ENABLE_AX_2G
-        update_rfc_config = true;
-#endif
         if (update_rfc_config == true) {
             wifidb_update_rfc_config(0, rfc_param);
         }
+    #ifdef ALWAYS_ENABLE_AX_2G
+        wifidb_update_rfc_config(0, rfc_param);
+    #endif
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
