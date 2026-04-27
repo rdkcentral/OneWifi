@@ -419,6 +419,8 @@ void hotspot_cfg_sem_signal(bool status);
 bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
 int publish_endpoint_enable(void);
 int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
+int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info);
+void update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc);
 
 #ifdef __cplusplus
 }
