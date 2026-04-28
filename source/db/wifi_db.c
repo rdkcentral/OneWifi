@@ -189,6 +189,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         cfg.beaconInterval = 100;
     }
     cfg.fragmentationThreshold = 2346;
+
     cfg.transmitPower = 100;
     cfg.rtsThreshold = 2347;
     cfg.guardInterval = wifi_guard_interval_auto;

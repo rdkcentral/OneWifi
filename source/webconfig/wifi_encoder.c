@@ -2040,12 +2040,11 @@ webconfig_error_t encode_ignite_object(ignite_config_t *ignite_config, cJSON *ig
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Ignite info is NULL\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_threshold, ignite_config->SNR_difference);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_difference);
 
     cJSON_AddStringToObject(ignite_obj, "ignite_name", ignite_config->ignite_name);
     cJSON_AddNumberToObject(ignite_obj, "ignite_minchutil_threshold", ignite_config->min_chanutil_threshold);
     cJSON_AddNumberToObject(ignite_obj, "ignite_maxchutil_threshold", ignite_config->max_chanutil_threshold);
-    cJSON_AddNumberToObject(ignite_obj, "ignite_snr_threshold", ignite_config->SNR_threshold);
     cJSON_AddNumberToObject(ignite_obj, "ignite_snr_difference", ignite_config->SNR_difference);
     return webconfig_error_none;
 }
@@ -3443,6 +3442,11 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
             continue;
         }
 
+        if ((vap->vap_mode != wifi_vap_mode_ap)) {
+            continue;
+        }
+
+        vap_arr_index = -1;
         for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
             ap_metrics = &radio_report->vap_reports[k];
             if (strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
@@ -3479,6 +3483,24 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
         cJSON_AddNumberToObject(temp_obj, "Number of Associated STAs",
             ap_metrics->vap_metrics.num_of_assoc_stas);
 
+        cJSON_AddBoolToObject(temp_obj, "Params BE", ap_metrics->vap_metrics.inc_esp_ac_be);
+        cJSON_AddBoolToObject(temp_obj, "Params BK", ap_metrics->vap_metrics.inc_esp_ac_bk);
+        cJSON_AddBoolToObject(temp_obj, "Params VI", ap_metrics->vap_metrics.inc_esp_ac_vi);
+        cJSON_AddBoolToObject(temp_obj, "Params VO", ap_metrics->vap_metrics.inc_esp_ac_vo);
+
+        if(ap_metrics->vap_metrics.inc_esp_ac_be) {
+            cJSON_AddNumberToObject(temp_obj, "AC BE", ap_metrics->vap_metrics.esp_ac_be);
+        }
+        if(ap_metrics->vap_metrics.inc_esp_ac_bk) {
+            cJSON_AddNumberToObject(temp_obj, "AC BK", ap_metrics->vap_metrics.esp_ac_bk);
+        }
+        if(ap_metrics->vap_metrics.inc_esp_ac_vi) {
+            cJSON_AddNumberToObject(temp_obj, "AC VI", ap_metrics->vap_metrics.esp_ac_vi);
+        }
+        if(ap_metrics->vap_metrics.inc_esp_ac_vo) {
+            cJSON_AddNumberToObject(temp_obj, "AC VO", ap_metrics->vap_metrics.esp_ac_vo);
+        }
+
         // Create AP Extended Metrics array
         temp_obj = cJSON_CreateObject();
         if ((temp_obj == NULL)) {
@@ -3491,7 +3513,14 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
             ap_metrics->vap_metrics.unicast_bytes_sent);
         cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesReceived",
             ap_metrics->vap_metrics.unicast_bytes_rcvd);
-
+        cJSON_AddNumberToObject(temp_obj, "BSS.MulticastBytesSent",
+            ap_metrics->vap_metrics.multicast_bytes_sent);
+        cJSON_AddNumberToObject(temp_obj, "BSS.MulticastBytesReceived",
+            ap_metrics->vap_metrics.multicast_bytes_rcvd);
+        cJSON_AddNumberToObject(temp_obj, "BSS.BroadcastBytesSent",
+            ap_metrics->vap_metrics.broadcast_bytes_sent);
+        cJSON_AddNumberToObject(temp_obj, "BSS.BroadcastBytesReceived",
+            ap_metrics->vap_metrics.broadcast_bytes_rcvd);
         // check sta link metrics and traffic stats
         if (ap_metrics->is_sta_traffic_stats_enabled == true) {
             encode_em_sta_traffic_stats_object(ap_metrics->sta_cnt,
