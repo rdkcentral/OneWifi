@@ -1477,12 +1477,6 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
             __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_encode;
     }
-    if (security_info->mfp != wifi_mfp_cfg_optional &&
-        security_info->mode == wifi_security_mode_wpa2_personal) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Sneha invalid MFP value %d for WPA2-Personal,"
-            " must be Optional or Required\n", __func__, __LINE__, security_info->mfp);
-        return webconfig_error_decode;
-    }
 #ifndef CONFIG_IEEE80211BE
     if (security_info->mfp != wifi_mfp_cfg_required &&
         (security_info->mode == wifi_security_mode_enhanced_open ||
