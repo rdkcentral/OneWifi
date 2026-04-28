@@ -726,9 +726,7 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
+    webconfig_data_free(data);
     
     free(data);
     data = NULL;
@@ -759,6 +757,12 @@ void test_null_subdoc_change(webconfig_consumer_t *consumer)
         }
     }
 
+    if (str == NULL) {
+        free(data);
+        data = NULL;
+        return;
+    }
+
     if (ret == webconfig_error_none) {
         printf("%s:%d: webconfig consumer null vap start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_null);
@@ -769,10 +773,7 @@ void test_null_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
-    
+    webconfig_data_free(data);
     free(data);
     data = NULL;
 }
@@ -807,6 +808,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
             vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[0], "mesh_sta");
             if (vap_info == NULL) {
                 printf("%s:%d: vap_info is NULL \n", __func__, __LINE__);
+                webconfig_data_free(data);
                 free(data);
                 data = NULL;
                 return;
@@ -815,6 +817,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
             vap_info = get_wifi_radio_vap_info(&data->u.decoded.radios[1], "mesh_sta");
             if (vap_info == NULL) {
                 printf("%s:%d: vap_info is NULL \n", __func__, __LINE__);
+                webconfig_data_free(data);
                 free(data);
                 data = NULL;
                 return;
@@ -824,10 +827,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
 
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
@@ -836,6 +836,12 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
         if (ret == webconfig_error_none) {
             str = data->u.encoded.raw;
         }
+    }
+
+    if (str == NULL) {
+        free(data);
+        data = NULL;
+        return;
     }
 
     if (ret == webconfig_error_none) {
@@ -852,10 +858,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
-    
+    webconfig_data_free(data);
     free(data);
     data = NULL;
 }
@@ -912,6 +915,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
             rdk_vap = get_wifi_radio_rdkvap_info(&data->u.decoded.radios[0], "mesh_backhaul");
             if ((rdk_vap == NULL)) {
                 printf("%s:%d: rdk_vap is null\n", __func__, __LINE__);
+                webconfig_data_free(data);
                 free(data);
                 data = NULL;
                 return;
@@ -923,6 +927,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             if (acl_entry == NULL) {
                 printf("%s:%d NULL Pointer \n", __func__, __LINE__);
+                webconfig_data_free(data);
                 free(data);
                 data = NULL;
                 return;
@@ -935,10 +940,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
@@ -947,6 +949,12 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
         if (ret == webconfig_error_none) {
             str = data->u.encoded.raw;
         }
+    }
+
+    if (str == NULL) {
+        free(data);
+        data = NULL;
+        return;
     }
 
     if (ret == webconfig_error_none) {
@@ -963,10 +971,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
-    
+    webconfig_data_free(data);
     free(data);
     data = NULL;
 }
@@ -1014,6 +1019,7 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
 
             if ((rdk_vap == NULL)) {
                 printf("%s:%d: rdk_vap is null\n", __func__, __LINE__);
+                webconfig_data_free(data);
                 free(data);
                 data = NULL;
                 return;
@@ -1025,6 +1031,7 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             if (acl_entry == NULL) {
                 printf("%s:%d NULL Pointer \n", __func__, __LINE__);
+                webconfig_data_free(data);
                 free(data);
                 data = NULL;
                 return;
@@ -1037,10 +1044,7 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
 
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
@@ -1049,6 +1053,12 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
         if (ret == webconfig_error_none) {
             str = data->u.encoded.raw;
         }
+    }
+
+    if (str == NULL) {
+        free(data);
+        data = NULL;
+        return;
     }
 
     if (ret == webconfig_error_none) {
@@ -1065,9 +1075,7 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
+    webconfig_data_free(data);
     
     free(data);
     data = NULL;
@@ -1094,12 +1102,6 @@ void test_vif_neighbors_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
 #endif
-    } else {
-        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
-    }
-
-    if (str != NULL) {
-        free(str);
     }
 }
 
@@ -1126,12 +1128,6 @@ void test_steeringclient_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
 #endif
-    } else {
-        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
-    }
-
-    if (str != NULL) {
-        free(str);
     }
 }
 
@@ -1157,12 +1153,6 @@ void test_steerconfig_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
 #endif
-    } else {
-        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
-    }
-
-    if (str != NULL) {
-        free(str);
     }
 }
 
@@ -1186,12 +1176,6 @@ void test_statsconfig_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
 #endif
-    } else {
-        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
-    }
-
-    if (str != NULL) {
-        free(str);
     }
 }
 
@@ -1237,15 +1221,18 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         printf("%s:%d start webconfig_encode num_of_radio:%d\n", __func__, __LINE__, data->u.decoded.num_radios);
         ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_private);
         if (ret == webconfig_error_none)
             str = data->u.encoded.raw;
+    }
+
+    if (str == NULL) {
+        free(data);
+        data = NULL;
+        return;
     }
 
     if (ret == webconfig_error_none) {
@@ -1262,9 +1249,7 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
+    webconfig_data_free(data);
     
     free(data);
     data = NULL;
@@ -1325,10 +1310,7 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
 
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         ret = webconfig_encode(&consumer->webconfig, data,
                 webconfig_subdoc_type_home);
@@ -1351,9 +1333,7 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
+    webconfig_data_free(data);
     
     free(data);
     data=NULL;
@@ -1442,10 +1422,7 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
         }
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         printf("%s:%d: start webconfig_encode \n", __func__, __LINE__);
@@ -1469,10 +1446,7 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
-
-    if (str != NULL) {
-        free(str);
-    }
+    webconfig_data_free(data);
     
     free(data);
     data = NULL;
@@ -1534,10 +1508,7 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
         }
         // clearing the descriptor and raw json data
         data->descriptor =  0;
-        if (data->u.encoded.raw != NULL) {
-            free(data->u.encoded.raw);
-            data->u.encoded.raw = NULL;
-        }
+        webconfig_data_free(data);
         data->u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         printf("%s:%d: start webconfig_encode \n", __func__, __LINE__);
@@ -1562,9 +1533,7 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    if (str != NULL) {
-        free(str);
-    }
+    webconfig_data_free(data);
     
     free(data);
     data = NULL;
