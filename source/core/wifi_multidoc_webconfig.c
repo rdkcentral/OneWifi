@@ -459,9 +459,9 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         return RETURN_ERR;
     }
 
-    if (isVapHotspot(vap_info->vap_index)) {
-        param = cJSON_GetObjectItem(security, "MFPConfig");
-        if (!param) {
+param = cJSON_GetObjectItem(security, "MFPConfig");
+    if (!param) {
+        if (isVapHotspot(vap_info->vap_index)) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"MFPConfig\"\n", __func__);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid MFPConfig",
@@ -469,6 +469,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             }
             return RETURN_ERR;
         }
+    } else {
         value = cJSON_GetStringValue(param);
         wifi_util_info_print(WIFI_CTRL, "   \"MFPConfig\": %s\n", value);
         if (!strcmp(value, "Disabled")) {
@@ -485,6 +486,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             }
             return RETURN_ERR;
         }
+    }
 
         radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
         if (!radius_param) {
