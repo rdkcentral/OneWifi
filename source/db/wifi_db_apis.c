@@ -93,9 +93,9 @@
 #define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100043
 #define ONEWIFI_DB_VERSION_UPDATE_MULTI_MLD_UNIT_FLAG 100044
 #define ONEWIFI_DB_VERSION_IGNITE_FLAG 100045
-#define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100046
 #define ONEWIFI_DB_VERSION_ENCR_GCMP_FLAG 100048
 #define ONEWIFI_DB_VERSION_ENCR_NEW_FLAG 100049
+#define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100050
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -8365,12 +8365,7 @@ void init_wifidb_data()
         if (wifidb_get_rfc_config(0, rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         } else {
-            if ((rfc_param->tcm_enabled_rfc == true) &&
-            (rfc_param->tcm_open_2g_rfc == false) && (rfc_param->tcm_open_5g_rfc == false) &&
-            (rfc_param->tcm_open_6g_rfc == false) &&
-            (rfc_param->tcm_secure_2g_rfc == false) &&
-            (rfc_param->tcm_secure_5g_rfc == false) &&
-            (rfc_param->tcm_secure_6g_rfc == false)) {
+            if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
             rfc_param->tcm_open_2g_rfc = true;
             rfc_param->tcm_open_5g_rfc = true;
             rfc_param->tcm_open_6g_rfc = true;
