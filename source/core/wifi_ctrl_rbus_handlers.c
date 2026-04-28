@@ -455,12 +455,12 @@ int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
     return RETURN_OK;
 }
 /*
-MLO ready notify_LM_Lite - CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
-b2:6c:4a:2f:0d:e5[mld MAC],Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, mld_enable
-
-b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, 1 - MLO
-b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.1],[-38],1, 0 - Non MLO
-*/
+ * MLO msg format - <mac>, [AP-Link-List], [SSID-List], [RSSI-List], <Active>, <MLO_Enable>
+ * - Link-lists must use ";" as the delimiter between entries.
+ * Example:
+ * b2:6c:4a:2f:0d:e5,[Device.WiFi.AccessPoint.17.AssociatedDevice.1;Device.WiFi.AccessPoint.2.AssociatedDevice.3],[Device.WiFi.SSID.17;Device.WiFi.SSID.2],[-38;-15],1, 1 - MLO
+ * b2:6c:4a:2f:0d:e5,[Device.WiFi.AccessPoint.17.AssociatedDevice.1],[Device.WiFi.SSID.1],[-38],1, 0 - Non MLO
+ */
 static int notify_LM_Lite_host(wifi_ctrl_t *ctrl, LM_wifi_host_t *host, bool sync)
 {
     bus_error_t rc;
@@ -475,15 +475,19 @@ static int notify_LM_Lite_host(wifi_ctrl_t *ctrl, LM_wifi_host_t *host, bool syn
         ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
         (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0);
 #else /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
-    snprintf(str, sizeof(str), "%s,%s,[%s],[%s],%d,%d", (char *)host->phyAddr,
+    snprintf(str, sizeof(str), "%s,[%s],[%s],[%s],%d,%d", (char *)host->phyAddr,
         ('\0' != host->AssociatedDevice[0]) ?
             (char *)host->AssociatedDevice :
             "NULL",
         ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
         (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0, host->mld_sta);
 #endif /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
+    //Stano
+    {FILE *out = fopen("/tmp/log12.txt", "a");
+        fprintf(out, " notify_LM_Lite_host: sync:%d - %s\n", sync, str); fflush(out);fclose(out);}
 
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
+    rc = RETURN_OK; //Stano. Test
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__, __LINE__,
             rc);

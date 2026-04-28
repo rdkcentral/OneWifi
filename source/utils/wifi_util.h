@@ -174,7 +174,8 @@ extern struct wifiCountryEnumStrMapMember wifiCountryMapMembers[MAX_WIFI_COUNTRY
 
 /* MAX_RSSI_STR_LEN_PER_RADIO 4 for RSSI value and 1 for separator */
 #define MAX_RSSI_STR_LEN_PER_RADIO 5
-
+//Stano
+#define CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
 typedef struct {
     unsigned char ssid[LM_GEN_STR_SIZE];
     unsigned char AssociatedDevice[LM_GEN_STR_SIZE];
