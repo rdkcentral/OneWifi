@@ -173,6 +173,8 @@ typedef struct {
 typedef struct kick_details {
     char *kick_list;
     int vap_index;
+    int original_filter_mode;
+    bool filter_mode_changed;
 }kick_details_t;
 
 typedef struct {

@@ -354,6 +354,7 @@ typedef enum {
     mon_stats_type_associated_device_stats,
     mon_stats_type_radio_diagnostic_stats,
     mon_stats_type_radio_temperature,
+    mon_stats_type_vap_stats,
     mon_stats_type_max
 } wifi_mon_stats_type_t;
 
@@ -1022,6 +1023,7 @@ typedef struct {
     bool            connection_authorized;
     bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
+    struct timespec timestamp;
 
     /* wifi7 client specific data */
     bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */
@@ -1306,10 +1308,10 @@ typedef struct {
 
 typedef struct {
     mac_addr_t bssid;
-    int time_delta;
-    int est_mac_rate_down;
-    int est_mac_rate_up;
-    int rcpi;
+    unsigned int time_delta;
+    unsigned int est_mac_rate_down;
+    unsigned int est_mac_rate_up;
+    unsigned int rcpi;
 } assoc_sta_link_metrics_data_t;
 
 typedef struct {
@@ -1386,6 +1388,14 @@ typedef struct {
 } channel_scan_request_t;
 
 typedef struct {
+    bssid_t    bssid;
+    unsigned char assoc_control;
+    unsigned short validity_period;
+    unsigned char count;
+    mac_address_t sta_mac;
+} client_assoc_ctrl_req_t;
+
+typedef struct {
     bssid_t bssid;
     ssid_t ssid;
     CHAR signal_strength;
@@ -1417,13 +1427,13 @@ typedef struct {
 
 typedef struct {
     mac_addr_t sta_mac;
-    int bytes_sent;
-    int bytes_rcvd;
-    int packets_sent;
-    int packets_rcvd;
-    int tx_packtes_errs;
-    int rx_packtes_errs;
-    int retrans_cnt;
+    ULONG bytes_sent;
+    ULONG bytes_rcvd;
+    ULONG packets_sent;
+    ULONG packets_rcvd;
+    ULONG tx_packtes_errs;
+    ULONG rx_packtes_errs;
+    ULONG retrans_cnt;
 } assoc_sta_traffic_stats_t;
 
 typedef struct {
