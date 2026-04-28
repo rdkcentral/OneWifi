@@ -42,7 +42,7 @@ ACLOCAL_AMFLAGS = -I m4
 hardware_platform = i686-linux-gnu
 
 bin_PROGRAMS = onewifi_component_test_app
-onewifi_component_test_app_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/source/core -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/./lib/ovsdb -I$(top_srcdir)/./lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/./lib/json_util/ -I$(top_srcdir)/source/dml/dml_webconfig -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sta_mgr -I$(top_srcdir)/source/apps/cac -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/whix -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/platform/rdkb -I$(top_srcdir)/source/platform/common -I$(top_srcdir)/source/ccsp -I$(top_srcdir)/source/dml/rdkb    -I$(top_srcdir)/source/apps/linkquality  -I$(top_srcdir)/source/utils/math_utils/inc/  -I$(top_srcdir)/source/utils/quality_mgr/inc/
+onewifi_component_test_app_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/source/core -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/./lib/ovsdb -I$(top_srcdir)/./lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/./lib/json_util/ -I$(top_srcdir)/source/dml/dml_webconfig -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sta_mgr -I$(top_srcdir)/source/apps/cac -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/whix -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/platform/rdkb -I$(top_srcdir)/source/platform/common -I$(top_srcdir)/source/ccsp -I$(top_srcdir)/source/dml/rdkb    -I$(top_srcdir)/source/apps/linkquality  -I$(top_srcdir)/source/utils/math_utils/inc/ 
 
 onewifi_component_test_app_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
 
@@ -69,12 +69,3 @@ wifi_events_consumer_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_C
 wifi_events_consumer_SOURCES = wifievents_consumer_sample.c
 wifi_events_consumer_LDFLAGS = -lrbus
 
-bin_PROGRAMS += wifi_send_multiap
-wifi_send_multiap_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats
-wifi_send_multiap_SOURCES = wifievents_send_multiap.c
-wifi_send_multiap_LDFLAGS = -lrbus
-
-bin_PROGRAMS += wifi_recv_multiap
-wifi_recv_multiap_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats
-wifi_recv_multiap_SOURCES = wifievents_recv_multiap.c
-wifi_recv_multiap_LDFLAGS = -lrbus

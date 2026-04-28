@@ -40,28 +40,16 @@
 
 /* EXT(XB8): GW MAC learned from incoming autoconf_search; initially zero until first poll received */
 
+#if 0
 static  int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, 
     char *interface_name,stats_arg_t *stats, int len,ext_qualitymgr_type_t event);
 
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifname);
+#endif
 
 //Here the stats has to be sent to GW using socket
 static int periodic_caffinity_stats_update_ext(stats_arg_t *stats, int len)
 {
-    unsigned char msg[MAX_EM_BUFF_SZ];
-    wifi_util_dbg_print(WIFI_APPS, "%s:%d len=%d\n",__func__, __LINE__, len);
-    /* EXT(XB8): backhaul interface is brlan0; for RPI extender: change to "eth0" */
-    char *ifname = "brlan0";
-    int frame_len = 0;
-    uint8_t g_gw_mac[6] = {0};
-    get_gw_mac(g_gw_mac);
-    if (is_zero_mac(g_gw_mac))  {   
-	wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping periodic_caffinity\n",
-         __func__, __LINE__);
-        return 0;
-    }
-    frame_len = create_autoconfig_resp_msg(msg, g_gw_mac, ifname, stats, len, ext_qualitymgr_periodic_caffinity);
-    send_frame(msg, frame_len, false, ifname);
     return 0;
 }
 //This function is not needed in extender this is specific to project Ignite
@@ -76,13 +64,6 @@ static void unregister_station_mac_ext(const char *str)
 }
 static int start_link_metrics_ext()
 {
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    pthread_t tid;
-    pthread_attr_t attr;
-
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_create(&tid, &attr, run_extender_1905_thread, NULL);
     return 0;
 }
 static int stop_link_metrics_ext()
@@ -93,20 +74,6 @@ static int stop_link_metrics_ext()
 //Here the stats has to be sent to GW using 1905.1 frame
 static int disconnect_link_stats_ext(stats_arg_t *stats)
 {
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    unsigned char msg[MAX_EM_BUFF_SZ];
-    /* EXT(XB8): backhaul interface is brlan0; for RPI extender: change to "eth0" */
-    char *ifname = "brlan0";
-    int frame_len = 0;
-    uint8_t g_gw_mac[6] = {0};
-    get_gw_mac(g_gw_mac);
-    if (is_zero_mac(g_gw_mac))  {   
-        wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping disconnect_link_stats\n",
-         __func__, __LINE__);
-        return 0;
-    }
-    frame_len = create_autoconfig_resp_msg(msg, g_gw_mac, ifname, stats, 1, ext_qualitymgr_disconnect_link_stats);
-    send_frame(msg, frame_len, false, ifname);
     return 0;
 }
 
@@ -119,39 +86,11 @@ static int reinit_link_metrics_ext(server_arg_t *arg)
 //Here the stats has to be sent to GW using 1905.1 frame
 static int remove_link_stats_ext(stats_arg_t *stats)
 {
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    unsigned char msg[MAX_EM_BUFF_SZ];
-    /* EXT(XB8): backhaul interface is brlan0; for RPI extender: change to "eth0" */
-    char *ifname = "brlan0";
-    int frame_len = 0;
-    uint8_t g_gw_mac[6] = {0};
-    get_gw_mac(g_gw_mac);
-    if (is_zero_mac(g_gw_mac))  {   
-        wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping remove_link_stats\n",
-         __func__, __LINE__);
-        return 0;
-    }
-    frame_len = create_autoconfig_resp_msg(msg, g_gw_mac, ifname, stats, 1, ext_qualitymgr_remove_link_stats);
-    send_frame(msg, frame_len, false, ifname);
-    return 0;
+   return 0;
 }
 //Unified extender dispatcher: fills ext_event_type via send_qmgr_data_to_gateway
 static int process_lq_stats_ext(stats_arg_t *stats, int len)
 {
-    unsigned char msg[MAX_EM_BUFF_SZ];
-    /* EXT(XB8): backhaul interface is brlan0; for RPI extender: change to "eth0" */
-    char *ifname = "brlan0";
-    int frame_len = 0;
-    wifi_util_dbg_print(WIFI_APPS, " SOCKET %s:%d len=%d \n", __func__, __LINE__, len);
-    uint8_t g_gw_mac[6] = {0};
-    get_gw_mac(g_gw_mac);
-    if (is_zero_mac(g_gw_mac))  {   
-        wifi_util_error_print(WIFI_APPS, " SOCKET %s:%d GW MAC not yet learned, skipping process_lq_stats\n",
-          __func__, __LINE__);
-        return 0;
-    }
-    frame_len = create_autoconfig_resp_msg(msg, g_gw_mac, ifname, stats, len, ext_qualitymgr_lq_affinity);
-    send_frame(msg, frame_len, false, ifname);
     return 0;
 }
 //This function is not needed in extender this is specific to the Gateway
@@ -178,7 +117,7 @@ static int start_link_metrics_gw()
 {
     wifi_util_info_print(WIFI_APPS, " %s:%d Stopping DHCP sniffer (GW mode)\n", __func__, __LINE__);
     dhcp_sniffer_start();
-    start_link_metrics();    
+    //start_link_metrics();    
     return 0;
 }
 
@@ -187,15 +126,62 @@ static int stop_link_metrics_gw()
 {
     wifi_util_info_print(WIFI_APPS, " %s:%d Stopping DHCP sniffer (GW mode)\n", __func__, __LINE__);
     dhcp_sniffer_stop();
-    stop_link_metrics();
+    //stop_link_metrics();
     return 0;
 }
 //GW-only dispatcher: calls add_stats_metrics or periodic_caffinity_stats_update based on enum
 static int process_lq_stats_gw(stats_arg_t *stats, int len)
 {
     wifi_util_dbg_print(WIFI_APPS, "%s:%d len=%d \n", __func__, __LINE__, len);
-    add_stats_metrics(stats, len);
-    periodic_caffinity_stats_update(stats, len);
+    //add_stats_metrics(stats, len);
+   // periodic_caffinity_stats_update(stats, len);
+    return 0;
+}
+//Here the stats has to be sent to linkquality thru unix sockets
+static int periodic_caffinity_stats_update_gw(stats_arg_t *stats, int len)
+{
+    return 0;
+}
+//Here the stats has to be sent to linkquality thru unix sockets
+static void register_station_mac_gw(const char *str) 
+{ 
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
+}
+//Here the stats has to be sent to linkquality thru unix sockets
+static void unregister_station_mac_gw(const char *str)
+{ 
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
+}
+//Here the stats has to be sent to linkquality thru unix sockets
+static int disconnect_link_stats_gw(stats_arg_t *stats)
+{
+    return 0;
+}
+
+static int reinit_link_metrics_gw(server_arg_t *arg)
+{
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
+    return 0;
+}
+//Here the stats has to be sent to linkquality thru unix sockets
+static int remove_link_stats_gw(stats_arg_t *stats)
+{
+   return 0;
+}
+
+static char* get_link_metrics_gw() 
+{
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
+    return NULL;
+}
+static int set_quality_flags_gw(quality_flags_t *flag)
+{
+   return 0;
+}
+
+static int get_quality_flags_gw(quality_flags_t *flag)
+{
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
     return 0;
 }
 
@@ -244,30 +230,20 @@ wifi_lq_descriptor_t* get_lq_descriptor()
             desc.process_lq_stats_fn = process_lq_stats_ext;
         } else {
             // Use Library calls in EasyMesh,Ignite and GW mode
-            wifi_util_error_print(WIFI_CTRL, "%s:%d\n", __func__, __LINE__);
-            extern int periodic_caffinity_stats_update(stats_arg_t *stats,int len);
-            extern void register_station_mac(const char *str);
-            extern void unregister_station_mac(const char *str);
-            extern int start_link_metrics();
-            extern int stop_link_metrics();
-            extern int disconnect_link_stats(stats_arg_t *stats);
-            extern int reinit_link_metrics(server_arg_t *arg);
-            extern int remove_link_stats(stats_arg_t *stats);
-            extern char* get_link_metrics();
-            extern int set_quality_flags(quality_flags_t *flag);
-            extern int get_quality_flags(quality_flags_t *flag);
 
-            desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update;
-            desc.register_station_mac_fn = register_station_mac;
-            desc.unregister_station_mac_fn = unregister_station_mac;
+            wifi_util_error_print(WIFI_CTRL, "%s:%d\n", __func__, __LINE__);
+
+            desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_gw;
+            desc.register_station_mac_fn = register_station_mac_gw;
+            desc.unregister_station_mac_fn = unregister_station_mac_gw;
             desc.start_link_metrics_fn = start_link_metrics_gw;
             desc.stop_link_metrics_fn = stop_link_metrics_gw;
-            desc.disconnect_link_stats_fn = disconnect_link_stats;
-            desc.reinit_link_metrics_fn = reinit_link_metrics;
-            desc.remove_link_stats_fn = remove_link_stats;
-            desc.get_link_metrics_fn = get_link_metrics;
-            desc.set_quality_flags_fn = set_quality_flags;
-            desc.get_quality_flags_fn = get_quality_flags;
+            desc.disconnect_link_stats_fn = disconnect_link_stats_gw;
+            desc.reinit_link_metrics_fn = reinit_link_metrics_gw;
+            desc.remove_link_stats_fn = remove_link_stats_gw;
+            desc.get_link_metrics_fn = get_link_metrics_gw;
+            desc.set_quality_flags_fn = set_quality_flags_gw;
+            desc.get_quality_flags_fn = get_quality_flags_gw;
             desc.process_lq_stats_fn = process_lq_stats_gw;
         }
 
@@ -303,6 +279,7 @@ static int send_frame(unsigned char *buff, unsigned int len, bool multicast,  ch
     return ret;
  }
 
+#if 0
 int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name,stats_arg_t *stats, int num_devs,ext_qualitymgr_type_t event)
 {
     unsigned short msg_id = multiap_msg_type_autoconf_resp;
@@ -381,7 +358,7 @@ int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *in
 
     return len;
 }
-
+#endif
 /* -------------------------------------------------------------------------
  * EXT side: listener thread that learns the GW MAC from incoming
  * autoconf_search (CMDU type 0x0007) frames received on the backhaul iface.
@@ -442,7 +419,7 @@ void* run_extender_1905_thread(void *arg)
         }
 
         memcpy(g_gw_mac, raw->src, sizeof(mac_address_t));
-	store_gw_mac(g_gw_mac);
+//	store_gw_mac(g_gw_mac);
         uint8_mac_to_string_mac(g_gw_mac, gw_mac_str);
         wifi_util_info_print(WIFI_APPS,
             " 1905 EXT %s:%d received autoconf_search — stored GW MAC: %s\n",
@@ -509,6 +486,7 @@ int lq_send_autoconf_search(const char *ifname)
  * ------------------------------------------------------------------------- */
 void lq_handle_1905_frame(const uint8_t *buf, ssize_t len)
 {
+#if 0
     if (len < (ssize_t)(sizeof(multiap_raw_hdr_t) + sizeof(multiap_cmdu_t))) {
         wifi_util_dbg_print(WIFI_APPS, " 1905 GW %s:%d frame too short len=%zd\n",
             __func__, __LINE__, len);
@@ -601,8 +579,10 @@ void lq_handle_1905_frame(const uint8_t *buf, ssize_t len)
                 " 1905 GW %s:%d unknown event=%d\n",
                 __func__, __LINE__, (int)event);
             break;
+
     }
 
     free(lq_buf);
+#endif
 }
 

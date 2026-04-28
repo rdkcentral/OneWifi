@@ -1935,7 +1935,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
     }
     #endif
-        run_web_server();
+   //     run_web_server();
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);

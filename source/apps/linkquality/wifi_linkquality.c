@@ -391,7 +391,8 @@ static void *sniffer_thread_func(void *arg)
                     mac_to_key(dhcp->chaddr, mac_key);
                     
                     // Check if this client is connected using caffinity
-                    if (!is_client_connected(mac_key)) {
+                    //if (!is_client_connected(mac_key)) {
+                   if (1) {
                         // Client not connected - skip processing entirely
                         wifi_util_dbg_print(WIFI_CTRL, " DHCP %s:%d Client MAC %s NOT connected, SKIPPING packet (early filter)\n", 
                             __func__, __LINE__, mac_key);
@@ -663,7 +664,7 @@ int link_quality_register_station(wifi_app_t *apps, wifi_event_t *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if ( ctrl->rf_status_down) {
         get_lq_descriptor()->register_station_mac_fn(str);
-        qmgr_register_score_callback(publish_station_score);
+        //qmgr_register_score_callback(publish_station_score);
     }
     return RETURN_OK;
 }
@@ -743,7 +744,7 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
     /* qmgr callbacks and max-SNR setup run on both GW and Extender */
     if (ctrl->network_mode == rdk_dev_mode_type_em_node
       || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        qmgr_register_batch_callback(publish_qmgr_subdoc);
+        //qmgr_register_batch_callback(publish_qmgr_subdoc);
         wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
             __func__, __LINE__, ctrl->network_mode);
     }
@@ -779,8 +780,8 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
 
     wifi_util_info_print(WIFI_APPS, "%s:%d %d:%d:%d\n", __func__, __LINE__,
         max_snr.radio_2g_max_snr, max_snr.radio_5g_max_snr, max_snr.radio_6g_max_snr);
-    set_max_snr_radios(&max_snr);
-    qmgr_register_max_snr_callback(update_radio_max_snr_observance);
+    //set_max_snr_radios(&max_snr);
+    //qmgr_register_max_snr_callback(update_radio_max_snr_observance);
     return RETURN_OK;
 }
 
