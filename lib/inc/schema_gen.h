@@ -96,6 +96,7 @@
         PJS_OVS_INT(server_retries)\
         PJS_OVS_BOOL(wpa3_transition_disable)\
         PJS_OVS_INT(security_mode_new)\
+        PJS_OVS_INT(encryption_method_new)\
     )
 
 #define PJS_SCHEMA_Wifi_VAP_Config \
@@ -2062,7 +2063,8 @@
     COLUMN(identity_req_retry_interval)\
     COLUMN(server_retries)\
     COLUMN(wpa3_transition_disable)\
-    COLUMN(security_mode_new)
+    COLUMN(security_mode_new)\
+    COLUMN(encryption_method_new)
 
 #define SCHEMA__Wifi_VAP_Config "Wifi_VAP_Config"
 #define SCHEMA_COLUMN__Wifi_VAP_Config(COLUMN) \
@@ -3450,6 +3452,7 @@
 #define SCHEMA__Wifi_Security_Config__server_retries "server_retries"
 #define SCHEMA__Wifi_Security_Config__wpa3_transition_disable "wpa3_transition_disable"
 #define SCHEMA__Wifi_Security_Config__security_mode_new "security_mode_new"
+#define SCHEMA__Wifi_Security_Config__encryption_method_new "encryption_method_new"
 
 #define SCHEMA__Wifi_VAP_Config__vap_name "vap_name"
 #define SCHEMA__Wifi_VAP_Config__radio_name "radio_name"
