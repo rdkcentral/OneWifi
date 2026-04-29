@@ -454,13 +454,7 @@ int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
     }
     return RETURN_OK;
 }
-/*
-MLO ready notify_LM_Lite - CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
-b2:6c:4a:2f:0d:e5[mld MAC],Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, mld_enable
 
-b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, 1 - MLO
-b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.1],[-38],1, 0 - Non MLO
-*/
 static int notify_LM_Lite_host(wifi_ctrl_t *ctrl, LM_wifi_host_t *host, bool sync)
 {
     bus_error_t rc;
@@ -475,7 +469,7 @@ static int notify_LM_Lite_host(wifi_ctrl_t *ctrl, LM_wifi_host_t *host, bool syn
         ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
         (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0);
 #else /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
-    snprintf(str, sizeof(str), "%s,%s,[%s],[%s],%d,%d", (char *)host->phyAddr,
+    snprintf(str, sizeof(str), "%s,[%s],[%s],[%s],%d,%d", (char *)host->phyAddr,
         ('\0' != host->AssociatedDevice[0]) ?
             (char *)host->AssociatedDevice :
             "NULL",
