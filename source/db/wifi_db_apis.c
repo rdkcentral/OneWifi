@@ -8369,13 +8369,13 @@ void init_wifidb_data()
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         } else {
             if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
-            rfc_param->tcm_open_2g_rfc = true;
-            rfc_param->tcm_open_5g_rfc = true;
-            rfc_param->tcm_open_6g_rfc = true;
-            rfc_param->tcm_secure_2g_rfc = true;
-            rfc_param->tcm_secure_5g_rfc = true;
-            rfc_param->tcm_secure_6g_rfc = true;
-            update_rfc_config = true;
+                rfc_param->tcm_open_2g_rfc = true;
+                rfc_param->tcm_open_5g_rfc = true;
+                rfc_param->tcm_open_6g_rfc = true;
+                rfc_param->tcm_secure_2g_rfc = true;
+                rfc_param->tcm_secure_5g_rfc = true;
+                rfc_param->tcm_secure_6g_rfc = true;
+                update_rfc_config = true;
             }
         }
         if (update_rfc_config == true) {
