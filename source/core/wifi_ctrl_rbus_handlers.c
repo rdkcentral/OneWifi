@@ -1715,7 +1715,7 @@ bus_error_t get_ignite_link_quality_score(char *event_name, raw_data_t *p_data,
 	}
 
 	snprintf(str, sizeof(str), "%lf", wifi_app->data.u.linkquality.ignite.last_score);
-	wifi_util_error_print(WIFI_CTRL, "%s:%d Score updated as %s\n", __func__, __LINE__, str);
+	wifi_util_dbg_print(WIFI_CTRL, "%s:%d Score updated as %s\n", __func__, __LINE__, str);
 	str_size = strlen(str) + 1;
 	p_data->data_type = bus_data_type_string;
 	p_data->raw_data.bytes = malloc(str_size);
