@@ -92,6 +92,7 @@
 #define ONEWIFI_DB_VERSION_IGNITE_FLAG 100045
 #define ONEWIFI_DB_VERSION_ENCR_GCMP_FLAG 100048
 #define ONEWIFI_DB_VERSION_ENCR_NEW_FLAG 100049
+#define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100050
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -8276,6 +8277,7 @@ void init_wifidb_data()
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
     ignite_config_t *ignite_cfg;
     char country_code[COUNTRY_CODE_LEN] = {0};
+	bool update_rfc_config = false;
 
     wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
@@ -8365,6 +8367,19 @@ void init_wifidb_data()
         dbwritten = true;
         if (wifidb_get_rfc_config(0,rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+        } else {
+            if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
+                rfc_param->tcm_open_2g_rfc = true;
+                rfc_param->tcm_open_5g_rfc = true;
+                rfc_param->tcm_open_6g_rfc = true;
+                rfc_param->tcm_secure_2g_rfc = true;
+                rfc_param->tcm_secure_5g_rfc = true;
+                rfc_param->tcm_secure_6g_rfc = true;
+                update_rfc_config = true;
+            }
+        }
+        if (update_rfc_config == true) {
+            wifidb_update_rfc_config(0, rfc_param);
         }
 #ifdef ALWAYS_ENABLE_AX_2G
         wifidb_update_rfc_config(0, rfc_param);
