@@ -1705,7 +1705,7 @@ bus_error_t get_ignite_link_quality_score(char *event_name, raw_data_t *p_data,
 	unsigned int str_size = 0;
 	if (wifi_app == NULL) {
 		wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer\n", __func__, __LINE__);
-		return;
+        	return bus_error_invalid_input;
 	}
 
 	if (event_name == NULL) {
