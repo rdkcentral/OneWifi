@@ -538,62 +538,86 @@ void rotate_and_write_CSIData(mac_address_t sta_mac, wifi_csi_data_t *csi)
 {
 #define MB(x) ((long int)(x) << 20)
 #define CSI_FILE "/tmp/CSI.bin"
-#define CSI_TMP_FILE "/tmp/CSI_tmp.bin"
-    WIFI_EVENT_CONSUMER_DGB("Enter %s: %d\n", __FUNCTION__, __LINE__);
-    char filename[] = CSI_FILE;
-    char filename_tmp[] = CSI_TMP_FILE;
-    FILE *csifptr;
-    FILE *csifptr_tmp;
+#define CSI_TMP_TEMPLATE "/tmp/CSI_tmp.XXXXXX"
+
+    WIFI_EVENT_CONSUMER_DGB("Enter %s\n", __FUNCTION__);
+ 
+    FILE *csifptr = NULL;
+    FILE *csifptr_tmp = NULL;
+    int tmp_fd = -1;
+    char tmp_filename[] = CSI_TMP_TEMPLATE;
+
     struct stat st;
     mac_address_t tmp_mac;
-    wifi_csi_matrix_t tmp_csi_matrix;
     wifi_frame_info_t tmp_frame_info;
+    wifi_csi_matrix_t tmp_csi_matrix;
 
-    if (csi == NULL)
-        return;
-    csifptr = fopen(filename, "r");
-    csifptr_tmp = fopen(filename_tmp, "w");
-    if (csifptr != NULL) {
-        // get the size of the file
-        stat(filename, &st);
-        if (st.st_size > MB(1)) // if file size is greate than 1 mb
-        {
-            mac_address_t tmp_mac;
-            wifi_frame_info_t tmp_frame_info;
-            wifi_csi_matrix_t tmp_csi_matrix;
+    /* Open existing CSI file (optional) */
+    csifptr = fopen(CSI_FILE, "r");
 
-            fread(&tmp_mac, sizeof(mac_address_t), 1, csifptr);
-            fread(&tmp_frame_info, sizeof(wifi_frame_info_t), 1, csifptr);
-            fread(&tmp_csi_matrix, sizeof(wifi_csi_matrix_t), 1, csifptr);
-        }
-        // copy rest of the content in to the temp file
-        while (csifptr != NULL && fread(&tmp_mac, sizeof(mac_address_t), 1, csifptr)) {
-            fread(&tmp_frame_info, sizeof(wifi_frame_info_t), 1, csifptr);
-            fread(&tmp_csi_matrix, sizeof(wifi_csi_matrix_t), 1, csifptr);
-            fwrite(&tmp_mac, sizeof(mac_address_t), 1, csifptr_tmp);
-            fwrite(&tmp_frame_info, sizeof(wifi_frame_info_t), 1, csifptr_tmp);
-            fwrite(&tmp_csi_matrix, sizeof(wifi_csi_matrix_t), 1, csifptr_tmp);
+    /* Secure temp file */
+    tmp_fd = mkstemp(tmp_filename);
+    if (tmp_fd < 0) {
+        WIFI_EVENT_CONSUMER_DGB("mkstemp failed: %s\n", strerror(errno));
+        goto cleanup;
+    }
+
+    csifptr_tmp = fdopen(tmp_fd, "w");
+    if (!csifptr_tmp) {
+        WIFI_EVENT_CONSUMER_DGB("fdopen failed: %s\n", strerror(errno));
+        goto cleanup;
+    }
+
+    /* Rotate old data if needed */
+    if (csifptr && fstat(fileno(csifptr), &st) == 0 && st.st_size > MB(1)) {
+        /* Drop the oldest record */
+        if (fread(&tmp_mac, sizeof(tmp_mac), 1, csifptr) != 1 ||
+            fread(&tmp_frame_info, sizeof(tmp_frame_info), 1, csifptr) != 1 ||
+            fread(&tmp_csi_matrix, sizeof(tmp_csi_matrix), 1, csifptr) != 1) {
+            WIFI_EVENT_CONSUMER_DGB("Failed to read oldest CSI record\n");
         }
     }
 
-    if (csifptr_tmp != NULL) {
-        fwrite(sta_mac, sizeof(mac_address_t), 1, csifptr_tmp);
-        fwrite(&(csi->frame_info), sizeof(wifi_frame_info_t), 1, csifptr_tmp);
-        fwrite(&(csi->csi_matrix), sizeof(wifi_csi_matrix_t), 1, csifptr_tmp);
+    /* Copy remaining records */
+    if (csifptr) {
+        while (fread(&tmp_mac, sizeof(tmp_mac), 1, csifptr) == 1) {
+            if (fread(&tmp_frame_info, sizeof(tmp_frame_info), 1, csifptr) != 1 ||
+                fread(&tmp_csi_matrix, sizeof(tmp_csi_matrix), 1, csifptr) != 1) {
+                WIFI_EVENT_CONSUMER_DGB("Failed to read CSI record during copy\n");
+                break;
+            }
+
+            fwrite(&tmp_mac, sizeof(tmp_mac), 1, csifptr_tmp);
+            fwrite(&tmp_frame_info, sizeof(tmp_frame_info), 1, csifptr_tmp);
+            fwrite(&tmp_csi_matrix, sizeof(tmp_csi_matrix), 1, csifptr_tmp);
+        }
     }
 
-    if (csifptr != NULL) {
+    /* Append new CSI record */
+    fwrite(sta_mac, sizeof(mac_address_t), 1, csifptr_tmp);
+    fwrite(&csi->frame_info, sizeof(wifi_frame_info_t), 1, csifptr_tmp);
+    fwrite(&csi->csi_matrix, sizeof(wifi_csi_matrix_t), 1, csifptr_tmp);
+
+cleanup:
+    if (csifptr) {
         fclose(csifptr);
-        unlink(filename);
     }
-    if (csifptr_tmp != NULL) {
+
+    if (csifptr_tmp) {
         fclose(csifptr_tmp);
-        rename(filename_tmp, filename);
+        if (rename(tmp_filename, CSI_FILE) < 0) {
+            WIFI_EVENT_CONSUMER_DGB("rename %s -> %s failed: %s\n",
+            tmp_filename, CSI_FILE, strerror(errno));
+            unlink(tmp_filename);
+        }
+    } else if (tmp_fd >= 0) {
+        close(tmp_fd);
+        unlink(tmp_filename);
     }
 
     csi_data_in_json_format(sta_mac, csi);
 
-    WIFI_EVENT_CONSUMER_DGB("Exit %s: %d\n", __FUNCTION__, __LINE__);
+    WIFI_EVENT_CONSUMER_DGB("Exit %s\n", __FUNCTION__);
 }
 
 static void print_csi_data(char *buffer)
