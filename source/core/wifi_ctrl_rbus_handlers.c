@@ -2682,6 +2682,7 @@ bus_error_t get_sta_attribs(char *name, raw_data_t *p_data, bus_user_data_t *use
     (void)user_data;
     unsigned int index, vap_index = 0, i;
     char extension[64] = { 0 };
+    char str[64];
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_vap_info_map_t *vap_map;
     wifi_sta_conn_info_t sta_conn_info;
@@ -2697,9 +2698,14 @@ bus_error_t get_sta_attribs(char *name, raw_data_t *p_data, bus_user_data_t *use
     }
     wifi_util_dbg_print(WIFI_CTRL, "%s bus property=%s\n", __FUNCTION__, name);
 
-    sscanf(name, "Device.WiFi.STA.%d.%s", &index, extension);
+    snprintf(str, sizeof(str), "%s", name);
+    if (sscanf(str, "Device.WiFi.STA.%u.%s", &index, extension) != 2) {
+        wifi_util_error_print(WIFI_CTRL, "%s Invalid property name format %s\n", __FUNCTION__, str);
+        return bus_error_invalid_input;
+    }
+
     if (index > getNumberRadios()) {
-        wifi_util_error_print(WIFI_CTRL, "%s Invalid index %d\n", __FUNCTION__, index);
+        wifi_util_error_print(WIFI_CTRL, "%s Invalid index %u\n", __FUNCTION__, index);
         return bus_error_invalid_operation;
     }
 
