@@ -3087,7 +3087,7 @@ INSTMSMT_PH2 -->
                                         </parameter>
                                         <parameter>
                                             <name>CuThresholdSupported</name>
-                                            <type>string(32)</type>
+                                            <type>string(64)</type>
                                             <syntax>string</syntax>
                                             <writable>false</writable>
                                         </parameter>
