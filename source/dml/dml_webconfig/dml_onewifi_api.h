@@ -29,6 +29,21 @@ extern "C" {
 
 #define WIFI_XHS_LNF_FLAG_FILE_NAME "/nvram/.bcmwifi_xhs_lnf_enabled"
 
+typedef  enum
+_WIFI_TXRATE
+{
+    WIFI_TXRATE_Auto               = 1,
+    WIFI_TXRATE_6M,
+    WIFI_TXRATE_9M,
+    WIFI_TXRATE_12M,
+    WIFI_TXRATE_18M,
+    WIFI_TXRATE_24M,
+    WIFI_TXRATE_36M,
+    WIFI_TXRATE_48M,
+    WIFI_TXRATE_54M
+}
+WIFI_TXRATE, *PWIFI_TXRATE;
+
 typedef struct {
     void    *acl_vap_context;
     queue_t* new_entry_queue[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
@@ -107,6 +122,7 @@ typedef struct {
     INT     MulticastRate;
     INT     MCS;
     ULONG   DFSTimer;
+    WIFI_TXRATE   TxRate;
 } dml_radio_default;
 
 typedef struct {

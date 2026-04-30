@@ -563,16 +563,16 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void set_webconfig_dml_data(char *eventName, bus_data_prop_t *p_data, void *userData)
+void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
     webconfig_subdoc_data_t *data = NULL;
 
     wifi_util_dbg_print(WIFI_DMCLI,"bus event callback Event is %s\r\n",eventName);
-    pTmp = p_data->value.raw_data.bytes;
-    if ((p_data->value.data_type != bus_data_type_string) || (pTmp == NULL)) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->value.data_type);
+    pTmp = p_data->raw_data.bytes;
+    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->data_type);
         return;
     }
 
@@ -1822,6 +1822,7 @@ void update_dml_radio_default() {
         radio_cfg[i].DCSSupported = TRUE;
         radio_cfg[i].ExtensionChannel = 3;
         radio_cfg[i].BasicRate = WIFI_BITRATE_DEFAULT;
+        radio_cfg[i].TxRate = WIFI_TXRATE_Auto;
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;

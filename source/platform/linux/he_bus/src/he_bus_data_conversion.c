@@ -835,8 +835,9 @@ he_bus_error_t process_bus_sub_ex_async_res_event(hash_map_t *p_sub_map, char *c
         if (p_sub_data->sub_cb_table.sub_ex_async_handler != NULL) {
             he_bus_core_dbg_print("%s:%d Async subscribe callback is triggered\r\n", __func__,
                 __LINE__);
+	    void *userData = NULL;
             p_sub_data->sub_cb_table.sub_ex_async_handler(p_obj_data->name,
-                (he_bus_error_t)p_obj_data->data.raw_data.u32, NULL);
+                (he_bus_error_t)p_obj_data->data.raw_data.u32, userData);
         }
         if (p_obj_data->data.data_type == he_bus_data_type_uint32 &&
             p_obj_data->data.raw_data.u32 != he_bus_error_success) {
@@ -893,13 +894,14 @@ he_bus_error_t process_bus_publish_event(hash_map_t *p_sub_map, he_bus_data_obje
         return he_bus_error_invalid_input;
     }
 
+    void *userData = NULL;
     own_sub_element_t *p_sub_data = get_bus_user_cb(p_sub_map, p_obj_data->name);
     if (p_sub_data != NULL) {
         he_bus_core_info_print("%s:%d subscribe callback is found for [%s]\r\n", __func__, __LINE__,
             p_obj_data->name);
         if (p_sub_data->sub_cb_table.sub_handler != NULL) {
             he_bus_core_dbg_print("%s:%d subscribe callback is triggered\r\n", __func__, __LINE__);
-            p_sub_data->sub_cb_table.sub_handler(p_obj_data->name, p_obj_data, NULL);
+            p_sub_data->sub_cb_table.sub_handler(p_obj_data->name, &p_obj_data->data, userData);
         }
     } else {
         he_bus_core_error_print("%s:%d subscribe callback not found for [%s]\r\n", __func__,
