@@ -2299,7 +2299,24 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
         }
         cJSON_AddItemToObject(object, "EHTPPET", eht_ppet_array);
 #endif /* CONFIG_IEEE80211BE */
+        cJSON_AddBoolToObject(object, "Channel Scan Boot Only", wifi_prop->radiocap[i].boot_only);
+        cJSON_AddNumberToObject(object, "Channel Scan Impact", wifi_prop->radiocap[i].scan_impact);
+        cJSON_AddNumberToObject(object, "Channel Scan Min Interval", wifi_prop->radiocap[i].min_scan_interval);
+        cJSON_AddNumberToObject(object, "OpClassChListCount", wifi_prop->radiocap[i].num_op_class_entries);
+        cJSON *op_class_arr = cJSON_CreateArray();
+        for (UINT oc = 0; oc < wifi_prop->radiocap[i].num_op_class_entries && oc < MAX_OP_CLASS_ENTRIES; oc++) {
+            cJSON *oc_obj = cJSON_CreateObject();
+            cJSON_AddNumberToObject(oc_obj, "OpClass", wifi_prop->radiocap[i].op_class_ch_list[oc].op_class);
+            cJSON *ch_arr = cJSON_CreateArray();
+            for (UCHAR ci = 0; ci < wifi_prop->radiocap[i].op_class_ch_list[oc].num_channels; ci++) {
+                cJSON_AddItemToArray(ch_arr, cJSON_CreateNumber(wifi_prop->radiocap[i].op_class_ch_list[oc].channels[ci]));
+            }
+            cJSON_AddItemToObject(oc_obj, "Channels", ch_arr);
+            cJSON_AddItemToArray(op_class_arr, oc_obj);
+        }
+        cJSON_AddItemToObject(object, "OpClassChList", op_class_arr);
     }
+
     return webconfig_error_none;
 }
 

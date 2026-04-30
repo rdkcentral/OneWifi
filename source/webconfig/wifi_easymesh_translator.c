@@ -390,10 +390,200 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
     return webconfig_error_none;
 }
 
+/* Returns true if the given 5 GHz channel number falls in the DFS band
+ * (52-64 U-NII-2A, 100-144 U-NII-2C/2E), per IEEE 802.11-2020 Annex E.
+ */
+static bool is_dfs_channel(unsigned int chan)
+{
+    return ((chan >= 52 && chan <= 64) || (chan >= 100 && chan <= 144));
+}
+
+/* Fill CAC capabilities for one radio. */
+static void fill_cac_cap(const wifi_radio_capabilities_t *hal_radio_cap,
+    const wifi_radio_operationParam_t *oper_param,
+    em_cac_cap_radio_t *cac_cap)
+{
+    em_cac_cap_method_t *dst_method = &cac_cap->cac_methods[0];
+    dst_method->cac_method    = 0;  /* Continuous CAC */
+    dst_method->cac_duration  = 60; /* seconds, regulatory default */
+    dst_method->op_classes_num = 0;
+
+    if (oper_param == NULL) {
+        return;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: filling CAC cap: numOperatingClasses=%u hal_entries=%u DfsEnabled=%d\n",
+        __func__, __LINE__, oper_param->numOperatingClasses,
+        hal_radio_cap ? hal_radio_cap->num_op_class_entries : 0,
+        (int)oper_param->DfsEnabled);
+
+    /* CAC is only applicable to 5 GHz radios (DFS requirement).
+     * Confirm the radio has at least one 5 GHz op class (115-130) before
+     * proceeding; otherwise skip entirely (e.g. 2.4 GHz or 6 GHz radio). */
+    bool is_5ghz_radio = false;
+    for (unsigned int i = 0; i < hal_radio_cap->num_op_class_entries && i < MAXNUMOPERCLASSESPERBAND; i++) {
+        unsigned int opc = hal_radio_cap->op_class_ch_list[i].op_class;
+        if (opc >= 115 && opc <= 130) {
+            is_5ghz_radio = true;
+            break;
+        }
+    }
+    if (!is_5ghz_radio) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: no 5 GHz op classes found, skip CAC cap\n",
+            __func__, __LINE__);
+        return;
+    }
+
+    for (unsigned int i = 0; i < hal_radio_cap->num_op_class_entries && i < MAXNUMOPERCLASSESPERBAND; i++) {
+        if (dst_method->op_classes_num >= EM_MAX_CAC_OP_CLASS_PER_METHOD) {
+            break;
+        }
+
+        const op_class_ch_list_t *oc = &hal_radio_cap->op_class_ch_list[i];
+
+        /* 6 GHz has no DFS/CAC requirement - skip entirely. */
+        if (oc->op_class >= 131 && oc->op_class <= 137) {
+            continue;
+        }
+
+        /* Skip op classes that contain no DFS channels. */
+        bool has_dfs = false;
+        for (unsigned int ci = 0; ci < oc->num_channels; ci++) {
+            if (is_dfs_channel((unsigned int)oc->channels[ci])) {
+                has_dfs = true;
+                break;
+            }
+        }
+        if (!has_dfs) {
+            continue;
+        }
+
+        /* Find matching operatingClasses[] entry by op_class value to get nonOperable[]. */
+        const wifi_operating_classes_t *oper_oc = NULL;
+        for (unsigned int j = 0; j < oper_param->numOperatingClasses; j++) {
+            if (oper_param->operatingClasses[j].opClass == oc->op_class) {
+                oper_oc = &oper_param->operatingClasses[j];
+                break;
+            }
+        }
+
+        /* Enumerate DFS channels minus nonOperable[]. */
+        unsigned char cac_chans[EM_MAX_CAC_CHANS_PER_CLASS];
+        unsigned char cac_count = 0;
+        for (unsigned int ci = 0; ci < oc->num_channels && cac_count < EM_MAX_CAC_CHANS_PER_CLASS; ci++) {
+            if (!is_dfs_channel((unsigned int)oc->channels[ci])) {
+                continue; /* only DFS channels */
+            }
+            bool excluded = false;
+            if (oper_oc != NULL) {
+                for (unsigned int ni = 0; ni < oper_oc->numberOfNonOperChan; ni++) {
+                    if ((unsigned int)oc->channels[ci] == oper_oc->nonOperable[ni]) {
+                        excluded = true;
+                        break;
+                    }
+                }
+            }
+            if (!excluded) {
+                cac_chans[cac_count++] = (unsigned char)oc->channels[ci];
+            }
+        }
+
+        if (cac_count == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: op_class=%u all CAC channels nonOperable, skip\n",
+                __func__, __LINE__, oc->op_class);
+            continue;
+        }
+
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: op_class=%u added to CAC: %u channels\n",
+            __func__, __LINE__, oc->op_class, cac_count);
+
+        em_cac_op_class_t *dst_oc = &dst_method->op_classes[dst_method->op_classes_num];
+        dst_oc->op_class = (unsigned char)oc->op_class;
+        dst_oc->num      = cac_count;
+        memcpy(dst_oc->channels, cac_chans, cac_count);
+        if (cac_count < EM_MAX_CAC_CHANS_PER_CLASS) {
+            memset(dst_oc->channels + cac_count, 0, EM_MAX_CAC_CHANS_PER_CLASS - cac_count);
+        }
+        dst_method->op_classes_num++;
+    }
+
+    if (dst_method->op_classes_num > 0) {
+        cac_cap->cac_methods_num = 1;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: dst_method->op_classes_num: %d and cac_cap->cac_methods_num: %d\n",
+        __func__, __LINE__, dst_method->op_classes_num, cac_cap->cac_methods_num);
+}
+
+/* Fill Channel Scan Capability op class list for one radio.
+ *
+ * Per spec (EasyMesh Channel Scan Capabilities):
+ *   Num_Chan = 0  ->  agent can scan ALL channels in the operating class.
+ *   Num_Chan > 0  ->  agent can only scan the listed channels.
+ *
+ * For each op class in oper_param->operatingClasses[], the full E-4 channel
+ * list is looked up from hal_radio_cap->op_class_ch_list[] and the nonOperable[]
+ * channels are subtracted to produce the explicit scannable channel list.
+ * If the op class is absent from the HAL table, num=0 is emitted
+ * (spec-safe: implies all channels scannable).
+ */
+static void fill_scan_cap_op_classes(const wifi_radio_capabilities_t *hal_radio_cap,
+    const wifi_radio_operationParam_t *oper_param,
+    em_channel_scan_cap_radio_t *ch_scan)
+{
+
+    if (oper_param == NULL) {
+        return;
+    }
+
+    ch_scan->op_classes_num = 0;
+
+    for (unsigned int i = 0; i < hal_radio_cap->num_op_class_entries &&
+         ch_scan->op_classes_num < EM_MAX_OPCLASS; i++) {
+
+        const op_class_ch_list_t *oc = &hal_radio_cap->op_class_ch_list[i];
+        em_scan_cap_op_class_info_t *scan_entry = &ch_scan->op_classes[ch_scan->op_classes_num];
+
+        scan_entry->op_class = (unsigned char)oc->op_class;
+        memset(scan_entry->channels.channel, 0, EM_MAX_CHANNELS_IN_LIST);
+
+        /* Find matching operatingClasses[] entry by op_class value to get nonOperable[]. */
+        const wifi_operating_classes_t *oper_oc = NULL;
+        for (unsigned int j = 0; j < oper_param->numOperatingClasses; j++) {
+            if (oper_param->operatingClasses[j].opClass == oc->op_class) {
+                oper_oc = &oper_param->operatingClasses[j];
+                break;
+            }
+        }
+
+        unsigned char count = 0;
+        for (unsigned int ci = 0; ci < oc->num_channels && count < EM_MAX_CHANNELS_IN_LIST; ci++) {
+            bool excluded = false;
+            if (oper_oc != NULL) {
+                for (unsigned int ni = 0; ni < oper_oc->numberOfNonOperChan; ni++) {
+                    if ((unsigned int)oc->channels[ci] == oper_oc->nonOperable[ni]) {
+                        excluded = true;
+                        break;
+                    }
+                }
+            }
+            if (!excluded) {
+                scan_entry->channels.channel[count++] = oc->channels[ci];
+            }
+        }
+        scan_entry->num = count;
+
+        ch_scan->op_classes_num++;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: ch_scan->op_classes_num: %d\n",
+        __func__, __LINE__, ch_scan->op_classes_num);
+}
 /* Helper function to translate radio capabilities from OneWifi to EasyMesh */
 static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_property_t *wifi_prop,
     int radio_index,
-    em_radio_cap_info_t *cap_info)
+    em_radio_cap_info_t *cap_info,
+    const wifi_radio_operationParam_t *oper_param)
 {
     wifi_radio_capabilities_t *radio_cap;
     em_ap_ht_cap_t  *em_ht_cap;
@@ -680,6 +870,15 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
             wifi7_radio->bsta_str_support, wifi7_radio->bsta_nstr_support, wifi7_radio->bsta_emlsr_support, wifi7_radio->bsta_emlmr_support);
     }
 
+    memcpy(cap_info->ch_scan.ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    cap_info->ch_scan.scan_impact = radio_cap->scan_impact;
+    cap_info->ch_scan.boot_only = radio_cap->boot_only;
+    cap_info->ch_scan.min_scan_interval = radio_cap->min_scan_interval;
+
+    memset(&cap_info->cac_cap, 0, sizeof(em_cac_cap_radio_t));
+    memcpy(cap_info->cac_cap.ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    fill_cac_cap(radio_cap, oper_param, &cap_info->cac_cap);
+
     return webconfig_error_none;
 }
 
@@ -813,7 +1012,10 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %d and mac:%s and radio_index:%d\n", __func__,
                 __LINE__, index, mac_str, radio_index);
 
-            translate_radio_capability_to_easymesh(wifi_prop, radio_index, radio_cap);
+            translate_radio_capability_to_easymesh(wifi_prop, radio_index, radio_cap, oper_param);
+
+            // Populate ch_scan.op_classes[] for Channel Scan Capabilities.
+            fill_scan_cap_op_classes(&wifi_prop->radiocap[index], oper_param, &radio_cap->ch_scan);
         }
     }
 

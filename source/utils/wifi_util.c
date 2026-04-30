@@ -3785,6 +3785,15 @@ bool is_5g_20M_channel_in_dfs(int channel) {
     }
     return FALSE;
 }
+
+/* Returns true if op_class is a 5 GHz DFS operating class.
+ * IEEE 802.11-2020, Table E-4: DFS_50_100_Behavior classes are 118-123.
+ */
+bool is_dfs_op_class(unsigned int op_class)
+{
+    return (op_class >= 118) && (op_class <= 123);
+}
+
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop)
 {
     unsigned int num_radio = get_number_of_radios(wifi_prop);
