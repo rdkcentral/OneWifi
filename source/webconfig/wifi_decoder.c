@@ -5059,19 +5059,15 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 #endif /* CONFIG_IEEE80211BE */
 
         decode_param_allow_empty_bool(object, "Channel Scan Boot Only", value_object, intval);
-        if (intval) {
-            radio_cap->boot_only = (value_object->type & cJSON_True) ? true : false;
-        }
+        radio_cap->boot_only = (intval && (value_object->type & cJSON_True)) ? true : false;
 
         value_object = cJSON_GetObjectItem(object, "Channel Scan Impact");
-        if (value_object != NULL && cJSON_IsNumber(value_object)) {
-            radio_cap->scan_impact = (UCHAR)value_object->valuedouble;
-        }
+        radio_cap->scan_impact = (value_object != NULL && cJSON_IsNumber(value_object))
+                                     ? (UCHAR)value_object->valuedouble : 0;
 
         value_object = cJSON_GetObjectItem(object, "Channel Scan Min Interval");
-        if (value_object != NULL && cJSON_IsNumber(value_object)) {
-            radio_cap->min_scan_interval = (UCHAR)value_object->valuedouble;
-        }
+        radio_cap->min_scan_interval = (value_object != NULL && cJSON_IsNumber(value_object))
+                                           ? (UINT)value_object->valuedouble : 0;
 
         radio_cap->num_op_class_entries = 0;
         value_object = cJSON_GetObjectItem(object, "OpClassChList");

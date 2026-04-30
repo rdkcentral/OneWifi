@@ -365,7 +365,6 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
             em_op_class_info->id.type = em_op_class_type_capability;
             em_op_class_info->id.op_class = oper_param->operatingClasses[i].opClass;
             em_op_class_info->op_class = oper_param->operatingClasses[i].opClass;
-            em_op_class_info->tx_power = oper_param->transmitPower;
             em_op_class_info->max_tx_power = oper_param->operatingClasses[i].maxTxPower;
             em_op_class_info->num_channels = oper_param->operatingClasses[i].numberOfNonOperChan;
             for(int k = 0; k < oper_param->operatingClasses[i].numberOfNonOperChan; k++) {
@@ -382,7 +381,6 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_op_class_info->id.op_class = oper_param->operatingClass;
         em_op_class_info->op_class = oper_param->operatingClass;
         em_op_class_info->channel = oper_param->channel;
-        em_op_class_info->tx_power = oper_param->transmitPower;
         no_of_opclass++;
         proto->set_num_op_class(proto->data_model,no_of_opclass);
     }
@@ -405,7 +403,10 @@ static void fill_cac_cap(const wifi_radio_capabilities_t *hal_radio_cap,
     em_cac_cap_radio_t *cac_cap)
 {
     em_cac_cap_method_t *dst_method = &cac_cap->cac_methods[0];
-    dst_method->cac_method    = 0;  /* Continuous CAC */
+
+    dst_method->cac_method = (hal_radio_cap && hal_radio_cap->zeroDFSSupported)
+                             ? em_cac_method_continuous_dedicated
+                             : em_cac_method_continuous;
     dst_method->cac_duration  = 60; /* seconds, regulatory default */
     dst_method->op_classes_num = 0;
 
@@ -477,7 +478,9 @@ static void fill_cac_cap(const wifi_radio_capabilities_t *hal_radio_cap,
             }
             bool excluded = false;
             if (oper_oc != NULL) {
-                for (unsigned int ni = 0; ni < oper_oc->numberOfNonOperChan; ni++) {
+                unsigned int non_oper_count = oper_oc->numberOfNonOperChan < MAXNUMNONOPERABLECHANNELS
+                                                 ? oper_oc->numberOfNonOperChan : MAXNUMNONOPERABLECHANNELS;
+                for (unsigned int ni = 0; ni < non_oper_count; ni++) {
                     if ((unsigned int)oc->channels[ci] == oper_oc->nonOperable[ni]) {
                         excluded = true;
                         break;
@@ -561,7 +564,9 @@ static void fill_scan_cap_op_classes(const wifi_radio_capabilities_t *hal_radio_
         for (unsigned int ci = 0; ci < oc->num_channels && count < EM_MAX_CHANNELS_IN_LIST; ci++) {
             bool excluded = false;
             if (oper_oc != NULL) {
-                for (unsigned int ni = 0; ni < oper_oc->numberOfNonOperChan; ni++) {
+                unsigned int non_oper_count = oper_oc->numberOfNonOperChan < MAXNUMNONOPERABLECHANNELS
+                                                 ? oper_oc->numberOfNonOperChan : MAXNUMNONOPERABLECHANNELS;
+                for (unsigned int ni = 0; ni < non_oper_count; ni++) {
                     if ((unsigned int)oc->channels[ci] == oper_oc->nonOperable[ni]) {
                         excluded = true;
                         break;
@@ -1016,7 +1021,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             translate_radio_capability_to_easymesh(wifi_prop, radio_index, radio_cap, oper_param);
 
             // Populate ch_scan.op_classes[] for Channel Scan Capabilities.
-            fill_scan_cap_op_classes(&wifi_prop->radiocap[index], oper_param, &radio_cap->ch_scan);
+            fill_scan_cap_op_classes(&wifi_prop->radiocap[radio_index], oper_param, &radio_cap->ch_scan);
         }
     }
 
