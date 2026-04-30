@@ -2500,7 +2500,7 @@ Radio_GetParamUlongValue
     if( AnscEqualString(ParamName, "X_CISCO_COM_TxRate", TRUE))
     {
         /* collect value */
-        *puLong = pcfg->transmitPower;
+        *puLong = rcfg->TxRate;
         return TRUE;
     }
 
