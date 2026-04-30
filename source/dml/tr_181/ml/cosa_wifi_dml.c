@@ -11959,10 +11959,12 @@ WPS_GetParamBoolValue
         return FALSE;
     }
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+#endif
 
     if( AnscEqualString(ParamName, "Enable", TRUE))
     {
@@ -12411,10 +12413,14 @@ WPS_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
         return FALSE;
     }
+
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+#endif
+
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
         if (vapInfo->u.bss_info.wps.enable != bValue) {
@@ -12717,6 +12723,12 @@ WPS_SetParamIntValue
                 __FUNCTION__, __LINE__, instance_number);
             return FALSE;
         }
+#ifdef UWM_EXT_WPS_SUPPORT
+        /* STA interface (extender backhaul): skip private AP validation - WPS client is allowed */
+        if (isVapSTAMesh((UINT)wlanIndex) || pcfg->vap_mode == wifi_vap_mode_sta) {
+            return TRUE;
+        }
+#endif
         if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }
