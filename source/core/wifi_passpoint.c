@@ -1410,7 +1410,7 @@ INT WiFi_DefaultInterworkingConfig(uint8_t vapIndex)
     {
         pCfg->interworking.internetAvailable = 1;
     }
-    strcpy(pCfg->interworking.hessid,"11:22:33:44:55:66");
+    snprintf(pCfg->interworking.hessid, sizeof(pCfg->interworking.hessid), "%s", "11:22:33:44:55:66");
 
     if ( (InstanceNumber == 5) || (InstanceNumber == 6) || (InstanceNumber == 9) || (InstanceNumber == 10) )	//Xfinity hotspot vaps
     {
