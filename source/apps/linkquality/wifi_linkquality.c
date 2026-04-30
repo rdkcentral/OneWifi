@@ -1119,6 +1119,12 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
             struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
             uint16_t status = le_to_host16(frame->u.assoc_resp.status_code);
             wifi_util_info_print(WIFI_CTRL," %s:%d wifi_event_hal_assoc_rsp_frame status_code=%d\n", __func__, __LINE__, status);
+            if (status != 0) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "CAFF %s:%d ASSOC FAILURE MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n",
+                    __func__, __LINE__, affinity_arg->mac_str, sub_event, status,
+                    affinity_arg->vap_index, affinity_arg->radio_index);
+            }
             affinity_arg->event = sub_event;
             affinity_arg->status_code = status;
 
@@ -1220,7 +1226,7 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             break;
         case wifi_event_hal_reassoc_rsp_frame:
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
-            link_quality_apps_assoc_event(apps,true,sub_type,arg);
+            link_quality_apps_assoc_event(apps,false,sub_type,arg);
             break;
      
         case wifi_event_hal_sta_conn_status:

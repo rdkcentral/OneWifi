@@ -27,6 +27,7 @@
 #include "wifi_linkquality_libs.h"
 #include "wifi_linkquality.h"
 #include "run_qmgr.h"
+#include "lq_ipc_sender.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -47,205 +48,315 @@ static  int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst,
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifname);
 #endif
 
-//Here the stats has to be sent to GW using socket
-static int periodic_caffinity_stats_update_ext(stats_arg_t *stats, int len)
+/* -------------------------------------------------------------------------
+ * Helper: returns true when running in Extender mode.
+ * Checks ctrl->network_mode first; falls back to /nvram/config.txt role.
+ * ------------------------------------------------------------------------- */
+static bool is_ext_mode(void)
 {
-    return 0;
-}
-//This function is not needed in extender this is specific to project Ignite
-static void register_station_mac_ext(const char *str) 
-{ 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-}
-//This function is not needed in extender this is specific to the Gateway
-static void unregister_station_mac_ext(const char *str)
-{ 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-}
-static int start_link_metrics_ext()
-{
-    return 0;
-}
-static int stop_link_metrics_ext()
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return 0;
-}
-//Here the stats has to be sent to GW using 1905.1 frame
-static int disconnect_link_stats_ext(stats_arg_t *stats)
-{
-    return 0;
-}
-
-//This function is not needed in extender this is specific to the Gateway
-static int reinit_link_metrics_ext(server_arg_t *arg)
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return 0;
-}
-//Here the stats has to be sent to GW using 1905.1 frame
-static int remove_link_stats_ext(stats_arg_t *stats)
-{
-   return 0;
-}
-//Unified extender dispatcher: fills ext_event_type via send_qmgr_data_to_gateway
-static int process_lq_stats_ext(stats_arg_t *stats, int len)
-{
-    return 0;
-}
-//This function is not needed in extender this is specific to the Gateway
-static char* get_link_metrics_ext() 
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return NULL;
-}
-//This function is not needed in extender this is specific to the Gateway
-static int set_quality_flags_ext(quality_flags_t *flag)
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return 0;
-}
-//This function is not needed in extender this is specific to the Gateway
-static int get_quality_flags_ext(quality_flags_t *flag)
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return 0;
-}
-
-//This function is for GW to start dhcp_sniffer
-static int start_link_metrics_gw()
-{
-    wifi_util_info_print(WIFI_APPS, " %s:%d Stopping DHCP sniffer (GW mode)\n", __func__, __LINE__);
-    dhcp_sniffer_start();
-    //start_link_metrics();    
-    return 0;
-}
-
-//This function is for GW to stop  dhcp_sniffer
-static int stop_link_metrics_gw()
-{
-    wifi_util_info_print(WIFI_APPS, " %s:%d Stopping DHCP sniffer (GW mode)\n", __func__, __LINE__);
-    dhcp_sniffer_stop();
-    //stop_link_metrics();
-    return 0;
-}
-//GW-only dispatcher: calls add_stats_metrics or periodic_caffinity_stats_update based on enum
-static int process_lq_stats_gw(stats_arg_t *stats, int len)
-{
-    wifi_util_dbg_print(WIFI_APPS, "%s:%d len=%d \n", __func__, __LINE__, len);
-    //add_stats_metrics(stats, len);
-   // periodic_caffinity_stats_update(stats, len);
-    return 0;
-}
-//Here the stats has to be sent to linkquality thru unix sockets
-static int periodic_caffinity_stats_update_gw(stats_arg_t *stats, int len)
-{
-    return 0;
-}
-//Here the stats has to be sent to linkquality thru unix sockets
-static void register_station_mac_gw(const char *str) 
-{ 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-}
-//Here the stats has to be sent to linkquality thru unix sockets
-static void unregister_station_mac_gw(const char *str)
-{ 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-}
-//Here the stats has to be sent to linkquality thru unix sockets
-static int disconnect_link_stats_gw(stats_arg_t *stats)
-{
-    return 0;
-}
-
-static int reinit_link_metrics_gw(server_arg_t *arg)
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return 0;
-}
-//Here the stats has to be sent to linkquality thru unix sockets
-static int remove_link_stats_gw(stats_arg_t *stats)
-{
-   return 0;
-}
-
-static char* get_link_metrics_gw() 
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return NULL;
-}
-static int set_quality_flags_gw(quality_flags_t *flag)
-{
-   return 0;
-}
-
-static int get_quality_flags_gw(quality_flags_t *flag)
-{
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    return 0;
-}
-
-static void read_config(char *role, char *ip) {
-    FILE *fp = fopen("/nvram/config.txt", "r");
-    if (!fp) return;
-
-    char line[100];
-    if (fgets(line, sizeof(line), fp)) {
-        sscanf(line, "%[^,],%s", role, ip);
-        ip[strcspn(ip, "\n")] = 0;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        return true;
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d role=%s and ip=%s\n",
-        __func__, __LINE__, role, ip);
-
-    fclose(fp);
+    /* Fallback: read /nvram/config.txt for role (testing between 2 GWs) */
+    FILE *fp = fopen("/nvram/config.txt", "r");
+    if (fp) {
+        char line[100], role[50] = {0};
+        if (fgets(line, sizeof(line), fp)) {
+            sscanf(line, "%[^,]", role);
+        }
+        fclose(fp);
+        if (strcmp(role, "Extender") == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
+/* -------------------------------------------------------------------------
+ * Unified IPC functions – GW sends via AF_UNIX (lq_ipc_send),
+ * EXT is a placeholder for 1905.1/TCP forwarding to the GW.
+ * ------------------------------------------------------------------------- */
+
+/* CAFFINITY_EVENT (msg_type 4) – HAL/DHCP events for caffinity scoring */
+static int periodic_caffinity_stats_update_impl(stats_arg_t *stats, int len)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->CAFFINITY_EVENT] MAC=%s event=%d status_code=%u "
+        "conn_time=%llds disconn_time=%llds dhcp_event=%d dhcp_msg_type=%d\n",
+        __func__, __LINE__, stats->mac_str, stats->event, stats->status_code,
+        (long long)stats->total_connected_time.tv_sec,
+        (long long)stats->total_disconnected_time.tv_sec,
+        stats->dhcp_event, stats->dhcp_msg_type);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward CAFFINITY_EVENT to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send CAFFINITY_EVENT to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    /* GW mode: send via AF_UNIX IPC to linkquality-stats */
+    int rc = lq_ipc_send(LQ_IPC_MSG_CAFFINITY_EVENT, stats,
+                         (uint32_t)len, sizeof(stats_arg_t));
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->CAFFINITY_EVENT] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+    return rc;
+}
+
+/* REGISTER_STA (msg_type 7) – Ignite RF-down station registration */
+static void register_station_mac_impl(const char *str)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->REGISTER_STA] MAC=%s\n", __func__, __LINE__, str);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward REGISTER_STA to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send REGISTER_STA to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return;
+    }
+
+    size_t slen = strlen(str) + 1;
+    int rc = lq_ipc_send(LQ_IPC_MSG_REGISTER_STA, str, 1, slen);
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->REGISTER_STA] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+}
+
+/* UNREGISTER_STA (msg_type 8) – Ignite RF-down station unregistration */
+static void unregister_station_mac_impl(const char *str)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->UNREGISTER_STA] MAC=%s\n", __func__, __LINE__, str);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward UNREGISTER_STA to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send UNREGISTER_STA to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return;
+    }
+
+    size_t slen = strlen(str) + 1;
+    int rc = lq_ipc_send(LQ_IPC_MSG_UNREGISTER_STA, str, 1, slen);
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->UNREGISTER_STA] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+}
+
+/* START_METRICS (msg_type 5) – ctrl startup */
+static int start_link_metrics_impl()
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->START_METRICS]\n", __func__, __LINE__);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward START_METRICS to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send START_METRICS to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    /* GW mode: start local DHCP sniffer + send IPC to linkquality-stats */
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d Starting DHCP sniffer (GW mode)\n", __func__, __LINE__);
+    dhcp_sniffer_start();
+
+    int rc = lq_ipc_send(LQ_IPC_MSG_START_METRICS, NULL, 0, 0);
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->START_METRICS] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+    return rc;
+}
+
+/* STOP_METRICS (msg_type 6) – ctrl shutdown */
+static int stop_link_metrics_impl()
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->STOP_METRICS]\n", __func__, __LINE__);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward STOP_METRICS to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send STOP_METRICS to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    /* GW mode: stop local DHCP sniffer + send IPC to linkquality-stats */
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d Stopping DHCP sniffer (GW mode)\n", __func__, __LINE__);
+    dhcp_sniffer_stop();
+
+    int rc = lq_ipc_send(LQ_IPC_MSG_STOP_METRICS, NULL, 0, 0);
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->STOP_METRICS] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+    return rc;
+}
+
+/* RAPID_DISCONNECT (msg_type 3) – rapid connect/disconnect detection */
+static int disconnect_link_stats_impl(stats_arg_t *stats)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->RAPID_DISCONNECT] MAC=%s status_code=%u "
+        "conn_time=%llds disconn_time=%llds\n",
+        __func__, __LINE__, stats->mac_str, stats->status_code,
+        (long long)stats->total_connected_time.tv_sec,
+        (long long)stats->total_disconnected_time.tv_sec);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward RAPID_DISCONNECT to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send RAPID_DISCONNECT to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    int rc = lq_ipc_send(LQ_IPC_MSG_RAPID_DISCONNECT, stats, 1,
+                         sizeof(stats_arg_t));
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->RAPID_DISCONNECT] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+    return rc;
+}
+
+/* REINIT_METRICS (msg_type 9) – webconfig/EM param update */
+static int reinit_link_metrics_impl(server_arg_t *arg)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->REINIT_METRICS] reporting=%u threshold=%f\n",
+        __func__, __LINE__, arg->reporting, arg->threshold);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward REINIT_METRICS to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send REINIT_METRICS to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    int rc = lq_ipc_send(LQ_IPC_MSG_REINIT_METRICS, arg, 1,
+                         sizeof(server_arg_t));
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->REINIT_METRICS] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+    return rc;
+}
+
+/* DISCONNECT (msg_type 2) – client permanently left sta_map */
+static int remove_link_stats_impl(stats_arg_t *stats)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->DISCONNECT] MAC=%s status_code=%u "
+        "conn_time=%llds disconn_time=%llds\n",
+        __func__, __LINE__, stats->mac_str, stats->status_code,
+        (long long)stats->total_connected_time.tv_sec,
+        (long long)stats->total_disconnected_time.tv_sec);
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward DISCONNECT to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send DISCONNECT to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    int rc = lq_ipc_send(LQ_IPC_MSG_DISCONNECT, stats, 1,
+                         sizeof(stats_arg_t));
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->DISCONNECT] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+    return rc;
+}
+
+/* PERIODIC_STATS (msg_type 1) – periodic monitor poll batch */
+static int process_lq_stats_impl(stats_arg_t *stats, int len)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->PERIODIC_STATS] count=%d\n", __func__, __LINE__, len);
+
+    for (int i = 0; i < len; i++) {
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d  [%d] MAC=%s snr=%d vap=%u status_code=%u "
+            "conn_time=%llds disconn_time=%llds\n",
+            __func__, __LINE__, i,
+            stats[i].mac_str, stats[i].dev.cli_SNR, stats[i].vap_index,
+            stats[i].status_code,
+            (long long)stats[i].total_connected_time.tv_sec,
+            (long long)stats[i].total_disconnected_time.tv_sec);
+    }
+
+    if (is_ext_mode()) {
+        /* TODO: EXT mode – forward PERIODIC_STATS to GW via 1905.1/TCP frame */
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d EXT mode: placeholder – send PERIODIC_STATS to GW via 1905/TCP\n",
+            __func__, __LINE__);
+        return 0;
+    }
+
+    int rc = lq_ipc_send(LQ_IPC_MSG_PERIODIC_STATS, stats,
+                         (uint32_t)len, sizeof(stats_arg_t));
+    wifi_util_info_print(WIFI_APPS,
+        "%s:%d [IPC->PERIODIC_STATS] lq_ipc_send rc=%d\n",
+        __func__, __LINE__, rc);
+    return rc;
+}
+
+/* get_link_metrics – local only, no IPC equivalent */
+static char* get_link_metrics_impl()
+{
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    return NULL;
+}
+
+/* set_quality_flags – local only, no IPC equivalent */
+static int set_quality_flags_impl(quality_flags_t *flag)
+{
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    (void)flag;
+    return 0;
+}
+
+/* get_quality_flags – local only, no IPC equivalent */
+static int get_quality_flags_impl(quality_flags_t *flag)
+{
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    (void)flag;
+    return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * get_lq_descriptor – singleton; wires up unified functions (no separate
+ * _ext/_gw split; mode is checked inside each function).
+ * ------------------------------------------------------------------------- */
 wifi_lq_descriptor_t* get_lq_descriptor()
 {
     static bool initialized = false;
     static wifi_lq_descriptor_t desc;
-    wifi_ctrl_t *ctrl = NULL ;
-    char role[50] = {0};
-    char ip[50] = {0};
 
-    if (!initialized) { 
-        //read_config,role will be only for testing between 2 GW
-        read_config(role, ip);
+    if (!initialized) {
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d initializing LQ descriptor (mode=%s)\n",
+            __func__, __LINE__, is_ext_mode() ? "EXT" : "GW");
 
-        ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-        if (ctrl->network_mode == rdk_dev_mode_type_ext || strcmp(role, "Extender") == 0) {
-            // Use Socket and send it to the GW
-            wifi_util_error_print(WIFI_CTRL, "%s:%d\n", __func__, __LINE__);
-            desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_ext;
-            desc.register_station_mac_fn = register_station_mac_ext;
-            desc.unregister_station_mac_fn = unregister_station_mac_ext;
-            desc.start_link_metrics_fn = start_link_metrics_ext;
-            desc.stop_link_metrics_fn = stop_link_metrics_ext;
-            desc.disconnect_link_stats_fn = disconnect_link_stats_ext;
-            desc.reinit_link_metrics_fn = reinit_link_metrics_ext;
-            desc.remove_link_stats_fn = remove_link_stats_ext;
-            desc.get_link_metrics_fn = get_link_metrics_ext;
-            desc.set_quality_flags_fn = set_quality_flags_ext;
-            desc.get_quality_flags_fn = get_quality_flags_ext;
-            desc.process_lq_stats_fn = process_lq_stats_ext;
-        } else {
-            // Use Library calls in EasyMesh,Ignite and GW mode
-
-            wifi_util_error_print(WIFI_CTRL, "%s:%d\n", __func__, __LINE__);
-
-            desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_gw;
-            desc.register_station_mac_fn = register_station_mac_gw;
-            desc.unregister_station_mac_fn = unregister_station_mac_gw;
-            desc.start_link_metrics_fn = start_link_metrics_gw;
-            desc.stop_link_metrics_fn = stop_link_metrics_gw;
-            desc.disconnect_link_stats_fn = disconnect_link_stats_gw;
-            desc.reinit_link_metrics_fn = reinit_link_metrics_gw;
-            desc.remove_link_stats_fn = remove_link_stats_gw;
-            desc.get_link_metrics_fn = get_link_metrics_gw;
-            desc.set_quality_flags_fn = set_quality_flags_gw;
-            desc.get_quality_flags_fn = get_quality_flags_gw;
-            desc.process_lq_stats_fn = process_lq_stats_gw;
-        }
+        desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_impl;
+        desc.register_station_mac_fn            = register_station_mac_impl;
+        desc.unregister_station_mac_fn          = unregister_station_mac_impl;
+        desc.start_link_metrics_fn              = start_link_metrics_impl;
+        desc.stop_link_metrics_fn               = stop_link_metrics_impl;
+        desc.disconnect_link_stats_fn           = disconnect_link_stats_impl;
+        desc.reinit_link_metrics_fn             = reinit_link_metrics_impl;
+        desc.remove_link_stats_fn               = remove_link_stats_impl;
+        desc.get_link_metrics_fn                = get_link_metrics_impl;
+        desc.set_quality_flags_fn               = set_quality_flags_impl;
+        desc.get_quality_flags_fn               = get_quality_flags_impl;
+        desc.process_lq_stats_fn                = process_lq_stats_impl;
 
         initialized = true;
     }

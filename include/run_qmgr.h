@@ -62,21 +62,6 @@ typedef enum {
 } ext_qualitymgr_type_t;
 
 typedef struct {
-    mac_addr_str_t mac_str;
-    mac_addr_str_t ap_mac_str;
-    unsigned int vap_index;
-    unsigned int radio_index;
-    int channel_utilization;
-    dev_stats_t dev;
-    struct timespec total_connected_time;
-    struct timespec total_disconnected_time;
-    int event;
-    unsigned int status_code;
-    int dhcp_event;
-    int dhcp_msg_type;
-  } stats_arg_t;
-
-typedef struct {
     unsigned int  pkt_sent;
     unsigned  int pkt_recv;
     unsigned int  err_sent;
