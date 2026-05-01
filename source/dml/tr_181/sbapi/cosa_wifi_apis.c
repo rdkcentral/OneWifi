@@ -432,21 +432,34 @@ INT getTxDataRateFromInt(wifi_bitrate_t DataTxRate, char *DataTxRateStr)
     return 0;
 }
 
-INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityName)
+INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityName, size_t bufSize)
 {
     unsigned int i;
+    size_t currentLen;
+
+    if (securityName == NULL || bufSize == 0)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid argument\n", __func__));
+        return 0;
+    }
+
     for (i = 0 ; i < ARRAY_SZ(wifiSecMap) ; ++i)
     {
         if(securityType == wifiSecMap[i].halSecCfgMethod)
         {
-            if (AnscSizeOfString(securityName) != 0)
+            currentLen = AnscSizeOfString(securityName);
+            if (currentLen != 0)
             {
-                strcat(securityName, ",");
-                strcat(securityName, wifiSecMap[i].wifiSecType);
+                if (currentLen >= bufSize)
+                {
+                    CcspWifiTrace(("RDK_LOG_ERROR, %s buffer full, cannot append security type\n", __func__));
+                    break;
+                }
+                snprintf(securityName + currentLen, bufSize - currentLen, ",%s", wifiSecMap[i].wifiSecType);
             }
             else
             {
-                strcpy(securityName, wifiSecMap[i].wifiSecType);
+                snprintf(securityName, bufSize, "%s", wifiSecMap[i].wifiSecType);
             }
        }
     }

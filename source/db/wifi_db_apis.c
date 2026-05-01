@@ -2656,7 +2656,7 @@ extern const char* get_passpoint_json_by_vap_name(const char* vap_name);
 extern const char* get_anqp_json_by_vap_name(const char* vap_name);
 extern void reset_passpoint_json(const char* vap_name);
 extern void reset_anqp_json(const char* vap_name);
-extern int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason);
+extern int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason, size_t len);
 
 void wifidb_reset_macfilter_hashmap()
 {
@@ -5521,10 +5521,12 @@ void *start_wifidb_func(void *arg)
                 get_bus_descriptor()->bus_data_free_fn(&data);
                 return NULL;
             }
-            strncpy(last_reboot_reason, (char *)data.raw_data.bytes, data.raw_data_len);
+            strncpy(last_reboot_reason, (char *)data.raw_data.bytes,
+                sizeof(last_reboot_reason) - 1);
+            last_reboot_reason[sizeof(last_reboot_reason) - 1] = '\0';
             get_bus_descriptor()->bus_data_free_fn(&data);
         } else {
-            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason, sizeof(last_reboot_reason));
         }
         wifi_util_info_print(WIFI_DB, "%s:%d last_reboot_reason:%s \n", __func__, __LINE__,
             last_reboot_reason);
@@ -9756,19 +9758,25 @@ int get_wifi_db_psm_enable_status(bool *wifi_psm_db_enabled)
     return RETURN_OK;
 }
 
-int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason)
+int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason, size_t len)
 {
     char *str = NULL;
     char strValue[256] = {0};
     wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
 
+    if (last_reboot_reason == NULL || len == 0)
+    {
+        wifi_util_error_print(WIFI_MGR, "%s:%d Invalid parameters\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     memset(strValue, 0, sizeof(strValue));
     str = p_ccsp_desc->psm_get_value_fn(LAST_REBOOT_REASON_NAMESPACE, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(last_reboot_reason, str);
+        snprintf(last_reboot_reason, len, "%s", str);
         wifi_util_dbg_print(WIFI_MGR,"str is %s and last_reboot_reason is %s\n", str, last_reboot_reason);
     } else {
-        wifi_util_error_print(WIFI_MGR,"%s:%d last_reboot_reason:%s \r\n", __func__, __LINE__, last_reboot_reason);
+        wifi_util_error_print(WIFI_MGR,"%s:%d PSM get value returned NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -9826,7 +9834,7 @@ int get_all_param_from_psm_and_set_into_db(void)
             }
         } else {
             get_wifi_db_psm_enable_status(&wifi_psm_db_enabled);
-            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason, sizeof(last_reboot_reason));
         }
 
         wifi_util_info_print(WIFI_MGR, "%s psm:%d last_reboot_reason:%s \n", __func__,
