@@ -41,7 +41,8 @@ extern "C" {
 #define WIFI_WEBCONFIG_HOME_VAP         "Device.WiFi.Home"
 #define WIFI_WEBCONFIG_GET_NULL_SUBDOC  "Device.WiFi.Null"
 #define WIFI_WEBCONFIG_IGNITEWIFI "Device.WiFi.Ignite.SubdocData"
-#define WIFI_WEBCONFIG_IGNITE_LQ_THRESHOLD "Device.WiFi.Ignite.LinkQualityThreshold"
+#define WIFI_WEBCONFIG_IGNITE_LQ_THRESHOLD "Device.WiFi.Ignite.LinkQuality.Threshold"
+#define WIFI_WEBCONFIG_IGNITE_LQ_SCORE "Device.WiFi.Ignite.LinkQuality.CurrentScore"
 
 #define DEVICE_WIFI_SSID                "Device.WiFi.SSID.%d.SSID"
 #define DEVICE_WIFI_KEYPASSPHRASE       "Device.WiFi.AccessPoint.%d.Security.X_COMCAST-COM_KeyPassphrase"

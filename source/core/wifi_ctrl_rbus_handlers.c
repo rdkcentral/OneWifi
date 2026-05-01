@@ -1695,6 +1695,42 @@ bus_error_t get_ignitewifi(char *name, raw_data_t *p_data, bus_user_data_t *user
     return bus_error_success;
 }
 
+bus_error_t get_ignite_link_quality_score(char *event_name, raw_data_t *p_data,
+		bus_user_data_t *user_data)
+{
+	(void)user_data;
+	wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+	wifi_app_t *wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_link_quality);
+	char str[64] = { 0 };
+	unsigned int str_size = 0;
+	if (wifi_app == NULL) {
+		wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        	return bus_error_invalid_input;
+	}
+
+	if (event_name == NULL) {
+		wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+				__LINE__);
+		return bus_error_invalid_input;
+	}
+
+	snprintf(str, sizeof(str), "%lf", wifi_app->data.u.linkquality.ignite.last_score);
+	wifi_util_dbg_print(WIFI_CTRL, "%s:%d Score updated as %s\n", __func__, __LINE__, str);
+	str_size = strlen(str) + 1;
+	p_data->data_type = bus_data_type_string;
+	p_data->raw_data.bytes = malloc(str_size);
+	if (p_data->raw_data.bytes == NULL) {
+		wifi_util_error_print(WIFI_CTRL, "%s:%d Memory allocation failed:%d\r\n", __func__,
+				__LINE__, str_size);
+		return bus_error_out_of_resources;
+	}
+	strncpy((char *)p_data->raw_data.bytes, str, str_size);
+	p_data->raw_data_len = str_size;
+
+	return bus_error_success;
+}
+
+
 bus_error_t get_ignite_link_quality_threshold(char *event_name, raw_data_t *p_data,
     bus_user_data_t *user_data)
 {
@@ -4097,6 +4133,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
                                 { WIFI_WEBCONFIG_IGNITE_LQ_THRESHOLD, bus_element_type_method,
                                     { get_ignite_link_quality_threshold, set_ignite_link_quality_threshold, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_WEBCONFIG_IGNITE_LQ_SCORE, bus_element_type_method,
+                                    { get_ignite_link_quality_score, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
                                 { WIFI_BUS_HOTSPOT_UP, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, hotspot_event_handler, NULL}, slow_speed, ZERO_TABLE,
