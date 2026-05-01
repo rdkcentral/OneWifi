@@ -276,9 +276,9 @@ CosaUtilGetLowerLayers
 
                     if ( ulEntryInstanceNum )
                     {
-                        _ansc_sprintf(ucEntryFullPath, "%s%lu", "Device.Ethernet.Interface.", ulEntryInstanceNum);
+                        _ansc_snprintf(ucEntryFullPath, sizeof(ucEntryFullPath), "%s%lu", "Device.Ethernet.Interface.", ulEntryInstanceNum);
 
-                        _ansc_sprintf(ucEntryParamName, "%s%s", ucEntryFullPath, ".Name");
+                        _ansc_snprintf(ucEntryParamName, sizeof(ucEntryParamName), "%s%s", ucEntryFullPath, ".Name");
                
                         ulEntryNameLen = sizeof(ucEntryNameValue);
 
@@ -301,9 +301,9 @@ CosaUtilGetLowerLayers
 
                     if ( ulEntryInstanceNum )
                     {
-                        _ansc_sprintf(ucEntryFullPath, "%s%lu", "Device.IP.Interface.", ulEntryInstanceNum);
+                        _ansc_snprintf(ucEntryFullPath, sizeof(ucEntryFullPath), "%s%lu", "Device.IP.Interface.", ulEntryInstanceNum);
 
-                        _ansc_sprintf(ucEntryParamName, "%s%s", ucEntryFullPath, ".Name");
+                        _ansc_snprintf(ucEntryParamName, sizeof(ucEntryParamName), "%s%s", ucEntryFullPath, ".Name");
 
                         ulEntryNameLen = sizeof(ucEntryNameValue);
 
@@ -336,9 +336,9 @@ CosaUtilGetLowerLayers
                     
                     if (ulEntryInstanceNum)
                     {
-                        _ansc_sprintf(ucEntryFullPath, "%s%lu.", "Device.WiFi.Radio.", ulEntryInstanceNum);
+                        _ansc_snprintf(ucEntryFullPath, sizeof(ucEntryFullPath), "%s%lu.", "Device.WiFi.Radio.", ulEntryInstanceNum);
                         
-                        _ansc_sprintf(ucEntryParamName, "%s%s", ucEntryFullPath, "Name");
+                        _ansc_snprintf(ucEntryParamName, sizeof(ucEntryParamName), "%s%s", ucEntryFullPath, "Name");
                         
                         ulEntryNameLen = sizeof(ucEntryNameValue);
 
@@ -377,9 +377,9 @@ CosaUtilGetLowerLayers
 
                     if ( ulEntryInstanceNum )
                     {
-                        _ansc_sprintf(ucEntryFullPath, "%s%lu", "Device.Ethernet.Link.", ulEntryInstanceNum);
+                        _ansc_snprintf(ucEntryFullPath, sizeof(ucEntryFullPath), "%s%lu", "Device.Ethernet.Link.", ulEntryInstanceNum);
 
-                        _ansc_sprintf(ucEntryParamName, "%s%s", ucEntryFullPath, ".Name");
+                        _ansc_snprintf(ucEntryParamName, sizeof(ucEntryParamName), "%s%s", ucEntryFullPath, ".Name");
                
                         ulEntryNameLen = sizeof(ucEntryNameValue);
 
@@ -410,15 +410,15 @@ CosaUtilGetLowerLayers
 
                     if ( ulEntryInstanceNum )
                     {
-                        _ansc_sprintf(ucEntryFullPath, "%s%lu", "Device.Bridging.Bridge.", ulEntryInstanceNum);
-                        _ansc_sprintf(ucLowerEntryPath, "%s%s", ucEntryFullPath, ".PortNumberOfEntries"); 
+                        _ansc_snprintf(ucEntryFullPath, sizeof(ucEntryFullPath), "%s%lu", "Device.Bridging.Bridge.", ulEntryInstanceNum);
+                        _ansc_snprintf(ucLowerEntryPath, sizeof(ucLowerEntryPath), "%s%s", ucEntryFullPath, ".PortNumberOfEntries");
                         
                         ulEntryPortNum = CosaGetParamValueUlong(ucLowerEntryPath);  
                         CcspTraceInfo(("----------CosaUtilGetLowerLayers, Param:%s,port num:%ld\n",ucLowerEntryPath, ulEntryPortNum));
 
                         for ( j = 1; j<= ulEntryPortNum; j++) {
-                            _ansc_sprintf(ucLowerEntryName, "%s%s%lu", ucEntryFullPath, ".Port.", j);
-                            _ansc_sprintf(ucEntryParamName, "%s%s%lu%s", ucEntryFullPath, ".Port.", j, ".Name");
+                            _ansc_snprintf(ucLowerEntryName, sizeof(ucLowerEntryName), "%s%s%lu", ucEntryFullPath, ".Port.", j);
+                            _ansc_snprintf(ucEntryParamName, sizeof(ucEntryParamName), "%s%s%lu%s", ucEntryFullPath, ".Port.", j, ".Name");
                             CcspTraceInfo(("----------CosaUtilGetLowerLayers, Param:%s,Param2:%s\n", ucLowerEntryName, ucEntryParamName));
                         
                             ulEntryNameLen = sizeof(ucEntryNameValue);
@@ -546,7 +546,7 @@ CosaUtilGetFullPathNameByKeyword
 
             pString--;
             pString[0] = '\0';
-            _ansc_sprintf(ucTmp2, "%s%s", pString2, "NumberOfEntries");                
+            _ansc_snprintf(ucTmp2, sizeof(ucTmp2), "%s%s", pString2, "NumberOfEntries");
             pString[0] = '.';
 
             /* Enumerate the entry in this table */
@@ -554,7 +554,7 @@ CosaUtilGetFullPathNameByKeyword
             {
                 pString2--;
                 pString2[0]='\0';
-                _ansc_sprintf(ucTmp, "%s.%s", pTableStringToken->Name, ucTmp2);                
+                _ansc_snprintf(ucTmp, sizeof(ucTmp), "%s.%s", pTableStringToken->Name, ucTmp2);
                 pString2[0]='.';
                 ulNumOfEntries =       CosaGetParamValueUlong(ucTmp);
 
@@ -564,9 +564,9 @@ CosaUtilGetFullPathNameByKeyword
 
                     if ( ulEntryInstanceNum )
                     {
-                        _ansc_sprintf(ucEntryFullPath, "%s%lu%s", pTableStringToken->Name, ulEntryInstanceNum, ".");
+                        _ansc_snprintf(ucEntryFullPath, sizeof(ucEntryFullPath), "%s%lu%s", pTableStringToken->Name, ulEntryInstanceNum, ".");
 
-                        _ansc_sprintf(ucEntryParamName, "%s%s", ucEntryFullPath, pParameterName);
+                        _ansc_snprintf(ucEntryParamName, sizeof(ucEntryParamName), "%s%s", ucEntryFullPath, pParameterName);
                
                         ulEntryNameLen = sizeof(ucEntryNameValue);
 
