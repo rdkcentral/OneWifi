@@ -4324,7 +4324,8 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_stop_inst_msmt:
     case wifi_event_type_xfinity_rrm:
     case wifi_event_type_sm_app_enable:
-        // not handle here
+    case wifi_event_type_backhaul_steer:
+        // not handled here, forwarded to apps
         break;
     default:
         wifi_util_error_print(WIFI_CTRL, "[%s]:WIFI hal handler not supported this event %s\r\n",
