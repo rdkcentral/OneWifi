@@ -1113,6 +1113,9 @@ int init(webconfig_dml_t *consumer)
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        if (raw_data.raw_data.bytes) {
+            get_bus_descriptor()->bus_data_free_fn(&raw_data);
+        }
         return RETURN_ERR;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
