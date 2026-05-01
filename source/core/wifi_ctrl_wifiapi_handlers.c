@@ -695,13 +695,24 @@ void process_wifiapi_command(char *command, unsigned int len)
     rdk_wifi_vap_info_t *rdk_vap_info;
 #endif
     
-    memset(input, 0, 1024);
+    if (len >= sizeof(input)) {
+        snprintf(buff, sizeof(buff), "wifi_api2: Error - Command too long (max %zu bytes)\n", sizeof(input) - 1);
+        goto publish;
+    }
+
+    memset(input, 0, sizeof(input));
     memcpy(input, command, len);
+    input[len] = '\0';
     str = strtok_r(input, " ", &saveptr);
     while (str != NULL && num_args < 10) {
         args[num_args] = str;
         num_args++;
         str = strtok_r(NULL, " ", &saveptr);
+    }
+
+    if (num_args == 0) {
+        snprintf(buff, sizeof(buff), "wifi_api2: Error - No command specified\n");
+        goto publish;
     }
 
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
@@ -713,8 +724,8 @@ void process_wifiapi_command(char *command, unsigned int len)
 
     for (i=0; i < (sizeof(wifi_api_list)/sizeof(struct hal_api_info)); i++) {
         if (strcmp(args[0], wifi_api_list[i].name) == 0) {
-            if (num_args == 0 || (num_args-1 < wifi_api_list[i].num_args)) {
-                sprintf(buff, "wifi_api2: Error - Invalid number of arguments\nhelp: %s %s\n", 
+            if ((num_args-1 < wifi_api_list[i].num_args)) {
+                snprintf(buff, sizeof(buff), "wifi_api2: Error - Invalid number of arguments\nhelp: %s %s\n", 
                                 wifi_api_list[i].name, wifi_api_list[i].help);
                 goto publish;
             } else {
@@ -724,7 +735,7 @@ void process_wifiapi_command(char *command, unsigned int len)
         }
     }
     if (found == 0) {
-        sprintf(buff, "wifi_api2: Invalid API '%s'", args[0]);
+        snprintf(buff, sizeof(buff), "wifi_api2: Invalid API '%s'", args[0]);
         goto publish;
     }
 
@@ -732,26 +743,26 @@ void process_wifiapi_command(char *command, unsigned int len)
         //check radio_index
         radio_index = strtol(args[1], NULL, 10);
         if (radio_index > getNumberRadios()-1) {
-            sprintf(buff, "%s: Invalid radio index (%d)", args[0], radio_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid radio index (%u)", args[0], radio_index);
             goto publish;
         }
         //read file - json
         json_file = fopen(args[2], "rb");
         if( json_file == NULL) {
-            sprintf(buff, "%s: failed to open file '%s'", args[0], args[2]);
+            snprintf(buff, sizeof(buff), "%s: failed to open file '%s'", args[0], args[2]);
             goto publish;
         }
         fseek(json_file, 0, SEEK_END);
         fsize = ftell(json_file);
         fseek(json_file, 0, SEEK_SET);
         if (fsize == 0) {
-            sprintf(buff, "%s: Invalid content size (0). file '%s'", args[0], args[2]);
+            snprintf(buff, sizeof(buff), "%s: Invalid content size (0). file '%s'", args[0], args[2]);
             fclose(json_file);
             goto publish;
         }
         raw = malloc(fsize + 1);
         if(raw == NULL) {
-            sprintf(buff, "%s: failed to allocate memory", args[0]);
+            snprintf(buff, sizeof(buff), "%s: failed to allocate memory", args[0]);
             fclose(json_file);
             goto publish;
         }
@@ -764,22 +775,22 @@ void process_wifiapi_command(char *command, unsigned int len)
 
         if (webconfig_decode(config, data, raw) == webconfig_error_none) {
             if (data->type != webconfig_subdoc_type_wifiapiradio) {
-                sprintf(buff, "%s: invalid configuration format. type %d", args[0], data->type);
+                snprintf(buff, sizeof(buff), "%s: invalid configuration format. type %d", args[0], data->type);
                 goto publish;
             }
         } else {
-            sprintf(buff, "%s: invalid configuration format", args[0]);
+            snprintf(buff, sizeof(buff), "%s: invalid configuration format", args[0]);
             goto publish;
         }
         if (data->u.decoded.radios[radio_index].name[0] == '\0') {
-            sprintf(buff, "%s: radio name in the configuration does not match radio index", args[0]);
+            snprintf(buff, sizeof(buff), "%s: radio name in the configuration does not match radio index", args[0]);
             goto publish;
         }
         //validation and check for changes?
         //call hal_api
         ret = wifi_hal_setRadioOperatingParameters(radio_index, &(data->u.decoded.radios[radio_index].oper));
         if (ret != RETURN_OK) {
-            sprintf(buff, "%s: wifi_hal_setRadioOperatingParameters failed", args[0]);
+            snprintf(buff, sizeof(buff), "%s: wifi_hal_setRadioOperatingParameters failed", args[0]);
             goto publish;
         }
         //update db/global memory
@@ -795,7 +806,7 @@ void process_wifiapi_command(char *command, unsigned int len)
         //check radio_index
         radio_index = strtol(args[1], NULL, 10);
         if (radio_index > getNumberRadios()-1) {
-            sprintf(buff, "%s: Invalid radio index (%d)", args[0], radio_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid radio index (%u)", args[0], radio_index);
             goto publish;
         }
         //call hal_api
@@ -811,26 +822,26 @@ void process_wifiapi_command(char *command, unsigned int len)
         //check radio_index
         radio_index = strtol(args[1], NULL, 10);
         if (radio_index > getNumberRadios()-1) {
-            sprintf(buff, "%s: Invalid radio index (%d)", args[0], radio_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid radio index (%u)", args[0], radio_index);
             goto publish;
         }
         //read file - json
         json_file = fopen(args[2], "rb");
         if( json_file == NULL) {
-            sprintf(buff, "%s: failed to open file '%s'", args[0], args[2]);
+            snprintf(buff, sizeof(buff), "%s: failed to open file '%s'", args[0], args[2]);
             goto publish;
         }
         fseek(json_file, 0, SEEK_END);
         fsize = ftell(json_file);
         fseek(json_file, 0, SEEK_SET);
         if (fsize == 0) {
-            sprintf(buff, "%s: Invalid content size (0). file '%s'", args[0], args[2]);
+            snprintf(buff, sizeof(buff), "%s: Invalid content size (0). file '%s'", args[0], args[2]);
             fclose(json_file);
             goto publish;
         }
         raw = malloc(fsize + 1);
         if(raw == NULL) {
-            sprintf(buff, "%s: failed to allocate memory", args[0]);
+            snprintf(buff, sizeof(buff), "%s: failed to allocate memory", args[0]);
             fclose(json_file);
             goto publish;
         }
@@ -843,23 +854,23 @@ void process_wifiapi_command(char *command, unsigned int len)
 
         if (webconfig_decode(config, data, raw) == webconfig_error_none) {
             if (data->type != webconfig_subdoc_type_wifiapivap) {
-                sprintf(buff, "%s: invalid configuration format. type %d", args[0], data->type);
+                snprintf(buff, sizeof(buff), "%s: invalid configuration format. type %d", args[0], data->type);
                 goto publish;
             }
         } else {
-            sprintf(buff, "%s: invalid configuration format", args[0]);
+            snprintf(buff, sizeof(buff), "%s: invalid configuration format", args[0]);
             goto publish;
         }
         radio = &data->u.decoded.radios[radio_index];
         vap_map = &radio->vaps.vap_map;
         vap_info = &vap_map->vap_array[0];
         if (vap_info->vap_name[0] == '\0') {
-            sprintf(buff, "%s: vap names in the configuration does not match radio index", args[0]);
+            snprintf(buff, sizeof(buff), "%s: vap names in the configuration does not match radio index", args[0]);
             goto publish;
         }
         //call hal_api
         if (wifi_hal_createVAP(radio_index, vap_map) != RETURN_OK) {
-            sprintf(buff, "%s: wifi_hal_createVAP failed", args[0]);
+            snprintf(buff, sizeof(buff), "%s: wifi_hal_createVAP failed", args[0]);
             goto publish;
         }
 
@@ -885,7 +896,7 @@ void process_wifiapi_command(char *command, unsigned int len)
         //check radio_index
         radio_index = strtol(args[1], NULL, 10);
         if (radio_index > getNumberRadios()-1) {
-            sprintf(buff, "%s: Invalid radio index (%d)", args[0], radio_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid radio index (%u)", args[0], radio_index);
             goto publish;
         }
         //call hal_api
@@ -897,64 +908,64 @@ void process_wifiapi_command(char *command, unsigned int len)
         //check vap_index
         vap_index = strtol(args[1], NULL, 10);
         if (vap_index >= mgr->hal_cap.wifi_prop.numRadios*MAX_NUM_VAP_PER_RADIO) {
-            sprintf(buff, "%s: Invalid ap index (%d)", args[0], vap_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid ap index (%u)", args[0], vap_index);
             goto publish;
         }
         get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, (uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if(mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode != wifi_vap_mode_sta) {
-            sprintf(buff, "%s: ap index is not station(%d)", args[0], vap_index);
+            snprintf(buff, sizeof(buff), "%s: ap index is not station(%u)", args[0], vap_index);
             goto publish;
         }
         if (num_args == 5) {
             sscanf(args[2], "%02x:%02x:%02x:%02x:%02x:%02x",
                     (unsigned int *)&bss.bssid[0], (unsigned int *)&bss.bssid[1], (unsigned int *)&bss.bssid[2],
                     (unsigned int *)&bss.bssid[3], (unsigned int *)&bss.bssid[4], (unsigned int *)&bss.bssid[5]);
-            sprintf(bss.ssid, "%s", args[3]);
+            snprintf(bss.ssid, sizeof(bss.ssid), "%s", args[3]);
             bss.freq = strtol(args[4], NULL, 10);
             //call hal api
             if (wifi_hal_connect(vap_index, &bss) != RETURN_OK) {
-                sprintf(buff, "%s: wifi_hal_connect failed", args[0]);
+                snprintf(buff, sizeof(buff), "%s: wifi_hal_connect failed", args[0]);
                 goto publish;
             }
         } else {
             //call hal api
             if (wifi_hal_connect(vap_index, NULL) != RETURN_OK) {
-                sprintf(buff, "%s: wifi_hal_connect failed", args[0]);
+                snprintf(buff, sizeof(buff), "%s: wifi_hal_connect failed", args[0]);
                 goto publish;
             }
         }
-        sprintf(buff, "%s: OK", args[0]);
+        snprintf(buff, sizeof(buff), "%s: OK", args[0]);
     } else if (strcmp(args[0], "wifi_disconnect")==0) {
         //check vap_index
         vap_index = strtol(args[1], NULL, 10);
         if (vap_index >= mgr->hal_cap.wifi_prop.numRadios*MAX_NUM_VAP_PER_RADIO) {
-            sprintf(buff, "%s: Invalid ap index (%d)", args[0], vap_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid ap index (%u)", args[0], vap_index);
             goto publish;
         }
         get_vap_and_radio_index_from_vap_instance(&mgr->hal_cap.wifi_prop, (uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if(mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode != wifi_vap_mode_sta) {
-            sprintf(buff, "%s: ap index is not station(%d). r %d va %d mode %d", args[0], vap_index, radio_index, vap_array_index, mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode);
+            snprintf(buff, sizeof(buff), "%s: ap index is not station(%u). r %u va %u mode %d", args[0], vap_index, radio_index, vap_array_index, mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode);
             goto publish;
         }
         //call hal api
         if (wifi_hal_disconnect(vap_index) != RETURN_OK) {
-            sprintf(buff, "%s: wifi_hal_disconnect failed", args[0]);
+            snprintf(buff, sizeof(buff), "%s: wifi_hal_disconnect failed", args[0]);
             goto publish;
         }
-        sprintf(buff, "%s: OK", args[0]);
+        snprintf(buff, sizeof(buff), "%s: OK", args[0]);
     } else if (strcmp(args[0], "wifi_getStationCapability")==0) {
-        sprintf(buff, "%s: Not implemented", args[0]);
+        snprintf(buff, sizeof(buff), "%s: Not implemented", args[0]);
     } else if (strcmp(args[0], "wifi_getScanResults")==0) {
         wifi_bss_info_t *bss;
         UINT num_bss;
         //check radio_index
         radio_index = strtol(args[1], NULL, 10);
         if (radio_index > getNumberRadios()-1) {
-            sprintf(buff, "%s: Invalid radio index (%d)", args[0], radio_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid radio index (%u)", args[0], radio_index);
             goto publish;
         }
         if (wifi_hal_getScanResults(radio_index, NULL, &bss, &num_bss) != RETURN_OK) {
-            sprintf(buff, "%s: wifi_hal_getScanResults failed", args[0]);
+            snprintf(buff, sizeof(buff), "%s: wifi_hal_getScanResults failed", args[0]);
             goto publish;
         }
         wifiapi_printbssinfo(buff, sizeof(buff), bss, num_bss);
@@ -964,14 +975,14 @@ void process_wifiapi_command(char *command, unsigned int len)
         //check radio_index
         radio_index = strtol(args[1], NULL, 10);
         if (radio_index > getNumberRadios()-1) {
-            sprintf(buff, "%s: Invalid radio index (%d)", args[0], radio_index);
+            snprintf(buff, sizeof(buff), "%s: Invalid radio index (%u)", args[0], radio_index);
             goto publish;
         }
         if (wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_ONCHAN, 0, 0, NULL) != RETURN_OK) {
-            sprintf(buff, "%s: wifi_hal_startScan failed", args[0]);
+            snprintf(buff, sizeof(buff), "%s: wifi_hal_startScan failed", args[0]);
             goto publish;
         }
-        sprintf(buff, "%s: OK", args[0]);
+        snprintf(buff, sizeof(buff), "%s: OK", args[0]);
     } else if (strcmp(args[0], "wifi_startNeighborScan") == 0) {
         wifiapi_handle_start_neighbor_scan(args, num_args, buff, sizeof(buff));
     } else if (strcmp(args[0], "wifi_getNeighboringWiFiStatus") == 0) {
