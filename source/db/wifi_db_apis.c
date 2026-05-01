@@ -21,6 +21,8 @@
 #include "wifi_monitor.h"
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -55,6 +57,7 @@
 #include "wifi_monitor.h"
 
 #define MAX_BUF_SIZE 128
+#define MAX_DB_PRINTBUF_SIZE 256*1024
 #define ONEWIFI_DB_VERSION_EXISTS_FLAG 100017
 #define ONEWIFI_DB_OLD_VERSION_FILE "/tmp/wifi_db_old_version"
 #define ONEWIFI_DB_VERSION_OFFCHANNELSCAN_FLAG 100018
@@ -1789,7 +1792,7 @@ int wifidb_update_interworking_config(char *vap_name, wifi_InterworkingElement_t
         cfg.esr = interworking->esr;
         cfg.uesa = interworking->uesa;
         cfg.hess_option_present = interworking->hessOptionPresent;
-        strcpy(cfg.hessid, interworking->hessid);
+        snprintf(cfg.hessid, sizeof(cfg.hessid), "%s", interworking->hessid);
         cfg.venue_group = interworking->venueGroup;
         cfg.venue_type = interworking->venueType;
         if (update == true) {
@@ -2959,18 +2962,18 @@ int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *
     }
 
     snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
-    strcpy(cfg.rssi_up_threshold, preassoc->rssi_up_threshold);
-    strcpy(cfg.snr_threshold, preassoc->snr_threshold);
-    strcpy(cfg.cu_threshold, preassoc->cu_threshold);
-    strcpy(cfg.basic_data_transmit_rates, preassoc->basic_data_transmit_rates);
-    strcpy(cfg.operational_data_transmit_rates, preassoc->operational_data_transmit_rates);
-    strcpy(cfg.supported_data_transmit_rates, preassoc->supported_data_transmit_rates);
-    strcpy(cfg.minimum_advertised_mcs, preassoc->minimum_advertised_mcs);
-    strcpy(cfg.sixGOpInfoMinRate, preassoc->sixGOpInfoMinRate);
+    snprintf(cfg.rssi_up_threshold, sizeof(cfg.rssi_up_threshold), "%s", preassoc->rssi_up_threshold);
+    snprintf(cfg.snr_threshold, sizeof(cfg.snr_threshold), "%s", preassoc->snr_threshold);
+    snprintf(cfg.cu_threshold, sizeof(cfg.cu_threshold), "%s", preassoc->cu_threshold);
+    snprintf(cfg.basic_data_transmit_rates, sizeof(cfg.basic_data_transmit_rates), "%s", preassoc->basic_data_transmit_rates);
+    snprintf(cfg.operational_data_transmit_rates, sizeof(cfg.operational_data_transmit_rates), "%s", preassoc->operational_data_transmit_rates);
+    snprintf(cfg.supported_data_transmit_rates, sizeof(cfg.supported_data_transmit_rates), "%s", preassoc->supported_data_transmit_rates);
+    snprintf(cfg.minimum_advertised_mcs, sizeof(cfg.minimum_advertised_mcs), "%s", preassoc->minimum_advertised_mcs);
+    snprintf(cfg.sixGOpInfoMinRate, sizeof(cfg.sixGOpInfoMinRate), "%s", preassoc->sixGOpInfoMinRate);
     cfg.time_ms = preassoc->time_ms;
     cfg.min_num_mgmt_frames = preassoc->min_num_mgmt_frames;
-    strcpy(cfg.tcm_exp_weightage, preassoc->tcm_exp_weightage);
-    strcpy(cfg.tcm_gradient_threshold, preassoc->tcm_gradient_threshold);
+    snprintf(cfg.tcm_exp_weightage, sizeof(cfg.tcm_exp_weightage), "%s", preassoc->tcm_exp_weightage);
+    snprintf(cfg.tcm_gradient_threshold, sizeof(cfg.tcm_gradient_threshold), "%s", preassoc->tcm_gradient_threshold);
 
     if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_Preassoc_Control_Config, &cfg, false, filter_preassoc, SCHEMA_TABLE(Wifi_Connection_Control_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_Connection_Control_Config, pre_assoc)) ==  false) {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Preassoc_Control Config table \n",__func__, __LINE__);
@@ -3045,11 +3048,11 @@ int wifidb_update_postassoc_ctrl_config(char *vap_name, wifi_postassoc_control_t
     }
 
     snprintf(cfg.vap_name, sizeof(cfg.vap_name), "%s", vap_name);
-    strcpy(cfg.rssi_up_threshold, postassoc->rssi_up_threshold);
-    strcpy(cfg.sampling_interval, postassoc->sampling_interval);
-    strcpy(cfg.snr_threshold, postassoc->snr_threshold);
-    strcpy(cfg.sampling_count, postassoc->sampling_count);
-    strcpy(cfg.cu_threshold, postassoc->cu_threshold);
+    snprintf(cfg.rssi_up_threshold, sizeof(cfg.rssi_up_threshold), "%s", postassoc->rssi_up_threshold);
+    snprintf(cfg.sampling_interval, sizeof(cfg.sampling_interval), "%s", postassoc->sampling_interval);
+    snprintf(cfg.snr_threshold, sizeof(cfg.snr_threshold), "%s", postassoc->snr_threshold);
+    snprintf(cfg.sampling_count, sizeof(cfg.sampling_count), "%s", postassoc->sampling_count);
+    snprintf(cfg.cu_threshold, sizeof(cfg.cu_threshold), "%s", postassoc->cu_threshold);
 
     if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_Postassoc_Control_Config, &cfg, false, filter_postassoc, SCHEMA_TABLE(Wifi_Connection_Control_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_Connection_Control_Config, post_assoc)) ==  false) {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Postassoc_Control Config table \n",__func__, __LINE__);
@@ -5501,13 +5504,15 @@ void *start_wifidb_func(void *arg)
         return NULL;
     }
     //create a copy of ovs-db server
-    sprintf(cmd, "cp /usr/sbin/ovsdb-server %s/wifidb-server", WIFIDB_RUN_DIR);
+    snprintf(cmd, sizeof(cmd), "cp /usr/sbin/ovsdb-server %s/wifidb-server", WIFIDB_RUN_DIR);
     system(cmd);
-    sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
-    if (stat(db_file, &sb) != 0) {
+    snprintf(db_file, sizeof(db_file), "%s/rdkb-wifi.db", WIFIDB_DIR);
+
+    int fd = open(db_file, O_RDONLY | O_NOFOLLOW);
+    if (fd < 0) {
         wifi_util_info_print(WIFI_DB, "%s:%d: Could not find rdkb database, ..creating\n", __func__,
             __LINE__);
-        sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
+        snprintf(cmd, sizeof(cmd), "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
         system(cmd);
 
         memset(&data, 0, sizeof(raw_data_t));
@@ -5539,10 +5544,14 @@ void *start_wifidb_func(void *arg)
          * Delete the exisiting schema file and create it. So that OneWiFi will update the configuration based on
          * PSM and NVRAM values
          * */
+        if (fstat(fd, &sb) != 0 || !S_ISREG(sb.st_mode)) {
+            close(fd);
+            return NULL;
+        }
 
         wifi_util_info_print(WIFI_DB,"%s:%d: rdkb database already present\n", __func__, __LINE__);
         memset(cmd, 0, sizeof(cmd));
-        sprintf(cmd, "ovsdb-tool db-version %s", db_file);
+        snprintf(cmd, sizeof(cmd), "ovsdb-tool db-version %s", db_file);
         /*Get the Existing db-version*/
         fp = popen(cmd,"r");
         if(fp != NULL) {
@@ -5562,25 +5571,26 @@ void *start_wifidb_func(void *arg)
                 /*version less than OneWiFi default version
                  * so, Delete the db file and re-create the schema file
                  */
-                if (remove(db_file) == 0) {
+                if (unlinkat(AT_FDCWD, db_file, 0) == 0) {
                     wifi_util_info_print(WIFI_DB,"%s:%d: %s file deleted succesfully\n", __func__, __LINE__, db_file);
                 }
                 wifi_util_info_print(WIFI_DB,"%s:%d: creating the new DB file\n", __func__, __LINE__);
-                sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
+                snprintf(cmd, sizeof(cmd), "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
                 system(cmd);
                 g_wifidb->is_db_update_required = true;
                 create_onewifi_migration_flag();
             }
         }
+        close(fd);
 
         if (g_wifidb->is_db_update_required == false) {
-            sprintf(cmd,"ovsdb-tool convert %s %s/rdkb-wifi.ovsschema",db_file,WIFIDB_SCHEMA_DIR);
+            snprintf(cmd, sizeof(cmd), "ovsdb-tool convert %s %s/rdkb-wifi.ovsschema",db_file,WIFIDB_SCHEMA_DIR);
             wifi_util_info_print(WIFI_DB,"%s:%d: rdkb database check for version upgrade/downgrade %s \n", __func__, __LINE__,cmd);
             system(cmd);
         }
     }
 
-    sprintf(cmd, "%s/wifidb-server %s --remote=punix:%s/wifidb.sock %s --unixctl=%s/wifi.ctl --log-file=/dev/null --detach", WIFIDB_RUN_DIR, db_file, WIFIDB_RUN_DIR, (debug_option == true)?"--verbose=dbg":"", WIFIDB_RUN_DIR);
+    snprintf(cmd, sizeof(cmd), "%s/wifidb-server %s --remote=punix:%s/wifidb.sock %s --unixctl=%s/wifi.ctl --log-file=/dev/null --detach", WIFIDB_RUN_DIR, db_file, WIFIDB_RUN_DIR, (debug_option == true)?"--verbose=dbg":"", WIFIDB_RUN_DIR);
 
     system(cmd);
     wifi_util_info_print(WIFI_DB, "start_wifidb_func done\n");
@@ -6222,23 +6232,30 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int radio_index, wi
 
 void wifidb_print(char *format, ...)
 {
-    char buff[256 * 1024] = {0};
+    char *buff = NULL;
     va_list list;
     FILE *fpg = NULL;
+    buff = malloc(sizeof(char) * MAX_DB_PRINTBUF_SIZE);
+    if (buff == NULL) {
+        wifi_util_error_print(WIFI_DB, "%s:%d: Failed to allocate memory for buffer\n", __func__, __LINE__);
+        return;
+    }
 
     get_formatted_time(buff);
-    strcat(buff, " ");
+    strncat(buff, " ", MAX_DB_PRINTBUF_SIZE - strlen(buff) - 1);
 
     va_start(list, format);
-    vsprintf(&buff[strlen(buff)], format, list);
+    vsnprintf(buff + strlen(buff), MAX_DB_PRINTBUF_SIZE - strlen(buff), format, list);
     va_end(list);
 
     fpg = fopen("/rdklogs/logs/wifiDb.txt", "a+");
     if (fpg == NULL) {
+        free(buff);
         return;
     }
     fputs(buff, fpg);
     fflush(fpg);
+    free(buff);
     fclose(fpg);
 }
 
@@ -6258,7 +6275,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     bool update = false;
     int count;
     int ret;
-    char index[4] = {0};
+    char index[12] = {0};
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -6268,7 +6285,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     }
     wifi_util_error_print(WIFI_DB, "%s:%d:rfc_param->link_quality_rfc =%d\n", __func__, __LINE__,rfc_param->link_quality_rfc);
 
-    sprintf(index,"%d",rfc_id);
+    snprintf(index, sizeof(index), "%d", rfc_id);
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index);
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &count);
     if ((count != 0) && (pcfg != NULL)) {
@@ -6318,7 +6335,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
             wifidb_print("%s:%d Updated WIFI DB. Wifi Rfc Config table updated successful. \n",__func__, __LINE__);
         }
     } else {
-        strcpy(cfg.rfc_id,index);
+        snprintf(cfg.rfc_id, sizeof(cfg.rfc_id), "%s", index);
         if (onewifi_ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, 
                                   SCHEMA_COLUMN(Wifi_Rfc_Config, rfc_id),
                                   cfg.rfc_id,
@@ -6348,11 +6365,11 @@ int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas
     bool update = false;
     int count;
     int ret;
-    char index[4] = {0};
+    char index[12] = {0};
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
-    sprintf(index,"%d",advertisement_id);
+    snprintf(index, sizeof(index), "%d", advertisement_id);
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "advertisement_id", OFUNC_EQ, index);
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_GAS_Config, where, &count);
     if ((count != 0) && (pcfg != NULL)) {
@@ -6379,7 +6396,7 @@ int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas
             wifidb_print("%s:%d Updated WIFI DB. Wifi GAS Config table updated successful. \n",__func__, __LINE__);
         }
     } else {
-        strcpy(cfg.advertisement_id,index);
+        snprintf(cfg.advertisement_id, sizeof(cfg.advertisement_id), "%s", index);
         if (onewifi_ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_GAS_Config, 
                                   SCHEMA_COLUMN(Wifi_GAS_Config, advertisement_id),
                                   cfg.advertisement_id,
