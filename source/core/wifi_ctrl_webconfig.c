@@ -32,10 +32,14 @@
 #include <trower-base64/base64.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <syscfg/syscfg.h>
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
 #include "wifi_webconfig_consumer.h"
 #endif
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
+#define VLAN_MIN 1
+#define VLAN_MAX 4094
+
 bool is_sta_set = false;
 struct ow_conf_vif_config_cb_arg
 {
@@ -1979,6 +1983,108 @@ int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
+#ifdef EM_APP
+int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    vap_svc_t *svc;
+    UINT apIdx = 0, index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_vap_info_t *vapInfo = NULL;
+    char str[128];
+    wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
+    for(index = 0; index < getTotalNumberVAPs(); index++) {
+        apIdx = VAP_INDEX(mgr->hal_cap, index);
+        vapInfo =  get_wifidb_vap_parameters(apIdx);
+
+        if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
+            continue;
+        }
+
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: ssids_num =%d  \n",__func__, __LINE__,data->em_config.traffic_separation_policy.ssids_num);
+
+        if(isVapPrivate(apIdx)) {
+	    if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[0].ssid, 
+			sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid))==0) 
+			&& (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id == data->em_config.traffic_separation_policy.ssids[0].vlan_id)) {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[0].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid));
+
+	    if((data->em_config.traffic_separation_policy.ssids[0].vlan_id >= VLAN_MIN) 
+		&& (data->em_config.traffic_separation_policy.ssids[0].vlan_id <= VLAN_MAX)) {
+		wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[0].vlan_id;
+           	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+		sprintf(str, "%d", vapInfo->vlan_id);
+
+                if(syscfg_set_commit(NULL, "vlan_id_pvt", str) != 0) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d:  Private VAP : syscfg failed  \n",__func__, __LINE__);
+           	}
+	    }
+        }
+        else if(isVapMesh(apIdx)) {
+            if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[3].ssid,
+		sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid))==0) 
+		&& (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id == data->em_config.traffic_separation_policy.ssids[3].vlan_id)) {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[3].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid));
+            
+	    if((data->em_config.traffic_separation_policy.ssids[3].vlan_id >= VLAN_MIN) 
+		&& (data->em_config.traffic_separation_policy.ssids[3].vlan_id <= VLAN_MAX)) {
+	        wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[3].vlan_id;
+            	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+		sprintf(str, "%d", vapInfo->vlan_id);
+
+                if(syscfg_set_commit(NULL, "vlan_id_mesh",str) != 0) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d:  Private VAP : syscfg failed  \n",__func__, __LINE__);
+                }
+	    }
+        }
+        else if(isVapXhs(apIdx)) {
+            if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[1].ssid,
+		 sizeof(data->em_config.traffic_separation_policy.ssids[1].ssid))==0)
+		 && (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id == data->em_config.traffic_separation_policy.ssids[1].vlan_id)) {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[1].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[1].ssid));
+	    if((data->em_config.traffic_separation_policy.ssids[1].vlan_id >= VLAN_MIN) 
+		&& (data->em_config.traffic_separation_policy.ssids[1].vlan_id <= VLAN_MAX)) {
+            	wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[1].vlan_id;
+    		v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+    		sprintf(str, "%d", vapInfo->vlan_id);
+
+	    	if(syscfg_set_commit(NULL, "vlan_id_iot",str) != 0) {
+		    wifi_util_error_print(WIFI_CTRL,"%s:%d:  IOT VAP : syscfg failed  \n",__func__, __LINE__);
+	    	}
+	    }
+    	} 
+        else if(isVapLnf(apIdx)) {
+            if(strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[2].ssid,
+	       sizeof(data->em_config.traffic_separation_policy.ssids[2].ssid))==0) {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[2].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[2].ssid));
+            wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[2].vlan_id;
+        }
+        else if(isVapHotspot(apIdx)) {
+            if(strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[4].ssid,
+	       sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid))==0) {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[4].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid));
+            wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[4].vlan_id;
+        }
+        else {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d:  : No matching VAP type  \n",__func__, __LINE__);
+            continue;
+        }
+	
+	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh start");
+    }
+    return RETURN_OK;
+}
+#endif
+
 static int remove_all_mac_acl_entries_from_cache_and_db(rdk_wifi_vap_info_t *current_config)
 {
     if (current_config == NULL || current_config->acl_map == NULL) {
@@ -3173,7 +3279,26 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 }
             }
         break;
-
+#ifdef EM_APP
+       case webconfig_subdoc_type_em_config:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & radio_state_pending) {
+                    ctrl->webconfig_state &= ~radio_state_pending;
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= radio_state_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_em_subdoc_config_apply(ctrl, &data->u.decoded);
+                }
+            }
+           break;
+#endif
         default:
             break;
     }
