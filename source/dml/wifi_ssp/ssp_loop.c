@@ -1105,7 +1105,8 @@ void update_macfilter_list(int instance_number, int total_entries, hash_map_t *p
         } else {
             snprintf(index_instances, sizeof(index_instances), "%d,", l_data_index[l_index]);
         }
-        strcat(index_list, index_instances);
+        size_t len = strlen(index_list);
+        snprintf(index_list + len, sizeof(index_list) - len, "%s", index_instances);
     }
 
     wifi_util_dbg_print(WIFI_PSM, "%s:%d total mac filter list entry:%s\r\n",__func__, __LINE__, index_list);

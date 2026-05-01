@@ -1783,9 +1783,9 @@ void update_dml_vap_defaults() {
         if (i<2) {
             memset(wps_pin, 0, sizeof(wps_pin));
             if (wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) {
-                strcpy(vap_default[i].wps_pin, wps_pin);
+                snprintf(vap_default[i].wps_pin, sizeof(vap_default[i].wps_pin), "%s", wps_pin);
             } else {
-                strcpy(vap_default[i].wps_pin, INVALID_KEY);
+                snprintf(vap_default[i].wps_pin, sizeof(vap_default[i].wps_pin), "%s", INVALID_KEY);
             }
         }
         vap_default[i].txoverflow = 0;
