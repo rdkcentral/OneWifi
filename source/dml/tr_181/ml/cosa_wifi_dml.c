@@ -689,8 +689,15 @@ WiFi_GetParamStringValue
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_GASConfiguration", TRUE))
     {
-	WiFi_GetGasConfig(pValue);
-        return 0;
+        char tempBuff[1024] = {0};
+        WiFi_GetGasConfig(tempBuff, sizeof(tempBuff));
+        if (AnscSizeOfString(tempBuff) < *pUlSize) {
+            AnscCopyString(pValue, tempBuff);
+            return 0;
+        } else {
+            *pUlSize = AnscSizeOfString(tempBuff) + 1;
+            return 1;
+        }
     }
     if (AnscEqualString(ParamName, "Log_Enable", TRUE))
     {
