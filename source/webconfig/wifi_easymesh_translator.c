@@ -541,9 +541,23 @@ static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
         return;
     }
 
-    /* Determine whether the radio is operating in EHT (Wi-Fi 7) mode. */
-    is_eht = (radio_cap != NULL) ? (bool)radio_cap->wifi7_supported
-                                 : false;
+    /*
+     * Determine whether the radio is operating in EHT (Wi-Fi 7) mode.
+     * wifi7_supported is set only when compiled with CONFIG_IEEE80211BE +
+     * HOSTAPD_VERSION >= 211, so also check the operating variant bitmask
+     * as a runtime fallback.
+     */
+    is_eht = ((radio_cap != NULL) && (bool)radio_cap->wifi7_supported) ||
+             ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: EHT ops detect: wifi7_supported=%d variant=0x%x is_eht=%d "
+        "channel=%u channelWidth=%u numSecondaryChannels=%u\n",
+        __func__, __LINE__,
+        (radio_cap != NULL) ? (int)radio_cap->wifi7_supported : -1,
+        (unsigned int)oper->variant, (int)is_eht,
+        oper->channel, (unsigned int)oper->channelWidth,
+        oper->numSecondaryChannels);
 
     /* --- flags byte --- */
     eht_ops_bss->op_info_valid          = is_eht ? 1 : 0;
@@ -562,7 +576,7 @@ static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
         memcpy(eht_ops_bss->eht_msc_nss_set, radio_cap->eht_mcs, copy_len);
     }
 
-    /* --- Control byte: channel width encoding --- */
+    /* --- Control byte: channel width encoding per 802.11be Table 9-322e --- */
     switch (oper->channelWidth) {
     case WIFI_CHANNELBANDWIDTH_20MHZ:
         eht_ops_bss->control = 0;
@@ -586,9 +600,13 @@ static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
     }
 
     /*
-     * CCFS0: center channel of the primary segment.
-     * CCFS1: center channel of the secondary segment (160/80+80/320 MHz).
-     * The HAL reports these in channelSecondary[].
+     * CCFS0: center channel of the primary 80 MHz segment (or the only
+     * segment for ≤80 MHz operation).
+     * CCFS1: center channel of the secondary segment for 160/80+80/320 MHz.
+     *
+     * The HAL carries these in channelSecondary[0] (CCFS0) and
+     * channelSecondary[1] (CCFS1) when numSecondaryChannels is populated.
+     * Fall back to the primary channel when unavailable (valid for 20 MHz).
      */
     eht_ops_bss->ccfs0 = (oper->numSecondaryChannels >= 1)
                          ? (unsigned char)oper->channelSecondary[0]
