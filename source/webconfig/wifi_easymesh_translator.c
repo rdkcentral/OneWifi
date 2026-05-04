@@ -519,6 +519,101 @@ static void fill_cac_cap(const wifi_radio_capabilities_t *hal_radio_cap,
         __func__, __LINE__, dst_method->op_classes_num, cac_cap->cac_methods_num);
 }
 
+/*
+ * fill_eht_ops_from_radio() — populate em_eht_operations_bss_t from HAL radio
+ * operation parameters and capabilities.
+ *
+ * Per IEEE 802.11be §9.4.2.311c, the EHT Operation Information Control byte
+ * channel-width sub-field encodes:
+ *   0 = 20 MHz, 1 = 40 MHz, 2 = 80 MHz, 3 = 160 MHz, 4 = 320 MHz.
+ *
+ * CCFS0 is the center channel of the primary 80 MHz segment (or the single
+ * segment for ≤80 MHz).  For 160/80+80/320 MHz, CCFS1 carries the center of
+ * the wider channel.  Both are carried in channelSecondary[0/1] by the HAL.
+ */
+static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
+    const wifi_radio_capabilities_t *radio_cap,
+    em_eht_operations_bss_t *eht_ops_bss)
+{
+    bool is_eht;
+
+    if (!oper || !eht_ops_bss) {
+        return;
+    }
+
+    /* Determine whether the radio is operating in EHT (Wi-Fi 7) mode. */
+    is_eht = (radio_cap != NULL) ? (bool)radio_cap->wifi7_supported
+                                 : false;
+
+    /* --- flags byte --- */
+    eht_ops_bss->op_info_valid          = is_eht ? 1 : 0;
+    eht_ops_bss->disabled_subchannel_valid = 0;
+
+    if (!is_eht) {
+        return;
+    }
+
+    /* --- EHT MCS/NSS set (first 4 bytes from HAL capability) --- */
+    if (radio_cap != NULL) {
+        unsigned int copy_len = sizeof(eht_ops_bss->eht_msc_nss_set);
+        if (copy_len > EHT_MCS_NSS_CAPAB_LEN) {
+            copy_len = EHT_MCS_NSS_CAPAB_LEN;
+        }
+        memcpy(eht_ops_bss->eht_msc_nss_set, radio_cap->eht_mcs, copy_len);
+    }
+
+    /* --- Control byte: channel width encoding --- */
+    switch (oper->channelWidth) {
+    case WIFI_CHANNELBANDWIDTH_20MHZ:
+        eht_ops_bss->control = 0;
+        break;
+    case WIFI_CHANNELBANDWIDTH_40MHZ:
+        eht_ops_bss->control = 1;
+        break;
+    case WIFI_CHANNELBANDWIDTH_80MHZ:
+        eht_ops_bss->control = 2;
+        break;
+    case WIFI_CHANNELBANDWIDTH_160MHZ:
+    case WIFI_CHANNELBANDWIDTH_80_80MHZ:
+        eht_ops_bss->control = 3;
+        break;
+    case WIFI_CHANNELBANDWIDTH_320MHZ:
+        eht_ops_bss->control = 4;
+        break;
+    default:
+        eht_ops_bss->control = 0;
+        break;
+    }
+
+    /*
+     * CCFS0: center channel of the primary segment.
+     * CCFS1: center channel of the secondary segment (160/80+80/320 MHz).
+     * The HAL reports these in channelSecondary[].
+     */
+    eht_ops_bss->ccfs0 = (oper->numSecondaryChannels >= 1)
+                         ? (unsigned char)oper->channelSecondary[0]
+                         : (unsigned char)oper->channel;
+    eht_ops_bss->ccfs1 = (oper->numSecondaryChannels >= 2)
+                         ? (unsigned char)oper->channelSecondary[1]
+                         : 0;
+
+    /* --- Puncturing / disabled subchannel bitmap --- */
+    if (oper->puncturingInfo.punct_bitmap != 0) {
+        eht_ops_bss->disabled_subchannel_valid = 1;
+        eht_ops_bss->disabled_subchannel_bitmap[0] =
+            (unsigned char)(oper->puncturingInfo.punct_bitmap & 0xFF);
+        eht_ops_bss->disabled_subchannel_bitmap[1] =
+            (unsigned char)((oper->puncturingInfo.punct_bitmap >> 8) & 0xFF);
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: EHT ops: op_info_valid=%u control=%u ccfs0=%u ccfs1=%u punct=0x%04x\n",
+        __func__, __LINE__,
+        eht_ops_bss->op_info_valid, eht_ops_bss->control,
+        eht_ops_bss->ccfs0, eht_ops_bss->ccfs1,
+        oper->puncturingInfo.punct_bitmap);
+}
+
 /* Fill Channel Scan Capability op class list for one radio.
  *
  * Per spec (EasyMesh Channel Scan Capabilities):
@@ -1957,6 +2052,12 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                 return webconfig_error_translate_to_easymesh;
             }
 
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == FALSE) {
+                fill_eht_ops_from_radio(&radio->oper,
+                    (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
+                    &em_bss_info->eht_ops);
+            }
+
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
                 // details for STA
@@ -2101,6 +2202,12 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_easymesh;
             }
+
+/*             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == FALSE) {
+                fill_eht_ops_from_radio(&radio->oper,
+                    (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
+                    &vap_info_row->eht_ops);
+            } */
         }
     }
     return webconfig_error_none;
@@ -2228,6 +2335,12 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_easymesh;
             }
+
+           /*  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == FALSE) {
+                fill_eht_ops_from_radio(&radio->oper,
+                    (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
+                    &vap_info_row->eht_ops);
+            } */
 
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
