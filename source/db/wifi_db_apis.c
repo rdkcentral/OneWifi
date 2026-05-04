@@ -8380,7 +8380,6 @@ void init_wifidb_data()
         if (update_rfc_config == true) {
             wifidb_update_rfc_config(0, rfc_param);
         }
-        dbwritten = true;
 #ifdef ALWAYS_ENABLE_AX_2G
         wifidb_update_rfc_config(0, rfc_param);
 #endif
