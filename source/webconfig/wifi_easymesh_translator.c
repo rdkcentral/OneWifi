@@ -428,7 +428,7 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
     memcpy(em_ht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
     memcpy(em_vht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
     memcpy(em_he_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
-
+    cap_info->mode = radio_cap->mode[0];
     // HT capabilities
     em_ht_cap->ht_sprt_40mhz = (radio_cap->ht_capab & (1 << 1)) ? 1 : 0;
     em_ht_cap->gi_sprt_40mhz = (radio_cap->ht_capab & (1 << 6)) ? 1 : 0;
