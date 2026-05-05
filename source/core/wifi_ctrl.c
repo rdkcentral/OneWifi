@@ -958,7 +958,7 @@ int captive_portal_check(void)
     memset(&data, 0, sizeof(raw_data_t));
 
     bool psm_notify_flag = false;
-    char pInValue[32] = "";
+    char inValue[32] = "";
     char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
 
     // Get CONFIG_WIFI
@@ -1015,12 +1015,12 @@ int captive_portal_check(void)
     if (default_private_credentials != psm_notify_flag) {
         wifi_util_dbg_print(WIFI_CTRL, "PSM Notify flag and wifi values are different\n");
         if (default_private_credentials) {
-            strcpy(pInValue, "true");
+            snprintf(inValue, sizeof(inValue), "%s", "true");
         } else {
-            strcpy(pInValue, "false");
+            snprintf(inValue, sizeof(inValue), "%s", "false");
         }
         // set PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
-        set_notify_wifi_to_psm(PsmParamName, pInValue);
+        set_notify_wifi_to_psm(PsmParamName, inValue);
     }
 
     wifi_util_dbg_print(WIFI_CTRL, "CONFIG_WIFI= %d fun %s  and wifi_value %d \n", get_config_wifi,
@@ -2880,7 +2880,7 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
     g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
         g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
-    strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
+    snprintf(g_wifi_mgr->ctrl.rfc_params.rfc_id, sizeof(g_wifi_mgr->ctrl.rfc_params.rfc_id), "%s", g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
 
@@ -2954,7 +2954,7 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
         if (map->vap_array[i].vap_index == index) {
             found = true;
             wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
-            strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
+            snprintf(ssid, sizeof(ssid_t), "%s", get_vap_ssid(&map->vap_array[i]));
             break;
         }
     }

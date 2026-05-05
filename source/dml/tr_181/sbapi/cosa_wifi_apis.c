@@ -1401,7 +1401,7 @@ void ccspWifiDbgPrint(int level, char *format, ...)
     }
     
     get_formatted_time(buff);
-    strcat(buff, " ");
+    strncat(buff, " ", sizeof(buff)-strlen(buff)-1);
 
     va_start(list, format);
     vsprintf(&buff[strlen(buff)], format, list);
