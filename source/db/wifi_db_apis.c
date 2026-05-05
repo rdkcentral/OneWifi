@@ -8289,7 +8289,6 @@ void init_wifidb_data()
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
     ignite_config_t *ignite_cfg;
     char country_code[COUNTRY_CODE_LEN] = {0};
-	bool update_rfc_config = false;
 
     wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
