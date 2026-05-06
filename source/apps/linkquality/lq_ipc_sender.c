@@ -21,6 +21,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include "lq_ipc_sender.h"
+#include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "run_qmgr.h"
 
@@ -77,6 +78,22 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
 
     if (count != 0 && entries == NULL) {
         return -1;
+    }
+
+    /* Filter: only forward events for private VAPs (private_ssid*) */
+    if (entry_size == sizeof(stats_arg_t) && count > 0) {
+        wifi_mgr_t *mgr = get_wifimgr_obj();
+        if (mgr != NULL) {
+            const stats_arg_t *s = (const stats_arg_t *)entries;
+            for (uint32_t i = 0; i < count; i++) {
+                if (is_vap_private(&mgr->hal_cap.wifi_prop, s[i].vap_index) != TRUE) {
+                    wifi_util_dbg_print(WIFI_APPS,
+                        "%s:%d [IPC-SEND] dropping %s: vap_index=%u is not a private VAP\n",
+                        __func__, __LINE__, lq_msg_type_str(msg_type), s[i].vap_index);
+                    return 0;
+                }
+            }
+        }
     }
 
     if (lq_ipc_fd < 0) {
