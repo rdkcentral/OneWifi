@@ -3511,9 +3511,12 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
     hash_map_t *temp_sta_map = NULL;
     sta_data_t *sta          = NULL;
     sta_key_t  sta_key;
+    unsigned int vap_array_index;
 
     wifi_util_dbg_print(WIFI_MON,"%s called for %d and status %d \n",__func__, apIndex, status);
-    g_monitor_module.bssid_data[apIndex].ap_params.ap_status = status;
+
+    getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
+    g_monitor_module.bssid_data[vap_array_index].ap_params.ap_status = status;
 
     if (status != wifi_vapstatus_down) {
         return 0;
@@ -3521,7 +3524,7 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
 
-    sta_map = g_monitor_module.bssid_data[apIndex].sta_map;
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     if (sta_map == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d sta_map is NULL for apIndex %d\n", __func__, __LINE__, apIndex);
         pthread_mutex_unlock(&g_monitor_module.data_lock);
