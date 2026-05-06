@@ -89,6 +89,15 @@ typedef struct {
 /* DHCP event flag for affinity updates */
 #define DHCP_EVENT_UPDATE    1
 
+typedef enum {
+    DHCP_DISCOVER = 1,
+    DHCP_OFFER    = 2,
+    DHCP_REQUEST  = 3,
+    DHCP_DECLINE  = 4,
+    DHCP_ACK      = 5,
+    DHCP_NAK      = 6,
+    DHCP_UNKNOWN
+} dhcp_pkt_type_t;
 
 typedef void (*qmgr_report_batch_cb_t)(const report_batch_t *report);
 typedef void (*qmgr_report_score_cb_t)(const char *str, double score,double threshold);

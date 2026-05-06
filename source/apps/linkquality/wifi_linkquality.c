@@ -251,14 +251,14 @@ static void dhcp_process_packet(const uint8_t *buffer, ssize_t len)
     msg_type = dhcp_get_msg_type(options, options_len);
     
     // Convert msg_type to string for logging
-    switch(msg_type) {
-        case DHCPDISCOVER: msg_type_str = "DISCOVER"; break;
-        case DHCPOFFER:    msg_type_str = "OFFER"; break;
-        case DHCPREQUEST:  msg_type_str = "REQUEST"; break;
-        case DHCPDECLINE:  msg_type_str = "DECLINE"; break;
-        case DHCPACK:      msg_type_str = "ACK"; break;
-        case DHCPNAK:      msg_type_str = "NAK"; break;
-        default:           msg_type_str = "UNKNOWN"; break;
+    switch (msg_type) {
+        case DHCP_DISCOVER: msg_type_str = "DISCOVER"; break;
+        case DHCP_OFFER:    msg_type_str = "OFFER";    break;
+        case DHCP_REQUEST:  msg_type_str = "REQUEST";  break;
+        case DHCP_DECLINE:  msg_type_str = "DECLINE";  break;
+        case DHCP_ACK:      msg_type_str = "ACK";      break;
+        case DHCP_NAK:      msg_type_str = "NAK";      break;
+        default:            msg_type_str = "UNKNOWN";  break;
     }
 
     // ============================================================================
