@@ -93,6 +93,7 @@
 #define ONEWIFI_DB_VERSION_ENCR_GCMP_FLAG 100048
 #define ONEWIFI_DB_VERSION_ENCR_NEW_FLAG 100049
 #define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100050
+#define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100051
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -5108,10 +5109,9 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             }
         }
 
-        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
-#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || \
+    defined(_SCXF11BFL_PRODUCT_REQ_)
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG) {
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
                 config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
                 wifi_util_info_print(WIFI_DB,
@@ -5120,9 +5120,22 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     config->vap_array[i].vap_index);
                 is_vap_info_upgrade_needed = true;
             }
-#endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
-       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+        }
+#endif // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) ||
+       // defined(_SCXF11BFL_PRODUCT_REQ_)
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
+#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
+                wifi_util_info_print(WIFI_DB,
+                    "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
+                    config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl,
+                    config->vap_array[i].vap_index);
+                is_vap_info_upgrade_needed = true;
+            }
+#endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
+       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_STATS_FLAG) {
