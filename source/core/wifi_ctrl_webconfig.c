@@ -228,10 +228,9 @@ int webconfig_send_wifi_config_status(wifi_ctrl_t *ctrl)
 
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_wifi_config) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(data);
     }
 
+    webconfig_data_free(data);
     free(data);
     data = NULL;
     return RETURN_OK;
@@ -251,10 +250,9 @@ int webconfig_send_radio_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_
 
     if (webconfig_encode(&ctrl->webconfig, data, type) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(data);
     }
 
+    webconfig_data_free(data);
     free(data);
     data = NULL;
     return RETURN_OK;
@@ -274,10 +272,9 @@ int webconfig_send_vap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t 
 
     if (webconfig_encode(&ctrl->webconfig, data, type) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(data);
     }
 
+    webconfig_data_free(data);
     free(data);
     data = NULL;
     return RETURN_OK;
@@ -296,10 +293,9 @@ int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
     webconfig_init_subdoc_data(data);
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(data);
     }
 
+    webconfig_data_free(data);
     free(data);
     data = NULL;
     return RETURN_OK;
@@ -428,10 +424,9 @@ int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
 
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_blaster) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(data);
     }
 
+    webconfig_data_free(data);
     free(data);
     data = NULL;
     return RETURN_OK;
@@ -452,10 +447,9 @@ int webconfig_send_steering_clients_status(wifi_ctrl_t *ctrl)
 
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_steering_clients) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(data);
     }
 
+    webconfig_data_free(data);
     free(data);
     data = NULL;
     return RETURN_OK;
@@ -475,11 +469,10 @@ int webconfig_send_multivap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_ty
     webconfig_init_subdoc_data(data);
 
     if (webconfig_encode(&ctrl->webconfig, data, type) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%dFailed webconfig_encode\n", __FUNCTION__, __LINE__);
-    } else {
-        webconfig_data_free(data);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
 
+    webconfig_data_free(data);
     free(data);
     data = NULL;
     return RETURN_OK;
@@ -3240,9 +3233,9 @@ void start_station_vaps(bool rf_status)
         str = data->u.encoded.raw;
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_dml, NULL);
-    } else {
-        webconfig_data_free(data);
     }
+
+    webconfig_data_free(data);
     free(data);
     data = NULL;
 }
