@@ -4958,17 +4958,17 @@ static void wifidb_global_config_upgrade()
             DEFAULT_HEAPWALK_INTERVAL;
         g_wifidb->global_config.global_parameters.memwraptool.enable = true;
     }
-	 if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
-		  wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade tcm config, old db version %d \n", __func__,
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade tcm config, old db version %d \n", __func__,
             __LINE__, g_wifidb->db_version);
-                rfc_param->tcm_open_2g_rfc = true;
-                rfc_param->tcm_open_5g_rfc = true;
-                rfc_param->tcm_open_6g_rfc = true;
-                rfc_param->tcm_secure_2g_rfc = true;
-                rfc_param->tcm_secure_5g_rfc = true;
-                rfc_param->tcm_secure_6g_rfc = true;
-            }
-	
+        rfc_param->tcm_open_2g_rfc = true;
+        rfc_param->tcm_open_5g_rfc = true;
+        rfc_param->tcm_open_6g_rfc = true;
+        rfc_param->tcm_secure_2g_rfc = true;
+        rfc_param->tcm_secure_5g_rfc = true;
+        rfc_param->tcm_secure_6g_rfc = true;
+    }
+
 }
 
 /************************************************************************************
