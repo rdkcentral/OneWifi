@@ -391,6 +391,16 @@ typedef struct {
     unsigned int app_info; //This is respective specific variable. Can be used by app for internal event identification
 } __attribute__((packed)) wifi_mon_stats_args_t;
 
+typedef struct {
+    int ap_index;
+    mac_address_t sta_mac;
+    uint8_t dialog_token;
+    uint8_t query_reason;
+    uint8_t  request_mode;
+    bool neighbor_list_present;
+    uint32_t num_neighbors;
+    wifi_neighbor_ap2_t neighbors[16];
+} __attribute__((packed)) em_btm_req_ctrl_msg_t;
 
 typedef struct {
     wifi_mon_stats_type_t  data_type;
@@ -1409,6 +1419,7 @@ typedef struct {
 typedef struct {
     UCHAR operating_class;
     UCHAR channel;
+    UINT freq;
     UCHAR scan_status;
     CHAR time_stamp[32];
     UCHAR utilization;
