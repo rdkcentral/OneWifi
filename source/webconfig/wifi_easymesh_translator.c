@@ -1373,7 +1373,7 @@ static webconfig_error_t fill_assoc_sta_mld_info_from_assoc_dev(
     // One affiliated STA entry per link (one entry per VAP visit)
     sta_mld_info->num_affiliated_sta = 1;
     memcpy(sta_mld_info->affiliated_sta[0].bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
-    memcpy(sta_mld_info->affiliated_sta[0].mac_addr, assoc_dev_data->link_address,
+    memcpy(sta_mld_info->affiliated_sta[0].link_addr, assoc_dev_data->link_address,
         sizeof(mac_address_t));
 
     return webconfig_error_none;
@@ -2596,15 +2596,11 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
 {
     em_sta_info_t em_sta_dev_info;
     webconfig_external_easymesh_t *proto;
-    em_radio_info_t *radio_info;
-    em_bss_info_t *bss_info;
-    int vap_index = 0, radio_index = 0;
-    wifi_platform_property_t *wifi_prop;
+    em_bss_info_t *bss_info = NULL;
+    em_bss_info_t *candidate;
+    int vap_index = 0;
+    unsigned int num_bss = 0, i = 0;
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
-    rdk_wifi_radio_t *radio = NULL;
-    wifi_vap_info_t *vap = NULL;
-    wifi_vap_info_map_t *vap_map = NULL;
-    int i = 0;
 
     if (params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
@@ -2613,50 +2609,40 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     }
 
     vap_index = params->sta_beacon_report.ap_index;
-    wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
-    radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
 
     proto = (webconfig_external_easymesh_t *)params->external_protos;
     if (proto == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_sta_info_t is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
 
-    radio = &params->radios[radio_index];
-    vap_map = &radio->vaps.vap_map;
-
-    for (i = 0; i < radio->vaps.num_vaps; i++) {
-        vap = &vap_map->vap_array[i];
-        if (vap->vap_index == vap_index) {
+    /* Iterate UWM BSS list matching on vap_index (not array index) */
+    num_bss = proto->get_num_bss(proto->data_model);
+    for (i = 0; i < num_bss; i++) {
+        candidate = proto->get_bss_info(proto->data_model, i);
+        if (candidate != NULL && (int)candidate->vap_index == vap_index) {
+            bss_info = candidate;
             break;
         }
     }
 
-    if (vap == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_to_easymesh;
-    }
-
-    if (vap->vap_mode != wifi_vap_mode_ap) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap_mode:%d is not wifi_vap_mode_ap\n",
-            __func__, __LINE__, vap->vap_mode);
-        return webconfig_error_translate_to_easymesh;
-    }
-
-    bss_info = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
-
     if (bss_info == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bss_info is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no BSS found for vap_index %d (num_bss=%u)\n",
+            __func__, __LINE__, vap_index, num_bss);
         return webconfig_error_translate_to_easymesh;
     }
 
+    memset(&em_sta_dev_info, 0, sizeof(em_sta_info_t));
     memcpy(em_sta_dev_info.id, params->sta_beacon_report.mac_addr, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.bssid, bss_info->bssid.mac, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.radiomac, bss_info->ruid.mac, sizeof(mac_address_t));
     em_sta_dev_info.beacon_report_len = params->sta_beacon_report.data_len;
     em_sta_dev_info.num_beacon_meas_report = params->sta_beacon_report.num_br_data;
 
-    memcpy(em_sta_dev_info.beacon_report_elem, params->sta_beacon_report.data, params->sta_beacon_report.data_len);
+    if (params->sta_beacon_report.data != NULL && params->sta_beacon_report.data_len > 0) {
+        memcpy(em_sta_dev_info.beacon_report_elem, params->sta_beacon_report.data,
+               params->sta_beacon_report.data_len);
+    }
 
     proto->put_sta_info(proto->data_model, &em_sta_dev_info, em_target_sta_map_consolidated);
 
