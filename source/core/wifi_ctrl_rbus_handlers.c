@@ -33,6 +33,8 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
+#include "safec_lib_common.h"
+
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
 #define MAX_STATUS_LEN 5
@@ -145,11 +147,43 @@ static void mask_to_quality_flags(uint32_t mask, quality_flags_t* f)
     f->int_reconn   = mask & LINKQ_INT_RECONN;
 }
 
+static inline double hotspot_timing_elapsed_sec(const struct timespec *start,
+                                                const struct timespec *end)
+{
+    if (start->tv_sec == 0 || end->tv_sec == 0) {
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [elapsed_sec] invalid timestamp – "
+            "start=%ld end=%ld\n",
+            (long)start->tv_sec, (long)end->tv_sec);
+        return 0.0;
+    }
+
+    long sec  = (long)(end->tv_sec  - start->tv_sec);
+    long nsec = (long)(end->tv_nsec - start->tv_nsec);
+
+    if (nsec < 0) {
+        sec  -= 1;
+        nsec += 1000000000L;
+    }
+
+    double elapsed = (double)sec + (double)nsec / 1000000000.0;
+
+    wifi_util_info_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [elapsed_sec] "
+        "start=%ld.%09ld end=%ld.%09ld elapsed=%.3f sec\n",
+        (long)start->tv_sec, (long)start->tv_nsec,
+        (long)end->tv_sec,   (long)end->tv_nsec,
+        elapsed);
+
+    return elapsed;
+}
+
 void hotspot_timing_start(void)
 {
     clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.start_time);
     memset(&g_hotspot_timing.target_detection_time, 0, sizeof(struct timespec));
     memset(&g_hotspot_timing.end_time,              0, sizeof(struct timespec));
+    wifi_util_info_print(WIFI_CTRL, "%s %d Start time:%ld ms\n", __func__, __LINE__, g_hotspot_timing.start_time);
     g_hotspot_timing.is_active          = true;
     g_hotspot_timing.is_target_detected = false;
 }
@@ -168,8 +202,8 @@ void hotspot_timing_target_detected(void)
     g_hotspot_timing.is_target_detected = true;
 
     wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: Time to first target detected = %ld ms\n",
-        hotspot_timing_elapsed_ms(&g_hotspot_timing.start_time,
+        "HOTSPOT_TIMING: Time to first target detected = %.3f sec\n",
+        hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
                                   &g_hotspot_timing.target_detection_time));
 }
 
@@ -185,13 +219,13 @@ void hotspot_timing_connected(void)
     g_hotspot_timing.is_active = false;
 
     wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: Duration of RF failure = %ld ms\n",
-        hotspot_timing_elapsed_ms(&g_hotspot_timing.start_time,
+        "HOTSPOT_TIMING: Duration of RF failure = %.3f sec\n",
+        hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
                                   &g_hotspot_timing.end_time));
 
     wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: Time from first target to connection = %ld ms\n",
-        hotspot_timing_elapsed_ms(&g_hotspot_timing.target_detection_time,
+        "HOTSPOT_TIMING: Time from first target to connection = %.3f sec\n",
+        hotspot_timing_elapsed_sec(&g_hotspot_timing.target_detection_time,
                                   &g_hotspot_timing.end_time));
 }
 
@@ -206,16 +240,16 @@ void hotspot_timing_disconnected(void)
     clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.disconnection_time);
 
     wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: [disconnected] Time from start to disconnection = %ld ms\n",
-        hotspot_timing_elapsed_ms(&g_hotspot_timing.start_time,
+        "HOTSPOT_TIMING: [disconnected] Time from start to disconnection = %.3f sec\n",
+        hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
                                   &g_hotspot_timing.disconnection_time));
 
     /* If the enrollee had previously connected in this cycle, log how
      * long the connection held before dropping */
     if (g_hotspot_timing.end_time.tv_sec != 0) {
         wifi_util_info_print(WIFI_CTRL,
-            "HOTSPOT_TIMING: [disconnected] Connection held for = %ld ms\n",
-            hotspot_timing_elapsed_ms(&g_hotspot_timing.end_time,
+            "HOTSPOT_TIMING: [disconnected] Connection held for = %.3f sec\n",
+            hotspot_timing_elapsed_sec(&g_hotspot_timing.end_time,
                                       &g_hotspot_timing.disconnection_time));
     }
 
