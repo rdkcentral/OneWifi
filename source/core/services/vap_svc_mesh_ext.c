@@ -1144,7 +1144,7 @@ void ext_try_connecting(vap_svc_t *svc)
             return;
         }
         vap_index = get_sta_vap_index_for_radio(svc->prop, radio_index);
-
+        hotspot_timing_target_detected();
         wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d radio:%d\n",
                     __func__, __LINE__, candidate->external_ap.ssid,
                     to_mac_str(candidate->external_ap.bssid, bssid_str), candidate->external_ap.rssi,
@@ -1738,6 +1738,10 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     vap_svc_ext_t *ext;
     wifi_ctrl_t *ctrl;
     ssid_t sta_ssid;
+    char tmp[MAX_STR_LEN] = { 0 };
+    char buff[MAX_BUFF_LEN] = { 0 };
+    char telemetry_buf[1024] = {0};
+    char entry_buf[256] = {0};
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -1785,6 +1789,26 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         " connection state:%s\n", __FUNCTION__,__LINE__, results->radio_index, num,
         ext_conn_state_to_str(ext->conn_state));
 
+    if (ctrl->rf_status_down == true) {
+	    static const char *event_names[] = {
+		    "WIFI_IGNITE_ELIGIBLE_TARGET_2G",
+		    "WIFI_IGNITE_ELIGIBLE_TARGET_5G",
+		    "WIFI_IGNITE_ELIGIBLE_TARGET_6G"
+	    };
+            get_formatted_time(tmp);
+	    if (results->radio_index < MAX_NUM_RADIOS) {
+		    snprintf(buff, MAX_BUFF_LEN, "%s %s:%u", tmp, event_names[results->radio_index], num);
+		    wifi_util_info_print(WIFI_CTRL, "%s:%d telemetry val : %s\n", __func__, __LINE__, buff);
+		    get_stubs_descriptor()->t2_event_d_fn(event_names[results->radio_index], num);
+	    } else {
+		    wifi_util_error_print(WIFI_CTRL, "%s %d Unsupported Radio index %u\n", __func__, __LINE__, results->radio_index);
+	    }
+	    memset(tmp, '\0', sizeof(tmp);
+	    memset(buff, '\0', MAX_BUFF_LEN);
+	    get_formatted_time(tmp);
+	    snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_ELIGIBLE_TARGET_METRICS:", tmp);
+    }
+
     if ((ext->candidates_list.scan_list == NULL) && num) {
         ext->candidates_list.scan_list = (bss_candidate_t *) malloc(num * sizeof(bss_candidate_t));
         scan_list = ext->candidates_list.scan_list;
@@ -1799,20 +1823,42 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     for (i = 0; i < num; i++) {
         memcpy(&scan_list->external_ap, tmp_bss, sizeof(wifi_bss_info_t));
         scan_list->conn_attempt = connection_attempt_wait;
-        scan_list->conn_retry_attempt = 0;
-        scan_list->radio_freq_band = band;
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
-            __func__, __LINE__, tmp_bss->ssid, to_mac_str(tmp_bss->bssid, bssid_str), tmp_bss->rssi, tmp_bss->freq);
+	scan_list->conn_retry_attempt = 0;
+	scan_list->radio_freq_band = band;
+
+	char delimiter = (i + 1) < num ? ';' : ' ';
+
+	snprintf(entry_buf, sizeof(entry_buf),
+			"%s,%d,%d,%d,%d%c",
+			to_mac_str(tmp_bss->bssid, bssid_str),  // BSSID
+			tmp_bss->freq,                          // Frequency
+			tmp_bss->rssi,                          // RSSI
+			tmp_bss->snr,                           // SNR
+			tmp_bss->chan_utilization,                     // Channel Utilization
+			delimiter);
+
+	strcat_s(telemetry_buf, sizeof(telemetry_buf), entry_buf);
+
         wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
             __func__, __LINE__, scan_list->external_ap.ssid, to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->external_ap.rssi, scan_list->external_ap.freq);
         tmp_bss++;
         scan_list++;
     }
+    strcat_s(telemetry_buf, sizeof(telemetry_buf), "\n");
+    strcat_s(buff, MAX_BUFF_LEN, telemetry_buf);
+    write_to_file(wifi_health_log, buff);
+    wifi_util_info_print(WIFI_CTRL,
+		    "%s:%d telemetry metrics: %s health_file_log:%s\n",
+		    __func__, __LINE__, telemetry_buf, buff);
+
+    get_stubs_descriptor()->t2_event_s_fn(
+		    "WIFI_IGNITE_ELIGIBLE_TARGET_METRICS",
+		    telemetry_buf);
 
     if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 0)) {
-        if (ctrl->rf_status_down == false) {
-            sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
-        } else {
+	    if (ctrl->rf_status_down == false) {
+		    sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
+	    } else {
             ext->ranked_count = sort_bss_results_by_ranking(
                     ext->candidates_list.scan_list,
                     ext->candidates_list.scan_count);
@@ -1930,6 +1976,7 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
 
 #define MAX_STATUS_LEN 5
 #define MAX_STR_LEN    128
+#define MAX_BUFF_LEN    256
 #define MAC_ADDR_STR_LEN 18
 
 int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
@@ -2050,7 +2097,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 snprintf(cmd, sizeof(cmd), "ip link set dev %s up", bridge_name);
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d cmd : %s\n",__func__,__LINE__, cmd);
                 get_stubs_descriptor()->v_secure_system_fn(cmd);
-
+                hotspot_timing_connected();
                 rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
 		memset(tmp, 0, sizeof(tmp));
                 get_formatted_time(tmp);
@@ -2188,6 +2235,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
         if (ctrl->rf_status_down == true) {
             rc = 0;
+            hotspot_timing_disconnected();
 	    rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
             memset(tmp, 0, sizeof(tmp));
             get_formatted_time(tmp);

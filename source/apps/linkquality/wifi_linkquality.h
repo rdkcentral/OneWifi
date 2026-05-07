@@ -27,12 +27,15 @@ extern "C" {
 #include "wifi_base.h"
 #include "wifi_webconfig.h"
 
+#define MAX_STR_LEN 128
+
 typedef struct {
     double last_score;
     double last_threshold;
     int score_log_timer_id;
     int last_service_state;
     int iteration_count;
+    char ignite_service_status[MAX_STR_LEN];
 } ignite_lq_state_t;
 
 typedef struct {
