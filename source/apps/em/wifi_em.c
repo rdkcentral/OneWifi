@@ -749,7 +749,6 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
             res_index = scan_response->num_results;
             scan_response->results[res_index].operating_class = op_class;
             scan_response->results[res_index].channel = src->ap_Channel;
-            scan_response->results[res_index].freq = src->ap_freq;
             scan_response->results[res_index].scan_status = 0;
             strncpy(scan_response->results[res_index].time_stamp, time_str,
                 sizeof(scan_response->results[res_index].time_stamp));
@@ -963,7 +962,7 @@ static int em_process_neighbour_data(wifi_provider_response_t *provider_response
             btm->num_neighbors = 0;
             btm->neighbor_list_present = false;
 
-            push_event_to_ctrl_queue(btm, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_hal_ind, wifi_event_hal_send_btm_req, NULL);
+            push_event_to_ctrl_queue(btm, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_command, wifi_event_type_send_btm_req, NULL);
 
             wifi_util_info_print(WIFI_EM, "%s:%d BTM Request sent with empty neighbor list (scan failed)\n",__func__, __LINE__);
 
@@ -989,18 +988,22 @@ static int em_process_neighbour_data(wifi_provider_response_t *provider_response
                     continue;
                 }
 
-                wifi_neighbor_ap2_t *n = &btm->neighbors[btm->num_neighbors];
+                neighbor_with_opclass_t n_local;
+                neighbor_with_opclass_t *n_ext = &n_local;
+                wifi_neighbor_ap2_t *n = &n_ext->base;
+                memset(&n_local, 0, sizeof(n_local));
 
                 to_mac_str(bss->bssid, n->ap_BSSID);
                 snprintf(n->ap_SSID, sizeof(n->ap_SSID), "%s", bss->ssid);
                 n->ap_Channel = res->channel;
-                n->ap_freq = res->freq;
                 n->ap_Noise = res->noise;
                 n->ap_SignalStrength = bss->signal_strength;
                 n->ap_ChannelUtilization = res->utilization;
+                n_ext->opClass = res->operating_class;
 
                 snprintf(n->ap_OperatingChannelBandwidth, sizeof(n->ap_OperatingChannelBandwidth), "%s", bss->channel_bandwidth);
 
+                btm->neighbors[btm->num_neighbors] = n_local;
                 btm->num_neighbors++;
             }
         }
@@ -1012,7 +1015,7 @@ static int em_process_neighbour_data(wifi_provider_response_t *provider_response
         }
 
         // Push only the BTM request event
-        push_event_to_ctrl_queue(btm, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_hal_ind, wifi_event_hal_send_btm_req, NULL);
+        push_event_to_ctrl_queue(btm, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_command, wifi_event_type_send_btm_req, NULL);
 
         wifi_util_info_print(WIFI_EM, "%s:%d BTM Request sent with %u neighbors\n", __func__, __LINE__, btm->num_neighbors);
 
@@ -2362,15 +2365,23 @@ static void em_parse_btm_query_neighbor_ies(uint8_t *ies, uint32_t ies_len, em_b
         }
 
         if (ie_id == IEEE80211_EID_NEIGHBOR && ie_len >= IEEE80211_NEIGHBOR_REPORT_MIN_LEN) {
-            wifi_neighbor_ap2_t *n = &btm->neighbors[btm->num_neighbors];
             uint8_t *ie_data = &ies[2];
 
+            neighbor_with_opclass_t n_local;
+            neighbor_with_opclass_t *n_ext = &n_local;
+            wifi_neighbor_ap2_t *n = &n_ext->base;
+
+            memset(&n_local, 0, sizeof(n_local));
+
+
             to_mac_str(ie_data, n->ap_BSSID);
+            n_ext->opClass = ie_data[10];
             n->ap_Channel = ie_data[11];
 
             // SSID is optional in Neighbor IE, leave empty
             n->ap_SSID[0] = '\0';
 
+            btm->neighbors[btm->num_neighbors] = n_local;
             btm->num_neighbors++;
         }
 
@@ -2455,7 +2466,7 @@ static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
             btm_req.request_mode = 0x01;
         }
 
-        push_event_to_ctrl_queue(&btm_req, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_hal_ind, wifi_event_hal_send_btm_req, NULL);
+        push_event_to_ctrl_queue(&btm_req, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_command, wifi_event_type_send_btm_req, NULL);
 
         wifi_util_info_print(WIFI_EM, "%s:%d BTM Query with STA suggested neighbor list (%u neighbors)\n",
                                  __func__, __LINE__, btm_req.num_neighbors);

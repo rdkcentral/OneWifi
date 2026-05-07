@@ -147,7 +147,7 @@ void process_csa_beacon_frame_event(frame_data_t *msg, uint32_t msg_length, wifi
     }
 }
 
-static UCHAR calculate_preference(wifi_neighbor_ap2_t *src)
+static UCHAR calculate_preference(const wifi_neighbor_ap2_t *src)
 {
     int pref_score = 0;
 
@@ -178,48 +178,57 @@ static UCHAR calculate_preference(wifi_neighbor_ap2_t *src)
 
 static int compare_pref(const void *a, const void *b)
 {
-    wifi_neighbor_ap2_t *n1 = (wifi_neighbor_ap2_t *)a;
-    wifi_neighbor_ap2_t *n2 = (wifi_neighbor_ap2_t *)b;
+    const neighbor_with_opclass_t *e1 = a;
+    const neighbor_with_opclass_t *e2 = b;
 
-    return calculate_preference(n2) - calculate_preference(n1);
+    return calculate_preference(&e2->base) - calculate_preference(&e1->base);
 }
 
 void process_btm_request_send_event(void *data, uint32_t len) {
     int ret;
     wifi_BTMRequest_t btmReq;
-    em_btm_req_ctrl_msg_t *msg = (em_btm_req_ctrl_msg_t *)data;
 
-    wifi_util_info_print(WIFI_CTRL, "%s:%d BTM req send event received\n", __func__, __LINE__);
-
-    if (!data || len < sizeof(*msg)) {
+    if (!data || len < sizeof(em_btm_req_ctrl_msg_t)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid BTM req data\n",__func__, __LINE__);
         return;
     }
+
+    em_btm_req_ctrl_msg_t *msg = (em_btm_req_ctrl_msg_t *)data;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d BTM req send event received\n", __func__, __LINE__);
 
     memset(&btmReq, 0, sizeof(btmReq));
 
     // Fill HAL BTM Request
     btmReq.token       = msg->dialog_token;
     btmReq.requestMode = msg->request_mode;
-    if (msg->neighbor_list_present && msg->num_neighbors > 0) {
-        qsort(msg->neighbors, msg->num_neighbors, sizeof(wifi_neighbor_ap2_t), compare_pref);
 
-        btmReq.numCandidates = (msg->num_neighbors > MAX_CANDIDATES) ?
-                                          MAX_CANDIDATES : msg->num_neighbors;
+    if (msg->neighbor_list_present && msg->num_neighbors > 0) {
+        uint32_t neighbors_count = msg->num_neighbors;
+        if (neighbors_count > MAX_CANDIDATES) {
+            neighbors_count = MAX_CANDIDATES;
+        }
+
+        neighbor_with_opclass_t tmp_neighbors[MAX_CANDIDATES];
+        memcpy(tmp_neighbors, msg->neighbors, neighbors_count * sizeof(neighbor_with_opclass_t));
+        qsort(tmp_neighbors, neighbors_count, sizeof(neighbor_with_opclass_t), compare_pref);
+
+        btmReq.numCandidates = neighbors_count;
 
         for (uint32_t i = 0; i < btmReq.numCandidates; i++) {
-           wifi_neighbor_ap2_t *src = &msg->neighbors[i];
+            neighbor_with_opclass_t *src_ext = &tmp_neighbors[i];
+            wifi_neighbor_ap2_t *src = &src_ext->base;
             wifi_NeighborReport_t *dst = &btmReq.candidates[i];
 
             str_to_mac_bytes(src->ap_BSSID, dst->bssid);
             dst->channel = (UCHAR)src->ap_Channel;
-            dst->opClass = (src->ap_freq > 0) ? (UCHAR)wifi_freq_to_op_class(src->ap_freq) : 0;
+            dst->opClass = src_ext->opClass;
             snprintf(dst->target_ssid, sizeof(dst->target_ssid), "%s", src->ap_SSID);
             dst->bssTransitionCandidatePreferencePresent = TRUE;
             dst->bssTransitionCandidatePreference.preference = calculate_preference(src);
 
-            wifi_util_dbg_print(WIFI_CTRL,"BTM[%d]: %s RSSI=%d Pref=%d\n",i, src->ap_BSSID,
-                     src->ap_SignalStrength, dst->bssTransitionCandidatePreference.preference);
+            wifi_util_dbg_print(WIFI_CTRL,"BTM[%d]: BSSID: %s Channel: %u opClass: %u RSSI: %d Pref: %d\n",
+                    i, src->ap_BSSID, src->ap_Channel, src_ext->opClass, src->ap_SignalStrength, dst->bssTransitionCandidatePreference.preference);
 
         }
         wifi_util_info_print(WIFI_CTRL,"%s:%d BTM neighbor list filled, candidates=%u\n", __func__, __LINE__, btmReq.numCandidates);
@@ -4400,6 +4409,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);
         break;
+    case wifi_event_type_send_btm_req:
+        process_btm_request_send_event(data, len);
+        break; 
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
     case wifi_event_type_udhcp_ip_fail:
@@ -4500,10 +4512,6 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
 
     case wifi_event_hal_wnm_action_frame:
-        break;
-
-    case wifi_event_hal_send_btm_req:
-        process_btm_request_send_event(data, len);
         break;
 
     default:

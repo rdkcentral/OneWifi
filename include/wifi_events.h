@@ -117,7 +117,6 @@ typedef enum {
     wifi_event_hal_csa_beacon_frame,
     wifi_event_hal_wps_results,
     wifi_event_hal_wnm_action_frame,
-    wifi_event_hal_send_btm_req,
     wifi_event_hal_max,
 
     // Commands
@@ -180,6 +179,7 @@ typedef enum {
     wifi_event_type_xfi_tel_enable_rfc,
     wifi_event_type_sm_app_enable,
     wifi_event_type_link_quality_rfc,
+    wifi_event_type_send_btm_req,
     wifi_event_command_max,
 
     wifi_event_monitor_diagnostics = wifi_event_type_base
