@@ -4876,7 +4876,7 @@ static void wifidb_global_config_upgrade()
     char strValue[256] = { 0 };
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
-	wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     if (g_wifidb->db_version == 0) {
         return;
