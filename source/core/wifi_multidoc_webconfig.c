@@ -300,7 +300,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid input parameters\n", __func__);
         return RETURN_ERR;
     }
-
     wifi_radius_settings_t *radius_info = &vap_info->u.bss_info.security.u.radius;
 
     wifi_util_info_print(WIFI_CTRL, "Security blob:\n");
@@ -392,7 +391,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
     }
     value = cJSON_GetStringValue(param);
     wifi_util_info_print(WIFI_CTRL, "   \"ModeEnabled\": %s\n", value);
-
     if (!strcmp(value, "None")) {
         vap_info->u.bss_info.security.mode = wifi_security_mode_none;
         vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
@@ -462,11 +460,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         return RETURN_ERR;
     }
 
-    /*
-     * ------------------ MFPConfig (decoupled from RadiusSettings) ------------------
-     * Requirement retained: Hotspot VAPs require MFPConfig; non-hotspot VAPs may omit it.
-     * Hardening added ONLY here (as requested) to avoid strcmp crash on non-string/null.
-     */
     param = cJSON_GetObjectItem(security, "MFPConfig");
     if (!param) {
         if (isVapHotspot(vap_info->vap_index)) {
@@ -515,10 +508,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
     }
 
-    /*
-     * ------------------ RadiusSettings (hotspot-only as earlier behavior) ------------------
-     * Only require/parse RadiusSettings for hotspot VAPs.
-     */
     if (isVapHotspot(vap_info->vap_index)) {
 
         radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
