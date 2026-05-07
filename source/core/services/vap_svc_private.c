@@ -22,7 +22,6 @@
 #include "stdlib.h"
 #include <sys/time.h>
 #include <string.h>
-#include <unistd.h>
 #include "vap_svc.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
