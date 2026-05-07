@@ -3466,14 +3466,14 @@ void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_d
         if (vapSecurity != NULL) {
             if(radius_data->radius_switch_reason == RADIUS_FAILOVER){
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-                strcpy((char*)vapSecurity->u.radius.connectedendpoint,(char*)vapSecurity->u.radius.s_ip);
+                snprintf((char*)vapSecurity->u.radius.connectedendpoint, sizeof(vapSecurity->u.radius.connectedendpoint), "%s", (char*)vapSecurity->u.radius.s_ip);
 #else
                 vapSecurity->u.radius.connectedendpoint = vapSecurity->u.radius.s_ip;
 #endif
             }
             else {
 #ifndef WIFI_HAL_VERSION_3_PHASE2 
-                strcpy((char*)vapSecurity->u.radius.connectedendpoint,(char*)vapSecurity->u.radius.ip);
+                snprintf((char*)vapSecurity->u.radius.connectedendpoint, sizeof(vapSecurity->u.radius.connectedendpoint), "%s", (char*)vapSecurity->u.radius.ip);
 #else
                 vapSecurity->u.radius.connectedendpoint = vapSecurity->u.radius.ip;
 #endif
