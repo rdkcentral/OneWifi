@@ -181,6 +181,7 @@ typedef struct {
     struct timespec start_time;
     struct timespec target_detection_time;
     struct timespec end_time;
+    struct timespec disconnection_time;
 
     bool is_active;           /* stale-start guard                    */
     bool is_target_detected;  /* record target_detection_time only once */
