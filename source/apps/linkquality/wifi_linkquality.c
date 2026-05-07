@@ -158,10 +158,10 @@ void publish_station_score(const char *input_str, double score, double threshold
 
     if (score < threshold) {
         current_state = 0;
-        snprintf(ignite->ignite_service_status, MAX_STR_LEN, "Manageable");
+        snprintf(ignite->ignite_service_status, MAX_IGNITE_STR_LEN, "Manageable");
     } else if (score >= threshold) {
         current_state = 1;
-        snprintf(ignite->ignite_service_status, MAX_STR_LEN, "Serviceable");
+        snprintf(ignite->ignite_service_status, MAX_IGNITE_STR_LEN, "Serviceable");
     }
 
     if (current_state != -1 && current_state != ignite->last_service_state) {
