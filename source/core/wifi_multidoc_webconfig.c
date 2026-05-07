@@ -408,7 +408,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
     } else if (!strcmp(value, "WPA-WPA2-Personal")) {
         vap_info->u.bss_info.security.mode = wifi_security_mode_wpa_wpa2_personal;
-        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
     } else if (!strcmp(value, "WPA3-Personal")) {
         vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
@@ -458,10 +458,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
         return RETURN_ERR;
     }
-
-    if (isVapHotspot(vap_info->vap_index)) {
-        param = cJSON_GetObjectItem(security, "MFPConfig");
-        if (!param) {
+    
+    param = cJSON_GetObjectItem(security, "MFPConfig"); 
+    if (!param) {
+        if (isVapHotspot(vap_info->vap_index)) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"MFPConfig\"\n", __func__);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid MFPConfig",
@@ -469,7 +469,24 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             }
             return RETURN_ERR;
         }
+    } else {
+        if (!cJSON_IsString(param)) {
+            wifi_util_error_print(WIFI_CTRL, "%s: \"MFPConfig\" is not a string\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid MFPConfig type",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
         value = cJSON_GetStringValue(param);
+        if (value == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s: \"MFPConfig\" value is NULL\n", __func__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg, "Invalid MFPConfig",
+                    sizeof(execRetVal->ErrorMsg) - 1);
+            }
+            return RETURN_ERR;
+        }
         wifi_util_info_print(WIFI_CTRL, "   \"MFPConfig\": %s\n", value);
         if (!strcmp(value, "Disabled")) {
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
@@ -486,6 +503,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             return RETURN_ERR;
         }
 
+        if (isVapHotspot(vap_info->vap_index)) {
         radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
         if (!radius_param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusSettings\"\n", __func__);
