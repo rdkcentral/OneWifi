@@ -431,10 +431,16 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
     } else if (!strcmp(value, "WPA3-Enterprise")) {
         vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_enterprise;
-        if (strstr(vap_info->vap_name, "6g")) {
-            vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
-            vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
-        }
+        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+    } else if (!strcmp(value, "WPA3-Personal-Compatibility")) {
+        vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
+        vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+#if defined(CONFIG_IEEE80211BE)
+            if( strstr(vap_info->vap_name, "6g") ) {
+                vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+                vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+            }
 #endif /* CONFIG_IEEE80211BE */
     } else {
         if (execRetVal) {
