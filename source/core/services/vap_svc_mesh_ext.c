@@ -35,7 +35,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
-
+#include "safec_lib_common.h"
 #define SCORE_TIE_THRESHOLD 1
 #define WIFI_VARIANT_BE 7
 #define WIFI_VARIANT_AX 6

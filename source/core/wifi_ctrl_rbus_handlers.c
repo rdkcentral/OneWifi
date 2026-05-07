@@ -33,7 +33,6 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
-#include "safec_lib_common.h"
 
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
