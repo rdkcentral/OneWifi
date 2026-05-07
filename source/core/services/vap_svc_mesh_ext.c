@@ -52,6 +52,12 @@
 #define EXT_DISCONNECTION_NO_ACTION 0
 #define EXT_DISCONNECTION_DISCONNECT 1
 #define EXT_DISCONNECTION_DISCONNECT_AND_IGNORE_RADIO 2
+
+#define MAX_STATUS_LEN 5
+#define MAX_STR_LEN    128
+#define MAC_ADDR_STR_LEN 18
+#define MAX_BUFF_LEN    256
+
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 /**
  * @brief Temporary structure for sorting with computed scores
@@ -1790,7 +1796,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         ext_conn_state_to_str(ext->conn_state));
 
     if (ctrl->rf_status_down == true) {
-	    static const char *event_names[] = {
+	    static char *event_names[] = {
 		    "WIFI_IGNITE_ELIGIBLE_TARGET_2G",
 		    "WIFI_IGNITE_ELIGIBLE_TARGET_5G",
 		    "WIFI_IGNITE_ELIGIBLE_TARGET_6G"
@@ -1803,7 +1809,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
 	    } else {
 		    wifi_util_error_print(WIFI_CTRL, "%s %d Unsupported Radio index %u\n", __func__, __LINE__, results->radio_index);
 	    }
-	    memset(tmp, '\0', sizeof(tmp);
+	    memset(tmp, '\0', sizeof(tmp));
 	    memset(buff, '\0', MAX_BUFF_LEN);
 	    get_formatted_time(tmp);
 	    snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_ELIGIBLE_TARGET_METRICS:", tmp);
@@ -1825,35 +1831,39 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         scan_list->conn_attempt = connection_attempt_wait;
 	scan_list->conn_retry_attempt = 0;
 	scan_list->radio_freq_band = band;
+	if (ctrl->rf_status_down == true) {
+		char delimiter = (i + 1) < num ? ';' : ' ';
 
-	char delimiter = (i + 1) < num ? ';' : ' ';
+		snprintf(entry_buf, sizeof(entry_buf),
+				"%s,%d,%d,%d,%d%c",
+				to_mac_str(tmp_bss->bssid, bssid_str),  // BSSID
+				tmp_bss->freq,                          // Frequency
+				tmp_bss->rssi,                          // RSSI
+				tmp_bss->snr,                           // SNR
+				tmp_bss->chan_utilization,                     // Channel Utilization
+				delimiter);
 
-	snprintf(entry_buf, sizeof(entry_buf),
-			"%s,%d,%d,%d,%d%c",
-			to_mac_str(tmp_bss->bssid, bssid_str),  // BSSID
-			tmp_bss->freq,                          // Frequency
-			tmp_bss->rssi,                          // RSSI
-			tmp_bss->snr,                           // SNR
-			tmp_bss->chan_utilization,                     // Channel Utilization
-			delimiter);
-
-	strcat_s(telemetry_buf, sizeof(telemetry_buf), entry_buf);
+		strcat_s(telemetry_buf, sizeof(telemetry_buf), entry_buf);
+	}
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
             __func__, __LINE__, scan_list->external_ap.ssid, to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->external_ap.rssi, scan_list->external_ap.freq);
         tmp_bss++;
         scan_list++;
     }
-    strcat_s(telemetry_buf, sizeof(telemetry_buf), "\n");
-    strcat_s(buff, MAX_BUFF_LEN, telemetry_buf);
-    write_to_file(wifi_health_log, buff);
-    wifi_util_info_print(WIFI_CTRL,
-		    "%s:%d telemetry metrics: %s health_file_log:%s\n",
-		    __func__, __LINE__, telemetry_buf, buff);
 
-    get_stubs_descriptor()->t2_event_s_fn(
-		    "WIFI_IGNITE_ELIGIBLE_TARGET_METRICS",
-		    telemetry_buf);
+    if (ctrl->rf_status_down == true) {
+	    strcat_s(telemetry_buf, sizeof(telemetry_buf), "\n");
+	    strcat_s(buff, MAX_BUFF_LEN, telemetry_buf);
+	    write_to_file(wifi_health_log, buff);
+	    wifi_util_info_print(WIFI_CTRL,
+			    "%s:%d telemetry metrics: %s health_file_log:%s\n",
+			    __func__, __LINE__, telemetry_buf, buff);
+
+	    get_stubs_descriptor()->t2_event_s_fn(
+			    "WIFI_IGNITE_ELIGIBLE_TARGET_METRICS",
+			    telemetry_buf);
+    }
 
     if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 0)) {
 	    if (ctrl->rf_status_down == false) {
@@ -1973,11 +1983,6 @@ static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
     temp_radio_params = NULL;
     return RETURN_OK;
 }
-
-#define MAX_STATUS_LEN 5
-#define MAX_STR_LEN    128
-#define MAX_BUFF_LEN    256
-#define MAC_ADDR_STR_LEN 18
 
 int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 {

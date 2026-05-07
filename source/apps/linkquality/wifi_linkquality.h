@@ -27,8 +27,6 @@ extern "C" {
 #include "wifi_base.h"
 #include "wifi_webconfig.h"
 
-#define MAX_STR_LEN 128
-
 typedef struct {
     double last_score;
     double last_threshold;
