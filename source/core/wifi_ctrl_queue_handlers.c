@@ -1951,13 +1951,8 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
     free(removed_dev);
     if (old_count > 0) {
         *new_count = old_count - 1;
-	}
-    if (((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index)))){
-        if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index, *new_count, old_count) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
-        }
     }
-	return RETURN_OK;
+    return RETURN_OK;
 }
 
 void process_disassoc_device_event(void *data)
@@ -2089,13 +2084,22 @@ void check_and_remove_mac_on_other_vaps(rdk_wifi_vap_info_t *current_vap_info,
 
         if (removed_dev != NULL) {
             ULONG new_count = old_count;
-         
-            if (process_device_removal(rdk_vap_info, mac_str, removed_dev, 
+
+            if (process_device_removal(rdk_vap_info, mac_str, removed_dev,
                                       p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
                 pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
                 return;
             }
-            
+
+            if ((isVapPrivate(rdk_vap_info->vap_index) || isVapXhs(rdk_vap_info->vap_index))) {
+                if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index,
+                                              new_count, old_count) != RETURN_OK) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Unable to send notification for associated entries\n",
+                        __func__, __LINE__);
+                }
+            }
+
             wifi_util_info_print(WIFI_CTRL,
                 "%s:%d Removed MAC %s from VAP %d (roaming to VAP %d)\n",
                 __func__, __LINE__, mac_str, vap_idx, assoc_data->ap_index);
