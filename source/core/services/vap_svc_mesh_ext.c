@@ -1151,7 +1151,7 @@ void ext_try_connecting(vap_svc_t *svc)
         }
         vap_index = get_sta_vap_index_for_radio(svc->prop, radio_index);
         if (ctrl->rf_status_down == true) {
-	hotspot_timing_target_detected();
+	    hotspot_timing_target_detected();
 	}
         wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d radio:%d\n",
                     __func__, __LINE__, candidate->external_ap.ssid,
@@ -2083,7 +2083,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
             if (ctrl->rf_status_down == true) { 
                 char mac_str[32] = {'\0'};
-                uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
+                char bssid_str[32] = {'\0'};
+		uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
+		uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_str);
                 wifi_util_dbg_print(WIFI_CTRL,
                     "%s:%d Bridge:%s  Using MAC-Str:%s MAC : %02x:%02x:%02x:%02x:%02x:%02x\n",
                     __func__, __LINE__, bridge_name, mac_str, temp_vap_info->u.sta_info.mac[0],
@@ -2104,7 +2106,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 snprintf(cmd, sizeof(cmd), "ip link set dev %s up", bridge_name);
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d cmd : %s\n",__func__,__LINE__, cmd);
                 get_stubs_descriptor()->v_secure_system_fn(cmd);
-                hotspot_timing_connected();
+                hotspot_timing_connected(ext->connected_vap_index, bssid_str);
                 rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
 		memset(tmp, 0, sizeof(tmp));
                 get_formatted_time(tmp);
