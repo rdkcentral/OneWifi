@@ -1150,7 +1150,9 @@ void ext_try_connecting(vap_svc_t *svc)
             return;
         }
         vap_index = get_sta_vap_index_for_radio(svc->prop, radio_index);
-        hotspot_timing_target_detected();
+        if (ctrl->rf_status_down == true) {
+	hotspot_timing_target_detected();
+	}
         wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d radio:%d\n",
                     __func__, __LINE__, candidate->external_ap.ssid,
                     to_mac_str(candidate->external_ap.bssid, bssid_str), candidate->external_ap.rssi,

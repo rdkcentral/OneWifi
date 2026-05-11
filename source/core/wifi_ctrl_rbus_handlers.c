@@ -146,12 +146,15 @@ static void mask_to_quality_flags(uint32_t mask, quality_flags_t* f)
     f->int_reconn   = mask & LINKQ_INT_RECONN;
 }
 
+/* ------------------------------------------------------------------ */
+/* Utility — no guard needed, callers ensure timestamps are valid      */
+/* ------------------------------------------------------------------ */
 static inline double hotspot_timing_elapsed_sec(const struct timespec *start,
                                                 const struct timespec *end)
 {
     if (start->tv_sec == 0 || end->tv_sec == 0) {
         wifi_util_info_print(WIFI_CTRL,
-            "HOTSPOT_TIMING: [elapsed_sec] invalid timestamp – "
+            "HOTSPOT_TIMING: [elapsed_sec] invalid timestamp "
             "start=%ld end=%ld\n",
             (long)start->tv_sec, (long)end->tv_sec);
         return 0.0;
@@ -177,86 +180,198 @@ static inline double hotspot_timing_elapsed_sec(const struct timespec *start,
     return elapsed;
 }
 
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_start()                                               */
+/* Called : start_station_vaps() when rf_status == true                */
+/* ------------------------------------------------------------------ */
 void hotspot_timing_start(void)
 {
     clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.start_time);
+
     memset(&g_hotspot_timing.target_detection_time, 0, sizeof(struct timespec));
     memset(&g_hotspot_timing.end_time,              0, sizeof(struct timespec));
-    wifi_util_info_print(WIFI_CTRL, "%s %d Start time:%ld ms\n", __func__, __LINE__, g_hotspot_timing.start_time);
-    g_hotspot_timing.is_active          = true;
-    g_hotspot_timing.is_target_detected = false;
+    memset(&g_hotspot_timing.disconnection_time,    0, sizeof(struct timespec));
+
+    wifi_util_info_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [start] start_time = %ld sec %ld nsec\n",
+        (long)g_hotspot_timing.start_time.tv_sec,
+        (long)g_hotspot_timing.start_time.tv_nsec);
 }
 
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_stop()                                                */
+/* Called : start_station_vaps() when rf_status == false               */
+/* ------------------------------------------------------------------ */
 void hotspot_timing_stop(void)
 {
-    memset(&g_hotspot_timing, 0, sizeof(hotspot_timing_t));  /* is_active = false */
+    wifi_util_info_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [stop] RF restored – clearing all timestamps\n");
+
+    memset(&g_hotspot_timing, 0, sizeof(hotspot_timing_t));
 }
 
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_target_detected()                                     */
+/* Called : ext_try_connecting() when first candidate is found         */
+/* Guard  : rf_status_down, target_detection_time == 0 (record once)  */
+/* ------------------------------------------------------------------ */
 void hotspot_timing_target_detected(void)
 {
-    if (!g_hotspot_timing.is_active || g_hotspot_timing.is_target_detected)
+    /*wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (!ctrl->rf_status_down) {
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [target_detected] RF not down – skip\n");
         return;
+    }*/
+
+    /* Already recorded for this attempt — skip */
+    if (g_hotspot_timing.target_detection_time.tv_sec != 0) {
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [target_detected] already recorded "
+            "(%ld sec) – skip\n",
+            (long)g_hotspot_timing.target_detection_time.tv_sec);
+        return;
+    }
 
     clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.target_detection_time);
-    g_hotspot_timing.is_target_detected = true;
 
     wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: Time to first target detected = %.3f sec\n",
+        "HOTSPOT_TIMING: [target_detected] target_detection_time = "
+        "%ld sec %ld nsec\n",
+        (long)g_hotspot_timing.target_detection_time.tv_sec,
+        (long)g_hotspot_timing.target_detection_time.tv_nsec);
+
+    wifi_util_info_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [target_detected] "
+        "Time to first target detected = %.3f sec\n",
         hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
-                                  &g_hotspot_timing.target_detection_time));
+                                   &g_hotspot_timing.target_detection_time));
 }
 
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_connected()                                           */
+/* Called : process_ext_sta_conn_status() on connected event           */
+/* Note   : end_time preserved for disconnected() check                */
+/*          Only target_detection_time is reset here                   */
+/* ------------------------------------------------------------------ */
 void hotspot_timing_connected(void)
 {
-    if (!g_hotspot_timing.is_active) {
+    /*wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (!ctrl->rf_status_down) {
         wifi_util_error_print(WIFI_CTRL,
-            "HOTSPOT_TIMING: [end] no active cycle – stale event\n");
+            "HOTSPOT_TIMING: [connected] RF not down – stale event\n");
         return;
-    }
+    }*/
 
     clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.end_time);
-    g_hotspot_timing.is_active = false;
 
     wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: Duration of RF failure = %.3f sec\n",
+        "HOTSPOT_TIMING: [connected] end_time = %ld sec %ld nsec\n",
+        (long)g_hotspot_timing.end_time.tv_sec,
+        (long)g_hotspot_timing.end_time.tv_nsec);
+
+    wifi_util_info_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [connected] Duration of RF failure = %.3f sec\n",
         hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
-                                  &g_hotspot_timing.end_time));
+                                   &g_hotspot_timing.end_time));
 
-    wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: Time from first target to connection = %.3f sec\n",
-        hotspot_timing_elapsed_sec(&g_hotspot_timing.target_detection_time,
-                                  &g_hotspot_timing.end_time));
+    if (g_hotspot_timing.target_detection_time.tv_sec != 0) {
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [connected] "
+            "Time from first target to connection = %.3f sec\n",
+            hotspot_timing_elapsed_sec(
+                &g_hotspot_timing.target_detection_time,
+                &g_hotspot_timing.end_time));
+    } else {
+        wifi_util_error_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [connected] "
+            "target_detection_time not recorded this cycle\n");
+    }
+
+    /*
+     * Reset ONLY target_detection_time so next attempt records fresh.
+     * end_time MUST stay set — hotspot_timing_disconnected() uses
+     * end_time != 0 to detect "device was connected this attempt".
+     * start_time MUST stay set — disconnected() uses it for hold time.
+     */
+    memset(&g_hotspot_timing.target_detection_time, 0, sizeof(struct timespec));
 }
 
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_disconnected()                                        */
+/* Called : process_ext_sta_conn_status() on disconnected event        */
+/* ------------------------------------------------------------------ */
 void hotspot_timing_disconnected(void)
 {
-    if (!g_hotspot_timing.is_active) {
-        /* No RF-down cycle running – normal disconnection, nothing to track */
-        wifi_util_info_print(WIFI_CTRL, "[%s %d]RF enabled\n", __func__, __LINE__);
-	return;
-    }
+   /* wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.disconnection_time);
-
-    wifi_util_info_print(WIFI_CTRL,
-        "HOTSPOT_TIMING: [disconnected] Time from start to disconnection = %.3f sec\n",
-        hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
-                                  &g_hotspot_timing.disconnection_time));
-
-    /* If the enrollee had previously connected in this cycle, log how
-     * long the connection held before dropping */
-    if (g_hotspot_timing.end_time.tv_sec != 0) {
+    if (!ctrl->rf_status_down) {
         wifi_util_info_print(WIFI_CTRL,
-            "HOTSPOT_TIMING: [disconnected] Connection held for = %.3f sec\n",
-            hotspot_timing_elapsed_sec(&g_hotspot_timing.end_time,
-                                      &g_hotspot_timing.disconnection_time));
-    }
+            "HOTSPOT_TIMING: [disconnected] [%s %d] "
+            "RF enabled – normal disconnection, nothing to track\n",
+            __func__, __LINE__);
+        return;
+    }*/
 
-    /* RF is still down – cycle stays active (is_active = true, start_time
-     * untouched) but reset scan/connection fields so the next reconnection
-     * attempt is measured fresh from this point */
-    memset(&g_hotspot_timing.disconnection_time,    0, sizeof(struct timespec));
-    hotspot_timing_start();
+    if (g_hotspot_timing.end_time.tv_sec != 0) {
+        /*
+         * end_time != 0 → device WAS connected this attempt.
+         * 1. Record disconnection_time.
+         * 2. Log connection hold duration (disconnection_time - end_time).
+         * 3. Assign start_time = disconnection_time for fresh window.
+         * 4. Clear target_detection_time, end_time, disconnection_time.
+         */
+        clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.disconnection_time);
+
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] disconnection_time = "
+            "%ld sec %ld nsec\n",
+            (long)g_hotspot_timing.disconnection_time.tv_sec,
+            (long)g_hotspot_timing.disconnection_time.tv_nsec);
+
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] "
+            "Connection held for = %.3f sec\n",
+            hotspot_timing_elapsed_sec(&g_hotspot_timing.end_time,
+                                       &g_hotspot_timing.disconnection_time));
+
+        /* Assign before clearing disconnection_time */
+        g_hotspot_timing.start_time = g_hotspot_timing.disconnection_time;
+
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] was connected – "
+            "start_time reset to %ld sec for next attempt\n",
+            (long)g_hotspot_timing.start_time.tv_sec);
+
+        memset(&g_hotspot_timing.target_detection_time, 0, sizeof(struct timespec));
+        memset(&g_hotspot_timing.end_time,              0, sizeof(struct timespec));
+        memset(&g_hotspot_timing.disconnection_time,    0, sizeof(struct timespec));
+
+    } else {
+        /*
+         * end_time == 0 → device never connected this attempt.
+         * Log elapsed from current start_time.
+         * Preserve start_time and target_detection_time for next attempt.
+         */
+        clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.disconnection_time);
+
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] disconnection_time = "
+            "%ld sec %ld nsec\n",
+            (long)g_hotspot_timing.disconnection_time.tv_sec,
+            (long)g_hotspot_timing.disconnection_time.tv_nsec);
+
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] "
+            "Disconnected before connecting – elapsed = %.3f sec\n",
+            hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
+                                       &g_hotspot_timing.disconnection_time));
+
+        /* Zero scratch field only — start_time and target_detection_time preserved */
+        memset(&g_hotspot_timing.disconnection_time, 0, sizeof(struct timespec));
+    }
 }
 
 bus_error_t get_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
