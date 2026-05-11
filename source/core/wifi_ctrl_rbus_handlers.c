@@ -40,7 +40,7 @@
 #define MAX_TELEMETRY_BUFF_LEN 64
 #define MAX_STATUS_LEN 5
 #define STA_STATUS_DISCONNECTED 1
-
+static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 apply_ignite_config_t g_apply_ignite_config;
 
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
@@ -302,7 +302,7 @@ void hotspot_timing_connected(unsigned int vap_index, char *bssid_str)
     wifi_util_dbg_print(WIFI_CTRL, "%s", buff);
     memset(telemetry_buf, 0, sizeof(telemetry_buf));
     snprintf(telemetry_buf, sizeof(telemetry_buf), "%u %s %.3f", vap_index, bssid_str, connection_duration);
-    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_SESSION_DURATION_SEC", telemetry_buf);
+    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_CONN_INFO", telemetry_buf);
 
     if (g_hotspot_timing.target_detection_time.tv_sec != 0) {
         wifi_util_info_print(WIFI_CTRL,
@@ -432,7 +432,6 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     bus_error_t rc = bus_error_success;
     bool rf_status = false;
     char tmp[128] = {0};
-     static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
