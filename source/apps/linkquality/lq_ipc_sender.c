@@ -65,6 +65,44 @@ static void lq_ipc_log_stats_entries(uint32_t msg_type, const void *entries,
     }
 }
 
+/*
+ * build_tlv - encode payload as a single simple LQ TLV.
+ * Returns bytes written, or -1 on buffer overflow.
+ */
+static int build_tlv(uint32_t msg_type, const void *entries,
+                     uint32_t count, size_t entry_size,
+                     uint8_t *buf, size_t buf_sz)
+{
+    size_t data_sz = count * entry_size;
+    size_t needed  = sizeof(lq_tlv_t) + data_sz;
+
+    if (needed > buf_sz) {
+        wifi_util_error_print(WIFI_APPS,
+            "%s:%d [TLV] buffer too small: need %zu have %zu\n",
+            __func__, __LINE__, needed, buf_sz);
+        return -1;
+    }
+
+    if (data_sz > UINT16_MAX) {
+        wifi_util_error_print(WIFI_APPS,
+            "%s:%d [TLV] payload %zu exceeds uint16_t max\n",
+            __func__, __LINE__, data_sz);
+        return -1;
+    }
+
+    lq_tlv_t *tlv = (lq_tlv_t *)buf;
+    tlv->type = (uint8_t)msg_type;
+    tlv->len  = (uint16_t)data_sz;
+    if (data_sz > 0 && entries != NULL) {
+        memcpy(tlv->value, entries, data_sz);
+    }
+
+    wifi_util_dbg_print(WIFI_APPS,
+        "%s:%d [TLV] msg_type=%u data_sz=%zu tlv_bytes=%zu\n",
+        __func__, __LINE__, msg_type, data_sz, sizeof(lq_tlv_t) + data_sz);
+    return (int)(sizeof(lq_tlv_t) + data_sz);
+}
+
 int lq_ipc_send(uint32_t msg_type, const void *entries,
                 uint32_t count, size_t entry_size)
 {
@@ -110,22 +148,26 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, LQ_STATS_SOCKET_PATH, sizeof(addr.sun_path) - 1);
 
-    size_t data_sz = count * entry_size;
-    size_t payload_sz = sizeof(lq_ipc_header_t) + data_sz;
-    uint8_t *buf = malloc(payload_sz);
+    size_t data_sz  = (size_t)count * entry_size;
+    size_t alloc_sz = sizeof(lq_tlv_t) + data_sz;
+    uint8_t *buf = (uint8_t *)malloc(alloc_sz);
     if (!buf) {
         wifi_util_error_print(WIFI_MON,
-            "%s:%d malloc(%zu) failed\n", __func__, __LINE__, payload_sz);
+            "%s:%d malloc(%zu) failed\n", __func__, __LINE__, alloc_sz);
         return -1;
     }
 
-    lq_ipc_header_t *hdr = (lq_ipc_header_t *)buf;
-    hdr->msg_type    = msg_type;
-    hdr->num_entries = count;
+    int tlv_len = build_tlv(msg_type, entries, count, entry_size,
+                            buf, alloc_sz);
 
-    memcpy(buf + sizeof(lq_ipc_header_t), entries, data_sz);
+    size_t datagram_sz = (size_t)tlv_len;
 
-    ssize_t ret = sendto(lq_ipc_fd, buf, payload_sz, MSG_DONTWAIT,
+    wifi_util_dbg_print(WIFI_APPS,
+        "%s:%d [IPC-SEND] TLV encoded: tlv_type=%s(%u) tlv_len=%d datagram_sz=%zu\n",
+        __func__, __LINE__, lq_msg_type_str(msg_type), msg_type,
+        tlv_len, datagram_sz);
+
+    ssize_t ret = sendto(lq_ipc_fd, buf, datagram_sz, MSG_DONTWAIT,
                          (struct sockaddr *)&addr, sizeof(addr));
     if (ret < 0) {
         wifi_util_dbg_print(WIFI_MON,
@@ -133,8 +175,8 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
             __func__, __LINE__, LQ_STATS_SOCKET_PATH, strerror(errno));
     } else {
         wifi_util_info_print(WIFI_APPS,
-            "%s:%d [IPC-SEND] %s sent %zd bytes OK\n",
-            __func__, __LINE__, lq_msg_type_str(msg_type), ret);
+            "%s:%d [IPC-SEND] %s sent %zd bytes OK (count=%u)\n",
+            __func__, __LINE__, lq_msg_type_str(msg_type), ret, count);
     }
 
     free(buf);

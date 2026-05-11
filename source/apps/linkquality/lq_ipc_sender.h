@@ -51,23 +51,30 @@
 #define LQ_IPC_MSG_SET_MAX_SNR      10
 
 /*
- * Fixed-size header prepended to every datagram.
- * Followed by num_entries × stats_arg_t (or equivalent).
+ * LQ TLV — the entire datagram is a single TLV, no wrapper header.
+ *
+ *   type  – LQ_IPC_MSG_* (1–10); uint8_t is sufficient
+ *   len   – payload byte count; uint16_t covers all realistic payloads
+ *   value – raw payload bytes (stats_arg_t[], server_arg_t, MAC string, etc.)
+ *
+ * Total header: 3 bytes (packed). AF_UNIX SOCK_DGRAM preserves exact datagram
+ * boundaries. The receiver derives element count from len / sizeof(element_type).
  */
 typedef struct {
-    uint32_t msg_type;       /* LQ_IPC_MSG_* */
-    uint32_t num_entries;    /* number of entries that follow */
-} lq_ipc_header_t;
+    uint8_t  type;
+    uint16_t len;
+    uint8_t  value[];
+} __attribute__((__packed__)) lq_tlv_t;
 
 /*
  * Send a link-quality event over the AF_UNIX datagram socket.
  *
  *   msg_type   – LQ_IPC_MSG_*
- *   entries    – pointer to count × entry_size bytes (stats_arg_t array)
- *   count      – number of entries
- *   entry_size – sizeof one entry (sizeof(stats_arg_t))
+ *   entries    – pointer to count × entry_size bytes (stats_arg_t array, etc.)
+ *   count      – number of entries (0 for payload-less messages)
+ *   entry_size – sizeof one entry
  *
- * Returns 0 on success, -1 on error (non-fatal — logged and ignored).
+ * Returns 0 on success, -1 on error (non-fatal — logged and ignored by caller).
  */
 int lq_ipc_send(uint32_t msg_type, const void *entries,
                 uint32_t count, size_t entry_size);
