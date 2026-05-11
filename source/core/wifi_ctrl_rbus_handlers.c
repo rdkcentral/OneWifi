@@ -36,6 +36,8 @@
 
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
+#define MAX_BUFF_LEN 256
+#define MAX_TELEMETRY_BUFF_LEN 64
 #define MAX_STATUS_LEN 5
 #define STA_STATUS_DISCONNECTED 1
 
@@ -315,6 +317,12 @@ void hotspot_timing_disconnected(void)
         return;
     }*/
 
+    char tmp[MAX_STR_LEN] = {0};
+    get_formatted_time(tmp);
+    double session_dur = 0.00;
+    char buff[MAX_BUFF_LEN] = {0};
+    char telemetry_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
+
     if (g_hotspot_timing.end_time.tv_sec != 0) {
         /*
          * end_time != 0 → device WAS connected this attempt.
@@ -331,12 +339,17 @@ void hotspot_timing_disconnected(void)
             (long)g_hotspot_timing.disconnection_time.tv_sec,
             (long)g_hotspot_timing.disconnection_time.tv_nsec);
 
+	session_dur = hotspot_timing_elapsed_sec(&g_hotspot_timing.end_time,
+                                       &g_hotspot_timing.disconnection_time);
         wifi_util_info_print(WIFI_CTRL,
             "HOTSPOT_TIMING: [disconnected] "
-            "Connection held for = %.3f sec\n",
-            hotspot_timing_elapsed_sec(&g_hotspot_timing.end_time,
-                                       &g_hotspot_timing.disconnection_time));
-
+            "Connection held for = %.3f sec\n",session_dur);
+	snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_HOTSPOT_SESSION_DURATION_SEC:%.3f\n", tmp, session_dur);
+	write_to_file(wifi_health_log, buff);
+	wifi_util_dbg_print(WIFI_CTRL, "%s", buff);
+	memset(telemetry_buf, 0, sizeof(telemetry_buf));
+	snprintf(telemetry_buf, sizeof(telemetry_buf), "%.3f", session_dur);
+	get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_SESSION_DURATION_SEC", telemetry_buf);
         /* Assign before clearing disconnection_time */
         g_hotspot_timing.start_time = g_hotspot_timing.disconnection_time;
 
