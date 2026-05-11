@@ -1477,7 +1477,6 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
             __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_encode;
     }
-
 #ifndef CONFIG_IEEE80211BE
     if (security_info->mfp != wifi_mfp_cfg_required &&
         (security_info->mode == wifi_security_mode_enhanced_open ||
