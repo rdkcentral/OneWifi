@@ -563,16 +563,16 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
+void set_webconfig_dml_data(char *eventName, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
     webconfig_subdoc_data_t *data = NULL;
 
     wifi_util_dbg_print(WIFI_DMCLI,"bus event callback Event is %s\r\n",eventName);
-    pTmp = p_data->raw_data.bytes;
-    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->data_type);
+    pTmp = p_data->value.raw_data.bytes;
+    if ((p_data->value.data_type != bus_data_type_string) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->value.data_type);
         return;
     }
 
