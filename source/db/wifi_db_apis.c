@@ -4877,6 +4877,7 @@ static void wifidb_global_config_upgrade()
     char strValue[256] = { 0 };
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     if (g_wifidb->db_version == 0) {
         return;
@@ -4958,6 +4959,17 @@ static void wifidb_global_config_upgrade()
             DEFAULT_HEAPWALK_INTERVAL;
         g_wifidb->global_config.global_parameters.memwraptool.enable = true;
     }
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade tcm config, old db version %d \n", __func__,
+            __LINE__, g_wifidb->db_version);
+        rfc_param->tcm_open_2g_rfc = true;
+        rfc_param->tcm_open_5g_rfc = true;
+        rfc_param->tcm_open_6g_rfc = true;
+        rfc_param->tcm_secure_2g_rfc = true;
+        rfc_param->tcm_secure_5g_rfc = true;
+        rfc_param->tcm_secure_6g_rfc = true;
+    }
+
 }
 
 /************************************************************************************
@@ -8290,7 +8302,6 @@ void init_wifidb_data()
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
     ignite_config_t *ignite_cfg;
     char country_code[COUNTRY_CODE_LEN] = {0};
-	bool update_rfc_config = false;
 
     wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
@@ -8380,19 +8391,6 @@ void init_wifidb_data()
         dbwritten = true;
         if (wifidb_get_rfc_config(0,rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
-        } else {
-            if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
-                rfc_param->tcm_open_2g_rfc = true;
-                rfc_param->tcm_open_5g_rfc = true;
-                rfc_param->tcm_open_6g_rfc = true;
-                rfc_param->tcm_secure_2g_rfc = true;
-                rfc_param->tcm_secure_5g_rfc = true;
-                rfc_param->tcm_secure_6g_rfc = true;
-                update_rfc_config = true;
-            }
-        }
-        if (update_rfc_config == true) {
-            wifidb_update_rfc_config(0, rfc_param);
         }
 #ifdef ALWAYS_ENABLE_AX_2G
         wifidb_update_rfc_config(0, rfc_param);
@@ -9717,7 +9715,7 @@ int wifi_db_update_psm_values()
 }
 
 //static void bus_subscription_handler(bus_handle_t handle, bus_event_t *event,
-static void bus_subscription_handler(char *event_name, raw_data_t *p_data, void *userData)
+static void bus_subscription_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)p_data;
     (void)userData;
