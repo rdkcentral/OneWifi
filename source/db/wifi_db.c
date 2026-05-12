@@ -79,7 +79,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     wifi_radio_feature_param_t Fcfg;
     memset(&Fcfg,0,sizeof(Fcfg));
     memset(&cfg,0,sizeof(cfg));
-    ULONG curr_txpower = 0;
 
     wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[radio_index];
 
@@ -190,13 +189,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         cfg.beaconInterval = 100;
     }
     cfg.fragmentationThreshold = 2346;
-
-    if (wifi_hal_getRadioTransmitPower(radio_index, &curr_txpower) != RETURN_OK) {
-        wifi_util_error_print(WIFI_DB,"%s:%d: Failed to fetch TX power for radio_index=%d\n",
-                            __func__, __LINE__, radio_index);
-        curr_txpower = 100;
-    }
-    cfg.transmitPower = curr_txpower;
+    cfg.transmitPower = 100;
     cfg.rtsThreshold = 2347;
     cfg.guardInterval = wifi_guard_interval_auto;
     cfg.ctsProtection = false;
