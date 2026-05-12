@@ -158,7 +158,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
 
         // If WPS is enabled on private VAP, copy mesh backhaul credentials into multi_ap_backhaul structure
         if (map->vap_array[i].u.bss_info.wps.enable && isVapPrivate(map->vap_array[i].vap_index)) {
-            wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
             wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = {0};
             unsigned int num_vaps = get_list_of_mesh_backhaul(wifi_prop, MAX_NUM_RADIOS, vap_names);
             wifi_vap_info_t *backhaul_vap_info = NULL;
