@@ -313,7 +313,7 @@ void hotspot_timing_disconnected(void)
             session_duration);
         write_to_file(wifi_health_log, buff);
         memset(telemetry_buf, 0, sizeof(telemetry_buf));
-        snprintf(telemetry_buf, sizeof(telemetry_buf), "%.3f", session_dur);
+        snprintf(telemetry_buf, sizeof(telemetry_buf), "%.3f", session_duration);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_SESSION_DURATION_SEC",
             telemetry_buf);
         /* Assign before clearing disconnection_time */
