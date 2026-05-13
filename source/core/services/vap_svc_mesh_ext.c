@@ -56,7 +56,9 @@
 #define MAX_STATUS_LEN 5
 #define MAX_STR_LEN    128
 #define MAC_ADDR_STR_LEN 18
+#define MAX_IFACE_LEN   32
 #define MAX_BUFF_LEN    256
+#define MAX_TELEMETRY_BUFF_LEN 1024
 
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 /**
@@ -725,21 +727,23 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     } else {
         if ((ip_check_count < EXT_UDHCP_IP_CHECK_NUM) &&
             (ext->conn_state == connection_state_connected)) {
-            char iface[32] = "brww0";
-	    char tmp[128] = {0};
-	    get_formatted_time(tmp);
+            char iface[MAX_IFACE_LEN] = "brww0";
+            char tmp[MAX_STR_LEN] = { 0 };
+            get_formatted_time(tmp);
             if (has_valid_ip(iface)) {
-		write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_VALID_IP_BRWW0:True\n", tmp);
+                write_to_file(wifi_health_log, "%s WIFI_IGNITE_VALID_IP_BRWW0:True\n", tmp);
                 get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_VALID_IP_BRWW0", "True");
-                wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Received Valid IP address on brww0 interface\n");
+                wifi_util_info_print(WIFI_CTRL,
+                    "IGNITE_RF_DOWN: Received Valid IP address on brww0 interface\n");
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
                 ext->ext_udhcp_ip_check_id = 0;
                 ip_check_count = 0;
                 return 0;
             } else {
-		write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_VALID_IP_BRWW0:False\n", tmp);
+                write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_VALID_IP_BRWW0:False\n", tmp);
                 get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_VALID_IP_BRWW0", "False");
-                wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
+                wifi_util_error_print(WIFI_CTRL,
+                    "IGNITE_RF_DOWN: Invalid IP address detected on brww0 interface\n");
             }
         }
     }
@@ -1151,8 +1155,8 @@ void ext_try_connecting(vap_svc_t *svc)
         }
         vap_index = get_sta_vap_index_for_radio(svc->prop, radio_index);
         if (ctrl->rf_status_down == true) {
-	    hotspot_timing_target_detected();
-	}
+            hotspot_timing_target_detected();
+        }
         wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d radio:%d\n",
                     __func__, __LINE__, candidate->external_ap.ssid,
                     to_mac_str(candidate->external_ap.bssid, bssid_str), candidate->external_ap.rssi,
@@ -1748,8 +1752,8 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     ssid_t sta_ssid;
     char tmp[MAX_STR_LEN] = { 0 };
     char buff[MAX_BUFF_LEN] = { 0 };
-    char telemetry_buf[1024] = {0};
-    char entry_buf[256] = {0};
+    char telemetry_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
+    char entry_buf[MAX_BUFF_LEN] = {0};
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -1831,51 +1835,47 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     for (i = 0; i < num; i++) {
         memcpy(&scan_list->external_ap, tmp_bss, sizeof(wifi_bss_info_t));
         scan_list->conn_attempt = connection_attempt_wait;
-	scan_list->conn_retry_attempt = 0;
-	scan_list->radio_freq_band = band;
-	if (ctrl->rf_status_down == true) {
-		char delimiter = (i + 1) < num ? ';' : ' ';
+        scan_list->conn_retry_attempt = 0;
+        scan_list->radio_freq_band = band;
+        if (ctrl->rf_status_down == true) {
+            char delimiter = (i + 1) < num ? ';' : ' ';
 
-		snprintf(entry_buf, sizeof(entry_buf),
-				"%s,%d,%d,%d,%d%c",
-				to_mac_str(tmp_bss->bssid, bssid_str),  // BSSID
-				tmp_bss->freq,                          // Frequency
-				tmp_bss->rssi,                          // RSSI
-				tmp_bss->snr,                           // SNR
-				tmp_bss->chan_utilization,                     // Channel Utilization
-				delimiter);
+            snprintf(entry_buf, sizeof(entry_buf), "%s,%d,%d,%d,%d%c",
+                to_mac_str(tmp_bss->bssid, bssid_str),
+                tmp_bss->freq,
+                tmp_bss->rssi,
+                tmp_bss->snr,
+                tmp_bss->chan_utilization,
+                delimiter);
 
-		strcat_s(telemetry_buf, sizeof(telemetry_buf), entry_buf);
-	}
+            strcat_s(telemetry_buf, sizeof(telemetry_buf), entry_buf);
+        }
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
-            __func__, __LINE__, scan_list->external_ap.ssid, to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->external_ap.rssi, scan_list->external_ap.freq);
+            __func__, __LINE__, scan_list->external_ap.ssid,
+            to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->external_ap.rssi,
+            scan_list->external_ap.freq);
         tmp_bss++;
         scan_list++;
     }
 
     if (ctrl->rf_status_down == true) {
-	    strcat_s(telemetry_buf, sizeof(telemetry_buf), "\n");
-	    strcat_s(buff, MAX_BUFF_LEN, telemetry_buf);
-	    write_to_file(wifi_health_log, buff);
-	    wifi_util_info_print(WIFI_CTRL,
-			    "%s:%d telemetry metrics: %s health_file_log:%s\n",
-			    __func__, __LINE__, telemetry_buf, buff);
-
-	    get_stubs_descriptor()->t2_event_s_fn(
-			    "WIFI_IGNITE_ELIGIBLE_TARGET_METRICS",
-			    telemetry_buf);
+        strcat_s(telemetry_buf, sizeof(telemetry_buf), "\n");
+        strcat_s(buff, MAX_BUFF_LEN, telemetry_buf);
+        write_to_file(wifi_health_log, buff);
+        get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ELIGIBLE_TARGET_METRICS", telemetry_buf);
     }
 
     if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 0)) {
-	    if (ctrl->rf_status_down == false) {
-		    sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
-	    } else {
-            ext->ranked_count = sort_bss_results_by_ranking(
-                    ext->candidates_list.scan_list,
-                    ext->candidates_list.scan_count);
+        if (ctrl->rf_status_down == false) {
+            sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0,
+                ext->candidates_list.scan_count - 1);
+        } else {
+            ext->ranked_count = sort_bss_results_by_ranking(ext->candidates_list.scan_list,
+                ext->candidates_list.scan_count);
             ext->candidates_list.scan_count = ext->ranked_count;
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rank-count : %d scan-count : %d\n", __func__, __LINE__, ext->ranked_count, ext->candidates_list.scan_count);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rank-count : %d scan-count : %d\n", __func__,
+                __LINE__, ext->ranked_count, ext->candidates_list.scan_count);
         }
     }
 
@@ -2081,11 +2081,11 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
             // change the state
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
-            if (ctrl->rf_status_down == true) { 
-                char mac_str[32] = {'\0'};
-                char bssid_str[32] = {'\0'};
-		uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
-		uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_str);
+            if (ctrl->rf_status_down == true) {
+                char mac_str[32] = { '\0' };
+                char bssid_str[32] = { '\0' };
+                uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
+                uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_str);
                 wifi_util_dbg_print(WIFI_CTRL,
                     "%s:%d Bridge:%s  Using MAC-Str:%s MAC : %02x:%02x:%02x:%02x:%02x:%02x\n",
                     __func__, __LINE__, bridge_name, mac_str, temp_vap_info->u.sta_info.mac[0],
@@ -2108,16 +2108,18 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 get_stubs_descriptor()->v_secure_system_fn(cmd);
                 hotspot_timing_connected(ext->connected_vap_index, bssid_str);
                 rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
-		memset(tmp, 0, sizeof(tmp));
+                memset(tmp, 0, sizeof(tmp));
                 get_formatted_time(tmp);
-		if (rc != bus_error_success) {
+                if (rc != bus_error_success) {
                     write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_CONN_PUBLISH:False\n", tmp);
-		    get_stubs_descriptor()->t2_event_s_fn( "WIFI_IGNITE_CONN_PUBLISH", "False");
-                    wifi_util_error_print(WIFI_CTRL,"IGNITE_RF_DOWN: Failed to publish connect status to WM\n");
+                    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_CONN_PUBLISH", "False");
+                    wifi_util_error_print(WIFI_CTRL,
+                        "IGNITE_RF_DOWN: Failed to publish connect status to WM\n");
                 } else {
                     write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_CONN_PUBLISH:True\n", tmp);
-		    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_CONN_PUBLISH", "True");
-                    wifi_util_info_print(WIFI_CTRL,"IGNITE_RF_DOWN: Connect status sent successfully to the WM\n");
+                    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_CONN_PUBLISH", "True");
+                    wifi_util_info_print(WIFI_CTRL,
+                        "IGNITE_RF_DOWN: Connect status sent successfully to the WM\n");
                 }
                 bssid_mac_str = (char *)malloc(MAC_ADDR_STR_LEN);
                 if (bssid_mac_str != NULL) {
@@ -2245,17 +2247,19 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         if (ctrl->rf_status_down == true) {
             rc = 0;
             hotspot_timing_disconnected();
-	    rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
+            rc = publish_endpoint_status(ctrl, sta_data->stats.connect_status);
             memset(tmp, 0, sizeof(tmp));
             get_formatted_time(tmp);
             if (rc != bus_error_success) {
-		write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_DISCONN_PUBLISH:False\n", tmp);
+                write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_DISCONN_PUBLISH:False\n", tmp);
                 get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_DISCONN_PUBLISH", "False");
-                wifi_util_error_print(WIFI_CTRL, "IGNITE_RF_DOWN: Failed to publish disconnect status to WM\n");
+                wifi_util_error_print(WIFI_CTRL,
+                    "IGNITE_RF_DOWN: Failed to publish disconnect status to WM\n");
             } else {
-		write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_DISCONN_PUBLISH:True\n", tmp);
+                write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_DISCONN_PUBLISH:True\n", tmp);
                 get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_DISCONN_PUBLISH", "True");
-                wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Disconnect status sent successfully to the WM\n");
+                wifi_util_info_print(WIFI_CTRL,
+                    "IGNITE_RF_DOWN: Disconnect status sent successfully to the WM\n");
             }
         }
         if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
