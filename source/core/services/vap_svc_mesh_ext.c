@@ -2083,7 +2083,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
             if (ctrl->rf_status_down == true) {
                 char mac_str[32] = { '\0' };
-                char bssid_str[32] = { '\0' };
+                char bssid_str[MAC_ADDR_STR_LEN] = {'\0'};
                 uint8_mac_to_string_mac(temp_vap_info->u.sta_info.mac, mac_str);
                 uint8_mac_to_string_mac(temp_vap_info->u.sta_info.bssid, bssid_str);
                 wifi_util_dbg_print(WIFI_CTRL,

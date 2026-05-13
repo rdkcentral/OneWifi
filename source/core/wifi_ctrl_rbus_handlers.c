@@ -371,7 +371,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     (void)user_data;
     bus_error_t rc = bus_error_success;
     bool rf_status = false;
-    char tmp[128] = {0};
+    char tmp[MAX_STR_LEN] = {0};
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
@@ -394,8 +394,9 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     if (rf_status) {
         write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:True\n", tmp, rf_status);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "True");
-	wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
-	apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start,
+            NULL, 0);
 
         wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
         if (global_cfg != NULL &&

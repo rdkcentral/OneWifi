@@ -3209,15 +3209,15 @@ void start_station_vaps(bool rf_status)
             break;
         }
 
-        wifi_util_error_print(WIFI_CTRL, "[%s %d] vap-idx : %d radio-idx : %d vap-array-idx : %d\n", __func__, __LINE__, vap_index, 
-                radio_index, vap_array_index); 
+        wifi_util_error_print(WIFI_CTRL, "[%s %d] vap-idx : %d radio-idx : %d vap-array-idx : %d\n",
+            __func__, __LINE__, vap_index, radio_index, vap_array_index);
         if (rf_status == true) {
-             hotspot_timing_start();
-	     data->u.decoded.radios[radio_index]
+            hotspot_timing_start();
+            data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = true;
         } else {
-	    hotspot_timing_stop();
+            hotspot_timing_stop();
             data->u.decoded.radios[radio_index]
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.ignite_enabled = false;
