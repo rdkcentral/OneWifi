@@ -381,7 +381,6 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_op_class_info->id.op_class = oper_param->operatingClass;
         em_op_class_info->op_class = oper_param->operatingClass;
         em_op_class_info->channel = oper_param->channel;
-        em_op_class_info->tx_power = oper_param->transmitPower;
         no_of_opclass++;
         proto->set_num_op_class(proto->data_model,no_of_opclass);
     }
