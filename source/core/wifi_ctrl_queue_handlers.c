@@ -2449,6 +2449,8 @@ void process_assoc_device_event(void *data)
                 assoc_data->ap_index = link_vap_index;
                 assoc_data->dev_stats.cli_RSSI = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_RSSI;
                 assoc_data->association_link = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink;
+                memcpy(assoc_data->link_address, assoc_data->mld_info.cli_LinkInfo[link_idx].cli_LinkAddress,
+                    sizeof(assoc_data->link_address));
                 assoc_dev_event(assoc_data);
             }
         }
