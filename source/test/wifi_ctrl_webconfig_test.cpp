@@ -41,7 +41,7 @@ TEST(WifiCtrlWebconfig, VifNeighborsApplyNullNeighborsMap)
     data.vif_neighbors_map = NULL;
     ASSERT_EXIT((webconfig_vif_neighbors_apply(NULL, &data), exit(0)), ::testing::ExitedWithCode(0), ".*");
 
-    // expected that RETURN_ERR is -1, butuse the macro if possible
+    // expected that RETURN_ERR is -1, but use the macro if possible
     ASSERT_EQ(webconfig_vif_neighbors_apply(NULL, &data), RETURN_ERR);
 }
 
@@ -93,7 +93,7 @@ TEST(WifiCtrlWebconfig, SteeringConfigApplyNullArguments)
     ASSERT_EQ(webconfig_steering_config_apply(NULL, NULL), RETURN_ERR);
 }
 
-TEST(WifiCtrlWebconfig, SteeringConfigApplyNullNeighborsMap)
+TEST(WifiCtrlWebconfig, SteeringConfigApplyNullSteeringConfigMap)
 {
     // expected that RETURN_ERR is -1, butuse the macro if possible
     webconfig_subdoc_decoded_data_t data = {0};
@@ -102,7 +102,7 @@ TEST(WifiCtrlWebconfig, SteeringConfigApplyNullNeighborsMap)
     ASSERT_EQ(webconfig_steering_config_apply(NULL, &data), RETURN_ERR);
 }
 
-TEST(WifiCtrlWebconfig, SteeringConfigApplySameNeighborsMap)
+TEST(WifiCtrlWebconfig, SteeringConfigApplySameSteeringConfigMap)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -115,7 +115,7 @@ TEST(WifiCtrlWebconfig, SteeringConfigApplySameNeighborsMap)
     mgr->steering_config_map = NULL;
 }
 
-TEST(WifiCtrlWebconfig, SteeringConfigApplyEmptyNeighborsMap)
+TEST(WifiCtrlWebconfig, SteeringConfigApplyEmptySteeringConfigMap)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
