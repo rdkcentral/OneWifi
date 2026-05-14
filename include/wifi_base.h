@@ -177,7 +177,8 @@ typedef enum {
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_link_quality = wifi_app_inst_base << 19,
     wifi_app_inst_wifi_sensing = wifi_app_inst_base << 20,
-    wifi_app_inst_max = wifi_app_inst_base << 21
+    wifi_app_inst_multiap = wifi_app_inst_base << 21,
+    wifi_app_inst_max = wifi_app_inst_base << 22
 } wifi_app_inst_t;
 
 typedef struct {
@@ -546,6 +547,7 @@ typedef struct {
     bool memwraptool_app_rfc;
     bool link_quality_rfc;
     bool xfi_tel_enable_rfc;
+    bool multiap_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
