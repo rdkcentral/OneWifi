@@ -2210,6 +2210,7 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          cJSON_AddItemToArray(radio_obj, object);
          cJSON_AddNumberToObject(object, "PhyIndex", radiocap->index);
          cJSON_AddNumberToObject(object, "RadioIndex", radiocap->rdk_radio_index);
+         cJSON_AddNumberToObject(object, "Mode", radiocap->mode[0]);
 
          for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
              (void)memcpy(channels_list, radiocap->channel_list[freq_band_count].channels_list, sizeof(*channels_list) * radiocap->channel_list[freq_band_count].num_channels);
