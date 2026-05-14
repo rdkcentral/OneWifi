@@ -1815,10 +1815,12 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
 	    } else {
 		    wifi_util_error_print(WIFI_CTRL, "%s %d Unsupported Radio index %u\n", __func__, __LINE__, results->radio_index);
 	    }
-	    memset(tmp, '\0', sizeof(tmp));
-	    memset(buff, '\0', MAX_BUFF_LEN);
-	    get_formatted_time(tmp);
-	    snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_ELIGIBLE_TARGET_METRICS:", tmp);
+	    if (num != 0 ) {
+	        memset(tmp, '\0', sizeof(tmp));
+	        memset(buff, '\0', MAX_BUFF_LEN);
+	        get_formatted_time(tmp);
+	        snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_ELIGIBLE_TARGET_METRICS:", tmp);
+	    }
     }
 
     if ((ext->candidates_list.scan_list == NULL) && num) {
