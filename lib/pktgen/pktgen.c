@@ -97,7 +97,7 @@ int onewifi_pktgen_is_running(void)
 {
     FILE *fp;
     char str[BUF_LEN_MAX];
-    char run_if[32];
+    char run_if[BUF_LEN_MAX] = "";
     int retval = 0;
 
     fp = fopen(PKTGEN_THREAD_FILE_0, "r");

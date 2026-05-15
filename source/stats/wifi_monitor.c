@@ -1911,6 +1911,7 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
                 }
                 sta->dev_stats.cli_RSSI = dev->mld_info.cli_LinkInfo[link_idx].cli_RSSI;
                 sta->assoc_link = dev->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink;
+                memcpy(sta->link_mac, dev->mld_info.cli_LinkInfo[link_idx].cli_LinkAddress, sizeof(sta->link_mac));
                 wifi_util_info_print(WIFI_MON, "%s:%d Added mld sta %p to vap_index %d\n", __func__, __LINE__, sta, ap_index);
             }
         }

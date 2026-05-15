@@ -44,6 +44,8 @@ libwifi_bus_la_CPPFLAGS = -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/
 
 libwifi_bus_la_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
 
+libwifi_bus_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+
 libwifi_bus_la_SOURCES = $(top_srcdir)/source/platform/common/bus_common.c 
 
 libwifi_bus_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
