@@ -3355,7 +3355,8 @@ void start_station_vaps(bool is_private, bool rf_status)
             &vap_names[0]);
     if (rf_status && !is_private) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF is down creating station with Hotspot credentials\n", __func__, __LINE__);
-	    create_station_with_xfinity_credentials(data, num_vaps, vap_names);
+	hotspot_timing_start();    
+	create_station_with_xfinity_credentials(data, num_vaps, vap_names);
     }
     else if (rf_status) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d Creating station with Private credentials\n", __func__, __LINE__);
@@ -3365,6 +3366,10 @@ void start_station_vaps(bool is_private, bool rf_status)
     else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d Station vaps going back to Default case\n", __func__, __LINE__);
         (void)create_station_with_default_credentials(data, num_vaps, vap_names);
+        if ((rf_status == 0) && (!is_private)) {
+	    wifi_util_info_print(WIFI_CTRL, "%s:%d Docsis enabled and no private vap config detected\n", __func__, __LINE__);
+            hotspot_timing_stop();
+	}
     }
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) == webconfig_error_none) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __func__, __LINE__);
