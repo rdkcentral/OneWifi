@@ -373,6 +373,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     bool rf_status = false;
     char tmp[MAX_STR_LEN] = {0};
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
         return bus_error_general;
@@ -389,7 +390,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     }
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
-    start_station_vaps(rf_status);
+    start_station_vaps(false, rf_status);
     get_formatted_time(tmp);
     if (rf_status) {
         write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:True\n", tmp, rf_status);
@@ -425,6 +426,9 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
        //Stop station vaps
        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
+        if (rfc_param->multiap_rfc) {
+            apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        }
     }
 
     return rc;

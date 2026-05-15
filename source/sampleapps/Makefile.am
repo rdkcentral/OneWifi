@@ -46,6 +46,8 @@ onewifi_component_test_app_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/source/apps/e
 
 onewifi_component_test_app_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
 
+onewifi_component_test_app_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+
 onewifi_component_test_app_SOURCES = wifi_webconfig_consumer.c webconfig_consumer_apis.c webconfig_consumer_cli.c
 
 onewifi_component_test_app_SOURCES += $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c

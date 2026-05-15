@@ -27,7 +27,7 @@
 #include "wifi_util.h"
 #include "wifi_apps_mgr.h"
 #include "wifi_linkquality.h"
-
+#include "wifi_multiap.h"
 #ifdef WIFI_SENSING_APP_SUPPORT
 #include "motion_sensing.h"
 #endif
@@ -300,6 +300,27 @@ extern int sta_mgr_deinit(wifi_app_t *app);
 extern int sta_mgr_event(wifi_app_t *app, wifi_event_t *event);
 #endif
 
+#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+extern int multiap_init(wifi_app_t *app, unsigned int create_flag);
+extern int multiap_deinit(wifi_app_t *app);
+extern int multiap_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int multiap_init(wifi_app_t *app, unsigned int create_flag)
+{
+     return 0;
+}
+
+int multiap_deinit(wifi_app_t *app)
+{
+     return 0;
+ }
+
+int multiap_event(wifi_app_t *app, wifi_event_t *event)
+{
+     return 0;
+}
+#endif //ONEWIFI_MULTIAP_APP_SUPPORT
+
 wifi_app_descriptor_t app_desc[] = {
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     {
@@ -468,6 +489,16 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
+#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+    {
+         wifi_app_inst_multiap, 0,
+         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
+         true, true,
+         "MultiAp",
+         multiap_init, multiap_event, multiap_deinit,
+         NULL, NULL
+    },
+#endif //ONEWIFI_MULTIAP_APP_SUPPORT
 };
 
 wifi_app_descriptor_t* get_app_desc(int *size){
