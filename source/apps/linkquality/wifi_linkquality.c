@@ -122,6 +122,7 @@ void publish_station_score(const char *input_str, double score, double threshold
     int current_state = -1;
     bus_error_t status;
     raw_data_t rdata;
+    char str[MAX_STR_LEN] = { '\0' };
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wifi_app_t *wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_link_quality);
@@ -157,19 +158,21 @@ void publish_station_score(const char *input_str, double score, double threshold
 
     if (score < threshold) {
         current_state = 0;
-        snprintf(ignite->ignite_service_status, MAX_IGNITE_STR_LEN, "Manageable");
+        snprintf(str, MAX_STR_LEN, "Non-Serviceable");
+	snprintf(ignite->ignite_service_status, MAX_IGNITE_STR_LEN, "Manageable");
     } else if (score >= threshold) {
         current_state = 1;
+	snprintf(str, MAX_STR_LEN, "Serviceable");
         snprintf(ignite->ignite_service_status, MAX_IGNITE_STR_LEN, "Serviceable");
     }
 
     if (current_state != -1 && current_state != ignite->last_service_state) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: ignite status toggled to %s\n", __func__, __LINE__,
-            ignite->ignite_service_status);
+            str);
         memset(&rdata, 0, sizeof(raw_data_t));
         rdata.data_type = bus_data_type_string;
-        rdata.raw_data.bytes = (void *)ignite->ignite_service_status;
-        rdata.raw_data_len = (strlen(ignite->ignite_service_status) + 1);
+        rdata.raw_data.bytes = (void *)str;
+        rdata.raw_data_len = (strlen(str) + 1);
 
         status = get_bus_descriptor()->bus_event_publish_fn(&wifi_app->ctrl->handle,
             WIFI_IGNITE_STATUS, &rdata);
