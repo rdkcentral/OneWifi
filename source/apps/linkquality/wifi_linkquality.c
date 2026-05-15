@@ -109,10 +109,10 @@ static int ignite_score_log_timer(void *args)
     char telemetry_val[IGNITE_SCORE_THRESHOLD_BUFF] = {0};
 
     get_formatted_time(tmp);
-    snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY:%f %f\n", tmp, ignite->last_score,
-        ignite->last_threshold);
+    snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY:%f %f %s\n", tmp, ignite->last_score,
+        ignite->last_threshold, ignite->ignite_service_status);
     write_to_file(wifi_health_log, buff);
-    snprintf(telemetry_val, IGNITE_SCORE_THRESHOLD_BUFF, "%f %f", ignite->last_score, ignite->last_threshold);
+    snprintf(telemetry_val, IGNITE_SCORE_THRESHOLD_BUFF, "%f %f %s", ignite->last_score, ignite->last_threshold, ignite->ignite_service_status);
     get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_LINKQUALITY_SPLIT", telemetry_val);
     return RETURN_OK;
 }
