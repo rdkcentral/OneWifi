@@ -8679,7 +8679,7 @@ Security_GetParamStringValue
         /* collect value */
         char buf[32] = {0};
         if ( AnscSizeOfString(buf) < *pUlSize) {
-            getSecurityStringFromInt(pcfg->mode, buf);
+            getSecurityStringFromInt(pcfg->mode, buf, sizeof(buf));
             AnscCopyString(pValue, buf);
         } else {
             *pUlSize = AnscSizeOfString(buf) + 1;
