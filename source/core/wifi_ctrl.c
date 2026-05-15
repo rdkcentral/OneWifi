@@ -1379,6 +1379,49 @@ static int wps_event_callback(int apIndex, wifi_wps_ev_t event)
     return RETURN_OK;
 }
 
+#ifdef UWM_EXT_WPS_SUPPORT
+/**
+ * @brief WPS STA event callback - called when WPS credentials are received for station interface
+ * @param vap_index VAP index where WPS occurred
+ * @param event WPS event (2 = WPS_EV_SUCCESS)
+ * @return None
+ */
+static void wps_sta_event_callback(unsigned int vap_index, unsigned int event)
+{
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    vap_svc_t *ext_svc = NULL;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: WPS STA event callback: vap_index=%d, event=%d\n",
+        __func__, __LINE__, vap_index, event);
+
+    /* Only handle WPS_EV_SUCCESS (value 2) */
+    if (event != 2) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Ignoring non-success WPS event %d\n",
+            __func__, __LINE__, event);
+        return;
+    }
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: ctrl is NULL\n",
+            __func__, __LINE__);
+        return;
+    }
+
+    /* Find the mesh extender service for this VAP using the existing API */
+    ext_svc = get_svc_by_vap_index(ctrl, vap_index);
+    if (ext_svc != NULL && ext_svc->type == vap_svc_type_mesh_ext) {
+        /* Found the service - call the WPS credentials handler */
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: Calling vap_svc_mesh_ext_wps_credentials_received "
+            "for vap_index %d\n", __func__, __LINE__, vap_index);
+        vap_svc_mesh_ext_wps_credentials_received(ext_svc, vap_index);
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Could not find mesh extender service for vap_index %d "
+            "(ext_svc=%p, type=%d)\n", __func__, __LINE__, vap_index, ext_svc,
+            ext_svc ? ext_svc->type : -1);
+    }
+}
+#endif
+
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
@@ -1462,6 +1505,11 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     wifi_chan_event_register(channel_change_callback);
 
     wifi_wpsEvent_callback_register(wps_event_callback);
+
+#ifdef UWM_EXT_WPS_SUPPORT
+    /* Register WPS STA event callback for mesh extender WPS support */
+    wifi_wpsStaEvent_callback_register(wps_sta_event_callback);
+#endif
 
     ctrl->bus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
