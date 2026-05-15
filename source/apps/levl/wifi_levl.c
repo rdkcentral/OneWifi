@@ -29,8 +29,9 @@
 #include "wifi_analytics.h"
 //#include <ieee80211.h>
 #include "common/ieee802_11_defs.h"
-#include <fcntl.h>
+#include "common/ieee802_11_common.h"
 #include <errno.h>
+#include <fcntl.h>
 
 #define WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE   "Device.WiFi.Events.VAP.%d.Frames.Mgmt"
 #define CSI_LEVL_PIPE                           "/tmp/csi_levl_pipe"
@@ -285,6 +286,141 @@ void apps_auth_frame_event(wifi_app_t *app, frame_data_t *msg)
     mgmt_frame_bus_send(&app->handle, namespace, msg);
 }
 
+// For Broadcom, link MAC is being replaced with MLD MAC address in Assoc frames while ProbeReq
+// comes in nondeterministic MAC. Replaced MAC is being sent as an additional param in vendor
+// specific IE. We need to determine if there is any ProbeReq in here for any link MAC or any MLD
+// MAC related to this Assoc. Currently we assume that different band Assoc vs ProbeReq frames are
+// acceptable.
+#ifdef CONFIG_IEEE80211BE
+static probe_req_elem_t *find_matching_mlo_probe_req(struct ieee80211_mgmt *frame,
+    frame_data_t *msg, wifi_app_t *app)
+{
+    probe_req_elem_t *elem = NULL;
+    const struct element *ie_elem = NULL;
+    u8 *ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
+    size_t ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ?
+        0 :
+        msg->frame.len - (IEEE80211_HDRLEN + 4);
+
+    //Since this is Broadcom specific, first try to find the special
+    //vendor IE with replaced link MAC
+    for_each_element_id(ie_elem, WLAN_EID_VENDOR_SPECIFIC, (const u8 *)ie_ptr, ie_len)
+    {
+        if (ie_elem->datalen < (size_t)(4 + 3 + ETH_ALEN)) {
+            continue;
+        }
+        mac_addr_str_t vendor_mac_str = { 0 };
+
+        u8 oui_type = ie_elem->data[3];
+        if (oui_type != VENDOR_MLO_OUI_TYPE) {
+            continue;
+        }
+
+        to_mac_str((u8 *)(ie_elem->data + 4 + 3), vendor_mac_str);
+        pthread_mutex_lock(&app->data.u.levl.lock);
+        elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, vendor_mac_str);
+        if (elem != NULL) {
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d: found matching ProbeReq with Link MAC: %s\n",
+                __func__, __LINE__, vendor_mac_str);
+            elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map,
+                vendor_mac_str);
+            pthread_mutex_unlock(&app->data.u.levl.lock);
+            break;
+        }
+        pthread_mutex_unlock(&app->data.u.levl.lock);
+    }
+
+    if (elem == NULL) {
+        ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
+        ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ? 0 :
+                                                           msg->frame.len - (IEEE80211_HDRLEN + 4);
+
+        for_each_element_extid(ie_elem, WLAN_EID_EXT_MULTI_LINK, (const u8 *)ie_ptr, ie_len)
+        {
+            /*
+             * ie_elem->data layout (Extension IE, ext ID already matched):
+             *   data[0]    = Extension ID (107), consumed by iterator
+             *   data[1..2] = ML Control (le16)
+             *   data[3]    = Common Info Length (includes the length byte itself)
+             *   data[4..]  = Common Info data (MLD MAC, Link ID, etc.)
+             * After common info: Per-STA Profile subelements (TLV, ID=0)
+             */
+
+            /* Need at least: ext_id(1) + ml_control(2) + common_info_len(1) */
+            if (ie_elem->datalen < 4) {
+                continue;
+            }
+
+            u16 ml_control = (u16)(ie_elem->data[2] << 8) | ie_elem->data[1];
+            if ((ml_control & MULTI_LINK_CONTROL_TYPE_MASK) != MULTI_LINK_CONTROL_TYPE_BASIC) {
+                continue;
+            }
+
+            /* common_info_len includes the length byte itself */
+            u8 common_info_len = ie_elem->data[3];
+            if (common_info_len < 1 || ie_elem->datalen < (size_t)(1 + 2 + common_info_len)) {
+                continue;
+            }
+
+            if (common_info_len > ETH_ALEN) {
+                u8 *comm_info = (u8 *)ie_elem->data + 4;
+                mac_addr_str_t mld_mac_str = { 0 };
+                to_mac_str(comm_info, mld_mac_str);
+                pthread_mutex_lock(&app->data.u.levl.lock);
+                elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mld_mac_str);
+                if (elem != NULL) {
+                    wifi_util_dbg_print(WIFI_APPS, "%s:%d: found matching ProbeReq with MLD MAC: %s\n",
+                        __func__, __LINE__, mld_mac_str);
+                    elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map,
+                        mld_mac_str);
+                    pthread_mutex_unlock(&app->data.u.levl.lock);
+                    return elem;
+                }
+                pthread_mutex_unlock(&app->data.u.levl.lock);
+            }
+
+            /* Subelements start after: ext_id(1) + ml_control(2) + common_info(common_info_len) */
+            const u8 *sub_start = ie_elem->data + 1 + 2 + common_info_len;
+            size_t sub_len = ie_elem->datalen - (1 + 2 + common_info_len);
+
+            const struct element *sub;
+            for_each_element_id(sub, EHT_ML_SUB_ELEM_PER_STA_PROFILE, sub_start, sub_len)
+            {
+                /*
+                 * Per-STA Profile subelement data layout:
+                 *   data[0..1] = STA Control (le16)
+                 *   data[2]    = STA Info Length (includes itself)
+                 *   data[3..8] = Link MAC Address (if MAC_ADDR_PRESENT flag set)
+                 */
+                if (sub->datalen < 2 + 1 + ETH_ALEN) {
+                    continue;
+                }
+
+                u16 sta_ctrl = (u16)(sub->data[1] << 8) | sub->data[0];
+                if (!(sta_ctrl & EHT_PER_STA_CTRL_MAC_ADDR_PRESENT_MSK)) {
+                    continue;
+                }
+
+                mac_addr_str_t link_mac_str = { 0 };
+                to_mac_str((u8 *)(sub->data + 3), link_mac_str);
+                pthread_mutex_lock(&app->data.u.levl.lock);
+                elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, link_mac_str);
+                if (elem != NULL) {
+                    wifi_util_dbg_print(WIFI_APPS, "%s:%d: found matching ProbeReq with Link MAC: %s\n",
+                        __func__, __LINE__, link_mac_str);
+                    elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map,
+                        link_mac_str);
+                    pthread_mutex_unlock(&app->data.u.levl.lock);
+                    return elem;
+                }
+                pthread_mutex_unlock(&app->data.u.levl.lock);
+            }
+        }
+    }
+
+    return elem;
+}
+#endif
 
 void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
 {
@@ -309,6 +445,14 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     pthread_mutex_lock(&app->data.u.levl.lock);
     elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
     pthread_mutex_unlock(&app->data.u.levl.lock);
+
+#ifdef CONFIG_IEEE80211BE
+    if (elem == NULL) {
+        // Try to find matching probe req for MLO case
+        elem = find_matching_mlo_probe_req(frame, msg, app);
+    }
+#endif
+
     if (elem == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d:probe not found for mac address:%s\n", __func__, __LINE__, str);
         //assert(1);
