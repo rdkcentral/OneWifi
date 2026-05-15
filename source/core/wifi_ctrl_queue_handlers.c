@@ -147,6 +147,92 @@ void process_csa_beacon_frame_event(frame_data_t *msg, uint32_t msg_length, wifi
     }
 }
 
+static UCHAR calculate_preference(wifi_neighbor_ap2_t *src)
+{
+    int pref_score = 0;
+
+    // Reject very weak APs
+    if (src->ap_SignalStrength < -80)
+        return 0;
+
+    // RSSI
+    pref_score += (src->ap_SignalStrength + 100);
+
+    // Prefer 5GHz only if signal is decent
+    if (src->ap_freq >= 5000 && src->ap_SignalStrength > -70)
+        pref_score += 20;
+
+    // Channel utilization
+    pref_score -= (src->ap_ChannelUtilization / 2);
+
+    // Noise handling
+    if (src->ap_Noise < 0)
+        pref_score -= (src->ap_Noise + 100) / 5;
+
+    // Clamp
+    if (pref_score > 255) pref_score = 255;
+    if (pref_score < 0) pref_score = 0;
+
+    return (UCHAR)pref_score;
+}
+
+static int compare_pref(const void *a, const void *b)
+{
+    wifi_neighbor_ap2_t *n1 = (wifi_neighbor_ap2_t *)a;
+    wifi_neighbor_ap2_t *n2 = (wifi_neighbor_ap2_t *)b;
+
+    return calculate_preference(n2) - calculate_preference(n1);
+}
+
+void process_btm_request_send_event(void *data, uint32_t len) {
+    int ret;
+    wifi_BTMRequest_t btmReq;
+    em_btm_req_ctrl_msg_t *msg = (em_btm_req_ctrl_msg_t *)data;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d BTM req send event received\n", __func__, __LINE__);
+
+    if (!data || len < sizeof(*msg)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid BTM req data\n",__func__, __LINE__);
+        return;
+    }
+
+    memset(&btmReq, 0, sizeof(btmReq));
+
+    // Fill HAL BTM Request
+    btmReq.token       = msg->dialog_token;
+    btmReq.requestMode = msg->request_mode;
+    if (msg->neighbor_list_present && msg->num_neighbors > 0) {
+        qsort(msg->neighbors, msg->num_neighbors, sizeof(wifi_neighbor_ap2_t), compare_pref);
+
+        btmReq.numCandidates = (msg->num_neighbors > MAX_CANDIDATES) ?
+                                          MAX_CANDIDATES : msg->num_neighbors;
+
+        for (uint32_t i = 0; i < btmReq.numCandidates; i++) {
+           wifi_neighbor_ap2_t *src = &msg->neighbors[i];
+            wifi_NeighborReport_t *dst = &btmReq.candidates[i];
+
+            str_to_mac_bytes(src->ap_BSSID, dst->bssid);
+            dst->channel = (UCHAR)src->ap_Channel;
+            dst->opClass = (src->ap_freq > 0) ? (UCHAR)wifi_freq_to_op_class(src->ap_freq) : 0;
+            snprintf(dst->target_ssid, sizeof(dst->target_ssid), "%s", src->ap_SSID);
+            dst->bssTransitionCandidatePreferencePresent = TRUE;
+            dst->bssTransitionCandidatePreference.preference = calculate_preference(src);
+
+            wifi_util_dbg_print(WIFI_CTRL,"BTM[%d]: %s RSSI=%d Pref=%d\n",i, src->ap_BSSID,
+                     src->ap_SignalStrength, dst->bssTransitionCandidatePreference.preference);
+
+        }
+        wifi_util_info_print(WIFI_CTRL,"%s:%d BTM neighbor list filled, candidates=%u\n", __func__, __LINE__, btmReq.numCandidates);
+    } else {
+        btmReq.numCandidates = 0;
+    }
+
+    ret = wifi_hal_setBTMRequest(msg->ap_index, msg->sta_mac, &btmReq);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_hal_setBTMRequest failed (ret=%d)\n",__func__, __LINE__, ret);
+    }
+}
+
 const char* wifi_hotspot_action_to_string(wifi_hotspot_action_t action) {
     switch (action) {
         case hotspot_vap_disable:
@@ -4445,6 +4531,13 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_hal_wps_results:
         process_wps_results_event(data);
+        break;
+
+    case wifi_event_hal_wnm_action_frame:
+        break;
+
+    case wifi_event_hal_send_btm_req:
+        process_btm_request_send_event(data, len);
         break;
 
     default:

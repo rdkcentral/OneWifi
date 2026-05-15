@@ -116,6 +116,8 @@ typedef enum {
     wifi_event_br_report,
     wifi_event_hal_csa_beacon_frame,
     wifi_event_hal_wps_results,
+    wifi_event_hal_wnm_action_frame,
+    wifi_event_hal_send_btm_req,
     wifi_event_hal_max,
 
     // Commands
