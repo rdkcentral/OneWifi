@@ -38,7 +38,7 @@ INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
     mac_addr_str_t mac_str = { 0 };
     const size_t mac_size = sizeof(mac_addr_t);
 
-    wifi_util_dbg_print(WIFI_APPS, "%s: CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
+    wifi_util_dbg_print(WIFI_APPS, "%s: AMEDPA922 CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 
     if (ctrl == NULL) {
