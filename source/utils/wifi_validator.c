@@ -37,12 +37,10 @@
 #include "wifi_util.h"
 #include "wifi_mgr.h"
 #include "wifi_passpoint.h"
+#include "wifi_hal.h"
 
 bool g_interworking_RFC;
 bool g_passpoint_RFC;
-
-//This Macro ONE_WIFI_CHANGES, used to modify the validator changes. Re-check is required where the macro is used
-#define ONE_WIFI_CHANGES
 
 #define validate_param_string(json, key, value) \
 {	\
@@ -183,20 +181,49 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t venue_remaining = sizeof(vap_info->anqp.venueInfo) - (next_pos - (UCHAR *)&vap_info->anqp.venueInfo);
         wifi_venueName_t *venueBuf = (wifi_venueName_t *)next_pos;
+
+        // Check space for length field and language field (4 bytes)
+        if (venue_remaining < (sizeof(venueBuf->length) + 4)) {
+            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Venue entry. Discarding Configuration\n", __func__, __LINE__);
+            strncpy(execRetVal->ErrorMsg, "Exceeded Venue buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+            cJSON_Delete(passPointStats);
+            return RETURN_ERR;
+        }
+
         next_pos += sizeof(venueBuf->length); //Will be filled at the end
         validate_param_string(anqpEntry,"Language",anqpParam);
-        copy_string(anqpParam->valuestring,(char*)next_pos);
-        next_pos += strlen(anqpParam->valuestring);
+        if (strlen(anqpParam->valuestring) != 3) {
+            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid Language Code. Discarding Configuration\n", __func__, __LINE__);
+            strncpy(execRetVal->ErrorMsg, "Invalid Language Code",sizeof(execRetVal->ErrorMsg)-1);
+            cJSON_Delete(passPointStats);
+            return RETURN_ERR;
+        }
+
+        memcpy(next_pos, anqpParam->valuestring, 3);
+        next_pos += 3;
+
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
-        if(strlen(anqpParam->valuestring) > 255){
+        if(anqpParam == NULL || anqpParam->valuestring == NULL || strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid size for Venue name",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
-        copy_string((char*)next_pos, anqpParam->valuestring);
-        next_pos += strlen(anqpParam->valuestring);
+
+        venue_remaining = sizeof(vap_info->anqp.venueInfo) - (next_pos - (UCHAR *)&vap_info->anqp.venueInfo);
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (venue_remaining <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Venue name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded Venue buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                cJSON_Delete(passPointStats);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, venue_remaining);
+            next_pos += val_len;
+        }
         venueBuf->length = next_pos - &venueBuf->language[0];
     }
     vap_info->anqp.venueInfoLength = next_pos - (UCHAR *)&vap_info->anqp.venueInfo;
@@ -214,6 +241,13 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     }
     int ouiCount = 0;
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t roam_remaining = sizeof(vap_info->anqp.roamInfo) - (next_pos - (UCHAR *)&vap_info->anqp.roamInfo);
+        if (roam_remaining < sizeof(wifi_ouiDuple_t)) {
+            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Roaming Consortium OUI entry. Discarding Configuration\n", __func__, __LINE__);
+            strncpy(execRetVal->ErrorMsg, "Exceeded Roaming buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+            cJSON_Delete(passPointStats);
+            return RETURN_ERR;
+        }
         wifi_ouiDuple_t *ouiBuf = (wifi_ouiDuple_t *)next_pos;
         UCHAR ouiStr[30+1];
         int i, ouiStrLen = 0;
@@ -227,7 +261,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                 cJSON_Delete(passPointStats);
                 return RETURN_ERR;
             }
-            copy_string((char*)ouiStr, anqpParam->valuestring);
+            copy_string((char *)ouiStr, anqpParam->valuestring, sizeof(ouiStr));
         }
         //Covert the incoming string to HEX
         for(i = 0; i < ouiStrLen; i++){
@@ -309,7 +343,24 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
         UCHAR eap_method_count = 0;
+        size_t offset = next_pos - (UCHAR *)&vap_info->anqp.realmInfo;
+        if (offset >= sizeof(vap_info->anqp.realmInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->anqp.realmInfo) - offset;
         wifi_naiRealm_t *realmInfoBuf = (wifi_naiRealm_t *)next_pos;
+
+        // Check space for fixed headers: data_field_length, encoding, realm_length, eap_method_count
+        size_t header_len = sizeof(realmInfoBuf->data_field_length) + sizeof(realmInfoBuf->encoding) + sizeof(realmInfoBuf->realm_length) + sizeof(realmInfoBuf->eap_method_count);
+        if (remaining_len < header_len) {
+            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Realm fixed headers. Discarding Configuration\n", __func__, __LINE__);
+            strncpy(execRetVal->ErrorMsg, "Exceeded Realm buffer size",sizeof(execRetVal->ErrorMsg)-1);
+            cJSON_Delete(passPointStats);
+            return RETURN_ERR;
+        }
+
         next_pos += sizeof(realmInfoBuf->data_field_length);
 
         validate_param_integer(anqpEntry,"RealmEncoding",anqpParam);
@@ -323,10 +374,22 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
-        realmInfoBuf->realm_length = strlen(anqpParam->valuestring);
+
         next_pos += sizeof(realmInfoBuf->realm_length);
-        copy_string((char*)next_pos, anqpParam->valuestring);
-        next_pos += realmInfoBuf->realm_length;
+        remaining_len -= (sizeof(realmInfoBuf->data_field_length) + sizeof(realmInfoBuf->encoding) + sizeof(realmInfoBuf->realm_length));
+
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Realm name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded Realm buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                cJSON_Delete(passPointStats);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            realmInfoBuf->realm_length = val_len;
+            next_pos += val_len;
+        }
 
         cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
@@ -344,15 +407,38 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
+        size_t eap_rem = sizeof(vap_info->anqp.realmInfo) - (next_pos - (UCHAR *)&vap_info->anqp.realmInfo);
+        if (eap_rem < sizeof(realmInfoBuf->eap_method_count)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for eap_method_count. Discarding Configuration\n", __func__, __LINE__);
+             cJSON_Delete(passPointStats);
+             return RETURN_ERR;
+        }
+
         *next_pos = eap_method_count;
         next_pos += sizeof(realmInfoBuf->eap_method_count);
 
         cJSON_ArrayForEach(subEntry, subList){
+            size_t eap_entry_rem = sizeof(vap_info->anqp.realmInfo) - (next_pos - (UCHAR *)&vap_info->anqp.realmInfo);
             wifi_eapMethod_t *eapBuf = (wifi_eapMethod_t *)next_pos;
+
+            if (eap_entry_rem < sizeof(eapBuf->length)) {
+                 wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for EAP method entry length. Discarding Configuration\n", __func__, __LINE__);
+                 cJSON_Delete(passPointStats);
+                 return RETURN_ERR;
+            }
+
             next_pos += sizeof(eapBuf->length);
 
             validate_param_integer(subEntry,"Method",subParam);
             eapBuf->method = subParam->valuedouble;
+            
+            eap_entry_rem = sizeof(vap_info->anqp.realmInfo) - (next_pos - (UCHAR *)&vap_info->anqp.realmInfo);
+            if (eap_entry_rem < (sizeof(eapBuf->method) + sizeof(eapBuf->auth_param_count))) {
+                 wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for EAP method headers. Discarding Configuration\n", __func__, __LINE__);
+                 cJSON_Delete(passPointStats);
+                 return RETURN_ERR;
+            }
+
             next_pos += sizeof(eapBuf->method);
             cJSON *subList_1  = NULL;
             cJSON *subEntry_1 = NULL;
@@ -367,38 +453,60 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                 return RETURN_ERR;
             }
             next_pos += sizeof(eapBuf->auth_param_count);
-            cJSON_ArrayForEach(subEntry_1, subList_1){
-                int i,authStrLen;
-                UCHAR authStr[14+1];
-                wifi_authMethod_t *authBuf = (wifi_authMethod_t *)next_pos;
+                cJSON_ArrayForEach(subEntry_1, subList_1){
+                    int i,authStrLen;
+                    UCHAR authStr[14+1];
+                    size_t realm_rem = sizeof(vap_info->anqp.realmInfo) - (next_pos - (UCHAR *)&vap_info->anqp.realmInfo);
+                    wifi_authMethod_t *authBuf = (wifi_authMethod_t *)next_pos;
 
-                validate_param_integer(subEntry_1,"ID",subParam_1);
-                authBuf->id = subParam_1->valuedouble;
-                next_pos += sizeof(authBuf->id);
-
-                subParam_1 = cJSON_GetObjectItem(subEntry_1,"Value");
-                if(!subParam_1){
-                    wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Auth Parameter Value not prensent in NAIRealmANQPElement EAP Data. Discarding Configuration\n", __func__, __LINE__);
-                    strncpy(execRetVal->ErrorMsg, "Auth param missing in RealANQP EAP Data",sizeof(execRetVal->ErrorMsg)-1);  
-                    cJSON_Delete(passPointStats);
-                    return RETURN_ERR;
-                } else if (subParam_1->valuedouble) {
-                    authBuf->length = 1;
-                    authBuf->val[0] = subParam_1->valuedouble;
-                } else {
-                    authStrLen = strlen(subParam_1->valuestring);
-                    if((authStrLen != 2) && (authStrLen != 14)){
-                        wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
-                        strncpy(execRetVal->ErrorMsg, "Invalid EAP Length in NAIRealmANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
+                    // Check space for ID and length fields
+                    if (realm_rem < (sizeof(authBuf->id) + sizeof(authBuf->length))) {
+                        wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Auth Parameter headers. Discarding Configuration\n", __func__, __LINE__);
+                        strncpy(execRetVal->ErrorMsg, "Exceeded Realm buffer size in Auth Params",sizeof(execRetVal->ErrorMsg)-1);
                         cJSON_Delete(passPointStats);
                         return RETURN_ERR;
                     }
-                    copy_string((char*)authStr,subParam_1->valuestring);
-                                
-                    //Covert the incoming string to HEX
-                    for(i = 0; i < authStrLen; i++){ 
-                        if((authStr[i] >= '0') && (authStr[i] <= '9')){
-                            authStr[i] -= '0';  
+
+                    validate_param_integer(subEntry_1,"ID",subParam_1);
+                    authBuf->id = subParam_1->valuedouble;
+                    next_pos += sizeof(authBuf->id);
+                    realm_rem -= sizeof(authBuf->id);
+
+                    subParam_1 = cJSON_GetObjectItem(subEntry_1,"Value");
+                    if(!subParam_1){
+                        wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Auth Parameter Value not prensent in NAIRealmANQPElement EAP Data. Discarding Configuration\n", __func__, __LINE__);
+                        strncpy(execRetVal->ErrorMsg, "Auth param missing in RealANQP EAP Data",sizeof(execRetVal->ErrorMsg)-1);  
+                        cJSON_Delete(passPointStats);
+                        return RETURN_ERR;
+                    } else if (subParam_1->valuedouble) {
+                        if (realm_rem < (sizeof(authBuf->length) + 1)) {
+                            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Auth Parameter data. Discarding Configuration\n", __func__, __LINE__);
+                            cJSON_Delete(passPointStats);
+                            return RETURN_ERR;
+                        }
+                        authBuf->length = 1;
+                        authBuf->val[0] = subParam_1->valuedouble;
+                    } else {
+                        authStrLen = strlen(subParam_1->valuestring);
+                        if((authStrLen != 2) && (authStrLen != 14)){
+                            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
+                            strncpy(execRetVal->ErrorMsg, "Invalid EAP Length in NAIRealmANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
+                            cJSON_Delete(passPointStats);
+                            return RETURN_ERR;
+                        }
+
+                        if (realm_rem < (sizeof(authBuf->length) + (authStrLen/2))) {
+                            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Auth Parameter data. Discarding Configuration\n", __func__, __LINE__);
+                            cJSON_Delete(passPointStats);
+                            return RETURN_ERR;
+                        }
+
+                        copy_string((char *)authStr, subParam_1->valuestring, sizeof(authStr));
+                                    
+                        //Covert the incoming string to HEX
+                        for(i = 0; i < authStrLen; i++){ 
+                            if((authStr[i] >= '0') && (authStr[i] <= '9')){
+                                authStr[i] -= '0';  
                         }else if((authStr[i] >= 'a') && (authStr[i] <= 'f')){
                             authStr[i] -= ('a' - 10);//a=10
                         }else if((authStr[i] >= 'A') && (authStr[i] <= 'F')){
@@ -413,10 +521,12 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                             authBuf->val[(i/2)] = authStr[i] | (authStr[i-1] << 4);
                         }
                     }
-                    authBuf->length = i/2;
+                    authBuf->length = authStrLen/2;
                 }
-                next_pos += sizeof(authBuf->length);
-                next_pos += authBuf->length;
+                    next_pos += sizeof(authBuf->length);
+                    next_pos += authBuf->length;
+                    realm_rem -= sizeof(authBuf->length);
+                    realm_rem -= authBuf->length;
             }
             eapBuf->length = next_pos - &eapBuf->method;
         }
@@ -460,10 +570,10 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
 
         validate_param_string(anqpEntry,"MCC",anqpParam);
         if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -1)){
-            copy_string((char*)mccStr,anqpParam->valuestring);
+            copy_string((char *)mccStr, anqpParam->valuestring, sizeof(mccStr));
         }else if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -2)){
             mccStr[0] = '0';
-            copy_string((char*)&mccStr[1], anqpParam->valuestring);
+            copy_string((char *)&mccStr[1], anqpParam->valuestring, sizeof(mccStr) - 1);
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MCC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MCC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
@@ -473,10 +583,10 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
 
         validate_param_string(anqpEntry,"MNC",anqpParam);
         if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -1)){
-            copy_string((char*)mncStr, anqpParam->valuestring);
+            copy_string((char *)mncStr, anqpParam->valuestring, sizeof(mncStr));
         }else if(strlen(anqpParam->valuestring) ==  (sizeof(mccStr) -2)){
             mncStr[0] = '0';
-            copy_string((char*)&mncStr[1], anqpParam->valuestring);
+            copy_string((char *)&mncStr[1], anqpParam->valuestring, sizeof(mncStr) - 1);
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MNC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MNC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1); 
@@ -517,18 +627,45 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     next_pos = (UCHAR *)&vap_info->anqp.domainNameInfo;
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t offset = next_pos - (UCHAR *)&vap_info->anqp.domainNameInfo;
+        if (offset >= sizeof(vap_info->anqp.domainNameInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->anqp.domainNameInfo) - offset;
         wifi_domainNameTuple_t *nameBuf = (wifi_domainNameTuple_t *)next_pos;
+
+        if (remaining_len <= sizeof(nameBuf->length)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Domain Name entry. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Exceeded Domain Name buffer size",sizeof(execRetVal->ErrorMsg)-1);
+             cJSON_Delete(passPointStats);
+             return RETURN_ERR;
+        }
+
         validate_param_string(anqpEntry,"Name",anqpParam);
-        if(strlen(anqpParam->valuestring) > 255){ 
+        if(strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Domain name length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Domain name length",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
-        nameBuf->length = strlen(anqpParam->valuestring);
+
         next_pos += sizeof(nameBuf->length);
-        copy_string((char*)next_pos, anqpParam->valuestring);
-        next_pos += nameBuf->length;
+        remaining_len -= sizeof(nameBuf->length);
+
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Domain name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded Domain Name buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                cJSON_Delete(passPointStats);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            nameBuf->length = val_len;
+            next_pos += val_len;
+        }
 
         cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
@@ -613,17 +750,34 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
 
     next_pos = (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t offset = next_pos - (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
+        if (offset >= sizeof(vap_info->passpoint.opFriendlyNameInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->passpoint.opFriendlyNameInfo) - offset;
         wifi_HS2_OperatorNameDuple_t *opNameBuf = (wifi_HS2_OperatorNameDuple_t *)next_pos;
-        next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
 
-        validate_param_string(anqpEntry,"LanguageCode",anqpParam);
-        if(strlen(anqpParam->valuestring) > 3){
+        if (remaining_len < (sizeof(opNameBuf->length) + sizeof(opNameBuf->languageCode))) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for OperatorFriendlyName headers. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Exceeded OperatorFriendlyName buffer size",sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+
+        next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
+        remaining_len -= sizeof(opNameBuf->length);
+
+        validate_param_string(anqpEntry, "LanguageCode", anqpParam);
+        if (strlen(anqpParam->valuestring) != sizeof(opNameBuf->languageCode)) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid Language Code. Discarding Configuration\n", __func__, __LINE__);
-            strncpy(execRetVal->ErrorMsg, "Invalid Language Code",sizeof(execRetVal->ErrorMsg)-1);
+            strncpy(execRetVal->ErrorMsg, "Invalid Language Code", sizeof(execRetVal->ErrorMsg) - 1);
             return RETURN_ERR;
         }
-        copy_string((char*)next_pos, anqpParam->valuestring);
+
+        memcpy(next_pos, anqpParam->valuestring, sizeof(opNameBuf->languageCode));
         next_pos += sizeof(opNameBuf->languageCode);
+        remaining_len -= sizeof(opNameBuf->languageCode);
 
         validate_param_string(anqpEntry,"OperatorName",anqpParam);
         if(strlen(anqpParam->valuestring) > 252){
@@ -631,9 +785,19 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
             strncpy(execRetVal->ErrorMsg, "Invalid OperatorFriendlyName",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
-        copy_string((char*)next_pos, anqpParam->valuestring);
-        next_pos += strlen(anqpParam->valuestring);
-        opNameBuf->length = strlen(anqpParam->valuestring) +  sizeof(opNameBuf->languageCode);
+        
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for OperatorFriendlyName data. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded OperatorFriendlyName buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            size_t name_len = val_len;
+            next_pos += name_len;
+            opNameBuf->length = name_len + sizeof(opNameBuf->languageCode);
+        }
     }
     vap_info->passpoint.opFriendlyNameInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
     if(vap_info->passpoint.opFriendlyNameInfoLength) {
@@ -650,6 +814,18 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
     }
     next_pos = (UCHAR *)&vap_info->passpoint.connCapabilityInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t offset = next_pos - (UCHAR *)&vap_info->passpoint.connCapabilityInfo;
+        if (offset >= sizeof(vap_info->passpoint.connCapabilityInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->passpoint.connCapabilityInfo) - offset;
+        if (remaining_len < sizeof(wifi_HS2_Proto_Port_Tuple_t)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for Connection Capability entry. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Exceeded Connection Capability buffer size",sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
         wifi_HS2_Proto_Port_Tuple_t *connCapBuf = (wifi_HS2_Proto_Port_Tuple_t *)next_pos;
         validate_param_integer(anqpEntry,"IPProtocol",anqpParam);
         connCapBuf->ipProtocol = anqpParam->valuedouble;
@@ -679,20 +855,46 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
     naiElem->realmCount = cJSON_GetArraySize(anqpList);
     next_pos += sizeof(naiElem->realmCount);
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        size_t offset = next_pos - (UCHAR *)&vap_info->passpoint.realmInfo;
+        if (offset >= sizeof(vap_info->passpoint.realmInfo)) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Buffer overflow detected. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Buffer overflow", sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+        size_t remaining_len = sizeof(vap_info->passpoint.realmInfo) - offset;
         wifi_HS2_NAI_Home_Realm_Data_t *realmInfoBuf = (wifi_HS2_NAI_Home_Realm_Data_t *)next_pos;
+
+        if (remaining_len < (sizeof(realmInfoBuf->encoding) + sizeof(realmInfoBuf->length))) {
+             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for NAI Home Realm headers. Discarding Configuration\n", __func__, __LINE__);
+             strncpy(execRetVal->ErrorMsg, "Exceeded NAI Home Realm buffer size",sizeof(execRetVal->ErrorMsg)-1);
+             return RETURN_ERR;
+        }
+
         validate_param_integer(anqpEntry,"Encoding",anqpParam);
         realmInfoBuf->encoding = anqpParam->valuedouble;
         next_pos += sizeof(realmInfoBuf->encoding);
+
         validate_param_string(anqpEntry,"Name",anqpParam);
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid NAI Home Realm Name. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid NAI Home Realm Name", sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
-        realmInfoBuf->length = strlen(anqpParam->valuestring);
+
         next_pos += sizeof(realmInfoBuf->length);
-        copy_string((char*)next_pos, anqpParam->valuestring);
-        next_pos += realmInfoBuf->length;
+        remaining_len -= (sizeof(realmInfoBuf->encoding) + sizeof(realmInfoBuf->length));
+
+        {
+            size_t val_len = strlen(anqpParam->valuestring);
+            if (remaining_len <= val_len) {
+                wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Not enough space for NAI Home Realm Name. Discarding Configuration\n", __func__, __LINE__);
+                strncpy(execRetVal->ErrorMsg, "Exceeded NAI Home Realm buffer size", sizeof(execRetVal->ErrorMsg) - 1);
+                return RETURN_ERR;
+            }
+            copy_string((char *)next_pos, anqpParam->valuestring, remaining_len);
+            realmInfoBuf->length = val_len;
+            next_pos += val_len;
+        }
     }
     vap_info->passpoint.realmInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.realmInfo;
     if(vap_info->passpoint.realmInfoLength) {
@@ -844,7 +1046,7 @@ int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, 
     vap_info->u.bss_info.interworking.interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
 
     validate_param_string(interworking, "HESSID", param);
-    copy_string(vap_info->u.bss_info.interworking.interworking.hessid,param->valuestring);
+    copy_string(vap_info->u.bss_info.interworking.interworking.hessid, param->valuestring, sizeof(vap_info->u.bss_info.interworking.interworking.hessid));
     if (WiFi_IsValidMacAddr(vap_info->u.bss_info.interworking.interworking.hessid) != TRUE) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for HESSID\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
@@ -953,7 +1155,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	validate_param_string(radius, "RadiusServerIPAddr", param);
 	if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-	    copy_string((char *)vap_info->u.bss_info.security.u.radius.ip,param->valuestring);
+	    copy_string((char *)vap_info->u.bss_info.security.u.radius.ip, param->valuestring, sizeof(vap_info->u.bss_info.security.u.radius.ip));
 	}
     else {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);	
@@ -976,12 +1178,12 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	vap_info->u.bss_info.security.u.radius.port = param->valuedouble;
 
 	validate_param_string(radius, "RadiusSecret", param);
-	copy_string(vap_info->u.bss_info.security.u.radius.key, param->valuestring);
+	copy_string(vap_info->u.bss_info.security.u.radius.key, param->valuestring, sizeof(vap_info->u.bss_info.security.u.radius.key));
 
 	validate_param_string(radius, "SecondaryRadiusServerIPAddr", param);
 	if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-        copy_string((char *)vap_info->u.bss_info.security.u.radius.s_ip,param->valuestring);
+        copy_string((char *)vap_info->u.bss_info.security.u.radius.s_ip, param->valuestring, sizeof(vap_info->u.bss_info.security.u.radius.s_ip));
 	}
     else {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
@@ -1003,7 +1205,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	validate_param_integer(radius, "SecondaryRadiusServerPort", param);
 	vap_info->u.bss_info.security.u.radius.s_port = param->valuedouble;
 	validate_param_string(radius, "SecondaryRadiusSecret", param);
-	copy_string(vap_info->u.bss_info.security.u.radius.s_key, param->valuestring);
+	copy_string(vap_info->u.bss_info.security.u.radius.s_key, param->valuestring, sizeof(vap_info->u.bss_info.security.u.radius.s_key));
 
         validate_param_string(radius, "DasServerIPAddr", param);
         if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
@@ -1019,7 +1221,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
         vap_info->u.bss_info.security.u.radius.dasport = param->valuedouble;
 
         validate_param_string(radius, "DasSecret", param);
-        copy_string(vap_info->u.bss_info.security.u.radius.daskey, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.u.radius.daskey, param->valuestring, sizeof(vap_info->u.bss_info.security.u.radius.daskey));
 
         //max_auth_attempts
         validate_param_integer(radius, "MaxAuthAttempts", param);
@@ -1134,7 +1336,7 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring, sizeof(vap_info->u.bss_info.security.mfpConfig));
 #endif
 
         validate_param_integer(security, "RekeyInterval", param);
@@ -1299,7 +1501,7 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring, sizeof(vap_info->u.bss_info.security.mfpConfig));
 #endif
 
         validate_param_integer(security, "RekeyInterval", param);
@@ -1369,7 +1571,7 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring, sizeof(vap_info->u.bss_info.security.mfpConfig));
 #endif
 
         if ((vap_info->u.bss_info.security.mode != wifi_security_mode_none) &&
@@ -1445,7 +1647,7 @@ int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRet
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring, sizeof(vap_info->u.bss_info.security.mfpConfig));
 #endif
 
         if ((vap_info->u.bss_info.security.mode != wifi_security_mode_none) &&
@@ -1704,7 +1906,6 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //InstWifiClientMac
     validate_param_string(global_cfg, "InstWifiClientMac", param);
-    //copy_string((unsigned char *)global_info->inst_wifi_client_mac, param->valuestring);
     string_mac_to_uint8_mac((uint8_t *)&global_info->inst_wifi_client_mac, param->valuestring);
 
     //InstWifiClientDefReportingPeriod
@@ -1733,7 +1934,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //WpsPin
     validate_param_string(global_cfg, "WpsPin", param);
-    copy_string(global_info->wps_pin, param->valuestring);
+    copy_string(global_info->wps_pin, param->valuestring, sizeof(global_info->wps_pin));
 
     // BandsteeringEnable
     validate_param_bool(global_cfg, "BandsteeringEnable", param);
@@ -1789,7 +1990,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //WifiRegionCode
     validate_param_string(global_cfg, "WifiRegionCode", param);
-    copy_string(global_info->wifi_region_code, param->valuestring);
+    copy_string(global_info->wifi_region_code, param->valuestring, sizeof(global_info->wifi_region_code));
 
     // DiagnosticEnable
     validate_param_bool(global_cfg, "DiagnosticEnable", param);
@@ -1805,19 +2006,19 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //NormalizedRssiList
     validate_param_string(global_cfg, "NormalizedRssiList", param);
-    copy_string(global_info->normalized_rssi_list, param->valuestring);
+    copy_string(global_info->normalized_rssi_list, param->valuestring, sizeof(global_info->normalized_rssi_list));
 
     //SNRList
     validate_param_string(global_cfg, "SNRList", param);
-    copy_string(global_info->snr_list, param->valuestring);
+    copy_string(global_info->snr_list, param->valuestring, sizeof(global_info->snr_list));
 
     //CliStatList
     validate_param_string(global_cfg, "CliStatList", param);
-    copy_string(global_info->cli_stat_list, param->valuestring);
+    copy_string(global_info->cli_stat_list, param->valuestring, sizeof(global_info->cli_stat_list));
 
     //TxRxRateList
     validate_param_string(global_cfg, "TxRxRatetList", param);
-    copy_string(global_info->txrx_rate_list, param->valuestring);
+    copy_string(global_info->txrx_rate_list, param->valuestring, sizeof(global_info->txrx_rate_list));
 
     // MgtFrameRateLimitEnable
     validate_param_bool(global_cfg, "MgtFrameRateLimitEnable", param);
@@ -2293,7 +2494,6 @@ int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_conf
      if (radio_vaps == NULL) {
                 get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, %s: Getting WifiRadioConfig json objet fail\n",__FUNCTION__);
                 strncpy(execRetVal->ErrorMsg,"WifiRadioConfig object get fail",sizeof(execRetVal->ErrorMsg)-1);
-//                cJSON_Delete(root_json);
                 err = cJSON_GetErrorPtr();
                 if (err) {
                     get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, %s: Json delete error %s\n",__FUNCTION__,err);
