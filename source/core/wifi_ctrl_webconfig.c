@@ -860,9 +860,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
     int ret = 0;
 
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
-    update_mld_groups(data, vap_names, size, WIFI_MGR);
-#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     for (i = 0; i < size; i++) {
 
         if ((svc = get_svc_by_name(ctrl, vap_names[i])) == NULL) {
@@ -1653,6 +1650,9 @@ int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1672,6 +1672,9 @@ int webconfig_hal_home_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1691,6 +1694,9 @@ int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1710,6 +1716,9 @@ int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1729,6 +1738,9 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1748,6 +1760,9 @@ int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1767,6 +1782,9 @@ int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_de
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
