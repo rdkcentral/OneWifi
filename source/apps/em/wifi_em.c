@@ -40,6 +40,15 @@ static bool is_monitor_done = false;
 static bool g_btm_pending_valid = false;
 static em_btm_req_ctrl_msg_t g_pending_btm;
 
+// Structure to track pending block timers
+typedef struct pending_block_node {
+    kick_details_t *kick_details;
+    struct pending_block_node *next;
+} pending_block_node_t;
+
+static pending_block_node_t *pending_blocks_head = NULL;
+static pthread_mutex_t pending_blocks_lock = PTHREAD_MUTEX_INITIALIZER;
+
 typedef struct {
     em_policy_req_type_t policy_type;
     em_config_t policy_config;
@@ -130,6 +139,34 @@ static int em_get_radio_index_from_mac(mac_addr_t ruuid)
 
     return RETURN_ERR;
 }
+
+static int em_get_vap_index_from_bssid(mac_addr_t bssid)
+{
+    unsigned int num_of_radios = getNumberRadios();
+    wifi_vap_info_map_t *vap_map;
+    mac_addr_str_t bss_str, search_str;
+
+    to_mac_str(bssid, search_str);
+
+    for (int i = 0; i < num_of_radios; i++) {
+        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
+        if (vap_map == NULL) {
+            continue;
+        }
+        for (int j = 0; j < vap_map->num_vaps; j++) {
+            to_mac_str(vap_map->vap_array[j].u.bss_info.bssid, bss_str);
+            if (memcmp(bssid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) == 0) {
+                //wifi_util_dbg_print(WIFI_EM, "%s:%d VAP Index: %d found for BSSID: %s\n", __func__, __LINE__, vap_map->vap_array[j].vap_index, bss_str);
+                return vap_map->vap_array[j].vap_index;
+            }
+        }
+    }
+
+    wifi_util_error_print(WIFI_EM, "%s:%d VAP Index not found for BSSID %s\n", __func__, __LINE__, bss_str);
+
+    return RETURN_ERR;
+}
+
 
 static int em_match_radio_index_to_policy_index(radio_metrics_policies_t *radio_metrics_policies,
     int radio_index)
@@ -2834,6 +2871,78 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data)
     return bus_error_success;
 }
 
+// Helper function to add a pending block to the tracking list
+static void add_pending_block(kick_details_t *kick_details)
+{
+    pending_block_node_t *node = (pending_block_node_t *)malloc(sizeof(pending_block_node_t));
+    if (!node) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory for pending block node\n", __func__, __LINE__);
+        return;
+    }
+    node->kick_details = kick_details;
+
+    pthread_mutex_lock(&pending_blocks_lock);
+    node->next = pending_blocks_head;
+    pending_blocks_head = node;
+    pthread_mutex_unlock(&pending_blocks_lock);
+}
+
+// Helper function to find and remove a pending block by vap_index and sta_mac
+static kick_details_t* find_and_remove_pending_block(int vap_index, const char *sta_mac)
+{
+    pthread_mutex_lock(&pending_blocks_lock);
+
+    pending_block_node_t *current = pending_blocks_head;
+    pending_block_node_t *prev = NULL;
+
+    while (current) {
+        if (current->kick_details->vap_index == vap_index &&
+            current->kick_details->kick_list &&
+            strcmp(current->kick_details->kick_list, sta_mac) == 0) {
+            // Found a match, remove from list
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                pending_blocks_head = current->next;
+            }
+            kick_details_t *result = current->kick_details;
+            free(current);
+            pthread_mutex_unlock(&pending_blocks_lock);
+            return result;
+        }
+        prev = current;
+        current = current->next;
+    }
+    pthread_mutex_unlock(&pending_blocks_lock);
+    return NULL;
+}
+
+// Helper function to remove a pending block by pointer (when timer fires)
+static void remove_pending_block(kick_details_t *kick_details)
+{
+    pthread_mutex_lock(&pending_blocks_lock);
+
+    pending_block_node_t *current = pending_blocks_head;
+    pending_block_node_t *prev = NULL;
+
+    while (current) {
+        if (current->kick_details == kick_details) {
+            // Found a match, remove from list
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                pending_blocks_head = current->next;
+            }
+            free(current);
+            pthread_mutex_unlock(&pending_blocks_lock);
+            return;
+        }
+        prev = current;
+        current = current->next;
+    }
+    pthread_mutex_unlock(&pending_blocks_lock);
+}
+
 static int del_acl_cb(void *arg)
 {
     if (!arg) {
@@ -2844,6 +2953,9 @@ static int del_acl_cb(void *arg)
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Callback Del ACL, vap_index:%d, MAC: %s\n",
            __func__, __LINE__, d->vap_index,
            d->kick_list ? d->kick_list : "NULL");
+
+    // Remove from pending blocks list
+    remove_pending_block(d);
 
 #ifdef NL80211_ACL
     INT rc = wifi_hal_delApAclDevice(d->vap_index, d->kick_list);
@@ -2876,6 +2988,7 @@ static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t 
     wifi_ctrl_t *ctrl;
     ctrl = &p_wifi_mgr->ctrl;
     bus_error_t ret = bus_error_success;
+    int rc = RETURN_OK;
 
     if (strcmp(event_name, WIFI_EM_CLIENT_ASSOC_CTRL_REQ) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Not EasyMesh client assoc ctrl event, %s\n", __func__, __LINE__, event_name);
@@ -2902,7 +3015,7 @@ static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t 
 
     assoc_ctrl_req = (client_assoc_ctrl_req_t *)p_data->raw_data.bytes;
 
-    vap_index = em_get_radio_index_from_mac(assoc_ctrl_req->bssid);
+    vap_index = em_get_vap_index_from_bssid(assoc_ctrl_req->bssid);
     if (vap_index == RETURN_ERR) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid BSSID %s, unable to resolve vap index\n",
            __func__, __LINE__, to_mac_str(assoc_ctrl_req->bssid, bssid_mac_str));
@@ -2918,6 +3031,7 @@ static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t 
             goto cleanup;
         }
         memset(kick_details, 0, sizeof(kick_details_t));
+        kick_details->timer_id = -1;  // Initialize to invalid ID
 
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Blocking STAs %s on BSSID %s for %d seconds\n", __func__, __LINE__,
            to_mac_str(assoc_ctrl_req->sta_mac, sta_mac_str), to_mac_str(assoc_ctrl_req->bssid, bssid_mac_str), 
@@ -2970,7 +3084,19 @@ static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t 
         kick_details->vap_index = vap_index;
         kick_details->kick_list = strdup(sta_mac_str);
         if (!kick_details->kick_list) {
-	    // Restore filter mode if we changed it
+            // Roll back ACL add due to strdup failure
+            #ifdef NL80211_ACL
+            if (wifi_hal_delApAclDevice(vap_index, sta_mac_str) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to roll back ACL device on vap %d\n",
+                    __func__, __LINE__, vap_index);
+            }
+            #else
+            if (wifi_delApAclDevice(vap_index, sta_mac_str) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to roll back ACL device on vap %d\n",
+                    __func__, __LINE__, vap_index);
+            }
+            #endif
+            // Restore filter mode if we changed it
             if (kick_details->filter_mode_changed) {
                 wifi_hal_setApMacAddressControlMode(vap_index, kick_details->original_filter_mode);
             }
@@ -2978,8 +3104,9 @@ static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t 
             goto cleanup;
         }
 
-        if (scheduler_add_timer_task(ctrl->sched, TRUE, NULL, del_acl_cb, kick_details,
-            assoc_ctrl_req->validity_period * 1000, 1, FALSE) != 0) {
+        rc = scheduler_add_timer_task(ctrl->sched, TRUE, &kick_details->timer_id, del_acl_cb, kick_details,
+                assoc_ctrl_req->validity_period * 1000, 1, FALSE);
+        if (rc != RETURN_OK) {
 	    wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to schedule timer task for vap %d\n", __func__,
 	       __LINE__, vap_index);
 	    #ifdef NL80211_ACL
@@ -3004,12 +3131,29 @@ static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t 
             ret = bus_error_general;
             goto cleanup;
         }
+        // Add to pending blocks list for tracking
+        add_pending_block(kick_details);
     } else {
-        /* un-block; nothing to do at the moment */
+        /* un-block; cancel any pending timer for this STA */
         /* Convert STA MAC from bytes to string before deleting from ACL */
         to_mac_str(assoc_ctrl_req->sta_mac, sta_mac_str);
+
+        /* Look for and cancel any pending block timer for this STA */
+        kick_details_t *pending = find_and_remove_pending_block(vap_index, sta_mac_str);
+        if (pending) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Cancelling pending block timer for STA %s on vap %d\n",
+                __func__, __LINE__, sta_mac_str, vap_index);
+            if (scheduler_cancel_timer_task(ctrl->sched, pending->timer_id) != 0) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to cancel timer %d for STA %s on vap %d\n",
+                    __func__, __LINE__, pending->timer_id, sta_mac_str, vap_index);
+            } else {
+                free(pending->kick_list);
+                free(pending);
+            }
+        }
+
         #ifdef NL80211_ACL
-           //if sta already block then removed it from acl list
+            //if sta already block then removed it from acl list
             success = (wifi_hal_delApAclDevice(vap_index, sta_mac_str) == RETURN_OK);
         #else
             success = (wifi_delApAclDevice(vap_index, sta_mac_str) == RETURN_OK);
@@ -3109,6 +3253,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     policy_config->local_steering_dslw_policy.sta_count = 0;
     policy_config->radio_metrics_policies.radio_count = 0;
 
+    // Initialize pending blocks list mutex
+    pthread_mutex_init(&pending_blocks_lock, NULL);
+
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
@@ -3186,6 +3333,9 @@ int em_deinit(wifi_app_t *app)
             t_sta_data);
     }
     hash_map_destroy(client_type_info.sta_client_type.client_type_map);
+
+    // Destroy pending blocks list mutex
+    pthread_mutex_destroy(&pending_blocks_lock);
 
     return RETURN_OK;
 }
