@@ -230,10 +230,8 @@ check_lnf_status()
     lnf_2g_enabled="$(nvram get wl0.4_bss_enabled)"
     lnf_5g_enabled="$(nvram get wl1.4_bss_enabled)"
     if [ "$lnf_2g_enabled" = "0" ] && [ "$lnf_5g_enabled" = "0" ]; then
-        echo_t "Selfheal 2g&5g LNFs disabled, won't check and bring lnf up" >> /rdklogs/logs/wifi_selfheal.txt
         return
     fi
-    echo_t "Selfheal doing LNF" >> /rdklogs/logs/wifi_selfheal.txt
     radio_status_2g=`dmcli eRT retv Device.WiFi.Radio.$radio_2g_instance.Enable`
     if [ "$radio_status_2g" == "true" ]; then
         if ! ovs-vsctl list-ifaces br106 | grep -q "wl0.4"; then
