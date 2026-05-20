@@ -94,10 +94,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map = NULL;
     int ret;
-    int band;
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
-    wifi_vap_info_t *vap = NULL;
-    unsigned int vap_index = 0;
 
     p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (p_tgt_vap_map == NULL) {
@@ -119,22 +116,36 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             return -1;
         }
 
-        vap = &p_tgt_vap_map->vap_array[0];
-        vap_index = map->vap_array[i].vap_index;
+#if defined(_PLATFORM_BANANAPI_R4_) && defined(EM_WPS_FH_HACK)
+        {
+            int band;
+            wifi_vap_info_t *vap = &p_tgt_vap_map->vap_array[0];
+            unsigned int vap_index = map->vap_array[i].vap_index;
 
-        if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) == RETURN_OK) {
-            if (isVapPrivate(vap_index) && map->vap_array[i].u.bss_info.wps.enable) {
-                if (band != WIFI_FREQUENCY_6_BAND) {
+            if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) == RETURN_OK) {
+                /*
+                 * Private SSID on 2.4/5 GHz with WPS: disable MLO/MLD and use WPA2-Personal + PSK.
+                 * MLD left enabled while forcing WPA2 breaks hostapd / EasyMesh topology; WPS also
+                 * expects classic WPA2-PSK on these bands.
+                 */
+                if (isVapPrivate(vap_index) && map->vap_array[i].u.bss_info.wps.enable &&
+                    band != WIFI_FREQUENCY_6_BAND) {
+                    vap->u.bss_info.mld_info.common_info.mld_enable = 0;
+                    vap->u.bss_info.mld_info.common_info.mld_id = 255;
+                    vap->u.bss_info.mld_info.common_info.mld_link_id = 255;
+                    memset(vap->u.bss_info.mld_info.common_info.mld_addr, 0,
+                        sizeof(vap->u.bss_info.mld_info.common_info.mld_addr));
+                    vap->u.bss_info.mld_info.common_info.mld_apply = 1;
+
                     vap->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                    vap->u.bss_info.security.encr = wifi_encryption_aes;
+                    vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                    vap->u.bss_info.security.wpa3_transition_disable = false;
+                    vap->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
                 }
             }
-            else if (isVapMeshBackhaul(vap_index)) {
-                vap->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                vap->u.bss_info.security.wpa3_transition_disable = false;
-                vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                vap->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
-            }
         }
+#endif
 
 #if defined(_WNXL11BWL_PRODUCT_REQ_)
         if (rdk_vap_info[i].exists == false && isVapPrivate(map->vap_array[i].vap_index)) {
