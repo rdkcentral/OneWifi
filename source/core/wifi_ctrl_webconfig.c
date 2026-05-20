@@ -36,6 +36,8 @@
 #include "wifi_webconfig_consumer.h"
 #endif
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
+#define SSID_MAX_LEN (64)
+#define KEY_MAX_LEN (256)
 bool is_sta_set = false;
 struct ow_conf_vif_config_cb_arg
 {
@@ -3214,6 +3216,8 @@ static void create_station_with_private_credentials(webconfig_subdoc_data_t *dat
     int private_vap_index = 0, radio_index = 0, vap_index = 0, band = 0;
     int status = RETURN_OK;
     int vap_array_index = 0, private_vap_array_index = 0;
+    char tmp_ssid[SSID_MAX_LEN + 1] = {0};
+    char tmp_key[KEY_MAX_LEN + 1] = {0};
 
     for (int i = 0; i < num_vaps || i < private_num_vaps; i++) {
         vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
@@ -3237,16 +3241,17 @@ static void create_station_with_private_credentials(webconfig_subdoc_data_t *dat
         else {
             wifi_util_info_print(WIFI_CTRL, "%s:%d pvt_ssid= %s\n", __func__, __LINE__,
                  data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid);
+            snprintf(tmp_ssid, sizeof(tmp_ssid), "%s",
+                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid);
             snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ssid,
                  sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.ssid),
-                 "%s", data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.ssid);
-
+                 "%s", tmp_ssid);
+            snprintf(tmp_key, sizeof(tmp_key), "%s",
+                 data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.security.u.key.key);
             snprintf(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.key.key,
                  sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.key.key),
-                 "%s", data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[private_vap_array_index].u.bss_info.security.u.key.key);
-
+                 "%s", tmp_key);
             convert_radio_index_to_freq_band(&data->u.decoded.hal_cap.wifi_prop, radio_index,&band);
-
             if (band == WIFI_FREQUENCY_6_BAND) {
                 data->u.decoded.radios[radio_index]
                     .vaps.vap_map.vap_array[vap_array_index]
