@@ -41,6 +41,11 @@ extern "C" {
 #define LINKQ_INT_RECONN    (1 << 7)
 
 #define LINKQ_VALID_MASK    0xFF   /* Only first 8 bits valid */
+
+/* Score params bitmask — controls quality_flags_t (same as UI checkboxes)
+ * Uses LINKQ_DL_SNR..LINKQ_INT_RECONN (bits 0-7) defined above.
+ * Valid mask is LINKQ_VALID_MASK (0xFF). */
+
 #define LINK_QTY_B0  1.386
 #define LINK_QTY_B1  0.02
 typedef struct {
@@ -136,6 +141,12 @@ void unregister_station_mac(const char* str);
 
 /* Sets the max_snr per radios after its learnt */
 int set_max_snr_radios(radio_max_snr_t *max_snr_val);
+
+/* Sets score params booster flags via bitmask */
+int set_score_params(uint32_t mask);
+
+/* Gets score params booster flags as bitmask */
+uint32_t get_score_params_mask(void);
 
 /* Connection Affinity related helper functions */
 int update_affinity_stats(stats_arg_t *arg,bool flag);

@@ -28,6 +28,8 @@
 #include "wifi_webconfig.h"
 #include "run_qmgr.h"
 #include "wifi_stubs.h"
+#include "lq_ipc_sender.h"
+#include "wifi_linkquality_libs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -936,49 +938,8 @@ int set_managed_guest_interfaces(char *interface_name, int radio_index)
     return RETURN_OK;
 }
 #if 0
-bus_error_t wifi_get_link_quality_flags(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
-{
-    (void)user_data;
-    quality_flags_t flags;
-    uint32_t mask;
-    //get_quality_flags(&flags);
-    mask = quality_flags_to_mask(&flags);
-
-    p_data->data_type = bus_data_type_uint32;
-    p_data->raw_data.u32 = mask;
-    p_data->raw_data_len = sizeof(mask);
-    wifi_util_info_print(WIFI_APPS, "%s:%d linkqualityflags=%d\n",__func__,__LINE__,mask);
-    return bus_error_success;
-}
-
-bus_error_t wifi_set_link_quality_flags(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
-{
-    (void)user_data;
-    quality_flags_t flags;
-    uint32_t mask;
-    
-    if (p_data->data_type != bus_data_type_uint32) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid data input\n", __func__, __LINE__);
-        return bus_error_general;
-    }
-    mask = p_data->raw_data.u32;
-
-    wifi_util_info_print(WIFI_APPS, "%s:%d linkqualityflags=%d \n",__func__,__LINE__,mask);
-    if(mask & ~LINKQ_VALID_MASK)
-    {
-        wifi_util_error_print(WIFI_APPS,
-            "Invalid bits set in LinkQuality Flags: 0x%x\n", mask);
-        return bus_error_invalid_input;
-    }
-    mask_to_quality_flags(mask, &flags);
-    //set_quality_flags(&flags);
-
-    return bus_error_success;
-}
-
 bus_error_t wifi_get_link_quality_data(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
-    #if 0
     (void)user_data;
     uint32_t bytes_size;
     wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
@@ -1005,11 +966,57 @@ bus_error_t wifi_get_link_quality_data(char *event_name, raw_data_t *p_data, bus
         cJSON_free(str); //Since the memory is allocated from cJSON_PrintUnformatted
 
     wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-  #endif 
    return RETURN_OK;
 
 }
 #endif
+
+bus_error_t wifi_get_link_quality_flags(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    (void)event_name;
+    quality_flags_t flags;
+    uint32_t mask;
+
+    get_lq_descriptor()->get_quality_flags_fn(&flags);
+    mask = quality_flags_to_mask(&flags);
+
+    p_data->data_type = bus_data_type_uint32;
+    p_data->raw_data.u32 = mask;
+    p_data->raw_data_len = sizeof(mask);
+    wifi_util_info_print(WIFI_APPS, "%s:%d LinkQualityFlags mask=0x%x\n", __func__, __LINE__, mask);
+    return bus_error_success;
+}
+
+bus_error_t wifi_set_link_quality_flags(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    (void)event_name;
+    quality_flags_t flags;
+    uint32_t mask;
+
+    if (p_data->data_type != bus_data_type_uint32) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid data input\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+    mask = p_data->raw_data.u32;
+
+    wifi_util_info_print(WIFI_APPS, "%s:%d LinkQualityFlags mask=0x%x\n", __func__, __LINE__, mask);
+    if (mask & ~LINKQ_VALID_MASK) {
+        wifi_util_error_print(WIFI_APPS,
+            "%s:%d Invalid bits set in LinkQualityFlags: 0x%x\n", __func__, __LINE__, mask);
+        return bus_error_invalid_input;
+    }
+
+    mask_to_quality_flags(mask, &flags);
+    get_lq_descriptor()->set_quality_flags_fn(&flags);
+
+    /* Send via IPC to wei/linkquality-stats daemon */
+    lq_ipc_send(LQ_IPC_MSG_SET_SCORE_PARAMS, &mask, 1, sizeof(uint32_t));
+
+    return bus_error_success;
+}
+
 bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -4553,6 +4560,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_LINK_QUALITY_GW, bus_element_type_method,
                                     { NULL, set_linkq_gw, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_boolean, false, 0, 0, 0, NULL } },
+                                { WIFI_LINK_QUALITY_FLAGS, bus_element_type_method,
+                                    { wifi_get_link_quality_flags, wifi_set_link_quality_flags, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_uint32, false, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);

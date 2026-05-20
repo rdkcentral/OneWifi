@@ -40,6 +40,7 @@ static const char *lq_msg_type_str(uint32_t type)
     case LQ_IPC_MSG_UNREGISTER_STA:   return "UNREGISTER_STA";
     case LQ_IPC_MSG_REINIT_METRICS:   return "REINIT_METRICS";
     case LQ_IPC_MSG_SET_MAX_SNR:      return "SET_MAX_SNR";
+    case LQ_IPC_MSG_SET_SCORE_PARAMS: return "SET_SCORE_PARAMS";
     default:                          return "UNKNOWN";
     }
 }
@@ -62,6 +63,17 @@ static void lq_ipc_log_stats_entries(uint32_t msg_type, const void *entries,
             (long long)s[i].total_connected_time.tv_sec,
             (long long)s[i].total_disconnected_time.tv_sec,
             s[i].dev.cli_SNR, s[i].vap_index, s[i].radio_index);
+
+        /* CONN-STATUS trace: log every event that can change connected state */
+        if (msg_type == LQ_IPC_MSG_CAFFINITY_EVENT || msg_type == LQ_IPC_MSG_DISCONNECT
+                || msg_type == LQ_IPC_MSG_RAPID_DISCONNECT || msg_type == LQ_IPC_MSG_PERIODIC_STATS) {
+            wifi_util_info_print(WIFI_APPS,
+                "CONN-STATUS [SEND] MAC=%s msg=%s event=%d status_code=%u "
+                "conn_time=%llds disconn_time=%llds\n",
+                s[i].mac_str, lq_msg_type_str(msg_type), s[i].event, s[i].status_code,
+                (long long)s[i].total_connected_time.tv_sec,
+                (long long)s[i].total_disconnected_time.tv_sec);
+        }
     }
 }
 

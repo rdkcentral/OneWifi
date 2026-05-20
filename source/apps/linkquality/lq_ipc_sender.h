@@ -49,6 +49,7 @@
 #define LQ_IPC_MSG_UNREGISTER_STA    8
 #define LQ_IPC_MSG_REINIT_METRICS    9
 #define LQ_IPC_MSG_SET_MAX_SNR      10
+#define LQ_IPC_MSG_SET_SCORE_PARAMS 11
 
 /*
  * LQ TLV — the entire datagram is a single TLV, no wrapper header.

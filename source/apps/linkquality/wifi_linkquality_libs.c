@@ -209,6 +209,9 @@ static int disconnect_link_stats_impl(stats_arg_t *stats)
         __func__, __LINE__, stats->mac_str, stats->status_code,
         (long long)stats->total_connected_time.tv_sec,
         (long long)stats->total_disconnected_time.tv_sec);
+    wifi_util_info_print(WIFI_APPS,
+        "CONN-STATUS [ONEWIFI] RAPID_DISCONNECT MAC=%s\n",
+        stats->mac_str);
 
     if (is_ext_mode()) {
         /* TODO: EXT mode – forward RAPID_DISCONNECT to GW via 1905.1/TCP frame */
@@ -258,6 +261,10 @@ static int remove_link_stats_impl(stats_arg_t *stats)
         __func__, __LINE__, stats->mac_str, stats->status_code,
         (long long)stats->total_connected_time.tv_sec,
         (long long)stats->total_disconnected_time.tv_sec);
+    wifi_util_info_print(WIFI_APPS,
+        "CONN-STATUS [ONEWIFI] DISCONNECT MAC=%s "
+        "=> caff m_connected NOT updated (only lq deleted)\n",
+        stats->mac_str);
 
     if (is_ext_mode()) {
         /* TODO: EXT mode – forward DISCONNECT to GW via 1905.1/TCP frame */
