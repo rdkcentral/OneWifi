@@ -6126,7 +6126,7 @@ SSID_SetParamUlongValue
             wifi_util_dbg_print(WIFI_DMCLI,
                 "%s:%d Updating mld_link_id radio_index %d vap index:%d old val %u new val %u\n",
                 __FUNCTION__, __LINE__, temp_vapInfo->radio_index, vap_idx,
-                uValue, temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id);
+                temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
             if (temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
                 continue;
             }
