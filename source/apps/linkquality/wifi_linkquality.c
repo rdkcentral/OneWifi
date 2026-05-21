@@ -106,14 +106,12 @@ static int ignite_score_log_timer(void *args)
 
     char tmp[MAX_STR_LEN] = { 0 };
     char buff[MAX_BUFF_LEN] = { 0 };
-    char telemetry_val[IGNITE_SCORE_THRESHOLD_BUFF] = {0};
 
     get_formatted_time(tmp);
     snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY:%f %f %s\n", tmp, ignite->last_score,
         ignite->last_threshold, ignite->ignite_service_status);
+    wifi_util_info_print(WIFI_APPS, "%s:%d: %s\n", __func__, __LINE__, buff);
     write_to_file(wifi_health_log, buff);
-    snprintf(telemetry_val, IGNITE_SCORE_THRESHOLD_BUFF, "%f %f %s", ignite->last_score, ignite->last_threshold, ignite->ignite_service_status);
-    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_LINKQUALITY_SPLIT", telemetry_val);
     return RETURN_OK;
 }
 
@@ -123,6 +121,9 @@ void publish_station_score(const char *input_str, double score, double threshold
     bus_error_t status;
     raw_data_t rdata;
     char str[MAX_STR_LEN] = { '\0' };
+    char tmp[MAX_STR_LEN] = { 0 };
+    char buff[MAX_BUFF_LEN] = { 0 };
+    char telemetry_val[IGNITE_SCORE_THRESHOLD_BUFF] = {0};
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wifi_app_t *wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_link_quality);
@@ -181,18 +182,23 @@ void publish_station_score(const char *input_str, double score, double threshold
                 __func__, __LINE__, status);
         }
         if (ignite->last_service_state == -1) {
-            char tmp[MAX_STR_LEN] = { 0 };
-            char buff[MAX_BUFF_LEN] = { 0 };
-	    char telemetry_val[IGNITE_SCORE_THRESHOLD_BUFF] = {0};
             get_formatted_time(tmp);
-            snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY:%f %f %s\n", tmp,
+            snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY_FIRST_PUBLISH:%f %f %s\n", tmp,
                 ignite->last_score, ignite->last_threshold, ignite->ignite_service_status);
             wifi_util_info_print(WIFI_APPS, "%s:%d: Score at first RBUS publish after connection: %s\n", __func__,
                 __LINE__, buff);
             write_to_file(wifi_health_log, buff);
 	    snprintf(telemetry_val, IGNITE_SCORE_THRESHOLD_BUFF, "%f %f %s", ignite->last_score, ignite->last_threshold, ignite->ignite_service_status);
-	    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_LINKQUALITY_SPLIT", telemetry_val);
-        }
+	    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_LINKQUALITY_FIRST_PUBLISH", telemetry_val);
+        } else {
+	    snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY_STATE_CHANGE:%f %f %s\n", tmp,
+                ignite->last_score, ignite->last_threshold, ignite->ignite_service_status);
+            wifi_util_info_print(WIFI_APPS, "%s:%d: State change score: %s\n", __func__,
+                __LINE__, buff);
+            write_to_file(wifi_health_log, buff);
+            snprintf(telemetry_val, IGNITE_SCORE_THRESHOLD_BUFF, "%f %f %s", ignite->last_score, ignite->last_threshold, ignite->ignite_service_status);
+            get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_LINKQUALITY_STATE_CHANGE", telemetry_val);
+	}
         ignite->last_service_state = current_state;
     }
 
