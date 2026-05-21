@@ -3490,7 +3490,7 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
         vap_arr_index = -1;
         for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
             ap_metrics = &radio_report->vap_reports[k];
-            if (strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
+            if (memcmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
                 sizeof(bssid_t)) == 0) {
                     vap_arr_index = k;
                     break;
