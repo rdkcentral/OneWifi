@@ -1256,20 +1256,6 @@ WiFi_SetParamBoolValue
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_rfc);
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm rfc value set bvalue is %d \n", __FUNCTION__,__LINE__,bValue);
         }
-
-        if (!TCM_SetParamBoolValue(NULL, "Open2G", bValue) ||
-            !TCM_SetParamBoolValue(NULL, "Open5G", bValue) ||
-            !TCM_SetParamBoolValue(NULL, "Open6G", bValue) ||
-            !TCM_SetParamBoolValue(NULL, "Secure2G", bValue) ||
-            !TCM_SetParamBoolValue(NULL, "Secure5G", bValue) ||
-            !TCM_SetParamBoolValue(NULL, "Secure6G", bValue)) {
-            wifi_util_error_print(WIFI_DMCLI,
-                "%s:%d Failed to update all TCM per-band RFCs for value %d\n",
-                __FUNCTION__, __LINE__, bValue);
-            return FALSE;
-        }
-
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm per vap RFC updated\n", __FUNCTION__,__LINE__);
         return TRUE;
     }
 
