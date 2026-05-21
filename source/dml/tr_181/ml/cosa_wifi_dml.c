@@ -156,7 +156,6 @@ ULONG InterworkingElement_Commit(ANSC_HANDLE hInsContext);
 void *Wifi_Hosts_Sync_Func(void *pt, int index, wifi_associated_dev_t *associated_dev, BOOL bCallForFullSync, BOOL bCallFromDisConnCB);
 int EVP_DecodeBlock(unsigned char*, unsigned char*, int);
 int d2i_EC_PUBKEY(void **a, const unsigned char **key, long length);
-BOOL TCM_SetParamBoolValue(ANSC_HANDLE hInsContext, char* ParamName, BOOL bValue);
 
 static BOOL IsSsidHotspot(ULONG ins)
 {
