@@ -833,7 +833,7 @@ int link_quality_gw_discovery(wifi_app_t *apps, wifi_event_t *arg)
     /* GW: broadcast autoconf_search so EXT learns our MAC and can address
      * subsequent autoconf_resp frames to us.
      * GW(RPI): backhaul to XB8 = eth0; for production GW: change to "brlan0". */
-     lq_send_autoconf_search("brlan0");
+     //lq_send_autoconf_search("brlan0");
 
     return RETURN_OK;
 

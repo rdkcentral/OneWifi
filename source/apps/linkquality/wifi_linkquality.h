@@ -89,6 +89,7 @@ typedef uint8_t mac_address_t[MAC_ADDRESS_LEN];
 
 #define CTRL_CAP_SZ 8
 
+#if 0
 typedef struct {
     void *data;
 } multiap_data_t;
@@ -134,6 +135,7 @@ typedef enum {
     multiap_tlv_type_lq = 6,
     multiap_tlv_type_searched_role =0x0d,
 } multiap_tlv_type_t;
+#endif
 
 void dhcp_sniffer_stop();
 void dhcp_sniffer_start();

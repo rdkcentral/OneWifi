@@ -371,6 +371,7 @@ wifi_lq_descriptor_t* get_lq_descriptor()
     return &desc;
 }
 
+#if 0
 static int send_frame(unsigned char *buff, unsigned int len, bool multicast,  char *ifname)
 {
     int ret = 0;
@@ -397,7 +398,6 @@ static int send_frame(unsigned char *buff, unsigned int len, bool multicast,  ch
     return ret;
  }
 
-#if 0
 int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *interface_name,stats_arg_t *stats, int num_devs,ext_qualitymgr_type_t event)
 {
     unsigned short msg_id = multiap_msg_type_autoconf_resp;
@@ -476,7 +476,6 @@ int create_autoconfig_resp_msg(unsigned char *buff, unsigned char *dst, char *in
 
     return len;
 }
-#endif
 /* -------------------------------------------------------------------------
  * EXT side: listener thread that learns the GW MAC from incoming
  * autoconf_search (CMDU type 0x0007) frames received on the backhaul iface.
@@ -596,6 +595,7 @@ int lq_send_autoconf_search(const char *ifname)
     }
     return 0;
 }
+#endif
 
 /* -------------------------------------------------------------------------
  * GW side: parse an incoming IEEE 1905.1 autoconf_resp (CMDU 0x0008) from
