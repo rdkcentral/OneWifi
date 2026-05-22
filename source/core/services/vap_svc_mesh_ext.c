@@ -1822,10 +1822,11 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
 		    "WIFI_IGNITE_ELIGIBLE_TARGET_5G",
 		    "WIFI_IGNITE_ELIGIBLE_TARGET_6G"
 	    };
-            get_formatted_time(tmp);
+        get_formatted_time(tmp);
 	    if (results->radio_index < MAX_NUM_RADIOS) {
 		    snprintf(buff, MAX_BUFF_LEN, "%s %s:%u", tmp, event_names[results->radio_index], num);
-		    wifi_util_info_print(WIFI_CTRL, "%s:%d telemetry val : %s\n", __func__, __LINE__, buff);
+		    write_to_file(wifi_health_log,buff);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d telemetry val : %s\n", __func__, __LINE__, buff);
 		    get_stubs_descriptor()->t2_event_d_fn(event_names[results->radio_index], num);
 	    } else {
 		    wifi_util_error_print(WIFI_CTRL, "%s %d Unsupported Radio index %u\n", __func__, __LINE__, results->radio_index);

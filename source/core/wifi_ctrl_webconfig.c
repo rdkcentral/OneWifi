@@ -3357,22 +3357,21 @@ void start_station_vaps(bool is_private, bool rf_status)
 
     webconfig_init_subdoc_data(data);
     unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
-            &vap_names[0]);
+        &vap_names[0]);
     if (rf_status && !is_private) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d RF is down creating station with Hotspot credentials\n", __func__, __LINE__);
-	hotspot_timing_start();    
-	create_station_with_xfinity_credentials(data, num_vaps, vap_names);
-    }
-    else if (rf_status) {
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d RF is down creating station with Hotspot credentials\n", __func__, __LINE__);
+        hotspot_timing_start();
+        create_station_with_xfinity_credentials(data, num_vaps, vap_names);
+    } else if (rf_status) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d Creating station with Private credentials\n", __func__, __LINE__);
         private_num_vaps = get_list_of_private_ssid(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, &private_vap_names[0]);
         create_station_with_private_credentials(data, num_vaps, private_num_vaps, private_vap_names, vap_names);
-    }
-    else {
+    } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d Station vaps going back to Default case\n", __func__, __LINE__);
         (void)create_station_with_default_credentials(data, num_vaps, vap_names);
         if ((rf_status == 0) && (!is_private)) {
-	    wifi_util_info_print(WIFI_CTRL, "%s:%d Docsis enabled and no private vap config detected\n", __func__, __LINE__);
+	        wifi_util_info_print(WIFI_CTRL, "%s:%d Docsis enabled and no private vap config detected\n", __func__, __LINE__);
             hotspot_timing_stop();
 	}
     }
