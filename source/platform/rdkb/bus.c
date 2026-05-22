@@ -1732,6 +1732,28 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
     return convert_rbus_to_bus_error_code(rc);
 }
 
+static rbusError_t bus_discover_component(rbusHandle_t handle, char const *element_name)
+{
+    rbusError_t rc;
+    int component_cnt = 0;
+    char **component_names = NULL;
+    char const *element_list[1];
+
+    element_list[0] = element_name;
+    rc = rbus_discoverComponentName(handle, 1, element_list, &component_cnt,
+        &component_names);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        return rc;
+    }
+
+    for (int i = 0; i < component_cnt; i++) {
+        free(component_names[i]);
+    }
+    free(component_names);
+
+    return (component_cnt > 0) ? RBUS_ERROR_SUCCESS : RBUS_ERROR_DESTINATION_NOT_FOUND;
+}
+
 bus_error_t bus_event_subscribe(bus_handle_t *handle, char const *event_name, void *cb,
     void *userData, int timeout)
 {
@@ -1739,6 +1761,14 @@ bus_error_t bus_event_subscribe(bus_handle_t *handle, char const *event_name, vo
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
     rbus_sub_callback_table_t rbus_cb = { 0 };
     bus_sub_callback_table_t  user_cb;
+
+    rc = bus_discover_component(p_rbus_handle, event_name);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_BUS,
+            "%s:%d bus: provider not found for [%s], rc: %d\n",
+            __func__, __LINE__, event_name, rc);
+        return convert_rbus_to_bus_error_code(rc);
+    }
 
     user_cb.sub_handler = cb;
     user_cb.sub_ex_async_handler = NULL;
@@ -1820,6 +1850,14 @@ bus_error_t bus_event_subscribe_async(bus_handle_t *handle, char const *event_na
     rbus_sub_callback_table_t rbus_cb = { 0 };
     bus_sub_callback_table_t  user_cb;
 
+    rc = bus_discover_component(p_rbus_handle, event_name);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_BUS,
+            "%s:%d bus: provider not found for [%s], rc: %d\n",
+            __func__, __LINE__, event_name, rc);
+        return convert_rbus_to_bus_error_code(rc);
+    }
+
     user_cb.sub_handler = cb;
     user_cb.sub_ex_async_handler = async_cb;
 
@@ -1843,6 +1881,15 @@ bus_error_t bus_event_subscribe_ex(bus_handle_t *handle, bus_event_sub_t *l_sub_
     if (p_rbus_handle == NULL || l_sub_info_map == NULL) {
         wifi_util_error_print(WIFI_BUS, "%s bus: Input param is NULL\n", __func__);
         return bus_error_invalid_input;
+    }
+
+    for (int index = 0; index < num_sub; index++) {
+        ret = bus_discover_component(p_rbus_handle, l_sub_info_map[index].event_name);
+        if (ret != RBUS_ERROR_SUCCESS) {
+            wifi_util_dbg_print(WIFI_BUS, "%s:%d bus: provider not found for [%s], rc: %d\n",
+                __func__, __LINE__, l_sub_info_map[index].event_name, ret);
+            return convert_rbus_to_bus_error_code(ret);
+        }
     }
 
     sub_info_map = calloc(1, num_sub * sizeof(rbusEventSubscription_t));
@@ -1890,6 +1937,15 @@ bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_sub_t *
     if (p_rbus_handle == NULL || l_sub_info_map == NULL) {
         wifi_util_error_print(WIFI_BUS, "%s bus: Input param is NULL\n", __func__);
         return bus_error_invalid_input;
+    }
+
+    for (int index = 0; index < num_sub; index++) {
+        ret = bus_discover_component(p_rbus_handle, l_sub_info_map[index].event_name);
+        if (ret != RBUS_ERROR_SUCCESS) {
+            wifi_util_dbg_print(WIFI_BUS, "%s:%d bus: provider not found for [%s], rc: %d\n",
+                __func__, __LINE__, l_sub_info_map[index].event_name, ret);
+            return convert_rbus_to_bus_error_code(ret);
+        }
     }
 
     sub_info_map = calloc(1, num_sub * sizeof(rbusEventSubscription_t));
