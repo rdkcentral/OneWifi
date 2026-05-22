@@ -3020,8 +3020,14 @@ void process_tcm_rfc(bool type)
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->tcm_enabled_rfc = type;
+    rfc_param->tcm_open_2g_rfc = type;
+    rfc_param->tcm_open_5g_rfc = type;
+    rfc_param->tcm_open_6g_rfc = type;
+    rfc_param->tcm_secure_2g_rfc = type;
+    rfc_param->tcm_secure_5g_rfc = type;
+    rfc_param->tcm_secure_6g_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
+    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d, all VAP-specific RFCs updated\n", __FUNCTION__, __LINE__,
         type);
 }
 
