@@ -296,6 +296,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>MultiAp_RFC</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>X_RDKCENTRAL-COM_MemwrapTool_RFC</name>
             <type>boolean</type>
             <syntax>bool</syntax>
