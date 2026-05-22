@@ -20,7 +20,7 @@
 #ifndef WIFI_LINKQUALITY_H
 #define WIFI_LINKQUALITY_H
 
-#define MAX_IGNITE_STR_LEN 128
+#define MAX_IGNITE_STR_LEN 32
 
 #ifdef __cplusplus
 extern "C" {

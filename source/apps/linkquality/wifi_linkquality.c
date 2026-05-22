@@ -36,7 +36,7 @@
 #define IGNITE_SCORE_LOG_INTERVAL_MS 900000 // 15 mins
 #define IGNITE_INITIAL_PUBLISH_ITERATIONS 5
 #define MAX_STR_LEN 128
-#define IGNITE_SCORE_THRESHOLD_BUFF 32
+#define IGNITE_SCORE_THRESHOLD_BUFF 64
 
 static char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 

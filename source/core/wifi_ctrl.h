@@ -184,7 +184,7 @@ typedef struct {
     struct timespec disconnection_time;
 } hotspot_timing_t;
 
-hotspot_timing_t g_hotspot_timing;
+extern hotspot_timing_t g_hotspot_timing;
 
 typedef struct {
     wifi_connection_status_t    connect_status;

@@ -40,8 +40,11 @@
 #define MAX_TELEMETRY_BUFF_LEN 64
 #define MAX_STATUS_LEN 5
 #define STA_STATUS_DISCONNECTED 1
-static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
+
+hotspot_timing_t g_hotspot_timing;
 apply_ignite_config_t g_apply_ignite_config;
+
+static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
     char *eventName)
@@ -236,7 +239,6 @@ void hotspot_timing_target_detected(void)
 
     snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_HOTSPOT_TARGET_DETECTION_TIME:%.3f\n", tmp, target_detection_duration);
     write_to_file(wifi_health_log, buff);
-    memset(telemetry_buf, 0, MAX_TELEMETRY_BUFF_LEN);
     snprintf(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, "%.3f", target_detection_duration);
     get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_TARGET_DETECTION_TIME", telemetry_buf);
     wifi_util_dbg_print(WIFI_CTRL,
@@ -393,7 +395,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     start_station_vaps(false, rf_status);
     get_formatted_time(tmp);
     if (rf_status) {
-        write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:True\n", tmp, rf_status);
+        write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:True\n", tmp);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "True");
         wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start,
@@ -420,7 +422,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
             }
         }
     } else {
-        write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:False\n", tmp, rf_status);
+        write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:False\n", tmp);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "False");
        wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
