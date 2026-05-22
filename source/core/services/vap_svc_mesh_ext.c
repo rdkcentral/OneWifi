@@ -1875,7 +1875,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         scan_list++;
     }
 
-    if (ctrl->rf_status_down == true) {
+    if ((ctrl->rf_status_down == true) && (num != 0)) {
         safe_strcat(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, "\n");
         safe_strcat(target_metrics_buf, MAX_TELEMETRY_BUFF_LEN, telemetry_buf);
         write_to_file(wifi_health_log, target_metrics_buf);
