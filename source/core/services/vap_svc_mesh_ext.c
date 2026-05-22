@@ -35,7 +35,6 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_base.h"
 #include "wifi_stubs.h"
-#include "safec_lib_common.h"
 #include "wifi_multiap.h"
 
 #define SCORE_TIE_THRESHOLD 1
@@ -61,6 +60,20 @@
 #define MAX_IFACE_LEN   32
 #define MAX_BUFF_LEN    256
 #define MAX_TELEMETRY_BUFF_LEN 1024
+
+//safe_strcat defined locally to accomodate the contents in the existing destination and 
+//incoming source buffer to avoid overflow
+#define safe_strcat(dst, max, src)  \
+    do { \
+        if ((src) == NULL) { \
+            wifi_util_error_print(WIFI_CTRL, "%s:%d NULL src\n", __func__, __LINE__); \
+        } else if ((strlen(dst) + strlen(src) + 1) > (max)) { \
+            wifi_util_error_print(WIFI_CTRL, "%s:%d overflow prevented dst_len=%zu src_len=%zu max=%zu\n", \
+                __func__, __LINE__, strlen(dst), strlen(src), (size_t)(max)); \
+        } else { \
+            strcat(dst, src); \
+        } \
+    } while(0)
 
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 /**
@@ -1753,10 +1766,9 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     wifi_ctrl_t *ctrl;
     ssid_t sta_ssid;
     char tmp[MAX_STR_LEN] = { 0 };
-    char buf[MAX_BUFF_LEN] = { 0 };
-	char target_metrics_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
+    char buff[MAX_BUFF_LEN] = { 0 };
+    char target_metrics_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
     char telemetry_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
-    char entry_buf[MAX_BUFF_LEN] = {0};
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -1820,7 +1832,6 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
 	    }
 	    if (num != 0 ) {
 	        memset(tmp, '\0', sizeof(tmp));
-	        memset(target_metrics_buf, '\0', MAX_TELEMETRY_BUFF_LEN);
 	        get_formatted_time(tmp);
 	        snprintf(target_metrics_buf, MAX_TELEMETRY_BUFF_LEN, "%s WIFI_IGNITE_ELIGIBLE_TARGET_METRICS:", tmp);
 	    }
@@ -1844,8 +1855,8 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         scan_list->radio_freq_band = band;
         if (ctrl->rf_status_down == true) {
             char delimiter = (i + 1) < num ? ';' : ' ';
-
-            snprintf(entry_buf, sizeof(entry_buf), "%s,%d,%d,%d,%d%c",
+            
+            snprintf(buff, MAX_BUFF_LEN, "%s,%d,%d,%d,%d%c",
                 to_mac_str(tmp_bss->bssid, bssid_str),
                 tmp_bss->freq,
                 tmp_bss->rssi,
@@ -1853,7 +1864,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
                 tmp_bss->chan_utilization,
                 delimiter);
 
-            strcat(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, entry_buf);
+            safe_strcat(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, buff);
         }
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
@@ -1865,8 +1876,8 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     }
 
     if (ctrl->rf_status_down == true) {
-        strcat(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, "\n");
-        strcat_s(target_metrics_buf, MAX_TELEMETRY_BUFF_LEN, telemetry_buf);
+        safe_strcat(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, "\n");
+        safe_strcat(target_metrics_buf, MAX_TELEMETRY_BUFF_LEN, telemetry_buf);
         write_to_file(wifi_health_log, target_metrics_buf);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ELIGIBLE_TARGET_METRICS", telemetry_buf);
     }

@@ -181,8 +181,8 @@ void publish_station_score(const char *input_str, double score, double threshold
             wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
                 __func__, __LINE__, status);
         }
+        get_formatted_time(tmp);
         if (ignite->last_service_state == -1) {
-            get_formatted_time(tmp);
             snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_LINKQUALITY_FIRST_PUBLISH:%f %f %s\n", tmp,
                 ignite->last_score, ignite->last_threshold, ignite->ignite_service_status);
             wifi_util_info_print(WIFI_APPS, "%s:%d: Score at first RBUS publish after connection: %s\n", __func__,
