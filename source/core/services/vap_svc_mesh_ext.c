@@ -1753,7 +1753,8 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     wifi_ctrl_t *ctrl;
     ssid_t sta_ssid;
     char tmp[MAX_STR_LEN] = { 0 };
-    char buff[MAX_BUFF_LEN] = { 0 };
+    char buf[MAX_BUFF_LEN] = { 0 };
+	char target_metrics_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
     char telemetry_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
     char entry_buf[MAX_BUFF_LEN] = {0};
 
@@ -1819,9 +1820,9 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
 	    }
 	    if (num != 0 ) {
 	        memset(tmp, '\0', sizeof(tmp));
-	        memset(buff, '\0', MAX_BUFF_LEN);
+	        memset(target_metrics_buf, '\0', MAX_TELEMETRY_BUFF_LEN);
 	        get_formatted_time(tmp);
-	        snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_ELIGIBLE_TARGET_METRICS:", tmp);
+	        snprintf(target_metrics_buf, MAX_TELEMETRY_BUFF_LEN, "%s WIFI_IGNITE_ELIGIBLE_TARGET_METRICS:", tmp);
 	    }
     }
 
@@ -1852,7 +1853,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
                 tmp_bss->chan_utilization,
                 delimiter);
 
-            strcat_s(telemetry_buf, sizeof(telemetry_buf), entry_buf);
+            strcat(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, entry_buf);
         }
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
@@ -1864,9 +1865,9 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     }
 
     if (ctrl->rf_status_down == true) {
-        strcat_s(telemetry_buf, sizeof(telemetry_buf), "\n");
-        strcat_s(buff, MAX_BUFF_LEN, telemetry_buf);
-        write_to_file(wifi_health_log, buff);
+        strcat(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, "\n");
+        strcat_s(target_metrics_buf, MAX_TELEMETRY_BUFF_LEN, telemetry_buf);
+        write_to_file(wifi_health_log, target_metrics_buf);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ELIGIBLE_TARGET_METRICS", telemetry_buf);
     }
 
