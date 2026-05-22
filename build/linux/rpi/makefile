@@ -190,7 +190,6 @@ LDFLAGS = $(LIBDIRS) $(LIBS)
 PROGRAM = $(INSTALLDIR)/bin/OneWifi
 
 INCLUDEDIRS = \
-    -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include \
     -I$(WIFI_CCSP_COMMON_LIB)/source/cosa/include \
     -I$(WIFI_CCSP_COMMON_LIB)/source/cosa/include/linux \
     -I$(WIFI_CCSP_COMMON_LIB)/source/cosa/package/slap/include \
@@ -278,7 +277,7 @@ else
 LIBDIRS += -L$(INSTALLDIR)/lib/platform/darwin
 endif
 
-LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson -lsecure_wrapper
+LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson
 
 #
 # The CXXSOURCES macro contains a list of source files.
