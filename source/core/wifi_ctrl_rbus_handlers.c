@@ -27,17 +27,24 @@
 #include "wifi_monitor.h"
 #include "wifi_webconfig.h"
 #include "run_qmgr.h"
+#include "wifi_stubs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
+
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
+#define MAX_BUFF_LEN 256
+#define MAX_TELEMETRY_BUFF_LEN 64
 #define MAX_STATUS_LEN 5
 #define STA_STATUS_DISCONNECTED 1
 
+hotspot_timing_t g_hotspot_timing;
 apply_ignite_config_t g_apply_ignite_config;
+
+static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
     char *eventName)
@@ -144,6 +151,209 @@ static void mask_to_quality_flags(uint32_t mask, quality_flags_t* f)
     f->int_reconn   = mask & LINKQ_INT_RECONN;
 }
 
+static inline double hotspot_timing_elapsed_sec(const struct timespec *start,
+                                                const struct timespec *end)
+{
+    if (start->tv_sec == 0 || end->tv_sec == 0) {
+        wifi_util_error_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [elapsed_sec] invalid timestamp "
+            "Time_1=%ld Time_2=%ld\n",
+            (long)start->tv_sec, (long)end->tv_sec);
+        return 0.0;
+    }
+
+    long sec  = (long)(end->tv_sec  - start->tv_sec);
+    long nsec = (long)(end->tv_nsec - start->tv_nsec);
+
+    if (nsec < 0) {
+        sec  -= 1;
+        nsec += 1000000000L;
+    }
+
+    double elapsed = (double)sec + (double)nsec / 1000000000.0;
+
+    wifi_util_dbg_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [elapsed_sec] "
+        "start=%ld.%09ld end=%ld.%09ld elapsed=%.3f sec\n",
+        (long)start->tv_sec, (long)start->tv_nsec,
+        (long)end->tv_sec,   (long)end->tv_nsec,
+        elapsed);
+
+    return elapsed;
+}
+
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_start()                                               */
+/* Called : start_station_vaps() when rf_status == true                */
+/* ------------------------------------------------------------------ */
+void hotspot_timing_start(void)
+{
+    clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.start_time);
+
+    memset(&g_hotspot_timing.target_detection_time, 0, sizeof(struct timespec));
+    memset(&g_hotspot_timing.end_time,              0, sizeof(struct timespec));
+    memset(&g_hotspot_timing.disconnection_time,    0, sizeof(struct timespec));
+
+    wifi_util_dbg_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [start] start_time = %ld sec %ld nsec\n",
+        (long)g_hotspot_timing.start_time.tv_sec,
+        (long)g_hotspot_timing.start_time.tv_nsec);
+}
+
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_stop()                                                */
+/* Called : start_station_vaps() when rf_status == false               */
+/* ------------------------------------------------------------------ */
+void hotspot_timing_stop(void)
+{
+    wifi_util_info_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [stop] RF restored – clearing all timestamps\n");
+
+    memset(&g_hotspot_timing, 0, sizeof(hotspot_timing_t));
+}
+
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_target_detected()                                     */
+/* Called : ext_try_connecting() when target candidate is found         */
+/* ------------------------------------------------------------------ */
+void hotspot_timing_target_detected(void)
+{
+    char tmp[MAX_STR_LEN] = {0};
+    double target_detection_duration = 0.00;
+    char buff[MAX_BUFF_LEN] = {0};
+    char telemetry_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
+
+    /* Already recorded for this attempt — skip */
+    if (g_hotspot_timing.target_detection_time.tv_sec != 0) {
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [target_detected] already recorded "
+            "(%ld sec) – skip\n",
+            (long)g_hotspot_timing.target_detection_time.tv_sec);
+        return;
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.target_detection_time);
+    get_formatted_time(tmp);
+    target_detection_duration = hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
+		    &g_hotspot_timing.target_detection_time);
+
+    snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_HOTSPOT_TARGET_DETECTION_TIME:%.3f\n", tmp, target_detection_duration);
+    write_to_file(wifi_health_log, buff);
+    snprintf(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, "%.3f", target_detection_duration);
+    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_TARGET_DETECTION_TIME", telemetry_buf);
+    wifi_util_dbg_print(WIFI_CTRL,
+		    "HOTSPOT_TIMING: [target_detected] target_detection_time = "
+		    "%ld sec %ld nsec\n",
+        (long)g_hotspot_timing.target_detection_time.tv_sec,
+        (long)g_hotspot_timing.target_detection_time.tv_nsec);
+}
+
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_connected()                                           */
+/* Called : process_ext_sta_conn_status() on connected event           */
+/* Note   : end_time preserved for disconnected() check                */
+/*          Only target_detection_time is reset here                   */
+/* ------------------------------------------------------------------ */
+void hotspot_timing_connected(unsigned int vap_index, char *bssid_str)
+{
+    char tmp[MAX_STR_LEN] = {0};
+    double connection_duration = 0.00;
+    char buff[MAX_BUFF_LEN] = {0};
+    char telemetry_buf[MAX_TELEMETRY_BUFF_LEN] = {0};
+    clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.end_time);
+
+    wifi_util_dbg_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [connected] end_time = %ld sec %ld nsec\n",
+        (long)g_hotspot_timing.end_time.tv_sec,
+        (long)g_hotspot_timing.end_time.tv_nsec);
+
+    connection_duration = hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
+                                   &g_hotspot_timing.end_time);
+
+    wifi_util_info_print(WIFI_CTRL,
+        "HOTSPOT_TIMING: [connected] Duration of RF failure = %.3f sec\n", connection_duration);
+
+    get_formatted_time(tmp);
+    snprintf(buff, MAX_BUFF_LEN, "%s WIFI_IGNITE_HOTSPOT_CONN_INFO: %u %s %.3f\n", tmp, vap_index, bssid_str, connection_duration);
+    write_to_file(wifi_health_log, buff);
+    memset(telemetry_buf, 0, MAX_TELEMETRY_BUFF_LEN);
+    snprintf(telemetry_buf, MAX_TELEMETRY_BUFF_LEN, "%u %s %.3f", vap_index, bssid_str, connection_duration);
+    get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_CONN_INFO", telemetry_buf);
+
+    //Reset the target detection time once the enrollee connection established to hotspot
+    memset(&g_hotspot_timing.target_detection_time, 0, sizeof(struct timespec));
+}
+
+/* ------------------------------------------------------------------ */
+/* hotspot_timing_disconnected()                                        */
+/* Called : process_ext_sta_conn_status() on disconnected event        */
+/* ------------------------------------------------------------------ */
+void hotspot_timing_disconnected(void)
+{
+    char tmp[MAX_STR_LEN] = { 0 };
+    double session_duration = 0.00;
+    char buff[MAX_BUFF_LEN] = { 0 };
+    char telemetry_buf[MAX_TELEMETRY_BUFF_LEN] = { 0 };
+
+    if (g_hotspot_timing.end_time.tv_sec != 0) {
+        clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.disconnection_time);
+
+        wifi_util_dbg_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] disconnection_time = "
+            "%ld sec %ld nsec\n",
+            (long)g_hotspot_timing.disconnection_time.tv_sec,
+            (long)g_hotspot_timing.disconnection_time.tv_nsec);
+
+        get_formatted_time(tmp);
+        session_duration = hotspot_timing_elapsed_sec(&g_hotspot_timing.end_time,
+            &g_hotspot_timing.disconnection_time);
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] "
+            "Connection held for = %.3f sec\n",
+            session_duration);
+        snprintf(buff, sizeof(buff), "%s WIFI_IGNITE_HOTSPOT_SESSION_DURATION_SEC:%.3f\n", tmp,
+            session_duration);
+        write_to_file(wifi_health_log, buff);
+        memset(telemetry_buf, 0, sizeof(telemetry_buf));
+        snprintf(telemetry_buf, sizeof(telemetry_buf), "%.3f", session_duration);
+        get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_HOTSPOT_SESSION_DURATION_SEC",
+            telemetry_buf);
+        /* Assign before clearing disconnection_time */
+        g_hotspot_timing.start_time = g_hotspot_timing.disconnection_time;
+
+        wifi_util_dbg_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] was connected – "
+            "start_time reset to %ld sec for next attempt\n",
+            (long)g_hotspot_timing.start_time.tv_sec);
+
+        memset(&g_hotspot_timing.target_detection_time, 0, sizeof(struct timespec));
+        memset(&g_hotspot_timing.end_time, 0, sizeof(struct timespec));
+        memset(&g_hotspot_timing.disconnection_time, 0, sizeof(struct timespec));
+
+    } else {
+        /*
+         * end_time == 0 → device never connected this attempt.
+         * Log elapsed from current start_time.
+         * Preserve start_time and target_detection_time for next attempt.
+         */
+        clock_gettime(CLOCK_MONOTONIC, &g_hotspot_timing.disconnection_time);
+
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] disconnection_time = "
+            "%ld sec %ld nsec\n",
+            (long)g_hotspot_timing.disconnection_time.tv_sec,
+            (long)g_hotspot_timing.disconnection_time.tv_nsec);
+
+        wifi_util_info_print(WIFI_CTRL,
+            "HOTSPOT_TIMING: [disconnected] "
+            "Disconnected before connecting – elapsed = %.3f sec\n",
+            hotspot_timing_elapsed_sec(&g_hotspot_timing.start_time,
+                &g_hotspot_timing.disconnection_time));
+
+        memset(&g_hotspot_timing.disconnection_time, 0, sizeof(struct timespec));
+    }
+}
+
 bus_error_t get_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -163,6 +373,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     (void)user_data;
     bus_error_t rc = bus_error_success;
     bool rf_status = false;
+    char tmp[MAX_STR_LEN] = {0};
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL pointers\n", __func__, __LINE__);
@@ -181,9 +392,13 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     ctrl->rf_status_down = rf_status;
     wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d\n", __func__, __LINE__, ctrl->rf_status_down);
     start_station_vaps(rf_status);
+    get_formatted_time(tmp);
     if (rf_status) {
-	    wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+        write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:True\n", tmp);
+        get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "True");
+        wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
+        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start,
+            NULL, 0);
 
         wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
         if (global_cfg != NULL &&
@@ -206,6 +421,8 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
             }
         }
     } else {
+        write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:False\n", tmp);
+        get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "False");
        wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
        //Stop station vaps
