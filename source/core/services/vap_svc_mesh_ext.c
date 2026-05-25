@@ -1824,7 +1824,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
 	    };
         get_formatted_time(tmp);
 	    if (results->radio_index < MAX_NUM_RADIOS) {
-		    snprintf(buff, MAX_BUFF_LEN, "%s %s:%u", tmp, event_names[results->radio_index], num);
+		    snprintf(buff, MAX_BUFF_LEN, "%s %s:%u\n", tmp, event_names[results->radio_index], num);
 		    write_to_file(wifi_health_log,buff);
             wifi_util_info_print(WIFI_CTRL, "%s:%d telemetry val : %s\n", __func__, __LINE__, buff);
 		    get_stubs_descriptor()->t2_event_d_fn(event_names[results->radio_index], num);
