@@ -32,7 +32,9 @@
 #include <trower-base64/base64.h>
 #include <unistd.h>
 #include <pthread.h>
+#ifdef EM_APP
 #include <syscfg/syscfg.h>
+#endif
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
 #include "wifi_webconfig_consumer.h"
 #endif
