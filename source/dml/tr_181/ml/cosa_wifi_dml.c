@@ -1255,7 +1255,6 @@ WiFi_SetParamBoolValue
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_rfc);
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm rfc value set bvalue is %d \n", __FUNCTION__,__LINE__,bValue);
         }
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm started\n", __FUNCTION__,__LINE__);
         return TRUE;
     }
 

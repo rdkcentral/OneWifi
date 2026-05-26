@@ -178,6 +178,15 @@ typedef struct kick_details {
 }kick_details_t;
 
 typedef struct {
+    struct timespec start_time;
+    struct timespec target_detection_time;
+    struct timespec end_time;
+    struct timespec disconnection_time;
+} hotspot_timing_t;
+
+extern hotspot_timing_t g_hotspot_timing;
+
+typedef struct {
     wifi_connection_status_t    connect_status;
     bssid_t                     bssid;
 }__attribute__((packed)) wifi_sta_conn_info_t;
