@@ -191,6 +191,7 @@ webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
             return webconfig_error_decode;
         }
     }
+    params->em_ap_metrics_report.radio_count = i;
 
     return webconfig_error_none;
 }

@@ -9,7 +9,7 @@ HOSTAP_PATCH_DIR_META_CMF_BPI="$HOSTAP_DIR/meta-cmf-bananapi/meta-rdk-mtk-bpir4/
 HOSTAP_PATCH_DIR_META_FILOGIC="$HOSTAP_DIR/meta-filogic/recipes-wifi/hostapd/files/kernel6-6-patches"
 HOSTAP_PATCH_FLAG="$HOSTAP_DIR/.hostap_patched"
 RDK_WIFI_HAL_DIR="$(pwd)/../rdk-wifi-hal"
-KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches/openwrt"
+KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches_6.6/openwrt"
 UPSTREAM_HOSTAP_URL="https://git.w1.fi/hostap.git"
 SRCREV_2_11="4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c"
 META_CMF_BPI_URL="https://github.com/rdkcentral/meta-cmf-bananapi.git"
@@ -116,8 +116,11 @@ cp build/openwrt/MT7966_4_2.config ../../../.config
 cp -r build/openwrt/avro ../../libs/.
 
 #Applying kernel patch from openwrt root directory
-#cd $OPENWRT_ROOT
-#if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch; then
-#        patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
-#fi
+cd $OPENWRT_ROOT
+if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch; then
+        patch --forward -p1 < $KERNEL_PATCH_DIR/0001-BPIR4_Enable_Beacon_Frame_Subscription.patch
+fi
+if patch --dry-run --forward -p1 < $KERNEL_PATCH_DIR/0002-get-station-increase-buffer-size.patch; then
+        patch --forward -p1 < $KERNEL_PATCH_DIR/0002-get-station-increase-buffer-size.patch
+fi
 cd $ONEWIFI_DIR

@@ -581,6 +581,7 @@ void CosaDmlWiFiGetFromPSM(void)
             psm_vap_param = get_vap_psm_obj(vap_index);
             if (psm_vap_param == NULL) {
                 wifi_util_dbg_print(WIFI_PSM,"%s:%d psm vap param NULL vap_index:%d\r\n", __func__, __LINE__, (instance_number - 1));
+                continue;
             }
 
             memset(recName, 0, sizeof(recName));
@@ -603,7 +604,7 @@ void CosaDmlWiFiGetFromPSM(void)
                 psm_vap_param->uapsd_enabled = _ansc_atoi(str);
                 wifi_util_dbg_print(WIFI_PSM,"cfg->uapsd_enabled is %d and str is %s and _ansc_atoi(str) is %d\n", psm_vap_param->uapsd_enabled, str, _ansc_atoi(str));
             } else {
-                psm_vap_param->wmm_enabled = bss_cfg->UAPSDEnabled;
+                psm_vap_param->uapsd_enabled = bss_cfg->UAPSDEnabled;
                 wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, bss_cfg->UAPSDEnabled, psm_vap_param->uapsd_enabled);
             }
 
@@ -761,11 +762,11 @@ void CosaDmlWiFiGetFromPSM(void)
                 memset(instanceNumStr, 0, sizeof(instanceNumStr));
                 _ansc_itoa(bss_cfg->security.mfp, instanceNumStr, 10);
                 snprintf(psm_vap_param->mfp, sizeof(psm_vap_param->mfp), "%s", instanceNumStr);
-                wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, instanceNumStr, psm_vap_param->mfp);
+                wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%s : %s\r\n", __func__, __LINE__, instanceNumStr, psm_vap_param->mfp);
             }
 
             snprintf(psm_vap_param->beacon_rate_ctl, sizeof(psm_vap_param->beacon_rate_ctl), "%s", bss_cfg->beaconRateCtl);
-            wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value for BeaconRateCtl: %d : %d\r\n", __func__, __LINE__, bss_cfg->beaconRateCtl, psm_vap_param->beacon_rate_ctl);
+            wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value for BeaconRateCtl: %s : %s\r\n", __func__, __LINE__, bss_cfg->beaconRateCtl, psm_vap_param->beacon_rate_ctl);
 
             if (!isVapHotspot(instance_number - 1)) {
                 if (get_psm_total_mac_list(instance_number, &total_mac_list, strValue) == RETURN_OK) {
@@ -934,11 +935,11 @@ void CosaDmlWiFiGetFromPSM(void)
         wifi_util_dbg_print(WIFI_PSM,"cfg->wifi_region_code is %s and str is %s \n", psm_global_param->wifi_region_code, str);
     } else {
         snprintf(psm_global_param->wifi_region_code, sizeof(psm_global_param->wifi_region_code), "%s", global_cfg.wifi_region_code);
-        wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, global_cfg.wifi_region_code, psm_global_param->wifi_region_code);
+        wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%s : %s\r\n", __func__, __LINE__, global_cfg.wifi_region_code, psm_global_param->wifi_region_code);
     }
 
     snprintf(psm_global_param->wps_pin, sizeof(psm_global_param->wps_pin), "%s", global_cfg.wps_pin);
-    wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value for WpsPin: %d : %d\r\n", __func__, __LINE__, global_cfg.wps_pin, psm_global_param->wps_pin);
+    wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value for WpsPin: %s : %s\r\n", __func__, __LINE__, global_cfg.wps_pin, psm_global_param->wps_pin);
 }
 
 void CosaDmlWiFiGetExternalDataFromPSM(void)
@@ -1522,19 +1523,42 @@ CosaDmlWiFiApMfGetMacList
     (
         UCHAR       *mac,
         CHAR        *maclist,
+        size_t      maclist_len,
         ULONG       numList
     )
 {
     unsigned int i = 0;
     int     j = 0;
-    char macAddr[COSA_DML_WIFI_MAX_MAC_FILTER_NUM][18];
+    int result;
+    size_t offset = 0;
 
+    if (!maclist || maclist_len == 0) {
+        return ANSC_STATUS_FAILURE;
+    }
+
+    offset = strlen(maclist);
     for(i = 0; i<numList; i++) {
-        if(i > 0)
-            strcat(maclist, ",");
-        sprintf(macAddr[i], "%02x:%02x:%02x:%02x:%02x:%02x", mac[j], mac[j+1], mac[j+2], mac[j+3], mac[j+4], mac[j+5]);
-        strcat(maclist, macAddr[i]);
-        j +=6;
+        if (offset >= maclist_len) {
+            return ANSC_STATUS_FAILURE;
+        }
+        if(i > 0) {
+            result = snprintf(maclist + offset, maclist_len - offset, ",");
+            if (result < 0 || (size_t)result >= (maclist_len - offset)) {
+                return ANSC_STATUS_FAILURE;
+            }
+            offset += result;
+        }
+
+        if (offset >= maclist_len) {
+            return ANSC_STATUS_FAILURE;
+        }
+
+        result = snprintf(maclist + offset, maclist_len - offset, "%02x:%02x:%02x:%02x:%02x:%02x", mac[j], mac[j+1], mac[j+2], mac[j+3], mac[j+4], mac[j+5]);
+        if (result < 0 || (size_t)result >= (maclist_len - offset)) {
+            return ANSC_STATUS_FAILURE;
+        }
+        offset += result;
+        j += 6;
     }
     return ANSC_STATUS_SUCCESS;
 }

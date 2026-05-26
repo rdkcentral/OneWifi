@@ -27,7 +27,6 @@
 
 #define MAX_INSTANCE_LEN        32
 #define MAX_CAPS_STR_LEN        32
-#define ARRAY_SIZE(a)           (sizeof(a) / sizeof(a[0]))
 
 /* Device.WiFi.DataElements.Network */
 #define DE_NETWORK_ID           DATAELEMS_NETWORK       "ID"
@@ -352,17 +351,17 @@
 #define DE_STAMLD_RETRANSCNT    DE_APMLD_STAMLD         "RetransCount"
 #define DE_STAMLD_AFFSTANOE     DE_APMLD_STAMLD         "AffiliatedSTANumberOfEntries"
 /* Device.WiFi.DataElements.Network.Device.APMLD.STAMLD.WiFi7Capabilities */
-#define DE_STAMLD_WIFI7CAPS     DE_APMLD_STAMLD         "WiFi7Capabilities."
-#define DE_WIFI7CAPS_EMLMR      DE_STAMLD_WIFI7CAPS     "EMLMRSupport"
-#define DE_WIFI7CAPS_EMLSR      DE_STAMLD_WIFI7CAPS     "EMLSRSupport"
-#define DE_WIFI7CAPS_STR        DE_STAMLD_WIFI7CAPS     "STRSupport"
-#define DE_WIFI7CAPS_NSTR       DE_STAMLD_WIFI7CAPS     "NSTRSupport"
+#define DE_STAMLD_WIFI7CAPS     DE_APMLD_STAMLD         "WiFi7Capabilities"
+#define DE_WIFI7CAPS_EMLMR      DE_STAMLD_WIFI7CAPS     ".EMLMRSupport"
+#define DE_WIFI7CAPS_EMLSR      DE_STAMLD_WIFI7CAPS     ".EMLSRSupport"
+#define DE_WIFI7CAPS_STR        DE_STAMLD_WIFI7CAPS     ".STRSupport"
+#define DE_WIFI7CAPS_NSTR       DE_STAMLD_WIFI7CAPS     ".NSTRSupport"
 /* Device.WiFi.DataElements.Network.Device.APMLD.STAMLD.STAMLDConfig */
-#define DE_STAMLD_CONFIG        DE_APMLD_STAMLD         "STAMLDConfig."
-#define DE_STAMLDCFG_EMLMR      DE_STAMLD_CONFIG        "EMLMREnabled"
-#define DE_STAMLDCFG_EMLSR      DE_STAMLD_CONFIG        "EMLSREnabled"
-#define DE_STAMLDCFG_STR        DE_STAMLD_CONFIG        "STREnabled"
-#define DE_STAMLDCFG_NSTR       DE_STAMLD_CONFIG        "NSTREnabled"
+#define DE_STAMLD_CONFIG        DE_APMLD_STAMLD         "STAMLDConfig"
+#define DE_STAMLDCFG_EMLMR      DE_STAMLD_CONFIG        ".EMLMREnabled"
+#define DE_STAMLDCFG_EMLSR      DE_STAMLD_CONFIG        ".EMLSREnabled"
+#define DE_STAMLDCFG_STR        DE_STAMLD_CONFIG        ".STREnabled"
+#define DE_STAMLDCFG_NSTR       DE_STAMLD_CONFIG        ".NSTREnabled"
 /* Device.WiFi.DataElements.Network.Device.APMLD.STAMLD.AffiliatedSTA */
 #define DE_STAMLD_AFFSTA        DE_APMLD_STAMLD         "AffiliatedSTA.{i}."
 #define DE_AFFSTA_TABLE         DE_APMLD_STAMLD         "AffiliatedSTA.{i}"

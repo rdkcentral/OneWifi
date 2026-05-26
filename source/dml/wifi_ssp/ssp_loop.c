@@ -587,13 +587,13 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
             memset(instanceNumStr, '\0', sizeof(instanceNumStr));
             snprintf(recName, sizeof(recName),MacFilterMode, instance_number);
             if (acfg->u.bss_info.mac_filter_enable == false) {
-                strcpy(instanceNumStr, "0");
+                snprintf(instanceNumStr, sizeof(instanceNumStr), "%s", "0");
             } else if ((acfg->u.bss_info.mac_filter_enable == true) &&
                         (acfg->u.bss_info.mac_filter_mode != wifi_mac_filter_mode_black_list)) {
-                strcpy(instanceNumStr, "1");
+                snprintf(instanceNumStr, sizeof(instanceNumStr), "%s", "1");
             }  else if ((acfg->u.bss_info.mac_filter_enable == true) &&
                         (acfg->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list)) {
-                strcpy(instanceNumStr, "2");
+                snprintf(instanceNumStr, sizeof(instanceNumStr), "%s", "2");
             }
 
             retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
@@ -723,9 +723,10 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
             memset(recName, '\0', sizeof(recName));
             memset(instanceNumStr, '\0', sizeof(instanceNumStr));
             snprintf(recName, sizeof(recName),BeaconRateCtl, instance_number);
+            snprintf(instanceNumStr, sizeof(instanceNumStr), "%s", acfg->u.bss_info.beaconRateCtl);
             retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
             if(retPsmSet == CCSP_SUCCESS) {
-                strcpy(cfg->beacon_rate_ctl, acfg->u.bss_info.beaconRateCtl);
+                snprintf(cfg->beacon_rate_ctl, sizeof(cfg->beacon_rate_ctl), "%s", acfg->u.bss_info.beaconRateCtl);
                 wifi_util_dbg_print(WIFI_PSM,"%s:%d BeaconRateCtl cfg->beacon_rate_ctl is %s\n",__func__, __LINE__,cfg->beacon_rate_ctl);
             } else {
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting BeaconRateCtl, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
@@ -777,10 +778,10 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
     if(gcfg->notify_wifi_changes != cfg->notify_wifi_changes){
         memset(instanceNumStr, '\0', sizeof(instanceNumStr));
         if (gcfg->notify_wifi_changes) {
-            strcpy(instanceNumStr,"true");
+            snprintf(instanceNumStr, sizeof(instanceNumStr), "%s", "true");
         }
         else {
-            strcpy(instanceNumStr,"false");
+            snprintf(instanceNumStr, sizeof(instanceNumStr), "%s", "false");
         }
 
         retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, NotifyWiFiChanges, ccsp_string, instanceNumStr);
@@ -936,10 +937,10 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
         }
     }
 
-    if(strncmp(gcfg->wifi_region_code, cfg->wifi_region_code, strlen(cfg->wifi_region_code)) != 0){
+    if(strcmp(gcfg->wifi_region_code, cfg->wifi_region_code) != 0){
         retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, TR181_WIFIREGION_Code, ccsp_string, gcfg->wifi_region_code);
         if(retPsmSet == CCSP_SUCCESS) {
-            strcpy(cfg->wifi_region_code, gcfg->wifi_region_code);
+            snprintf(cfg->wifi_region_code, sizeof(cfg->wifi_region_code), "%s", gcfg->wifi_region_code);
             wifi_util_dbg_print(WIFI_PSM, "%s:%d TR181_WIFIREGION_Code cfg->wifi_region_code is %s\n",__func__, __LINE__,cfg->wifi_region_code);
         } else {
             wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting TR181_WIFIREGION_Code\n",__func__, __LINE__, retPsmSet);
@@ -958,10 +959,10 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
         }
     }
 
-    if (strncmp(gcfg->wps_pin, cfg->wps_pin, strlen(cfg->wps_pin)) != 0 ) {
+    if (strcmp(gcfg->wps_pin, cfg->wps_pin) != 0 ) {
         retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, WpsPin, ccsp_string, gcfg->wps_pin);
         if(retPsmSet == CCSP_SUCCESS) {
-           strcpy(cfg->wps_pin, gcfg->wps_pin);
+           snprintf(cfg->wps_pin, sizeof(cfg->wps_pin), "%s", gcfg->wps_pin);
            wifi_util_dbg_print(WIFI_PSM, "%s:%d WpsPin cfg->wps_pin is %s\n",__func__, __LINE__,cfg->wps_pin);
         } else {
            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting WpsPin\n",__func__, __LINE__, retPsmSet);
@@ -998,7 +999,7 @@ void Psm_Db_Write_Security(wifi_security_psm_param_t *scfg)
         snprintf(recName, sizeof(recName),ApMFPConfig, instance_number);
         retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
         if(retPsmSet == CCSP_SUCCESS) {
-            strcpy(cfg->mfp, instanceNumStr);
+            snprintf(cfg->mfp, sizeof(cfg->mfp), "%s", instanceNumStr);
             wifi_util_dbg_print(WIFI_PSM, "%s:%d  ApMFPConfig cfg->mfp is %s\n",__func__, __LINE__,cfg->mfp);
         } else {
             wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting ApMFPConfig, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
@@ -1176,10 +1177,6 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
 
     psm_mac_map = get_mac_psm_obj(mcfg->vap_index);
     mcfg_mac = strdup(mcfg->mac); // Coverity fix [280369]
-    if (mcfg_mac == NULL) {
-        wifi_util_error_print(WIFI_PSM, "%s:%d Failed to dup str\n", __func__, __LINE__);
-        return;
-    }
     str_tolower(mcfg_mac);
     wifi_util_dbg_print(WIFI_PSM, "%s:%d mac filter vap_index:%d hash_map_address:%p\r\n",__func__, __LINE__, mcfg->vap_index, psm_mac_map);
     wifi_util_dbg_print(WIFI_PSM, "%s:%d mac strdup(mcfg->mac):%s\r\n",__func__, __LINE__, mcfg_mac);
@@ -1204,7 +1201,6 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
                     snprintf(temp_mac_entry->device_name, sizeof(temp_mac_entry->device_name), "%s", mcfg->device_name);
                 }
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d mac entry already present\r\n",__func__, __LINE__);
-                free(mcfg_mac);
                 return;
             }
             ret = set_psm_record_by_name((mcfg->vap_index + 1), (mac_psm_data->data_index + 1), MacFilter, mcfg->mac);

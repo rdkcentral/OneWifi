@@ -96,6 +96,7 @@
         PJS_OVS_INT(server_retries)\
         PJS_OVS_BOOL(wpa3_transition_disable)\
         PJS_OVS_INT(security_mode_new)\
+        PJS_OVS_INT(encryption_method_new)\
     )
 
 #define PJS_SCHEMA_Wifi_VAP_Config \
@@ -208,10 +209,17 @@
         PJS_OVS_BOOL(wifi_offchannelscan_app_rfc) \
         PJS_OVS_BOOL(wifi_offchannelscan_sm_rfc) \
         PJS_OVS_BOOL(tcm_enabled_rfc) \
+        PJS_OVS_BOOL(tcm_open_2g_rfc) \
+        PJS_OVS_BOOL(tcm_open_5g_rfc) \
+        PJS_OVS_BOOL(tcm_open_6g_rfc) \
+        PJS_OVS_BOOL(tcm_secure_2g_rfc) \
+        PJS_OVS_BOOL(tcm_secure_5g_rfc) \
+        PJS_OVS_BOOL(tcm_secure_6g_rfc) \
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
         PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
         PJS_OVS_BOOL(link_quality_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
+        PJS_OVS_BOOL(multiap_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1696,7 +1704,6 @@
         PJS_OVS_STRING(ignite_name, 32 + 1) \
         PJS_OVS_INT(min_chanutil_threshold) \
         PJS_OVS_INT(max_chanutil_threshold) \
-        PJS_OVS_INT(snr_threshold) \
         PJS_OVS_INT(snr_difference) \
     )
 
@@ -2057,7 +2064,8 @@
     COLUMN(identity_req_retry_interval)\
     COLUMN(server_retries)\
     COLUMN(wpa3_transition_disable)\
-    COLUMN(security_mode_new)
+    COLUMN(security_mode_new)\
+    COLUMN(encryption_method_new)
 
 #define SCHEMA__Wifi_VAP_Config "Wifi_VAP_Config"
 #define SCHEMA_COLUMN__Wifi_VAP_Config(COLUMN) \
@@ -2158,8 +2166,15 @@
     COLUMN(wifi_offchannelscan_app_rfc) \
     COLUMN(wifi_offchannelscan_sm_rfc) \
     COLUMN(tcm_enabled_rfc) \
+    COLUMN(tcm_open_2g_rfc) \
+    COLUMN(tcm_open_5g_rfc) \
+    COLUMN(tcm_open_6g_rfc) \
+    COLUMN(tcm_secure_2g_rfc) \
+    COLUMN(tcm_secure_5g_rfc) \
+    COLUMN(tcm_secure_6g_rfc) \
     COLUMN(wpa3_compatibility_enable) \
     COLUMN(csi_analytics_enabled_rfc) \
+    COLUMN(multiap_rfc) \
     COLUMN(link_quality_rfc) \
     COLUMN(xfi_tel_enable_rfc) \
 
@@ -3379,7 +3394,6 @@
     COLUMN(ignite_name) \
     COLUMN(min_chanutil_threshold) \
     COLUMN(max_chanutil_threshold) \
-    COLUMN(snr_threshold) \
     COLUMN(snr_difference) \
 
 #define SCHEMA__AWLAN_Node__id "id"
@@ -3440,6 +3454,7 @@
 #define SCHEMA__Wifi_Security_Config__server_retries "server_retries"
 #define SCHEMA__Wifi_Security_Config__wpa3_transition_disable "wpa3_transition_disable"
 #define SCHEMA__Wifi_Security_Config__security_mode_new "security_mode_new"
+#define SCHEMA__Wifi_Security_Config__encryption_method_new "encryption_method_new"
 
 #define SCHEMA__Wifi_VAP_Config__vap_name "vap_name"
 #define SCHEMA__Wifi_VAP_Config__radio_name "radio_name"
@@ -3532,8 +3547,15 @@
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_sm_rfc "wifi_offchannelscan_sm_rfc"
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_open_2g_rfc "tcm_open_2g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_open_5g_rfc "tcm_open_5g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_open_6g_rfc "tcm_open_6g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_secure_2g_rfc "tcm_secure_2g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_secure_5g_rfc "tcm_secure_5g_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_secure_6g_rfc "tcm_secure_6g_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
 #define SCHEMA__Wifi_Rfc_Config__csi_analytics_enabled_rfc "csi_analytics_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
 #define SCHEMA__Wifi_Rfc_Config__link_quality_rfc "link_quality_rfc"
 #define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
 
@@ -4655,5 +4677,4 @@
 #define SCHEMA__Wifi_Ignite_Config__ignite_name "ignite_name"
 #define SCHEMA__Wifi_Ignite_Config__min_chanutil_threshold "min_chanutil_threshold"
 #define SCHEMA__Wifi_Ignite_Config__max_chanutil_threshold "max_chanutil_threshold"
-#define SCHEMA__Wifi_Ignite_Config__snr_threshold "snr_threshold"
 #define SCHEMA__Wifi_Ignite_Config__snr_difference "snr_difference"
