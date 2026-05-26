@@ -2015,7 +2015,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 		&& (data->em_config.traffic_separation_policy.ssids[0].vlan_id <= VLAN_MAX)) {
 		wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[0].vlan_id;
            	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
-		sprintf(str, "%d", vapInfo->vlan_id);
+		sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
                 if(syscfg_set_commit(NULL, "vlan_id_pvt", str) != 0) {
                     wifi_util_error_print(WIFI_CTRL,"%s:%d:  Private VAP : syscfg failed  \n",__func__, __LINE__);
@@ -2034,7 +2034,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 		&& (data->em_config.traffic_separation_policy.ssids[3].vlan_id <= VLAN_MAX)) {
 	        wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[3].vlan_id;
             	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
-		sprintf(str, "%d", vapInfo->vlan_id);
+		sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
                 if(syscfg_set_commit(NULL, "vlan_id_mesh",str) != 0) {
                     wifi_util_error_print(WIFI_CTRL,"%s:%d:  Private VAP : syscfg failed  \n",__func__, __LINE__);
@@ -2052,7 +2052,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 		&& (data->em_config.traffic_separation_policy.ssids[1].vlan_id <= VLAN_MAX)) {
             	wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[1].vlan_id;
     		v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
-    		sprintf(str, "%d", vapInfo->vlan_id);
+    		sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
 	    	if(syscfg_set_commit(NULL, "vlan_id_iot",str) != 0) {
 		    wifi_util_error_print(WIFI_CTRL,"%s:%d:  IOT VAP : syscfg failed  \n",__func__, __LINE__);
