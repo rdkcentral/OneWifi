@@ -242,7 +242,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     next_node = current_node->child;
     create_child = 1;
 
-    wifi_util_info_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
+    wifi_util_dbg_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
 
     strncpy(name, elem->full_name, strlen(elem->full_name) + 1);
 
