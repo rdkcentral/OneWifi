@@ -957,6 +957,45 @@ static int get_vap_ssid_list(char ssid_list[MAX_LOCAL_SSIDS][MAX_SSID_LEN])
     return count;
 }
 
+static int calculate_preference(const wifi_neighbor_ap2_t *src)
+{
+    int pref_score = 0;
+
+    // Reject very weak APs
+    if (src->ap_SignalStrength < -80)
+        return 0;
+
+    // RSSI
+    pref_score += (src->ap_SignalStrength + 100);
+
+    // Prefer 5GHz only if signal is decent
+    if (src->ap_freq >= 5000 && src->ap_SignalStrength > -70)
+        pref_score += 20;
+
+    // Channel utilization
+    pref_score -= (src->ap_ChannelUtilization / 2);
+
+    // Noise handling
+    if (src->ap_Noise < 0)
+        pref_score -= (src->ap_Noise + 100) / 5;
+
+    // Clamp
+    if (pref_score > 255) pref_score = 255;
+    if (pref_score < 0) pref_score = 0;
+
+    return pref_score;
+}
+
+static int compare_pref(const void *a, const void *b)
+{
+    const neighbor_with_opclass_t *e1 = a;
+    const neighbor_with_opclass_t *e2 = b;
+
+    if (e2->score > e1->score) return 1;
+    if (e2->score < e1->score) return -1;
+    return 0;
+}
+
 static int em_process_neighbour_data(wifi_provider_response_t *provider_response)
 {
     channel_scan_response_t scan_response;
@@ -1007,20 +1046,18 @@ static int em_process_neighbour_data(wifi_provider_response_t *provider_response
                 }
 
                 neighbor_with_opclass_t n_local;
-                neighbor_with_opclass_t *n_ext = &n_local;
-                wifi_neighbor_ap2_t *n = &n_ext->base;
                 memset(&n_local, 0, sizeof(n_local));
 
+                wifi_neighbor_ap2_t *n = &n_local.base;
                 to_mac_str(bss->bssid, n->ap_BSSID);
                 snprintf(n->ap_SSID, sizeof(n->ap_SSID), "%s", bss->ssid);
                 n->ap_Channel = res->channel;
                 n->ap_Noise = res->noise;
                 n->ap_SignalStrength = bss->signal_strength;
                 n->ap_ChannelUtilization = res->utilization;
-                n_ext->opClass = res->operating_class;
-
+                n_local.opClass = res->operating_class;
                 snprintf(n->ap_OperatingChannelBandwidth, sizeof(n->ap_OperatingChannelBandwidth), "%s", bss->channel_bandwidth);
-
+                n_local.score = calculate_preference(&n_local.base);
                 btm->neighbors[btm->num_neighbors] = n_local;
                 btm->num_neighbors++;
             }
@@ -1030,6 +1067,10 @@ static int em_process_neighbour_data(wifi_provider_response_t *provider_response
 
         if (btm->num_neighbors > 0) {
             g_pending_btm.request_mode = 0x01;
+        }
+
+        if (btm->num_neighbors > 0) {
+            qsort(btm->neighbors, btm->num_neighbors, sizeof(neighbor_with_opclass_t), compare_pref);
         }
 
         // Push only the BTM request event
@@ -2430,6 +2471,8 @@ static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
 
     frame_data_t *mgmt = (frame_data_t *)data;
     if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN + 4) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Invalid mgmt frame: mgmt=%p len=%zu, required_min=%d\n",
+                     __func__, __LINE__, mgmt, mgmt ? mgmt->frame.len : 0, IEEE80211_HDRLEN + 4);
         return RETURN_ERR;
     }
 

@@ -1231,6 +1231,12 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
+        // Validate minimum ACTION frame length before proceeding
+        if (len < sizeof(struct ieee80211_frame) + 1) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Dropping short ACTION frame (len=%u)\n", __func__, __LINE__, len);
+            return RETURN_ERR;
+        }
+
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
 
@@ -1254,14 +1260,6 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         data->u.msg.frame.recv_freq = recv_freq;
 
         memcpy(&data->u.msg.data, frame, len);
-
-        // Validate minimum ACTION frame length before accessing category
-        if (len < sizeof(struct ieee80211_frame) + 1) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Dropping short ACTION frame (len=%u)\n", __func__, __LINE__, len);
-            free(data);
-            data = NULL;
-            return RETURN_ERR;
-        }
 
         paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
         if (paction->cat == wifi_action_frame_wnm) {

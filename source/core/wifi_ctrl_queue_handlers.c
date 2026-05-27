@@ -147,43 +147,6 @@ void process_csa_beacon_frame_event(frame_data_t *msg, uint32_t msg_length, wifi
     }
 }
 
-static UCHAR calculate_preference(const wifi_neighbor_ap2_t *src)
-{
-    int pref_score = 0;
-
-    // Reject very weak APs
-    if (src->ap_SignalStrength < -80)
-        return 0;
-
-    // RSSI
-    pref_score += (src->ap_SignalStrength + 100);
-
-    // Prefer 5GHz only if signal is decent
-    if (src->ap_freq >= 5000 && src->ap_SignalStrength > -70)
-        pref_score += 20;
-
-    // Channel utilization
-    pref_score -= (src->ap_ChannelUtilization / 2);
-
-    // Noise handling
-    if (src->ap_Noise < 0)
-        pref_score -= (src->ap_Noise + 100) / 5;
-
-    // Clamp
-    if (pref_score > 255) pref_score = 255;
-    if (pref_score < 0) pref_score = 0;
-
-    return (UCHAR)pref_score;
-}
-
-static int compare_pref(const void *a, const void *b)
-{
-    const neighbor_with_opclass_t *e1 = a;
-    const neighbor_with_opclass_t *e2 = b;
-
-    return calculate_preference(&e2->base) - calculate_preference(&e1->base);
-}
-
 void process_btm_request_send_event(void *data, uint32_t len) {
     int ret;
     wifi_BTMRequest_t btmReq;
@@ -209,14 +172,10 @@ void process_btm_request_send_event(void *data, uint32_t len) {
             neighbors_count = MAX_CANDIDATES;
         }
 
-        neighbor_with_opclass_t tmp_neighbors[MAX_CANDIDATES];
-        memcpy(tmp_neighbors, msg->neighbors, neighbors_count * sizeof(neighbor_with_opclass_t));
-        qsort(tmp_neighbors, neighbors_count, sizeof(neighbor_with_opclass_t), compare_pref);
-
         btmReq.numCandidates = neighbors_count;
 
         for (uint32_t i = 0; i < btmReq.numCandidates; i++) {
-            neighbor_with_opclass_t *src_ext = &tmp_neighbors[i];
+            neighbor_with_opclass_t *src_ext = &msg->neighbors[i];
             wifi_neighbor_ap2_t *src = &src_ext->base;
             wifi_NeighborReport_t *dst = &btmReq.candidates[i];
 
@@ -225,7 +184,7 @@ void process_btm_request_send_event(void *data, uint32_t len) {
             dst->opClass = src_ext->opClass;
             snprintf(dst->target_ssid, sizeof(dst->target_ssid), "%s", src->ap_SSID);
             dst->bssTransitionCandidatePreferencePresent = TRUE;
-            dst->bssTransitionCandidatePreference.preference = calculate_preference(src);
+            dst->bssTransitionCandidatePreference.preference = (UCHAR)src_ext->score;
 
             wifi_util_dbg_print(WIFI_CTRL,"BTM[%d]: BSSID: %s Channel: %u opClass: %u RSSI: %d Pref: %d\n",
                     i, src->ap_BSSID, src->ap_Channel, src_ext->opClass, src->ap_SignalStrength, dst->bssTransitionCandidatePreference.preference);

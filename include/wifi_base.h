@@ -395,18 +395,19 @@ typedef struct {
 typedef struct {
     wifi_neighbor_ap2_t base;
     uint8_t opClass;
+    int score;
 } neighbor_with_opclass_t;
 
 typedef struct {
+    neighbor_with_opclass_t neighbors[16];
     int ap_index;
+    uint32_t num_neighbors;
     mac_address_t sta_mac;
     uint8_t dialog_token;
     uint8_t query_reason;
     uint8_t  request_mode;
     bool neighbor_list_present;
-    uint32_t num_neighbors;
-    neighbor_with_opclass_t neighbors[16];
-} __attribute__((packed)) em_btm_req_ctrl_msg_t;
+} em_btm_req_ctrl_msg_t;
 
 typedef struct {
     wifi_mon_stats_type_t  data_type;
