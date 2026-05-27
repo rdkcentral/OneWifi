@@ -27,6 +27,29 @@
 
 static int lq_ipc_fd = -1;
 
+/* Close and reset the sender socket — called when a send failure indicates
+ * that the receiver (wei) has restarted and its socket file was recreated. */
+static void lq_ipc_reset_fd(void)
+{
+    if (lq_ipc_fd >= 0) {
+        close(lq_ipc_fd);
+        lq_ipc_fd = -1;
+    }
+}
+
+static int lq_ipc_open_fd(void)
+{
+    if (lq_ipc_fd >= 0)
+        return 0;
+    lq_ipc_fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+    if (lq_ipc_fd < 0) {
+        wifi_util_error_print(WIFI_MON,
+            "%s:%d socket() failed: %s\n", __func__, __LINE__, strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
 static const char *lq_msg_type_str(uint32_t type)
 {
     switch (type) {
@@ -146,13 +169,8 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
         }
     }
 
-    if (lq_ipc_fd < 0) {
-        lq_ipc_fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-        if (lq_ipc_fd < 0) {
-            wifi_util_error_print(WIFI_MON,
-                "%s:%d socket() failed: %s\n", __func__, __LINE__, strerror(errno));
-            return -1;
-        }
+    if (lq_ipc_open_fd() < 0) {
+        return -1;
     }
 
     struct sockaddr_un addr;
@@ -169,26 +187,46 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
         return -1;
     }
 
-    int tlv_len = build_tlv(msg_type, entries, count, entry_size,
-                            buf, alloc_sz);
-
-    size_t datagram_sz = (size_t)tlv_len;
+    int tlv_len = build_tlv(msg_type, entries, count, entry_size, buf, alloc_sz);
 
     wifi_util_dbg_print(WIFI_APPS,
         "%s:%d [IPC-SEND] TLV encoded: tlv_type=%s(%u) tlv_len=%d datagram_sz=%zu\n",
         __func__, __LINE__, lq_msg_type_str(msg_type), msg_type,
-        tlv_len, datagram_sz);
+        tlv_len, (size_t)tlv_len);
 
-    ssize_t ret = sendto(lq_ipc_fd, buf, datagram_sz, MSG_DONTWAIT,
-                         (struct sockaddr *)&addr, sizeof(addr));
-    if (ret < 0) {
-        wifi_util_dbg_print(WIFI_MON,
-            "%s:%d sendto(%s) failed: %s (non-fatal)\n",
-            __func__, __LINE__, LQ_STATS_SOCKET_PATH, strerror(errno));
-    } else {
-        wifi_util_info_print(WIFI_APPS,
-            "%s:%d [IPC-SEND] %s sent %zd bytes OK (count=%u)\n",
-            __func__, __LINE__, lq_msg_type_str(msg_type), ret, count);
+    ssize_t ret = -1;
+    /*
+     * Retry once on failure: if wei restarted its socket file was recreated.
+     * Reset our fd and reopen — the next sendto will hit the fresh socket.
+     * ENOENT  → socket file gone (wei not up yet or mid-restart)
+     * ECONNREFUSED → peer end closed (stale DGRAM path)
+     * EAGAIN  → receiver buffer full (wei slow to drain)
+     */
+    for (int attempt = 0; attempt < 2; attempt++) {
+        ret = sendto(lq_ipc_fd, buf, (size_t)tlv_len, MSG_DONTWAIT,
+                     (struct sockaddr *)&addr, sizeof(addr));
+        if (ret >= 0) {
+            wifi_util_info_print(WIFI_APPS,
+                "%s:%d [IPC-SEND] %s sent %zd bytes OK (count=%u attempt=%d)\n",
+                __func__, __LINE__, lq_msg_type_str(msg_type), ret, count, attempt);
+            break;
+        }
+
+        int err = errno;
+        wifi_util_error_print(WIFI_MON,
+            "%s:%d [IPC-SEND] sendto(%s) failed: %s (attempt %d)\n",
+            __func__, __LINE__, LQ_STATS_SOCKET_PATH, strerror(err), attempt + 1);
+
+        if (attempt == 0 && (err == ENOENT || err == ECONNREFUSED || err == EAGAIN)) {
+            /* wei may have restarted — reset socket and retry after short wait */
+            lq_ipc_reset_fd();
+            usleep(50000); /* 50 ms — give wei time to rebind */
+            if (lq_ipc_open_fd() < 0) {
+                break;
+            }
+        } else {
+            break;
+        }
     }
 
     free(buf);
