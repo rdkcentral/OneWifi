@@ -594,6 +594,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+        } else if (isVapHotspot(vap_index)) {
+            cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT;
         } else {
             cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
         }
