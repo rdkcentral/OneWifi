@@ -994,7 +994,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: RadiusServerIPAddr is NULL\n", __func__, __LINE__);
             radius_ip_val = "0.0.0.0";
     }
-    if (decode_ipv4_address(radius_ip_val) == webconfig_error_none || decode_ipv6_address(radius_ip_val) == webconfig_error_none) {
+    if (decode_ipv4_address((char *)radius_ip_val) == webconfig_error_none || decode_ipv6_address((char *)radius_ip_val) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
         strncpy((char *)radius_info->ip,radius_ip_val,sizeof(radius_info->ip)-1);
     }
@@ -1025,7 +1025,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SecondaryRadiusServerIPAddr is NULL\n", __func__, __LINE__);
             secondary_ip_val = "0.0.0.0";
     }
-    if (decode_ipv4_address(secondary_ip_val) == webconfig_error_none || decode_ipv6_address(secondary_ip_val) == webconfig_error_none) {
+    if (decode_ipv4_address((char *)secondary_ip_val) == webconfig_error_none || decode_ipv6_address((char *)secondary_ip_val) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
         strncpy((char *)radius_info->s_ip,secondary_ip_val,sizeof(radius_info->s_ip)-1);
     }
