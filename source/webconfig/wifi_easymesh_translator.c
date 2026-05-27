@@ -3087,8 +3087,12 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
         sizeof(bssid_t));
     policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed =
         em_policy_cfg->bh_bss_cfg_policy.p1_bsta_disallowed;
-    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed =
+    policy_cfg->backhaul_bss_config_policy.profile_2_bsta_disallowed =
         em_policy_cfg->bh_bss_cfg_policy.p2_bsta_disallowed;
+
+    // default 802.1Q settings policy
+    policy_cfg->default_8021q_policy.primary_vid = em_policy_cfg->def_8021q_settings.primary_vlan_id;
+    policy_cfg->default_8021q_policy.default_pcp = em_policy_cfg->def_8021q_settings.default_pcp;
 
     // channel scan reporting policy
     policy_cfg->channel_scan_reporting_policy.report_independent_channel_scan =
@@ -3112,6 +3116,9 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_status =
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 5) & 1;
     }
+
+    /* store the received-sections bitmask so the encoder skips absent policy sections */
+    policy_cfg->em_policy_present_mask = em_policy_cfg->present_mask;
 
     return webconfig_error_none;
 }

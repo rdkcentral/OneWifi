@@ -6294,6 +6294,9 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     const cJSON *param, *disallowed_sta_array, *sta_obj, *radio_metrics_obj;
     const cJSON *policy_obj, *local_steering_policy, *btm_steering_policy, *backhaul_policy,
         *channel_scan_policy, *radio_metrics_array;
+    const cJSON *unsuccess_assoc_policy, *qos_mgt_policy, *def_8021q_policy;
+    const cJSON *traffic_sep_policy, *client_filters_policy, *radio_steer_array, *radio_steer_obj;
+    char mac_str[32];
 
     policy_obj = cJSON_GetObjectItem(em_cfg, "Policy");
     if (policy_obj == NULL) {
@@ -6403,15 +6406,18 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         return webconfig_error_decode;
     }
 
-    decode_param_allow_optional_string(backhaul_policy, "BSSID", param);
-    strncpy((char *)em_config->backhaul_bss_config_policy.bssid, param->valuestring,
-        sizeof(bssid_t));
-
-    decode_param_allow_optional_string(backhaul_policy, "Profile-1 bSTA Disallowed", param);
-    em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed = 0; // param->valuedouble;
-
-    decode_param_allow_optional_string(backhaul_policy, "Profile-2 bSTA Disallowed", param);
-    em_config->backhaul_bss_config_policy.profile_2_bsta_disallowed = 1; // param->valuedouble;
+    if (cJSON_IsArray(backhaul_policy) && cJSON_GetArraySize(backhaul_policy) > 0) {
+        const cJSON *bss_item = cJSON_GetArrayItem(backhaul_policy, 0);
+        decode_param_allow_optional_string(bss_item, "BSSID", param);
+        strncpy((char *)em_config->backhaul_bss_config_policy.bssid, param->valuestring,
+            sizeof(bssid_t));
+        decode_param_bool(bss_item, "Profile-1 bSTA Disallowed", param);
+        em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed =
+            (param->type & cJSON_True) ? true : false;
+        decode_param_bool(bss_item, "Profile-2 bSTA Disallowed", param);
+        em_config->backhaul_bss_config_policy.profile_2_bsta_disallowed =
+            (param->type & cJSON_True) ? true : false;
+    }
 
     // Channel Scan Reporting Policy
     channel_scan_policy = cJSON_GetObjectItem(policy_obj, "Channel Scan Reporting Policy");
@@ -6467,6 +6473,91 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status =
             (param->type & cJSON_True) ? true : false;
     }
+
+    // Unsuccessful Association Policy
+    unsuccess_assoc_policy = cJSON_GetObjectItem(policy_obj, "Unsuccessful Association Policy");
+    if (unsuccess_assoc_policy != NULL) {
+        decode_param_bool(unsuccess_assoc_policy, "Report Unsuccessful Associations", param);
+        em_config->unsuccess_assoc_policy.report_unassoc_sta =
+            (param->type & cJSON_True) ? true : false;
+        decode_param_integer(unsuccess_assoc_policy, "Maximum Reporting Rate", param);
+        em_config->unsuccess_assoc_policy.max_reporting_rate = param->valuedouble;
+    }
+
+    // QoS Management Policy
+    qos_mgt_policy = cJSON_GetObjectItem(policy_obj, "QoS Management Policy");
+    if (qos_mgt_policy != NULL) {
+        const cJSON *mscs_arr = cJSON_GetObjectItem(qos_mgt_policy, "MSCS Disallowed STA List");
+        if (mscs_arr != NULL && cJSON_IsArray(mscs_arr)) {
+            em_config->qos_mgt_policy.num_mscs = cJSON_GetArraySize(mscs_arr);
+            for (int i = 0; i < em_config->qos_mgt_policy.num_mscs && i < EM_MAX_QOS_MAC; i++) {
+                const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
+                str_to_mac_bytes(cJSON_GetStringValue(mac_item),
+                    em_config->qos_mgt_policy.mscs_mac[i]);
+            }
+        }
+        const cJSON *scs_arr = cJSON_GetObjectItem(qos_mgt_policy, "SCS Disallowed STA List");
+        if (scs_arr != NULL && cJSON_IsArray(scs_arr)) {
+            em_config->qos_mgt_policy.num_scs = cJSON_GetArraySize(scs_arr);
+            for (int i = 0; i < em_config->qos_mgt_policy.num_scs && i < EM_MAX_QOS_MAC; i++) {
+                const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
+                str_to_mac_bytes(cJSON_GetStringValue(mac_item),
+                    em_config->qos_mgt_policy.scs_mac[i]);
+            }
+        }
+    }
+
+    // Default 802.1Q Settings Policy
+    def_8021q_policy = cJSON_GetObjectItem(policy_obj, "Default 802.1Q Settings Policy");
+    if (def_8021q_policy != NULL) {
+        decode_param_integer(def_8021q_policy, "Primay VLAN ID", param);
+        em_config->default_8021q_policy.primary_vid = (unsigned short)param->valuedouble;
+        decode_param_integer(def_8021q_policy, "Default PCP", param);
+        em_config->default_8021q_policy.default_pcp = (unsigned char)param->valuedouble;
+    }
+
+    // Traffic Separation Policy
+    // traffic_sep_policy = cJSON_GetObjectItem(policy_obj, "Traffic Separation Policy");
+    // if (traffic_sep_policy != NULL) {
+    //     const cJSON *ssid_arr = cJSON_GetObjectItem(traffic_sep_policy, "SSID List");
+    //     if (ssid_arr != NULL && cJSON_IsArray(ssid_arr)) {
+    //         em_config->traffic_separation_policy.num_ssids = cJSON_GetArraySize(ssid_arr);
+    //         for (int i = 0; i < em_config->traffic_separation_policy.num_ssids &&
+    //                 i < EM_MAX_SSIDS_TRAFFIC_SEP; i++) {
+    //             const cJSON *ssid_obj = cJSON_GetArrayItem(ssid_arr, i);
+    //             decode_param_allow_optional_string(ssid_obj, "SSID", param);
+    //             strncpy(em_config->traffic_separation_policy.ssid_info[i].ssid,
+    //                 param->valuestring,
+    //                 sizeof(em_config->traffic_separation_policy.ssid_info[i].ssid) - 1);
+    //             decode_param_integer(ssid_obj, "VLAN ID", param);
+    //             em_config->traffic_separation_policy.ssid_info[i].vlan_id =
+    //                 (unsigned short)param->valuedouble;
+    //         }
+    //     }
+    // }
+
+    // Radio Steering Parameters
+    radio_steer_array = cJSON_GetObjectItem(policy_obj, "Radio Steering Parameters");
+    if (radio_steer_array != NULL && cJSON_IsArray(radio_steer_array)) {
+        em_config->radio_steering_policies.radio_count = cJSON_GetArraySize(radio_steer_array);
+        for (int i = 0; i < em_config->radio_steering_policies.radio_count &&
+                i < EM_MAX_RADIO_POLICY; i++) {
+            radio_steer_obj = cJSON_GetArrayItem(radio_steer_array, i);
+            decode_param_allow_optional_string(radio_steer_obj, "ID", param);
+            str_to_mac_bytes(param->valuestring,
+                em_config->radio_steering_policies.radio_steering_policy[i].ruid);
+            decode_param_integer(radio_steer_obj, "Steering Policy", param);
+            em_config->radio_steering_policies.radio_steering_policy[i].policy =
+                (int)param->valuedouble;
+            decode_param_integer(radio_steer_obj, "Utilization Threshold", param);
+            em_config->radio_steering_policies.radio_steering_policy[i].util_threshold =
+                (int)param->valuedouble;
+            decode_param_integer(radio_steer_obj, "RCPI Threshold", param);
+            em_config->radio_steering_policies.radio_steering_policy[i].rcpi_threshold =
+                (int)param->valuedouble;
+        }
+    }
+
     return webconfig_error_none;
 }
 
