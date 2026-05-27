@@ -1227,9 +1227,9 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         ((is_6g == true &&
         security_info->mfp != wifi_mfp_cfg_required) ||
         (is_6g == false &&
-        security_info->mfp != wifi_mfp_cfg_disabled))) {
+        security_info->mfp != wifi_mfp_cfg_optional))) {
 #else
-        security_info->mfp != wifi_mfp_cfg_disabled) {
+        security_info->mfp != wifi_mfp_cfg_optional) {
 #endif /* CONFIG_IEEE80211BE */
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
             __func__, __LINE__, security_info->mfp, security_info->mode);
