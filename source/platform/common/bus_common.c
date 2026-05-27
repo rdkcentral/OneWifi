@@ -231,7 +231,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     elem_node_map_t* current_node = root;
     elem_node_map_t* temp_node    = NULL;
     elem_node_map_t* next_node    = NULL;
-    int  ret = 0, create_child   = 0;
+    int  create_child             = 0;
     char buff[256];
 
     if(current_node == NULL || elem == NULL)
@@ -343,15 +343,14 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
         }
         token = strtok_r(NULL, ".", &saveptr);
     }
-    if(ret != 0)
-    {
-
-        BUS_MUX_UNLOCK(get_bus_mux_mutex());
-        return NULL;
-    }
 
     current_node->type           = elem->type;
     current_node->node_data_type = elem->node_data_type;
+    if (current_node->node_elem_data != NULL) {
+        free(current_node->node_elem_data);
+        current_node->node_elem_data = NULL;
+        current_node->node_elem_data_len = 0;
+    }
     current_node->node_elem_data = malloc(elem->cfg_data_len);
     if(current_node->node_elem_data == NULL)
     {
@@ -362,13 +361,16 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     memcpy(current_node->node_elem_data, elem->cfg_data, elem->cfg_data_len);
     current_node->node_elem_data_len = elem->cfg_data_len;
 
-    if(elem->type == bus_element_type_table)
+    if(elem->type == bus_element_type_table && current_node->child == NULL)
     {
         elem_node_map_t* rowTemplate = get_empty_elem_node();
         if(rowTemplate == NULL)
         {
             wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n",
                  elem->full_name);
+            free(current_node->node_elem_data);
+            current_node->node_elem_data = NULL;
+            current_node->node_elem_data_len = 0;
             BUS_MUX_UNLOCK(get_bus_mux_mutex());
             return NULL;
         }
@@ -832,11 +834,17 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
 {
     bus_data_prop_t *next, *prev, *cur;
 
+    if (p_data_prop == NULL) {
+        return;
+    }
+
     if (p_data_prop->ref_count == 1) {
         free_bus_raw_data(&p_data_prop->value);
         p_data_prop->is_data_set = false;
         p_data_prop->ref_count = 0;
-        (*num_prop)--;
+        if (num_prop && (*num_prop > 0)) {
+            (*num_prop)--;
+        }
     } else if (p_data_prop->ref_count > 1) {
         wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
                 __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
@@ -853,7 +861,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         if (cur->ref_count == 1) {
             free_bus_raw_data(&cur->value);
             free(cur);
-            (*num_prop)--;
+            if (num_prop && (*num_prop > 0)) {
+                (*num_prop)--;
+            }
             prev->next_data = next;
         } else if (cur->ref_count > 1) {
             wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
@@ -868,7 +878,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         cur = next;
     }
 
-    wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    if (num_prop) {
+        wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    }
 }
 
 void bus_release_data_obj(bus_data_obj_t *p_bus_obj)

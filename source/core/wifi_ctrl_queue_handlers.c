@@ -274,7 +274,19 @@ void process_assoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
 
 void process_reassoc_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d rssi:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm);
+    wifi_monitor_data_t *data = NULL;
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    memcpy(&data->u.msg, msg, sizeof(frame_data_t));
+    data->id = msg_id++;
+    push_event_to_monitor_queue(data, wifi_event_monitor_reassoc_req, NULL);
+    free(data);
+    data = NULL;
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d rssi:%d phy_rate:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm, msg->frame.phy_rate);
 }
 
 void process_reassoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
@@ -2000,11 +2012,6 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
     if (old_count > 0) {
         *new_count = old_count - 1;
     }
-    if (((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index)))){
-        if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index, *new_count, old_count) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
-        }
-    }
     return RETURN_OK;
 }
 
@@ -2156,6 +2163,16 @@ void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data)
                         __func__, __LINE__, mac_str, vap_index);
                     return;
                 }
+
+                if ((isVapPrivate(rdk_vap_info->vap_index) || isVapXhs(rdk_vap_info->vap_index))) {
+                    if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index,
+                                                  new_count, old_count) != RETURN_OK) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s:%d Unable to send notification for associated entries\n",
+                            __func__, __LINE__);
+                    }
+                }
+
                 if (mld_sta) {
                     wifi_util_info_print(WIFI_CTRL,
                         "%s:%d Removed MLD MAC %s from VAP %d\n", __func__, __LINE__, mac_str, vap_index);
@@ -2449,6 +2466,8 @@ void process_assoc_device_event(void *data)
                 assoc_data->ap_index = link_vap_index;
                 assoc_data->dev_stats.cli_RSSI = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_RSSI;
                 assoc_data->association_link = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink;
+                memcpy(assoc_data->link_address, assoc_data->mld_info.cli_LinkInfo[link_idx].cli_LinkAddress,
+                    sizeof(assoc_data->link_address));
                 assoc_dev_event(assoc_data);
             }
         }
@@ -2948,6 +2967,28 @@ void process_csi_analytics_rfc(bool type)
     return;
 }
 
+void process_multiap_rfc(bool type)
+{
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to fetch Ctrl RFC\n", __func__, __LINE__);
+        return;
+    }
+    rfc_param->multiap_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    if (rfc_param->multiap_rfc) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Enabled, Starting station vaps\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc is Disabled\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+	}
+
+    return;
+}
+
 void process_link_quality_rfc(bool type)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -2979,8 +3020,14 @@ void process_tcm_rfc(bool type)
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->tcm_enabled_rfc = type;
+    rfc_param->tcm_open_2g_rfc = type;
+    rfc_param->tcm_open_5g_rfc = type;
+    rfc_param->tcm_open_6g_rfc = type;
+    rfc_param->tcm_secure_2g_rfc = type;
+    rfc_param->tcm_secure_5g_rfc = type;
+    rfc_param->tcm_secure_6g_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
+    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d, all VAP-specific RFCs updated\n", __FUNCTION__, __LINE__,
         type);
 }
 
@@ -3188,6 +3235,7 @@ void process_device_mode_command_event(int device_mode)
 {
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d: device mode changed: %d\n", __func__, __LINE__,
         device_mode);
@@ -3199,6 +3247,9 @@ void process_device_mode_command_event(int device_mode)
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
         if (device_mode == rdk_dev_mode_type_ext) {
+            if (rfc_param->multiap_rfc) {
+                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+            }
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
                 start_extender_vaps(WIFI_ALL_RADIO_INDICES);
@@ -3206,6 +3257,9 @@ void process_device_mode_command_event(int device_mode)
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
         } else if (device_mode == rdk_dev_mode_type_gw) {
+            if (rfc_param->multiap_rfc && is_device_type_xle()) {
+                apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+            }
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
                 stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
@@ -4313,6 +4367,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_multiap_rfc:
+        process_multiap_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:

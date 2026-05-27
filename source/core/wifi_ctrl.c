@@ -256,9 +256,9 @@ void selfheal_event_publish(wifi_ctrl_t *ctrl)
 
 void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 {
-    if (ctrl->rf_status_down == true) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode deactivated due to Ignite mode\n",
-            __func__, __LINE__);
+    if (ctrl->rf_status_down == true || ctrl->multiap_sta_enabled == true) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Sta selfheal mode disabled, rf_status_down=%d, multiap_sta_enabled=%d\n",
+            __func__, __LINE__, ctrl->rf_status_down, ctrl->multiap_sta_enabled);
         return;
     }
     static bool radio_reset_triggered = false;
@@ -301,7 +301,7 @@ bool is_sta_enabled(void)
        __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check,  ctrl->rf_status_down);
    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
               ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true || 
-              ctrl->rf_status_down == true ) &&  ctrl->eth_bh_status == false);
+              ctrl->rf_status_down == true  || ctrl->multiap_sta_enabled == true) &&  ctrl->eth_bh_status == false);
 }
 
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
@@ -958,7 +958,7 @@ int captive_portal_check(void)
     memset(&data, 0, sizeof(raw_data_t));
 
     bool psm_notify_flag = false;
-    char pInValue[32] = "";
+    char inValue[32] = "";
     char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
 
     // Get CONFIG_WIFI
@@ -1015,12 +1015,12 @@ int captive_portal_check(void)
     if (default_private_credentials != psm_notify_flag) {
         wifi_util_dbg_print(WIFI_CTRL, "PSM Notify flag and wifi values are different\n");
         if (default_private_credentials) {
-            strcpy(pInValue, "true");
+            snprintf(inValue, sizeof(inValue), "%s", "true");
         } else {
-            strcpy(pInValue, "false");
+            snprintf(inValue, sizeof(inValue), "%s", "false");
         }
         // set PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
-        set_notify_wifi_to_psm(PsmParamName, pInValue);
+        set_notify_wifi_to_psm(PsmParamName, inValue);
     }
 
     wifi_util_dbg_print(WIFI_CTRL, "CONFIG_WIFI= %d fun %s  and wifi_value %d \n", get_config_wifi,
@@ -1882,6 +1882,11 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
     wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
+
+    if (rfc_param->multiap_rfc) {
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    }
+
     if (rfc_param->link_quality_rfc || ctrl->network_mode == rdk_dev_mode_type_em_node 
      || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node || ctrl->rf_status_down == true) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d LinkQuality RFC is enabled \n", __func__, __LINE__);
@@ -2880,7 +2885,9 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
     g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
         g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
-    strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
+    g_wifi_mgr->ctrl.rfc_params.multiap_rfc =
+        g_wifi_mgr->rfc_dml_parameters.multiap_rfc;
+    snprintf(g_wifi_mgr->ctrl.rfc_params.rfc_id, sizeof(g_wifi_mgr->ctrl.rfc_params.rfc_id), "%s", g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
 
@@ -2954,7 +2961,7 @@ int get_sta_ssid_from_radio_config_by_radio_index(unsigned int radio_index, ssid
         if (map->vap_array[i].vap_index == index) {
             found = true;
             wifi_util_error_print(WIFI_CTRL,"[%s %d] ssid name : %s\n", __func__, __LINE__, get_vap_ssid(&map->vap_array[i]));
-            strcpy(ssid, get_vap_ssid(&map->vap_array[i]));
+            snprintf(ssid, sizeof(ssid_t), "%s", get_vap_ssid(&map->vap_array[i]));
             break;
         }
     }
