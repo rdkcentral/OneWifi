@@ -86,6 +86,7 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_NOTIFY_INTEROP_DETAILS                    "Device.WiFi.AccessPoint.{i}.InteropDetails" 
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
+#define HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED       "Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
@@ -229,6 +230,7 @@ typedef struct {
     mac_address_t  sta_mac;
     int        reason;
     wifi_associated_dev3_t dev_stats;
+    wifi_mld_sta_info_t mld_info;
 } auth_deauth_dev_t;
 
 #define MAX_MQTT_TOPIC_LEN 256
@@ -955,6 +957,11 @@ typedef struct {
     conn_security_t conn_security;
     assoc_req_elem_t sta_data;
     unsigned int last_connect_time; /* The time in seconds since this client STA was associated. */
+
+    /* wifi7 client specific data */
+    wifi_mld_sta_info_t mld_info;
+    bool association_link;
+    mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;
@@ -995,7 +1002,7 @@ typedef struct {
     assoc_req_elem_t assoc_frame_data;
 
     /* wifi7 client specific data */
-    bool            primary_link; /* TRUE for auth/primary link, FALSE for secondary links */
+    bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */
     mac_address_t   link_mac;     /* link mac addr */
 } sta_data_t;
 

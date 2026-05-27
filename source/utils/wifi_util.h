@@ -162,15 +162,19 @@ struct wifiEnvironmentEnumStrMap {
 extern struct wifiEnvironmentEnumStrMap wifiEnviromentMap[4];
 extern struct wifiCountryEnumStrMapMember wifiCountryMapMembers[MAX_WIFI_COUNTRYCODE];
 
-#define LM_GEN_STR_SIZE 64
+#define LM_GEN_STR_SIZE 256
 #define LM_MAX_HOSTS_NUM 256
+
+/* MAX_RSSI_STR_LEN_PER_RADIO 4 for RSSI value and 1 for separator */
+#define MAX_RSSI_STR_LEN_PER_RADIO 5
 
 typedef struct {
     unsigned char ssid[LM_GEN_STR_SIZE];
     unsigned char AssociatedDevice[LM_GEN_STR_SIZE];
     unsigned char phyAddr[32]; /* Byte alignment*/
-    int RSSI;
+    unsigned char RSSI[LM_GEN_STR_SIZE]; /* RSSI values for each link separated by ';' */
     int Status;
+    bool mld_sta;
 } __attribute__((packed, aligned(1))) LM_wifi_host_t;
 
 typedef struct {
@@ -354,7 +358,7 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
     wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp,
     int encryp_len, unsigned int conv_type);
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
-    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN]);
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN], wifi_encryption_method_t *enum_encr);
 int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len);
 char *to_mac_str(mac_address_t mac, mac_addr_str_t key);
 int is_ssid_name_valid(char *ssid_name);
@@ -463,6 +467,7 @@ int update_radio_operating_classes(wifi_radio_operationParam_t *oper);
 int interfacename_from_mac(const mac_address_t *mac, char *ifname);
 int mac_address_from_name(const char *ifname, mac_address_t mac);
 bool is_zero_mac(const uint8_t *mac);
+bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr);
 #ifdef __cplusplus
 }
 #endif

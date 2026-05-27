@@ -425,16 +425,16 @@ int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_t
 
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.WiFi7Capabilities */
         { DE_STAMLD_WIFI7CAPS, {
-            default_get_param_value,            default_set_param_value,
+            de_stamld_get,                   NULL,
             NULL,                            NULL,
-            default_event_sub_handler,       NULL }
+            NULL,                            NULL }
         },
 
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.STAMLDConfig */
         { DE_STAMLD_CONFIG, {
-            default_get_param_value,            default_set_param_value,
+            de_stamld_get,                   NULL,
             NULL,                            NULL,
-            default_event_sub_handler,       NULL }
+            NULL,                            NULL }
         },
 
         /* Device.WiFi.DataElements.Network.Device.{i}.APMLD.{i}.STAMLD.{i}.AffiliatedSTA */

@@ -156,9 +156,12 @@ static char *FactoryReset       = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.
 extern bool is_radio_config_changed;
 struct wifiSecEncrCosaHalMap wifiSecEncrMap[] =
 {
-      {wifi_encryption_tkip,     COSA_DML_WIFI_AP_SEC_TKIP,     "TKIP"},
-      {wifi_encryption_aes,      COSA_DML_WIFI_AP_SEC_AES,      "AES"},
-      {wifi_encryption_aes_tkip, COSA_DML_WIFI_AP_SEC_AES_TKIP, "AES_TKIP"}
+      {wifi_encryption_tkip,        COSA_DML_WIFI_AP_SEC_TKIP,     "TKIP"},
+      {wifi_encryption_aes,         COSA_DML_WIFI_AP_SEC_AES,      "AES"},
+      {wifi_encryption_aes_tkip,    COSA_DML_WIFI_AP_SEC_AES_TKIP, "AES_TKIP"},
+#ifdef CONFIG_IEEE80211BE
+      {wifi_encryption_aes_gcmp256, COSA_DML_WIFI_AP_SEC_AES_GCMP, "AES_GCMP"},
+#endif /* CONFIG_IEEE80211BE */
 };
 
 struct wifiSecCosaHalMap wifiSecMap[] =
@@ -366,7 +369,6 @@ ANSC_STATUS cosaWifiRadioRestart()
         if (rdk_vap_info != NULL) {
             rdk_vap_info->force_apply = true;
             set_dml_cache_vap_config_changed(vap);
-            set_cac_cache_changed(vap);
         }
     }
     wifi_util_info_print(WIFI_DMCLI, "%s:%d Resetting Radio and VAP stats success\n", __func__,
