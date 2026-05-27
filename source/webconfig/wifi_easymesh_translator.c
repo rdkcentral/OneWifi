@@ -402,17 +402,16 @@ static void fill_cac_cap(const wifi_radio_capabilities_t *hal_radio_cap,
     const wifi_radio_operationParam_t *oper_param,
     em_cac_cap_radio_t *cac_cap)
 {
-    em_cac_cap_method_t *dst_method = &cac_cap->cac_methods[0];
+    if (oper_param == NULL || hal_radio_cap == NULL) {
+        return;
+    }
+     em_cac_cap_method_t *dst_method = &cac_cap->cac_methods[0];
 
     dst_method->cac_method = (hal_radio_cap && hal_radio_cap->zeroDFSSupported)
                              ? em_cac_method_continuous_dedicated /* Continuous with Dedicated Radio */
                              : em_cac_method_continuous; /* Continuous CAC */
     dst_method->cac_duration  = 60; /* seconds, regulatory default */
     dst_method->op_classes_num = 0;
-
-    if (oper_param == NULL || hal_radio_cap == NULL) {
-        return;
-    }
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: filling CAC cap: numOperatingClasses=%u hal_entries=%u DfsEnabled=%d\n",
         __func__, __LINE__, oper_param->numOperatingClasses,
@@ -506,10 +505,8 @@ static void fill_cac_cap(const wifi_radio_capabilities_t *hal_radio_cap,
         em_cac_op_class_t *dst_oc = &dst_method->op_classes[dst_method->op_classes_num];
         dst_oc->op_class = (unsigned char)oc->op_class;
         dst_oc->num      = cac_count;
+        memset(dst_oc->channels, 0, sizeof(dst_oc->channels));
         memcpy(dst_oc->channels, cac_chans, cac_count);
-        if (cac_count < EM_MAX_CAC_CHANS_PER_CLASS) {
-            memset(dst_oc->channels + cac_count, 0, EM_MAX_CAC_CHANS_PER_CLASS - cac_count);
-        }
         dst_method->op_classes_num++;
     }
 
