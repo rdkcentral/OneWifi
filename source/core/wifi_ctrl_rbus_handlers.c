@@ -4273,6 +4273,71 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
      return;
 }
 
+bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
+    bus_data_prop_t *outParams, void *asyncHandle)
+{
+    unsigned vap_idx;
+    char *json_str = NULL;
+    char *enriched_str = NULL;
+    cJSON *json = NULL;
+    int ret;
+
+    if (methodName == NULL || inParams == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid input parameters\r\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    if (inParams->value.data_type != bus_data_type_string || inParams->value.raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid input data type:0x%x\r\n",
+            __func__, __LINE__, inParams->value.data_type);
+        return bus_error_invalid_input;
+    }
+
+    ret = sscanf(methodName, "Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_GetNaSta", &vap_idx);
+    if (ret != 1 || vap_idx < 1 || vap_idx > MAX_VAP) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap index %u\r\n", __func__, __LINE__, vap_idx);
+        return bus_error_destination_not_found;
+    }
+
+    json_str = (char *)inParams->value.raw_data.bytes;
+
+    /* Parse the incoming JSON and inject vap_index (0-based) */
+    json = cJSON_Parse(json_str);
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to parse JSON input\r\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+    cJSON_AddNumberToObject(json, "VapIndex", vap_idx - 1);
+    enriched_str = cJSON_PrintUnformatted(json);
+    cJSON_Delete(json);
+
+    if (enriched_str == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to serialize JSON\r\n", __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d NaSta query for vap %u, pushing to ctrl queue\r\n",
+        __func__, __LINE__, vap_idx);
+
+    push_event_to_ctrl_queue(enriched_str, strlen(enriched_str),
+        wifi_event_type_webconfig, wifi_event_webconfig_set_data_nasta, NULL);
+
+    cJSON_free(enriched_str);
+
+    /* Return an ack so the synchronous RBUS invoke succeeds;
+       the actual NaSta response is published asynchronously via
+       Device.WiFi.EM.NaStaResponse event. */
+    if (outParams != NULL) {
+        char *ack = strdup("{\"Status\":\"Accepted\"}");
+        if (ack != NULL) {
+            outParams->value.data_type = bus_data_type_string;
+            outParams->value.raw_data.bytes = ack;
+            outParams->value.raw_data_len = strlen(ack);
+        }
+    }
+
+    return bus_error_success;
+}
 
 void bus_register_handlers(wifi_ctrl_t *ctrl)
 {
@@ -4446,6 +4511,12 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     {bus_data_type_uint32, false, 0, 0, 0, NULL } },
                                 { WIFI_IGNITE_STATUS, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_GET_NASTA, bus_element_type_method,
+                                    { NULL, NULL, NULL, NULL, NULL, get_NaSta }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_NASTA_RESPONSE_EVENT, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
     };
 
