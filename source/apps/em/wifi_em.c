@@ -37,6 +37,8 @@
 #define EM_SCAN_TYPE_ACTIVE          1
 
 static bool is_monitor_done = false;
+static bool g_btm_pending_valid = false;
+static em_btm_req_ctrl_msg_t g_pending_btm;
 
 typedef struct {
     em_policy_req_type_t policy_type;
@@ -907,6 +909,93 @@ static int em_stop_neighbor_scan(wifi_provider_response_t *provider_response)
     }
 }
 
+static inline bool ssid_in_local_list(const char *ssid,
+                                      char ssid_list[][MAX_SSID_LEN],
+                                      int ssid_count)
+{
+    if (!ssid || ssid[0] == '\0') {
+        return false;
+    }
+
+    for (int i = 0; i < ssid_count; i++) {
+        if (strcmp(ssid, ssid_list[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static int get_vap_ssid_list(char ssid_list[MAX_LOCAL_SSIDS][MAX_SSID_LEN])
+{
+    unsigned int num_of_radios = getNumberRadios();
+    wifi_vap_info_map_t *vap_map;
+    int count = 0;
+
+    for (unsigned int r = 0; r < num_of_radios && count < MAX_LOCAL_SSIDS; r++) {
+        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(r);
+        if (!vap_map) {
+            continue;
+        }
+
+        for (unsigned int v = 0;
+             v < vap_map->num_vaps && count < MAX_LOCAL_SSIDS;
+             v++) {
+
+            const char *ssid = get_vap_ssid(&vap_map->vap_array[v]);
+            if (!ssid || ssid[0] == '\0') {
+                continue;
+            }
+
+            // Avoid duplicates
+            if (!ssid_in_local_list(ssid, ssid_list, count)) {
+                snprintf(ssid_list[count++], MAX_SSID_LEN, "%s", ssid);
+                wifi_util_dbg_print(WIFI_EM, "%s:%d Cached local SSID: %s\n", __func__, __LINE__, ssid);
+            }
+        }
+    }
+
+    return count;
+}
+
+static int calculate_preference(const wifi_neighbor_ap2_t *src)
+{
+    int pref_score = 0;
+
+    // Reject very weak APs
+    if (src->ap_SignalStrength < -80)
+        return 0;
+
+    // RSSI
+    pref_score += (src->ap_SignalStrength + 100);
+
+    // Prefer 5GHz only if signal is decent
+    if (src->ap_freq >= 5000 && src->ap_SignalStrength > -70)
+        pref_score += 20;
+
+    // Channel utilization
+    pref_score -= (src->ap_ChannelUtilization / 2);
+
+    // Noise handling
+    if (src->ap_Noise < 0)
+        pref_score -= (src->ap_Noise + 100) / 5;
+
+    // Clamp
+    if (pref_score > 255) pref_score = 255;
+    if (pref_score < 0) pref_score = 0;
+
+    return pref_score;
+}
+
+static int compare_pref(const void *a, const void *b)
+{
+    const neighbor_with_opclass_t *e1 = a;
+    const neighbor_with_opclass_t *e2 = b;
+
+    if (e2->score > e1->score) return 1;
+    if (e2->score < e1->score) return -1;
+    return 0;
+}
+
 static int em_process_neighbour_data(wifi_provider_response_t *provider_response)
 {
     channel_scan_response_t scan_response;
@@ -923,7 +1012,78 @@ static int em_process_neighbour_data(wifi_provider_response_t *provider_response
     if (em_prepare_scan_response_data(provider_response, &scan_response) != RETURN_OK) {
         wifi_util_error_print(WIFI_EM, "%s:%d Prepare neighbour scan response failed\r\n", __func__,
             __LINE__);
+
+        // If BTM is pending, send empty BTM request
+        if (g_btm_pending_valid) {
+            em_btm_req_ctrl_msg_t *btm = &g_pending_btm;
+            btm->num_neighbors = 0;
+            btm->neighbor_list_present = false;
+
+            push_event_to_ctrl_queue(btm, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_command, wifi_event_type_send_btm_req, NULL);
+
+            wifi_util_info_print(WIFI_EM, "%s:%d BTM Request sent with empty neighbor list (scan failed)\n",__func__, __LINE__);
+
+            g_btm_pending_valid = false;
+            return RETURN_OK;
+        }
         return RETURN_ERR;
+    }
+
+    if (g_btm_pending_valid) {
+        em_btm_req_ctrl_msg_t *btm = &g_pending_btm;
+        char local_ssids[MAX_LOCAL_SSIDS][MAX_SSID_LEN];
+        int local_ssid_count = get_vap_ssid_list(local_ssids);
+
+        // Populate neighbors[]
+        for (uint32_t i = 0; i < scan_response.num_results && btm->num_neighbors < EM_MAX_NEIGHBORS; i++) {
+            channel_scan_result_t *res = &scan_response.results[i];
+
+            for (UINT n_idx = 0; n_idx < res->num_neighbors && btm->num_neighbors < EM_MAX_NEIGHBORS; n_idx++) {
+                neighbor_bss_t *bss = &res->neighbors[n_idx];
+
+                if (!ssid_in_local_list(bss->ssid, local_ssids, local_ssid_count)) {
+                    continue;
+                }
+
+                neighbor_with_opclass_t n_local;
+                memset(&n_local, 0, sizeof(n_local));
+
+                wifi_neighbor_ap2_t *n = &n_local.base;
+                to_mac_str(bss->bssid, n->ap_BSSID);
+                snprintf(n->ap_SSID, sizeof(n->ap_SSID), "%s", bss->ssid);
+                n->ap_Channel = res->channel;
+                n->ap_Noise = res->noise;
+                n->ap_SignalStrength = bss->signal_strength;
+                n->ap_ChannelUtilization = res->utilization;
+                n_local.opClass = res->operating_class;
+                snprintf(n->ap_OperatingChannelBandwidth, sizeof(n->ap_OperatingChannelBandwidth), "%s", bss->channel_bandwidth);
+                n_local.score = calculate_preference(&n_local.base);
+                btm->neighbors[btm->num_neighbors] = n_local;
+                btm->num_neighbors++;
+            }
+        }
+
+        btm->neighbor_list_present = (btm->num_neighbors > 0);
+
+        if (btm->num_neighbors > 0) {
+            g_pending_btm.request_mode = 0x01;
+        }
+
+        if (btm->num_neighbors > 0) {
+            qsort(btm->neighbors, btm->num_neighbors, sizeof(neighbor_with_opclass_t), compare_pref);
+        }
+
+        // Push only the BTM request event
+        push_event_to_ctrl_queue(btm, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_command, wifi_event_type_send_btm_req, NULL);
+
+        wifi_util_info_print(WIFI_EM, "%s:%d BTM Request sent with %u neighbors\n", __func__, __LINE__, btm->num_neighbors);
+
+        // Clear BTM pending state
+        g_btm_pending_valid = false;
+
+        // Stop scan explicitly if needed
+        em_stop_neighbor_scan(provider_response);
+        return RETURN_OK;
     }
 
     if (em_publish_stats_data(&scan_response) != RETURN_OK) {
@@ -2236,6 +2396,210 @@ static void em_config_channel_scan(void *data, unsigned int len)
         }
     }
 }
+
+static int em_start_btm_neighbor_scan(frame_data_t *mgmt)
+{
+    mac_addr_str_t mac_str;
+    unsigned int radio_index;
+    channel_scan_request_t scan_req;
+    wifi_vap_info_t *vap_info = NULL;
+
+    memset(&scan_req, 0, sizeof(scan_req));
+
+    vap_info = getVapInfo(mgmt->frame.ap_index);
+    if (vap_info == NULL) {
+         wifi_util_dbg_print(WIFI_EM, "%s:%d Failed to get VAP info for ap_index %d; clearing pending BTM state\n",
+                                         __func__, __LINE__, mgmt->frame.ap_index);
+         g_btm_pending_valid = false;
+         memset(&g_pending_btm, 0, sizeof(g_pending_btm));
+         return RETURN_ERR;
+     }
+    radio_index = vap_info->radio_index;
+
+    // num_operating_classes = 0 → FULL scan
+    scan_req.num_operating_classes = 0;
+
+    return em_process_scan_init_command(radio_index, &scan_req);
+}
+
+static void em_parse_btm_query_neighbor_ies(uint8_t *ies, uint32_t ies_len, em_btm_req_ctrl_msg_t *btm)
+{
+    while (ies_len >= 2 && btm->num_neighbors < EM_MAX_NEIGHBORS) {
+        uint8_t ie_id  = ies[0];
+        uint8_t ie_len = ies[1];
+
+        if (2 + ie_len > ies_len) {
+            break;
+        }
+
+        if (ie_id == IEEE80211_EID_NEIGHBOR && ie_len >= IEEE80211_NEIGHBOR_REPORT_MIN_LEN) {
+            uint8_t *ie_data = &ies[2];
+
+            neighbor_with_opclass_t n_local;
+            neighbor_with_opclass_t *n_ext = &n_local;
+            wifi_neighbor_ap2_t *n = &n_ext->base;
+
+            memset(&n_local, 0, sizeof(n_local));
+
+
+            to_mac_str(ie_data, n->ap_BSSID);
+            n_ext->opClass = ie_data[10];
+            n->ap_Channel = ie_data[11];
+
+            // SSID is optional in Neighbor IE, leave empty
+            n->ap_SSID[0] = '\0';
+
+            btm->neighbors[btm->num_neighbors] = n_local;
+            btm->num_neighbors++;
+        }
+
+        ies     += 2 + ie_len;
+        ies_len -= 2 + ie_len;
+    }
+
+    btm->neighbor_list_present = (btm->num_neighbors > 0);
+}
+
+static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
+{
+    uint8_t *frame;
+    uint8_t *ies;
+    uint32_t len, ies_len;
+    uint8_t category, action;
+    uint8_t dialog_token, query_reason;
+    bool neighbor_list_present = false;
+
+    frame_data_t *mgmt = (frame_data_t *)data;
+    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN + 4) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Invalid mgmt frame: mgmt=%p len=%zu, required_min=%d\n",
+                     __func__, __LINE__, mgmt, mgmt ? mgmt->frame.len : 0, IEEE80211_HDRLEN + 4);
+        return RETURN_ERR;
+    }
+
+    frame = mgmt->data;
+    len = mgmt->frame.len;
+
+    // BTM Query fixed fields:
+    // [Category]      (1)
+    // [Action = 6]    (1)
+    // [Dialog Token] (1)
+    // [Query Reason] (1)
+
+    // Parse fixed BTM Query fields
+    category     = frame[IEEE80211_HDRLEN];
+    action       = frame[IEEE80211_HDRLEN + 1];
+    dialog_token = frame[IEEE80211_HDRLEN + 2];
+    query_reason = frame[IEEE80211_HDRLEN + 3];
+
+    if (category != WNM_CATEGORY || action != WNM_EM_WNM_BTM_QUERY) {
+        wifi_util_error_print(WIFI_EM, "%s:%d unsupported Category or action received for BTM query,"
+                                    "category: %d, action: %d\n", __func__, __LINE__, category, action);
+        return RETURN_ERR;
+    }
+
+    // Parse optional IEs
+    ies     = &frame[IEEE80211_HDRLEN + 4];
+    ies_len = len - (IEEE80211_HDRLEN + 4);
+
+    uint8_t *ies_start = ies;
+    uint32_t ies_start_len = ies_len;
+
+    while (ies_len >= 2) {
+        uint8_t ie_id  = ies[0];
+        uint8_t ie_len = ies[1];
+
+        if (2 + ie_len > ies_len) {
+            break;
+        }
+
+        if (ie_id == IEEE80211_EID_NEIGHBOR) {
+            neighbor_list_present = true;
+            break;
+        }
+
+        ies     += 2 + ie_len;
+        ies_len -= 2 + ie_len;
+    }
+
+    em_btm_req_ctrl_msg_t btm_req;
+    memset(&btm_req, 0, sizeof(btm_req));
+    btm_req.ap_index      = mgmt->frame.ap_index;
+    memcpy(btm_req.sta_mac, mgmt->frame.sta_mac, sizeof(mac_address_t));
+    btm_req.dialog_token  = dialog_token;
+    btm_req.query_reason  = query_reason;
+    btm_req.request_mode  = 0;
+
+    // Neighbor list present in BTM Query
+    if (neighbor_list_present) {
+        em_parse_btm_query_neighbor_ies(ies_start, ies_start_len, &btm_req);
+        if (btm_req.num_neighbors > 0) {
+            btm_req.request_mode = 0x01;
+        }
+
+        push_event_to_ctrl_queue(&btm_req, sizeof(em_btm_req_ctrl_msg_t), wifi_event_type_command, wifi_event_type_send_btm_req, NULL);
+
+        wifi_util_info_print(WIFI_EM, "%s:%d BTM Query with STA suggested neighbor list (%u neighbors)\n",
+                                 __func__, __LINE__, btm_req.num_neighbors);
+
+        return RETURN_OK;
+    }
+
+    // No neighbor list in query, trigger scan. Reject concurrent scan-based requests so the single
+    // global pending state is not overwritten.
+    if (g_btm_pending_valid) {
+        wifi_util_error_print( WIFI_EM, "%s:%d BTM Query already pending; rejecting concurrent request\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    // Save pending request globally for scan completion
+    memset(&g_pending_btm, 0, sizeof(g_pending_btm));
+    memcpy(&g_pending_btm, &btm_req, sizeof(g_pending_btm));
+    g_btm_pending_valid = true;
+
+    if (em_start_btm_neighbor_scan(mgmt) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Failed to start neighbor scan\n", __func__, __LINE__);
+        g_btm_pending_valid = false;
+        memset(&g_pending_btm, 0, sizeof(g_pending_btm));
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+
+}
+
+static int em_handle_wnm_action_frame(wifi_app_t *app, void *data) {
+    uint8_t *frame;
+    uint8_t category, action;
+
+    frame_data_t *mgmt = (frame_data_t *)data;
+
+    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN + 2) {
+        return RETURN_ERR;
+    }
+
+    frame = mgmt->data;
+
+    // Minimum length: 24 (802.11 hdr) + 1 (category) + 1 (action) + 1 (dialog token) + 1 (query reason)
+    category = frame[IEEE80211_HDRLEN];
+    action   = frame[IEEE80211_HDRLEN + 1];
+
+    // Return if category is not WNM
+    if (category != WNM_CATEGORY) {
+        return RETURN_OK;
+    }
+
+    switch (action) {
+        case WNM_EM_WNM_BTM_QUERY:
+            return em_handle_btm_query_frame(app, data);
+
+        default:
+            wifi_util_dbg_print(WIFI_EM,"%s:%d Unsupported WNM action=%u\n",__func__, __LINE__, action);
+            break;
+    }
+
+    return RETURN_OK;
+}
+
 static void em_toggle_disconn_steady_state(void *data, unsigned int len)
 {
 
@@ -2431,6 +2795,10 @@ int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *da
     
     case wifi_event_hal_sta_conn_status:
         em_handle_sta_conn_status(app, data);
+        break;
+
+    case wifi_event_hal_wnm_action_frame:
+        em_handle_wnm_action_frame(app, data);
         break;
 
     default:
