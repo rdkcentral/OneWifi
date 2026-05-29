@@ -479,6 +479,7 @@ int mac_address_from_name(const char *ifname, mac_address_t mac);
 bool is_zero_mac(const uint8_t *mac);
 bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr);
 int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac);
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size);
 #ifdef __cplusplus
 }
 #endif
