@@ -88,6 +88,7 @@ extern "C" {
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
 #define HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED       "Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
+#define WIFI_ACCESSPOINT_GET_NASTA          "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
