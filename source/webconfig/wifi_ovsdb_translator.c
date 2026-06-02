@@ -2838,6 +2838,7 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: No vif_radio_idx_conversion warning for %d\n", __func__, __LINE__, vap->vap_index);
     }
 
+ #if defined(CONFIG_IEEE80211BE)
     if (vap->u.bss_info.mld_info.common_info.mld_enable && vap->u.bss_info.mld_info.common_info.mld_id != UNDEFINED_MLD_ID) {
         // MLD_Addr
         to_mac_str((unsigned char*)vap->u.bss_info.mld_info.common_info.mld_addr, vap_row->mld_addr);
@@ -2847,6 +2848,7 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name));
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
     }
+#endif
 
     // Unset all unused parameters
     vap_row->wds_exists = false;
@@ -3059,6 +3061,7 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap_row->parent=%s\n", __func__, __LINE__, vap_row->parent);
     }
 
+#if defined(CONFIG_IEEE80211BE)
     if (vap->u.bss_info.mld_info.common_info.mld_enable && vap->u.bss_info.mld_info.common_info.mld_id != UNDEFINED_MLD_ID) {
         // MLD_Addr
         to_mac_str((unsigned char*)vap->u.bss_info.mld_info.common_info.mld_addr, vap_row->mld_addr);
@@ -3068,6 +3071,7 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
         get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name));
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
     }
+#endif
 
     vap_row->vlan_id = iface_map->vlan_id;
 
@@ -3362,11 +3366,14 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
                 return webconfig_error_translate_to_ovsdb;
             }
 
+#if defined(CONFIG_IEEE80211BE)
             if (assoc_dev_data->dev_stats.cli_MLDEnable) {
                 /* This is MLO client. Add mld_addr to the row. Use Link assdress for mac*/
                 to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, client_row->mld_addr);
                 to_mac_str(assoc_dev_data->link_address, client_row->mac);
-            } else {
+            } else
+#endif
+            {
                 to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, client_row->mac);
             }
             if (assoc_dev_data->dev_stats.cli_Active == true) {

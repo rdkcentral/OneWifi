@@ -2999,14 +2999,6 @@ bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out
     }
     return false;
 }
-#else
-bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size)
-{
-    (void)vap_name;
-    (void)out;
-    (void)out_size;
-    return false;
-}
 #endif /* CONFIG_IEEE80211BE */
 
 struct wifiStdHalMap
