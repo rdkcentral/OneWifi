@@ -4312,7 +4312,7 @@ bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
     wifi_util_info_print(WIFI_CTRL, "%s:%d NaSta query for vap %u, pushing to ctrl queue\r\n",
         __func__, __LINE__, vap_idx);
 
-    push_event_to_ctrl_queue(enriched_str, strlen(enriched_str),
+    push_event_to_ctrl_queue(enriched_str, (strlen(enriched_str) + 1),
         wifi_event_type_webconfig, wifi_event_webconfig_set_data_nasta, NULL);
 
     cJSON_free(enriched_str);
