@@ -359,6 +359,9 @@ int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *chan
     unsigned int channel_state_strlen);
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band,
     UINT wifi_channel);
+UCHAR wifi_get_bw80_center_ch(unsigned int ch, wifi_freq_bands_t band);
+UCHAR wifi_get_bw160_center_ch(unsigned int ch, wifi_freq_bands_t band);
+UCHAR wifi_get_bw320_center_ch(unsigned int ch);
 bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
                                          const wifi_vap_info_t *hotspot_vap_info);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
