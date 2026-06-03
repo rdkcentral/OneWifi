@@ -4293,7 +4293,7 @@ bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
         return bus_error_invalid_input;
     }
 
-    ret = sscanf(methodName, "Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_GetNaSta", &vap_idx);
+    ret = sscanf(methodName, "Device.WiFi.AccessPoint.%u.X_RDKCENTRAL-COM_GetNaSta", &vap_idx);
     if (ret != 1 || vap_idx < 1 || vap_idx > MAX_VAP) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap index %u\r\n", __func__, __LINE__, vap_idx);
         return bus_error_destination_not_found;
