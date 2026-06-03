@@ -111,6 +111,8 @@ static int em_get_radio_index_from_mac(mac_addr_t ruuid)
     wifi_vap_info_map_t *vap_map;
     mac_addr_str_t rad_str;
     mac_addr_str_t bss_str;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
 
     to_mac_str(ruuid, rad_str);
 
@@ -122,6 +124,22 @@ static int em_get_radio_index_from_mac(mac_addr_t ruuid)
             if (memcmp(ruuid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) == 0) {
                 //wifi_util_dbg_print(WIFI_EM, "%s:%d Radio Index: %d found for radio mac: %s\n", __func__, __LINE__, vap_map->vap_array[j].radio_index, rad_str);
                 return vap_map->vap_array[j].radio_index;
+            }
+        }
+
+        /* Check against radio's own interface MAC */
+        for (unsigned int k = 0;
+             k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
+            if (wifi_prop->radio_interface_map[k].radio_index == i) {
+                mac_addr_t radio_mac = { 0 };
+                if (mac_address_from_name(wifi_prop->radio_interface_map[k].interface_name, radio_mac) != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_EM, "%s:%d failed to get MAC for iface %s\n",
+                        __func__, __LINE__, wifi_prop->radio_interface_map[k].interface_name);
+                    break;
+                }
+                if (memcmp(ruuid, radio_mac, sizeof(mac_addr_t)) == 0)
+                    return i;
+                break;
             }
         }
     }
@@ -290,10 +308,9 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
 static int prepare_sta_traffic_stats_data(assoc_sta_traffic_stats_t *data,
     wifi_associated_dev3_timestamp_t *stats)
 {
-    if (data == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Error in allocating table for encode stats\n",
+    if ((data == NULL) || (stats == NULL)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Invalid args for encode stats\n",
             __func__, __LINE__);
-        free(data);
         return RETURN_ERR;
     }
 
@@ -318,17 +335,15 @@ static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associate
     struct timespec diff;
     uint32_t delta_ms = 0;
 
-    vap_info = getVapInfo(vap_index);
-    if (vap_info == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Vap not found\n", __func__, __LINE__);
-        free(data);
+    if ((data == NULL) || (stats == NULL)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Invalid args for encode stats\n",
+            __func__, __LINE__);
         return RETURN_ERR;
     }
 
-    if (data == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Error in allocating table for encode stats\n",
-            __func__, __LINE__);
-        free(data);
+    vap_info = getVapInfo(vap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Vap not found\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -352,7 +367,7 @@ static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associate
     to_mac_str(stats->associated_dev3.cli_MACAddress, key);
     cli_data = hash_map_get(client_type_info.sta_client_type.client_type_map, key);
     if (cli_data != NULL) {
-        strncpy(data->client_type, cli_data->client_type, sizeof(cli_data->client_type));
+        snprintf(data->client_type, sizeof(data->client_type), "%s", cli_data->client_type);
     }
 
     data->assoc_sta_link_metrics.num_bssid = 1; // must be changed for STA multiple associations
@@ -360,9 +375,9 @@ static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associate
         vap_info->u.bss_info.bssid, sizeof(mac_address_t));
     data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].time_delta = delta_ms;
     data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_down =
-        (stats->associated_dev3.cli_LastDataDownlinkRate / 1000);
+        (stats->associated_dev3.cli_LastDataDownlinkRate);
     data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_up =
-        (stats->associated_dev3.cli_LastDataUplinkRate / 1000);
+        (stats->associated_dev3.cli_LastDataUplinkRate);
     data->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi = em_rssi_to_rcpi(
         stats->associated_dev3.cli_RSSI);
 
@@ -519,7 +534,7 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
                         break;
 
                     case em_app_event_type_assoc_dev_stats_periodic:
-                        em_client_stats_store(radio_index, vap_index, stat_array_size,
+                        em_client_stats_store(radio_index, tmp_vap_index, stat_array_size,
                             &sta_data->dev_stats, &sta_data->timestamp);
                         break;
 
@@ -840,7 +855,7 @@ static int em_publish_stats_data(channel_scan_response_t *scan_response)
     memcpy(data->u.decoded.collect_stats.stats, scan_response, sizeof(channel_scan_response_t));
 
     subdoc_type = webconfig_subdoc_type_em_channel_stats;
-    strncpy(eventName, "Device.WiFi.EM.ChannelScanReport", sizeof(eventName) - 1);
+    snprintf(eventName, sizeof(eventName), "Device.WiFi.EM.ChannelScanReport");
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d subdoc_type is %d and eventName is %s at %ld\n", __func__,
         __LINE__, subdoc_type, eventName, response_time);
@@ -1293,7 +1308,13 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
         radio_metrics->noise = channel_stats[count].ch_noise;
         radio_metrics->transmit = channel_stats[count].ch_utilization_busy_tx;
         radio_metrics->receive_self = channel_stats[count].ch_utilization_busy_self;
-        radio_metrics->receive_other = channel_stats[count].ch_utilization_busy_ext;
+        /*
+         * RX other: the fraction of the measurement window during which the AP's radio was receiving
+         * frames that are not from the AP's own associated stations.
+         * That is: all RX minus own RX time = busy_rx − busy_self.
+         */
+        radio_metrics->receive_other = (channel_stats[count].ch_utilization_busy_rx > channel_stats[count].ch_utilization_busy_self) ?
+                                       (channel_stats[count].ch_utilization_busy_rx - channel_stats[count].ch_utilization_busy_self) : 0;
 
         // now save radio channel util for each vap
         for (j = 0; j < radio->vaps.num_vaps; j++) {
@@ -1391,19 +1412,33 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
     unsigned char client_mac[32] = { 0 };
     sta_client_info_t *cli_data = NULL;
 
+    if (sta_info == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d sta_info is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     to_mac_str(sta_info->mac_addr, client_mac);
 
-    if (hash_map_get(client_type_info.sta_client_type.client_type_map, client_mac) == NULL) {
+    cli_data = (sta_client_info_t *)hash_map_get(
+        client_type_info.sta_client_type.client_type_map, client_mac);
+    if (cli_data == NULL) {
         cli_data = (sta_client_info_t *)malloc(sizeof(sta_client_info_t));
+        if (cli_data == NULL) {
+            wifi_util_error_print(WIFI_EM, "%s:%d alloc failed for client type cache\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
         memset(cli_data, 0, sizeof(sta_client_info_t));
         memcpy(cli_data->mac_addr, sta_info->mac_addr, sizeof(mac_address_t));
-        strncpy(cli_data->client_type, sta_info->client_type, sizeof(cli_data->client_type));
-        cli_data->client_type[sizeof(cli_data->client_type) - 1] = '\0';
+        snprintf(cli_data->client_type, sizeof(cli_data->client_type), "%s", sta_info->client_type);
 
         hash_map_put(client_type_info.sta_client_type.client_type_map, strdup(client_mac),
             cli_data);
         wifi_util_dbg_print(WIFI_EM, "%s:%d Client Type Updated to stats cache [%s]\n",
             __func__, __LINE__, cli_data->client_type);
+    } else {
+        /* Refresh existing cache entry to avoid stale client type values. */
+        snprintf(cli_data->client_type, sizeof(cli_data->client_type), "%s", sta_info->client_type);
     }
 
     return RETURN_OK;
@@ -1684,6 +1719,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
             if (vap_info == NULL) {
                 continue;
             }
+            cache_vap_index = -1;
             // now search in the count of max_num_vaps_per_radio stored in cache
             // search for this bss in the cache and prep the data
             for (k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
@@ -1736,17 +1772,25 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                 }
                 vap_report->sta_link_metrics = (per_sta_metrics_t *)malloc(
                     vap_report->sta_cnt * sizeof(per_sta_metrics_t));
-                memset(vap_report->sta_link_metrics, 0, sizeof(per_sta_metrics_t));
+                if (vap_report->sta_link_metrics == NULL) {
+                    wifi_util_error_print(WIFI_EM, "%s:%d malloc failed for sta_link_metrics\n",
+                        __func__, __LINE__);
+                    vap_report->sta_cnt = 0;
+                    continue;
+                }
+                memset(vap_report->sta_link_metrics, 0,
+                    vap_report->sta_cnt * sizeof(per_sta_metrics_t));
                 stats = hash_map_get_first(
                     em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map);
                 cnt = 0;
-                while (stats != NULL) {
+                while ((stats != NULL) && (cnt < vap_report->sta_cnt)) {
                     prepare_sta_lins_metrics_data(&vap_report->sta_link_metrics[cnt], stats,
                         vap_info->vap_index);
                     stats = hash_map_get_next(
                         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map, stats);
                     cnt++;
                 }
+                vap_report->sta_cnt = cnt;
 
                 break;
                 case em_ap_metrics_traffic:
@@ -1758,17 +1802,25 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                 }
                 vap_report->sta_traffic_stats = (assoc_sta_traffic_stats_t *)malloc(
                     vap_report->sta_cnt * sizeof(assoc_sta_traffic_stats_t));
-                memset(vap_report->sta_traffic_stats, 0, sizeof(assoc_sta_traffic_stats_t));
+                if (vap_report->sta_traffic_stats == NULL) {
+                    wifi_util_error_print(WIFI_EM, "%s:%d malloc failed for sta_traffic_stats\n",
+                        __func__, __LINE__);
+                    vap_report->sta_cnt = 0;
+                    continue;
+                }
+                memset(vap_report->sta_traffic_stats, 0,
+                    vap_report->sta_cnt * sizeof(assoc_sta_traffic_stats_t));
 
                 stats = hash_map_get_first(
                     em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map);
                 cnt = 0;
-                while (stats != NULL) {
+                while ((stats != NULL) && (cnt < vap_report->sta_cnt)) {
                     prepare_sta_traffic_stats_data(&vap_report->sta_traffic_stats[cnt], stats);
                     stats = hash_map_get_next(
                         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map, stats);
                     cnt++;
                 }
+                vap_report->sta_cnt = cnt;
                 break;
 
             case em_ap_metrics_link_and_traffic:
@@ -1783,14 +1835,30 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                     vap_report->sta_cnt * sizeof(per_sta_metrics_t));
                 vap_report->sta_traffic_stats = (assoc_sta_traffic_stats_t *)malloc(
                     vap_report->sta_cnt * sizeof(assoc_sta_traffic_stats_t));
+                if ((vap_report->sta_link_metrics == NULL) || (vap_report->sta_traffic_stats == NULL)) {
+                    wifi_util_error_print(WIFI_EM,
+                        "%s:%d malloc failed for sta link/traffic metrics\n", __func__, __LINE__);
+                    if (vap_report->sta_link_metrics != NULL) {
+                        free(vap_report->sta_link_metrics);
+                        vap_report->sta_link_metrics = NULL;
+                    }
+                    if (vap_report->sta_traffic_stats != NULL) {
+                        free(vap_report->sta_traffic_stats);
+                        vap_report->sta_traffic_stats = NULL;
+                    }
+                    vap_report->sta_cnt = 0;
+                    continue;
+                }
 
-                memset(vap_report->sta_link_metrics, 0, sizeof(per_sta_metrics_t));
-                memset(vap_report->sta_traffic_stats, 0, sizeof(assoc_sta_traffic_stats_t));
+                memset(vap_report->sta_link_metrics, 0,
+                    vap_report->sta_cnt * sizeof(per_sta_metrics_t));
+                memset(vap_report->sta_traffic_stats, 0,
+                    vap_report->sta_cnt * sizeof(assoc_sta_traffic_stats_t));
                 cnt = 0;
 
                 stats = hash_map_get_first(
                     em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map);
-                while (stats != NULL) {
+                while ((stats != NULL) && (cnt < vap_report->sta_cnt)) {
                     prepare_sta_traffic_stats_data(&vap_report->sta_traffic_stats[cnt], stats);
                     prepare_sta_lins_metrics_data(&vap_report->sta_link_metrics[cnt], stats,
                         vap_info->vap_index);
@@ -1798,6 +1866,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map, stats);
                     cnt++;
                 }
+                vap_report->sta_cnt = cnt;
                 break;
 
             default:
