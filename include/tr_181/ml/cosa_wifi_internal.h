@@ -170,6 +170,7 @@ CosaDmlWiFiApMfGetMacList
     (
         UCHAR       *mac,
         CHAR        *maclist,
+        size_t      maclist_len,
         ULONG       numList
     );
 

@@ -173,7 +173,18 @@ typedef struct {
 typedef struct kick_details {
     char *kick_list;
     int vap_index;
+    int original_filter_mode;
+    bool filter_mode_changed;
 }kick_details_t;
+
+typedef struct {
+    struct timespec start_time;
+    struct timespec target_detection_time;
+    struct timespec end_time;
+    struct timespec disconnection_time;
+} hotspot_timing_t;
+
+extern hotspot_timing_t g_hotspot_timing;
 
 typedef struct {
     wifi_connection_status_t    connect_status;
@@ -270,6 +281,9 @@ typedef struct wifi_ctrl {
     events_bus_data_t   events_bus_data;
     hotspot_cfg_sem_param_t hotspot_sem_param;
     bool                rf_status_down;
+    bool                hotspot_client_dhcp_failure_subscribed;
+    bool                multiap_sta_enabled;
+    int                 multiap_timer_id;
 } wifi_ctrl_t;
 
 
@@ -355,6 +369,7 @@ UINT getTotalNumberVAPs();
 UINT getNumberRadios();
 UINT getMaxNumberVAPsPerRadio(UINT radioIndex);
 UINT getNumberVAPsPerRadio(UINT radioIndex);
+BOOL isRadioBeEnabled(UINT radio_index);
 //getVAPArrayIndexFromVAPIndex() need to be used in case of VAPS considered as single array (from 0 to MAX_VAP)
 //In case of to get vap array index per radio, use convert_vap_index_to_vap_array_index()
 int getVAPArrayIndexFromVAPIndex(unsigned int apIndex, unsigned int *vap_array_index);
@@ -409,11 +424,12 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int* subdoc);
 
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
-void start_station_vaps(bool enable);
+void start_station_vaps(bool is_private, bool enable);
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
 bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
 int publish_endpoint_enable(void);
+int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
 
 #ifdef __cplusplus
 }

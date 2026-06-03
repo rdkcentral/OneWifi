@@ -116,6 +116,7 @@ typedef enum {
     wifi_event_br_report,
     wifi_event_hal_csa_beacon_frame,
     wifi_event_hal_wps_results,
+    wifi_event_hal_wnm_action_frame,
     wifi_event_hal_max,
 
     // Commands
@@ -162,6 +163,12 @@ typedef enum {
     wifi_event_type_xfinity_rrm,
     wifi_event_type_collect_stats,
     wifi_event_type_tcm_rfc,
+    wifi_event_type_tcm_open_2g_rfc,
+    wifi_event_type_tcm_open_5g_rfc,
+    wifi_event_type_tcm_open_6g_rfc,
+    wifi_event_type_tcm_secure_2g_rfc,
+    wifi_event_type_tcm_secure_5g_rfc,
+    wifi_event_type_tcm_secure_6g_rfc,
     wifi_event_type_send_action_frame,
     wifi_event_type_start_channel_scan,
     wifi_event_type_toggle_disconn_steady_state,
@@ -169,9 +176,11 @@ typedef enum {
     wifi_event_type_sta_client_info,
     wifi_event_type_start_sta_channel_scan,
     wifi_event_type_csi_analytics_rfc,
+    wifi_event_type_multiap_rfc,
     wifi_event_type_xfi_tel_enable_rfc,
     wifi_event_type_sm_app_enable,
     wifi_event_type_link_quality_rfc,
+    wifi_event_type_send_btm_req,
     wifi_event_command_max,
 
     wifi_event_monitor_diagnostics = wifi_event_type_base
@@ -209,6 +218,7 @@ typedef enum {
     wifi_event_monitor_update_interop_interval,
     wifi_event_monitor_channel_status,
     wifi_event_monitor_eap_status,
+    wifi_event_monitor_reassoc_req,
     wifi_event_monitor_max,
 
     // Tunnel

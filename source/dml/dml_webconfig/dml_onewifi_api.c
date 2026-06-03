@@ -155,6 +155,11 @@ void update_apmld_map()
     memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
 
     for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
+        if (isRadioBeEnabled(r_idx) != TRUE) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Radio %d does not have BE mode enabled, skip\n", __func__, __LINE__, r_idx);
+            continue;
+        }
+
         mgr_vap_info_map = get_wifidb_vap_map(r_idx);
         if (mgr_vap_info_map == NULL) {
             wifi_util_error_print(WIFI_DMCLI, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
@@ -558,16 +563,16 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
+void set_webconfig_dml_data(char *eventName, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
     webconfig_subdoc_data_t *data = NULL;
 
     wifi_util_dbg_print(WIFI_DMCLI,"bus event callback Event is %s\r\n",eventName);
-    pTmp = p_data->raw_data.bytes;
-    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->data_type);
+    pTmp = p_data->value.raw_data.bytes;
+    if ((p_data->value.data_type != bus_data_type_string) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->value.data_type);
         return;
     }
 
@@ -1108,6 +1113,9 @@ int init(webconfig_dml_t *consumer)
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        if (raw_data.raw_data.bytes) {
+            get_bus_descriptor()->bus_data_free_fn(&raw_data);
+        }
         return RETURN_ERR;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
@@ -1748,7 +1756,6 @@ int push_harvester_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache pushed to queue \n", __FUNCTION__);
 
         //Rest to default value since instant measurement enable is triggered successfully
-        webconfig_dml.harvester.b_inst_client_enabled = webconfig_dml.config.global_parameters.inst_wifi_client_enabled;
         webconfig_dml.harvester.u_inst_client_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_def_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_override_ttl = 0;
@@ -1817,6 +1824,7 @@ void update_dml_radio_default() {
         radio_cfg[i].DCSSupported = TRUE;
         radio_cfg[i].ExtensionChannel = 3;
         radio_cfg[i].BasicRate = WIFI_BITRATE_DEFAULT;
+        radio_cfg[i].TxRate = WIFI_TXRATE_Auto;
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;
