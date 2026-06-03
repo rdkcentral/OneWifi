@@ -1969,11 +1969,6 @@ int process_device_removal(rdk_wifi_vap_info_t *rdk_vap_info,
     if (old_count > 0) {
         *new_count = old_count - 1;
     }
-    if (((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index)))){
-        if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index, *new_count, old_count) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification for associated entries\n", __func__, __LINE__);
-        }
-    }
     return RETURN_OK;
 }
 
@@ -2125,6 +2120,16 @@ void check_and_remove_mac_on_other_vaps(assoc_dev_data_t *assoc_data)
                         __func__, __LINE__, mac_str, vap_index);
                     return;
                 }
+
+                if ((isVapPrivate(rdk_vap_info->vap_index) || isVapXhs(rdk_vap_info->vap_index))) {
+                    if (notify_associated_entries(&p_wifi_mgr->ctrl, rdk_vap_info->vap_index,
+                                                  new_count, old_count) != RETURN_OK) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s:%d Unable to send notification for associated entries\n",
+                            __func__, __LINE__);
+                    }
+                }
+
                 if (mld_sta) {
                     wifi_util_info_print(WIFI_CTRL,
                         "%s:%d Removed MLD MAC %s from VAP %d\n", __func__, __LINE__, mac_str, vap_index);
