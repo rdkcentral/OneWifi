@@ -4598,7 +4598,9 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_hal_wnm_action_frame:
         break;
-
+    case wifi_event_hal_pre_assoc_fail:
+    case wifi_event_hal_post_assoc_fail:
+        break;
     default:
 
         wifi_util_error_print(WIFI_CTRL, "[%s]:WIFI hal handler not supported this event %s\r\n",

@@ -3542,6 +3542,93 @@ int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
     return 0;
 }
 
+#ifdef EM_APP
+
+/*
+ * Determine STA MAC by matching src/dst against known BSSIDs.
+ *
+ * Returns:
+ *   true  -> STA MAC successfully resolved (sta_mac_out is valid)
+ *   false -> Unable to determine STA MAC reliably
+ */
+static bool determine_sta_mac_from_src_dst(
+    char *src_mac,
+    char *dest_mac,
+    char **sta_mac_out)
+{
+    mac_address_t src_mac_bytes = { 0 };
+    mac_address_t dst_mac_bytes = { 0 };
+    int i;
+
+    if (WiFi_IsValidMacAddr(src_mac) != TRUE || WiFi_IsValidMacAddr(dest_mac) != TRUE) {
+        return false;
+    }
+
+    str_to_mac_bytes(src_mac, src_mac_bytes);
+    str_to_mac_bytes(dest_mac, dst_mac_bytes);
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+
+    for (i = 0; i < MAX_VAP; i++) {
+        if (is_zero_mac(g_monitor_module.bssid_data[i].bssid)) {
+            continue;
+        }
+
+        if (memcmp(src_mac_bytes,
+                   g_monitor_module.bssid_data[i].bssid,
+                   sizeof(mac_address_t)) == 0) {
+            /* dest_mac should be a unicast STA MAC and must not equal the BSSID */
+            if (is_zero_mac(dst_mac_bytes) || (dst_mac_bytes[0] & 0x01) != 0 ||
+                memcmp(dst_mac_bytes, src_mac_bytes, sizeof(mac_address_t)) == 0) {
+                pthread_mutex_unlock(&g_monitor_module.data_lock);
+                return false;
+            }
+            *sta_mac_out = dest_mac;
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
+            return true;
+        }
+
+        if (memcmp(dst_mac_bytes,
+                   g_monitor_module.bssid_data[i].bssid,
+                   sizeof(mac_address_t)) == 0) {
+            /* src_mac should be a unicast STA MAC and must not equal the BSSID */
+            if (is_zero_mac(src_mac_bytes) || (src_mac_bytes[0] & 0x01) != 0 ||
+                memcmp(src_mac_bytes, dst_mac_bytes, sizeof(mac_address_t)) == 0) {
+                pthread_mutex_unlock(&g_monitor_module.data_lock);
+                return false;
+            }
+            *sta_mac_out = src_mac;
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
+            return true;
+        }
+    }
+
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+    return false;
+}
+
+static void queue_failed_connection_event(int32_t ap_index, char *sta_mac_str,
+                                   uint16_t status, uint16_t reason,
+                                   wifi_event_subtype_t subtype)
+{
+    sta_fail_data_t data;
+    mac_addr_str_t sta_mac_buf;
+
+    memset(&data, 0, sizeof(data));
+    data.ap_index = ap_index;
+    str_to_mac_bytes(sta_mac_str, data.sta_mac);
+    data.status = status;
+    data.reason = reason;
+    to_mac_str(data.sta_mac, sta_mac_buf);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: failed_connection ap_index=%d status=%u reason=%u sta_mac=%s subtype=%d\r\n",
+        __func__, __LINE__, ap_index, (unsigned int)status, (unsigned int)reason, sta_mac_buf, (int)subtype);
+    if (push_event_to_ctrl_queue(&data, sizeof(data), wifi_event_type_hal_ind,
+            subtype, NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: failed to queue failed_connection event ap_index=%d status=%u reason=%u subtype=%d\r\n",
+            __func__, __LINE__, ap_index, (unsigned int)status, (unsigned int)reason, (int)subtype);
+    }
+}
+#endif /* EM_APP */
 
 int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int status)
 {
@@ -3553,9 +3640,29 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
         return -1;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s status:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac,status,type);
+
 #ifdef EM_APP
     report_connection_status(ap_index, src_mac, dest_mac, (unsigned short)status, false, 0);
 #endif // EM_APP
+
+#ifdef EM_APP
+    /* Push pre-association failure event before any hash map lookup.
+     * The STA is not yet in the interop map (pre-association), so this must
+     * happen before the early returns below. */
+    if (status == WLAN_STATUS_CHALLENGE_FAIL ||         /* e.g. wrong SAE password */
+        status == WLAN_STATUS_DENIED_INSUFFICIENT_BANDWIDTH) { /* reused by some implementations for ACL deny; see EasyMesh spec Section 11.6 */
+         char *sta_mac = NULL;
+
+         if (!determine_sta_mac_from_src_dst(src_mac, dest_mac, &sta_mac)) {
+            wifi_util_dbg_print(WIFI_MON,
+                "%s:%d: failed_connection: unable to resolve STA MAC (src=%s dst=%s); skipping event publish\r\n",
+                __func__, __LINE__, src_mac, dest_mac);
+         } else {
+            queue_failed_connection_event(ap_index, sta_mac, (uint16_t)status, 0, wifi_event_hal_pre_assoc_fail);
+         }
+      }
+#endif /* EM_APP */
+
     sta_map = get_interop_sta_data_map(ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
@@ -3750,9 +3857,35 @@ int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int re
         return -1;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s reason:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac, reason_code, type);
+
 #ifdef EM_APP
     report_connection_status(ap_index, src_mac, dest_mac, 0, true, (unsigned short)reason_code);
 #endif // EM_APP
+
+#ifdef EM_APP
+    /* Push post-association failure event before any hash map lookup.
+     * Two reason codes cover WPA2/WPA3 4-way handshake failures:
+     * - WLAN_REASON_MICHAEL_MIC_FAILURE  (14): MIC failure in 4-way M2/4
+     *   (wrong password); set by wpa_auth.c PTKCALCNEGOTIATING state and
+     *   preserved by retry-limit guards.
+     * - WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT (15): retry limit exhausted
+     *   with no prior MIC failure (STA unresponsive)
+     * Both reach ap_reason_code() via device_deauthenticated(). */
+    if (reason_code == WLAN_REASON_MICHAEL_MIC_FAILURE ||    /* wrong password */
+        reason_code == WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT) { /* 4-way timeout */
+         char *sta_mac = NULL;
+
+        if (!determine_sta_mac_from_src_dst(src_mac, dest_mac, &sta_mac)) {
+            wifi_util_dbg_print(WIFI_MON,
+                "%s:%d: failed_connection: unable to resolve STA MAC (src=%s dst=%s); skipping event publish\r\n",
+                __func__, __LINE__, src_mac, dest_mac);
+        } else {
+            queue_failed_connection_event(ap_index, sta_mac, 0, (uint16_t)reason_code,
+                wifi_event_hal_post_assoc_fail);
+        }
+     }
+#endif /* EM_APP */
+
     sta_map = get_interop_sta_data_map(ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
