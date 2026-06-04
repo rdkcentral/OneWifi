@@ -413,9 +413,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     // MLD Enable
     cJSON_AddBoolToObject(vap_object, "MLD_Enable", vap_info->u.bss_info.mld_info.common_info.mld_enable);
 
-    // MLD Apply
-    cJSON_AddBoolToObject(vap_object, "MLD_Apply", vap_info->u.bss_info.mld_info.common_info.mld_apply);
-
     // MLD_ID
     cJSON_AddNumberToObject(vap_object, "MLD_ID", vap_info->u.bss_info.mld_info.common_info.mld_id);
 
