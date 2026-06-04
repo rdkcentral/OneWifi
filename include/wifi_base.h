@@ -1021,6 +1021,16 @@ typedef struct {
     mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
+/* Carries the 802.11 status/reason code for a failed connection event.
+ * For pre-association failures (auth/assoc reject): set status, leave reason=0.
+ * For post-association failures (deauth/disassoc):  set reason, leave status=0. */
+typedef struct {
+    int32_t        ap_index;
+    mac_address_t  sta_mac;
+    uint16_t       status;
+    uint16_t       reason;
+} __attribute__((__packed__)) sta_fail_data_t;
+
 struct active_msmt_data;
 
 typedef struct {

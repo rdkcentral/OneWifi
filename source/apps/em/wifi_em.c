@@ -1409,6 +1409,79 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
     return RETURN_OK;
 }
 
+static int em_publish_failed_connection(wifi_em_failed_conn_t *fc)
+{
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = {0};
+    char json_buf[128];
+    mac_addr_str_t bssid_str, sta_str;
+    int n, rc;
+
+    to_mac_str(fc->bssid,   bssid_str);
+    to_mac_str(fc->sta_mac, sta_str);
+    n = snprintf(json_buf, sizeof(json_buf),
+        "{\"bssid\":\"%s\",\"sta_mac\":\"%s\",\"status\":%u,\"reason\":%u}",
+        bssid_str, sta_str, (unsigned int)fc->status, (unsigned int)fc->reason);
+    if (n < 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: snprintf failed (n=%d)\n",
+            __func__, __LINE__, n);
+        return RETURN_ERR;
+    } else if (n >= (int)sizeof(json_buf)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: JSON truncated (n=%d, buf=%zu)\n",
+            __func__, __LINE__, n, sizeof(json_buf));
+        return RETURN_ERR;
+    }
+
+    rdata.data_type = bus_data_type_string;
+    rdata.raw_data.bytes = (void *)json_buf;
+    rdata.raw_data_len = strlen(json_buf) + 1;
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle,
+        WIFI_EM_FAILED_CONNECTION, &rdata);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn failed rc=%d\n",
+            __func__, __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
+static int em_handle_assoc_fail(wifi_app_t *app, void *arg)
+{
+    sta_fail_data_t *sd = (sta_fail_data_t *)arg;
+    wifi_vap_info_t *vap_info;
+    wifi_em_failed_conn_t fc;
+    mac_addr_str_t sta_str, bss_str;
+
+    if (sd == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: NULL arg\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    vap_info = getVapInfo(sd->ap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: getVapInfo failed for ap_index=%d\n",
+            __func__, __LINE__, sd->ap_index);
+        return RETURN_ERR;
+    }
+
+    memset(&fc, 0, sizeof(fc));
+    memcpy(fc.bssid,   vap_info->u.bss_info.bssid, sizeof(fc.bssid));
+    memcpy(fc.sta_mac, sd->sta_mac,                sizeof(fc.sta_mac));
+    fc.status = sd->status;
+    fc.reason = sd->reason;
+
+    to_mac_str(fc.bssid,   bss_str);
+    to_mac_str(fc.sta_mac, sta_str);
+    wifi_util_dbg_print(WIFI_EM,
+        "%s:%d: assoc_fail bssid=%s sta=%s status=%u reason=%u\n",
+        __func__, __LINE__, bss_str, sta_str,
+        (unsigned int)fc.status, (unsigned int)fc.reason);
+
+    return em_publish_failed_connection(&fc);
+}
+
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -2792,7 +2865,13 @@ int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *da
             __LINE__);
         em_handle_disassoc_device(app, data);
         break;
-    
+
+    case wifi_event_hal_pre_assoc_fail:
+    case wifi_event_hal_post_assoc_fail:
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: assoc_fail event sub_type=%d\n", __func__, __LINE__, sub_type);
+        em_handle_assoc_fail(app, data);
+        break;
+
     case wifi_event_hal_sta_conn_status:
         em_handle_sta_conn_status(app, data);
         break;
@@ -3101,7 +3180,10 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { bus_data_type_string, false, 0, 0, 0, NULL } },
         { WIFI_EM_CLIENT_ASSOC_CTRL_REQ, bus_element_type_method,
             { NULL, controller_set_client_acl_rules, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-            { bus_data_type_bytes, true, 0, 0, 0, NULL } }
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_EM_FAILED_CONNECTION, bus_element_type_event,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_string, false, 0, 0, 0, NULL } }
 
     };
 

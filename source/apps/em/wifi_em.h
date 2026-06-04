@@ -33,6 +33,20 @@ extern "C" {
 #define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
 #define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
+#define WIFI_EM_FAILED_CONNECTION             "Device.WiFi.EM.FailedConnection"
+
+/* Internal helper that carries the fields for a failed-connection event.
+ * NOT the RBUS payload; em_publish_failed_connection() serialises this struct
+ * into a JSON string before publishing:
+ *   {"bssid":"<xx:xx:xx:xx:xx:xx>","sta_mac":"<xx:xx:xx:xx:xx:xx>","status":<u16>,"reason":<u16>}
+ * For pre-association failures (auth/assoc reject): status != 0, reason = 0.
+ * For post-association failures (deauth/disassoc):  status = 0, reason != 0. */
+typedef struct {
+    uint8_t  bssid[6];
+    uint8_t  sta_mac[6];
+    uint16_t status;
+    uint16_t reason;
+} wifi_em_failed_conn_t;
 
 #define WNM_CATEGORY               10
 #define IEEE80211_HDRLEN           24
