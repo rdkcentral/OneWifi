@@ -1805,6 +1805,63 @@ int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t
     return RETURN_ERR;
 }
 
+/*
+ * The three helpers below replicate the lookup-table logic of
+ * get_bw80_center_freq(), get_bw160_center_freq(), get_bw320_center_freq()
+ * from rdk-wifi-hal/src/wifi_hal_nl80211_utils.c, but:
+ *   - use distinct names to avoid colliding with the HAL at link time
+ *     (OneWifi links both this lib and rdk-wifi-hal)
+ *   - return the center channel index directly (unsigned char) instead of a
+ *     frequency in MHz, skipping the ieee80211_chan_to_freq round-trip
+ *     that update_hostap_iface() immediately undoes via ieee80211_freq_to_chan
+ */
+unsigned char wifi_get_bw80_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {42, 58, 106, 122, 138, 155};
+    static const unsigned char centers_6g[] = {7, 23, 39, 55, 71, 87, 103, 119, 135, 151, 167, 183, 199, 215};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 6)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 6)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw160_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {50, 114, 163};
+    static const unsigned char centers_6g[] = {15, 47, 79, 111, 143, 175, 207};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 14)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 14)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw320_center_ch(unsigned int ch)
+{
+    unsigned int i;
+    static const unsigned char centers_6g[] = {31, 63, 95, 127, 159, 191};
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    for (i = 0; i < n_6g; i++)
+        if (ch <= (unsigned int)(centers_6g[i] + 30)) return centers_6g[i];
+    return centers_6g[n_6g - 1];
+}
+
 int is_ssid_name_valid(char *ssid_name)
 {
     int i = 0, ssid_len;
