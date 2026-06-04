@@ -247,7 +247,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // ChannelAvailability
     memset(chan_buf,0,sizeof(chan_buf));
     i=0;
-    while (radio_info->channel_map[i].ch_number != 0 && index < sizeof(buf) - 1)
+    while (i < MAX_CHANNELS && radio_info->channel_map[i].ch_number != 0 && index < sizeof(buf) - 1)
     {
       int written = snprintf(&buf[index], sizeof(buf) - index, "%d:%d,", radio_info->channel_map[i].ch_number, radio_info->channel_map[i].ch_state);
       if (written < 0 || (unsigned int)written >= sizeof(buf) - index) break;
@@ -3026,8 +3026,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
                 __LINE__);
         }
         cJSON_AddItemToArray(param_arr, param_obj);
-        cJSON_AddSafeStringToObject(param_obj, "MAC",
-            em_config->local_steering_dslw_policy.disallowed_sta[i], sizeof(em_config->local_steering_dslw_policy.disallowed_sta[i]));
+        uint8_mac_to_string_mac((uint8_t *)em_config->local_steering_dslw_policy.disallowed_sta[i], mac_str);
+        cJSON_AddStringToObject(param_obj, "MAC", mac_str);
     }
 
     // BTM Steering Disallowed Policy
@@ -3051,8 +3051,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
                 __LINE__);
         }
         cJSON_AddItemToArray(param_arr, param_obj);
-        cJSON_AddSafeStringToObject(param_obj, "MAC",
-            em_config->btm_steering_dslw_policy.disallowed_sta[i], sizeof(em_config->btm_steering_dslw_policy.disallowed_sta[i]));
+        uint8_mac_to_string_mac((uint8_t *)em_config->btm_steering_dslw_policy.disallowed_sta[i], mac_str);
+        cJSON_AddStringToObject(param_obj, "MAC", mac_str);
     }
     
     // Backhaul BSS Configuration Policy
@@ -3062,8 +3062,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
             __LINE__);
     }
     cJSON_AddItemToObject(policy_obj, "Backhaul BSS Configuration Policy", param_obj);
-    cJSON_AddSafeStringToObject(param_obj, "BSSID",
-        em_config->backhaul_bss_config_policy.bssid, sizeof(em_config->backhaul_bss_config_policy.bssid));
+    uint8_mac_to_string_mac((uint8_t *)em_config->backhaul_bss_config_policy.bssid, mac_str);
+    cJSON_AddStringToObject(param_obj, "BSSID", mac_str);
     cJSON_AddBoolToObject(param_obj, "Profile-1 bSTA Disallowed",
         0); // em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed);
     cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",
