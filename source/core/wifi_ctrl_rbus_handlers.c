@@ -2658,7 +2658,10 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             // To avoid log flooding due to registration failure
             wifi_util_error_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
                 __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
-        }
+        } else {
+	    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail due to timeout\n",
+		__FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+	}
     }
 }
 
