@@ -242,7 +242,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     next_node = current_node->child;
     create_child = 1;
 
-    wifi_util_info_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
+    wifi_util_dbg_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
 
     strncpy(name, elem->full_name, strlen(elem->full_name) + 1);
 
@@ -346,12 +346,18 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
 
     current_node->type           = elem->type;
     current_node->node_data_type = elem->node_data_type;
-    if (current_node->node_elem_data != NULL) {
-        free(current_node->node_elem_data);
-        current_node->node_elem_data = NULL;
-        current_node->node_elem_data_len = 0;
+
+    if (current_node->node_elem_data_len != elem->cfg_data_len) {
+        if (current_node->node_elem_data != NULL) {
+            wifi_util_info_print(WIFI_BUS, "%s:%d Updated node [%s] data len from %d to %d\n",
+                __func__, __LINE__, current_node->full_name, current_node->node_elem_data_len,
+                elem->cfg_data_len);
+            free(current_node->node_elem_data);
+            current_node->node_elem_data = NULL;
+            current_node->node_elem_data_len = 0;
+        }
+        current_node->node_elem_data = malloc(elem->cfg_data_len);
     }
-    current_node->node_elem_data = malloc(elem->cfg_data_len);
     if(current_node->node_elem_data == NULL)
     {
         wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n", elem->full_name);
@@ -368,9 +374,6 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
         {
             wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n",
                  elem->full_name);
-            free(current_node->node_elem_data);
-            current_node->node_elem_data = NULL;
-            current_node->node_elem_data_len = 0;
             BUS_MUX_UNLOCK(get_bus_mux_mutex());
             return NULL;
         }

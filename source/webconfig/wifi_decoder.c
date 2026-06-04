@@ -1747,10 +1747,6 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_bool(vap, "MLD_Enable", param);
     vap_info->u.bss_info.mld_info.common_info.mld_enable = (param->type & cJSON_True) ? true:false;
 
-    // MLD Apply
-    decode_param_bool(vap, "MLD_Apply", param);
-    vap_info->u.bss_info.mld_info.common_info.mld_apply = (param->type & cJSON_True) ? true:false;
-
     // MLD_ID
     decode_param_integer(vap, "MLD_ID", param);
     vap_info->u.bss_info.mld_info.common_info.mld_id = param->valuedouble;
@@ -5088,7 +5084,48 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
             }
         }
 #endif /* CONFIG_IEEE80211BE */
+        decode_param_allow_empty_bool(object, "Channel Scan Boot Only", value_object, intval);
+        if (!intval) {
+            radio_cap->boot_only = false;
+        } else {
+            radio_cap->boot_only = ((value_object->type & cJSON_True) != 0) ? true : false;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "Channel Scan Impact");
+        radio_cap->scan_impact = (value_object != NULL && cJSON_IsNumber(value_object))
+                                     ? (UCHAR)value_object->valuedouble : 0;
+
+        value_object = cJSON_GetObjectItem(object, "Channel Scan Min Interval");
+        radio_cap->min_scan_interval = (value_object != NULL && cJSON_IsNumber(value_object))
+                                           ? (UINT)value_object->valuedouble : 0;
+
+        radio_cap->num_op_class_entries = 0;
+        value_object = cJSON_GetObjectItem(object, "OpClassChList");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int oc_count = cJSON_GetArraySize(value_object);
+            for (int oci = 0; oci < oc_count && radio_cap->num_op_class_entries < MAX_OP_CLASS_ENTRIES; oci++) {
+                cJSON *oc_obj = cJSON_GetArrayItem(value_object, oci);
+                if (oc_obj == NULL) { continue; }
+                cJSON *oc_num = cJSON_GetObjectItem(oc_obj, "OpClass");
+                cJSON *ch_arr = cJSON_GetObjectItem(oc_obj, "Channels");
+                if (oc_num == NULL || !cJSON_IsNumber(oc_num) || ch_arr == NULL || !cJSON_IsArray(ch_arr)) { continue; }
+                UINT idx = radio_cap->num_op_class_entries;
+                radio_cap->op_class_ch_list[idx].op_class = (UINT)oc_num->valuedouble;
+                int ch_count = cJSON_GetArraySize(ch_arr);
+                if (ch_count > MAX_CHANNELS_PER_OP_CLASS) { ch_count = MAX_CHANNELS_PER_OP_CLASS; }
+                int valid_ch_count = 0;
+                for (int ci = 0; ci < ch_count; ci++) {
+                    cJSON *ch = cJSON_GetArrayItem(ch_arr, ci);
+                    if (ch != NULL && cJSON_IsNumber(ch)) {
+                        radio_cap->op_class_ch_list[idx].channels[valid_ch_count++] = (UCHAR)ch->valuedouble;
+                    }
+                }
+                radio_cap->op_class_ch_list[idx].num_channels = (UCHAR)valid_ch_count;
+                radio_cap->num_op_class_entries++;
+            }
+        }
     }
+
     return webconfig_error_none;
 }
 
