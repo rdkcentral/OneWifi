@@ -2421,8 +2421,8 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     if(!ctrl->hotspot_client_dhcp_failure_subscribed) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED, hotspot_client_dhcp_failure_disconnect, NULL, 
             0) != bus_error_success) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
-                    __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+            // wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
+            //         __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
         } else {
             ctrl->hotspot_client_dhcp_failure_subscribed = true;
             wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
