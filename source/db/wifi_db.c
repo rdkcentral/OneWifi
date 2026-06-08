@@ -112,6 +112,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.operatingClass = 128;
             cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+
 #if defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
@@ -121,16 +122,19 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+            cfg.DfsEnabled = true;
+            cfg.DfsEnabledBootup = true;
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
-
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+            cfg.DfsEnabled = true;
+            cfg.DfsEnabledBootup = true;
             break;
         case WIFI_FREQUENCY_6_BAND:
             cfg.operatingClass = 134;

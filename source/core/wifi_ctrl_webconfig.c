@@ -3187,6 +3187,14 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             }
         break;
 
+	case webconfig_subdoc_type_dfs_event:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+            } else {
+                return webconfig_error_apply;
+            }
+        break;
+
         default:
             break;
     }
