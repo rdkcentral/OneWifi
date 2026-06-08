@@ -148,6 +148,7 @@ typedef enum {
     webconfig_subdoc_type_memwraptool,
     webconfig_subdoc_type_link_report,
     webconfig_subdoc_type_ignite,
+    webconfig_subdoc_type_dfs_event,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -176,6 +177,7 @@ typedef enum {
     webconfig_subdoc_object_type_em_sta_link_metrics,
     webconfig_subdoc_object_type_em_ap_metrics_report,
     webconfig_subdoc_object_type_link_report,
+    webconfig_subdoc_object_type_dfs_event,
 
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
@@ -210,6 +212,23 @@ typedef struct {
     void *stats;
 } collect_subscribed_stats_t;
 
+typedef enum {
+    em_dfs_evnt_type_started = 0,
+    em_dfs_evnt_type_finished,
+    em_dfs_evnt_type_radar_detected,
+    em_dfs_evnt_type_aborted,
+    em_dfs_evnt_type_nop_finished
+} em_dfs_evnt_type_t;
+
+typedef struct __attribute__((packed)) {
+    em_dfs_evnt_type_t event_type;
+    unsigned char radio_index;
+    unsigned char op_class;
+    unsigned char channel;
+    unsigned short sec_remain_non_occ_dur;
+    unsigned char status;
+} em_bus_event_type_dfs_evnt_params_t;
+
 typedef struct {
     wifi_global_config_t    config;
     wifi_hal_capability_t   hal_cap;
@@ -235,6 +254,7 @@ typedef struct {
     em_ap_metrics_report_t em_ap_metrics_report;
 #endif
     report_batch_t *qmgr_report;
+    em_bus_event_type_dfs_evnt_params_t dfs_event;
 } webconfig_subdoc_decoded_data_t;
 
 typedef char  * webconfig_subdoc_encoded_raw_t;
@@ -699,6 +719,14 @@ webconfig_error_t       decode_link_report_subdoc(webconfig_t *config, webconfig
 webconfig_error_t       encode_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// CAC EVENT
+webconfig_error_t       init_dfs_event_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_dfs_event_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_dfs_event_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_dfs_event_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_dfs_event_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_dfs_event_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 #ifdef __cplusplus
 }
