@@ -2646,15 +2646,22 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 #endif
-    if(!ctrl->hotspot_client_dhcp_failure_subscribed) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED, hotspot_client_dhcp_failure_disconnect, NULL, 
-            0) != bus_error_success) {
-            // wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
-            //         __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
-        } else {
+    if (!ctrl->hotspot_client_dhcp_failure_subscribed) {
+        bus_error_t rc = bus_error_success;
+        rc = bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED,
+            hotspot_client_dhcp_failure_disconnect, NULL, 0);
+        if (rc == bus_error_success) {
             ctrl->hotspot_client_dhcp_failure_subscribed = true;
             wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
                 __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+        } else if (rc != bus_error_timeout) {
+            // To avoid log flooding due to registration failure
+            wifi_util_error_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
+                __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL,
+                "%s:%d bus: bus event:%s subscribe fail due to timeout\n", __FUNCTION__, __LINE__,
+                HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
         }
     }
 }
