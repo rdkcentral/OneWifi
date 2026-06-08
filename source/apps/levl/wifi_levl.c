@@ -429,6 +429,7 @@ static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *
         extract_probe_req(app, elem, mac_str, probe_req_frames_to_send);
     }
 
+#ifndef _PLATFORM_BANANAPI_R4_
     // Since this is Broadcom specific, first try to find the special
     // vendor IE with replaced link MAC
     for_each_element_id(ie_elem, WLAN_EID_VENDOR_SPECIFIC, (const u8 *)ie_ptr, ie_len)
@@ -454,6 +455,7 @@ static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *
 
     ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
     ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ? 0 : msg->frame.len - (IEEE80211_HDRLEN + 4);
+#endif
 
     for_each_element_extid(ie_elem, WLAN_EID_EXT_MULTI_LINK, (const u8 *)ie_ptr, ie_len)
     {
