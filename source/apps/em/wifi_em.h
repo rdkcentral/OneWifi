@@ -35,6 +35,17 @@ extern "C" {
 #define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
 #define WIFI_EM_BACKHAUL_STEER                "Device.WiFi.EM.BackhaulSteer"
 
+#define WNM_CATEGORY               10
+#define IEEE80211_HDRLEN           24
+#define IEEE80211_EID_NEIGHBOR     52
+#define IEEE80211_NEIGHBOR_REPORT_MIN_LEN  13
+
+#define WNM_EM_WNM_BTM_QUERY    6
+#define WNM_EM_WNM_BTM_REQ      7
+
+#define MAX_LOCAL_SSIDS 16
+#define MAX_SSID_LEN    33
+
 typedef struct wifi_app wifi_app_t;
 
 typedef char short_string[32];
