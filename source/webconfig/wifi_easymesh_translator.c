@@ -353,6 +353,101 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     return webconfig_error_none;
 }
 
+#define DFS_NON_OCCUPANCY_DURATION_SEC 1800
+
+static bool channel_state_to_dfs_event(wifi_channelState_t ch_state, em_dfs_event_type_t *event_type,
+   unsigned char *status)
+{
+   switch (ch_state) {
+   case CHAN_STATE_DFS_CAC_START:
+       *event_type = em_dfs_event_type_started;
+       *status = 0;
+       break;
+   case CHAN_STATE_DFS_CAC_COMPLETED:
+       *event_type = em_dfs_event_type_finished;
+       *status = 0;
+       break;
+   case CHAN_STATE_DFS_NOP_START:
+       *event_type = em_dfs_event_type_radar_detected;
+       *status = 1; /* radar detected */
+       break;
+   case CHAN_STATE_DFS_NOP_FINISHED:
+       *event_type = em_dfs_event_type_nop_finished;
+       *status = 0;
+       break;
+   default:
+       /* CHAN_STATE_AVAILABLE and non DFS channels carry no DFS event */
+       return false;
+   }
+   return true;
+}
+
+static void translate_channel_map_to_dfs_events(const wifi_radio_operationParam_t *oper_param,
+   const radarInfo_t *radar_info, const wifi_radio_capabilities_t *radio_cap,
+   unsigned char radio_index, em_radio_info_t *em_radio_info)
+{
+   time_t now = time(NULL);
+   em_radio_info->num_dfs_events = 0;
+   memset(em_radio_info->dfs_events, 0, sizeof(em_radio_info->dfs_events));
+   memset(&em_radio_info->radar_info, 0, sizeof(em_radio_info->radar_info));
+   if (oper_param == NULL || radar_info == NULL) {
+       return;
+   }
+   strncpy(em_radio_info->radarDetected,
+        oper_param->radarDetected,
+        sizeof(em_radio_info->radarDetected) - 1);
+
+   em_radio_info->radarDetected[sizeof(em_radio_info->radarDetected) - 1] = '\0';
+
+   em_radio_info->radar_info.last_channel = (unsigned char)radar_info->last_channel;
+   em_radio_info->radar_info.num_detected = (unsigned int)radar_info->num_detected;
+   em_radio_info->radar_info.timestamp = radar_info->timestamp;
+   for (unsigned int i = 0; i < MAX_CHANNELS; i++) {
+       wifi_channelMap_t entry = oper_param->channel_map[i];
+       em_bus_event_type_dfs_event_params_t *dfs_event;
+       em_dfs_event_type_t event_type;
+       unsigned char status = 0;
+       unsigned char op_class;
+       if (entry.ch_number == 0) {
+           break;
+       }
+       if (em_radio_info->num_dfs_events >= ARRAY_SIZE(em_radio_info->dfs_events)) {
+           wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: DFS event list full for radio %u\n",
+               __func__, __LINE__, radio_index);
+           break;
+       }
+       if (channel_state_to_dfs_event(entry.ch_state, &event_type, &status) == false) {
+           continue;
+       }
+       op_class = (unsigned char)oper_param->operatingClass;
+       dfs_event = &em_radio_info->dfs_events[em_radio_info->num_dfs_events];
+       dfs_event->event_type = event_type;
+       dfs_event->radio_index = radio_index;
+       dfs_event->op_class = op_class;
+       dfs_event->channel = (unsigned char)entry.ch_number;
+       dfs_event->status = status;
+       if (event_type == em_dfs_event_type_radar_detected) {
+           long long int elapsed = 0;
+           if (radar_info->timestamp != 0 &&
+               radar_info->last_channel == entry.ch_number) {
+               elapsed = (long long int)now - radar_info->timestamp;
+           }
+           if (elapsed < 0 || elapsed >= DFS_NON_OCCUPANCY_DURATION_SEC) {
+               dfs_event->sec_remain_non_occ_dur = (elapsed < 0) ?
+                   DFS_NON_OCCUPANCY_DURATION_SEC : 0;
+           } else {
+dfs_event->sec_remain_non_occ_dur =
+                   (unsigned short)(DFS_NON_OCCUPANCY_DURATION_SEC - elapsed);
+           }
+       }
+       wifi_util_dbg_print(WIFI_WEBCONFIG,
+           "%s:%d: radio %u DFS event: op_class %u channel %u type %d non_occ %u\n", __func__,
+           __LINE__, radio_index, dfs_event->op_class, dfs_event->channel,
+           (int)dfs_event->event_type, dfs_event->sec_remain_non_occ_dur);
+       em_radio_info->num_dfs_events++;
+   }
+}
+
 // This routine converts Radio webconfig subdoc values to em_radio_list_t,em_radio_info_t easymesh structures
 webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_data_t *data)
 {
@@ -435,6 +530,9 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         }
         snprintf(em_radio_info->intf.name, sizeof(em_radio_info->intf.name), "%s", radio->name);
         mac_address_from_name(radio_iface_map->interface_name, em_radio_info->intf.mac);
+
+        translate_channel_map_to_dfs_events(oper_param, &radio->radarInfo, get_radio_cap_from_radio_index(wifi_prop, radio_index), (unsigned char)radio_index, em_radio_info);
+
         no_of_opclass = proto->get_num_op_class(proto->data_model);
         radio_count ++;
         for (i = 0; i < oper_param->numOperatingClasses; i++) {
