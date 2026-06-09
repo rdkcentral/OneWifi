@@ -37,6 +37,30 @@
 
 #define TCM_WEIGH "0.6"
 #define TCMTHRESHOLD "0.18"
+
+/*
+ * Safely add a bounded char[] field to a cJSON object.
+ * Prevents strlen overflow on potentially unterminated char arrays
+ * by copying to a local buffer with guaranteed null termination.
+ */
+static void cJSON_AddSafeStringToObject(cJSON *object, const char *name,
+    const void *field, size_t field_size)
+{
+    char safe_buf[512];
+    size_t len = (field_size < sizeof(safe_buf)) ? field_size : sizeof(safe_buf) - 1;
+    memcpy(safe_buf, field, len);
+    safe_buf[len] = '\0';
+    cJSON_AddStringToObject(object, name, safe_buf);
+}
+
+/*
+ * Safely check if a char[] field is empty, using bounded length check
+ * to prevent strlen overflow on unterminated char arrays.
+ */
+static inline size_t safe_strlen(const void *field, size_t field_size)
+{
+    return strnlen((const char *)field, field_size);
+}
 webconfig_error_t encode_radio_setup_object(const rdk_wifi_vap_map_t *vap_map, cJSON *radio_object)
 {
     cJSON *obj_array, *obj;
@@ -223,9 +247,11 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // ChannelAvailability
     memset(chan_buf,0,sizeof(chan_buf));
     i=0;
-    while (radio_info->channel_map[i].ch_number != 0)
+    while (radio_info->channel_map[i].ch_number != 0 && index < sizeof(buf) - 1)
     {
-      index+=sprintf(&buf[index],"%d:%d,", radio_info->channel_map[i].ch_number, radio_info->channel_map[i].ch_state);
+      int written = snprintf(&buf[index], sizeof(buf) - index, "%d:%d,", radio_info->channel_map[i].ch_number, radio_info->channel_map[i].ch_state);
+      if (written < 0 || (unsigned int)written >= sizeof(buf) - index) break;
+      index += written;
       i++;
     }
     if (strlen(buf) > 0) {
@@ -408,9 +434,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     // MLD Enable
     cJSON_AddBoolToObject(vap_object, "MLD_Enable", vap_info->u.bss_info.mld_info.common_info.mld_enable);
 
-    // MLD Apply
-    cJSON_AddBoolToObject(vap_object, "MLD_Apply", vap_info->u.bss_info.mld_info.common_info.mld_apply);
-
     // MLD_ID
     cJSON_AddNumberToObject(vap_object, "MLD_ID", vap_info->u.bss_info.mld_info.common_info.mld_id);
 
@@ -521,34 +544,34 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 webconfig_error_t encode_postassoc_object(const wifi_postassoc_control_t *postassoc_info, cJSON *postassoc)
 {
     // RssiUpThreshold
-    if(strlen((char *)postassoc_info->rssi_up_threshold) == 0) {
+    if(safe_strlen(postassoc_info->rssi_up_threshold, sizeof(postassoc_info->rssi_up_threshold)) == 0) {
         cJSON_AddStringToObject(postassoc, "RssiUpThreshold", "disabled");
     } else {
-        cJSON_AddStringToObject(postassoc, "RssiUpThreshold", postassoc_info->rssi_up_threshold);
+        cJSON_AddSafeStringToObject(postassoc, "RssiUpThreshold", postassoc_info->rssi_up_threshold, sizeof(postassoc_info->rssi_up_threshold));
     }
     // SamplingInterval
-    if(strlen((char *)postassoc_info->sampling_interval) == 0) {
+    if(safe_strlen(postassoc_info->sampling_interval, sizeof(postassoc_info->sampling_interval)) == 0) {
         cJSON_AddStringToObject(postassoc, "SamplingInterval", "7");
     } else {
-        cJSON_AddStringToObject(postassoc, "SamplingInterval", postassoc_info->sampling_interval);
+        cJSON_AddSafeStringToObject(postassoc, "SamplingInterval", postassoc_info->sampling_interval, sizeof(postassoc_info->sampling_interval));
     }
     // SnrThreshold
-    if(strlen((char *)postassoc_info->snr_threshold) == 0) {
+    if(safe_strlen(postassoc_info->snr_threshold, sizeof(postassoc_info->snr_threshold)) == 0) {
         cJSON_AddStringToObject(postassoc, "SnrThreshold", "disabled");
     } else {
-        cJSON_AddStringToObject(postassoc, "SnrThreshold", postassoc_info->snr_threshold);
+        cJSON_AddSafeStringToObject(postassoc, "SnrThreshold", postassoc_info->snr_threshold, sizeof(postassoc_info->snr_threshold));
     }
     // SamplingCount
-    if(strlen((char *)postassoc_info->sampling_count) == 0) {
+    if(safe_strlen(postassoc_info->sampling_count, sizeof(postassoc_info->sampling_count)) == 0) {
         cJSON_AddStringToObject(postassoc, "SamplingCount", "3");
     } else {
-        cJSON_AddStringToObject(postassoc, "SamplingCount", postassoc_info->sampling_count);
+        cJSON_AddSafeStringToObject(postassoc, "SamplingCount", postassoc_info->sampling_count, sizeof(postassoc_info->sampling_count));
     }
     //CuThreshold
-    if(strlen((char *)postassoc_info->cu_threshold) == 0) {
+    if(safe_strlen(postassoc_info->cu_threshold, sizeof(postassoc_info->cu_threshold)) == 0) {
         cJSON_AddStringToObject(postassoc, "CuThreshold", "disabled");
     } else {
-        cJSON_AddStringToObject(postassoc, "CuThreshold", postassoc_info->cu_threshold);
+        cJSON_AddSafeStringToObject(postassoc, "CuThreshold", postassoc_info->cu_threshold, sizeof(postassoc_info->cu_threshold));
     }
 
     wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding postassoc settings passed\n", __func__, __LINE__);
@@ -559,52 +582,52 @@ webconfig_error_t encode_postassoc_object(const wifi_postassoc_control_t *postas
 webconfig_error_t encode_preassoc_object(const wifi_preassoc_control_t *preassoc_info, cJSON *preassoc)
 {
     // RssiUpThreshold
-    if(strlen((char *)preassoc_info->rssi_up_threshold) == 0) {
+    if(safe_strlen(preassoc_info->rssi_up_threshold, sizeof(preassoc_info->rssi_up_threshold)) == 0) {
         cJSON_AddStringToObject(preassoc, "RssiUpThreshold", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "RssiUpThreshold", preassoc_info->rssi_up_threshold);
+        cJSON_AddSafeStringToObject(preassoc, "RssiUpThreshold", preassoc_info->rssi_up_threshold, sizeof(preassoc_info->rssi_up_threshold));
     }
     // SnrThreshold
-    if(strlen((char *)preassoc_info->snr_threshold) == 0) {
+    if(safe_strlen(preassoc_info->snr_threshold, sizeof(preassoc_info->snr_threshold)) == 0) {
         cJSON_AddStringToObject(preassoc, "SnrThreshold", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "SnrThreshold", preassoc_info->snr_threshold);
+        cJSON_AddSafeStringToObject(preassoc, "SnrThreshold", preassoc_info->snr_threshold, sizeof(preassoc_info->snr_threshold));
     }
     // CuThreshold
-    if(strlen((char *)preassoc_info->cu_threshold) == 0) {
+    if(safe_strlen(preassoc_info->cu_threshold, sizeof(preassoc_info->cu_threshold)) == 0) {
         cJSON_AddStringToObject(preassoc, "CuThreshold", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "CuThreshold", preassoc_info->cu_threshold);
+        cJSON_AddSafeStringToObject(preassoc, "CuThreshold", preassoc_info->cu_threshold, sizeof(preassoc_info->cu_threshold));
     }
     // basic_data_transmit_rate
-    if(strlen((char *)preassoc_info->basic_data_transmit_rates) == 0) {
+    if(safe_strlen(preassoc_info->basic_data_transmit_rates, sizeof(preassoc_info->basic_data_transmit_rates)) == 0) {
         cJSON_AddStringToObject(preassoc, "BasicDataTransmitRates", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "BasicDataTransmitRates", preassoc_info->basic_data_transmit_rates);
+        cJSON_AddSafeStringToObject(preassoc, "BasicDataTransmitRates", preassoc_info->basic_data_transmit_rates, sizeof(preassoc_info->basic_data_transmit_rates));
     }
     // operational_data_transmit_rate
-    if(strlen((char *)preassoc_info->operational_data_transmit_rates) == 0) {
+    if(safe_strlen(preassoc_info->operational_data_transmit_rates, sizeof(preassoc_info->operational_data_transmit_rates)) == 0) {
         cJSON_AddStringToObject(preassoc, "OperationalDataTransmitRates", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "OperationalDataTransmitRates", preassoc_info->operational_data_transmit_rates);
+        cJSON_AddSafeStringToObject(preassoc, "OperationalDataTransmitRates", preassoc_info->operational_data_transmit_rates, sizeof(preassoc_info->operational_data_transmit_rates));
     }
     // supported_data_transmit_rate
-    if(strlen((char *)preassoc_info->supported_data_transmit_rates) == 0) {
+    if(safe_strlen(preassoc_info->supported_data_transmit_rates, sizeof(preassoc_info->supported_data_transmit_rates)) == 0) {
         cJSON_AddStringToObject(preassoc, "SupportedDataTransmitRates", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "SupportedDataTransmitRates", preassoc_info->supported_data_transmit_rates);
+        cJSON_AddSafeStringToObject(preassoc, "SupportedDataTransmitRates", preassoc_info->supported_data_transmit_rates, sizeof(preassoc_info->supported_data_transmit_rates));
     }
     // minimum_advertised_mcs
-    if(strlen((char *)preassoc_info->minimum_advertised_mcs) == 0) {
+    if(safe_strlen(preassoc_info->minimum_advertised_mcs, sizeof(preassoc_info->minimum_advertised_mcs)) == 0) {
         cJSON_AddStringToObject(preassoc, "MinimumAdvertisedMCS", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "MinimumAdvertisedMCS", preassoc_info->minimum_advertised_mcs);
+        cJSON_AddSafeStringToObject(preassoc, "MinimumAdvertisedMCS", preassoc_info->minimum_advertised_mcs, sizeof(preassoc_info->minimum_advertised_mcs));
     }
     // 6GOpInfoMinRates
-    if(strlen((char *)preassoc_info->sixGOpInfoMinRate) == 0) {
+    if(safe_strlen(preassoc_info->sixGOpInfoMinRate, sizeof(preassoc_info->sixGOpInfoMinRate)) == 0) {
         cJSON_AddStringToObject(preassoc, "6GOpInfoMinRate", "disabled");
     } else {
-        cJSON_AddStringToObject(preassoc, "6GOpInfoMinRate", preassoc_info->sixGOpInfoMinRate);
+        cJSON_AddSafeStringToObject(preassoc, "6GOpInfoMinRate", preassoc_info->sixGOpInfoMinRate, sizeof(preassoc_info->sixGOpInfoMinRate));
     }
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Encoding preassoc settings passed\n", __func__, __LINE__);
 
@@ -735,7 +758,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "VlanCfgVersion", global_info->vlan_cfg_version);
 
     //WpsPin
-    cJSON_AddStringToObject(global_obj, "WpsPin", global_info->wps_pin);
+    cJSON_AddSafeStringToObject(global_obj, "WpsPin", global_info->wps_pin, sizeof(global_info->wps_pin));
     
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
@@ -783,7 +806,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "FixedWmmParams", global_info->fixed_wmm_params);
 
     //WifiRegionCode
-    cJSON_AddStringToObject(global_obj, "WifiRegionCode", global_info->wifi_region_code);
+    cJSON_AddSafeStringToObject(global_obj, "WifiRegionCode", global_info->wifi_region_code, sizeof(global_info->wifi_region_code));
 
     // DiagnosticEnable
     cJSON_AddBoolToObject(global_obj, "DiagnosticEnable", (const cJSON_bool) global_info->diagnostic_enable);
@@ -795,7 +818,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "DeviceNetworkMode", global_info->device_network_mode);
 
     //Normalized_Rssi_List
-    cJSON_AddStringToObject(global_obj, "NormalizedRssiList", global_info->normalized_rssi_list);
+    cJSON_AddSafeStringToObject(global_obj, "NormalizedRssiList", global_info->normalized_rssi_list, sizeof(global_info->normalized_rssi_list));
 
     //SNRList
     cJSON_AddStringToObject(global_obj, "SNRList", global_info->snr_list);
@@ -879,6 +902,11 @@ webconfig_error_t encode_anqp_object(const char *vap_name, cJSON *inter,const un
     if(inter == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Null interworking obj\n", __func__, __LINE__);
         return webconfig_error_encode;
+    }
+
+    if (anqp == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Null anqp input\n", __func__, __LINE__);
+        return webconfig_error_none;
     }
 
     cJSON *p_root = cJSON_Parse((char *)anqp);
@@ -1048,46 +1076,46 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
 {
     char str[64];
 
-    if (strlen((char *)radius_info->ip) == 0) {
+    if (safe_strlen(radius_info->ip, sizeof(radius_info->ip)) == 0) {
         cJSON_AddStringToObject(radius, "RadiusServerIPAddr", "0.0.0.0");
     } else {
-        cJSON_AddStringToObject(radius, "RadiusServerIPAddr", (char *)radius_info->ip);
+        cJSON_AddSafeStringToObject(radius, "RadiusServerIPAddr", radius_info->ip, sizeof(radius_info->ip));
     }
 
     cJSON_AddNumberToObject(radius, "RadiusServerPort", radius_info->port);
 
-    if (strlen((char *)radius_info->key) == 0) {
+    if (safe_strlen(radius_info->key, sizeof(radius_info->key)) == 0) {
         cJSON_AddStringToObject(radius, "RadiusSecret", INVALID_KEY);
     } else {
-        cJSON_AddStringToObject(radius, "RadiusSecret", radius_info->key);
+        cJSON_AddSafeStringToObject(radius, "RadiusSecret", radius_info->key, sizeof(radius_info->key));
     }
 
-    if (strlen((char *)radius_info->s_ip) == 0) {
+    if (safe_strlen(radius_info->s_ip, sizeof(radius_info->s_ip)) == 0) {
         cJSON_AddStringToObject(radius, "SecondaryRadiusServerIPAddr", "0.0.0.0");
     } else {
-        cJSON_AddStringToObject(radius, "SecondaryRadiusServerIPAddr", (char *)radius_info->s_ip);
+        cJSON_AddSafeStringToObject(radius, "SecondaryRadiusServerIPAddr", radius_info->s_ip, sizeof(radius_info->s_ip));
     }
 
     cJSON_AddNumberToObject(radius, "SecondaryRadiusServerPort", radius_info->s_port);
 
-    if (strlen((char *)radius_info->s_key) == 0) {
+    if (safe_strlen(radius_info->s_key, sizeof(radius_info->s_key)) == 0) {
         cJSON_AddStringToObject(radius, "SecondaryRadiusSecret", INVALID_KEY);
     } else {
-        cJSON_AddStringToObject(radius, "SecondaryRadiusSecret", radius_info->s_key);
+        cJSON_AddSafeStringToObject(radius, "SecondaryRadiusSecret", radius_info->s_key, sizeof(radius_info->s_key));
     }
 
     cJSON_AddNumberToObject(radius, "EAPType", radius_info->eap_type);
     cJSON_AddNumberToObject(radius, "Phase2Auth", radius_info->phase2);
-    if (strlen((char *)radius_info->identity) == 0) {
+    if (safe_strlen(radius_info->identity, sizeof(radius_info->identity)) == 0) {
         cJSON_AddStringToObject(radius, "Identity", "username_empty");
     } else {
-        cJSON_AddStringToObject(radius, "Identity", radius_info->identity);
+        cJSON_AddSafeStringToObject(radius, "Identity", radius_info->identity, sizeof(radius_info->identity));
     }
 
-    if (strlen((char *)radius_info->key) == 0) {
+    if (safe_strlen(radius_info->key, sizeof(radius_info->key)) == 0) {
         cJSON_AddStringToObject(radius, "Key", INVALID_KEY);
     } else {
-        cJSON_AddStringToObject(radius, "Key", radius_info->key);
+        cJSON_AddSafeStringToObject(radius, "Key", radius_info->key, sizeof(radius_info->key));
     }
     
     memset(str, 0, sizeof(str));
@@ -1096,10 +1124,10 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
 
     cJSON_AddNumberToObject(radius, "DasServerPort", radius_info->dasport);
 
-    if (strlen((char *)radius_info->daskey) == 0) {
+    if (safe_strlen(radius_info->daskey, sizeof(radius_info->daskey)) == 0) {
         cJSON_AddStringToObject(radius, "DasSecret", INVALID_KEY);
     } else {
-        cJSON_AddStringToObject(radius, "DasSecret", radius_info->daskey);
+        cJSON_AddSafeStringToObject(radius, "DasSecret", radius_info->daskey, sizeof(radius_info->daskey));
     }
 
     //max_auth_attempts
@@ -1628,16 +1656,16 @@ webconfig_error_t encode_ignite_radius_object(const wifi_radius_settings_t *radi
 {
     cJSON_AddNumberToObject(radius, "IgniteEAPType", radius_info->eap_type);
     cJSON_AddNumberToObject(radius, "IgnitePhase2Auth", radius_info->phase2);
-    if (strlen((char *)radius_info->identity) == 0) {
+    if (safe_strlen(radius_info->identity, sizeof(radius_info->identity)) == 0) {
         cJSON_AddStringToObject(radius, "IgniteIdentity", "username_empty");
     } else {
-        cJSON_AddStringToObject(radius, "IgniteIdentity", radius_info->identity);
+        cJSON_AddSafeStringToObject(radius, "IgniteIdentity", radius_info->identity, sizeof(radius_info->identity));
     }
 
-    if (strlen((char *)radius_info->key) == 0) {
+    if (safe_strlen(radius_info->key, sizeof(radius_info->key)) == 0) {
         cJSON_AddStringToObject(radius, "IgniteKey", INVALID_KEY);
     } else {
-        cJSON_AddStringToObject(radius, "IgniteKey", radius_info->key);
+        cJSON_AddSafeStringToObject(radius, "IgniteKey", radius_info->key, sizeof(radius_info->key));
     }
     return webconfig_error_none;
 }
@@ -2036,7 +2064,7 @@ webconfig_error_t encode_ignite_object(ignite_config_t *ignite_config, cJSON *ig
     }
     wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] ignite params : [%s %f %f %f]\n", __func__, __LINE__, ignite_config->ignite_name, ignite_config->min_chanutil_threshold, ignite_config->max_chanutil_threshold, ignite_config->SNR_difference);
 
-    cJSON_AddStringToObject(ignite_obj, "ignite_name", ignite_config->ignite_name);
+    cJSON_AddSafeStringToObject(ignite_obj, "ignite_name", ignite_config->ignite_name, sizeof(ignite_config->ignite_name));
     cJSON_AddNumberToObject(ignite_obj, "ignite_minchutil_threshold", ignite_config->min_chanutil_threshold);
     cJSON_AddNumberToObject(ignite_obj, "ignite_maxchutil_threshold", ignite_config->max_chanutil_threshold);
     cJSON_AddNumberToObject(ignite_obj, "ignite_snr_difference", ignite_config->SNR_difference);
@@ -2083,11 +2111,11 @@ webconfig_error_t encode_wifivapcap(wifi_interface_name_idex_map_t *interface_ma
     if (interface_map->vap_name[0] != '\0') {
         object =  cJSON_CreateObject();
         cJSON_AddItemToArray(hal_obj, object);
-        cJSON_AddStringToObject(object, "VapName", interface_map->vap_name);
+        cJSON_AddSafeStringToObject(object, "VapName", interface_map->vap_name, sizeof(interface_map->vap_name));
         cJSON_AddNumberToObject(object, "PhyIndex", interface_map->phy_index);
         cJSON_AddNumberToObject(object, "RadioIndex", interface_map->rdk_radio_index);
-        cJSON_AddStringToObject(object, "InterfaceName", interface_map->interface_name);
-        cJSON_AddStringToObject(object, "BridgeName", interface_map->bridge_name);
+        cJSON_AddSafeStringToObject(object, "InterfaceName", interface_map->interface_name, sizeof(interface_map->interface_name));
+        cJSON_AddSafeStringToObject(object, "BridgeName", interface_map->bridge_name, sizeof(interface_map->bridge_name));
         cJSON_AddNumberToObject(object, "VLANID", interface_map->vlan_id);
         cJSON_AddNumberToObject(object, "Index", interface_map->index);
     }
@@ -2102,7 +2130,7 @@ webconfig_error_t encode_wifiradiointerfacecap(radio_interface_mapping_t *radio_
         cJSON_AddItemToArray(hal_obj, object);
         cJSON_AddNumberToObject(object, "PhyIndex", radio_interface_map->phy_index);
         cJSON_AddNumberToObject(object, "RadioIndex", radio_interface_map->radio_index);
-        cJSON_AddStringToObject(object, "InterfaceName", radio_interface_map->interface_name);
+        cJSON_AddSafeStringToObject(object, "InterfaceName", radio_interface_map->interface_name, sizeof(radio_interface_map->interface_name));
     }
     return webconfig_error_none;
 }
@@ -2158,16 +2186,16 @@ webconfig_error_t encode_device_info(wifi_platform_property_t *wifi_prop, cJSON 
     mac_addr_str_t mac_str;
     mac_addr_str_t lan_mac_str;
        //Manufacturer
-    cJSON_AddStringToObject(device_obj, "Manufacturer", wifi_prop->manufacturer);
+    cJSON_AddSafeStringToObject(device_obj, "Manufacturer", wifi_prop->manufacturer, sizeof(wifi_prop->manufacturer));
 
     // Model
-    cJSON_AddStringToObject(device_obj, "Model",  wifi_prop->manufacturerModel);
+    cJSON_AddSafeStringToObject(device_obj, "Model",  wifi_prop->manufacturerModel, sizeof(wifi_prop->manufacturerModel));
 
     //serialNo
-    cJSON_AddStringToObject(device_obj, "SerialNo", wifi_prop->serialNo);
+    cJSON_AddSafeStringToObject(device_obj, "SerialNo", wifi_prop->serialNo, sizeof(wifi_prop->serialNo));
 
     //software_version
-    cJSON_AddStringToObject(device_obj, "Software_version", wifi_prop->software_version);
+    cJSON_AddSafeStringToObject(device_obj, "Software_version", wifi_prop->software_version, sizeof(wifi_prop->software_version));
 
     //CMMAC
     to_mac_str(wifi_prop->cm_mac, mac_str);
@@ -2299,6 +2327,25 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
         }
         cJSON_AddItemToObject(object, "EHTPPET", eht_ppet_array);
 #endif /* CONFIG_IEEE80211BE */
+        cJSON_AddBoolToObject(object, "Channel Scan Boot Only", wifi_prop->radiocap[i].boot_only);
+        cJSON_AddNumberToObject(object, "Channel Scan Impact", wifi_prop->radiocap[i].scan_impact);
+        cJSON_AddNumberToObject(object, "Channel Scan Min Interval", wifi_prop->radiocap[i].min_scan_interval);
+        UINT encoded_op_class_entries = wifi_prop->radiocap[i].num_op_class_entries < MAX_OP_CLASS_ENTRIES
+                                         ? wifi_prop->radiocap[i].num_op_class_entries : MAX_OP_CLASS_ENTRIES;
+        cJSON_AddNumberToObject(object, "OpClassChListCount", encoded_op_class_entries);
+        cJSON *op_class_arr = cJSON_CreateArray();
+        for (UINT oc = 0; oc < encoded_op_class_entries; oc++) {
+            cJSON *oc_obj = cJSON_CreateObject();
+            cJSON_AddNumberToObject(oc_obj, "OpClass", wifi_prop->radiocap[i].op_class_ch_list[oc].op_class);
+            cJSON *ch_arr = cJSON_CreateArray();
+            for (UCHAR ci = 0; ci < wifi_prop->radiocap[i].op_class_ch_list[oc].num_channels &&
+                    ci < MAX_CHANNELS_PER_OP_CLASS; ci++) {
+                cJSON_AddItemToArray(ch_arr, cJSON_CreateNumber(wifi_prop->radiocap[i].op_class_ch_list[oc].channels[ci]));
+            }
+            cJSON_AddItemToObject(oc_obj, "Channels", ch_arr);
+            cJSON_AddItemToArray(op_class_arr, oc_obj);
+        }
+        cJSON_AddItemToObject(object, "OpClassChList", op_class_arr);
     }
     return webconfig_error_none;
 }
@@ -2941,8 +2988,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     }
 
     cJSON_AddItemToObject(policy_obj, "Algorithm Run Policy", param_obj);
-    cJSON_AddStringToObject(param_obj, "Collection Start Time",
-        em_config->alarm_report_policy.collection_start_time);
+    cJSON_AddSafeStringToObject(param_obj, "Collection Start Time",
+        em_config->alarm_report_policy.collection_start_time, sizeof(em_config->alarm_report_policy.collection_start_time));
     cJSON_AddNumberToObject(param_obj, "Reporting Interval", em_config->alarm_report_policy.reporting_interval);
     cJSON_AddNumberToObject(param_obj, "Link Quality Threshold", em_config->alarm_report_policy.link_quality_threshold);
 
@@ -2955,8 +3002,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     cJSON_AddItemToObject(policy_obj, "AP Metrics Reporting Policy", param_obj);
 
     cJSON_AddNumberToObject(param_obj, "Interval", em_config->ap_metric_policy.interval);
-    cJSON_AddStringToObject(param_obj, "Managed Client Marker",
-        em_config->ap_metric_policy.managed_client_marker);
+    cJSON_AddSafeStringToObject(param_obj, "Managed Client Marker",
+        em_config->ap_metric_policy.managed_client_marker, sizeof(em_config->ap_metric_policy.managed_client_marker));
 
     // Local Steering Disallowed Policy
     param_obj = cJSON_CreateObject();
@@ -2979,8 +3026,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
                 __LINE__);
         }
         cJSON_AddItemToArray(param_arr, param_obj);
-        cJSON_AddStringToObject(param_obj, "MAC",
-            (const char *)em_config->local_steering_dslw_policy.disallowed_sta[i]);
+        cJSON_AddSafeStringToObject(param_obj, "MAC",
+            em_config->local_steering_dslw_policy.disallowed_sta[i], sizeof(em_config->local_steering_dslw_policy.disallowed_sta[i]));
     }
 
     // BTM Steering Disallowed Policy
@@ -3004,8 +3051,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
                 __LINE__);
         }
         cJSON_AddItemToArray(param_arr, param_obj);
-        cJSON_AddStringToObject(param_obj, "MAC",
-            (const char *)em_config->btm_steering_dslw_policy.disallowed_sta[i]);
+        cJSON_AddSafeStringToObject(param_obj, "MAC",
+            em_config->btm_steering_dslw_policy.disallowed_sta[i], sizeof(em_config->btm_steering_dslw_policy.disallowed_sta[i]));
     }
     
     // Backhaul BSS Configuration Policy
@@ -3015,8 +3062,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
             __LINE__);
     }
     cJSON_AddItemToObject(policy_obj, "Backhaul BSS Configuration Policy", param_obj);
-    cJSON_AddStringToObject(param_obj, "BSSID",
-        (const char *)em_config->backhaul_bss_config_policy.bssid);
+    cJSON_AddSafeStringToObject(param_obj, "BSSID",
+        em_config->backhaul_bss_config_policy.bssid, sizeof(em_config->backhaul_bss_config_policy.bssid));
     cJSON_AddBoolToObject(param_obj, "Profile-1 bSTA Disallowed",
         0); // em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed);
     cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",

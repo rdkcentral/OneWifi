@@ -2074,6 +2074,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
         //clearing wpa3_personal_compatibility mode after wifi restore
         rfc_param->wpa3_compatibility_enable = FALSE;
+        get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
         //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
         if (WIFI_FREQUENCY_2_4_BAND == rcfg->band) {
