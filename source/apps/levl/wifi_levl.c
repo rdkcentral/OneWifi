@@ -324,8 +324,6 @@ void replace_sa_with_mld_mac(struct ieee80211_mgmt *frame, frame_data_t *msg)
     size_t ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ?
         0 :
         msg->frame.len - (IEEE80211_HDRLEN + 4);
-    ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
-    ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ? 0 : msg->frame.len - (IEEE80211_HDRLEN + 4);
 
     for_each_element_extid(ie_elem, WLAN_EID_EXT_MULTI_LINK, (const u8 *)ie_ptr, ie_len)
     {
@@ -585,7 +583,7 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
 #endif
             snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE,
                 probe_req_frame->probe_frame.frame.ap_index + 1);
-            mgmt_frame_bus_send(&app->handle, namespace, &probe_req_frame->probe_frame.frame);
+            mgmt_frame_bus_send(&app->handle, namespace, &probe_req_frame->probe_frame);
             ds_dlist_remove(&probe_req_frames_to_send, probe_req_frame);
             free(probe_req_frame);
         }
