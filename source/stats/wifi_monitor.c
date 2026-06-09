@@ -267,6 +267,9 @@ int get_vlan_from_vap_index(unsigned int vap_index, int *out_vlan)
 
 BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 {
+    if (uvAPIndex >= WIFI_INDEX_MAX) {
+        return FALSE;
+    }
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
 }
 
@@ -1341,7 +1344,7 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
 static char*
 macbytes_to_string(mac_address_t mac, unsigned char* string)
 {
-    sprintf((char *)string, "%02x:%02x:%02x:%02x:%02x:%02x",
+    snprintf((char *)string, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
             mac[0] & 0xff,
             mac[1] & 0xff,
             mac[2] & 0xff,
@@ -1403,7 +1406,7 @@ static void
 radio_stats_flag_changed(unsigned int radio_index, client_stats_enable_t *flag)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
-    for(UINT apIndex = 0; apIndex <= getTotalNumberVAPs(); apIndex++)
+    for(UINT apIndex = 0; apIndex < getTotalNumberVAPs(); apIndex++)
     {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, apIndex);
         UINT radio = RADIO_INDEX(mgr->hal_cap, apIndex);
@@ -2790,7 +2793,7 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
     struct rtattr * table[NDA_MAX+1];
     int fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
     char if_name[IFNAMSIZ] = {'\0'};
-    unsigned char tmp_mac[17];
+    unsigned char tmp_mac[18];
     unsigned char af_family;
 
     if(mac == NULL || ip == NULL || interface == NULL) {
