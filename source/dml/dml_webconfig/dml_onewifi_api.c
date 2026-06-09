@@ -2068,7 +2068,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         wifidb_init_radio_config_default(i,rcfg,&fcfg);
 
         wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
-        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+        if (wifidb_get_rfc_config(0,rfc_param) != 0 || (rfc_param == NULL)) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
 
