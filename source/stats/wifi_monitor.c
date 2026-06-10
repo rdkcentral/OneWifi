@@ -3463,6 +3463,27 @@ int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
     return 0;
 }
 
+static void queue_assoc_fail_event(int32_t ap_index, const char *dest_mac,
+                                   uint16_t status, uint16_t reason,
+                                   wifi_event_subtype_t subtype)
+{
+    sta_fail_data_t data;
+    mac_addr_str_t sta_mac_str;
+
+    memset(&data, 0, sizeof(data));
+    data.ap_index = ap_index;
+    str_to_mac_bytes(dest_mac, data.sta_mac);
+    data.status = status;
+    data.reason = reason;
+    to_mac_str(data.sta_mac, sta_mac_str);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: assoc_fail ap_index=%d status=%u reason=%u sta_mac=%s\r\n",
+        __func__, __LINE__, ap_index, (unsigned int)status, (unsigned int)reason, sta_mac_str);
+    if (push_event_to_ctrl_queue(&data, sizeof(data), wifi_event_type_hal_ind,
+            subtype, NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: failed to queue assoc_fail event\r\n",
+            __func__, __LINE__);
+    }
+}
 
 int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int status)
 {
@@ -3474,6 +3495,16 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
         return -1;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s status:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac,status,type);
+
+    /* Push pre-association failure event before any hash map lookup.
+     * The STA is not yet in the interop map (pre-association), so this must
+     * happen before the early returns below. */
+    if (status == WLAN_STATUS_CHALLENGE_FAIL ||          /* wrong SAE password */
+        status == WLAN_STATUS_DENIED_INSUFFICIENT_BANDWIDTH) {  /* status 33: used for ACL deny per EasyMesh spec §11.6 */
+        queue_assoc_fail_event(ap_index, dest_mac, (uint16_t)status, 0,
+            wifi_event_hal_pre_assoc_fail);
+    }
+
     sta_map = get_interop_sta_data_map(ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
@@ -3668,6 +3699,21 @@ int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int re
         return -1;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s reason:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac, reason_code, type);
+
+    /* Push post-association failure event before any hash map lookup.
+     * Two reason codes cover WPA2/WPA3 4-way handshake failures:
+     * - WLAN_REASON_MICHAEL_MIC_FAILURE  (14): MIC failure in 4-way M2/4
+     *   (wrong password); set by wpa_auth.c PTKCALCNEGOTIATING state and
+     *   preserved by retry-limit guards.
+     * - WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT (15): retry limit exhausted
+     *   with no prior MIC failure (STA unresponsive)
+     * Both reach ap_reason_code() via device_deauthenticated(). */
+    if (reason_code == WLAN_REASON_MICHAEL_MIC_FAILURE ||    /* wrong password */
+        reason_code == WLAN_REASON_4WAY_HANDSHAKE_TIMEOUT) { /* 4-way timeout */
+        queue_assoc_fail_event(ap_index, dest_mac, 0, (uint16_t)reason_code,
+            wifi_event_hal_post_assoc_fail);
+    }
+
     sta_map = get_interop_sta_data_map(ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);

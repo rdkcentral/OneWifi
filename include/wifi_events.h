@@ -117,6 +117,8 @@ typedef enum {
     wifi_event_hal_csa_beacon_frame,
     wifi_event_hal_wps_results,
     wifi_event_hal_wnm_action_frame,
+    wifi_event_hal_pre_assoc_fail  = wifi_event_hal_wnm_action_frame + 1,
+    wifi_event_hal_post_assoc_fail = wifi_event_hal_wnm_action_frame + 2,
     wifi_event_hal_max,
 
     // Commands
