@@ -1507,7 +1507,16 @@ typedef struct {
     em_per_radio_report_t radio_reports[MAX_NUM_RADIOS];
 } em_ap_metrics_report_t;
 
-#endif
+typedef struct {
+    int ap_index;
+    mac_address_t sta_mac;
+    mac_address_t bssid;
+    unsigned short status_code;
+    unsigned short reason_code;
+    bool reason_code_present;
+} em_connection_status_event_t;
+
+#endif // EM_APP
 
 #ifdef __cplusplus
 }
