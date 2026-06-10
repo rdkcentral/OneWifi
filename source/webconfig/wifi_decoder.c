@@ -6320,12 +6320,21 @@ webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
     decode_param_integer(obj_sta_cfg, "FrameLen", param);
     sta_data->data_len = param->valuedouble;
 
+    sta_data->data = (unsigned char *)malloc(sta_data->data_len);
+    if (sta_data->data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to allocate %u bytes for report data\n",
+            __func__, __LINE__, sta_data->data_len);
+        return webconfig_error_decode;
+    }
+
     decode_param_string(obj_sta_cfg, "ReportData", param);
     out_ptr = stringtohex(strlen(param->valuestring), param->valuestring, sta_data->data_len,
         sta_data->data);
     if (out_ptr == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error to convert ot string \n", __func__,
             __LINE__);
+        free(sta_data->data);
+        sta_data->data = NULL;
         return webconfig_error_decode;
     }
 
