@@ -3510,6 +3510,39 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 5) & 1;
     }
 
+    // radio steering parameters
+    policy_cfg->radio_steering_policies.radio_count = em_policy_cfg->steering_policy.radio_num;
+    for (int i = 0; i < policy_cfg->radio_steering_policies.radio_count && i < EM_MAX_RADIO_POLICY; i++) {
+        memcpy(policy_cfg->radio_steering_policies.radio_steering_policy[i].ruid,
+            em_policy_cfg->steering_policy.radio_steer_policy[i].ruid, sizeof(mac_addr_t));
+        policy_cfg->radio_steering_policies.radio_steering_policy[i].policy =
+            em_policy_cfg->steering_policy.radio_steer_policy[i].steering_policy;
+        policy_cfg->radio_steering_policies.radio_steering_policy[i].util_threshold =
+            em_policy_cfg->steering_policy.radio_steer_policy[i].channel_util_thresh;
+        policy_cfg->radio_steering_policies.radio_steering_policy[i].rcpi_threshold =
+            em_policy_cfg->steering_policy.radio_steer_policy[i].rssi_steering_thresh;
+    }
+
+    // unsuccessful association policy
+    policy_cfg->unsuccess_assoc_policy.report_unassoc_sta =
+        em_policy_cfg->unsuccessful_assoc_policy.rprt_flag;
+    policy_cfg->unsuccess_assoc_policy.max_reporting_rate =
+        em_policy_cfg->unsuccessful_assoc_policy.max_rprt_rate;
+
+    // QoS management policy
+    policy_cfg->qos_mgt_policy.num_mscs = em_policy_cfg->qos_mgmt_policy.mscs_disallowed_num;
+    for (int i = 0; i < policy_cfg->qos_mgt_policy.num_mscs && i < EM_MAX_QOS_MAC; i++) {
+        memcpy(policy_cfg->qos_mgt_policy.mscs_mac[i],
+            em_policy_cfg->qos_mgmt_policy.mac_addr_mscs_disallowed[i].sta_mac_addr,
+            sizeof(mac_addr_t));
+    }
+    policy_cfg->qos_mgt_policy.num_scs = em_policy_cfg->qos_mgmt_policy.scs_disallowed_num;
+    for (int i = 0; i < policy_cfg->qos_mgt_policy.num_scs && i < EM_MAX_QOS_MAC; i++) {
+        memcpy(policy_cfg->qos_mgt_policy.scs_mac[i],
+            em_policy_cfg->qos_mgmt_policy.mac_addr_scs_disallowed[i].sta_mac_addr,
+            sizeof(mac_addr_t));
+    }
+
     /* store the received-sections bitmask so the encoder skips absent policy sections */
     policy_cfg->em_policy_present_mask = em_policy_cfg->present_mask;
 

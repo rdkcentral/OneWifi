@@ -6382,7 +6382,11 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         sizeof(marker_name));
 
     // Local Steering Disallowed Policy
-    local_steering_policy = cJSON_GetObjectItem(policy_obj, "Local Steering Disallowed Policy");
+    // Support both wrapped ("Steering Policies" object) and flat (backward compat) formats.
+    const cJSON *steer_policies_obj = cJSON_GetObjectItem(policy_obj, "Steering Policies");
+    const cJSON *steer_parent = (steer_policies_obj != NULL) ? steer_policies_obj : policy_obj;
+
+    local_steering_policy = cJSON_GetObjectItem(steer_parent, "Local Steering Disallowed Policy");
     if (local_steering_policy == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Local Steering Disallowed Policy is NULL\n",
             __func__, __LINE__);
@@ -6410,7 +6414,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     }
 
     // BTM Steering Disallowed Policy
-    btm_steering_policy = cJSON_GetObjectItem(policy_obj, "BTM Steering Disallowed Policy");
+    btm_steering_policy = cJSON_GetObjectItem(steer_parent, "BTM Steering Disallowed Policy");
     if (btm_steering_policy == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: BTM Steering Disallowed Policy is NULL\n",
             __func__, __LINE__);
@@ -6574,7 +6578,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     // }
 
     // Radio Steering Parameters
-    radio_steer_array = cJSON_GetObjectItem(policy_obj, "Radio Steering Parameters");
+    radio_steer_array = cJSON_GetObjectItem(steer_parent, "Radio Steering Parameters");
     if (radio_steer_array != NULL && cJSON_IsArray(radio_steer_array)) {
         em_config->radio_steering_policies.radio_count = cJSON_GetArraySize(radio_steer_array);
         for (int i = 0; i < em_config->radio_steering_policies.radio_count &&
