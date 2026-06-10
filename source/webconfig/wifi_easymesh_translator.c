@@ -1248,12 +1248,55 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
     return webconfig_error_none;
 }
 
+// Fill em_assoc_sta_mld_info_t from assoc_dev_data and VAP info for Wi-Fi 7 MLD-capable clients
+static webconfig_error_t fill_assoc_sta_mld_info_from_assoc_dev(
+    em_assoc_sta_mld_info_t *sta_mld_info, assoc_dev_data_t *assoc_dev_data, wifi_vap_info_t *vap,
+    webconfig_external_easymesh_t *proto)
+{
+    char ap_mld_mac_str[32] = {};
+    char bssid_mac_str[32] = {};
+
+    if (sta_mld_info == NULL || assoc_dev_data == NULL || vap == NULL || proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: input argument is NULL\n", __func__,
+            __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    memset(sta_mld_info, 0, sizeof(em_assoc_sta_mld_info_t));
+    memcpy(sta_mld_info->mac_addr, assoc_dev_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
+
+    uint8_mac_to_string_mac(vap->u.bss_info.bssid, bssid_mac_str);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Found AP MLD information for bssid=%s\n", __func__,
+        __LINE__, bssid_mac_str);
+    uint8_mac_to_string_mac(vap->u.bss_info.mld_info.common_info.mld_addr, ap_mld_mac_str);
+    if (WiFi_IsValidMacAddr(ap_mld_mac_str)) {
+        memcpy(sta_mld_info->ap_mld_mac_addr, vap->u.bss_info.mld_info.common_info.mld_addr,
+            sizeof(mac_address_t));
+    } else {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No AP MLD MAC available for bssid %s\n",
+            __func__, __LINE__, bssid_mac_str);
+    }
+
+    sta_mld_info->str = (assoc_dev_data->mld_info.cli_MLModeCapa & STR) ? true : false;
+    sta_mld_info->nstr = (assoc_dev_data->mld_info.cli_MLModeCapa & NSTR) ? true : false;
+    sta_mld_info->emlsr = (assoc_dev_data->mld_info.cli_MLModeCapa & eMLSR) ? true : false;
+    sta_mld_info->emlmr = (assoc_dev_data->mld_info.cli_MLModeCapa & eMLMR) ? true : false;
+
+    // One affiliated STA entry per link (one entry per VAP visit)
+    sta_mld_info->num_affiliated_sta = 1;
+    memcpy(sta_mld_info->affiliated_sta[0].bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
+    memcpy(sta_mld_info->affiliated_sta[0].mac_addr, assoc_dev_data->link_address,
+        sizeof(mac_address_t));
+
+    return webconfig_error_none;
+}
+
 //Converting data elements of assoc client stats to em_sta_info_t of easymesh
 webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_subdoc_data_t *data)
 {
     em_sta_info_t *em_sta_dev_info = NULL;
     unsigned int associated_client_count = 0;
-    unsigned int i = 0, j = 0, tag_len = 0;
+    unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0;
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     rdk_wifi_radio_t *radio = NULL;
     wifi_vap_info_map_t *vap_map = NULL;
@@ -1346,11 +1389,14 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     }
                     mgmt = (struct ieee80211_mgmt *) assoc_dev_data->sta_data.msg_data.data;
                     tag_len = assoc_dev_data->sta_data.msg_data.frame.len - IEEE80211_HDRLEN - sizeof(mgmt->u.assoc_req);
-                    if (tag_len > EM_MAX_FRAME_BODY_LEN) {
-                        tag_len = EM_MAX_FRAME_BODY_LEN-1;
+                    /* Store the full 802.11 association request frame body:
+                     * fixed fields (capab_info 2B + listen_interval 2B) followed by IEs. */
+                    fixed_len = (unsigned int)sizeof(mgmt->u.assoc_req);
+                    if (fixed_len + tag_len > EM_MAX_FRAME_BODY_LEN) {
+                        tag_len = EM_MAX_FRAME_BODY_LEN - fixed_len;
                     }
-                    memcpy(em_sta_dev_info->frame_body, mgmt->u.assoc_req.variable, tag_len);
-                    em_sta_dev_info->frame_body_len = tag_len;
+                    memcpy(em_sta_dev_info->frame_body, &mgmt->u.assoc_req, fixed_len + tag_len);
+                    em_sta_dev_info->frame_body_len = fixed_len + tag_len;
 
                     if (assoc_dev_data->client_state == 0) {
                         em_sta_dev_info->associated = true;
@@ -1360,6 +1406,22 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_disassoc);
                     }
                     free(em_sta_dev_info);
+
+                    // Update assoc STA MLD for Wi-Fi 7 MLD-capable clients on AP mode VAPs
+                    if (assoc_dev_data->client_state == 0 &&
+                        assoc_dev_data->dev_stats.cli_MLDEnable == true &&
+                        vap->vap_mode == wifi_vap_mode_ap) {
+                        em_assoc_sta_mld_info_t assoc_sta_mld_info;
+                        webconfig_error_t mld_ret = fill_assoc_sta_mld_info_from_assoc_dev(
+                            &assoc_sta_mld_info, assoc_dev_data, vap, proto);
+                        if (mld_ret == webconfig_error_none) {
+                            proto->update_assoc_sta_mld_info(proto->data_model,
+                                &assoc_sta_mld_info);
+                            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                                "%s:%d: Assoc STA MLD info updated for client on vap '%s'\n\n",
+                                __func__, __LINE__, rdk_vap_info->vap_name);
+                        }
+                    }
                     associated_client_count++;
                     assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
                 }
