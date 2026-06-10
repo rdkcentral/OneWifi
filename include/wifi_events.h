@@ -105,6 +105,7 @@ typedef enum {
     wifi_event_hal_sta_conn_status,
     wifi_event_hal_assoc_device,
     wifi_event_hal_disassoc_device,
+    wifi_event_hal_report_connection_status,
     wifi_event_scan_results,
     wifi_event_hal_channel_change,
     wifi_event_radius_greylist,
