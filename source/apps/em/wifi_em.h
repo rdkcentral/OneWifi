@@ -29,6 +29,7 @@ extern "C" {
 #define WIFI_EM_BEACON_REPORT                 "Device.WiFi.EM.BeaconReport"
 #define WIFI_EM_STA_LINK_METRICS_REPORT       "Device.WiFi.EM.STALinkMetricsReport"
 #define WIFI_EM_ASSOCIATION_STATUS            "Device.WiFi.EM.AssociationStatus"
+#define WIFI_EM_REPORT_CONNECTION_STATUS      "Device.WiFi.EM.ReportConnectionStatus"
 #define WIFI_EM_AP_METRICS_REPORT             "Device.WiFi.EM.APMetricsReport"
 #define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
