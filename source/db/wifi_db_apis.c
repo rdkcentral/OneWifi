@@ -2101,7 +2101,11 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
         wifi_util_info_print(WIFI_DB,"%s:%d Validation of channel/channel_width of existing DB failed, setting default values chan=%d chanwidth=%d \n", __func__, __LINE__, config->channel, config->channelWidth);
     }
 
-    if (config->band == WIFI_FREQUENCY_6_BAND) {
+    if ((cfg->hw_mode != 0) && (validate_wifi_hw_variant(cfg->freq_band, cfg->hw_mode) == RETURN_OK)) {
+        config->variant = cfg->hw_mode;
+    }
+
+ if (config->band == WIFI_FREQUENCY_6_BAND) {
         if (is_bandwidth_and_hw_variant_compatible(config->variant, config->channelWidth) != true) {
             wifi_util_info_print(WIFI_DB,
                 "%s:%d 6G hw_mode/channel_width mismatch (variant=%d bw=%d), normalizing\n",
@@ -2119,10 +2123,6 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
                     config->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
                 }
         }
-    }
-
-    if ((cfg->hw_mode != 0) && (validate_wifi_hw_variant(cfg->freq_band, cfg->hw_mode) == RETURN_OK)) {
-        config->variant = cfg->hw_mode;
     }
 
     config->csa_beacon_count = cfg->csa_beacon_count;
