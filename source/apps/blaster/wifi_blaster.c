@@ -292,7 +292,7 @@ static void active_msmt_log_message( blaster_log_level_t level,char *fmt, ...)
     wifi_util_dbg_print(WIFI_BLASTER, msg);
 }
 
-static char *active_msmt_status_to_str(active_msmt_status_t status)
+char *active_msmt_status_to_str(active_msmt_status_t status)
 {
     switch (status)
     {
