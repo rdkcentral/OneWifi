@@ -616,6 +616,11 @@ void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     char *psmStrValue = NULL;
 
+    if (pbEnableRadiusGreyList == NULL) {
+        CcspTraceError(("[%s] Invalid argument: pbEnableRadiusGreyList is NULL\n", __FUNCTION__));
+        return;
+    }
+
     *pbEnableRadiusGreyList = FALSE;
     CcspTraceInfo(("[%s] Get EnableRadiusGreylist Value \n",__FUNCTION__));
 
@@ -623,8 +628,15 @@ void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
             "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RadiusGreyList.Enable",
             NULL, &psmStrValue) == CCSP_SUCCESS)
     {
-        *pbEnableRadiusGreyList = _ansc_atoi(psmStrValue);
-        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(psmStrValue);
+        if (psmStrValue != NULL) {
+            *pbEnableRadiusGreyList = _ansc_atoi(psmStrValue);
+            if (bus_handle != NULL) {
+                ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(psmStrValue);
+                psmStrValue = NULL;
+            }
+        } else {
+            CcspTraceError(("[%s] PSM returned success with NULL value for RadiusGreyList\n", __FUNCTION__));
+        }
     }
 #else
     UNREFERENCED_PARAMETER(pbEnableRadiusGreyList);
