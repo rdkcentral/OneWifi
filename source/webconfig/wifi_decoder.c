@@ -989,13 +989,14 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     const cJSON *param;
 
     decode_param_allow_empty_string(radius, "RadiusServerIPAddr", param);
-    if (strlen(param->valuestring) == 0) {
+    const char *radius_ip_val = param->valuestring;
+    if (strlen(radius_ip_val) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: RadiusServerIPAddr is NULL\n", __func__, __LINE__);
-            strcpy(param->valuestring,"0.0.0.0");
+            radius_ip_val = "0.0.0.0";
     }
-    if (decode_ipv4_address(param->valuestring) == webconfig_error_none || decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+    if (decode_ipv4_address((char *)radius_ip_val) == webconfig_error_none || decode_ipv6_address((char *)radius_ip_val) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-        strncpy((char *)radius_info->ip,param->valuestring,sizeof(radius_info->ip)-1);
+        strncpy((char *)radius_info->ip,radius_ip_val,sizeof(radius_info->ip)-1);
     }
     else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
@@ -1004,9 +1005,9 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     }
 #else
     /* check the INET family and update the radius ip address */
-    if(inet_pton(AF_INET, param->valuestring, &(radius_info->ip.u.IPv4addr)) > 0) {
+    if(inet_pton(AF_INET, radius_ip_val, &(radius_info->ip.u.IPv4addr)) > 0) {
        radius_info->ip.family = wifi_ip_family_ipv4;
-    } else if(inet_pton(AF_INET6, param->valuestring, &(radius_info->ip.u.IPv6addr)) > 0) {
+    } else if(inet_pton(AF_INET6, radius_ip_val, &(radius_info->ip.u.IPv6addr)) > 0) {
        radius_info->ip.family = wifi_ip_family_ipv6;
     } else {
        return webconfig_error_decode;
@@ -1019,13 +1020,14 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     snprintf(radius_info->key, sizeof(radius_info->key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "SecondaryRadiusServerIPAddr", param);
-    if (strlen(param->valuestring) == 0) {
+    const char *secondary_ip_val = param->valuestring;
+    if (strlen(secondary_ip_val) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SecondaryRadiusServerIPAddr is NULL\n", __func__, __LINE__);
-            strcpy(param->valuestring,"0.0.0.0");
+            secondary_ip_val = "0.0.0.0";
     }
-    if (decode_ipv4_address(param->valuestring) == webconfig_error_none || decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+    if (decode_ipv4_address((char *)secondary_ip_val) == webconfig_error_none || decode_ipv6_address((char *)secondary_ip_val) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-        strncpy((char *)radius_info->s_ip,param->valuestring,sizeof(radius_info->s_ip)-1);
+        strncpy((char *)radius_info->s_ip,secondary_ip_val,sizeof(radius_info->s_ip)-1);
     }
     else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
@@ -1034,9 +1036,9 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     }
 #else
     /* check the INET family and update the radius ip address */
-    if (inet_pton(AF_INET, param->valuestring, &(radius_info->s_ip.u.IPv4addr)) > 0) {
+    if (inet_pton(AF_INET, secondary_ip_val, &(radius_info->s_ip.u.IPv4addr)) > 0) {
         radius_info->s_ip.family = wifi_ip_family_ipv4;
-    } else if(inet_pton(AF_INET6, param->valuestring, &(radius_info->s_ip.u.IPv6addr)) > 0) {
+    } else if(inet_pton(AF_INET6, secondary_ip_val, &(radius_info->s_ip.u.IPv6addr)) > 0) {
         radius_info->s_ip.family = wifi_ip_family_ipv6;
     } else {
         return webconfig_error_decode;
@@ -1049,13 +1051,14 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     snprintf(radius_info->s_key, sizeof(radius_info->s_key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "DasServerIPAddr", param);
-    if (strlen(param->valuestring) == 0) {
+    const char *das_ip_val = param->valuestring;
+    if (strlen(das_ip_val) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: DasServerIPAddr is NULL\n", __func__, __LINE__);
-            strcpy(param->valuestring,"0.0.0.0");
+            das_ip_val = "0.0.0.0";
     }
-    if (inet_pton(AF_INET, param->valuestring, &(radius_info->dasip.u.IPv4addr)) > 0) {
+    if (inet_pton(AF_INET, das_ip_val, &(radius_info->dasip.u.IPv4addr)) > 0) {
         radius_info->dasip.family = wifi_ip_family_ipv4;
-    } else if (inet_pton(AF_INET6, param->valuestring, &(radius_info->dasip.u.IPv6addr)) > 0) {
+    } else if (inet_pton(AF_INET6, das_ip_val, &(radius_info->dasip.u.IPv6addr)) > 0) {
         radius_info->dasip.family = wifi_ip_family_ipv6;
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
@@ -2909,6 +2912,9 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
             if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
                 continue;
             }
+            if (radioIndex < 0 || (unsigned int)radioIndex >= num_of_radios) {
+                continue;
+            }
             radio_oper = &data->u.decoded.radios[radioIndex].oper;
             if (!radio_oper) {
                 wifi_util_error_print(WIFI_CTRL,
@@ -3383,16 +3389,16 @@ webconfig_error_t decode_device_info(const cJSON *device_cfg, wifi_platform_prop
     const cJSON  *param;
 
     decode_param_string(device_cfg, "Manufacturer", param);
-    strcpy(info->manufacturer, param->valuestring);
+    snprintf(info->manufacturer, sizeof(info->manufacturer), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "Model", param);
-    strcpy(info->manufacturerModel, param->valuestring);
+    snprintf(info->manufacturerModel, sizeof(info->manufacturerModel), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "SerialNo", param);
-    strcpy(info->serialNo, param->valuestring);
+    snprintf(info->serialNo, sizeof(info->serialNo), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "Software_version", param);
-    strcpy(info->software_version, param->valuestring);
+    snprintf(info->software_version, sizeof(info->software_version), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "CMMAC", param);
     str_to_mac_bytes(param->valuestring,info->cm_mac);
@@ -4597,7 +4603,7 @@ webconfig_error_t decode_harvester_object(const cJSON *obj, instant_measurement_
     decode_param_bool(obj, "Enabled", param);
     harvester->b_inst_client_enabled = (param->type & cJSON_True) ? true:false;
     decode_param_string(obj, "MacAddress", param);
-    strcpy(harvester->mac_address, param->valuestring);
+    snprintf(harvester->mac_address, sizeof(harvester->mac_address), "%s", param->valuestring);
     decode_param_integer(obj, "ReportingPeriod", param);
     harvester->u_inst_client_reporting_period = param->valuedouble;
     decode_param_integer(obj, "DefReportingPeriod", param);
