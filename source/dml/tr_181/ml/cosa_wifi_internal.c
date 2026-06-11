@@ -955,8 +955,11 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     {
         if (strValue && strlen(strValue))
         {
-            strncpy(list, strValue , strlen(strValue)+1);
+            snprintf(list, sizeof(list), "%s", strValue);
+        }
+        if (strValue != NULL && bus_handle != NULL) {
             ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            strValue = NULL;
         }
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
@@ -972,8 +975,11 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     {
         if (strValue && strlen(strValue))
         {
-            strncpy(list, strValue , strlen(strValue)+1);
+            snprintf(list, sizeof(list), "%s", strValue);
+        }
+        if (strValue != NULL && bus_handle != NULL) {
             ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            strValue = NULL;
         }
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
@@ -989,8 +995,11 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     {
         if (strValue && strlen(strValue))
         {
-            strncpy(list, strValue , strlen(strValue)+1);
+            snprintf(list, sizeof(list), "%s", strValue);
+        }
+        if (strValue != NULL && bus_handle != NULL) {
             ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            strValue = NULL;
         }
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
@@ -1006,8 +1015,11 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     {
         if (strValue && strlen(strValue))
         {
-            strncpy(list, strValue , strlen(strValue)+1);
+            snprintf(list, sizeof(list), "%s", strValue);
+        }
+        if (strValue != NULL && bus_handle != NULL) {
             ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            strValue = NULL;
         }
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
@@ -1046,7 +1058,10 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-Interworking.Enable", NULL, &strValue);
     if ((retPsmGet == CCSP_SUCCESS) && (strValue)){
         l_interworking_RFC = _ansc_atoi(strValue);
-        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        if (bus_handle != NULL) {
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            strValue = NULL;
+        }
     }
     else
     {
@@ -1057,7 +1072,10 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-Passpoint.Enable", NULL, &strValue);
     if ((retPsmGet == CCSP_SUCCESS) && (strValue)){
         l_passpoint_RFC = _ansc_atoi(strValue);
-        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        if (bus_handle != NULL) {
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            strValue = NULL;
+        }
     }
     else
     {
@@ -1200,7 +1218,10 @@ CosaWifiInitialize(ANSC_HANDLE hThisObject)
         webconfig_dml->radios[0].vaps.vap_map.vap_array[0].u.bss_info.ssid);
     CcspWifiTrace(("RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi "
                    "initialization complete. \n"));
-    get_stubs_descriptor()->t2_event_d_fn("WIFI_INFO_CosaWifiinit", 1);
+    wifi_stubs_descriptor_t *p_stub_desc = get_stubs_descriptor();
+    if ((p_stub_desc != NULL) && (p_stub_desc->t2_event_d_fn != NULL)) {
+        p_stub_desc->t2_event_d_fn("WIFI_INFO_CosaWifiinit", 1);
+    }
 
     set_dml_init_status(true);
     getParamWifiRegionUpdateSource();
