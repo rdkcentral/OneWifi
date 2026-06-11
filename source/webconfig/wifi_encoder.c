@@ -3048,6 +3048,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     
     // Backhaul BSS Configuration Policy
     if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_BACKHAUL_BSS)) {
+    static const unsigned char null_bssid[MAC_ADDR_LEN] = {0};
     param_arr = cJSON_CreateArray();
     if (param_arr == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3055,19 +3056,24 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         return webconfig_error_encode;
     }
     cJSON_AddItemToObject(policy_obj, "Backhaul BSS Configuration Policy", param_arr);
-    param_obj = cJSON_CreateObject();
-    if (param_obj == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
-            __LINE__);
-        return webconfig_error_encode;
+    for (int i = 0; i < em_config->num_backhaul_bss_config && i < EM_MAX_BACKHAUL_BSS_POLICY; i++) {
+        if (memcmp(em_config->backhaul_bss_config_policy[i].bssid, null_bssid, MAC_ADDR_LEN) == 0) {
+            continue;
+        }
+        param_obj = cJSON_CreateObject();
+        if (param_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+                __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToArray(param_arr, param_obj);
+        uint8_mac_to_string_mac((uint8_t *)em_config->backhaul_bss_config_policy[i].bssid, mac_str);
+        cJSON_AddStringToObject(param_obj, "BSSID", mac_str);
+        cJSON_AddBoolToObject(param_obj, "Profile-1 bSTA Disallowed",
+            em_config->backhaul_bss_config_policy[i].profile_1_bsta_disallowed);
+        cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",
+            em_config->backhaul_bss_config_policy[i].profile_2_bsta_disallowed);
     }
-    cJSON_AddItemToArray(param_arr, param_obj);
-    cJSON_AddStringToObject(param_obj, "BSSID",
-        (const char *)em_config->backhaul_bss_config_policy.bssid);
-    cJSON_AddBoolToObject(param_obj, "Profile-1 bSTA Disallowed",
-        em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed);
-    cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",
-        em_config->backhaul_bss_config_policy.profile_2_bsta_disallowed);
     } // EM_POLICY_PRESENT_BACKHAUL_BSS
 
     // Channel Scan Reporting Policy
@@ -3137,25 +3143,29 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
 
     // QoS Management Policy
     if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_QOS_MGT)) {
+    cJSON *qos_arr = cJSON_CreateArray();
+    cJSON_AddItemToObject(policy_obj, "QoS Management Policy", qos_arr);
+    for (int qi = 0; qi < em_config->num_qos_mgt && qi < EM_MAX_QOS_POLICY; qi++) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
             __LINE__);
         return webconfig_error_encode;
     }
-    cJSON_AddItemToObject(policy_obj, "QoS Management Policy", param_obj);
+    cJSON_AddItemToArray(qos_arr, param_obj);
     param_arr = cJSON_CreateArray();
     cJSON_AddItemToObject(param_obj, "MSCS Disallowed STA List", param_arr);
-    for (int i = 0; i < em_config->qos_mgt_policy.num_mscs; i++) {
-        uint8_mac_to_string_mac((uint8_t *)em_config->qos_mgt_policy.mscs_mac[i], mac_str);
+    for (int i = 0; i < em_config->qos_mgt_policy[qi].num_mscs; i++) {
+        uint8_mac_to_string_mac((uint8_t *)em_config->qos_mgt_policy[qi].mscs_mac[i], mac_str);
         cJSON_AddItemToArray(param_arr, cJSON_CreateString(mac_str));
     }
     param_arr = cJSON_CreateArray();
     cJSON_AddItemToObject(param_obj, "SCS Disallowed STA List", param_arr);
-    for (int i = 0; i < em_config->qos_mgt_policy.num_scs; i++) {
-        uint8_mac_to_string_mac((uint8_t *)em_config->qos_mgt_policy.scs_mac[i], mac_str);
+    for (int i = 0; i < em_config->qos_mgt_policy[qi].num_scs; i++) {
+        uint8_mac_to_string_mac((uint8_t *)em_config->qos_mgt_policy[qi].scs_mac[i], mac_str);
         cJSON_AddItemToArray(param_arr, cJSON_CreateString(mac_str));
     }
+    } // qi loop
     } // EM_POLICY_PRESENT_QOS_MGT
 
     // Default 802.1Q Settings Policy
@@ -3172,27 +3182,6 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     cJSON_AddNumberToObject(param_obj, "Default PCP",
         em_config->default_8021q_policy.default_pcp);
     } // EM_POLICY_PRESENT_8021Q
-
-    // Traffic Separation Policy
-    // if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_TRAFFIC_SEP)) {
-    // param_obj = cJSON_CreateObject();
-    // if (param_obj == NULL) {
-    //     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
-    //         __LINE__);
-    //     return webconfig_error_encode;
-    // }
-    // cJSON_AddItemToObject(policy_obj, "Traffic Separation Policy", param_obj);
-    // param_arr = cJSON_CreateArray();
-    // cJSON_AddItemToObject(param_obj, "SSID List", param_arr);
-    // for (int i = 0; i < em_config->traffic_separation_policy.num_ssids; i++) {
-    //     cJSON *ssid_obj = cJSON_CreateObject();
-    //     cJSON_AddStringToObject(ssid_obj, "SSID",
-    //         em_config->traffic_separation_policy.ssid_info[i].ssid);
-    //     cJSON_AddNumberToObject(ssid_obj, "VLAN ID",
-    //         em_config->traffic_separation_policy.ssid_info[i].vlan_id);
-    //     cJSON_AddItemToArray(param_arr, ssid_obj);
-    // }
-    // } // EM_POLICY_PRESENT_TRAFFIC_SEP
 
     // Radio Steering Parameters (inside Steering Policies wrapper)
     if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_RADIO_STEERING)) {

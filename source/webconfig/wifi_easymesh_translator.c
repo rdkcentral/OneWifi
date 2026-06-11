@@ -3476,12 +3476,20 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
     }
 
     // backhaul bss config policy
-    memcpy(policy_cfg->backhaul_bss_config_policy.bssid, em_policy_cfg->bh_bss_cfg_policy.bssid,
-        sizeof(bssid_t));
-    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed =
-        em_policy_cfg->bh_bss_cfg_policy.p1_bsta_disallowed;
-    policy_cfg->backhaul_bss_config_policy.profile_2_bsta_disallowed =
-        em_policy_cfg->bh_bss_cfg_policy.p2_bsta_disallowed;
+    static const unsigned char null_bssid[sizeof(bssid_t)] = {0};
+    policy_cfg->num_backhaul_bss_config = 0;
+    for (unsigned int i = 0; i < em_policy_cfg->num_bh_bss_cfg && i < EM_MAX_BACKHAUL_BSS_POLICY; i++) {
+        if (memcmp(em_policy_cfg->bh_bss_cfg_policy[i].bssid, null_bssid, sizeof(bssid_t)) == 0) {
+            continue;
+        }
+        memcpy(policy_cfg->backhaul_bss_config_policy[policy_cfg->num_backhaul_bss_config].bssid,
+            em_policy_cfg->bh_bss_cfg_policy[i].bssid, sizeof(bssid_t));
+        policy_cfg->backhaul_bss_config_policy[policy_cfg->num_backhaul_bss_config].profile_1_bsta_disallowed =
+            em_policy_cfg->bh_bss_cfg_policy[i].p1_bsta_disallowed;
+        policy_cfg->backhaul_bss_config_policy[policy_cfg->num_backhaul_bss_config].profile_2_bsta_disallowed =
+            em_policy_cfg->bh_bss_cfg_policy[i].p2_bsta_disallowed;
+        policy_cfg->num_backhaul_bss_config++;
+    }
 
     // default 802.1Q settings policy
     policy_cfg->default_8021q_policy.primary_vid = em_policy_cfg->def_8021q_settings.primary_vlan_id;
@@ -3530,17 +3538,21 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
         em_policy_cfg->unsuccessful_assoc_policy.max_rprt_rate;
 
     // QoS management policy
-    policy_cfg->qos_mgt_policy.num_mscs = em_policy_cfg->qos_mgmt_policy.mscs_disallowed_num;
-    for (int i = 0; i < policy_cfg->qos_mgt_policy.num_mscs && i < EM_MAX_QOS_MAC; i++) {
-        memcpy(policy_cfg->qos_mgt_policy.mscs_mac[i],
-            em_policy_cfg->qos_mgmt_policy.mac_addr_mscs_disallowed[i].sta_mac_addr,
-            sizeof(mac_addr_t));
-    }
-    policy_cfg->qos_mgt_policy.num_scs = em_policy_cfg->qos_mgmt_policy.scs_disallowed_num;
-    for (int i = 0; i < policy_cfg->qos_mgt_policy.num_scs && i < EM_MAX_QOS_MAC; i++) {
-        memcpy(policy_cfg->qos_mgt_policy.scs_mac[i],
-            em_policy_cfg->qos_mgmt_policy.mac_addr_scs_disallowed[i].sta_mac_addr,
-            sizeof(mac_addr_t));
+    policy_cfg->num_qos_mgt = 0;
+    for (unsigned int qi = 0; qi < em_policy_cfg->num_qos_mgmt && qi < EM_MAX_QOS_POLICY; qi++) {
+        policy_cfg->qos_mgt_policy[qi].num_mscs = em_policy_cfg->qos_mgmt_policy[qi].mscs_disallowed_num;
+        for (int i = 0; i < policy_cfg->qos_mgt_policy[qi].num_mscs && i < EM_MAX_QOS_MAC; i++) {
+            memcpy(policy_cfg->qos_mgt_policy[qi].mscs_mac[i],
+                em_policy_cfg->qos_mgmt_policy[qi].mac_addr_mscs_disallowed[i].sta_mac_addr,
+                sizeof(mac_addr_t));
+        }
+        policy_cfg->qos_mgt_policy[qi].num_scs = em_policy_cfg->qos_mgmt_policy[qi].scs_disallowed_num;
+        for (int i = 0; i < policy_cfg->qos_mgt_policy[qi].num_scs && i < EM_MAX_QOS_MAC; i++) {
+            memcpy(policy_cfg->qos_mgt_policy[qi].scs_mac[i],
+                em_policy_cfg->qos_mgmt_policy[qi].mac_addr_scs_disallowed[i].sta_mac_addr,
+                sizeof(mac_addr_t));
+        }
+        policy_cfg->num_qos_mgt++;
     }
 
     /* store the received-sections bitmask so the encoder skips absent policy sections */

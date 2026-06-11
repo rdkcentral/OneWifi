@@ -6447,17 +6447,22 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         return webconfig_error_decode;
     }
 
-    if (cJSON_IsArray(backhaul_policy) && cJSON_GetArraySize(backhaul_policy) > 0) {
-        const cJSON *bss_item = cJSON_GetArrayItem(backhaul_policy, 0);
-        decode_param_allow_optional_string(bss_item, "BSSID", param);
-        strncpy((char *)em_config->backhaul_bss_config_policy.bssid, param->valuestring,
-            sizeof(bssid_t));
-        decode_param_bool(bss_item, "Profile-1 bSTA Disallowed", param);
-        em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed =
-            (param->type & cJSON_True) ? true : false;
-        decode_param_bool(bss_item, "Profile-2 bSTA Disallowed", param);
-        em_config->backhaul_bss_config_policy.profile_2_bsta_disallowed =
-            (param->type & cJSON_True) ? true : false;
+    em_config->num_backhaul_bss_config = 0;
+    if (cJSON_IsArray(backhaul_policy)) {
+        int bh_arr_size = cJSON_GetArraySize(backhaul_policy);
+        for (int i = 0; i < bh_arr_size && i < EM_MAX_BACKHAUL_BSS_POLICY; i++) {
+            const cJSON *bss_item = cJSON_GetArrayItem(backhaul_policy, i);
+            decode_param_allow_optional_string(bss_item, "BSSID", param);
+            strncpy((char *)em_config->backhaul_bss_config_policy[i].bssid, param->valuestring,
+                sizeof(bssid_t));
+            decode_param_bool(bss_item, "Profile-1 bSTA Disallowed", param);
+            em_config->backhaul_bss_config_policy[i].profile_1_bsta_disallowed =
+                (param->type & cJSON_True) ? true : false;
+            decode_param_bool(bss_item, "Profile-2 bSTA Disallowed", param);
+            em_config->backhaul_bss_config_policy[i].profile_2_bsta_disallowed =
+                (param->type & cJSON_True) ? true : false;
+            em_config->num_backhaul_bss_config++;
+        }
     }
 
     // Channel Scan Reporting Policy
@@ -6528,22 +6533,23 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     // QoS Management Policy
     qos_mgt_policy = cJSON_GetObjectItem(policy_obj, "QoS Management Policy");
     if (qos_mgt_policy != NULL) {
+        em_config->num_qos_mgt = 1;
         const cJSON *mscs_arr = cJSON_GetObjectItem(qos_mgt_policy, "MSCS Disallowed STA List");
         if (mscs_arr != NULL && cJSON_IsArray(mscs_arr)) {
-            em_config->qos_mgt_policy.num_mscs = cJSON_GetArraySize(mscs_arr);
-            for (int i = 0; i < em_config->qos_mgt_policy.num_mscs && i < EM_MAX_QOS_MAC; i++) {
+            em_config->qos_mgt_policy[0].num_mscs = cJSON_GetArraySize(mscs_arr);
+            for (int i = 0; i < em_config->qos_mgt_policy[0].num_mscs && i < EM_MAX_QOS_MAC; i++) {
                 const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
                 str_to_mac_bytes(cJSON_GetStringValue(mac_item),
-                    em_config->qos_mgt_policy.mscs_mac[i]);
+                    em_config->qos_mgt_policy[0].mscs_mac[i]);
             }
         }
         const cJSON *scs_arr = cJSON_GetObjectItem(qos_mgt_policy, "SCS Disallowed STA List");
         if (scs_arr != NULL && cJSON_IsArray(scs_arr)) {
-            em_config->qos_mgt_policy.num_scs = cJSON_GetArraySize(scs_arr);
-            for (int i = 0; i < em_config->qos_mgt_policy.num_scs && i < EM_MAX_QOS_MAC; i++) {
+            em_config->qos_mgt_policy[0].num_scs = cJSON_GetArraySize(scs_arr);
+            for (int i = 0; i < em_config->qos_mgt_policy[0].num_scs && i < EM_MAX_QOS_MAC; i++) {
                 const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
                 str_to_mac_bytes(cJSON_GetStringValue(mac_item),
-                    em_config->qos_mgt_policy.scs_mac[i]);
+                    em_config->qos_mgt_policy[0].scs_mac[i]);
             }
         }
     }

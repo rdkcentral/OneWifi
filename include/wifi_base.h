@@ -1292,11 +1292,14 @@ typedef struct {
     mac_addr_t disallowed_sta[EM_MAX_DIS_STA];
 } steering_disallowed_policy_t;
 
+#define EM_MAX_BACKHAUL_BSS_POLICY 16
 typedef struct {
     bssid_t bssid;
     bool profile_1_bsta_disallowed;
     bool profile_2_bsta_disallowed;
 } backhaul_bss_config_policy_t;
+
+#define EM_MAX_QOS_POLICY 1
 
 typedef struct {
     bool report_independent_channel_scan;
@@ -1380,11 +1383,13 @@ typedef struct {
     ap_metrics_policy_t ap_metric_policy;
     steering_disallowed_policy_t local_steering_dslw_policy;
     steering_disallowed_policy_t btm_steering_dslw_policy;
-    backhaul_bss_config_policy_t backhaul_bss_config_policy;
+    int num_backhaul_bss_config;
+    backhaul_bss_config_policy_t backhaul_bss_config_policy[EM_MAX_BACKHAUL_BSS_POLICY];
     channel_scan_reporting_policy_t channel_scan_reporting_policy;
     radio_metrics_policies_t radio_metrics_policies;
     unsuccessful_assoc_policy_t unsuccess_assoc_policy;
-    qos_mgt_policy_t qos_mgt_policy;
+    int num_qos_mgt;
+    qos_mgt_policy_t qos_mgt_policy[EM_MAX_QOS_POLICY];
     default_8021q_policy_t default_8021q_policy;
     // traffic_separation_policy_t traffic_separation_policy;
     radio_steering_policies_t radio_steering_policies;
