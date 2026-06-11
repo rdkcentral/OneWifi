@@ -2119,8 +2119,13 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
                 if (config->variant & WIFI_80211_VARIANT_AX) {
                     config->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
                 } else {
+#ifdef CONFIG_IEEE80211BE
+                    config->variant = WIFI_80211_VARIANT_BE;
+                    config->channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#else
                     config->variant = WIFI_80211_VARIANT_AX;
                     config->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+#endif /* CONFIG_IEEE80211BE */
                 }
         }
     }
