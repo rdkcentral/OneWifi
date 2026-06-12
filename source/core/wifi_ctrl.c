@@ -3809,3 +3809,51 @@ static int switch_dfs_channel(void *arg)
     free(arg);
     return TIMER_TASK_COMPLETE;
 }
+
+int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info)
+{
+    uint8_t j = 0;
+    rdk_wifi_vap_info_t *rdk_vaps;
+    wifi_vap_info_map_t *vap_map = NULL;
+    uint8_t i = 0, vap_index = 0;
+
+    for (i = 0; i < tgt_vap_map->num_vaps; i++) {
+        vap_index = tgt_vap_map->vap_array[i].vap_index;
+        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
+        if (vap_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d global vap_map null radio_index:%d\n", __func__,
+                __LINE__, tgt_vap_map->vap_array[i].radio_index);
+            return RETURN_ERR;
+        }
+        rdk_vaps = get_wifidb_rdk_vaps(tgt_vap_map->vap_array[i].radio_index);
+        if (rdk_vaps == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vaps for radio index: %d\n",
+                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index);
+            return RETURN_ERR;
+        }
+        for (j = 0; j < vap_map->num_vaps; j++) {
+            if (vap_map->vap_array[j].vap_index == vap_index) {
+                memcpy((unsigned char *)&vap_map->vap_array[j],
+                    (unsigned char *)&tgt_vap_map->vap_array[i], sizeof(wifi_vap_info_t));
+                memcpy(&rdk_vaps[j], &rdk_vap_info[i], sizeof(rdk_wifi_vap_info_t));
+                break;
+            }
+        }
+    }
+
+    return RETURN_OK;
+}
+
+void update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc)
+{
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
+    if (webconfig_encode(&ctrl->webconfig, dml_cache_update_subdoc,
+            webconfig_subdoc_type_dml) == webconfig_error_none) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__,
+            __LINE__);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig_encode failed ! DML cache may store incorrect values !\n", __FUNCTION__,
+            __LINE__);
+    }
+}
+
