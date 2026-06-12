@@ -240,6 +240,10 @@ typedef struct {
 #define NAME_FREQUENCY_5H_G "5gh"
 #define NAME_FREQUENCY_5L_G "5gl"
 
+#if defined(CONFIG_IEEE80211BE)
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size);
+#endif
+
 #define NAME_FREQUENCY_2_4 "2"
 #define NAME_FREQUENCY_5 "5"
 #define NAME_FREQUENCY_6 "6"

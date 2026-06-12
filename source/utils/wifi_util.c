@@ -77,6 +77,11 @@ void test_names(wifi_platform_property_t *wifi_prop);
 #define LOG_PATH_PREFIX "/nvram/"
 #endif // LOG_PATH_PREFIX
 
+typedef struct {
+    wifi_freq_bands_t band;
+    const char *band_str;
+} freq_band_str_map_t;
+
 struct wifiCountryEnumStrMapMember wifiCountryMapMembers[] =
 {
     {wifi_countrycode_AC,"AC","004"}, /**< ASCENSION ISLAND */
@@ -2960,6 +2965,41 @@ int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsign
 
     return RETURN_ERR;
 }
+
+#if defined(CONFIG_IEEE80211BE)
+#define MLO_SUFFIX "_mlo"
+static const freq_band_str_map_t freq_band_str_map[] = {
+    { WIFI_FREQUENCY_2_4_BAND, NAME_FREQUENCY_2_4_G },
+    { WIFI_FREQUENCY_5_BAND,   NAME_FREQUENCY_5_G },
+    { WIFI_FREQUENCY_5L_BAND,  NAME_FREQUENCY_5L_G },
+    { WIFI_FREQUENCY_5H_BAND,  NAME_FREQUENCY_5H_G },
+    { WIFI_FREQUENCY_6_BAND,   NAME_FREQUENCY_6_G },
+};
+
+
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size)
+{
+    int len = 0;
+    unsigned int i = 0;
+    const char *last_underscore = NULL;
+
+    if (vap_name == NULL || out == NULL) {
+        return false;
+    }
+    last_underscore = strrchr(vap_name, '_');
+    if (last_underscore == NULL) {
+        return false;
+    }
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (strcmp(last_underscore + 1, freq_band_str_map[i].band_str) == 0) {
+            len = last_underscore - vap_name;
+            snprintf(out, out_size, "%.*s" MLO_SUFFIX, len, vap_name);
+            return true;
+        }
+    }
+    return false;
+}
+#endif /* CONFIG_IEEE80211BE */
 
 struct wifiStdHalMap
 {
