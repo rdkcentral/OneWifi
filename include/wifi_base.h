@@ -1023,6 +1023,18 @@ typedef struct {
     mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
+#if defined(CONFIG_IEEE80211BE)
+typedef struct {
+    unsigned int num_links;
+    assoc_dev_data_t links[MAX_NUM_RADIOS];
+} mlo_client_t;
+
+typedef struct {
+    wifi_vap_name_t vap_name;
+    hash_map_t *mlo_sta_map;
+} wifi_mld_unit_t;
+#endif /* CONFIG_IEEE80211BE */
+
 struct active_msmt_data;
 
 typedef struct {
