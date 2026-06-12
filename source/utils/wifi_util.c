@@ -2961,6 +2961,96 @@ int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsign
     return RETURN_ERR;
 }
 
+typedef struct {
+    wifi_freq_bands_t band;
+    const char *band_str;
+} freq_band_str_map_t;
+
+static const freq_band_str_map_t freq_band_str_map[] = {
+    { WIFI_FREQUENCY_2_4_BAND, NAME_FREQUENCY_2_4_G },
+    { WIFI_FREQUENCY_5_BAND,   NAME_FREQUENCY_5_G },
+    { WIFI_FREQUENCY_5L_BAND,  NAME_FREQUENCY_5L_G },
+    { WIFI_FREQUENCY_5H_BAND,  NAME_FREQUENCY_5H_G },
+    { WIFI_FREQUENCY_6_BAND,   NAME_FREQUENCY_6_G },
+};
+
+const char *convert_freq_band_to_band_str_g(int freq_band)
+{
+    unsigned int i = 0;
+
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (freq_band_str_map[i].band == (wifi_freq_bands_t)freq_band) {
+            return freq_band_str_map[i].band_str;
+        }
+    }
+    return NULL;
+}
+
+#if defined(CONFIG_IEEE80211BE)
+#define MLO_SUFFIX "_mlo"
+#define MLO_SUFFIX_LEN 4
+bool is_mlo_vap_name(const char *name)
+{
+    size_t len = 0;
+
+    if (name == NULL) {
+        return false;
+    }
+    len = strlen(name);
+    return (len > MLO_SUFFIX_LEN && strncmp(name + len - MLO_SUFFIX_LEN, MLO_SUFFIX, MLO_SUFFIX_LEN) == 0);
+}
+
+static bool get_mlo_base_name(const char *mlo_vap_name, char *base, size_t base_size)
+{
+    size_t base_len = 0;
+
+    if (base == NULL || !is_mlo_vap_name(mlo_vap_name)) {
+        return false;
+    }
+    base_len = strlen(mlo_vap_name) - MLO_SUFFIX_LEN;
+    if (base_len >= base_size) {
+        return false;
+    }
+    memcpy(base, mlo_vap_name, base_len);
+    base[base_len] = '\0';
+    return true;
+}
+
+bool get_per_radio_vap_name_from_mlo(const char *mlo_vap_name, const char *band_str, char *out, size_t out_size)
+{
+    wifi_vap_name_t base = { 0 };
+
+    if (!get_mlo_base_name(mlo_vap_name, base, sizeof(base))) {
+        return false;
+    }
+    snprintf(out, out_size, "%s_%s", base, band_str);
+    return true;
+}
+
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size)
+{
+    int len = 0;
+    unsigned int i = 0;
+    const char *last_underscore = NULL;
+
+    if (vap_name == NULL || out == NULL) {
+        return false;
+    }
+    last_underscore = strrchr(vap_name, '_');
+    if (last_underscore == NULL) {
+        return false;
+    }
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (strcmp(last_underscore + 1, freq_band_str_map[i].band_str) == 0) {
+            len = last_underscore - vap_name;
+            snprintf(out, out_size, "%.*s" MLO_SUFFIX, len, vap_name);
+            return true;
+        }
+    }
+    return false;
+}
+#endif /* CONFIG_IEEE80211BE */
+
 struct wifiStdHalMap
 {
     wifi_ieee80211Variant_t halWifiStd;
