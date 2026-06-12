@@ -61,15 +61,115 @@ webconfig_error_t translate_to_associated_clients_subdoc(webconfig_t *config, we
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+#if defined(CONFIG_IEEE80211BE)
+static void collect_mlo_entry(void *ctx, assoc_dev_data_t *entry)
+{
+    wifi_mld_unit_t *unit = (wifi_mld_unit_t *)ctx;
+    mlo_client_t *client = NULL;
+    mac_addr_str_t mac_key = { 0 };
+
+    if (unit == NULL || unit->mlo_sta_map == NULL) {
+        return;
+    }
+
+    to_mac_str(entry->dev_stats.cli_MACAddress, mac_key);
+    str_tolower(mac_key);
+
+    client = (mlo_client_t *)hash_map_get(unit->mlo_sta_map, mac_key);
+    if (client == NULL) {
+        client = (mlo_client_t *)calloc(1, sizeof(mlo_client_t));
+        if (client == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+            return;
+        }
+        hash_map_put(unit->mlo_sta_map, strdup(mac_key), client);
+    }
+    if (client->num_links < MAX_NUM_RADIOS) {
+        client->links[client->num_links++] = *entry;
+    }
+}
+
+static wifi_mld_unit_t *find_or_create_mld_unit(wifi_mld_unit_t *units, unsigned int *count,
+    const char *mlo_name)
+{
+    unsigned int k;
+    wifi_mld_unit_t *unit = NULL;
+
+    for (k = 0; k < *count; k++) {
+        if (strcmp(units[k].vap_name, mlo_name) == 0) {
+            return &units[k];
+        }
+    }
+    if (*count >= MLD_UNIT_COUNT) {
+        return NULL;
+    }
+    unit = &units[*count];
+    (*count)++;
+    snprintf(unit->vap_name, sizeof(unit->vap_name), "%s", mlo_name);
+    unit->mlo_sta_map = hash_map_create();
+    if (unit->mlo_sta_map == NULL) {
+        (*count)--;
+        return NULL;
+    }
+    return unit;
+}
+#endif /* CONFIG_IEEE80211BE */
+
+static void encode_per_vap_assoc_clients(webconfig_subdoc_decoded_data_t *params, cJSON *assoc_array,
+#if defined(CONFIG_IEEE80211BE)
+    assoclist_type_t assoclist_type, wifi_mld_unit_t *mld_units, unsigned int *mld_unit_count)
+#else
+    assoclist_type_t assoclist_type)
+#endif
+{
+    unsigned int i;
+    unsigned int j;
+    wifi_vap_info_map_t *vap_map;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+#if defined(CONFIG_IEEE80211BE)
+    wifi_vap_name_t derived_mlo = { 0 };
+    wifi_mld_unit_t *unit = NULL;
+#endif
+
+    for (i = 0; i < params->num_radios; i++) {
+        vap_map = &params->radios[i].vaps.vap_map;
+
+        for (j = 0; j < vap_map->num_vaps; j++) {
+            rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
+
+#if defined(CONFIG_IEEE80211BE)
+            memset(derived_mlo, 0, sizeof(derived_mlo));
+            if (mld_units != NULL && mld_unit_count != NULL &&
+                get_mlo_vap_name_from_per_radio(rdk_vap_info->vap_name, derived_mlo, sizeof(derived_mlo))) {
+                unit = find_or_create_mld_unit(mld_units, mld_unit_count, derived_mlo);
+                if (unit == NULL) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to create MLD unit for %s"
+                        " (count %u >= MLD_UNIT_COUNT)\n", __func__, __LINE__, derived_mlo, *mld_unit_count);
+                    encode_associated_client_object(rdk_vap_info, assoc_array, assoclist_type);
+                    continue;
+                }
+                encode_vap_assoc_clients(rdk_vap_info, assoc_array, assoclist_type, collect_mlo_entry, unit);
+                continue;
+            }
+#endif
+            encode_associated_client_object(rdk_vap_info, assoc_array, assoclist_type);
+        }
+    }
+}
+
+webconfig_error_t encode_associated_clients_subdoc(webconfig_t *config,
+    webconfig_subdoc_data_t *data)
 {
     cJSON *json;
     cJSON *assoc_array;
     char *str;
-    unsigned int i, j;
     webconfig_subdoc_decoded_data_t *params;
-    wifi_vap_info_map_t *vap_map;
-    rdk_wifi_vap_info_t *rdk_vap_info;
+#if defined(CONFIG_IEEE80211BE)
+    wifi_mld_unit_t mld_units[MLD_UNIT_COUNT];
+    unsigned int mld_unit_count = 0;
+
+    memset (mld_units, 0, sizeof(mld_units));
+#endif
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
@@ -93,46 +193,47 @@ webconfig_error_t encode_associated_clients_subdoc(webconfig_t *config, webconfi
     cJSON_AddStringToObject(json, "Version", "1.0");
     cJSON_AddStringToObject(json, "SubDocName", "associated clients");
 
-    if(params->assoclist_notifier_type == assoclist_notifier_full) {
+    if (params->assoclist_notifier_type == assoclist_notifier_full) {
         assoc_array = cJSON_CreateArray();
         cJSON_AddItemToObject(json, "WiFiAssociatedClients", assoc_array);
 
-        for (i = 0; i < params->num_radios; i++) {
-            //vap_info_map data
-            vap_map = &params->radios[i].vaps.vap_map;
-
-            for (j = 0; j < vap_map->num_vaps; j++) {
-                rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
-                encode_associated_client_object(rdk_vap_info, assoc_array, assoclist_type_full);
-            }
-        }
+#if defined(CONFIG_IEEE80211BE)
+        encode_per_vap_assoc_clients(params, assoc_array, assoclist_type_full, mld_units, &mld_unit_count);
+        encode_mlo_assoc_clients(params, mld_units, mld_unit_count, assoc_array, assoclist_type_full);
+#else
+        encode_per_vap_assoc_clients(params, assoc_array, assoclist_type_full);
+#endif
     } else if (params->assoclist_notifier_type == assoclist_notifier_diff) {
 
         assoc_array = cJSON_CreateArray();
         cJSON_AddItemToObject(json, "AddAssociatedClients", assoc_array);
 
-        for (i = 0; i < params->num_radios; i++) {
-            //vap_info_map data
-            vap_map = &params->radios[i].vaps.vap_map;
-
-            for (j = 0; j < vap_map->num_vaps; j++) {
-                rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
-                encode_associated_client_object(rdk_vap_info, assoc_array, assoclist_type_add);
-            }
-        }
+#if defined(CONFIG_IEEE80211BE)
+        encode_per_vap_assoc_clients(params, assoc_array, assoclist_type_add, mld_units, &mld_unit_count);
+        encode_mlo_assoc_clients(params, mld_units, mld_unit_count, assoc_array, assoclist_type_add);
+#else
+        encode_per_vap_assoc_clients(params, assoc_array, assoclist_type_add);
+#endif
 
         assoc_array = cJSON_CreateArray();
         cJSON_AddItemToObject(json, "RemoveWiFiAssociatedClients", assoc_array);
-        for (i = 0; i < params->num_radios; i++) {
-            //vap_info_map data
-            vap_map = &params->radios[i].vaps.vap_map;
+#if defined(CONFIG_IEEE80211BE)
+        /* Skip MLO collection (NULL) — reuse mld_units already populated; filtered by client_state */
+        encode_per_vap_assoc_clients(params, assoc_array, assoclist_type_remove, NULL, NULL);
+        encode_mlo_assoc_clients(params, mld_units, mld_unit_count, assoc_array, assoclist_type_remove);
+#else
+        encode_per_vap_assoc_clients(params, assoc_array, assoclist_type_remove);
+#endif
+    }
 
-            for (j = 0; j < vap_map->num_vaps; j++) {
-                rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
-                encode_associated_client_object(rdk_vap_info, assoc_array, assoclist_type_remove);
-            }
+#if defined(CONFIG_IEEE80211BE)
+    for (unsigned int k = 0; k < mld_unit_count; k++) {
+        if (mld_units[k].mlo_sta_map != NULL) {
+            hash_map_destroy(mld_units[k].mlo_sta_map);
+            mld_units[k].mlo_sta_map = NULL;
         }
     }
+#endif
 
     str = cJSON_Print(json);
 
