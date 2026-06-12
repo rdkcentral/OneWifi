@@ -1362,22 +1362,6 @@ typedef struct {
     radio_steering_policy_t radio_steering_policy[EM_MAX_RADIO_POLICY];
 } radio_steering_policies_t;
 
-/* Bitmask flags for em_policy_cfg_params_t::present_mask (em_base.h) — used by the
- * encoder to determine which policy sections to include. Zero = encode all. */
-#define EM_POLICY_PRESENT_ALARM           (1u << 0)
-#define EM_POLICY_PRESENT_AP_METRICS      (1u << 1)
-#define EM_POLICY_PRESENT_LOCAL_STEERING  (1u << 2)
-#define EM_POLICY_PRESENT_BTM_STEERING    (1u << 3)
-#define EM_POLICY_PRESENT_BACKHAUL_BSS    (1u << 4)
-#define EM_POLICY_PRESENT_CHAN_SCAN       (1u << 5)
-#define EM_POLICY_PRESENT_RADIO_METRICS   (1u << 6)
-#define EM_POLICY_PRESENT_UNSUCCESS_ASSOC (1u << 7)
-#define EM_POLICY_PRESENT_QOS_MGT         (1u << 8)
-#define EM_POLICY_PRESENT_8021Q           (1u << 9)
-#define EM_POLICY_PRESENT_TRAFFIC_SEP     (1u << 10)
-#define EM_POLICY_PRESENT_CLIENT_FILTERS  (1u << 11)
-#define EM_POLICY_PRESENT_RADIO_STEERING  (1u << 12)
-
 typedef struct {
     alarm_report_policy_t alarm_report_policy;
     ap_metrics_policy_t ap_metric_policy;
@@ -1393,7 +1377,6 @@ typedef struct {
     default_8021q_policy_t default_8021q_policy;
     // traffic_separation_policy_t traffic_separation_policy;
     radio_steering_policies_t radio_steering_policies;
-    uint32_t em_policy_present_mask; /* EM_POLICY_PRESENT_* flags; 0 = encode all sections */
 } em_config_t;
 
 typedef struct {

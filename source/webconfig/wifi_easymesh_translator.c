@@ -3555,9 +3555,6 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
         policy_cfg->num_qos_mgt++;
     }
 
-    /* store the received-sections bitmask so the encoder skips absent policy sections */
-    policy_cfg->em_policy_present_mask = em_policy_cfg->present_mask;
-
     return webconfig_error_none;
 }
 #endif

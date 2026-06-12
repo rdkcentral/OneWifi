@@ -2948,12 +2948,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
 
     cJSON_AddItemToObject(emconfig_obj, "Policy", policy_obj);
 
-/* em_policy_present_mask == 0 means full update (encode all); non-zero selects sections. */
-#define EM_POLICY_SECTION_PRESENT(flag) \
-    ((em_config->em_policy_present_mask) == 0 || ((em_config->em_policy_present_mask) & (flag)))
-
     // Algorithm Run Policy (alarm threshold)
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_ALARM)) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -2966,10 +2961,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         em_config->alarm_report_policy.collection_start_time);
     cJSON_AddNumberToObject(param_obj, "Reporting Interval", em_config->alarm_report_policy.reporting_interval);
     cJSON_AddNumberToObject(param_obj, "Link Quality Threshold", em_config->alarm_report_policy.link_quality_threshold);
-    } // EM_POLICY_PRESENT_ALARM
 
     // AP Metrics Reporting Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_AP_METRICS)) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -2980,7 +2973,6 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     cJSON_AddNumberToObject(param_obj, "Interval", em_config->ap_metric_policy.interval);
     cJSON_AddStringToObject(param_obj, "Managed Client Marker",
         em_config->ap_metric_policy.managed_client_marker);
-    } // EM_POLICY_PRESENT_AP_METRICS
 
     // Steering Policies (Local, BTM, Radio Steering grouped together)
     {
@@ -2993,7 +2985,6 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     cJSON_AddItemToObject(policy_obj, "Steering Policies", steering_policies_obj);
 
     // Local Steering Disallowed Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_LOCAL_STEERING)) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3017,10 +3008,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         uint8_mac_to_string_mac((uint8_t *)em_config->local_steering_dslw_policy.disallowed_sta[i], mac_str);
         cJSON_AddStringToObject(param_obj, "MAC", mac_str);
     }
-    } // EM_POLICY_PRESENT_LOCAL_STEERING
 
     // BTM Steering Disallowed Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_BTM_STEERING)) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3044,10 +3033,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         uint8_mac_to_string_mac((uint8_t *)em_config->btm_steering_dslw_policy.disallowed_sta[i], mac_str);
         cJSON_AddStringToObject(param_obj, "MAC", mac_str);
     }
-    } // EM_POLICY_PRESENT_BTM_STEERING
     
     // Backhaul BSS Configuration Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_BACKHAUL_BSS)) {
     static const unsigned char null_bssid[MAC_ADDR_LEN] = {0};
     param_arr = cJSON_CreateArray();
     if (param_arr == NULL) {
@@ -3074,10 +3061,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",
             em_config->backhaul_bss_config_policy[i].profile_2_bsta_disallowed);
     }
-    } // EM_POLICY_PRESENT_BACKHAUL_BSS
 
     // Channel Scan Reporting Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_CHAN_SCAN)) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3086,10 +3071,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     cJSON_AddItemToObject(policy_obj, "Channel Scan Reporting Policy", param_obj);
     cJSON_AddNumberToObject(param_obj, "Report Independent Channel Scans",
         em_config->channel_scan_reporting_policy.report_independent_channel_scan);
-    } // EM_POLICY_PRESENT_CHAN_SCAN
 
     // Radio Specific Metrics Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_RADIO_METRICS)) {
     param_arr = cJSON_CreateArray();
     if (param_arr == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3124,10 +3107,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         cJSON_AddBoolToObject(param_obj, "STA Status",
             em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status);
     }
-    } // EM_POLICY_PRESENT_RADIO_METRICS
 
     // Unsuccessful Association Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_UNSUCCESS_ASSOC)) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3139,10 +3120,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         em_config->unsuccess_assoc_policy.report_unassoc_sta);
     cJSON_AddNumberToObject(param_obj, "Maximum Reporting Rate",
         em_config->unsuccess_assoc_policy.max_reporting_rate);
-    } // EM_POLICY_PRESENT_UNSUCCESS_ASSOC
 
     // QoS Management Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_QOS_MGT)) {
     cJSON *qos_arr = cJSON_CreateArray();
     cJSON_AddItemToObject(policy_obj, "QoS Management Policy", qos_arr);
     for (int qi = 0; qi < em_config->num_qos_mgt && qi < EM_MAX_QOS_POLICY; qi++) {
@@ -3166,10 +3145,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         cJSON_AddItemToArray(param_arr, cJSON_CreateString(mac_str));
     }
     } // qi loop
-    } // EM_POLICY_PRESENT_QOS_MGT
 
     // Default 802.1Q Settings Policy
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_8021Q)) {
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3181,10 +3158,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         em_config->default_8021q_policy.primary_vid);
     cJSON_AddNumberToObject(param_obj, "Default PCP",
         em_config->default_8021q_policy.default_pcp);
-    } // EM_POLICY_PRESENT_8021Q
 
     // Radio Steering Parameters (inside Steering Policies wrapper)
-    if (EM_POLICY_SECTION_PRESENT(EM_POLICY_PRESENT_RADIO_STEERING)) {
     param_arr = cJSON_CreateArray();
     if (param_arr == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3214,10 +3189,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         cJSON_AddNumberToObject(param_obj, "RCPI Threshold",
             em_config->radio_steering_policies.radio_steering_policy[i].rcpi_threshold);
     }
-    } // EM_POLICY_PRESENT_RADIO_STEERING
     } // Steering Policies wrapper
-
-#undef EM_POLICY_SECTION_PRESENT
 
     return webconfig_error_none;
 }
