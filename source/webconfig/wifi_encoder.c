@@ -3101,7 +3101,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
 
     cJSON_AddItemToObject(emconfig_obj, "Policy", policy_obj);
 
-    // AP Metrics Reporting Policy
+    // Algorithm Run Policy (alarm threshold)
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3115,7 +3115,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     cJSON_AddNumberToObject(param_obj, "Reporting Interval", em_config->alarm_report_policy.reporting_interval);
     cJSON_AddNumberToObject(param_obj, "Link Quality Threshold", em_config->alarm_report_policy.link_quality_threshold);
 
-    // Algorithm Run Policy
+    // AP Metrics Reporting Policy
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3127,13 +3127,23 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     cJSON_AddSafeStringToObject(param_obj, "Managed Client Marker",
         em_config->ap_metric_policy.managed_client_marker, sizeof(em_config->ap_metric_policy.managed_client_marker));
 
+    // Steering Policies (Local, BTM, Radio Steering grouped together)
+    {
+    cJSON *steering_policies_obj = cJSON_CreateObject();
+    if (steering_policies_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddItemToObject(policy_obj, "Steering Policies", steering_policies_obj);
+
     // Local Steering Disallowed Policy
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
             __LINE__);
     }
-    cJSON_AddItemToObject(policy_obj, "Local Steering Disallowed Policy", param_obj);
+    cJSON_AddItemToObject(steering_policies_obj, "Local Steering Disallowed Policy", param_obj);
 
     param_arr = cJSON_CreateArray();
     if (param_arr == NULL) {
@@ -3148,8 +3158,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
                 __LINE__);
         }
         cJSON_AddItemToArray(param_arr, param_obj);
-        cJSON_AddSafeStringToObject(param_obj, "MAC",
-            em_config->local_steering_dslw_policy.disallowed_sta[i], sizeof(em_config->local_steering_dslw_policy.disallowed_sta[i]));
+        uint8_mac_to_string_mac((uint8_t *)em_config->local_steering_dslw_policy.disallowed_sta[i], mac_str);
+        cJSON_AddSafeStringToObject(param_obj, "MAC", mac_str);
     }
 
     // BTM Steering Disallowed Policy
@@ -3158,7 +3168,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
             __LINE__);
     }
-    cJSON_AddItemToObject(policy_obj, "BTM Steering Disallowed Policy", param_obj);
+    cJSON_AddItemToObject(steering_policies_obj, "BTM Steering Disallowed Policy", param_obj);
 
     param_arr = cJSON_CreateArray();
     if (param_arr == NULL) {
@@ -3173,23 +3183,37 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
                 __LINE__);
         }
         cJSON_AddItemToArray(param_arr, param_obj);
-        cJSON_AddSafeStringToObject(param_obj, "MAC",
-            em_config->btm_steering_dslw_policy.disallowed_sta[i], sizeof(em_config->btm_steering_dslw_policy.disallowed_sta[i]));
+        uint8_mac_to_string_mac((uint8_t *)em_config->btm_steering_dslw_policy.disallowed_sta[i], mac_str);
+        cJSON_AddSafeStringToObject(param_obj, "MAC", mac_str);
     }
     
     // Backhaul BSS Configuration Policy
-    param_obj = cJSON_CreateObject();
-    if (param_obj == NULL) {
+    static const unsigned char null_bssid[MAC_ADDR_LEN] = {0};
+    param_arr = cJSON_CreateArray();
+    if (param_arr == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
             __LINE__);
+        return webconfig_error_encode;
     }
-    cJSON_AddItemToObject(policy_obj, "Backhaul BSS Configuration Policy", param_obj);
-    cJSON_AddSafeStringToObject(param_obj, "BSSID",
-        em_config->backhaul_bss_config_policy.bssid, sizeof(em_config->backhaul_bss_config_policy.bssid));
-    cJSON_AddBoolToObject(param_obj, "Profile-1 bSTA Disallowed",
-        0); // em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed);
-    cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",
-        1); // em_config->backhaul_bss_config_policy.profile_2_bsta_disallowed);
+    cJSON_AddItemToObject(policy_obj, "Backhaul BSS Configuration Policy", param_arr);
+    for (int i = 0; i < em_config->num_backhaul_bss_config && i < EM_MAX_BACKHAUL_BSS_POLICY; i++) {
+        if (memcmp(em_config->backhaul_bss_config_policy[i].bssid, null_bssid, MAC_ADDR_LEN) == 0) {
+            continue;
+        }
+        param_obj = cJSON_CreateObject();
+        if (param_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+                __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToArray(param_arr, param_obj);
+        uint8_mac_to_string_mac((uint8_t *)em_config->backhaul_bss_config_policy[i].bssid, mac_str);
+        cJSON_AddSafeStringToObject(param_obj, "BSSID", mac_str);
+        cJSON_AddBoolToObject(param_obj, "Profile-1 bSTA Disallowed",
+            em_config->backhaul_bss_config_policy[i].profile_1_bsta_disallowed);
+        cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",
+            em_config->backhaul_bss_config_policy[i].profile_2_bsta_disallowed);
+    }
 
     // Channel Scan Reporting Policy
     param_obj = cJSON_CreateObject();
@@ -3209,6 +3233,10 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
     }
     cJSON_AddItemToObject(policy_obj, "Radio Specific Metrics Policy", param_arr);
     for (int i = 0; i < em_config->radio_metrics_policies.radio_count; i++) {
+        uint8_t null_mac[6] = {0};
+        if (memcmp(em_config->radio_metrics_policies.radio_metrics_policy[i].ruid, null_mac, 6) == 0) {
+            continue;
+        }
         param_obj = cJSON_CreateObject();
         if (param_obj == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
@@ -3232,6 +3260,89 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         cJSON_AddBoolToObject(param_obj, "STA Status",
             em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status);
     }
+
+    // Unsuccessful Association Policy
+    param_obj = cJSON_CreateObject();
+    if (param_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddItemToObject(policy_obj, "Unsuccessful Association Policy", param_obj);
+    cJSON_AddBoolToObject(param_obj, "Report Unsuccessful Associations",
+        em_config->unsuccess_assoc_policy.report_unassoc_sta);
+    cJSON_AddNumberToObject(param_obj, "Maximum Reporting Rate",
+        em_config->unsuccess_assoc_policy.max_reporting_rate);
+
+    // QoS Management Policy
+    cJSON *qos_arr = cJSON_CreateArray();
+    cJSON_AddItemToObject(policy_obj, "QoS Management Policy", qos_arr);
+    for (int qi = 0; qi < em_config->num_qos_mgt && qi < EM_MAX_QOS_POLICY; qi++) {
+    param_obj = cJSON_CreateObject();
+    if (param_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddItemToArray(qos_arr, param_obj);
+    param_arr = cJSON_CreateArray();
+    cJSON_AddItemToObject(param_obj, "MSCS Disallowed STA List", param_arr);
+    for (int i = 0; i < em_config->qos_mgt_policy[qi].num_mscs; i++) {
+        uint8_mac_to_string_mac((uint8_t *)em_config->qos_mgt_policy[qi].mscs_mac[i], mac_str);
+        cJSON_AddItemToArray(param_arr, cJSON_CreateString(mac_str));
+    }
+    param_arr = cJSON_CreateArray();
+    cJSON_AddItemToObject(param_obj, "SCS Disallowed STA List", param_arr);
+    for (int i = 0; i < em_config->qos_mgt_policy[qi].num_scs; i++) {
+        uint8_mac_to_string_mac((uint8_t *)em_config->qos_mgt_policy[qi].scs_mac[i], mac_str);
+        cJSON_AddItemToArray(param_arr, cJSON_CreateString(mac_str));
+    }
+    } // qi loop
+
+    // Default 802.1Q Settings Policy
+    param_obj = cJSON_CreateObject();
+    if (param_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddItemToObject(policy_obj, "Default 802.1Q Settings Policy", param_obj);
+    cJSON_AddNumberToObject(param_obj, "Primay VLAN ID",
+        em_config->default_8021q_policy.primary_vid);
+    cJSON_AddNumberToObject(param_obj, "Default PCP",
+        em_config->default_8021q_policy.default_pcp);
+
+    // Radio Steering Parameters (inside Steering Policies wrapper)
+    param_arr = cJSON_CreateArray();
+    if (param_arr == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddItemToObject(steering_policies_obj, "Radio Steering Parameters", param_arr);
+    for (int i = 0; i < em_config->radio_steering_policies.radio_count; i++) {
+        uint8_t null_mac[6] = {0};
+        if (memcmp(em_config->radio_steering_policies.radio_steering_policy[i].ruid, null_mac, 6) == 0) {
+            continue;
+        }
+        param_obj = cJSON_CreateObject();
+        if (param_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+                __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToArray(param_arr, param_obj);
+        uint8_mac_to_string_mac((uint8_t *)em_config->radio_steering_policies.radio_steering_policy[i].ruid,
+            mac_str);
+        cJSON_AddStringToObject(param_obj, "ID", mac_str);
+        cJSON_AddNumberToObject(param_obj, "Steering Policy",
+            em_config->radio_steering_policies.radio_steering_policy[i].policy);
+        cJSON_AddNumberToObject(param_obj, "Utilization Threshold",
+            em_config->radio_steering_policies.radio_steering_policy[i].util_threshold);
+        cJSON_AddNumberToObject(param_obj, "RCPI Threshold",
+            em_config->radio_steering_policies.radio_steering_policy[i].rcpi_threshold);
+    }
+    } // Steering Policies wrapper
 
     return webconfig_error_none;
 }

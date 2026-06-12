@@ -2184,6 +2184,8 @@ int handle_em_webconfig_event(wifi_app_t *app, wifi_event_t *event)
         if (new_policy_cfg->ap_metric_policy.interval != current_policy_cfg->ap_metric_policy.interval) {
             interval_changed = true;
         }
+        wifi_util_dbg_print(WIFI_EM, "%s:%d &&&&&&&&&&&&&&&&&&& New interval %d and old interbal :%d \n", __func__, __LINE__,
+            new_policy_cfg->ap_metric_policy.interval, current_policy_cfg->ap_metric_policy.interval);
 
         if (memcmp(&new_policy_cfg->radio_metrics_policies,
                    &current_policy_cfg->radio_metrics_policies,
