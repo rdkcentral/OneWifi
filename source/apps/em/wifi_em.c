@@ -2780,6 +2780,45 @@ void em_beacon_report_frame_event(wifi_app_t *apps, void *data)
     em_beacon_report_publish(&wifi_app->ctrl->handle, data);
 }
 
+static int em_handle_connection_status(wifi_app_t *app, void *data)
+{
+    const em_connection_status_event_t *conn_status = (const em_connection_status_event_t *)data;
+    raw_data_t rdata = { 0 };
+    mac_addr_str_t sta_mac_str, bssid_str;
+    bus_error_t rc;
+
+    if ((app == NULL) || (conn_status == NULL)) {
+        return RETURN_ERR;
+    }
+
+    rdata.raw_data.bytes = malloc(sizeof(*conn_status));
+    if (rdata.raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: Could not allocate connection status data\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_info_print(WIFI_EM,
+        "%s:%d: Connection Status STA=%s BSSID=%s Status=%u Reason Present=%d Reason=%u\n",
+        __func__, __LINE__, to_mac_str(conn_status->sta_mac, sta_mac_str),
+        to_mac_str(conn_status->bssid, bssid_str), conn_status->status_code,
+        conn_status->reason_code_present, conn_status->reason_code);
+
+    rdata.data_type = bus_data_type_bytes;
+    memcpy(rdata.raw_data.bytes, conn_status, sizeof(*conn_status));
+    rdata.raw_data_len = sizeof(*conn_status);
+    rc = get_bus_descriptor()->bus_event_publish_fn(&app->ctrl->handle,
+        WIFI_EM_REPORT_CONNECTION_STATUS, &rdata);
+    free(rdata.raw_data.bytes);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: Connection Status publish failed %d\n", __func__,
+            __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
 int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *data)
 {
     switch (sub_type) {
@@ -2795,6 +2834,10 @@ int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *da
     
     case wifi_event_hal_sta_conn_status:
         em_handle_sta_conn_status(app, data);
+        break;
+
+    case wifi_event_hal_report_connection_status:
+        em_handle_connection_status(app, data);
         break;
 
     case wifi_event_hal_wnm_action_frame:
@@ -3096,6 +3139,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_EM_ASSOCIATION_STATUS, bus_element_type_method,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_byte, false, 0, 0, 0, NULL } } ,
+        { WIFI_EM_REPORT_CONNECTION_STATUS, bus_element_type_method,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, false, 0, 0, 0, NULL } },
         { WIFI_EM_AP_METRICS_REPORT, bus_element_type_method,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } },
