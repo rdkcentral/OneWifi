@@ -898,6 +898,9 @@ typedef struct {
     int noise_floor;
     int channel_util;
     int vlan_id;
+    eapol_msg_type_t   eapol_msg_type;     /* M1 / M2 / M3 */
+    eapol_frame_type_t eapol_frame_type;   /* Assoc / Reassoc */
+    unsigned int eapol_status_type_counts[6];
     int access_accept_counts;
     int eap_success_counts;
     int eap_failure_reason_counts;
