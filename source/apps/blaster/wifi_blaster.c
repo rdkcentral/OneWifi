@@ -1901,7 +1901,7 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
     int index = g_active_msmt->curStepData.ApIndex;
     int mld_num = -1;
     int mld_idx = 0;
-    while((mld_num < MAX_NUM_RADIOS - 1) && (g_active_msmt->curStepData.mldApIndex[mld_num+1] >= 0))
+    while((mld_num < MAX_NUM_RADIOS - 2) && (g_active_msmt->curStepData.mldApIndex[mld_num+1] >= 0))
     {
         if (provider_response->args.vap_index == (unsigned int)g_active_msmt->curStepData.mldApIndex[mld_num+1]) {
             index = provider_response->args.vap_index;
@@ -1978,7 +1978,6 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 #endif //_PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
             }
 
-            wifi_util_dbg_print(WIFI_BLASTER, "%s:%d set for mlo\n", __func__, __LINE__);
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_idx] = dev_conn->cli_DataFramesSentAck;
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_idx] = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
 
@@ -2099,7 +2098,8 @@ void calculate_throughput(int mld_num)
                 wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
                 RateLink = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;
                 Rate += (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                   //calculate bitrate in the unit of Mbpms
-                wifi_util_dbg_print(WIFI_BLASTER,"Sample[%d] Link[%d] DiffsamplesAck[%lu]   Diffsamples[%lu]   BitrateAckPackets[%.5f Mbps]   BitrateTotalPackets[%.5f Mbps]\n", SampleCount, i, DiffsamplesAckLink, DiffsamplesLink, AckRateLink, RateLink);
+                if (mld_num > 0)
+                    wifi_util_dbg_print(WIFI_BLASTER,"Sample[%d] Link[%d] DiffsamplesAck[%lu]   Diffsamples[%lu]   BitrateAckPackets[%.5f Mbps]   BitrateTotalPackets[%.5f Mbps]\n", SampleCount, i, DiffsamplesAckLink, DiffsamplesLink, AckRateLink, RateLink);
             }
         }
         /* updating the throughput in the global variable */
