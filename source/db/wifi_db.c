@@ -552,11 +552,10 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.mld_info.common_info.mld_id = 0;
         }
 #else
-        /*TODO: Are values correct?  */
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg.u.bss_info.mld_info.common_info.mld_id = 255;
-#endif
-        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
+#endif /* _PLATFORM_BANANAPI_R4_ */
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
@@ -992,6 +991,7 @@ int get_all_param_from_psm_and_set_into_db(void)
    return 0;
 }
 #endif
+
 void wifidb_init(wifi_db_t *db)
 {
     db->desc.init_fn = init_wifidb;
