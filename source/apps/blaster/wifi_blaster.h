@@ -50,8 +50,8 @@ extern "C" {
 
 typedef struct wifi_app wifi_app_t;
 typedef struct _pktGenFrameCountSamples {
-        ULONG   PacketsSentAck;
-        ULONG   PacketsSentTotal;
+        ULONG   PacketsSentAck[MAX_NUM_RADIOS];
+        ULONG   PacketsSentTotal[MAX_NUM_RADIOS];
         int             WaitAndLatencyInMs;             //Wait duration + API Latency in millsecs
 } pktGenFrameCountSamples;
 

@@ -264,6 +264,8 @@ typedef struct {
     unsigned char DestMac[MAC_ADDRESS_LENGTH];
     unsigned int StepId;
     int ApIndex;
+    bool isMLO;
+    int mldApIndex[MAX_NUM_RADIOS - 1];
 } active_msmt_step_t;
 
 typedef enum {
@@ -1021,6 +1023,18 @@ typedef struct {
     mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
+#if defined(CONFIG_IEEE80211BE)
+typedef struct {
+    unsigned int num_links;
+    assoc_dev_data_t links[MAX_NUM_RADIOS];
+} mlo_client_t;
+
+typedef struct {
+    wifi_vap_name_t vap_name;
+    hash_map_t *mlo_sta_map;
+} wifi_mld_unit_t;
+#endif /* CONFIG_IEEE80211BE */
+
 struct active_msmt_data;
 
 typedef struct {
@@ -1558,7 +1572,16 @@ typedef struct {
     em_per_radio_report_t radio_reports[MAX_NUM_RADIOS];
 } em_ap_metrics_report_t;
 
-#endif
+typedef struct {
+    int ap_index;
+    mac_address_t sta_mac;
+    mac_address_t bssid;
+    unsigned short status_code;
+    unsigned short reason_code;
+    bool reason_code_present;
+} em_connection_status_event_t;
+
+#endif // EM_APP
 
 #ifdef __cplusplus
 }
