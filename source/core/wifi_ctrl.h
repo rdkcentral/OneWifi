@@ -175,6 +175,7 @@ typedef struct kick_details {
     int vap_index;
     int original_filter_mode;
     bool filter_mode_changed;
+    int timer_id;
 }kick_details_t;
 
 typedef struct {
