@@ -264,6 +264,8 @@ typedef struct {
     unsigned char DestMac[MAC_ADDRESS_LENGTH];
     unsigned int StepId;
     int ApIndex;
+    bool isMLO;
+    int mldApIndex[MAX_NUM_RADIOS - 1];
 } active_msmt_step_t;
 
 typedef enum {
