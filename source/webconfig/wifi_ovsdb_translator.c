@@ -2845,8 +2845,12 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_addr to %s\n", __func__, __LINE__, vap_row->mld_addr);
 
         // mld_if_name
-        get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name));
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
+
+        if (get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name))) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Couldn't find vap. vap_name = %s.\n", __func__, __LINE__, vap->vap_name);
+        }
     }
 #endif
 
@@ -3068,8 +3072,11 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_addr to %s\n", __func__, __LINE__, vap_row->mld_addr);
 
         // mld_if_name
-        get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name));
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
+        if (get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name))) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Couldn't find vap. vap_name = %s.\n", __func__, __LINE__, vap->vap_name);
+        }
     }
 #endif
 
