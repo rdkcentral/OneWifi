@@ -205,7 +205,6 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
         LOGE("SYNC: Error during sync write to OVSDB: %s", strerror(errno));
-        wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", json_dumps_static(jsdata, 0));
         wifidb_print("SYNC: Error during sync write to OVSDB: %s\r\n", strerror(errno));
         goto error;
     }
