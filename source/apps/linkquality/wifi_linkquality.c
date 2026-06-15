@@ -695,42 +695,11 @@ int link_quality_unregister_station(wifi_app_t *apps, wifi_event_t *arg)
 
     return RETURN_OK;
 }
-int update_radio_max_snr_observance(int radio, int max_snr)
-{
-    wifi_util_info_print(WIFI_APPS, "%s:%d radio=%d and max_snr=%d\n", __func__, __LINE__,radio,max_snr);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
-    if (rfc_param == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
-        return RETURN_OK;
-    }
-    switch(radio) {
-        case 0:
-            if ( max_snr > rfc_param->radio_2g_observed_max_snr) {
-                rfc_param->radio_2g_observed_max_snr = max_snr ;
-            }
-            break;
-        case 1:
-            if ( max_snr > rfc_param->radio_5g_observed_max_snr) {
-                rfc_param->radio_5g_observed_max_snr = max_snr;
-            }
-            break;
-        case 2:
-            if ( max_snr > rfc_param->radio_6g_observed_max_snr) {
-                rfc_param->radio_6g_observed_max_snr = max_snr;
-            }
-            break;
-        default:
-            wifi_util_info_print(WIFI_CTRL,"Not a valid radio\n");
 
-    }
-    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    return RETURN_OK;
-}
 int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
 {
       
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
-    radio_max_snr_t max_snr = {0};
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     
     
@@ -744,44 +713,13 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
     /* qmgr callbacks and max-SNR setup run on both GW and Extender */
     if (ctrl->network_mode == rdk_dev_mode_type_em_node
       || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        //qmgr_register_batch_callback(publish_qmgr_subdoc);
+#ifdef EM_APP
+        qmgr_register_batch_callback(publish_qmgr_subdoc);
         wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
             __func__, __LINE__, ctrl->network_mode);
+#endif
     }
 
-    if (rfc_param->radio_2g_observed_max_snr == 0 || rfc_param->radio_5g_observed_max_snr == 0 ||
-        rfc_param->radio_6g_observed_max_snr == 0) {
-        if (rfc_param->radio_2g_observed_max_snr == 0) {
-            max_snr.radio_2g_max_snr = 25;
-            rfc_param->radio_2g_observed_max_snr = 25;
-        } else {
-            max_snr.radio_2g_max_snr = rfc_param->radio_2g_observed_max_snr;
-        }
-        if (rfc_param->radio_5g_observed_max_snr == 0) {
-            max_snr.radio_5g_max_snr = 25;
-            rfc_param->radio_5g_observed_max_snr = 25;
-        } else {
-            max_snr.radio_5g_max_snr = rfc_param->radio_5g_observed_max_snr;
-        }
-        if (rfc_param->radio_6g_observed_max_snr == 0) {
-            max_snr.radio_6g_max_snr = 25;
-            rfc_param->radio_6g_observed_max_snr = 25;
-        } else {
-            max_snr.radio_6g_max_snr = rfc_param->radio_6g_observed_max_snr;
-        }
-        get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-        wifi_util_error_print(WIFI_CTRL, "%s:%d setting max_snr\n", __func__, __LINE__);
-    } else {
-        max_snr.radio_2g_max_snr = rfc_param->radio_2g_observed_max_snr;
-        max_snr.radio_5g_max_snr = rfc_param->radio_5g_observed_max_snr;
-        max_snr.radio_6g_max_snr = rfc_param->radio_6g_observed_max_snr;
-        wifi_util_error_print(WIFI_CTRL, "%s:%d setting max_snr\n", __func__, __LINE__);
-    }
-
-    wifi_util_info_print(WIFI_APPS, "%s:%d %d:%d:%d\n", __func__, __LINE__,
-        max_snr.radio_2g_max_snr, max_snr.radio_5g_max_snr, max_snr.radio_6g_max_snr);
-    //set_max_snr_radios(&max_snr);
-    //qmgr_register_max_snr_callback(update_radio_max_snr_observance);
     return RETURN_OK;
 }
 

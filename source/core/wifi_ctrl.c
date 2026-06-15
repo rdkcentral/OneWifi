@@ -1918,7 +1918,6 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
-#if 0
     wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
 
     if (rfc_param->multiap_rfc) {
@@ -1931,12 +1930,8 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d LinkQuality RFC is disabled \n", __func__, __LINE__);
-        stop_web_server();
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
     }
-    #endif
-   //     run_web_server();
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
     ctrl->webconfig_state = ctrl_webconfig_state_associated_clients_full_cfg_rsp_pending;
@@ -2931,13 +2926,6 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.multiap_rfc =
         g_wifi_mgr->rfc_dml_parameters.multiap_rfc;
     snprintf(g_wifi_mgr->ctrl.rfc_params.rfc_id, sizeof(g_wifi_mgr->ctrl.rfc_params.rfc_id), "%s", g_wifi_mgr->rfc_dml_parameters.rfc_id);
-    g_wifi_mgr->ctrl.rfc_params.radio_2g_observed_max_snr =
-        g_wifi_mgr->rfc_dml_parameters.radio_2g_observed_max_snr;
-    g_wifi_mgr->ctrl.rfc_params.radio_5g_observed_max_snr =
-        g_wifi_mgr->rfc_dml_parameters.radio_5g_observed_max_snr;
-    g_wifi_mgr->ctrl.rfc_params.radio_6g_observed_max_snr =
-        g_wifi_mgr->rfc_dml_parameters.radio_6g_observed_max_snr;
-    strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
 

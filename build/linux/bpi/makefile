@@ -43,6 +43,7 @@ HAL_LIBRARY = $(INSTALLDIR)/lib/libwifihal.a
 WEBCONFIG_LIBRARY = $(INSTALLDIR)/lib/libwebconfig.a
 HE_BUS_LIBRARY = $(INSTALLDIR)/lib/libhebus.a
 MATH_UTIL_LIBRARY = $(INSTALLDIR)/lib/libwifi_math_utils.la
+QUALITY_MANAGER_LIBRARY = $(INSTALLDIR)/lib/libwifi_quality_manager.la
 
 INCLUDE_HAL_LIB_DIRS = \
     -I$(ONE_WIFI_HOME)/include \
@@ -320,6 +321,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/em \
     -I$(ONE_WIFI_HOME)/source/apps/linkquality \
     -I$(ONE_WIFI_HOME)/source/apps/wifi_sensing/inc \
+    -I$(ONE_WIFI_HOME)/source/utils/quality_mgr/inc/ \
     -I$(ONE_WIFI_HOME)/source/utils/math_utils/inc/ \
     -I$(ONE_WIFI_HOME)/source/core/services \
     -I$(ONE_WIFI_HOME)/include/tr_181/ml \
@@ -357,7 +359,7 @@ else
 LIBDIRS += -L$(INSTALLDIR)/lib/platform/darwin
 endif
 
-LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson -lpcap
+LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson
 
 #
 # The CXXSOURCES macro contains a list of source files.
@@ -436,6 +438,7 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
 
 MATH_UTIL_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/utils/math_utils/src/*.cpp) \
 
+QUALITY_MANAGER_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/utils/quality_mgr/src/*.cpp) \
 
 HEBUS_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/platform/linux/he_bus/src/*.c)  \
 
@@ -518,11 +521,13 @@ ALL_WEBCFG_LIB_OBJECTS = $(WEBCONFIG_OBJECTS)
 MATH_UTIL_OBJECTS = $(MATH_UTIL_SOURCES:.cpp=.o)  # expands to list of object files
 ALL_MATH_UTIL_LIB_OBJECTS = $(MATH_UTIL_OBJECTS)
 
+QUALITY_MANAGER_OBJECTS = $(QUALITY_MANAGER_SOURCES:.cpp=.o)  # expands to list of object files
+ALL_QUALITY_MANAGER_LIB_OBJECTS = $(QUALITY_MANAGER_OBJECTS)
 
 HEBUS_OBJECTS = $(HEBUS_SOURCES:.c=.o)  # expands to list of object files
 ALL_HEBUS_LIB_OBJECTS = $(HEBUS_OBJECTS)
 
-ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(MATH_UTIL_OBJECTS) $(HEBUS_OBJECTS)
+ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(MATH_UTIL_OBJECTS) $(QUALITY_MANAGER_OBJECTS) $(HEBUS_OBJECTS)
 
 CFLAGS += $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -fcommon -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DBANANA_PI_PORT  -DNL80211_ACL -D_PLATFORM_BANANAPI_R4_ -DFEATURE_SINGLE_PHY -DEASY_MESH_NODE -DEM_APP \
         -DONEWIFI_STA_MGR_APP_SUPPORT -DONEWIFI_EASYCONNECT_APP_SUPPORT
@@ -544,7 +549,7 @@ $(BUILD_DIR):
 #
 
 
-all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY)  $(MATH_UTIL_LIBRARY)  $(PROGRAM)
+all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY)   $(MATH_UTIL_LIBRARY)  $(QUALITY_MANAGER_LIBRARY) $(PROGRAM)
 
 $(CMN_LIBRARY): $(ALL_CMN_LIB_OBJECTS)
 	$(AR)  $@  $^
@@ -559,6 +564,8 @@ $(WEBCONFIG_LIBRARY): $(ALL_WEBCFG_LIB_OBJECTS)
 $(MATH_UTIL_LIBRARY): $(ALL_MATH_UTIL_LIB_OBJECTS)
 	$(AR)  $@  $^
 
+$(QUALITY_MANAGER_LIBRARY): $(ALL_QUALITY_MANAGER_LIB_OBJECTS)
+	$(AR)  $@  $^
 
 $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 	$(AR)  $@  $^
@@ -586,7 +593,7 @@ $(PROGRAM): $(ALLOBJECTS)
 #
 
 clean:
-	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
+	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY)$(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
 
 #
 # Run target: "make -f Makefile.Linux run" to execute the application

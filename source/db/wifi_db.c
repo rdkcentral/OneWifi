@@ -873,16 +873,6 @@ int start_wifidb_monitor()
 }
 int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
 {
-    wifi_rfc_dml_parameters_t rfc_config = {0};
-    wifi_mgr_t *g_wifidb;
-    g_wifidb = get_wifimgr_obj();
-    rfc_config.radio_2g_observed_max_snr = rfc_param->radio_2g_observed_max_snr;
-    rfc_config.radio_5g_observed_max_snr = rfc_param->radio_5g_observed_max_snr;
-    rfc_config.radio_6g_observed_max_snr = rfc_param->radio_6g_observed_max_snr;
-    pthread_mutex_lock(&g_wifidb->data_cache_lock);
-    g_wifidb->rfc_dml_parameters = rfc_config;
-    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
     return 0;
 }
 
@@ -907,9 +897,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     rfc_config.link_quality_rfc = true;
-    rfc_config.radio_2g_observed_max_snr = 25;
-    rfc_config.radio_5g_observed_max_snr = 25;
-    rfc_config.radio_6g_observed_max_snr = 25;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -977,12 +964,6 @@ int get_wifi_global_param(wifi_global_param_t *config)
 
 int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
 {
-    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
-    if (!rfc_info) return -1; // safety check
-
-    pthread_mutex_lock(&g_wifidb->data_cache_lock);
-    memcpy(rfc_info, &g_wifidb->rfc_dml_parameters, sizeof(wifi_rfc_dml_parameters_t));
-    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
     return 0;
 }

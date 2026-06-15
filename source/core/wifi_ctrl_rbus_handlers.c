@@ -154,6 +154,7 @@ static void mask_to_quality_flags(uint32_t mask, quality_flags_t* f)
     f->int_reconn   = mask & LINKQ_INT_RECONN;
 }
 #endif
+
 static inline double hotspot_timing_elapsed_sec(const struct timespec *start,
                                                 const struct timespec *end)
 {
@@ -969,7 +970,6 @@ bus_error_t wifi_get_link_quality_data(char *event_name, raw_data_t *p_data, bus
    return RETURN_OK;
 
 }
-#endif
 
 bus_error_t wifi_get_link_quality_flags(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
@@ -1016,6 +1016,7 @@ bus_error_t wifi_set_link_quality_flags(char *event_name, raw_data_t *p_data, bu
 
     return bus_error_success;
 }
+#endif
 
 bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
@@ -4560,9 +4561,6 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_LINK_QUALITY_GW, bus_element_type_method,
                                     { NULL, set_linkq_gw, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_boolean, false, 0, 0, 0, NULL } },
-                                { WIFI_LINK_QUALITY_FLAGS, bus_element_type_method,
-                                    { wifi_get_link_quality_flags, wifi_set_link_quality_flags, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-                                    { bus_data_type_uint32, false, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);

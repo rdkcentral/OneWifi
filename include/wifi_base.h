@@ -647,9 +647,6 @@ typedef struct {
     bool link_quality_rfc;
     bool xfi_tel_enable_rfc;
     bool multiap_rfc;
-    int radio_2g_observed_max_snr;
-    int radio_5g_observed_max_snr;
-    int radio_6g_observed_max_snr;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
