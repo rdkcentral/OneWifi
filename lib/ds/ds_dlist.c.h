@@ -60,7 +60,7 @@ static inline bool ds_dlist_is_empty(ds_dlist_t *list)
  */
 static inline void *ds_dlist_next(ds_dlist_t *list, void *data)
 {
-    ds_dlist_node_t *n = CONT_TO_NODE(data, list->od_cof);
+    ds_dlist_node_t *n = (ds_dlist_node_t*) CONT_TO_NODE(data, list->od_cof);
 
     return NODE_TO_CONT(n->odn_next, list->od_cof);
 }
@@ -70,7 +70,7 @@ static inline void *ds_dlist_next(ds_dlist_t *list, void *data)
  */
 static inline void *ds_dlist_prev(ds_dlist_t *list, void *data)
 {
-    ds_dlist_node_t *n = CONT_TO_NODE(data, list->od_cof);
+    ds_dlist_node_t *n = (ds_dlist_node_t*) CONT_TO_NODE(data, list->od_cof);
 
     return NODE_TO_CONT(n->odn_prev, list->od_cof);
 }
@@ -96,7 +96,7 @@ static inline void* ds_dlist_tail(ds_dlist_t *list)
  */
 static inline void ds_dlist_insert_head(ds_dlist_t* list, void *data)
 {
-    ds_dlist_insert_into(list, &list->od_head, CONT_TO_NODE(data, list->od_cof));
+    ds_dlist_insert_into(list, &list->od_head, (ds_dlist_node_t*) CONT_TO_NODE(data, list->od_cof));
 }
 
 /*
@@ -104,8 +104,8 @@ static inline void ds_dlist_insert_head(ds_dlist_t* list, void *data)
  */
 static inline void ds_dlist_insert_after(ds_dlist_t *list, void *after, void *data)
 {
-    ds_dlist_node_t *nafter = CONT_TO_NODE(after, list->od_cof);
-    ds_dlist_node_t *ndata = CONT_TO_NODE(data, list->od_cof);
+    ds_dlist_node_t *nafter = (ds_dlist_node_t*) CONT_TO_NODE(after, list->od_cof);
+    ds_dlist_node_t *ndata = (ds_dlist_node_t*) CONT_TO_NODE(data, list->od_cof);
 
     ds_dlist_insert_into(
             list,
@@ -118,7 +118,7 @@ static inline void ds_dlist_insert_after(ds_dlist_t *list, void *after, void *da
  */
 static inline void ds_dlist_insert_before(ds_dlist_t *list, void *before, void *data)
 {
-    ds_dlist_node_t *nbefore = CONT_TO_NODE(before, list->od_cof);
+    ds_dlist_node_t *nbefore = (ds_dlist_node_t*) CONT_TO_NODE(before, list->od_cof);
 
     if (nbefore->odn_prev == NULL)
     {
@@ -126,7 +126,7 @@ static inline void ds_dlist_insert_before(ds_dlist_t *list, void *before, void *
     }
     else
     {
-        ds_dlist_node_t *ndata = CONT_TO_NODE(data, list->od_cof);
+        ds_dlist_node_t *ndata = (ds_dlist_node_t*) CONT_TO_NODE(data, list->od_cof);
         ds_dlist_insert_into(
                 list,
                 &nbefore->odn_prev->odn_next,
@@ -148,7 +148,7 @@ static inline void ds_dlist_insert_tail(ds_dlist_t* list, void *data)
     }
     else
     {
-        ds_dlist_node_t *node = CONT_TO_NODE(data, list->od_cof);
+        ds_dlist_node_t *node = (ds_dlist_node_t*) CONT_TO_NODE(data, list->od_cof);
         ds_dlist_insert_into(list, &list->od_tail->odn_next, node);
     }
 }
@@ -158,7 +158,7 @@ static inline void ds_dlist_insert_tail(ds_dlist_t* list, void *data)
  */
 static inline void ds_dlist_remove(ds_dlist_t* list, void *data)
 {
-    ds_dlist_node_remove(list, CONT_TO_NODE(data, list->od_cof));
+    ds_dlist_node_remove(list, (ds_dlist_node_t*) CONT_TO_NODE(data, list->od_cof));
 }
 
 /**
@@ -194,7 +194,7 @@ static inline void* ds_dlist_remove_tail(ds_dlist_t* list)
  */
 static inline void *ds_dlist_remove_after(ds_dlist_t *list, void *after)
 {
-    ds_dlist_node_t *anode = CONT_TO_NODE(after, list->od_cof);
+    ds_dlist_node_t *anode = (ds_dlist_node_t*) CONT_TO_NODE(after, list->od_cof);
     ds_dlist_node_t *node = anode->odn_next;
 
     if (node == NULL) return NULL;
@@ -209,7 +209,7 @@ static inline void *ds_dlist_remove_after(ds_dlist_t *list, void *after)
  */
 static inline void *ds_dlist_remove_before(ds_dlist_t *list, void *before)
 {
-    ds_dlist_node_t *bnode = CONT_TO_NODE(before, list->od_cof);
+    ds_dlist_node_t *bnode = (ds_dlist_node_t*) CONT_TO_NODE(before, list->od_cof);
     ds_dlist_node_t *node = bnode->odn_prev;
 
     if (node == NULL) return NULL;

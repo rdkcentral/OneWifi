@@ -147,6 +147,60 @@ void process_csa_beacon_frame_event(frame_data_t *msg, uint32_t msg_length, wifi
     }
 }
 
+void process_btm_request_send_event(void *data, uint32_t len) {
+    int ret;
+    wifi_BTMRequest_t btmReq;
+
+    if (!data || len < sizeof(em_btm_req_ctrl_msg_t)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid BTM req data\n",__func__, __LINE__);
+        return;
+    }
+
+    em_btm_req_ctrl_msg_t *msg = (em_btm_req_ctrl_msg_t *)data;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d BTM req send event received\n", __func__, __LINE__);
+
+    memset(&btmReq, 0, sizeof(btmReq));
+
+    // Fill HAL BTM Request
+    btmReq.token       = msg->dialog_token;
+    btmReq.requestMode = msg->request_mode;
+
+    if (msg->neighbor_list_present && msg->num_neighbors > 0) {
+        uint32_t neighbors_count = msg->num_neighbors;
+        if (neighbors_count > MAX_CANDIDATES) {
+            neighbors_count = MAX_CANDIDATES;
+        }
+
+        btmReq.numCandidates = neighbors_count;
+
+        for (uint32_t i = 0; i < btmReq.numCandidates; i++) {
+            neighbor_with_opclass_t *src_ext = &msg->neighbors[i];
+            wifi_neighbor_ap2_t *src = &src_ext->base;
+            wifi_NeighborReport_t *dst = &btmReq.candidates[i];
+
+            str_to_mac_bytes(src->ap_BSSID, dst->bssid);
+            dst->channel = (UCHAR)src->ap_Channel;
+            dst->opClass = src_ext->opClass;
+            snprintf(dst->target_ssid, sizeof(dst->target_ssid), "%s", src->ap_SSID);
+            dst->bssTransitionCandidatePreferencePresent = TRUE;
+            dst->bssTransitionCandidatePreference.preference = (UCHAR)src_ext->score;
+
+            wifi_util_dbg_print(WIFI_CTRL,"BTM[%d]: BSSID: %s Channel: %u opClass: %u RSSI: %d Pref: %d\n",
+                    i, src->ap_BSSID, src->ap_Channel, src_ext->opClass, src->ap_SignalStrength, dst->bssTransitionCandidatePreference.preference);
+
+        }
+        wifi_util_info_print(WIFI_CTRL,"%s:%d BTM neighbor list filled, candidates=%u\n", __func__, __LINE__, btmReq.numCandidates);
+    } else {
+        btmReq.numCandidates = 0;
+    }
+
+    ret = wifi_hal_setBTMRequest(msg->ap_index, msg->sta_mac, &btmReq);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_hal_setBTMRequest failed (ret=%d)\n",__func__, __LINE__, ret);
+    }
+}
+
 const char* wifi_hotspot_action_to_string(wifi_hotspot_action_t action) {
     switch (action) {
         case hotspot_vap_disable:
@@ -274,7 +328,19 @@ void process_assoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
 
 void process_reassoc_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d rssi:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm);
+    wifi_monitor_data_t *data = NULL;
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    memcpy(&data->u.msg, msg, sizeof(frame_data_t));
+    data->id = msg_id++;
+    push_event_to_monitor_queue(data, wifi_event_monitor_reassoc_req, NULL);
+    free(data);
+    data = NULL;
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d rssi:%d phy_rate:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm, msg->frame.phy_rate);
 }
 
 void process_reassoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
@@ -2067,9 +2133,13 @@ void process_disassoc_device_event(void *data)
     } else {
         assoc_dev_data_t *temp = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
         if (temp != NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d vap_index: %d MAC: %s is MLD %d\n",
-                __func__, __LINE__, rdk_vap_info->vap_index, mac_str, temp->mld_info.cli_MLDSta);
             mld_sta = temp->mld_info.cli_MLDSta;
+            if (mld_sta == true) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client disconnected %s\n",
+                    __func__, __LINE__, mac_str);
+            }
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d vap_index: %d MAC: %s is MLD %d\n",
+                __func__, __LINE__, rdk_vap_info->vap_index, mac_str, mld_sta);
             if (process_device_removal(rdk_vap_info, mac_str, temp, 
                                       p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
                 pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
@@ -2436,6 +2506,20 @@ static void assoc_dev_event(assoc_dev_data_t *assoc_data)
     }
 }
 
+static void assoc_dev_update_mlo_link(assoc_dev_data_t *assoc_data, int link_idx)
+{
+    if (assoc_data == NULL || link_idx < 0 || link_idx >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid input parameters assoc_data: %p, link_idx: %d\n",
+            __func__, __LINE__, assoc_data, link_idx);
+        return;
+    }
+    assoc_data->ap_index = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_VapIndex;
+    assoc_data->dev_stats.cli_RSSI = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_RSSI;
+    assoc_data->association_link = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink;
+    memcpy(assoc_data->link_address, assoc_data->mld_info.cli_LinkInfo[link_idx].cli_LinkAddress,
+        sizeof(assoc_data->link_address));
+}
+
 void process_assoc_device_event(void *data)
 {
     if (data == NULL) {
@@ -2448,17 +2532,30 @@ void process_assoc_device_event(void *data)
     check_and_remove_mac_on_other_vaps(assoc_data);
 
     if (assoc_data->mld_info.cli_MLDSta == true) {
+        int assoc_link_idx = -1;
+        int num_links = 0;
+
         for (int link_idx = 0; link_idx < MAX_NUM_RADIOS; link_idx++) {
             if (assoc_data->mld_info.cli_LinkInfo[link_idx].cli_Valid) {
-                UINT link_vap_index = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_VapIndex;
-                assoc_data->ap_index = link_vap_index;
-                assoc_data->dev_stats.cli_RSSI = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_RSSI;
-                assoc_data->association_link = assoc_data->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink;
-                memcpy(assoc_data->link_address, assoc_data->mld_info.cli_LinkInfo[link_idx].cli_LinkAddress,
-                    sizeof(assoc_data->link_address));
+                if (assoc_data->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink) {
+                    assoc_link_idx = link_idx;
+                }
+                assoc_dev_update_mlo_link(assoc_data, link_idx);
                 assoc_dev_event(assoc_data);
+
+                num_links++;
             }
         }
+
+        /* In case of MLO client upcoming LM_lite notification needs to be from assoc link */
+        if (assoc_link_idx != -1) {
+            assoc_dev_update_mlo_link(assoc_data, assoc_link_idx);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d No valid associated link found for MLD STA " MAC_FMT "\n",
+                __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected " MAC_FMT " with %d links\n",
+            __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress), num_links);
     } else {
         assoc_dev_event(assoc_data);
     }
@@ -3008,8 +3105,14 @@ void process_tcm_rfc(bool type)
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->tcm_enabled_rfc = type;
+    rfc_param->tcm_open_2g_rfc = type;
+    rfc_param->tcm_open_5g_rfc = type;
+    rfc_param->tcm_open_6g_rfc = type;
+    rfc_param->tcm_secure_2g_rfc = type;
+    rfc_param->tcm_secure_5g_rfc = type;
+    rfc_param->tcm_secure_6g_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
+    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d, all VAP-specific RFCs updated\n", __FUNCTION__, __LINE__,
         type);
 }
 
@@ -4350,6 +4453,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);
         break;
+    case wifi_event_type_send_btm_req:
+        process_btm_request_send_event(data, len);
+        break; 
     case wifi_event_type_multiap_rfc:
         process_multiap_rfc(*(bool *)data);
         break;
@@ -4450,6 +4556,9 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_hal_wps_results:
         process_wps_results_event(data);
+        break;
+
+    case wifi_event_hal_wnm_action_frame:
         break;
 
     default:

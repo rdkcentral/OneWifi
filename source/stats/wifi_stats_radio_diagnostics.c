@@ -37,7 +37,7 @@ int validate_radio_diagnostic_args(wifi_mon_stats_args_t *args)
         return RETURN_ERR;
     }
 
-    if (args->radio_index > getNumberRadios()) {
+    if (args->radio_index >= getNumberRadios()) {
         wifi_util_error_print(WIFI_MON, "%s:%d invalid radio index : %d\n",__func__,__LINE__, args->radio_index);
         return RETURN_ERR;
     }

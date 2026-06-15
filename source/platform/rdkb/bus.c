@@ -1183,7 +1183,7 @@ static void bus_sub_cb_registration(char *event_name, rbus_sub_callback_table_t 
         user_cb_set = true;
     }
 
-    wifi_util_info_print(WIFI_BUS,"%s:%d sub_user_cb_set:%d event_name:%s\n", __func__, __LINE__, user_cb_set, event_name);
+    wifi_util_dbg_print(WIFI_BUS,"%s:%d sub_user_cb_set:%d event_name:%s\n", __func__, __LINE__, user_cb_set, event_name);
 
     if (user_cb_set == true) {
         elem_node_map_t          *sub_cb_mux_map = get_bus_mux_sub_cb_map();

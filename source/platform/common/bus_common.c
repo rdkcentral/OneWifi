@@ -231,7 +231,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     elem_node_map_t* current_node = root;
     elem_node_map_t* temp_node    = NULL;
     elem_node_map_t* next_node    = NULL;
-    int  ret = 0, create_child   = 0;
+    int  create_child             = 0;
     char buff[256];
 
     if(current_node == NULL || elem == NULL)
@@ -242,7 +242,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     next_node = current_node->child;
     create_child = 1;
 
-    wifi_util_info_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
+    wifi_util_dbg_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
 
     strncpy(name, elem->full_name, strlen(elem->full_name) + 1);
 
@@ -343,16 +343,21 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
         }
         token = strtok_r(NULL, ".", &saveptr);
     }
-    if(ret != 0)
-    {
-
-        BUS_MUX_UNLOCK(get_bus_mux_mutex());
-        return NULL;
-    }
 
     current_node->type           = elem->type;
     current_node->node_data_type = elem->node_data_type;
-    current_node->node_elem_data = malloc(elem->cfg_data_len);
+
+    if (current_node->node_elem_data_len != elem->cfg_data_len) {
+        if (current_node->node_elem_data != NULL) {
+            wifi_util_info_print(WIFI_BUS, "%s:%d Updated node [%s] data len from %d to %d\n",
+                __func__, __LINE__, current_node->full_name, current_node->node_elem_data_len,
+                elem->cfg_data_len);
+            free(current_node->node_elem_data);
+            current_node->node_elem_data = NULL;
+            current_node->node_elem_data_len = 0;
+        }
+        current_node->node_elem_data = malloc(elem->cfg_data_len);
+    }
     if(current_node->node_elem_data == NULL)
     {
         wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n", elem->full_name);
@@ -362,7 +367,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     memcpy(current_node->node_elem_data, elem->cfg_data, elem->cfg_data_len);
     current_node->node_elem_data_len = elem->cfg_data_len;
 
-    if(elem->type == bus_element_type_table)
+    if(elem->type == bus_element_type_table && current_node->child == NULL)
     {
         elem_node_map_t* rowTemplate = get_empty_elem_node();
         if(rowTemplate == NULL)

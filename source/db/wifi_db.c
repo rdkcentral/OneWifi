@@ -576,8 +576,6 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.mld_info.common_info.mld_id = 255;
 #endif
         cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
-        cfg.u.bss_info.mld_info.common_info.mld_apply = 1;
-//        strcpy(cfg.u.bss_info.mld_info.common_info.mld_addr, "11:11:11:11:11:11");
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
