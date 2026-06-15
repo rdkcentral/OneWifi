@@ -1093,14 +1093,19 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
     }
 
         validate_param_string(security, "EncryptionMethod", param);
-        if ((strcmp(param->valuestring, "AES") != 0) && (strcmp(param->valuestring, "AES+TKIP") != 0)) {
+        if (strcmp(param->valuestring, "AES") != 0 && strcmp(param->valuestring, "AES+TKIP") != 0 &&
+            strcmp(param->valuestring, "AES+GCMP") != 0) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Xfinity WiFi VAP Encrytpion mode is Invalid:%s\n", 
                     __func__, __LINE__, param->valuestring);
             strncpy(execRetVal->ErrorMsg, "Invalid enc mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);  
             return RETURN_ERR;
         }
         if (strcmp(param->valuestring, "AES") == 0) {
-            vap_info->u.bss_info.security.encr = wifi_encryption_aes;	
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#ifdef CONFIG_IEEE80211BE
+        } else if (strcmp(param->valuestring, "AES+GCMP") == 0) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#endif /* CONFIG_IEEE80211BE */
         } else {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
         }
@@ -1157,10 +1162,14 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
 
         if (strcmp(param->valuestring, "TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_tkip;
-        } else if(strcmp(param->valuestring, "AES") == 0) {
+        } else if (strcmp(param->valuestring, "AES") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;
-        } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
+        } else if (strcmp(param->valuestring, "AES+TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+#ifdef CONFIG_IEEE80211BE
+        } else if (strcmp(param->valuestring, "AES+GCMP") == 0) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#endif /* CONFIG_IEEE80211BE */
         } else {
             get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, %s: Invalid Encryption method for private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
@@ -1258,7 +1267,11 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
         }
         if (strcmp(param->valuestring, "Enhanced-Open") == 0) {
             vap_info->u.bss_info.security.mode = wifi_security_mode_enhanced_open;
+#ifdef CONFIG_IEEE80211BE
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
         }
         
         // MFPConfig

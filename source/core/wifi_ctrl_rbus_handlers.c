@@ -452,13 +452,47 @@ int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
     }
     return RETURN_OK;
 }
+/*
+MLO ready notify_LM_Lite - CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+b2:6c:4a:2f:0d:e5[mld MAC],Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, mld_enable
+
+b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.17;Device.WiFi.SSID.1],[-38;15],1, 1 - MLO
+b2:6c:4a:2f:0d:e5,Device.WiFi.AccessPoint.17.AssociatedDevice.1,[Device.WiFi.SSID.1],[-38],1, 0 - Non MLO
+*/
+static int notify_LM_Lite_host(wifi_ctrl_t *ctrl, LM_wifi_host_t *host, bool sync)
+{
+    bus_error_t rc;
+    char str[2048];
+
+    memset(str, 0, 2048);
+#ifndef CONFIG_MLO_ENABLED_NOTIFY_LM_LITE
+    snprintf(str, sizeof(str), "%s,%s,%s,%s,%d", (char *)host->phyAddr,
+        ('\0' != host->AssociatedDevice[0]) ?
+            (char *)host->AssociatedDevice :
+            "NULL",
+        ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
+        (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0);
+#else /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
+    snprintf(str, sizeof(str), "%s,%s,[%s],[%s],%d,%d", (char *)host->phyAddr,
+        ('\0' != host->AssociatedDevice[0]) ?
+            (char *)host->AssociatedDevice :
+            "NULL",
+        ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
+        (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0, host->mld_sta);
+#endif /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
+
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__, __LINE__,
+            rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
 
 int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t *phosts, bool sync)
 {
     int itr;
-    bus_error_t rc;
-    char str[2048];
-    memset(str, 0, 2048);
 
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
@@ -466,32 +500,16 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t *phosts, bool sync)
     }
 
     if (sync) {
-        snprintf(str, sizeof(str), "%s,%s,%s,%d,%d", (char *)phosts->host[0].phyAddr,
-            ('\0' != phosts->host[0].AssociatedDevice[0]) ?
-                (char *)phosts->host[0].AssociatedDevice :
-                "NULL",
-            ('\0' != phosts->host[0].ssid[0]) ? (char *)phosts->host[0].ssid : "NULL",
-            phosts->host[0].RSSI, (phosts->host[0].Status == TRUE) ? 1 : 0);
-
-        rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
-        if (rc != bus_error_success) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__, __LINE__,
-                rc);
+        if (notify_LM_Lite_host(ctrl, &phosts->host[0], sync) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to notify LM Lite for host %s\n",
+                __func__, __LINE__, phosts->host[0].phyAddr);
             return RETURN_ERR;
         }
     } else {
         for (itr = 0; itr < phosts->count; itr++) {
-            snprintf(str, sizeof(str), "%s,%s,%s,%d,%d", (char *)phosts->host[itr].phyAddr,
-                ('\0' != phosts->host[itr].AssociatedDevice[0]) ?
-                    (char *)phosts->host[itr].AssociatedDevice :
-                    "NULL",
-                ('\0' != phosts->host[itr].ssid[0]) ? (char *)phosts->host[0].ssid : "NULL",
-                phosts->host[itr].RSSI, (phosts->host[itr].Status == TRUE) ? 1 : 0);
-
-            rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
-            if (rc != bus_error_success) {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__,
-                    __LINE__, rc);
+            if (notify_LM_Lite_host(ctrl, &phosts->host[itr], sync) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to notify LM Lite for host %s itr: %d\n",
+                    __func__, __LINE__, phosts->host[itr].phyAddr, itr);
                 return RETURN_ERR;
             }
         }
@@ -1911,7 +1929,7 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data, 
 #ifdef WIFI_HAL_VERSION_3_PHASE2
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
 #else
-#if defined(_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
             frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);
@@ -1968,6 +1986,55 @@ static void wifi_sta_5g_status_handler(char *event_name, raw_data_t *p_data, voi
     return;
 }
 #endif
+
+/**
+* Hotspot app uses this to kick stations which won't complete DHCP in time.
+* Expected command from hotspot app:
+* Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient <mac>_<vap_index>
+*/
+
+static void hotspot_client_dhcp_failure_disconnect(char *event_name, raw_data_t *p_data, void *userData)
+{
+    (void)userData;
+    char *pTmp = NULL;
+    char mac[18] = {0};
+    int index = 0;
+    char tmp_str[128] = {0};
+
+    if (p_data->data_type != bus_data_type_string)
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d event:%s wrong data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+        return;
+    }
+       
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+    
+    pTmp = (char *)p_data->raw_data.bytes;
+
+    if((strcmp(event_name, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED) != 0) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->data_type);
+        return;
+    }
+    // Find the position of the underscore
+    char *tmp = strchr(pTmp, '_');
+    if (tmp != NULL) {
+        // Copy MAC (characters before '_')
+        size_t mac_len = (size_t)(tmp - pTmp);
+        strncpy(mac, pTmp, mac_len);
+        mac[mac_len] = '\0';
+
+        // Convert index (characters after '_') to integer
+        index = atoi(tmp + 1);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid  format:\n", __func__, __LINE__);
+        return;
+
+    }
+    snprintf(tmp_str, sizeof(tmp_str), "%d-%s-20", (index-1),mac);
+    push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
+}
 
 #if defined(RDKB_EXTENDER_ENABLED)
 static void eth_bh_status_handler(char *event_name, raw_data_t *p_data, void *userData)
@@ -2351,6 +2418,17 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 #endif
+    if(!ctrl->hotspot_client_dhcp_failure_subscribed) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED, hotspot_client_dhcp_failure_disconnect, NULL, 
+            0) != bus_error_success) {
+            // wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
+            //         __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+        } else {
+            ctrl->hotspot_client_dhcp_failure_subscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                __FUNCTION__, __LINE__, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED);
+        }
+    }
 }
 
 bus_error_t get_sta_connection_timeout(char *name, raw_data_t *p_data, bus_user_data_t *user_data)

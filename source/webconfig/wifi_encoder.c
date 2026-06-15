@@ -1245,20 +1245,10 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 
-    if (security_info->encr != wifi_encryption_aes &&
-        (security_info->mode == wifi_security_mode_enhanced_open ||
-        security_info->mode == wifi_security_mode_wpa3_enterprise ||
-        security_info->mode == wifi_security_mode_wpa3_personal)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method for %d mode: %d\n",
+    if (!is_valid_encr_for_mode(security_info->mode, security_info->encr)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption %d for mode %d\n",
             __func__, __LINE__, security_info->encr, security_info->mode);
-        return webconfig_error_decode;
-    }
-
-    if (security_info->encr == wifi_encryption_tkip &&
-        security_info->mode == wifi_security_mode_wpa_wpa2_personal) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method TKIP with "
-            "WPA/WPA2 mode\n", __func__, __LINE__);
-        return webconfig_error_decode;
+        return webconfig_error_encode;
     }
 
     switch (security_info->encr) {
@@ -1273,7 +1263,11 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
-
+#ifdef CONFIG_IEEE80211BE
+        case wifi_encryption_aes_gcmp256:
+            cJSON_AddStringToObject(security, "EncryptionMethod", "AES+GCMP");
+            break;
+#endif /* CONFIG_IEEE80211BE */
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode encryption method: %d\n",
                 __func__, __LINE__, security_info->encr);
@@ -1887,7 +1881,7 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
 
             if (print_assoc_client == true) {
                 cJSON *obj_assoc_client;
-                mac_addr_str_t mac_string = { 0 };
+                mac_addr_str_t mac_string = { 0 }, tmp_mac_string = { 0 };
 
                 obj_assoc_client = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj_assoc_client);
@@ -1896,11 +1890,17 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 str_tolower(mac_string);
                 cJSON_AddStringToObject(obj_assoc_client, "MACAddress", mac_string);
 
-                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, mac_string);
-                str_tolower(mac_string);
-                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", mac_string);
+                to_mac_str(assoc_dev_data->dev_stats.cli_MLDAddr, tmp_mac_string);
+                str_tolower(tmp_mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "MLDAddr", tmp_mac_string);
 
                 cJSON_AddBoolToObject(obj_assoc_client, "MLDEnable", assoc_dev_data->dev_stats.cli_MLDEnable);
+
+                to_mac_str(assoc_dev_data->link_address, tmp_mac_string);
+                str_tolower(tmp_mac_string);
+                cJSON_AddStringToObject(obj_assoc_client, "LinkAddress", tmp_mac_string);
+
+                cJSON_AddBoolToObject(obj_assoc_client, "AssociationLink", assoc_dev_data->association_link);
                 cJSON_AddStringToObject(obj_assoc_client, "WpaKeyMgmt", assoc_dev_data->conn_security.wpa_key_mgmt);
                 cJSON_AddStringToObject(obj_assoc_client, "PairwiseCipher", assoc_dev_data->conn_security.pairwise_cipher);
                 cJSON_AddNumberToObject(obj_assoc_client, "RSNCapabilities", assoc_dev_data->conn_security.rsn_capabilities);
@@ -1934,6 +1934,8 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "MaxUplinkRate", assoc_dev_data->dev_stats.cli_MaxUplinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "MaxDownlinkRate", assoc_dev_data->dev_stats.cli_MaxDownlinkRate);
                 cJSON_AddNumberToObject(obj_assoc_client, "LastConnectTime", assoc_dev_data->last_connect_time);
+                cJSON_AddNumberToObject(obj_assoc_client, "MLCapabilities", assoc_dev_data->dev_stats.cli_MLModeCapa);
+                cJSON_AddNumberToObject(obj_assoc_client, "TIDLinkMapNegotiation", assoc_dev_data->dev_stats.cli_TIDLinkMapNegotiation);
                 if (include_frame_data == true &&
                     encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
                         webconfig_error_none) {
