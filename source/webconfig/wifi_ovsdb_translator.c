@@ -3066,14 +3066,14 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
     }
 
 #if defined(CONFIG_IEEE80211BE)
-    if (vap->u.bss_info.mld_info.common_info.mld_enable && vap->u.bss_info.mld_info.common_info.mld_id != UNDEFINED_MLD_ID) {
+    if (vap->u.sta_info.mld_info.common_info.mld_enable && vap->u.sta_info.mld_info.common_info.mld_id != UNDEFINED_MLD_ID) {
         // MLD_Addr
-        to_mac_str((unsigned char*)vap->u.bss_info.mld_info.common_info.mld_addr, vap_row->mld_addr);
+        to_mac_str((unsigned char*)vap->u.sta_info.mld_info.common_info.mld_addr, vap_row->mld_addr);
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_addr to %s\n", __func__, __LINE__, vap_row->mld_addr);
 
         // mld_if_name
         if (get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name))) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.sta_info.mld_info.common_info.mld_id);
         } else {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Couldn't find vap. vap_name = %s.\n", __func__, __LINE__, vap->vap_name);
         }
