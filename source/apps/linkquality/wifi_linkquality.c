@@ -130,7 +130,7 @@ void publish_station_score(const char *input_str, double score, double threshold
     raw_data_t rdata;
     char str[MAX_STR_LEN] = { '\0' };
     char tmp[MAX_STR_LEN] = { 0 };
-    char buff[MAX_BUFF_LEN] = { 0 };
+    char buff[MAX_BUFF_LEN_lq] = { 0 };
     char telemetry_val[IGNITE_SCORE_THRESHOLD_BUFF] = {0};
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 

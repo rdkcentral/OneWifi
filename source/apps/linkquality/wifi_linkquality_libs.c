@@ -81,13 +81,6 @@ static bool is_ext_mode(void)
 /* CAFFINITY_EVENT (msg_type 4) – HAL/DHCP events for caffinity scoring */
 static int periodic_caffinity_stats_update_impl(stats_arg_t *stats, int len)
 {
-    wifi_util_info_print(WIFI_APPS,
-        "%s:%d [IPC->CAFFINITY_EVENT] MAC=%s event=%d status_code=%u "
-        "conn_time=%llds disconn_time=%llds dhcp_event=%d dhcp_msg_type=%d\n",
-        __func__, __LINE__, stats->mac_str, stats->event, stats->status_code,
-        (long long)stats->total_connected_time.tv_sec,
-        (long long)stats->total_disconnected_time.tv_sec,
-        stats->dhcp_event, stats->dhcp_msg_type);
 
     if (is_ext_mode()) {
         /* TODO: EXT mode – forward CAFFINITY_EVENT to GW via 1905.1/TCP frame */
