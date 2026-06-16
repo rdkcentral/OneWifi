@@ -271,7 +271,7 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
     
     
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
-    if (rfc_param->link_quality_rfc) {
+    if (rfc_param->wei_wc_rfc || rfc_param->wei_gc_rfc || rfc_param->wei_sc_rfc) {
           wifi_util_error_print(WIFI_CTRL,"%s:%d start link_event \n", __func__, __LINE__);
     }
     get_lq_descriptor()->start_link_metrics_fn();

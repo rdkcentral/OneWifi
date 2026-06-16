@@ -3093,7 +3093,7 @@ void process_multiap_rfc(bool type)
     return;
 }
 
-void process_link_quality_rfc(bool type)
+void process_link_quality_rfc(bool type,char *rfc_name)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
@@ -3103,16 +3103,23 @@ void process_link_quality_rfc(bool type)
         wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
         return;
     }
-
-    rfc_param->link_quality_rfc = type;
+    bool before = rfc_param->wei_wc_rfc || rfc_param->wei_sc_rfc || rfc_param->wei_gc_rfc;
+    if (strcmp(rfc_name,"WhenConnected") == 0)
+        rfc_param->wei_wc_rfc = type;
+    else if (strcmp(rfc_name,"StayConnected") == 0)
+        rfc_param->wei_sc_rfc = type;
+    else     
+	rfc_param->wei_gc_rfc = type;
+    
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
-        rfc_param->link_quality_rfc);
-    if( rfc_param->link_quality_rfc) {
+    bool after = rfc_param->wei_wc_rfc || rfc_param->wei_sc_rfc || rfc_param->wei_gc_rfc;
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : rfc_name %s\n", __func__, __LINE__,
+        rfc_name);
+    if(!before && after) {
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
        // run_web_server();
         wifi_util_error_print(WIFI_CTRL, "started link quality app %s:%d\n", __func__, __LINE__);
-    } else {
+    } else if(before && !after) {
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
         wifi_util_error_print(WIFI_CTRL, "stopped link quality app %s:%d\n", __func__, __LINE__);
         //stop_web_server(path);
@@ -4512,8 +4519,14 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
         break;
-    case wifi_event_type_link_quality_rfc:
-        process_link_quality_rfc(*(bool *)data);
+    case wifi_event_type_wei_wc_rfc:
+        process_link_quality_rfc(*(bool *)data."WhenConnected");
+        break;
+    case wifi_event_type_wei_gc_rfc:
+        process_link_quality_rfc(*(bool *)data,"GetConnected");
+        break;
+    case wifi_event_type_wei_sc_rfc:
+        process_link_quality_rfc(*(bool *)data, "StayConnected");
         break;
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);

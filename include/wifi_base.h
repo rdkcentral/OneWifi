@@ -647,7 +647,9 @@ typedef struct {
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
-    bool link_quality_rfc;
+    bool wei_wc_rfc;
+    bool wei_sc_rfc;
+    bool wei_gc_rfc;
     bool xfi_tel_enable_rfc;
     bool multiap_rfc;
 } wifi_rfc_dml_parameters_t;
