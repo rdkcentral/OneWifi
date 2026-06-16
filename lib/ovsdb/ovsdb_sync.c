@@ -205,11 +205,7 @@ static char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
     void redact_sensitive_values(json_t *obj) {
         if (json_is_object(obj)) {
             const char *key;
-        char *sanitized_json = ovsdb_sanitize_json_for_logging(jsdata);
-        if (sanitized_json) {
-            wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", sanitized_json);
-            free(sanitized_json);
-        }
+            json_t *value;
             json_object_foreach(obj, key, value) {
                 /* Check if this key is sensitive */
                 int is_sensitive = 0;
@@ -227,7 +223,7 @@ static char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
                     /* Recursively process nested objects and arrays */
                     redact_sensitive_values(value);
                 }
-            });
+            }
         } else if (json_is_array(obj)) {
             size_t index;
             json_t *value;
@@ -235,7 +231,7 @@ static char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
                 if (json_is_object(value) || json_is_array(value)) {
                     redact_sensitive_values(value);
                 }
-            });
+            }
         }
     }
     
@@ -247,6 +243,7 @@ static char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
     
     return result;
 }
+
 
 json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
 {
@@ -272,6 +269,11 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     LOGD("SYNC: Writing sync operation: %s", json_dumps_static(jsdata, 0));
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
+        char *sanitized_json = ovsdb_sanitize_json_for_logging(jsdata);
+        if (sanitized_json) {
+            wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", sanitized_json);
+            free(sanitized_json);
+        }
         LOGE("SYNC: Error during sync write to OVSDB: %s", strerror(errno));
         wifidb_print("SYNC: Error during sync write to OVSDB: %s\r\n", strerror(errno));
         goto error;
