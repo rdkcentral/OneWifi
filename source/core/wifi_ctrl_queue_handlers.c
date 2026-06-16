@@ -4520,7 +4520,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         process_csi_analytics_rfc(*(bool *)data);
         break;
     case wifi_event_type_wei_wc_rfc:
-        process_link_quality_rfc(*(bool *)data."WhenConnected");
+        process_link_quality_rfc(*(bool *)data,"WhenConnected");
         break;
     case wifi_event_type_wei_gc_rfc:
         process_link_quality_rfc(*(bool *)data,"GetConnected");
