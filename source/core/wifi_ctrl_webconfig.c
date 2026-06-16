@@ -3189,10 +3189,6 @@ int create_station_with_default_credentials(webconfig_subdoc_data_t *data, int n
                 .vaps.vap_map.vap_array[vap_array_index]
                 .u.sta_info.security.u.radius.eap_type = WIFI_EAP_TYPE_NONE;
         }
-        memset(&data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.radius.ip, 0,
-                    sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.radius.ip));
-        memset(&data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.radius.s_ip, 0,
-                    sizeof(data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.sta_info.security.u.radius.s_ip));
     }
 
     return status;
