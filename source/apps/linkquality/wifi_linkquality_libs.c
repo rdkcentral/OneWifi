@@ -162,11 +162,7 @@ static int start_link_metrics_impl()
         return 0;
     }
 
-    /* GW mode: start local DHCP sniffer + send IPC to linkquality-stats */
-    wifi_util_info_print(WIFI_APPS,
-        "%s:%d Starting DHCP sniffer (GW mode)\n", __func__, __LINE__);
-    dhcp_sniffer_start();
-
+    /* GW mode: send IPC to linkquality-stats */
     int rc = lq_ipc_send(LQ_IPC_MSG_START_METRICS, NULL, 0, 0);
     wifi_util_info_print(WIFI_APPS,
         "%s:%d [IPC->START_METRICS] lq_ipc_send rc=%d\n",
@@ -188,11 +184,7 @@ static int stop_link_metrics_impl()
         return 0;
     }
 
-    /* GW mode: stop local DHCP sniffer + send IPC to linkquality-stats */
-    wifi_util_info_print(WIFI_APPS,
-        "%s:%d Stopping DHCP sniffer (GW mode)\n", __func__, __LINE__);
-    dhcp_sniffer_stop();
-
+    /* GW mode: send IPC to linkquality-stats */
     int rc = lq_ipc_send(LQ_IPC_MSG_STOP_METRICS, NULL, 0, 0);
     wifi_util_info_print(WIFI_APPS,
         "%s:%d [IPC->STOP_METRICS] lq_ipc_send rc=%d\n",

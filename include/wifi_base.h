@@ -595,8 +595,6 @@ typedef struct {
     struct timespec total_disconnected_time;
     int event;
     unsigned int status_code;
-    int dhcp_event;
-    int dhcp_msg_type;
 } stats_arg_t;
 
 typedef struct {
@@ -970,6 +968,19 @@ typedef struct {
     stats_cfg_id_t  stats_cfg_id;
     int             task_id;
 } stats_report_task_t;
+
+typedef enum {
+    EAPOL_MSG_UNKNOWN = 0,
+    EAPOL_MSG_M1      = 1,
+    EAPOL_MSG_M2      = 2,
+    EAPOL_MSG_M3      = 3,
+} eapol_msg_type_t;
+
+typedef enum {
+    EAPOL_FRAME_UNKNOWN  = 0,
+    EAPOL_FRAME_ASSOC    = 1,
+    EAPOL_FRAME_REASSOC  = 2,
+} eapol_frame_type_t;
 
 typedef struct {
     //Hal variables

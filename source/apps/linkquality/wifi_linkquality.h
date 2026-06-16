@@ -36,37 +36,6 @@ extern "C" {
 #define IGNITE_SCORE_LOG_INTERVAL_MS 900000 // 15 mins
 #define IGNITE_INITIAL_PUBLISH_ITERATIONS 5
 
-#define BUFFER_SIZE 65536
-#define DHCP_BOOTP 1
-#define DHCP_OPTION_PAD 0           // DHCP option padding
-#define DHCP_OPTION_END 255         // DHCP option end marker
-#define DHCP_OPTION_HOSTNAME 12
-#define DHCP_OP_MSG_TYPE 53         // DHCP message type option
-#define DHCP_OPTION_VENDOR_CLASS_ID 60
-
-struct dhcp_data
-{
-    uint8_t op;
-    uint8_t htype;
-    uint8_t hlen;
-    uint8_t hops;
-
-    uint32_t xid;
-
-    uint16_t secs;
-    uint16_t flags;
-
-    uint32_t ciaddr;
-    uint32_t yiaddr;
-    uint32_t siaddr;
-    uint32_t giaddr;
-
-    uint8_t chaddr[16];
-};
-
-// Global socket + interface index
-extern int dhcp_sniffer_fd;
-extern int dhcp_sniffer_ifindex;
 
 #define MAC_ADDRESS_LEN 6
 typedef struct {
@@ -137,8 +106,6 @@ typedef enum {
 } multiap_tlv_type_t;
 #endif
 
-void dhcp_sniffer_stop();
-void dhcp_sniffer_start();
 #ifdef __cplusplus
 }
 #endif
