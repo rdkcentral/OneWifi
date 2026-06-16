@@ -2133,13 +2133,9 @@ void process_disassoc_device_event(void *data)
     } else {
         assoc_dev_data_t *temp = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
         if (temp != NULL) {
-            mld_sta = temp->mld_info.cli_MLDSta;
-            if (mld_sta == true) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client disconnected %s\n",
-                    __func__, __LINE__, mac_str);
-            }
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d vap_index: %d MAC: %s is MLD %d\n",
-                __func__, __LINE__, rdk_vap_info->vap_index, mac_str, mld_sta);
+                __func__, __LINE__, rdk_vap_info->vap_index, mac_str, temp->mld_info.cli_MLDSta);
+            mld_sta = temp->mld_info.cli_MLDSta;
             if (process_device_removal(rdk_vap_info, mac_str, temp, 
                                       p_wifi_mgr, &new_count, old_count) == RETURN_ERR) {
                 pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
@@ -2533,8 +2529,6 @@ void process_assoc_device_event(void *data)
 
     if (assoc_data->mld_info.cli_MLDSta == true) {
         int assoc_link_idx = -1;
-        int num_links = 0;
-
         for (int link_idx = 0; link_idx < MAX_NUM_RADIOS; link_idx++) {
             if (assoc_data->mld_info.cli_LinkInfo[link_idx].cli_Valid) {
                 if (assoc_data->mld_info.cli_LinkInfo[link_idx].cli_IsAssocLink) {
@@ -2542,11 +2536,8 @@ void process_assoc_device_event(void *data)
                 }
                 assoc_dev_update_mlo_link(assoc_data, link_idx);
                 assoc_dev_event(assoc_data);
-
-                num_links++;
             }
         }
-
         /* In case of MLO client upcoming LM_lite notification needs to be from assoc link */
         if (assoc_link_idx != -1) {
             assoc_dev_update_mlo_link(assoc_data, assoc_link_idx);
@@ -2554,8 +2545,6 @@ void process_assoc_device_event(void *data)
             wifi_util_error_print(WIFI_CTRL, "%s:%d No valid associated link found for MLD STA " MAC_FMT "\n",
                 __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
         }
-        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected " MAC_FMT " with %d links\n",
-            __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress), num_links);
     } else {
         assoc_dev_event(assoc_data);
     }
