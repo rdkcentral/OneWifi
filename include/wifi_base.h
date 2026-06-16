@@ -264,6 +264,8 @@ typedef struct {
     unsigned char DestMac[MAC_ADDRESS_LENGTH];
     unsigned int StepId;
     int ApIndex;
+    bool isMLO;
+    int mldApIndex[MAX_NUM_RADIOS - 1];
 } active_msmt_step_t;
 
 typedef enum {
@@ -1021,6 +1023,18 @@ typedef struct {
     mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
+#if defined(CONFIG_IEEE80211BE)
+typedef struct {
+    unsigned int num_links;
+    assoc_dev_data_t links[MAX_NUM_RADIOS];
+} mlo_client_t;
+
+typedef struct {
+    wifi_vap_name_t vap_name;
+    hash_map_t *mlo_sta_map;
+} wifi_mld_unit_t;
+#endif /* CONFIG_IEEE80211BE */
+
 struct active_msmt_data;
 
 typedef struct {
@@ -1292,11 +1306,14 @@ typedef struct {
     mac_addr_t disallowed_sta[EM_MAX_DIS_STA];
 } steering_disallowed_policy_t;
 
+#define EM_MAX_BACKHAUL_BSS_POLICY 16
 typedef struct {
     bssid_t bssid;
     bool profile_1_bsta_disallowed;
     bool profile_2_bsta_disallowed;
 } backhaul_bss_config_policy_t;
+
+#define EM_MAX_QOS_POLICY 1
 
 typedef struct {
     bool report_independent_channel_scan;
@@ -1319,13 +1336,61 @@ typedef struct {
 } radio_metrics_policies_t;
 
 typedef struct {
+    bool report_unassoc_sta;
+    unsigned int max_reporting_rate;
+} unsuccessful_assoc_policy_t;
+
+#define EM_MAX_QOS_MAC 16
+typedef struct {
+    int num_mscs;
+    mac_addr_t mscs_mac[EM_MAX_QOS_MAC];
+    int num_scs;
+    mac_addr_t scs_mac[EM_MAX_QOS_MAC];
+} qos_mgt_policy_t;
+
+typedef struct {
+    unsigned short primary_vid;
+    unsigned char default_pcp;
+} default_8021q_policy_t;
+
+#define EM_MAX_SSIDS_TRAFFIC_SEP 8
+typedef struct {
+    char ssid[33];
+    unsigned short vlan_id;
+} ssid_vlan_info_t;
+
+typedef struct {
+    int num_ssids;
+    ssid_vlan_info_t ssid_info[EM_MAX_SSIDS_TRAFFIC_SEP];
+} traffic_separation_policy_t;
+
+typedef struct {
+    mac_addr_t ruid;
+    int policy;
+    int util_threshold;
+    int rcpi_threshold;
+} radio_steering_policy_t;
+
+typedef struct {
+    int radio_count;
+    radio_steering_policy_t radio_steering_policy[EM_MAX_RADIO_POLICY];
+} radio_steering_policies_t;
+
+typedef struct {
     alarm_report_policy_t alarm_report_policy;
     ap_metrics_policy_t ap_metric_policy;
     steering_disallowed_policy_t local_steering_dslw_policy;
     steering_disallowed_policy_t btm_steering_dslw_policy;
-    backhaul_bss_config_policy_t backhaul_bss_config_policy;
+    int num_backhaul_bss_config;
+    backhaul_bss_config_policy_t backhaul_bss_config_policy[EM_MAX_BACKHAUL_BSS_POLICY];
     channel_scan_reporting_policy_t channel_scan_reporting_policy;
     radio_metrics_policies_t radio_metrics_policies;
+    unsuccessful_assoc_policy_t unsuccess_assoc_policy;
+    int num_qos_mgt;
+    qos_mgt_policy_t qos_mgt_policy[EM_MAX_QOS_POLICY];
+    default_8021q_policy_t default_8021q_policy;
+    // traffic_separation_policy_t traffic_separation_policy;
+    radio_steering_policies_t radio_steering_policies;
 } em_config_t;
 
 typedef struct {
