@@ -180,6 +180,74 @@ static pthread_mutex_t ovsdb_lock;
  * can be changed to use a timer to close the connection after a period of inactivity.
  */
 
+/* Helper function to create a sanitized JSON string for logging (redacts sensitive fields) */
+static char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
+{
+    if (!jsdata) {
+        return NULL;
+    }
+    
+    /* Create a deep copy to avoid modifying the original */
+    json_t *sanitized = json_deep_copy(jsdata);
+    if (!sanitized) {
+        return NULL;
+    }
+    
+    /* List of sensitive keys to redact */
+    const char *sensitive_keys[] = {
+        "psk", "password", "passwd", "pwd", "secret", "token", 
+        "auth_token", "access_token", "refresh_token", "api_key",
+        "private_key", "certificate", "cert", "key", "passphrase"
+    };
+    int num_sensitive_keys = sizeof(sensitive_keys) / sizeof(sensitive_keys[0]);
+    
+    /* Recursive function to redact sensitive values */
+    void redact_sensitive_values(json_t *obj) {
+        if (json_is_object(obj)) {
+            const char *key;
+        char *sanitized_json = ovsdb_sanitize_json_for_logging(jsdata);
+        if (sanitized_json) {
+            wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", sanitized_json);
+            free(sanitized_json);
+        }
+            json_object_foreach(obj, key, value) {
+                /* Check if this key is sensitive */
+                int is_sensitive = 0;
+                for (int i = 0; i < num_sensitive_keys; i++) {
+                    if (strcasecmp(key, sensitive_keys[i]) == 0) {
+                        is_sensitive = 1;
+                        break;
+                    }
+                }
+                
+                if (is_sensitive) {
+                    /* Replace sensitive value with redaction marker */
+                    json_object_set_new(obj, key, json_string("[REDACTED]"));
+                } else if (json_is_object(value) || json_is_array(value)) {
+                    /* Recursively process nested objects and arrays */
+                    redact_sensitive_values(value);
+                }
+            });
+        } else if (json_is_array(obj)) {
+            size_t index;
+            json_t *value;
+            json_array_foreach(obj, index, value) {
+                if (json_is_object(value) || json_is_array(value)) {
+                    redact_sensitive_values(value);
+                }
+            });
+        }
+    }
+    
+    redact_sensitive_values(sanitized);
+    
+    /* Serialize the sanitized JSON */
+    char *result = json_dumps(sanitized, JSON_COMPACT);
+    json_decref(sanitized);
+    
+    return result;
+}
+
 json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
 {
     int     ovs_fd = -1;
