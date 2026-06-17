@@ -2013,6 +2013,32 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
         wifi_event_type_command_mesh_status, NULL);
 }
 
+static void wei_rfc_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
+{
+   (void)userData;
+    bool wei_status = false;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event event_name=%s\n", __func__, __LINE__,event_name);
+
+    if(p_data->value.data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->value.data_type);
+        return;
+    }
+
+    wei_status = p_data->value.raw_data.b;
+    if (strcmp(event_name,WEI_CONNECTED_RFC) == 0) {
+        push_event_to_ctrl_queue(&wei_status, sizeof(wei_status), wifi_event_type_command,
+         wifi_event_type_wei_wc_rfc, NULL);
+    } else if (strcmp(event_name,WEI_STAYCONNECTED_RFC) == 0) {
+        push_event_to_ctrl_queue(&wei_status, sizeof(wei_status), wifi_event_type_command,
+         wifi_event_type_wei_sc_rfc, NULL);
+    } else if (strcmp(event_name,WEI_GETCONNECTED_RFC) == 0) {
+        push_event_to_ctrl_queue(&wei_status, sizeof(wei_status), wifi_event_type_command,
+         wifi_event_type_wei_gc_rfc, NULL);
+   }
+
+}
+
 static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
@@ -2462,6 +2488,21 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d MeshStatus subscribe success, rc: %d\n",
                 __FUNCTION__, __LINE__, rc);
         }
+    }
+
+    if (ctrl->wei_events_subscribed == false) {
+        int ret1 = -1,ret2 = -1 ,ret3 = -1;
+        ret1 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_CONNECTED_RFC, wei_rfc_handler, NULL,0);
+        ret2 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_STAYCONNECTED_RFC, wei_rfc_handler, NULL,0);
+        ret3 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_GETCONNECTED_RFC, wei_rfc_handler, NULL,0);
+        if (ret1 == 0 && ret2 ==0 && ret3 == 0) {    
+	    ctrl->wei_events_subscribed = true;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d wei event subscribe success\n",
+                __FUNCTION__, __LINE__);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d wei event subscribe unsuccess\n",
+                __FUNCTION__, __LINE__);
+	}
     }
 
 #if defined(RDKB_EXTENDER_ENABLED) || defined(WAN_FAILOVER_SUPPORTED)

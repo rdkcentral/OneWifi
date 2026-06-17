@@ -118,6 +118,9 @@ extern "C" {
 #define BUS_WFA_DML_CONFIG_FILE "Data_Elements_JSON_Schema_v3.0.json"
 
 #define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
+#define WEI_CONNECTED_RFC        "Device.WEI.WhenConnected"
+#define WEI_STAYCONNECTED_RFC        "Device.WEI.StayingConnected"
+#define WEI_GETCONNECTED_RFC        "Device.WEI.GettingConnected"
 
 extern bool is_sta_set;
 
@@ -260,6 +263,7 @@ typedef struct wifi_ctrl {
     bool                wifi_sta_5g_status_subscribed;
     bool                eth_bh_status_subscribed;
     bool                mesh_keep_out_chans_subscribed;
+    bool                wei_events_subscribed;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
     unsigned int        sta_tree_instance_num;

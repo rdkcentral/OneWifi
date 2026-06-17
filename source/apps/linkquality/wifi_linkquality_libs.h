@@ -63,9 +63,6 @@ typedef struct {
 
 wifi_lq_descriptor_t *get_lq_descriptor();
 
-void* run_extender_1905_thread(void *arg);
-int lq_send_autoconf_search(const char *ifname);
-void lq_handle_1905_frame(const uint8_t *buf, ssize_t len);
 
 #ifdef __cplusplus
  }

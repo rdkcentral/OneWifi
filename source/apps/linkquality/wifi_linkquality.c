@@ -48,6 +48,7 @@
 static char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 
+#ifdef EM_APP
 /* Register callback BEFORE starting qmgr */
 void publish_qmgr_subdoc(const report_batch_t* report)
 {
@@ -101,6 +102,7 @@ void publish_qmgr_subdoc(const report_batch_t* report)
         free(data);
     return;
 }
+#endif
 
 static int ignite_score_log_timer(void *args)
 {
@@ -231,7 +233,6 @@ int link_quality_register_station(wifi_app_t *apps, wifi_event_t *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if ( ctrl->rf_status_down) {
         get_lq_descriptor()->register_station_mac_fn(str);
-        //qmgr_register_score_callback(publish_station_score);
     }
     return RETURN_OK;
 }
@@ -328,18 +329,6 @@ int link_quality_hal_rapid_connect(wifi_app_t *apps, void *arg)
     );
 
      get_lq_descriptor()->disconnect_link_stats_fn(stats);
-    return RETURN_OK;
-
-}
-int link_quality_gw_discovery(wifi_app_t *apps, wifi_event_t *arg)
-{
-    wifi_util_info_print(WIFI_APPS, "%s:%d \n",
-        __func__, __LINE__);
-    /* GW: broadcast autoconf_search so EXT learns our MAC and can address
-     * subsequent autoconf_resp frames to us.
-     * GW(RPI): backhaul to XB8 = eth0; for production GW: change to "brlan0". */
-     //lq_send_autoconf_search("brlan0");
-
     return RETURN_OK;
 
 }

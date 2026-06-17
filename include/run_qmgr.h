@@ -154,11 +154,6 @@ int update_affinity_stats(stats_arg_t *arg,bool flag);
 /* Periodic caffinity stats update for connected/disconnected time and SNR */
 int periodic_caffinity_stats_update(stats_arg_t *stats ,int len);
 
-/* Store GW mac address in extender so that extender can send data*/
-int store_gw_mac(uint8_t *mac);
-
-/* Retrive GW mac address in extender so that extender can send data*/
-int get_gw_mac(uint8_t *mac);
 
 /* Check if a client is connected using caffinity tracking */
 bool is_client_connected(const char *mac_str);
