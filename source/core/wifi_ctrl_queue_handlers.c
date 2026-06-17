@@ -51,7 +51,6 @@
 
 static unsigned msg_id = 1000;
 
-#define RADIO_INDEX_DFS 1
 unsigned int temp_ch_list_5g[] = {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161,165};
 
 typedef enum {
@@ -3457,20 +3456,21 @@ int dfs_nop_start_timer(void *args)
     wifi_radio_operationParam_t *radio_params = NULL;
 
     /* Find the 5G radio that has pending radarDetected entries */
-    int dfs_radio_index = RADIO_INDEX_DFS;
-    {
-        unsigned int n = getNumberRadios();
-        for (unsigned int i = 0; i < n; i++) {
-            wifi_radio_operationParam_t *c = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
-            if (c == NULL) continue;
-            if (c->band != WIFI_FREQUENCY_5_BAND &&
-                c->band != WIFI_FREQUENCY_5L_BAND &&
-                c->band != WIFI_FREQUENCY_5H_BAND) continue;
-            if (strcmp(c->radarDetected, " ") != 0 && strlen(c->radarDetected) > 0) {
-                dfs_radio_index = (int)i;
-                break;
-            }
-        }
+    unsigned int n = getNumberRadios();
+    unsigned int dfs_radio_index;
+    for (dfs_radio_index = 0; dfs_radio_index < n; dfs_radio_index++) {
+        wifi_radio_operationParam_t *c = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
+        if (c == NULL) continue;
+        if (c->band != WIFI_FREQUENCY_5_BAND &&
+            c->band != WIFI_FREQUENCY_5L_BAND &&
+            c->band != WIFI_FREQUENCY_5H_BAND) continue;
+        if (strcmp(c->radarDetected, " ") != 0 && strlen(c->radarDetected) > 0) {
+            break;
+         }
+     }
+    if (dfs_radio_index >= n) {
+        wifi_util_error_print(WIFI_CTRL, "%s: No 5G radio with radarDetected found\n", __FUNCTION__);
+        return RETURN_ERR;
     }
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
@@ -3566,30 +3566,29 @@ int dfs_nop_finish_timer(void *args)
     unsigned int nop_fin_dfs_ch = *(unsigned int *) args;
 
     /* Find which 5G radio has this channel in its radarDetected */
-    int dfs_radio_index = RADIO_INDEX_DFS;
-    {
-        unsigned int n = getNumberRadios();
-        for (unsigned int i = 0; i < n; i++) {
-            wifi_radio_operationParam_t *c = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
-            if (c == NULL) continue;
-            if (c->band != WIFI_FREQUENCY_5_BAND &&
-                c->band != WIFI_FREQUENCY_5L_BAND &&
-                c->band != WIFI_FREQUENCY_5H_BAND) continue;
-            char scan_tmp[128];
-            char *scan_tok, *scan_saveptr;
-            strncpy(scan_tmp, c->radarDetected, sizeof(scan_tmp));
-            scan_tmp[sizeof(scan_tmp) - 1] = '\0';
-            scan_tok = strtok_r(scan_tmp, ";", &scan_saveptr);
-            while (scan_tok != NULL) {
-                if ((unsigned int)atoi(scan_tok) == nop_fin_dfs_ch) {
-                    dfs_radio_index = (int)i;
-                    break;
-                }
-                scan_tok = strtok_r(NULL, ";", &scan_saveptr);
-            }
-            if (dfs_radio_index != RADIO_INDEX_DFS) break;
-        }
+    unsigned int n = getNumberRadios();
+    unsigned int dfs_radio_index;
+    for (dfs_radio_index = 0; dfs_radio_index < n; dfs_radio_index++) {
+        wifi_radio_operationParam_t *c = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
+        if (c == NULL) continue;
+        if (c->band != WIFI_FREQUENCY_5_BAND &&
+            c->band != WIFI_FREQUENCY_5L_BAND &&
+            c->band != WIFI_FREQUENCY_5H_BAND) continue;
+        char scan_tmp[128];
+        char *scan_tok, *scan_saveptr;
+        strncpy(scan_tmp, c->radarDetected, sizeof(scan_tmp));
+        scan_tmp[sizeof(scan_tmp) - 1] = '\0';
+        scan_tok = strtok_r(scan_tmp, ";", &scan_saveptr);
+        while (scan_tok != NULL) {
+            if ((unsigned int)atoi(scan_tok) == nop_fin_dfs_ch) break;
+            scan_tok = strtok_r(NULL, ";", &scan_saveptr);
+         }
+        if (scan_tok != NULL) break;
     }
+    if (dfs_radio_index >= n) {
+        wifi_util_error_print(WIFI_CTRL, "%s: ch=%d not found in any 5G radio radarDetected\n", __FUNCTION__, nop_fin_dfs_ch);
+        return TIMER_TASK_COMPLETE;
+     }
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
     memset(&radio_channel_param, 0, sizeof(radio_channel_param));
