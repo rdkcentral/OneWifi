@@ -4879,6 +4879,13 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
          radio_cap->rdk_radio_index = value_object->valuedouble;
 
+         /* Mode is optional */
+         radio_cap->mode[0] = 0;
+         value_object = cJSON_GetObjectItem(object, "Mode");
+         if ((value_object != NULL) && (cJSON_IsNumber(value_object) == true)) {
+             radio_cap->mode[0] = value_object->valuedouble;
+         }
+
          /*allowed_channels*/
          allowed_channels = cJSON_GetObjectItem(object, "PossibleChannels");
          if (allowed_channels == NULL) {
