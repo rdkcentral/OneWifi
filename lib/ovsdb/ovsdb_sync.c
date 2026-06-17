@@ -180,67 +180,81 @@ static pthread_mutex_t ovsdb_lock;
  * can be changed to use a timer to close the connection after a period of inactivity.
  */
 
-/* Helper function to create a sanitized JSON string for logging (redacts sensitive fields) */
+/* List of sensitive JSON keys whose values must be redacted before logging */
+static const char * const g_sensitive_keys[] = {
+    "psk", "password", "passwd", "pwd", "secret", "token",
+    "auth_token", "access_token", "refresh_token", "api_key",
+    "private_key", "certificate", "cert", "key", "passphrase"
+};
+static const int g_num_sensitive_keys =
+    (int)(sizeof(g_sensitive_keys) / sizeof(g_sensitive_keys[0]));
+
+/* File-scope recursive helper to redact sensitive values in a JSON object/array.
+ * Keys to redact are collected before the object is mutated to avoid
+ * modifying the container while iterating over it. */
+static void redact_sensitive_values(json_t *obj)
+{
+    if (json_is_object(obj)) {
+        const char *keys_to_redact[64];
+        int redact_count = 0;
+        const char *key;
+        json_t *value;
+        json_object_foreach(obj, key, value) {
+            int is_sensitive = 0;
+            for (int i = 0; i < g_num_sensitive_keys; i++) {
+                if (strcasecmp(key, g_sensitive_keys[i]) == 0) {
+                    is_sensitive = 1;
+                    break;
+                }
+            }
+            if (is_sensitive) {
+                if (redact_count < (int)(sizeof(keys_to_redact) / sizeof(keys_to_redact[0]))) {
+                    keys_to_redact[redact_count++] = key;
+                }
+            } else if (json_is_object(value) || json_is_array(value)) {
+                redact_sensitive_values(value);
+            }
+        }
+        /* Apply redactions only after the iteration loop has finished */
+        for (int i = 0; i < redact_count; i++) {
+            json_object_set_new(obj, keys_to_redact[i], json_string("[REDACTED]"));
+        }
+    } else if (json_is_array(obj)) {
+        size_t index;
+        json_t *value;
+        json_array_foreach(obj, index, value) {
+            if (json_is_object(value) || json_is_array(value)) {
+                redact_sensitive_values(value);
+            }
+        }
+    }
+}
+
+/* Helper function to create a sanitized JSON string for logging (redacts sensitive fields).
+ * When compiled with -DUNIT_TEST the symbol is exported so unit tests can link against it;
+ * in production builds it remains translation-unit local (static). */
+#ifdef UNIT_TEST
+char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
+#else
 static char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
+#endif
 {
     if (!jsdata) {
         return NULL;
     }
-    
+
     /* Create a deep copy to avoid modifying the original */
     json_t *sanitized = json_deep_copy(jsdata);
     if (!sanitized) {
         return NULL;
     }
-    
-    /* List of sensitive keys to redact */
-    const char *sensitive_keys[] = {
-        "psk", "password", "passwd", "pwd", "secret", "token", 
-        "auth_token", "access_token", "refresh_token", "api_key",
-        "private_key", "certificate", "cert", "key", "passphrase"
-    };
-    int num_sensitive_keys = sizeof(sensitive_keys) / sizeof(sensitive_keys[0]);
-    
-    /* Recursive function to redact sensitive values */
-    void redact_sensitive_values(json_t *obj) {
-        if (json_is_object(obj)) {
-            const char *key;
-            json_t *value;
-            json_object_foreach(obj, key, value) {
-                /* Check if this key is sensitive */
-                int is_sensitive = 0;
-                for (int i = 0; i < num_sensitive_keys; i++) {
-                    if (strcasecmp(key, sensitive_keys[i]) == 0) {
-                        is_sensitive = 1;
-                        break;
-                    }
-                }
-                
-                if (is_sensitive) {
-                    /* Replace sensitive value with redaction marker */
-                    json_object_set_new(obj, key, json_string("[REDACTED]"));
-                } else if (json_is_object(value) || json_is_array(value)) {
-                    /* Recursively process nested objects and arrays */
-                    redact_sensitive_values(value);
-                }
-            }
-        } else if (json_is_array(obj)) {
-            size_t index;
-            json_t *value;
-            json_array_foreach(obj, index, value) {
-                if (json_is_object(value) || json_is_array(value)) {
-                    redact_sensitive_values(value);
-                }
-            }
-        }
-    }
-    
+
     redact_sensitive_values(sanitized);
-    
+
     /* Serialize the sanitized JSON */
     char *result = json_dumps(sanitized, JSON_COMPACT);
     json_decref(sanitized);
-    
+
     return result;
 }
 
@@ -266,7 +280,11 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     }
     ovs_fd = g_wifidb->wifidb_wfd;
 
-    LOGD("SYNC: Writing sync operation: %s", json_dumps_static(jsdata, 0));
+    {
+        char *sanitized_logd = ovsdb_sanitize_json_for_logging(jsdata);
+        LOGD("SYNC: Writing sync operation: %s", sanitized_logd ? sanitized_logd : "(null)");
+        free(sanitized_logd);
+    }
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
         char *sanitized_json = ovsdb_sanitize_json_for_logging(jsdata);
