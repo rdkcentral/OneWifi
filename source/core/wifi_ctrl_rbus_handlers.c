@@ -474,7 +474,7 @@ static int notify_LM_Lite_host(wifi_ctrl_t *ctrl, LM_wifi_host_t *host, bool syn
         ('\0' != host->ssid[0]) ? (char *)host->ssid : "NULL",
         (char *)host->RSSI, (host->Status == TRUE) ? 1 : 0, host->mld_sta);
 #endif /*CONFIG_MLO_ENABLED_NOTIFY_LM_LITE*/
-
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: msg: %s\n", __func__, __LINE__, str);
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_LMLITE_NOTIFY, str);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: Write Failed %d\n", __func__, __LINE__,
