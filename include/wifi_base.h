@@ -99,6 +99,7 @@ extern "C" {
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
+#define MIN_MLO_GROUP_SIZE 2
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
