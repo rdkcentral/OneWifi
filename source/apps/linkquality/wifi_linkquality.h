@@ -20,6 +20,8 @@
 #ifndef WIFI_LINKQUALITY_H
 #define WIFI_LINKQUALITY_H
 
+#define MAX_IGNITE_STR_LEN 32
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,6 +35,7 @@ typedef struct {
     int score_log_timer_id;
     int last_service_state;
     int iteration_count;
+    char ignite_service_status[MAX_IGNITE_STR_LEN];
 } ignite_lq_state_t;
 
 typedef struct {
