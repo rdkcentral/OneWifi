@@ -131,7 +131,8 @@ static int em_get_radio_index_from_mac(mac_addr_t ruuid)
 
     for (int i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
-        for (int j = 0; j < vap_map->num_vaps; j++) {
+
+        for (int j = 0; vap_map && j < vap_map->num_vaps; j++) {
             to_mac_str(vap_map->vap_array[j].u.bss_info.bssid, bss_str);
             //wifi_util_dbg_print(WIFI_EM, "%s:%d comparing ruuid[%s] with bss mac: %s\n", __func__, __LINE__, rad_str, bss_str);
             if (memcmp(ruuid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) == 0) {
@@ -2287,6 +2288,10 @@ static void ap_report_cache_init()
 
     for (int i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
+        if (!vap_map) {
+            continue;
+        }
+
         for (int j = 0; j < vap_map->num_vaps; j++) {
             vap_info = &vap_map->vap_array[j];
             if (vap_info == NULL) {
