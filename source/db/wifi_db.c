@@ -299,6 +299,21 @@ static int init_interworking_config_default(int vapIndex,
     return 0;
 }
 
+int wifidb_get_default_mld_link_id(int band)
+{
+#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+    switch (band) {
+    case WIFI_FREQUENCY_2_4_BAND: return 2;
+    case WIFI_FREQUENCY_5_BAND:   return 0;
+    case WIFI_FREQUENCY_6_BAND:   return 1;
+    default:                      return 255;
+    }
+#else
+    (void)band;
+    return 255;
+#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
+}
+
 static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config)
 {
