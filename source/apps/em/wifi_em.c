@@ -381,7 +381,8 @@ static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associate
     to_mac_str(stats->associated_dev3.cli_MACAddress, key);
     cli_data = hash_map_get(client_type_info.sta_client_type.client_type_map, key);
     if (cli_data != NULL) {
-        snprintf(data->client_type, sizeof(data->client_type), "%s", cli_data->client_type);
+        strncpy((char *)data->client_type, (const char *)cli_data->client_type, sizeof(data->client_type) - 1);
+        data->client_type[sizeof(data->client_type) - 1] = '\0';
     }
 
     data->assoc_sta_link_metrics.num_bssid = 1; // must be changed for STA multiple associations
@@ -1444,7 +1445,8 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
         }
         memset(cli_data, 0, sizeof(sta_client_info_t));
         memcpy(cli_data->mac_addr, sta_info->mac_addr, sizeof(mac_address_t));
-        snprintf(cli_data->client_type, sizeof(cli_data->client_type), "%s", sta_info->client_type);
+        strncpy((char *)cli_data->client_type, (const char *)sta_info->client_type, sizeof(cli_data->client_type) - 1);
+        cli_data->client_type[sizeof(cli_data->client_type) - 1] = '\0';
 
         hash_map_put(client_type_info.sta_client_type.client_type_map, strdup(client_mac),
             cli_data);
@@ -1452,7 +1454,8 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
             __func__, __LINE__, cli_data->client_type);
     } else {
         /* Refresh existing cache entry to avoid stale client type values. */
-        snprintf(cli_data->client_type, sizeof(cli_data->client_type), "%s", sta_info->client_type);
+        strncpy((char *)cli_data->client_type, (const char *)sta_info->client_type, sizeof(cli_data->client_type) - 1);
+        cli_data->client_type[sizeof(cli_data->client_type) - 1] = '\0';
     }
 
     return RETURN_OK;
