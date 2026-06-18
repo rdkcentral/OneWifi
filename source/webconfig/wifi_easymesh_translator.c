@@ -1653,7 +1653,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
             int found = 0;
             for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
                 ap_metrics = &em_ap_report->radio_reports[i].vap_reports[k];
-                if (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) == 0) {
+                if (memcmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) == 0) {
                     found = 1;
                     break;
                 }
