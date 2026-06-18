@@ -598,6 +598,7 @@ WiFi_GetParamUlongValue
         *puLong = numOfRadios;
         return TRUE;
     }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
