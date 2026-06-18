@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <jansson.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 
 #include "os_socket.h"
@@ -47,6 +48,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pjs_gen_c.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
+
+#ifdef UNIT_TEST
+#include "ovsdb_sync_test.h"
+#endif /* UNIT_TEST */
 
 
 /* OVSDB response buffers can be HUGE */
@@ -195,10 +200,12 @@ static const int g_num_sensitive_keys =
 static void redact_sensitive_values(json_t *obj)
 {
     if (json_is_object(obj)) {
-        const char *keys_to_redact[64];
-        int redact_count = 0;
         const char *key;
         json_t *value;
+        /* json_object_set_new() on an existing key only replaces the value
+         * pointer — it never adds or removes hash-table entries — so calling
+         * it from inside json_object_foreach is safe and imposes no hard cap
+         * on the number of sensitive keys that can be redacted. */
         json_object_foreach(obj, key, value) {
             int is_sensitive = 0;
             for (int i = 0; i < g_num_sensitive_keys; i++) {
@@ -208,16 +215,10 @@ static void redact_sensitive_values(json_t *obj)
                 }
             }
             if (is_sensitive) {
-                if (redact_count < (int)(sizeof(keys_to_redact) / sizeof(keys_to_redact[0]))) {
-                    keys_to_redact[redact_count++] = key;
-                }
+                json_object_set_new(obj, key, json_string("[REDACTED]"));
             } else if (json_is_object(value) || json_is_array(value)) {
                 redact_sensitive_values(value);
             }
-        }
-        /* Apply redactions only after the iteration loop has finished */
-        for (int i = 0; i < redact_count; i++) {
-            json_object_set_new(obj, keys_to_redact[i], json_string("[REDACTED]"));
         }
     } else if (json_is_array(obj)) {
         size_t index;
@@ -280,22 +281,21 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     }
     ovs_fd = g_wifidb->wifidb_wfd;
 
-    {
-        char *sanitized_logd = ovsdb_sanitize_json_for_logging(jsdata);
-        LOGD("SYNC: Writing sync operation: %s", sanitized_logd ? sanitized_logd : "(null)");
-        free(sanitized_logd);
-    }
+    /* Sanitize once and reuse for both the debug log and the error path,
+     * avoiding a second deep-copy + serialisation for large JSON payloads. */
+    char *sanitized_log = ovsdb_sanitize_json_for_logging(jsdata);
+    LOGD("SYNC: Writing sync operation: %s", sanitized_log ? sanitized_log : "(null)");
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
-        char *sanitized_json = ovsdb_sanitize_json_for_logging(jsdata);
-        if (sanitized_json) {
-            wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", sanitized_json);
-            free(sanitized_json);
+        if (sanitized_log) {
+            wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", sanitized_log);
         }
         LOGE("SYNC: Error during sync write to OVSDB: %s", strerror(errno));
         wifidb_print("SYNC: Error during sync write to OVSDB: %s\r\n", strerror(errno));
+        free(sanitized_log);
         goto error;
     }
+    free(sanitized_log);
 
     /*
         Each db transaction has 5 operation types:

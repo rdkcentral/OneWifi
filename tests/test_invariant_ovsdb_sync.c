@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <jansson.h>
 
-/* Forward declaration of the sanitization helper from ovsdb_sync.c.
- * When ovsdb_sync.c is compiled with -DUNIT_TEST, this symbol is exported. */
-extern char* ovsdb_sanitize_json_for_logging(json_t *jsdata);
+/* Include the shared test-hook header so that the compiler verifies the
+ * prototype against the definition in ovsdb_sync.c (built with -DUNIT_TEST). */
+#include "../lib/ovsdb/ovsdb_sync_test.h"
 
 /* Test that the sanitization helper properly redacts PSK fields */
 START_TEST(test_ovsdb_sanitize_redacts_psk)
@@ -40,7 +40,7 @@ START_TEST(test_ovsdb_sanitize_redacts_token)
     /* Create JSON with OAuth token */
     json_t *jsdata = json_object();
     json_t *auth = json_object();
-    json_object_set_new(auth, "token", json_string("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"));
+    json_object_set_new(auth, "token", json_string("Bearer not-a-real-token-for-testing"));
     json_object_set_new(auth, "type", json_string("oauth2"));
     json_object_set_new(jsdata, "auth", auth);
 
@@ -49,7 +49,7 @@ START_TEST(test_ovsdb_sanitize_redacts_token)
     ck_assert_ptr_nonnull(sanitized);
 
     /* Verify sensitive token is redacted */
-    ck_assert_ptr_null(strstr(sanitized, "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"));
+    ck_assert_ptr_null(strstr(sanitized, "Bearer not-a-real-token-for-testing"));
     ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
 
     /* Verify non-sensitive type is preserved */
@@ -148,7 +148,7 @@ START_TEST(test_ovsdb_sanitize_redacts_in_arrays)
     json_t *jsdata = json_object();
     json_t *arr = json_array();
     json_t *item1 = json_object();
-    json_object_set_new(item1, "api_key", json_string("sk-1234567890abcdef"));
+    json_object_set_new(item1, "api_key", json_string("sk_test_not_a_real_key"));
     json_object_set_new(item1, "service", json_string("wifi_service"));
     json_array_append_new(arr, item1);
     json_object_set_new(jsdata, "services", arr);
@@ -158,7 +158,7 @@ START_TEST(test_ovsdb_sanitize_redacts_in_arrays)
     ck_assert_ptr_nonnull(sanitized);
 
     /* Verify sensitive api_key is redacted */
-    ck_assert_ptr_null(strstr(sanitized, "sk-1234567890abcdef"));
+    ck_assert_ptr_null(strstr(sanitized, "sk_test_not_a_real_key"));
     ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
 
     /* Verify non-sensitive service name is preserved */
