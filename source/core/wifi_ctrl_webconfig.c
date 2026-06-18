@@ -1631,8 +1631,8 @@ int webconfig_nasta_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *da
             nasta_channel_entry_t *ch = &oc->channels[ch_idx];
 
             for (sta_idx = 0; sta_idx < ch->sta_list_length && sta_idx < MAX_NASTA_STA_PER_CHANNEL; sta_idx++) {
-                wifi_na_sta_req_params req_params;
-                wifi_na_sta_info sta_info;
+                wifi_na_sta_req_params_t req_params;
+                wifi_na_sta_info_t sta_info;
 
                 if (response.num_sta >= MAX_NASTA_RESPONSE_STAS) {
                     wifi_util_error_print(WIFI_CTRL,
@@ -1644,7 +1644,7 @@ int webconfig_nasta_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *da
                 memset(&req_params, 0, sizeof(req_params));
                 memset(&sta_info, 0, sizeof(sta_info));
 
-                memcpy(req_params.sta_addr, ch->sta_macs[sta_idx], sizeof(mac_address_t));
+                memcpy(req_params.sta_mac, ch->sta_macs[sta_idx], sizeof(mac_address_t));
                 req_params.op_class = oc->opclass;
                 req_params.channel = ch->channel;
 
@@ -1661,7 +1661,7 @@ int webconfig_nasta_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *da
                     continue;
                 }
 
-                memcpy(&response.sta_list[response.num_sta], &sta_info, sizeof(wifi_na_sta_info));
+                memcpy(&response.sta_list[response.num_sta], &sta_info, sizeof(wifi_na_sta_info_t));
                 response.num_sta++;
             }
         }

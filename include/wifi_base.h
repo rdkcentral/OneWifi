@@ -549,7 +549,7 @@ typedef struct {
 
 typedef struct {
     unsigned int num_sta;
-    wifi_na_sta_info sta_list[MAX_NASTA_RESPONSE_STAS];
+    wifi_na_sta_info_t sta_list[MAX_NASTA_RESPONSE_STAS];
 } nasta_response_t;
 
 typedef struct {
