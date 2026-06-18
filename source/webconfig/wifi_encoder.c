@@ -2037,16 +2037,14 @@ void encode_mlo_assoc_clients(webconfig_subdoc_decoded_data_t *params, wifi_mld_
             cJSON *obj_client = NULL;
             cJSON *links_arr = NULL;
             mac_addr_str_t mac_str = { 0 };
-            bool emit = false;
+            unsigned int num_matching = 0;
 
             for (li = 0; li < cl->num_links; li++) {
-                if (cl->links[li].association_link &&
-                    should_print_assoc_client(assoclist_type, cl->links[li].client_state)) {
-                    emit = true;
-                    break;
+                if (should_print_assoc_client(assoclist_type, cl->links[li].client_state)) {
+                    num_matching++;
                 }
             }
-            if (emit == false) {
+            if (num_matching == 0) {
                 cl = hash_map_get_next(unit->mlo_sta_map, cl);
                 continue;
             }
@@ -2057,19 +2055,24 @@ void encode_mlo_assoc_clients(webconfig_subdoc_decoded_data_t *params, wifi_mld_
             to_mac_str(cl->links[0].dev_stats.cli_MACAddress, mac_str);
             str_tolower(mac_str);
             cJSON_AddStringToObject(obj_client, "MACAddress", mac_str);
-            cJSON_AddNumberToObject(obj_client, "NumLinks", cl->num_links);
+            cJSON_AddNumberToObject(obj_client, "NumLinks", num_matching);
 
             links_arr = cJSON_CreateArray();
             cJSON_AddItemToObject(obj_client, "Links", links_arr);
 
             for (li = 0; li < cl->num_links; li++) {
                 assoc_dev_data_t *link = &cl->links[li];
-                cJSON *link_obj = cJSON_CreateObject();
+                cJSON *link_obj = NULL;
                 int radio_idx = 0;
                 int freq_band = 0;
                 const char *band = "";
                 const char *band_str = NULL;
 
+                if (!should_print_assoc_client(assoclist_type, link->client_state)) {
+                    continue;
+                }
+
+                link_obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(links_arr, link_obj);
 
                 radio_idx = get_radio_index_for_vap_index(&params->hal_cap.wifi_prop, link->ap_index);
