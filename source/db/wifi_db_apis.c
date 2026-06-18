@@ -2142,8 +2142,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
 
     if ((cfg->hw_mode != 0) && (validate_wifi_hw_variant(cfg->freq_band, cfg->hw_mode) == RETURN_OK)) {
         config->variant = cfg->hw_mode;
-    }
-    	
+    }	
     config->csa_beacon_count = cfg->csa_beacon_count;
     if (cfg->country != 0) {
         config->countryCode = cfg->country;
