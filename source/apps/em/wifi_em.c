@@ -1974,16 +1974,16 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
         }
 
         rad_met = &data->u.decoded.em_ap_metrics_report.radio_reports[i].radio_metrics;
-        to_mac_str(em_ap_metrics_report_cache.radio_report[i].radio_metrics.ruid, radio_str);
+        to_mac_str(em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.ruid, radio_str);
         wifi_util_dbg_print(WIFI_EM, "%s:%d radio mac: %s\r\n", __func__, __LINE__, radio_str);
 
-        memcpy(rad_met->ruid, em_ap_metrics_report_cache.radio_report[i].radio_metrics.ruid, sizeof(mac_addr_t));
-        rad_met->noise = em_ap_metrics_report_cache.radio_report[i].radio_metrics.noise;
-        rad_met->transmit = em_ap_metrics_report_cache.radio_report[i].radio_metrics.transmit;
-        rad_met->receive_self = em_ap_metrics_report_cache.radio_report[i].radio_metrics.receive_self;
-        rad_met->receive_other = em_ap_metrics_report_cache.radio_report[i].radio_metrics.receive_other;
+        memcpy(rad_met->ruid, em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.ruid, sizeof(mac_addr_t));
+        rad_met->noise = em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.noise;
+        rad_met->transmit = em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.transmit;
+        rad_met->receive_self = em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.receive_self;
+        rad_met->receive_other = em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.receive_other;
 
-        data->u.decoded.radios[i] = wifi_mgr->radio_config[i];
+        data->u.decoded.radios[i] = wifi_mgr->radio_config[radio_index];
     }
 
     data->u.decoded.hal_cap = wifi_mgr->hal_cap;
