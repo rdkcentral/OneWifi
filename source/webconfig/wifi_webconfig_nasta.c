@@ -115,7 +115,6 @@ webconfig_error_t encode_nasta_query_subdoc(webconfig_t *config,
             __func__, __LINE__);
         return webconfig_error_encode;
     }
-    data->u.encoded.json = json;
 
     cJSON_AddStringToObject(json, "Version", "1.0");
     cJSON_AddStringToObject(json, "SubDocName", "UnassocStaQuery");
@@ -189,6 +188,7 @@ webconfig_error_t decode_nasta_query_subdoc(webconfig_t *config,
     unsigned int i, oc_size, ch_size, sta_size;
     cJSON *opclass_arr, *opclass_obj, *chan_arr, *chan_obj, *sta_arr, *sta_item;
 
+    data->u.encoded.json = NULL; /* transfer ownership: local json var is responsible for cJSON_Delete */
     params = &data->u.decoded;
     if (params == NULL || json == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer\n", __func__, __LINE__);
