@@ -430,6 +430,8 @@ void hotspot_cfg_sem_signal(bool status);
 bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
 int publish_endpoint_enable(void);
 int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
+void hotspot_timing_start(void);
+void hotspot_timing_stop(void);
 
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,

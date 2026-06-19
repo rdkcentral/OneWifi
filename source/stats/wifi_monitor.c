@@ -258,6 +258,9 @@ int get_vlan_from_vap_index(unsigned int vap_index, int *out_vlan)
 
 BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 {
+    if (uvAPIndex >= WIFI_INDEX_MAX) {
+        return FALSE;
+    }
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
 }
 
@@ -1299,7 +1302,7 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
 static char*
 macbytes_to_string(mac_address_t mac, unsigned char* string)
 {
-    sprintf((char *)string, "%02x:%02x:%02x:%02x:%02x:%02x",
+    snprintf((char *)string, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
             mac[0] & 0xff,
             mac[1] & 0xff,
             mac[2] & 0xff,
@@ -1361,7 +1364,7 @@ static void
 radio_stats_flag_changed(unsigned int radio_index, client_stats_enable_t *flag)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
-    for(UINT apIndex = 0; apIndex <= getTotalNumberVAPs(); apIndex++)
+    for(UINT apIndex = 0; apIndex < getTotalNumberVAPs(); apIndex++)
     {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, apIndex);
         UINT radio = RADIO_INDEX(mgr->hal_cap, apIndex);
@@ -2693,7 +2696,7 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
     struct rtattr * table[NDA_MAX+1];
     int fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
     char if_name[IFNAMSIZ] = {'\0'};
-    unsigned char tmp_mac[17];
+    unsigned char tmp_mac[18];
     unsigned char af_family;
 
     if(mac == NULL || ip == NULL || interface == NULL) {
@@ -3425,6 +3428,85 @@ int increment_mgmt_count(interop_data_t *telemetry, wifi_mgmtFrameType_t type)
     return 0;
 }
 
+#ifdef EM_APP
+static void report_connection_status(int ap_index, const char *src_mac, const char *dst_mac,
+    unsigned short status_code, bool reason_code_present, unsigned short reason_code)
+{
+    em_connection_status_event_t conn_status = { 0 };
+    mac_address_t src_mac_bytes = { 0 };
+    mac_address_t dst_mac_bytes = { 0 };
+    mac_address_t sta_mac = { 0 };
+    mac_address_t bssid_mac = { 0 };
+    int i;
+
+    if ((src_mac == NULL) || (dst_mac == NULL)) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d: skip connection status report due to NULL src/dst mac string\n", __func__,
+            __LINE__);
+        return;
+    }
+
+    str_to_mac_bytes((char *)src_mac, src_mac_bytes);
+    str_to_mac_bytes((char *)dst_mac, dst_mac_bytes);
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    for (i = 0; i < MAX_VAP; i++) {
+        if (is_zero_mac(g_monitor_module.bssid_data[i].bssid)) {
+            continue;
+        }
+
+        if (memcmp(src_mac_bytes, g_monitor_module.bssid_data[i].bssid, sizeof(mac_address_t)) ==
+            0) {
+            memcpy(bssid_mac, src_mac_bytes, sizeof(mac_address_t));
+            memcpy(sta_mac, dst_mac_bytes, sizeof(mac_address_t));
+            break;
+        }
+
+        if (memcmp(dst_mac_bytes, g_monitor_module.bssid_data[i].bssid, sizeof(mac_address_t)) ==
+            0) {
+            memcpy(bssid_mac, dst_mac_bytes, sizeof(mac_address_t));
+            memcpy(sta_mac, src_mac_bytes, sizeof(mac_address_t));
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    if (is_zero_mac(sta_mac) || is_zero_mac(bssid_mac)) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d: skip connection status report due to unresolved MAC(s): sta_zero=%d "
+            "bssid_zero=%d src=%s dst=%s ap=%d\n",
+            __func__, __LINE__, is_zero_mac(sta_mac), is_zero_mac(bssid_mac), src_mac, dst_mac,
+            ap_index);
+        return;
+    }
+
+    if ((sta_mac[0] & 0x01) != 0) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d: skip connection status report due to multicast/broadcast STA MAC src=%s "
+            "dst=%s\n",
+            __func__, __LINE__, src_mac, dst_mac);
+        return;
+    }
+
+    if (memcmp(sta_mac, bssid_mac, sizeof(mac_address_t)) == 0) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d: skip connection status report due to identical STA/BSSID MAC src=%s dst=%s\n",
+            __func__, __LINE__, src_mac, dst_mac);
+        return;
+    }
+
+    conn_status.ap_index = ap_index;
+    memcpy(conn_status.sta_mac, sta_mac, sizeof(mac_address_t));
+    memcpy(conn_status.bssid, bssid_mac, sizeof(mac_address_t));
+    conn_status.status_code = status_code;
+    conn_status.reason_code_present = reason_code_present;
+    conn_status.reason_code = reason_code;
+
+    push_event_to_ctrl_queue(&conn_status, sizeof(conn_status), wifi_event_type_hal_ind,
+        wifi_event_hal_report_connection_status, NULL);
+}
+#endif // EM_APP
+
 int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
 {
     mac_addr_str_t sta_mac_str;
@@ -3471,6 +3553,9 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
         return -1;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s status:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac,status,type);
+#ifdef EM_APP
+    report_connection_status(ap_index, src_mac, dest_mac, (unsigned short)status, false, 0);
+#endif // EM_APP
     sta_map = get_interop_sta_data_map(ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
@@ -3665,6 +3750,9 @@ int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int re
         return -1;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s reason:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac, reason_code, type);
+#ifdef EM_APP
+    report_connection_status(ap_index, src_mac, dest_mac, 0, true, (unsigned short)reason_code);
+#endif // EM_APP
     sta_map = get_interop_sta_data_map(ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
@@ -4200,6 +4288,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     wifi_radioTrafficStats2_t chan_stats;
     frame_data_t *frame;
     int radio_index;
+    static const mac_address_t zero_mac = { 0 };
     char vap_name[32];
 
     memset(&assoc_data, 0, sizeof(assoc_data));
@@ -4275,6 +4364,13 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     }
     else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len is 0\n", __func__, __LINE__);
+    }
+
+    // Updating MLDAddr from STA MAC if MLD is enabled but MLDAddr is not populated.
+    if (assoc_data.dev_stats.cli_MLDEnable &&
+        memcmp(assoc_data.dev_stats.cli_MLDAddr, zero_mac, sizeof(mac_address_t)) == 0) {
+        memcpy(assoc_data.dev_stats.cli_MLDAddr, assoc_data.dev_stats.cli_MACAddress,
+            sizeof(mac_address_t));
     }
 
     assoc_data.ap_index = data->ap_index;
