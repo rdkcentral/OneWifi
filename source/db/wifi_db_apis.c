@@ -2212,6 +2212,31 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     if ((cfg->hw_mode != 0) && (validate_wifi_hw_variant(cfg->freq_band, cfg->hw_mode) == RETURN_OK)) {
         config->variant = cfg->hw_mode;
     }
+    if (config->band == WIFI_FREQUENCY_6_BAND) {
+        if (is_bandwidth_and_hw_variant_compatible(config->variant, config->channelWidth) != true) {
+            wifi_util_info_print(WIFI_DB,
+                "%s:%d 6G hw_mode/channel_width mismatch (variant=%d bw=%d), normalizing\n",
+                __func__, __LINE__, config->variant, config->channelWidth);
+
+#ifdef CONFIG_IEEE80211BE 
+            if (config->variant & WIFI_80211_VARIANT_BE) {
+                config->channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+            } else
+#endif /* CONFIG_IEEE80211BE */
+                if (config->variant & WIFI_80211_VARIANT_AX) {
+                    config->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+                } else { 
+#ifdef CONFIG_IEEE80211BE
+                    config->variant = WIFI_80211_VARIANT_BE;
+                    config->channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#else
+                    config->variant = WIFI_80211_VARIANT_AX; 
+                    config->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+#endif /* CONFIG_IEEE80211BE */
+                }
+        }
+    }
+	
     config->csa_beacon_count = cfg->csa_beacon_count;
     if (cfg->country != 0) {
         config->countryCode = cfg->country;
@@ -9556,7 +9581,7 @@ int wifi_db_update_psm_values()
 }
 
 //static void bus_subscription_handler(bus_handle_t handle, bus_event_t *event,
-static void bus_subscription_handler(char *event_name, raw_data_t *p_data, void *userData)
+static void bus_subscription_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)p_data;
     (void)userData;

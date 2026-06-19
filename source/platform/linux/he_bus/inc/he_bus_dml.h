@@ -41,8 +41,8 @@ he_bus_error_t radio_table_add_row_handler(char const *tableName, char const *al
 he_bus_error_t radio_table_remove_row_handler(char const *rowName);
 he_bus_error_t radio_event_sub_handler(char *eventName, he_bus_event_sub_action_t action,
     int32_t interval, bool *autoPublish);
-he_bus_error_t radio_method_handler(char const *methodName, he_bus_raw_data_t *inParams,
-    he_bus_raw_data_t *outParams, void *asyncHandle);
+he_bus_error_t radio_method_handler(char const *methodName, he_bus_data_object_t *inParams,
+    he_bus_data_object_t *outParams, void *asyncHandle);
 
 he_bus_error_t accesspoint_get_param_value(char *event_name, he_bus_raw_data_t *p_data);
 he_bus_error_t accesspoint_set_param_value(char *event_name, he_bus_raw_data_t *p_data);
