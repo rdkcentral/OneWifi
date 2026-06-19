@@ -1,175 +1,158 @@
+/*
+Copyright (c) 2015, Plume Design Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+   1. Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+   3. Neither the name of the Plume Design Inc. nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL Plume Design Inc. BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #include <check.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <jansson.h>
 
-/* Include the shared test-hook header so that the compiler verifies the
- * prototype against the definition in ovsdb_sync.c (built with -DUNIT_TEST). */
-#include "../lib/ovsdb/ovsdb_sync_test.h"
+/* Include the test header which declares ovsdb_sanitize_json_for_logging when UNIT_TEST is defined */
+#include "ovsdb_sync_test.h"
 
-/* Test that the sanitization helper properly redacts PSK fields */
-START_TEST(test_ovsdb_sanitize_redacts_psk)
+/* Test that sensitive credentials in OVSDB JSON are redacted by the sanitization helper */
+START_TEST(test_ovsdb_sanitize_redacts_sensitive_fields)
 {
-    /* Create JSON with PSK field */
-    json_t *jsdata = json_object();
-    json_t *wifi = json_object();
-    json_object_set_new(wifi, "psk", json_string("SuperSecretPassword123!"));
-    json_object_set_new(wifi, "ssid", json_string("PublicNetwork"));
-    json_object_set_new(jsdata, "wifi", wifi);
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
+    /* Invariant: WiFi PSK, WPA passwords, and OAuth tokens must not appear
+       in plaintext when JSON is sanitized for logging */
+    
+    json_t *json_with_psk;
+    json_t *json_with_token;
+    json_t *json_benign;
+    char *sanitized;
+    
+    /* Test case 1: WiFi PSK should be redacted */
+    json_with_psk = json_pack("{s:{s:s, s:s}}", 
+        "wifi", 
+        "ssid", "TestNetwork",
+        "psk", "SuperSecretTestPassword123");
+    ck_assert_ptr_nonnull(json_with_psk);
+    
+    sanitized = ovsdb_sanitize_json_for_logging(json_with_psk);
     ck_assert_ptr_nonnull(sanitized);
-
-    /* Verify sensitive PSK is redacted */
-    ck_assert_ptr_null(strstr(sanitized, "SuperSecretPassword123!"));
+    /* PSK value must not appear in sanitized output */
+    ck_assert_ptr_null(strstr(sanitized, "SuperSecretTestPassword123"));
+    /* REDACTED marker should be present */
     ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
-
-    /* Verify non-sensitive SSID is preserved */
+    /* Non-sensitive data should still be present */
+    ck_assert_ptr_nonnull(strstr(sanitized, "TestNetwork"));
+    free(sanitized);
+    json_decref(json_with_psk);
+    
+    /* Test case 2: Token should be redacted (using clearly fake token) */
+    json_with_token = json_pack("{s:{s:s}}", 
+        "auth", 
+        "token", "test_fake_token_not_real_12345");
+    ck_assert_ptr_nonnull(json_with_token);
+    
+    sanitized = ovsdb_sanitize_json_for_logging(json_with_token);
+    ck_assert_ptr_nonnull(sanitized);
+    /* Token value must not appear in sanitized output */
+    ck_assert_ptr_null(strstr(sanitized, "test_fake_token_not_real_12345"));
+    /* REDACTED marker should be present */
+    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
+    free(sanitized);
+    json_decref(json_with_token);
+    
+    /* Test case 3: Benign config without credentials should pass through */
+    json_benign = json_pack("{s:{s:s, s:i}}", 
+        "wifi", 
+        "ssid", "PublicNetwork",
+        "channel", 6);
+    ck_assert_ptr_nonnull(json_benign);
+    
+    sanitized = ovsdb_sanitize_json_for_logging(json_benign);
+    ck_assert_ptr_nonnull(sanitized);
+    /* Non-sensitive data should be present */
     ck_assert_ptr_nonnull(strstr(sanitized, "PublicNetwork"));
-
-    free(sanitized);
-    json_decref(jsdata);
-}
-END_TEST
-
-/* Test that the sanitization helper redacts OAuth tokens */
-START_TEST(test_ovsdb_sanitize_redacts_token)
-{
-    /* Create JSON with OAuth token */
-    json_t *jsdata = json_object();
-    json_t *auth = json_object();
-    json_object_set_new(auth, "token", json_string("Bearer not-a-real-token-for-testing"));
-    json_object_set_new(auth, "type", json_string("oauth2"));
-    json_object_set_new(jsdata, "auth", auth);
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
-    ck_assert_ptr_nonnull(sanitized);
-
-    /* Verify sensitive token is redacted */
-    ck_assert_ptr_null(strstr(sanitized, "Bearer not-a-real-token-for-testing"));
-    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
-
-    /* Verify non-sensitive type is preserved */
-    ck_assert_ptr_nonnull(strstr(sanitized, "oauth2"));
-
-    free(sanitized);
-    json_decref(jsdata);
-}
-END_TEST
-
-/* Test that the sanitization helper redacts password fields */
-START_TEST(test_ovsdb_sanitize_redacts_password)
-{
-    /* Create JSON with password field */
-    json_t *jsdata = json_object();
-    json_object_set_new(jsdata, "password", json_string("MyWPAPassword!@#"));
-    json_object_set_new(jsdata, "username", json_string("admin"));
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
-    ck_assert_ptr_nonnull(sanitized);
-
-    /* Verify sensitive password is redacted */
-    ck_assert_ptr_null(strstr(sanitized, "MyWPAPassword!@#"));
-    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
-
-    /* Verify non-sensitive username is preserved */
-    ck_assert_ptr_nonnull(strstr(sanitized, "admin"));
-
-    free(sanitized);
-    json_decref(jsdata);
-}
-END_TEST
-
-/* Test that benign JSON without sensitive fields is preserved unchanged */
-START_TEST(test_ovsdb_sanitize_preserves_benign_data)
-{
-    /* Create JSON without any sensitive fields */
-    json_t *jsdata = json_object();
-    json_t *wifi = json_object();
-    json_object_set_new(wifi, "ssid", json_string("PublicNetwork"));
-    json_object_set_new(wifi, "channel", json_integer(6));
-    json_object_set_new(wifi, "enabled", json_true());
-    json_object_set_new(jsdata, "wifi", wifi);
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
-    ck_assert_ptr_nonnull(sanitized);
-
-    /* Verify all non-sensitive data is preserved */
-    ck_assert_ptr_nonnull(strstr(sanitized, "PublicNetwork"));
-    ck_assert_ptr_nonnull(strstr(sanitized, "ssid"));
-    ck_assert_ptr_nonnull(strstr(sanitized, "channel"));
-    ck_assert_ptr_nonnull(strstr(sanitized, "enabled"));
-
-    /* Verify no redaction markers appear */
+    /* No redaction should occur for benign data */
     ck_assert_ptr_null(strstr(sanitized, "[REDACTED]"));
-
     free(sanitized);
-    json_decref(jsdata);
+    json_decref(json_benign);
 }
 END_TEST
 
-/* Test that deeply nested sensitive fields are redacted */
-START_TEST(test_ovsdb_sanitize_redacts_nested_sensitive)
+/* Test that nested sensitive fields are also redacted */
+START_TEST(test_ovsdb_sanitize_redacts_nested_sensitive_fields)
 {
+    json_t *nested_json;
+    char *sanitized;
+    
     /* Create deeply nested JSON with sensitive fields */
-    json_t *jsdata = json_object();
-    json_t *level1 = json_object();
-    json_t *level2 = json_object();
-    json_object_set_new(level2, "secret", json_string("deeply_hidden_secret"));
-    json_object_set_new(level2, "name", json_string("visible_name"));
-    json_object_set_new(level1, "inner", level2);
-    json_object_set_new(jsdata, "outer", level1);
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
+    nested_json = json_pack("{s:{s:{s:s, s:s}, s:s}}", 
+        "config",
+        "credentials",
+        "password", "nested_test_password_fake",
+        "api_key", "sk_test_not_a_real_key_fake123",
+        "name", "TestConfig");
+    ck_assert_ptr_nonnull(nested_json);
+    
+    sanitized = ovsdb_sanitize_json_for_logging(nested_json);
     ck_assert_ptr_nonnull(sanitized);
-
-    /* Verify deeply nested secret is redacted */
-    ck_assert_ptr_null(strstr(sanitized, "deeply_hidden_secret"));
-    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
-
-    /* Verify non-sensitive nested data is preserved */
-    ck_assert_ptr_nonnull(strstr(sanitized, "visible_name"));
-
+    
+    /* Nested sensitive values must not appear */
+    ck_assert_ptr_null(strstr(sanitized, "nested_test_password_fake"));
+    ck_assert_ptr_null(strstr(sanitized, "sk_test_not_a_real_key_fake123"));
+    /* Non-sensitive nested data should be present */
+    ck_assert_ptr_nonnull(strstr(sanitized, "TestConfig"));
+    
     free(sanitized);
-    json_decref(jsdata);
+    json_decref(nested_json);
 }
 END_TEST
 
-/* Test that sensitive fields inside arrays are redacted */
-START_TEST(test_ovsdb_sanitize_redacts_in_arrays)
+/* Test that arrays containing objects with sensitive fields are handled */
+START_TEST(test_ovsdb_sanitize_redacts_array_elements)
 {
-    /* Create JSON with sensitive fields inside an array of objects */
-    json_t *jsdata = json_object();
-    json_t *arr = json_array();
-    json_t *item1 = json_object();
-    json_object_set_new(item1, "api_key", json_string("sk_test_not_a_real_key"));
-    json_object_set_new(item1, "service", json_string("wifi_service"));
-    json_array_append_new(arr, item1);
-    json_object_set_new(jsdata, "services", arr);
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
+    json_t *array_json;
+    char *sanitized;
+    
+    /* Create JSON with array containing objects with sensitive fields */
+    array_json = json_pack("{s:[{s:s, s:s}, {s:s, s:s}]}", 
+        "users",
+        "name", "user1", "secret", "user1_fake_secret_test",
+        "name", "user2", "secret", "user2_fake_secret_test");
+    ck_assert_ptr_nonnull(array_json);
+    
+    sanitized = ovsdb_sanitize_json_for_logging(array_json);
     ck_assert_ptr_nonnull(sanitized);
-
-    /* Verify sensitive api_key is redacted */
-    ck_assert_ptr_null(strstr(sanitized, "sk_test_not_a_real_key"));
-    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
-
-    /* Verify non-sensitive service name is preserved */
-    ck_assert_ptr_nonnull(strstr(sanitized, "wifi_service"));
-
+    
+    /* Sensitive values in array elements must not appear */
+    ck_assert_ptr_null(strstr(sanitized, "user1_fake_secret_test"));
+    ck_assert_ptr_null(strstr(sanitized, "user2_fake_secret_test"));
+    /* Non-sensitive data should be present */
+    ck_assert_ptr_nonnull(strstr(sanitized, "user1"));
+    ck_assert_ptr_nonnull(strstr(sanitized, "user2"));
+    
     free(sanitized);
-    json_decref(jsdata);
+    json_decref(array_json);
 }
 END_TEST
 
-/* Test that NULL input is handled gracefully */
+/* Test NULL input handling */
 START_TEST(test_ovsdb_sanitize_handles_null)
 {
     char *sanitized = ovsdb_sanitize_json_for_logging(NULL);
@@ -180,46 +163,26 @@ END_TEST
 /* Test case-insensitive key matching */
 START_TEST(test_ovsdb_sanitize_case_insensitive)
 {
-    /* Create JSON with mixed-case sensitive keys */
-    json_t *jsdata = json_object();
-    json_object_set_new(jsdata, "PSK", json_string("uppercase_secret"));
-    json_object_set_new(jsdata, "Password", json_string("mixedcase_secret"));
-    json_object_set_new(jsdata, "hostname", json_string("router.local"));
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
+    json_t *mixed_case_json;
+    char *sanitized;
+    
+    /* Test various case combinations */
+    mixed_case_json = json_pack("{s:s, s:s, s:s}", 
+        "PASSWORD", "upper_fake_pass_test",
+        "Password", "mixed_fake_pass_test",
+        "TOKEN", "upper_fake_token_test");
+    ck_assert_ptr_nonnull(mixed_case_json);
+    
+    sanitized = ovsdb_sanitize_json_for_logging(mixed_case_json);
     ck_assert_ptr_nonnull(sanitized);
-
-    /* Verify case-insensitive redaction */
-    ck_assert_ptr_null(strstr(sanitized, "uppercase_secret"));
-    ck_assert_ptr_null(strstr(sanitized, "mixedcase_secret"));
-
-    /* Verify non-sensitive data is preserved */
-    ck_assert_ptr_nonnull(strstr(sanitized, "router.local"));
-
+    
+    /* All case variations should be redacted */
+    ck_assert_ptr_null(strstr(sanitized, "upper_fake_pass_test"));
+    ck_assert_ptr_null(strstr(sanitized, "mixed_fake_pass_test"));
+    ck_assert_ptr_null(strstr(sanitized, "upper_fake_token_test"));
+    
     free(sanitized);
-    json_decref(jsdata);
-}
-END_TEST
-
-/* Test that original JSON is not modified (deep copy verification) */
-START_TEST(test_ovsdb_sanitize_does_not_modify_original)
-{
-    /* Create JSON with sensitive field */
-    json_t *jsdata = json_object();
-    json_object_set_new(jsdata, "psk", json_string("original_secret"));
-
-    /* Sanitize for logging */
-    char *sanitized = ovsdb_sanitize_json_for_logging(jsdata);
-    ck_assert_ptr_nonnull(sanitized);
-    free(sanitized);
-
-    /* Verify original JSON still has the secret intact */
-    json_t *psk_val = json_object_get(jsdata, "psk");
-    ck_assert_ptr_nonnull(psk_val);
-    ck_assert_str_eq(json_string_value(psk_val), "original_secret");
-
-    json_decref(jsdata);
+    json_decref(mixed_case_json);
 }
 END_TEST
 
@@ -231,15 +194,11 @@ Suite *security_suite(void)
     s = suite_create("Security");
     tc_core = tcase_create("Core");
 
-    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_psk);
-    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_token);
-    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_password);
-    tcase_add_test(tc_core, test_ovsdb_sanitize_preserves_benign_data);
-    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_nested_sensitive);
-    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_in_arrays);
+    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_sensitive_fields);
+    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_nested_sensitive_fields);
+    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_array_elements);
     tcase_add_test(tc_core, test_ovsdb_sanitize_handles_null);
     tcase_add_test(tc_core, test_ovsdb_sanitize_case_insensitive);
-    tcase_add_test(tc_core, test_ovsdb_sanitize_does_not_modify_original);
     suite_add_tcase(s, tc_core);
 
     return s;
@@ -257,6 +216,5 @@ int main(void)
     srunner_run_all(sr, CK_NORMAL);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
-
     return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

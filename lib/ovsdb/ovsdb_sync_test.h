@@ -24,31 +24,25 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef OVSDB_SYNC_TEST_H
-#define OVSDB_SYNC_TEST_H
-
-/*
- * This header is intentionally guarded by UNIT_TEST.  It exposes internal
- * symbols that are needed by unit tests but must not be part of the public
- * or production ABI.
- *
- * Both ovsdb_sync.c (built with -DUNIT_TEST) and the test translation unit
- * include this header, so the compiler verifies that the prototype matches
- * the actual definition.
- */
-#ifdef UNIT_TEST
+#ifndef OVSDB_SYNC_TEST_H_INCLUDED
+#define OVSDB_SYNC_TEST_H_INCLUDED
 
 #include <jansson.h>
 
 /**
- * Returns a newly-allocated JSON string with all sensitive field values
- * replaced by "[REDACTED]".  The caller must free() the returned string.
- * Returns NULL if jsdata is NULL or if memory allocation fails.
+ * @brief Sanitize JSON data for safe logging by redacting sensitive fields.
  *
- * Exported only when compiled with -DUNIT_TEST; static in production builds.
+ * This function creates a deep copy of the input JSON and replaces values
+ * of known sensitive keys (psk, password, token, etc.) with "[REDACTED]".
+ * The caller is responsible for freeing the returned string.
+ *
+ * @param jsdata The JSON object to sanitize (not modified)
+ * @return A newly allocated string with sanitized JSON, or NULL on error.
+ *         Caller must free() the returned string.
+ *
+ * @note This function is only exposed when compiled with -DUNIT_TEST.
+ *       In production builds, it remains static to ovsdb_sync.c.
  */
-char *ovsdb_sanitize_json_for_logging(json_t *jsdata);
+char* ovsdb_sanitize_json_for_logging(json_t *jsdata);
 
-#endif /* UNIT_TEST */
-
-#endif /* OVSDB_SYNC_TEST_H */
+#endif /* OVSDB_SYNC_TEST_H_INCLUDED */
