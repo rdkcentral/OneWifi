@@ -4332,7 +4332,7 @@ bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
         if (ack != NULL) {
             outParams->value.data_type = bus_data_type_string;
             outParams->value.raw_data.bytes = ack;
-            outParams->value.raw_data_len = strlen(ack);
+            outParams->value.raw_data_len = strlen(ack) + 1;
         }
     }
 
