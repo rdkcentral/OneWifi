@@ -57,7 +57,7 @@
  * }
  */
 
-webconfig_subdoc_object_t nasta_query_objects[3] = {
+static const webconfig_subdoc_object_t nasta_query_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version" },
     { webconfig_subdoc_object_type_subdoc, "SubDocName" },
     { webconfig_subdoc_object_type_nasta_query, "UnassocStaQueryList" },
