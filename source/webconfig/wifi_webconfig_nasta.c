@@ -19,14 +19,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
-#include <pthread.h>
-#include <unistd.h>
-#include "collection.h"
 #include "wifi_webconfig.h"
-#include "wifi_monitor.h"
 #include "wifi_util.h"
-#include "wifi_ctrl.h"
 
 /*
  * UnassocStaQuery subdoc — request decoder and response encoder.
