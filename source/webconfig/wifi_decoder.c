@@ -3464,15 +3464,377 @@ webconfig_error_t decode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame
     return webconfig_error_none;
 }
 
+static webconfig_error_t decode_assoc_dev_stats(const cJSON *obj, assoc_dev_data_t *dev)
+{
+    const cJSON *value = NULL;
+
+    decode_param_allow_empty_string(obj, "WpaKeyMgmt", value);
+    snprintf(dev->conn_security.wpa_key_mgmt,
+        sizeof(dev->conn_security.wpa_key_mgmt), "%s", value->valuestring);
+
+    decode_param_allow_empty_string(obj, "PairwiseCipher", value);
+    snprintf(dev->conn_security.pairwise_cipher,
+        sizeof(dev->conn_security.pairwise_cipher), "%s", value->valuestring);
+
+    decode_param_integer(obj, "RSNCapabilities", value);
+    if (value->valuedouble < 0 || value->valuedouble > 0xffff) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: RSNCapabilities out of range\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    dev->conn_security.rsn_capabilities = (unsigned short)value->valuedouble;
+
+    decode_param_bool(obj, "AuthenticationState", value);
+    dev->dev_stats.cli_AuthenticationState = (value->type & cJSON_True) ? true : false;
+
+    decode_param_integer(obj, "LastDataDownlinkRate", value);
+    dev->dev_stats.cli_LastDataDownlinkRate = value->valuedouble;
+
+    decode_param_integer(obj, "LastDataUplinkRate", value);
+    dev->dev_stats.cli_LastDataUplinkRate = value->valuedouble;
+
+    decode_param_integer(obj, "SignalStrength", value);
+    dev->dev_stats.cli_SignalStrength = value->valuedouble;
+
+    decode_param_integer(obj, "Retransmissions", value);
+    dev->dev_stats.cli_Retransmissions = value->valuedouble;
+
+    decode_param_bool(obj, "Active", value);
+    dev->dev_stats.cli_Active = (value->type & cJSON_True) ? true : false;
+
+    decode_param_allow_empty_string(obj, "OperatingStandard", value);
+    snprintf(dev->dev_stats.cli_OperatingStandard,
+        sizeof(dev->dev_stats.cli_OperatingStandard), "%s", value->valuestring);
+
+    decode_param_allow_empty_string(obj, "OperatingChannelBandwidth", value);
+    snprintf(dev->dev_stats.cli_OperatingChannelBandwidth,
+        sizeof(dev->dev_stats.cli_OperatingChannelBandwidth), "%s", value->valuestring);
+
+    decode_param_integer(obj, "SNR", value);
+    dev->dev_stats.cli_SNR = value->valuedouble;
+
+    decode_param_allow_empty_string(obj, "InterferenceSources", value);
+    snprintf(dev->dev_stats.cli_InterferenceSources,
+        sizeof(dev->dev_stats.cli_InterferenceSources), "%s", value->valuestring);
+
+    decode_param_integer(obj, "DataFramesSentAck", value);
+    dev->dev_stats.cli_DataFramesSentAck = value->valuedouble;
+
+    decode_param_integer(obj, "DataFramesSentNoAck", value);
+    dev->dev_stats.cli_DataFramesSentNoAck = value->valuedouble;
+
+    decode_param_integer(obj, "BytesSent", value);
+    dev->dev_stats.cli_BytesSent = value->valuedouble;
+
+    decode_param_integer(obj, "BytesReceived", value);
+    dev->dev_stats.cli_BytesReceived = value->valuedouble;
+
+    decode_param_integer(obj, "RSSI", value);
+    dev->dev_stats.cli_RSSI = value->valuedouble;
+
+    decode_param_integer(obj, "MinRSSI", value);
+    dev->dev_stats.cli_MinRSSI = value->valuedouble;
+
+    decode_param_integer(obj, "MaxRSSI", value);
+    dev->dev_stats.cli_MaxRSSI = value->valuedouble;
+
+    decode_param_integer(obj, "Disassociations", value);
+    dev->dev_stats.cli_Disassociations = value->valuedouble;
+
+    decode_param_integer(obj, "AuthenticationFailures", value);
+    dev->dev_stats.cli_AuthenticationFailures = value->valuedouble;
+
+    decode_param_integer(obj, "ActiveNumSpatialStreams", value);
+    dev->dev_stats.cli_activeNumSpatialStreams = value->valuedouble;
+
+    decode_param_integer(obj, "PacketsSent", value);
+    dev->dev_stats.cli_PacketsSent = value->valuedouble;
+
+    decode_param_integer(obj, "PacketsReceived", value);
+    dev->dev_stats.cli_PacketsReceived = value->valuedouble;
+
+    decode_param_integer(obj, "ErrorsSent", value);
+    dev->dev_stats.cli_ErrorsSent = value->valuedouble;
+
+    decode_param_integer(obj, "RetransCount", value);
+    dev->dev_stats.cli_RetransCount = value->valuedouble;
+
+    decode_param_integer(obj, "FailedRetransCount", value);
+    dev->dev_stats.cli_FailedRetransCount = value->valuedouble;
+
+    decode_param_integer(obj, "RetryCount", value);
+    dev->dev_stats.cli_RetryCount = value->valuedouble;
+
+    decode_param_integer(obj, "MultipleRetryCount", value);
+    dev->dev_stats.cli_MultipleRetryCount = value->valuedouble;
+
+    decode_param_integer(obj, "MaxUplinkRate", value);
+    dev->dev_stats.cli_MaxUplinkRate = value->valuedouble;
+
+    decode_param_integer(obj, "MaxDownlinkRate", value);
+    dev->dev_stats.cli_MaxDownlinkRate = value->valuedouble;
+
+    decode_param_integer(obj, "LastConnectTime", value);
+    dev->last_connect_time = (unsigned int)value->valuedouble;
+
+    return webconfig_error_none;
+}
+
+static client_state_t get_client_state_for_assoclist(assoclist_type_t assoclist_type)
+{
+    if (assoclist_type == assoclist_type_remove) {
+        return client_state_disconnected;
+    }
+
+    return client_state_connected;
+}
+
+static hash_map_t *get_assoc_devices_map_for_decode(rdk_wifi_vap_info_t *rdk_vap_info,
+    assoclist_type_t assoclist_type)
+{
+    if (rdk_vap_info->associated_devices_map == NULL) {
+        rdk_vap_info->associated_devices_map = hash_map_create();
+    }
+    if (assoclist_type == assoclist_type_full) {
+        return rdk_vap_info->associated_devices_map;
+    }
+
+    if (rdk_vap_info->associated_devices_diff_map == NULL) {
+        rdk_vap_info->associated_devices_diff_map = hash_map_create();
+    }
+
+    return rdk_vap_info->associated_devices_diff_map;
+}
+
+static webconfig_error_t store_assoc_dev_data(hash_map_t *associated_devices_map,
+    mac_addr_str_t mac_key, assoc_dev_data_t *assoc_dev_data, unsigned int vap_index)
+{
+    assoc_dev_data_t *tmp_assoc_dev_data = NULL;
+
+    if (associated_devices_map == NULL) {
+        return webconfig_error_none;
+    }
+
+    tmp_assoc_dev_data = hash_map_get(associated_devices_map, mac_key);
+    if (tmp_assoc_dev_data == NULL) {
+        tmp_assoc_dev_data = (assoc_dev_data_t *)malloc(sizeof(assoc_dev_data_t));
+        if (tmp_assoc_dev_data == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: Failed to allocate memory for tmp_assoc_dev_data\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        memcpy(tmp_assoc_dev_data, assoc_dev_data, sizeof(assoc_dev_data_t));
+        hash_map_put(associated_devices_map, strdup(mac_key), tmp_assoc_dev_data);
+    } else {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: mac %s is already present for %d\n", __func__, __LINE__, mac_key,
+            vap_index);
+    }
+
+    return webconfig_error_none;
+}
+
+#if defined(CONFIG_IEEE80211BE)
+
+/**
+ * Decode mlo link into per-radio associated_devices_map for consumers.
+ */
+static webconfig_error_t update_per_vap_assoc_map(webconfig_subdoc_decoded_data_t *params,
+    char *per_radio_vap, assoc_dev_data_t *link, assoclist_type_t assoclist_type)
+{
+    int radio_index = -1;
+    int vap_array_index = -1;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    hash_map_t *per_radio_map = NULL;
+    mac_addr_str_t mac_key = { 0 };
+
+    radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, per_radio_vap);
+    vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, per_radio_vap);
+    if (radio_index < 0 || vap_array_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: invalid radio or vap index for vap %s\n",
+            __func__, __LINE__, per_radio_vap);
+        return webconfig_error_decode;
+    }
+
+    rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+
+    per_radio_map = get_assoc_devices_map_for_decode(rdk_vap_info, assoclist_type);
+
+    to_mac_str(link->dev_stats.cli_MACAddress, mac_key);
+    str_tolower(mac_key);
+
+    if (store_assoc_dev_data(per_radio_map, mac_key, link, vap_array_index) != webconfig_error_none) {
+        return webconfig_error_decode;
+    }
+
+    return webconfig_error_none;
+}
+
+static webconfig_error_t decode_mlo_assoc_client_link(cJSON *link_obj, const char *vap_name,
+    assoc_dev_data_t *link, assoclist_type_t assoclist_type,
+    webconfig_subdoc_decoded_data_t *params, mac_address_t mac)
+{
+    cJSON *value = NULL;
+    wifi_vap_name_t per_radio_vap = { 0 };
+
+    decode_param_string(link_obj, "Band", value);
+    if (get_per_radio_vap_name_from_mlo(vap_name, value->valuestring, per_radio_vap,
+        sizeof(per_radio_vap)) == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bad vap name derivation\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    link->ap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, per_radio_vap);
+    if ((int)link->ap_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: unknown VAP %s\n",
+            __func__, __LINE__, per_radio_vap);
+        return webconfig_error_decode;
+    }
+
+    memcpy(link->dev_stats.cli_MLDAddr, mac, sizeof(mac_address_t));
+    memcpy(link->dev_stats.cli_MACAddress, mac, sizeof(mac_address_t));
+    link->dev_stats.cli_MLDEnable = true;
+    link->client_state = get_client_state_for_assoclist(assoclist_type);
+
+    decode_param_string(link_obj, "LinkAddress", value);
+    str_to_mac_bytes(value->valuestring, link->link_address);
+
+    decode_param_bool(link_obj, "AssociationLink", value);
+    link->association_link = cJSON_IsTrue(value);
+
+    if (decode_assoc_dev_stats(link_obj, link) != webconfig_error_none) {
+        return webconfig_error_decode;
+    }
+
+    decode_param_integer(link_obj, "MLCapabilities", value);
+    link->dev_stats.cli_MLModeCapa = value->valuedouble;
+
+    decode_param_integer(link_obj, "TIDLinkMapNegotiation", value);
+    link->dev_stats.cli_TIDLinkMapNegotiation = value->valuedouble;
+
+    if (decode_frame_data(link_obj, &link->sta_data.msg_data) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: no frame data for MLD link %s\n",
+            __func__, __LINE__, per_radio_vap);
+    }
+
+    if (update_per_vap_assoc_map(params, per_radio_vap, link, assoclist_type) != webconfig_error_none) {
+        return webconfig_error_decode;
+    }
+
+    return webconfig_error_none;
+}
+
+/**
+ * Parse an MLO client entry (MACAddress, NumLinks, Links[]).
+ * Decodes each link directly into the per-radio associated_devices_map.
+ */
+static webconfig_error_t decode_mlo_assoc_client(cJSON *assoc_client, const char *vap_name,
+    assoclist_type_t assoclist_type, webconfig_subdoc_decoded_data_t *params)
+{
+    cJSON *value = NULL;
+    cJSON *links_array = NULL;
+    cJSON *link_obj = NULL;
+    mac_addr_str_t mld_mac_str = { 0 };
+    mac_address_t mac = { 0 };
+    assoc_dev_data_t *link = NULL;
+    unsigned int num_links = 0;
+    unsigned int k = 0;
+    webconfig_error_t ret = webconfig_error_none;
+
+    link = (assoc_dev_data_t *)malloc(sizeof(assoc_dev_data_t));
+    if (link == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: Failed to allocate memory for link\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    value = cJSON_GetObjectItem(assoc_client, "MACAddress");
+    if (value == NULL || !cJSON_IsString(value)) {
+        ret = webconfig_error_decode;
+        goto done;
+    }
+    snprintf(mld_mac_str, sizeof(mld_mac_str), "%s", value->valuestring);
+    str_tolower(mld_mac_str);
+    str_to_mac_bytes(mld_mac_str, mac);
+
+    value = cJSON_GetObjectItem(assoc_client, "NumLinks");
+    if (value == NULL || !cJSON_IsNumber(value)) {
+        ret = webconfig_error_decode;
+        goto done;
+    }
+    num_links = (unsigned int)value->valuedouble;
+
+    links_array = cJSON_GetObjectItem(assoc_client, "Links");
+    if (links_array == NULL || !cJSON_IsArray(links_array) ||
+            (unsigned int)cJSON_GetArraySize(links_array) != num_links) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Links array mismatch for client %s\n",
+            __func__, __LINE__, mld_mac_str);
+        ret = webconfig_error_decode;
+        goto done;
+    }
+
+    for (k = 0; k < num_links; k++) {
+        link_obj = cJSON_GetArrayItem(links_array, k);
+        if (link_obj == NULL) {
+            ret = webconfig_error_decode;
+            goto done;
+        }
+        memset(link, 0, sizeof(*link));
+        if (decode_mlo_assoc_client_link(link_obj, vap_name, link,
+                assoclist_type, params, mac) != webconfig_error_none) {
+            ret = webconfig_error_decode;
+            goto done;
+        }
+    }
+
+done:
+    free(link);
+    return ret;
+}
+
+/**
+ * Decode MLO associated clients for a single MLO VAP entry.
+ */
+static webconfig_error_t decode_mlo_associated_clients_object(webconfig_subdoc_data_t *data,
+    cJSON *obj_vap, const char *vap_name, assoclist_type_t assoclist_type)
+{
+    webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+    cJSON *obj_array = NULL;
+    cJSON *assoc_client = NULL;
+    unsigned int size = 0;
+    unsigned int i = 0;
+
+    obj_array = cJSON_GetObjectItem(obj_vap, "associatedClients");
+    if (obj_array == NULL || !cJSON_IsArray(obj_array)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: missing associatedClients\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    size = cJSON_GetArraySize(obj_array);
+    for (i = 0; i < size; i++) {
+        assoc_client = cJSON_GetArrayItem(obj_array, i);
+        if (assoc_client == NULL) {
+            continue;
+        }
+        if (decode_mlo_assoc_client(assoc_client, vap_name, assoclist_type, params) != webconfig_error_none) {
+            return webconfig_error_decode;
+        }
+    }
+
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decoded %u MLO clients for '%s'\n", __func__,
+        __LINE__, size, vap_name);
+    return webconfig_error_none;
+}
+#endif /* CONFIG_IEEE80211BE */
+
 webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data, cJSON *obj_vaps, assoclist_type_t assoclist_type)
 {
 
-    mac_address_t mac;
     cJSON *obj_vap;
-    cJSON *obj_array, *assoc_client, *value_object;
-    char *tmp_string;
+    cJSON *obj_array, *assoc_client;
     mac_addr_str_t tmp_mac_key;
-    assoc_dev_data_t  assoc_dev_data, *tmp_assoc_dev_data = NULL;
+    assoc_dev_data_t  assoc_dev_data;
     webconfig_subdoc_decoded_data_t *params;
     hash_map_t *associated_devices_map = NULL;
     char *name;
@@ -3502,6 +3864,17 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer\n", __func__, __LINE__);
             return webconfig_error_decode;
         }
+
+#if defined(CONFIG_IEEE80211BE)
+        if (is_mlo_vap_name(name)) {
+            if (decode_mlo_associated_clients_object(data, obj_vap, name, assoclist_type) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: MLO decode failed for %s\n",
+                    __func__, __LINE__, name);
+                return webconfig_error_decode;
+            }
+            continue;
+        }
+#endif
 
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
         if (radio_index < 0) {
@@ -3542,29 +3915,26 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
             continue;
         }
 
-        if (rdk_vap_info->associated_devices_map == NULL) {
-            rdk_vap_info->associated_devices_map = hash_map_create();
-        }
-        if (assoclist_type == assoclist_type_full) {
-            associated_devices_map = rdk_vap_info->associated_devices_map;
-        } else if ((assoclist_type == assoclist_type_add) || (assoclist_type == assoclist_type_remove)) {
-            if (rdk_vap_info->associated_devices_diff_map == NULL) {
-                rdk_vap_info->associated_devices_diff_map = hash_map_create();
-            }
-            associated_devices_map = rdk_vap_info->associated_devices_diff_map;
-        }
+        associated_devices_map = get_assoc_devices_map_for_decode(rdk_vap_info, assoclist_type);
 
         for (i=0; i<size; i++) {
-            mac_address_t mld_mac = { 0 };
+            cJSON *value_object = NULL;
+            char *tmp_string = NULL;
+            mac_address_t mac = { 0 };
 
-            assoc_client  = cJSON_GetArrayItem(obj_array, i);
+            assoc_client = cJSON_GetArrayItem(obj_array, i);
             if (assoc_client == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Json pointer\n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
 
+            memset(tmp_mac_key, 0, sizeof(tmp_mac_key));
+            memset(&assoc_dev_data, 0, sizeof(assoc_dev_data));
+            assoc_dev_data.ap_index = rdk_vap_info->vap_index;
+            assoc_dev_data.client_state = get_client_state_for_assoclist(assoclist_type);
+
             value_object = cJSON_GetObjectItem(assoc_client, "MACAddress");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
+            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
@@ -3574,343 +3944,15 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
-
-            memset(tmp_mac_key, 0, sizeof(tmp_mac_key));
-            memset(&assoc_dev_data, 0, sizeof(assoc_dev_data));
-
-            assoc_dev_data.ap_index = rdk_vap_info->vap_index;
 
             snprintf(tmp_mac_key, sizeof(tmp_mac_key), "%s", tmp_string);
             str_to_mac_bytes(tmp_string, mac);
-            memcpy(assoc_dev_data.dev_stats.cli_MACAddress, mac, 6);
+            memcpy(assoc_dev_data.dev_stats.cli_MACAddress, mac, sizeof(mac_address_t));
 
-            value_object = cJSON_GetObjectItem(assoc_client, "MLDAddr");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            if (decode_assoc_dev_stats(assoc_client, &assoc_dev_data) !=
+                    webconfig_error_none) {
                 return webconfig_error_decode;
             }
-            tmp_string = cJSON_GetStringValue(value_object);
-            if (tmp_string == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            str_to_mac_bytes(tmp_string, mld_mac);
-            memcpy(assoc_dev_data.dev_stats.cli_MLDAddr, mld_mac, 6);
-
-            value_object = cJSON_GetObjectItem(assoc_client, "MLDEnable");
-            if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_MLDEnable = (value_object->type & cJSON_True) ? true:false;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "LinkAddress");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            tmp_string = cJSON_GetStringValue(value_object);
-            if (tmp_string == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            memset(mac, 0, sizeof(mac));
-            str_to_mac_bytes(tmp_string, mac);
-            memcpy(assoc_dev_data.link_address, mac, sizeof(assoc_dev_data.link_address));
-            value_object = cJSON_GetObjectItem(assoc_client, "AssociationLink");
-            if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.association_link = (value_object->type & cJSON_True) ? true:false;
-
-            if (assoclist_type == assoclist_type_remove) {
-                assoc_dev_data.client_state = client_state_disconnected;
-            } else {
-                assoc_dev_data.client_state = client_state_connected;
-            }
-
-            value_object = cJSON_GetObjectItem(assoc_client, "WpaKeyMgmt");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-
-            tmp_string  = cJSON_GetStringValue(value_object);
-            if (tmp_string == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            snprintf(assoc_dev_data.conn_security.wpa_key_mgmt,
-                     sizeof(assoc_dev_data.conn_security.wpa_key_mgmt), "%s", tmp_string);
-
-            value_object = cJSON_GetObjectItem(assoc_client, "PairwiseCipher");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-
-            tmp_string  = cJSON_GetStringValue(value_object);
-            if (tmp_string == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            snprintf(assoc_dev_data.conn_security.pairwise_cipher,
-                     sizeof(assoc_dev_data.conn_security.pairwise_cipher), "%s", tmp_string);
-
-            value_object = cJSON_GetObjectItem(assoc_client, "RSNCapabilities");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            if ((value_object->valuedouble < 0) || (value_object->valuedouble > 0xffff)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed for RSNCapabilities range\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.conn_security.rsn_capabilities = (USHORT)value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "AuthenticationState");
-            if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_AuthenticationState = (value_object->type & cJSON_True) ? true:false;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "LastDataDownlinkRate");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_LastDataDownlinkRate = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "LastDataUplinkRate");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_LastDataUplinkRate = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "SignalStrength");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_SignalStrength = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "Retransmissions");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_Retransmissions = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "Active");
-            if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_Active = (value_object->type & cJSON_True) ? true:false;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "OperatingStandard");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-
-            tmp_string  = cJSON_GetStringValue(value_object);
-            if (tmp_string == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            memcpy(assoc_dev_data.dev_stats.cli_OperatingStandard, tmp_string, strlen(tmp_string)+1);
-
-            value_object = cJSON_GetObjectItem(assoc_client, "OperatingChannelBandwidth");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-
-            tmp_string  = cJSON_GetStringValue(value_object);
-            if (tmp_string == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            memcpy(assoc_dev_data.dev_stats.cli_OperatingChannelBandwidth, tmp_string, strlen(tmp_string)+1);
-
-            value_object = cJSON_GetObjectItem(assoc_client, "SNR");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_SNR = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "InterferenceSources");
-            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-
-            tmp_string  = cJSON_GetStringValue(value_object);
-            if (tmp_string == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            memcpy(assoc_dev_data.dev_stats.cli_InterferenceSources, tmp_string, strlen(tmp_string)+1);
-
-            value_object = cJSON_GetObjectItem(assoc_client, "DataFramesSentAck");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_DataFramesSentAck = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "DataFramesSentNoAck");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_DataFramesSentNoAck = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "BytesSent");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_BytesSent = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "BytesReceived");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_BytesReceived = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "RSSI");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_RSSI = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "MinRSSI");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_MinRSSI = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "MaxRSSI");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_MaxRSSI = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "Disassociations");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_Disassociations = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "AuthenticationFailures");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_AuthenticationFailures = value_object->valuedouble;
-
-
-            value_object = cJSON_GetObjectItem(assoc_client, "ActiveNumSpatialStreams");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_activeNumSpatialStreams = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "PacketsSent");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_PacketsSent = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "PacketsReceived");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_PacketsReceived = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "ErrorsSent");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_ErrorsSent = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "RetransCount");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_RetransCount = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "FailedRetransCount");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_FailedRetransCount = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "RetryCount");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_RetryCount = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "MultipleRetryCount");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_MultipleRetryCount = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "MaxDownlinkRate");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Missing or invalid MaxDownlinkRate\n", __func__, __LINE__);
-            } else {
-                assoc_dev_data.dev_stats.cli_MaxDownlinkRate = value_object->valuedouble;
-            }
-
-            value_object = cJSON_GetObjectItem(assoc_client, "MaxUplinkRate");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Missing or invalid MaxUplinkRate\n", __func__, __LINE__);
-            } else {
-                assoc_dev_data.dev_stats.cli_MaxUplinkRate = value_object->valuedouble;
-            }
-
-            value_object = cJSON_GetObjectItem(assoc_client, "LastConnectTime");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Missing or invalid LastConnectTime\n", __func__, __LINE__);
-            } else {
-                assoc_dev_data.last_connect_time = value_object->valuedouble;
-            }
-
-            value_object = cJSON_GetObjectItem(assoc_client, "MLCapabilities");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_MLModeCapa = value_object->valuedouble;
-
-            value_object = cJSON_GetObjectItem(assoc_client, "TIDLinkMapNegotiation");
-            if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-                return webconfig_error_decode;
-            }
-            assoc_dev_data.dev_stats.cli_TIDLinkMapNegotiation = value_object->valuedouble;
 
             if (decode_frame_data(assoc_client, &assoc_dev_data.sta_data.msg_data) !=
                 webconfig_error_none) {
@@ -3918,20 +3960,10 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                     __func__, __LINE__, tmp_mac_key);
             }
 
-            if (associated_devices_map != NULL) {
-                str_tolower(tmp_mac_key);
-                tmp_assoc_dev_data = hash_map_get(associated_devices_map, tmp_mac_key);
-                if (tmp_assoc_dev_data == NULL) {
-                    tmp_assoc_dev_data = (assoc_dev_data_t *)malloc(sizeof(assoc_dev_data_t));
-                    if (tmp_assoc_dev_data == NULL) {
-                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: tmp_assoc_dev_data is NULL for %d\n", __func__, __LINE__, i);
-                        return webconfig_error_decode;
-                    }
-                    memcpy(tmp_assoc_dev_data, &assoc_dev_data, sizeof(assoc_dev_data_t));
-                    hash_map_put(associated_devices_map, strdup(tmp_mac_key), tmp_assoc_dev_data);
-                } else {
-                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: mac %s is already present for %d\n", __func__, __LINE__, tmp_mac_key, rdk_vap_info->vap_index);
-                }
+            str_tolower(tmp_mac_key);
+            if (store_assoc_dev_data(associated_devices_map, tmp_mac_key, &assoc_dev_data,
+                    rdk_vap_info->vap_index) != webconfig_error_none) {
+                return webconfig_error_decode;
             }
         }
     }
