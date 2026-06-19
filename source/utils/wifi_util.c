@@ -717,7 +717,7 @@ char *get_formatted_time(char *time)
     return time;
 }
 
-void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...)
 {
     char buff[256] = {0};
     va_list list;
@@ -840,6 +840,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         case WIFI_EC: {
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
             snprintf(module_filename, sizeof(module_filename), "wifiEc");
+            break;
+        }
+        case WIFI_SENSING: {
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSensing");
+            snprintf(module_filename, sizeof(module_filename), "wifiSensing");
             break;
         }
         default:
@@ -3970,8 +3975,6 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             //should not be executed for BPi
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
             is_mld_addr_changed(vap_info_old, vap_info_new) ||
 #endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,

@@ -99,6 +99,7 @@ extern "C" {
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
+#define MIN_MLO_GROUP_SIZE 2
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -175,7 +176,8 @@ typedef enum {
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_link_quality = wifi_app_inst_base << 19,
-    wifi_app_inst_max = wifi_app_inst_base << 20
+    wifi_app_inst_wifi_sensing = wifi_app_inst_base << 20,
+    wifi_app_inst_max = wifi_app_inst_base << 21
 } wifi_app_inst_t;
 
 typedef struct {

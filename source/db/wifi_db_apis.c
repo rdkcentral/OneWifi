@@ -1097,7 +1097,6 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->mld_info.common_info.mld_enable = new_rec->mld_enable;
             l_bss_param_cfg->mld_info.common_info.mld_id = new_rec->mld_id;
             l_bss_param_cfg->mld_info.common_info.mld_link_id = new_rec->mld_link_id;
-            l_bss_param_cfg->mld_info.common_info.mld_apply = new_rec->mld_apply;
             if (strlen(new_rec->anqp_parameters) != 0) {
                 strncpy((char *)l_bss_param_cfg->interworking.anqp.anqpParameters,new_rec->anqp_parameters,(sizeof(l_bss_param_cfg->interworking.anqp.anqpParameters)-1));
             }
@@ -2901,7 +2900,6 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.mld_enable = config->u.bss_info.mld_info.common_info.mld_enable;
         cfg.mld_id = config->u.bss_info.mld_info.common_info.mld_id;
         cfg.mld_link_id = config->u.bss_info.mld_info.common_info.mld_link_id;
-        cfg.mld_apply = config->u.bss_info.mld_info.common_info.mld_apply;
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d: VAP Config update data cfg.radio_name=%s cfg.vap_name=%s cfg.ssid=%s "
@@ -2915,7 +2913,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             "cfg.wps_enabled=%d cfg.beacon_rate_ctl=%s cfg.mfp_config=%s "
             "network_initiated_greylist=%d exists=%d hostap_mgt_frame_ctrl=%d mbo_enabled=%d "
             "interop_ctrl:%d inum_sta:%d "
-            "mld_enable=%d mld_id=%d mld_link_id=%d mld_apply=%d\n",
+            "mld_enable=%d mld_id=%d mld_link_id=%d\n",
             __func__, __LINE__, cfg.radio_name, cfg.vap_name, cfg.ssid, cfg.enabled,
             cfg.ssid_advertisement_enabled, cfg.isolation_enabled, cfg.mgmt_power_control,
             cfg.bss_max_sta, cfg.bss_transition_activated, cfg.nbr_report_activated,
@@ -2926,7 +2924,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             cfg.wps_enabled, cfg.beacon_rate_ctl, cfg.mfp_config, cfg.network_initiated_greylist,
             cfg.exists, cfg.hostap_mgt_frame_ctrl, cfg.mbo_enabled,
             cfg.interop_ctrl, cfg.inum_sta,
-            cfg.mld_enable, cfg.mld_id, cfg.mld_link_id, cfg.mld_apply);
+            cfg.mld_enable, cfg.mld_id, cfg.mld_link_id);
     }
     if(onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_VAP_Config,&cfg,false,filter_vap,SCHEMA_TABLE(Wifi_Radio_Config),(onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Radio_Config,radio_name),radio_name)),SCHEMA_COLUMN(Wifi_Radio_Config,vap_configs)) == false)
     {
@@ -5185,7 +5183,6 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
 #endif
                 config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id = 255;
-                config->vap_array[i].u.bss_info.mld_info.common_info.mld_apply = 1;
                 is_vap_info_upgrade_needed = true;
             }
         }
@@ -6592,7 +6589,6 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             config->u.bss_info.mld_info.common_info.mld_enable = pcfg->mld_enable;
             config->u.bss_info.mld_info.common_info.mld_id = pcfg->mld_id;
             config->u.bss_info.mld_info.common_info.mld_link_id = pcfg->mld_link_id;
-            config->u.bss_info.mld_info.common_info.mld_apply = pcfg->mld_apply;
         }
     }
     free(pcfg);
@@ -7745,7 +7741,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
 #endif
         cfg->u.bss_info.mld_info.common_info.mld_link_id = 255;
-        cfg->u.bss_info.mld_info.common_info.mld_apply = 1;
 
         memset(&cfg->u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg->u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
@@ -8150,101 +8145,6 @@ void wifidb_init_default_value()
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
-static int get_ap_mac_by_vap_index(wifi_vap_info_map_t *hal_vap_info_map, int vap_index,  mac_address_t mac)
-{
-    unsigned int j = 0;
-
-    for (j = 0; j < hal_vap_info_map->num_vaps; j++) {
-        if ((int)hal_vap_info_map->vap_array[j].vap_index == vap_index) {
-            memcpy(mac, hal_vap_info_map->vap_array[j].u.bss_info.bssid, sizeof(mac_address_t));
-            return RETURN_OK;
-        }
-    }
-    wifi_util_error_print(WIFI_DB, "%s:%d vap_info not found for vap_index value: %d\n"
-        ,__FUNCTION__, __LINE__, vap_index);
-    return RETURN_ERR;
-}
-
-static int wifidb_vap_config_update_mld_mac()
-{
-    wifi_vap_info_map_t  *hal_vap_info_map = NULL;
-    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
-    mac_address_t mlo_mac = {0};
-    mac_address_t zero_mac = {0};
-    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = {0};
-    unsigned int r_idx=0;
-    unsigned int i = 0;
-    unsigned int k = 0;
-    int ret = RETURN_OK;
-
-    hal_vap_info_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
-    if (hal_vap_info_map == NULL) {
-        wifi_util_error_print(WIFI_DB, "%s:%d Failed to allocate memory for hal_vap_info_map\n",__FUNCTION__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    for (i = 0; i < MLD_UNIT_COUNT; i++) {
-        memset(mld_addr_map, 0, sizeof(mld_addr_map));
-        memset(mlo_mac, 0, sizeof(mac_address_t));
-
-        wifi_util_info_print(WIFI_DB, "%s:%d: Updating MLO MAC for mld_unit %d\r\n", __func__, __LINE__, i);
-
-        for (r_idx=0; r_idx < getNumberRadios(); r_idx++) {
-            memset(hal_vap_info_map, 0, sizeof(wifi_vap_info_map_t));
-            /* wifi_hal_getRadioVapInfoMap is used  to get the macaddress of wireless interfaces */
-            ret = wifi_hal_getRadioVapInfoMap(r_idx, hal_vap_info_map);
-            if (ret != RETURN_OK) {
-                wifi_util_error_print(WIFI_DB, "%s:%d wifi_hal_getRadioVapInfoMap failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
-                free(hal_vap_info_map);
-                hal_vap_info_map = NULL;
-                return ret;
-            }
-            /* vap map with loaded DB - find the main mlo vap */
-            mgr_vap_info_map = get_wifidb_vap_map(r_idx);
-            if (mgr_vap_info_map == NULL) {
-                wifi_util_error_print(WIFI_DB, "%s:%d get_wifidb_vap_map failed for radio: %d\n",__FUNCTION__, __LINE__, r_idx);
-                free(hal_vap_info_map);
-                hal_vap_info_map = NULL;
-                return RETURN_ERR;
-            }
-            for (k = 0; k < mgr_vap_info_map->num_vaps; k++) {
-                wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
-                wifi_mld_common_info_t *mld_info = NULL;
-
-                if (isVapSTAMesh(vap_config->vap_index)) {
-                    continue;
-                }
-
-                mld_info = &vap_config->u.bss_info.mld_info.common_info;
-                if (i == 0) { /* Initialise all vap's mld_mac with interface mac */
-                    get_ap_mac_by_vap_index(hal_vap_info_map, vap_config->vap_index, mld_info->mld_addr);
-                }
-
-                if (mld_info->mld_enable && mld_info->mld_id == i) {
-                    mld_addr_map[r_idx] = mld_info->mld_addr; /* store mld_addr ptr to be updated later */
-                    if(mld_info->mld_link_id == 0) { /* check if the link is main MLO link */
-                        get_ap_mac_by_vap_index(hal_vap_info_map, vap_config->vap_index, mlo_mac);
-                    }
-                }
-            }
-        }
-
-        if (memcmp(mlo_mac, zero_mac, sizeof(mac_address_t)) == 0) {
-            continue;
-        }
-
-        for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
-            if (mld_addr_map[r_idx] != NULL) {
-                memcpy(mld_addr_map[r_idx], mlo_mac, sizeof(mac_address_t));
-            }
-        }
-    }
-    free(hal_vap_info_map);
-    hal_vap_info_map = NULL;
-    return RETURN_OK;
-}
-#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 /************************************************************************************
  ************************************************************************************
@@ -8475,9 +8375,6 @@ void init_wifidb_data()
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
-        wifidb_vap_config_update_mld_mac();
-#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 
@@ -9684,7 +9581,7 @@ int wifi_db_update_psm_values()
 }
 
 //static void bus_subscription_handler(bus_handle_t handle, bus_event_t *event,
-static void bus_subscription_handler(char *event_name, raw_data_t *p_data, void *userData)
+static void bus_subscription_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)p_data;
     (void)userData;
