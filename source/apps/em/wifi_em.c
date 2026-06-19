@@ -1893,6 +1893,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                     cnt++;
                 }
                 vap_report->sta_cnt = cnt;
+                vap_report->vap_metrics.num_of_assoc_stas = cnt;
 
                 break;
                 case em_ap_metrics_traffic:
@@ -1923,6 +1924,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                     cnt++;
                 }
                 vap_report->sta_cnt = cnt;
+                vap_report->vap_metrics.num_of_assoc_stas = cnt;
                 break;
 
             case em_ap_metrics_link_and_traffic:
@@ -1969,6 +1971,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                     cnt++;
                 }
                 vap_report->sta_cnt = cnt;
+                vap_report->vap_metrics.num_of_assoc_stas = cnt;
                 break;
 
             default:
