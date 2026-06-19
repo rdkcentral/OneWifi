@@ -4276,6 +4276,7 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
 bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
     bus_data_prop_t *outParams, void *asyncHandle)
 {
+    (void)asyncHandle;
     unsigned vap_idx;
     char *json_str = NULL;
     char *enriched_str = NULL;
