@@ -186,6 +186,56 @@ START_TEST(test_ovsdb_sanitize_case_insensitive)
 }
 END_TEST
 
+/* Test OVSDB schema-specific credential fields are redacted
+ * (Wifi_VIF_Config: wpa_psks, radius_srv_secret; AW_LM_Config: upload_token) */
+START_TEST(test_ovsdb_sanitize_redacts_schema_specific_fields)
+{
+    json_t *json_obj;
+    char *sanitized;
+
+    /* Wifi_VIF_Config: wpa_psks must be redacted */
+    json_obj = json_pack("{s:s, s:s}",
+        "ssid", "TestAP",
+        "wpa_psks", "fake_wpa_psk_value_not_real");
+    ck_assert_ptr_nonnull(json_obj);
+    sanitized = ovsdb_sanitize_json_for_logging(json_obj);
+    ck_assert_ptr_nonnull(sanitized);
+    ck_assert_ptr_null(strstr(sanitized, "fake_wpa_psk_value_not_real"));
+    ck_assert_ptr_nonnull(strstr(sanitized, "TestAP"));
+    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
+    free(sanitized);
+    json_decref(json_obj);
+
+    /* Wifi_VIF_Config: radius_srv_secret must be redacted
+     * (not caught by the generic "secret" key — exact match only) */
+    json_obj = json_pack("{s:s, s:s}",
+        "radius_server_ip", "192.0.2.1",
+        "radius_srv_secret", "fake_radius_secret_not_real");
+    ck_assert_ptr_nonnull(json_obj);
+    sanitized = ovsdb_sanitize_json_for_logging(json_obj);
+    ck_assert_ptr_nonnull(sanitized);
+    ck_assert_ptr_null(strstr(sanitized, "fake_radius_secret_not_real"));
+    ck_assert_ptr_nonnull(strstr(sanitized, "192.0.2.1"));
+    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
+    free(sanitized);
+    json_decref(json_obj);
+
+    /* AW_LM_Config: upload_token must be redacted
+     * (not caught by the generic "token" key — exact match only) */
+    json_obj = json_pack("{s:s, s:s}",
+        "destination", "https://logs.example.test",
+        "upload_token", "fake_upload_token_not_real");
+    ck_assert_ptr_nonnull(json_obj);
+    sanitized = ovsdb_sanitize_json_for_logging(json_obj);
+    ck_assert_ptr_nonnull(sanitized);
+    ck_assert_ptr_null(strstr(sanitized, "fake_upload_token_not_real"));
+    ck_assert_ptr_nonnull(strstr(sanitized, "https://logs.example.test"));
+    ck_assert_ptr_nonnull(strstr(sanitized, "[REDACTED]"));
+    free(sanitized);
+    json_decref(json_obj);
+}
+END_TEST
+
 Suite *security_suite(void)
 {
     Suite *s;
@@ -199,6 +249,7 @@ Suite *security_suite(void)
     tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_array_elements);
     tcase_add_test(tc_core, test_ovsdb_sanitize_handles_null);
     tcase_add_test(tc_core, test_ovsdb_sanitize_case_insensitive);
+    tcase_add_test(tc_core, test_ovsdb_sanitize_redacts_schema_specific_fields);
     suite_add_tcase(s, tc_core);
 
     return s;

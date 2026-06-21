@@ -189,23 +189,22 @@ static pthread_mutex_t ovsdb_lock;
 static const char * const g_sensitive_keys[] = {
     "psk", "password", "passwd", "pwd", "secret", "token",
     "auth_token", "access_token", "refresh_token", "api_key",
-    "private_key", "certificate", "cert", "key", "passphrase"
+    "private_key", "certificate", "cert", "key", "passphrase",
+    /* OVSDB schema-specific credential fields (Wifi_VIF_Config, AW_LM_Config) */
+    "wpa_psks", "radius_srv_secret", "upload_token"
 };
 static const int g_num_sensitive_keys =
     (int)(sizeof(g_sensitive_keys) / sizeof(g_sensitive_keys[0]));
 
 /* File-scope recursive helper to redact sensitive values in a JSON object/array.
- * Keys to redact are collected before the object is mutated to avoid
- * modifying the container while iterating over it. */
+ * Mutation (json_object_set_new) is performed inline during iteration: this is
+ * safe in Jansson because replacing a value only updates the value pointer and
+ * never adds or removes hash-table entries, so the iterator stays valid. */
 static void redact_sensitive_values(json_t *obj)
 {
     if (json_is_object(obj)) {
         const char *key;
         json_t *value;
-        /* json_object_set_new() on an existing key only replaces the value
-         * pointer — it never adds or removes hash-table entries — so calling
-         * it from inside json_object_foreach is safe and imposes no hard cap
-         * on the number of sensitive keys that can be redacted. */
         json_object_foreach(obj, key, value) {
             int is_sensitive = 0;
             for (int i = 0; i < g_num_sensitive_keys; i++) {
@@ -215,7 +214,16 @@ static void redact_sensitive_values(json_t *obj)
                 }
             }
             if (is_sensitive) {
-                json_object_set_new(obj, key, json_string("[REDACTED]"));
+                /* Fail-closed: if allocation fails, the sensitive value remains
+                 * but we log a warning rather than silently leaving secrets in logs. */
+                json_t *redacted = json_string("[REDACTED]");
+                if (redacted == NULL) {
+                    LOGW("redact_sensitive_values: allocation failure for key '%s'", key);
+                } else if (json_object_set_new(obj, key, redacted) != 0) {
+                    /* json_object_set_new does NOT steal the ref on failure */
+                    json_decref(redacted);
+                    LOGW("redact_sensitive_values: failed to redact key '%s'", key);
+                }
             } else if (json_is_object(value) || json_is_array(value)) {
                 redact_sensitive_values(value);
             }
@@ -281,12 +289,20 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     }
     ovs_fd = g_wifidb->wifidb_wfd;
 
-    /* Sanitize once and reuse for both the debug log and the error path,
-     * avoiding a second deep-copy + serialisation for large JSON payloads. */
-    char *sanitized_log = ovsdb_sanitize_json_for_logging(jsdata);
-    LOGD("SYNC: Writing sync operation: %s", sanitized_log ? sanitized_log : "(null)");
+    /* Compute sanitized log string lazily: only when debug logging is enabled
+     * (to avoid expensive deep-copy + serialisation on the hot path) and
+     * reuse for the error path if json_dump_callback() fails. */
+    char *sanitized_log = NULL;
+    if (LOG_SEVERITY_ENABLED(LOG_SEVERITY_DEBUG)) {
+        sanitized_log = ovsdb_sanitize_json_for_logging(jsdata);
+        LOGD("SYNC: Writing sync operation: %s", sanitized_log ? sanitized_log : "(null)");
+    }
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
+        /* Compute sanitized log for the error path if not already done above */
+        if (!sanitized_log) {
+            sanitized_log = ovsdb_sanitize_json_for_logging(jsdata);
+        }
         if (sanitized_log) {
             wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", sanitized_log);
         }
