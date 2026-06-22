@@ -176,8 +176,12 @@ static cJSON* merge_with_references(cJSON* base, cJSON* ref_node)
         cJSON* existing = cJSON_GetObjectItem(base, child->string);
 
         if (!existing) {
-            /* Key doesn't exist - add reference */
-            cJSON_AddItemReferenceToObject(base, child->string, child);
+            /* Deep copy instead of reference to avoid dangling child pointer
+               when follow_ref_if_any deletes $ref through the wrapper */
+            cJSON* copy = cJSON_Duplicate(child, 1);
+            if (copy) {
+                cJSON_AddItemToObject(base, child->string, copy);
+            }
         } else if (strcmp(child->string, "properties") == 0 &&
                    cJSON_IsObject(existing) && cJSON_IsObject(child)) {
             /* Both have "properties" object - recursively merge them */
