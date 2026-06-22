@@ -99,6 +99,7 @@ extern "C" {
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
+#define MIN_MLO_GROUP_SIZE 2
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -175,7 +176,8 @@ typedef enum {
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_link_quality = wifi_app_inst_base << 19,
-    wifi_app_inst_max = wifi_app_inst_base << 20
+    wifi_app_inst_wifi_sensing = wifi_app_inst_base << 20,
+    wifi_app_inst_max = wifi_app_inst_base << 21
 } wifi_app_inst_t;
 
 typedef struct {
@@ -245,6 +247,8 @@ typedef struct {
     unsigned char DestMac[MAC_ADDRESS_LENGTH];
     unsigned int StepId;
     int ApIndex;
+    bool isMLO;
+    int mldApIndex[MAX_NUM_RADIOS - 1];
 } active_msmt_step_t;
 
 typedef enum {
@@ -898,6 +902,9 @@ typedef struct {
     int noise_floor;
     int channel_util;
     int vlan_id;
+    eapol_msg_type_t   eapol_msg_type;     /* M1 / M2 / M3 */
+    eapol_frame_type_t eapol_frame_type;   /* Assoc / Reassoc */
+    unsigned int eapol_status_type_counts[6];
     int access_accept_counts;
     int eap_success_counts;
     int eap_failure_reason_counts;
@@ -963,6 +970,18 @@ typedef struct {
     bool association_link;
     mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
+
+#if defined(CONFIG_IEEE80211BE)
+typedef struct {
+    unsigned int num_links;
+    assoc_dev_data_t links[MAX_NUM_RADIOS];
+} mlo_client_t;
+
+typedef struct {
+    wifi_vap_name_t vap_name;
+    hash_map_t *mlo_sta_map;
+} wifi_mld_unit_t;
+#endif /* CONFIG_IEEE80211BE */
 
 struct active_msmt_data;
 

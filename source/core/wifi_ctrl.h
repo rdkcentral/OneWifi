@@ -176,6 +176,15 @@ typedef struct kick_details {
 }kick_details_t;
 
 typedef struct {
+    struct timespec start_time;
+    struct timespec target_detection_time;
+    struct timespec end_time;
+    struct timespec disconnection_time;
+} hotspot_timing_t;
+
+extern hotspot_timing_t g_hotspot_timing;
+
+typedef struct {
     wifi_connection_status_t    connect_status;
     bssid_t                     bssid;
 }__attribute__((packed)) wifi_sta_conn_info_t;
@@ -417,6 +426,13 @@ void hotspot_cfg_sem_signal(bool status);
 bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
 int publish_endpoint_enable(void);
 int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
+void hotspot_timing_start(void);
+void hotspot_timing_stop(void);
+
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
+    char **vap_names, unsigned int vap_names_size, wifi_dbg_type_t log_type);
+#endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
 
 #ifdef __cplusplus
 }
