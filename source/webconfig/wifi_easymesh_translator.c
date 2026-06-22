@@ -2515,6 +2515,7 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     int vap_index = 0;
     unsigned int num_bss = 0, i = 0;
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+    webconfig_error_t ret = webconfig_error_none;
 
     if (params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
@@ -2527,7 +2528,8 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     proto = (webconfig_external_easymesh_t *)params->external_protos;
     if (proto == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_to_easymesh;
+        ret = webconfig_error_translate_to_easymesh;
+        goto cleanup;
     }
 
     /* Iterate UWM BSS list matching on vap_index (not array index) */
@@ -2543,7 +2545,8 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     if (bss_info == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no BSS found for vap_index %d (num_bss=%u)\n",
             __func__, __LINE__, vap_index, num_bss);
-        return webconfig_error_translate_to_easymesh;
+        ret = webconfig_error_translate_to_easymesh;
+        goto cleanup;
     }
 
     memset(&em_sta_dev_info, 0, sizeof(em_sta_info_t));
@@ -2560,7 +2563,10 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
 
     proto->put_sta_info(proto->data_model, &em_sta_dev_info, em_target_sta_map_consolidated);
 
-    return webconfig_error_none;
+cleanup:
+    free(params->sta_beacon_report.data);
+    memset(&params->sta_beacon_report, 0, sizeof(sta_beacon_report_reponse_t));
+    return ret;
 }
 #endif
 

@@ -865,7 +865,7 @@ static int em_send_action_frame(void *data)
 
     if (radio_oper_param == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d Unable to get radio params with radio_index:%d\n", __func__, __LINE__, radio_index);
-        return 0;
+        return RETURN_ERR;
     }
 
     if (RETURN_OK != get_coutry_str_from_code(radio_oper_param->countryCode, country)) {
@@ -933,7 +933,13 @@ static int em_send_action_frame(void *data)
         }
     }
 
-    wifi_hal_setRMBeaconRequest(ap_index, query->sta_mac, params, &out_dialog);
+    int hal_ret = wifi_hal_setRMBeaconRequest(ap_index, query->sta_mac, params, &out_dialog);
+    if (hal_ret != 0) {
+        wifi_util_dbg_print(WIFI_EM,
+            "%s:%d: wifi_hal_setRMBeaconRequest failed with ret=%d\n",
+            __func__, __LINE__, hal_ret);
+        return hal_ret;
+    }
     wifi_util_dbg_print(WIFI_EM, "%s:%d: dialogue token is %d\n", __func__, __LINE__, out_dialog);
 
     return 0;
@@ -2847,7 +2853,7 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
 static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
 {
     int rc;
-    sta_beacon_report_reponse_t *temp_data_t = NULL;
+    sta_beacon_report_reponse_t *report_data = NULL;
     webconfig_subdoc_data_t *wb_data = NULL;
     wifi_ctrl_t *ctrl = NULL;
     raw_data_t p_data;
@@ -2859,6 +2865,8 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
         return 0;
     }
 
+    report_data = (sta_beacon_report_reponse_t *)msg_data;
+
     wb_data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (wb_data == NULL) {
         wifi_util_error_print(WIFI_EM,
@@ -2868,7 +2876,22 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
     }
 
     memset(wb_data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy(&(wb_data->u.decoded.sta_beacon_report), msg_data, sizeof(sta_beacon_report_reponse_t));
+    memcpy(&(wb_data->u.decoded.sta_beacon_report), report_data,
+        sizeof(sta_beacon_report_reponse_t));
+
+    if (report_data->data_len > 0 && report_data->data != NULL) {
+        wb_data->u.decoded.sta_beacon_report.data =
+            (unsigned char *)malloc(report_data->data_len);
+        if (wb_data->u.decoded.sta_beacon_report.data == NULL) {
+            wifi_util_error_print(WIFI_EM,
+                "%s:%d failed to allocate %u bytes for beacon report copy\n",
+                __func__, __LINE__, report_data->data_len);
+            free(wb_data);
+            return bus_error_general;
+        }
+        memcpy(wb_data->u.decoded.sta_beacon_report.data, report_data->data,
+            report_data->data_len);
+    }
 
     mgr = get_wifimgr_obj();
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -2882,10 +2905,14 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
         webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
         if (wb_data != NULL) {
+            free(wb_data->u.decoded.sta_beacon_report.data);
             free(wb_data);
         }
         return bus_error_general;
     }
+
+    free(wb_data->u.decoded.sta_beacon_report.data);
+    wb_data->u.decoded.sta_beacon_report.data = NULL;
 
     memset(&p_data, 0, sizeof(raw_data_t));
 
@@ -2939,6 +2966,7 @@ static int em_process_beacon_rep(mac_address_t sta_mac, wifi_hal_rrm_report_t *r
     wifi_app_t *app, const struct ieee80211_mgmt *mgmt, size_t len, int ap_index)
 {
     sta_beacon_report_reponse_t report;
+    size_t min_beacon_report_len;
     size_t data_len;
     mac_addr_str_t mac_str;
 
@@ -2947,6 +2975,14 @@ static int em_process_beacon_rep(mac_address_t sta_mac, wifi_hal_rrm_report_t *r
     report.ap_index = ap_index;
     report.dialog_token = rep->dialog_token;
     report.num_br_data = rep->size;
+
+    min_beacon_report_len = IEEE80211_HDRLEN + 1 + sizeof(mgmt->u.action.u.rrm);
+    if (len < min_beacon_report_len) {
+        wifi_util_error_print(WIFI_EM,
+            "%s:%d beacon report frame too short: len=%zu min=%zu\n",
+            __func__, __LINE__, len, min_beacon_report_len);
+        return -1;
+    }
 
     data_len = len - IEEE80211_HDRLEN - 1 - sizeof(mgmt->u.action.u.rrm);
     report.data = (unsigned char *)malloc(data_len);
@@ -3007,6 +3043,8 @@ static int em_handle_action_frame(wifi_app_t *apps, void *arg)
         break;
     }
     return 0;
+}
+
 static int em_handle_connection_status(wifi_app_t *app, void *data)
 {
     const em_connection_status_event_t *conn_status = (const em_connection_status_event_t *)data;
@@ -3155,7 +3193,7 @@ static bus_error_t controller_set_client_acl_rules(char *event_name, raw_data_t 
 
     if (p_data->data_type != bus_data_type_bytes) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Received:%s data type:%x\n",
-                __func__, __LINE__, event_name, p_data->data_type);
+            __func__, __LINE__, event_name, p_data->data_type);
         return bus_error_invalid_input;
     }
 
@@ -3358,8 +3396,21 @@ static bus_error_t send_beacon_query(char *event_name, raw_data_t *p_data, void 
         return bus_error_invalid_input;
     }
 
+    if (p_data->raw_data_len < sizeof(beacon_query_params_t)) {
+        wifi_util_error_print(WIFI_EM,
+            "%s:%d: Invalid Received:%s raw_data_len:%u expected at least:%zu\n",
+            __func__, __LINE__, event_name, p_data->raw_data_len,
+            sizeof(beacon_query_params_t));
+        return bus_error_invalid_input;
+    }
+
     //now create map for response and send
-    em_send_action_frame(p_data->raw_data.bytes);
+    if (em_send_action_frame(p_data->raw_data.bytes) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: Failed to send beacon query action frame\n",
+            __func__, __LINE__);
+        return bus_error_general;
+    }
+
     return bus_error_success;
 }
 
@@ -3383,7 +3434,7 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_EM_CHANNEL_SCAN_REPORT, bus_element_type_event,
             { NULL, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, false, 0, 0, 0, NULL } },
-        { WIFI_EM_BEACON_QUERY, bus_element_type_event,
+        { WIFI_EM_BEACON_QUERY, bus_element_type_method,
             { NULL, send_beacon_query, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, false, 0, 0, 0, NULL } },
         { WIFI_EM_BEACON_REPORT, bus_element_type_method,
