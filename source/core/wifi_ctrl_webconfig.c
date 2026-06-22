@@ -846,165 +846,6 @@ bool is_force_apply_true(rdk_wifi_vap_info_t *rdk_vap_info) {
     return false;
 }
 
-
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
-wifi_vap_info_t *get_vap_info_from_webconfig(webconfig_subdoc_decoded_data_t *data, char *vap_name)
-{
-    unsigned int j, k;
-
-    for (j = 0; j < getNumberRadios(); j++) {
-        for (k = 0; k < getNumberVAPsPerRadio(j); k++) {
-            if (strcmp(data->radios[j].vaps.vap_map.vap_array[k].vap_name, vap_name) == 0) {
-                return &data->radios[j].vaps.vap_map.vap_array[k];
-            }
-        }
-    }
-    return NULL;
-}
-
-wifi_vap_info_t *get_vap_info_from_radio(char *vap_name)
-{
-    unsigned int j;
-    int tgt_radio_idx, tgt_vap_index;
-    rdk_wifi_radio_t *radio;
-    wifi_vap_info_t *mgr_vap_info = NULL;
-    wifi_vap_info_map_t *mgr_vap_map = NULL;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-
-    if ((tgt_radio_idx = convert_vap_name_to_radio_array_index(&mgr->hal_cap.wifi_prop, vap_name)) == -1) {
-        wifi_util_error_print(WIFI_MGR, "%s:%d: Could not find radio index for vap name:%s\n",
-                    __func__, __LINE__, vap_name);
-        return NULL;
-    }
-
-    tgt_vap_index = convert_vap_name_to_index(&mgr->hal_cap.wifi_prop, vap_name);
-    if (tgt_vap_index == -1) {
-        wifi_util_error_print(WIFI_MGR, "%s:%d: Could not find vap index for vap name:%s\n",
-                    __func__, __LINE__, vap_name);
-        return NULL;
-    }
-
-    for (j = 0; j < getNumberRadios(); j++) {
-        radio = &mgr->radio_config[j];
-        if (radio->vaps.radio_index == (unsigned int)tgt_radio_idx) {
-            mgr_vap_map = &radio->vaps.vap_map;
-            break;
-        }
-    }
-
-    if (mgr_vap_map == NULL) {
-        wifi_util_error_print(WIFI_MGR,
-            "%s:%d: Could not find tgt_radio_idx:%d for vap name:%s\n", __func__, __LINE__,
-            tgt_radio_idx, vap_name);
-        return NULL;
-    }
-
-    for (j = 0; j < mgr_vap_map->num_vaps; j++) {
-        if (mgr_vap_map->vap_array[j].vap_index == (unsigned int)tgt_vap_index) {
-            mgr_vap_info = &mgr_vap_map->vap_array[j];
-            break;
-        }
-    }
-
-    return mgr_vap_info;
-}
-
-static void update_mld_group(webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
-{
-    unsigned int i;
-    wifi_vap_info_t *mgr_vap_info, *vap_info;
-    wifi_mld_common_info_t *mld_conf;
-    mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    mac_address_t mlo_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    mac_addr_str_t mac_str = { 0 };
-    unsigned char *mld_addr_map[MAX_NUM_RADIOS] = { 0 };
-    unsigned char mld_id = UNDEFINED_MLD_ID;
-    wifi_mld_common_info_t *mld_map[MAX_NUM_RADIOS] = { 0 };
-    unsigned int mld_vap_count = 0;
-    bool disable_mld = false;
-
-    if (size > MAX_NUM_RADIOS) {
-        wifi_util_error_print(WIFI_MGR, "%s:%d: size %d exceeds MAX_NUM_RADIOS %d\n",
-            __func__, __LINE__, size, MAX_NUM_RADIOS);
-        return;
-    }
-    for (i = 0; i < size; i++) {
-
-        vap_info = get_vap_info_from_webconfig(data, vap_names[i]);
-        if (vap_info == NULL) {
-            wifi_util_error_print(WIFI_MGR, "%s:%d: Could not find vap_info vap name:%s\n",
-                __func__, __LINE__, vap_names[i]);
-            return;
-        }
-
-        if (isVapSTAMesh(vap_info->vap_index))
-            continue;
-
-        mgr_vap_info = get_vap_info_from_radio(vap_names[i]);
-        if (mgr_vap_info == NULL) {
-            wifi_util_error_print(WIFI_MGR, "%s:%d: Could not find mgr_vap_info vap name:%s\n",
-                __func__, __LINE__, vap_names[i]);
-            return;
-        }
-
-        mld_conf = &vap_info->u.bss_info.mld_info.common_info;
-
-        /* Initialize mld_mac with VAP's BSSID */
-        memcpy(mld_conf->mld_addr, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
-
-        if (mld_conf->mld_id < MLD_UNIT_COUNT && mld_conf->mld_link_id < MAX_NUM_MLD_LINKS) {
-            if (mld_id == UNDEFINED_MLD_ID)
-                mld_id = mld_conf->mld_id;
-            if (mld_id != mld_conf->mld_id) {
-                wifi_util_error_print(WIFI_MGR, "%s:%d: vap name:%s is not part of mld unit %d. VAP's mld_id %d\n",
-                    __func__, __LINE__, vap_names[i], mld_id, mld_conf->mld_id);
-                continue;
-            }
-            if (mld_conf->mld_enable) {
-                mld_vap_count++;
-                mld_addr_map[i] = mld_conf->mld_addr;
-                mld_map[i] = mld_conf;
-                if (mld_conf->mld_link_id == 0) {
-                    memcpy(mlo_mac, mgr_vap_info->u.bss_info.bssid, sizeof(mac_address_t));
-                }
-            } else {
-                if (mld_conf->mld_link_id == 0) {
-                    wifi_util_info_print(WIFI_MGR, "%s:%d: Main link is disabled -> Disable whole MLO group\n",__func__, __LINE__);
-                    disable_mld = true;
-                }
-            }
-        }
-    }
-    if (mld_vap_count > 0) {
-        if (disable_mld || mld_vap_count < 2) {
-            /* Disable MLD when main link is disabled or less than 2 VAPs are mld enabled */
-            for (i = 0; i < size; i++) {
-                if (mld_map[i] != NULL) {
-                    mld_map[i]->mld_enable = false;
-                    wifi_util_info_print(WIFI_MGR,
-                        "%s:%d: Disabling mld for vap name:%s - disable_mld %d mld_vap_count %d\n",
-                        __func__, __LINE__, vap_names[i], disable_mld, mld_vap_count);
-                }
-            }
-            return;
-        }
-    }
-
-    if (memcmp(mlo_mac, zero_mac, sizeof(mac_address_t)) == 0) {
-        return; /* VAPs group does not contain MLO enabled VAPs */
-    }
-
-    to_mac_str(mlo_mac, mac_str);
-    for (i = 0; i < size; i++) {
-        if (mld_addr_map[i] != NULL) {
-            memcpy(mld_addr_map[i], mlo_mac, sizeof(mac_address_t));
-            wifi_util_info_print(WIFI_MGR, "%s:%d: Updating mld_addr %s for vap name:%s\n",
-                __func__, __LINE__, mac_str, vap_names[i]);
-        }
-    }
-}
-#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
-
 int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
     unsigned int i, j, k;
@@ -1021,9 +862,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
     int ret = 0;
 
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
-    update_mld_group(data, vap_names, size);
-#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     for (i = 0; i < size; i++) {
 
         if ((svc = get_svc_by_name(ctrl, vap_names[i])) == NULL) {
@@ -1814,6 +1652,9 @@ int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1833,6 +1674,9 @@ int webconfig_hal_home_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1852,6 +1696,9 @@ int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1871,6 +1718,9 @@ int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1890,6 +1740,9 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1909,6 +1762,9 @@ int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -1928,6 +1784,9 @@ int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_de
             num_vaps++;
         }
     }
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mld_groups(data, vap_names, num_vaps, WIFI_MGR);
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
@@ -3357,19 +3216,25 @@ void start_station_vaps(bool is_private, bool rf_status)
 
     webconfig_init_subdoc_data(data);
     unsigned int num_vaps = get_list_of_mesh_sta(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS,
-            &vap_names[0]);
+        &vap_names[0]);
     if (rf_status && !is_private) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d RF is down creating station with Hotspot credentials\n", __func__, __LINE__);
-	    create_station_with_xfinity_credentials(data, num_vaps, vap_names);
-    }
-    else if (rf_status) {
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d RF is down creating station with Hotspot credentials\n", __func__, __LINE__);
+        hotspot_timing_start();
+        create_station_with_xfinity_credentials(data, num_vaps, vap_names);
+    } else if (rf_status) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d Creating station with Private credentials\n", __func__, __LINE__);
         private_num_vaps = get_list_of_private_ssid(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, &private_vap_names[0]);
         create_station_with_private_credentials(data, num_vaps, private_num_vaps, private_vap_names, vap_names);
-    }
-    else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d Station vaps going back to Default case\n", __func__, __LINE__);
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Station vaps going back to Default case\n", __func__,
+            __LINE__);
         (void)create_station_with_default_credentials(data, num_vaps, vap_names);
+        if ((rf_status == 0) && (!is_private)) {
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d Docsis enabled and no private vap config detected\n", __func__, __LINE__);
+            hotspot_timing_stop();
+        }
     }
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mesh_sta) == webconfig_error_none) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __func__, __LINE__);

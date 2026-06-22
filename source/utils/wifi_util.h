@@ -240,6 +240,13 @@ typedef struct {
 #define NAME_FREQUENCY_5H_G "5gh"
 #define NAME_FREQUENCY_5L_G "5gl"
 
+#if defined(CONFIG_IEEE80211BE)
+bool is_mlo_vap_name(const char *name);
+bool get_per_radio_vap_name_from_mlo(const char *mlo_vap_name, const char *band_str,
+    char *out, size_t out_size);
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size);
+#endif
+
 #define NAME_FREQUENCY_2_4 "2"
 #define NAME_FREQUENCY_5 "5"
 #define NAME_FREQUENCY_6 "6"
@@ -359,6 +366,9 @@ int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *chan
     unsigned int channel_state_strlen);
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band,
     UINT wifi_channel);
+UCHAR wifi_get_bw80_center_ch(unsigned int ch, wifi_freq_bands_t band);
+UCHAR wifi_get_bw160_center_ch(unsigned int ch, wifi_freq_bands_t band);
+UCHAR wifi_get_bw320_center_ch(unsigned int ch);
 bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
                                          const wifi_vap_info_t *hotspot_vap_info);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
@@ -418,6 +428,7 @@ int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *
     char *buf, size_t buf_size, bool dfs_enabled);
 int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsigned int radio_index,
     int *band);
+const char *convert_freq_band_to_band_str_g(int freq_band);
 void wifidb_print(char *format, ...);
 void copy_string(char *destination, char *source);
 bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum,

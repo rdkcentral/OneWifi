@@ -230,9 +230,23 @@ int csi_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int s
 
     csi_mac_data_t *mac_data = (csi_mac_data_t *)hash_map_get(app->data.u.csi.csi_sounding_mac_map, mac_str);
     if (mac_data == NULL) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d Rogue Disable Request from app %d\n", __func__, __LINE__, sounding_app);
-        return 0;
+        // We hash in MLO case by link address, so we need to
+        // map this for MLO clients, since apps use MLD MAC
+        mac_data = (csi_mac_data_t *)hash_map_get_first(app->data.u.csi.csi_sounding_mac_map);
+        while(mac_data != NULL) {
+            if (memcmp(mac_data->mac_addr, mac_addr, sizeof(mac_addr_t)) == 0) {
+                to_mac_str((unsigned char *)mac_data->link_addr, mac_str);
+                break;
+            }
+            mac_data = hash_map_get_next(app->data.u.csi.csi_sounding_mac_map, mac_data);
+        }
+
+        if (mac_data == NULL) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d Rogue Disable Request from app %d\n", __func__, __LINE__, sounding_app);
+            return 0;
+        }
     }
+
     //Check if the mac is currently sounding by more apps.
     if (mac_data->subscribed_apps & ~sounding_app) {
         wifi_util_info_print(WIFI_APPS, "%s:%d MAC is being sounded by more than one apps not disabling sounding\n", __func__, __LINE__);
