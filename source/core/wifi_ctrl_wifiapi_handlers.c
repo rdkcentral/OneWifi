@@ -45,8 +45,8 @@ struct hal_api_info {
     {"wifi_getStationStats",                1, "<ap index>"},
     {"wifi_startScan",                      1, "<radio index>"},
     {"wifi_startNeighborScan",              3, "<vap index> <scan mode> <dwell time> [channels]"},
-    {"wifi_getNeighboringWiFiStatus",       1, "<radio index"},
-    {"wifi_setBTMRequest",                  3, "<vap index> <client mac> <candidate mac>"},
+    {"wifi_getNeighboringWiFiStatus",       1, "<radio index>"},
+    {"wifi_setBTMRequest",                  3, "<vap index> <client mac> <candidate mac> [disassoc imminent (0/1)] [disassoc timer (0-65535; used only if imminent=1)]"},
     {"wifi_setRMBeaconRequest",             3, "<vap index> <peer mac> <bssid>"},
     {"wifi_setNeighborReports",             2, "<vap index> <bssid>" },
     {"wifi_configNeighborReports",          3, "<vap index> <neighbor report enable> <neighbor report auto reply>" },
@@ -408,7 +408,34 @@ static void wifiapi_handle_set_btm_request(char **args, unsigned int num_args,
     str_to_mac_bytes(args[2], client_mac);
     str_to_mac_bytes(args[3], candidate_mac);
 
-    btm_request->requestMode = 0x1; // candidate list included
+    bool disassoc_imminent = false;
+
+    if (num_args > 4) {
+        char *end_imminent = NULL;
+        long v = strtol(args[4], &end_imminent, 10);
+        disassoc_imminent = !(end_imminent == args[4] || *end_imminent != '\0') && (v != 0);
+    }
+
+    btm_request->requestMode = BTM_REQMODE_PREF_LIST_INCL |
+        (disassoc_imminent ? BTM_REQMODE_DISASSOC_IMMINENT : 0);
+
+    if (disassoc_imminent && num_args > 5) {
+        char *end = NULL;
+        long t = strtol(args[5], &end, 10);
+        if (end == args[5] || *end != '\0') {
+            t = 0;
+        } else if (t < 0) {
+            t = 0;
+        } else if (t > 65535) {
+            t = 65535;
+        }
+        btm_request->timer = (USHORT)t;
+    } else {
+        btm_request->timer = 0;
+    }
+
+    /* Keep validityInterval at its default (0) unless it is explicitly exposed via CLI. */
+    btm_request->validityInterval = 0;
     btm_request->numCandidates = 1;
     memcpy(&btm_request->candidates[0].bssid, &candidate_mac, sizeof(mac_address_t));
 
