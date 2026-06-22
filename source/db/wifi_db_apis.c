@@ -7366,9 +7366,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
 #if defined(_SR213_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
         if (isVapHotspot(vap_index)) {
-            cfg->u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT;
+            cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT;
         } else {
-            cfg->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+            cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
         }
 #else
         cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_SKY;
