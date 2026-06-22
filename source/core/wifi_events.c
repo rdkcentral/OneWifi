@@ -200,6 +200,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_wifiapi_max)
         DOC2S(wifi_event_webconfig_br_report)
         DOC2S(wifi_event_br_report)
+        DOC2S(wifi_event_type_command_setIgnoreDisassocTimer)
     default:
         wifi_util_error_print(WIFI_CTRL, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             type);

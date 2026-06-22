@@ -408,7 +408,12 @@ static void wifiapi_handle_set_btm_request(char **args, unsigned int num_args,
     str_to_mac_bytes(args[2], client_mac);
     str_to_mac_bytes(args[3], candidate_mac);
 
-    btm_request->requestMode = 0x1; // candidate list included
+    btm_request->requestMode = BTM_REQMODE_PREF_LIST_INCL |
+       ((num_args > 4 && atoi(args[4])) ? BTM_REQMODE_DISASSOC_IMMINENT : 0);
+    btm_request->timer = (num_args > 5) ? (USHORT)atoi(args[5]) : 0;
+    btm_request->validityInterval = 0xFF;
+    btm_request->disassociationImminent =
+      (btm_request->requestMode & BTM_REQMODE_DISASSOC_IMMINENT) ? 1 : 0;
     btm_request->numCandidates = 1;
     memcpy(&btm_request->candidates[0].bssid, &candidate_mac, sizeof(mac_address_t));
 

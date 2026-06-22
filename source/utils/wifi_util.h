@@ -194,6 +194,11 @@ typedef struct {
     char scan_mode_string[16];
 }__attribute__((packed, aligned(1))) wifi_scan_mode_mapper;
 
+typedef struct {
+    int  ap_idx;
+    bool ignore;
+} ignore_disassoc_timer_cmd_t;
+
 #define VAP_PREFIX_PRIVATE          "private_ssid"
 #define VAP_PREFIX_IOT              "iot_ssid"
 #define VAP_PREFIX_MESH_STA         "mesh_sta"

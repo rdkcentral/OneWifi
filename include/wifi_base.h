@@ -91,6 +91,7 @@ extern "C" {
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
+#define WIFI_IGNORE_DISASSOC_IMMINENT "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_Ignore11vDisassoc"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
