@@ -3302,7 +3302,8 @@ static bool is_radio_mlo_capable(unsigned int radio_index)
     if (radio_param == NULL) {
         return false;
     }
-    return radio_param->enable && (radio_param->variant & WIFI_80211_VARIANT_BE);
+    return radio_param->enable && !radio_param->EcoPowerDown &&
+        (radio_param->variant & WIFI_80211_VARIANT_BE);
 }
 
 static bool is_mlo_wpa3_personal(wifi_security_modes_t mode)

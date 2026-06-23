@@ -2136,10 +2136,12 @@ static int check_and_reset_channel_change(void *arg)
 static bool is_radio_mlo_trigger_changed(wifi_radio_operationParam_t *old_p,
     wifi_radio_operationParam_t *new_p)
 {
-    bool old_be = (old_p->variant & WIFI_80211_VARIANT_BE) ? true : false;
-    bool new_be = (new_p->variant & WIFI_80211_VARIANT_BE) ? true : false;
+    bool old_be = (old_p->variant & WIFI_80211_VARIANT_BE) != 0;
+    bool new_be = (new_p->variant & WIFI_80211_VARIANT_BE) != 0;
+    bool old_enabled = old_p->enable && !old_p->EcoPowerDown;
+    bool new_enabled = new_p->enable && !new_p->EcoPowerDown;
 
-    return (old_p->enable != new_p->enable) || (old_be != new_be);
+    return (old_enabled != new_enabled) || (old_be != new_be);
 }
 
 /* Re-encode the current mgr VAP config for one subdoc type and re-inject it
