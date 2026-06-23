@@ -170,11 +170,19 @@ typedef struct {
     char *result;
 } wifiapi_t;
 
+#define MAX_TRACKED_VAPS (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)
+
+typedef struct {
+    int active_blocks;
+    int original_filter_mode;
+    bool mode_saved;
+} vap_acl_state_t;
+
 typedef struct kick_details {
     char *kick_list;
     int vap_index;
-    int original_filter_mode;
-    bool filter_mode_changed;
+    int timer_id;
+    bool cancelled_by_unblock;
 }kick_details_t;
 
 typedef struct {
