@@ -381,6 +381,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_op_class_info->id.op_class = oper_param->operatingClass;
         em_op_class_info->op_class = oper_param->operatingClass;
         em_op_class_info->channel = oper_param->channel;
+        em_op_class_info->tx_power = oper_param->transmitPower;
         no_of_opclass++;
         proto->set_num_op_class(proto->data_model,no_of_opclass);
     }
@@ -389,10 +390,366 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
     return webconfig_error_none;
 }
 
+/* Returns true if the given 5 GHz channel number falls in the DFS band
+ * (52-64 U-NII-2A, 100-144 U-NII-2C/2E), per IEEE 802.11-2020 Annex E.
+ */
+static bool is_dfs_channel(unsigned int chan)
+{
+    return ((chan >= 52 && chan <= 64) || (chan >= 100 && chan <= 144));
+}
+
+/* Fill CAC capabilities for one radio. */
+static void fill_cac_cap(const wifi_radio_capabilities_t *hal_radio_cap,
+    const wifi_radio_operationParam_t *oper_param,
+    em_cac_cap_radio_t *cac_cap)
+{
+    if (oper_param == NULL || hal_radio_cap == NULL) {
+        return;
+    }
+     em_cac_cap_method_t *dst_method = &cac_cap->cac_methods[0];
+
+    dst_method->cac_method = (hal_radio_cap && hal_radio_cap->zeroDFSSupported)
+                             ? em_cac_method_continuous_dedicated /* Continuous with Dedicated Radio */
+                             : em_cac_method_continuous; /* Continuous CAC */
+    dst_method->cac_duration  = 60; /* seconds, regulatory default */
+    dst_method->op_classes_num = 0;
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: filling CAC cap: numOperatingClasses=%u hal_entries=%u DfsEnabled=%d\n",
+        __func__, __LINE__, oper_param->numOperatingClasses,
+        hal_radio_cap ? hal_radio_cap->num_op_class_entries : 0,
+        (int)oper_param->DfsEnabled);
+
+    /* CAC is only applicable to 5 GHz radios (DFS requirement).
+     * Confirm the radio has at least one 5 GHz op class (115-130) before
+     * proceeding; otherwise skip entirely (e.g. 2.4 GHz or 6 GHz radio). */
+    bool is_5ghz_radio = false;
+    for (unsigned int i = 0; i < hal_radio_cap->num_op_class_entries && i < MAXNUMOPERCLASSESPERBAND; i++) {
+        unsigned int opc = hal_radio_cap->op_class_ch_list[i].op_class;
+        if (opc >= 115 && opc <= 130) {
+            is_5ghz_radio = true;
+            break;
+        }
+    }
+    if (!is_5ghz_radio) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: no 5 GHz op classes found, skip CAC cap\n",
+            __func__, __LINE__);
+        return;
+    }
+
+    for (unsigned int i = 0; i < hal_radio_cap->num_op_class_entries && i < MAXNUMOPERCLASSESPERBAND; i++) {
+        if (dst_method->op_classes_num >= EM_MAX_CAC_OP_CLASS_PER_METHOD) {
+            break;
+        }
+
+        const op_class_ch_list_t *oc = &hal_radio_cap->op_class_ch_list[i];
+
+        /* 6 GHz has no DFS/CAC requirement - skip entirely. */
+        if (oc->op_class >= 131 && oc->op_class <= 137) {
+            continue;
+        }
+
+        /* Skip op classes that contain no DFS channels. */
+        bool has_dfs = false;
+        unsigned int ch_limit = (oc->num_channels < MAX_CHANNELS_PER_OP_CLASS)
+                                    ? oc->num_channels : MAX_CHANNELS_PER_OP_CLASS;
+        for (unsigned int ci = 0; ci < ch_limit; ci++) {
+            if (is_dfs_channel((unsigned int)oc->channels[ci])) {
+                has_dfs = true;
+                break;
+            }
+        }
+        if (!has_dfs) {
+            continue;
+        }
+
+        /* Find matching operatingClasses[] entry by op_class value to get nonOperable[]. */
+        const wifi_operating_classes_t *oper_oc = NULL;
+        for (unsigned int j = 0; j < oper_param->numOperatingClasses; j++) {
+            if (oper_param->operatingClasses[j].opClass == oc->op_class) {
+                oper_oc = &oper_param->operatingClasses[j];
+                break;
+            }
+        }
+
+        /* Enumerate DFS channels minus nonOperable[]. */
+        unsigned char cac_chans[EM_MAX_CAC_CHANS_PER_CLASS];
+        unsigned char cac_count = 0;
+        for (unsigned int ci = 0; ci < ch_limit && cac_count < EM_MAX_CAC_CHANS_PER_CLASS; ci++) {
+            if (!is_dfs_channel((unsigned int)oc->channels[ci])) {
+                continue; /* only DFS channels */
+            }
+            bool excluded = false;
+            if (oper_oc != NULL) {
+                unsigned int non_oper_count = oper_oc->numberOfNonOperChan < MAXNUMNONOPERABLECHANNELS
+                                                 ? oper_oc->numberOfNonOperChan : MAXNUMNONOPERABLECHANNELS;
+                for (unsigned int ni = 0; ni < non_oper_count; ni++) {
+                    if ((unsigned int)oc->channels[ci] == oper_oc->nonOperable[ni]) {
+                        excluded = true;
+                        break;
+                    }
+                }
+            }
+            if (!excluded) {
+                cac_chans[cac_count++] = (unsigned char)oc->channels[ci];
+            }
+        }
+
+        if (cac_count == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: op_class=%u all CAC channels nonOperable, skip\n",
+                __func__, __LINE__, oc->op_class);
+            continue;
+        }
+
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: op_class=%u added to CAC: %u channels\n",
+            __func__, __LINE__, oc->op_class, cac_count);
+
+        em_cac_op_class_t *dst_oc = &dst_method->op_classes[dst_method->op_classes_num];
+        dst_oc->op_class = (unsigned char)oc->op_class;
+        dst_oc->num      = cac_count;
+        memset(dst_oc->channels, 0, sizeof(dst_oc->channels));
+        memcpy(dst_oc->channels, cac_chans, cac_count);
+        dst_method->op_classes_num++;
+    }
+
+    if (dst_method->op_classes_num > 0) {
+        cac_cap->cac_methods_num = 1;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: dst_method->op_classes_num: %d and cac_cap->cac_methods_num: %d\n",
+        __func__, __LINE__, dst_method->op_classes_num, cac_cap->cac_methods_num);
+}
+
+/*
+ * eht_op_params_from_oper() - compute EHT Operation Info fields from
+ * wifi_radio_operationParam_t (channel, channelWidth, band).
+ *
+ * Per IEEE 802.11be:
+ *   control : 0=20, 1=40, 2=80, 3=160, 4=320 MHz
+ *   ccfs0   : center channel of the primary 80 MHz segment
+ *   ccfs1   : center channel of the full wider block (0 for <= 80 MHz)
+ *
+ * Uses wifi_get_bw*_center_ch() from wifi_util which return channel indices
+ * directly (safe to call from both Agent and OneWifi builds).
+ */
+static void eht_op_params_from_oper(const wifi_radio_operationParam_t *oper,
+    unsigned char *out_control, unsigned char *out_ccfs0, unsigned char *out_ccfs1)
+{
+    if (!out_control || !out_ccfs0 || !out_ccfs1) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Null output parameter(s)\n", __func__, __LINE__);
+        return;
+    }
+
+    unsigned int ch = oper->channel;
+    unsigned char control = 0, ccfs0 = (unsigned char)ch, ccfs1 = 0;
+
+    switch (oper->channelWidth) {
+    case WIFI_CHANNELBANDWIDTH_20MHZ:
+        control = 0; ccfs0 = (unsigned char)ch; ccfs1 = 0;
+        break;
+
+    case WIFI_CHANNELBANDWIDTH_40MHZ: {
+        /* Mirrors HAL: secondary_channel = +1 (HT40+) or -1 (HT40-)
+         * ccfs0 = ch + secondary_channel * 2
+         * cf. update_hostap_iface(): cf1 = freq + secondary_channel*10,
+         *     ieee80211_freq_to_chan(cf1) => ch + secondary_channel*2 */
+        int sec_offset = (oper->numSecondaryChannels >= 1)
+                         ? ((oper->channelSecondary[0] > ch) ? 1 : -1)
+                         : 0;
+        control = 1;
+        ccfs0 = (unsigned char)(ch + sec_offset * 2);
+        ccfs1 = 0;
+        break;
+    }
+
+    case WIFI_CHANNELBANDWIDTH_80MHZ:
+        control = 2;
+        ccfs0 = wifi_get_bw80_center_ch(ch, oper->band);
+        ccfs1 = 0;
+        break;
+
+    case WIFI_CHANNELBANDWIDTH_160MHZ:
+        control = 3;
+        ccfs0 = wifi_get_bw80_center_ch(ch, oper->band);
+        ccfs1 = wifi_get_bw160_center_ch(ch, oper->band);
+        break;
+
+    case WIFI_CHANNELBANDWIDTH_320MHZ: /* 6 GHz only */
+        control = 4;
+        ccfs0 = wifi_get_bw160_center_ch(ch, oper->band);
+        ccfs1 = wifi_get_bw320_center_ch(ch);
+        break;
+
+    default:
+        control = 0; ccfs0 = (unsigned char)ch; ccfs1 = 0;
+        break;
+    }
+
+    *out_control = control;
+    *out_ccfs0   = ccfs0;
+    *out_ccfs1   = ccfs1;
+}
+
+/*
+ * fill_eht_ops_from_radio() populate em_eht_operations_bss_t from HAL radio
+ * operation parameters and capabilities.
+ *
+ * Per IEEE 802.11be, the EHT Operation Information Control byte
+ * channel-width sub-field encodes:
+ *   0 = 20 MHz, 1 = 40 MHz, 2 = 80 MHz, 3 = 160 MHz, 4 = 320 MHz.
+ *
+ * CCFS0/CCFS1 are derived from oper->channel and oper->channelWidth via
+ * eht_op_params_from_oper()
+ */
+static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
+    const wifi_radio_capabilities_t *radio_cap,
+    em_eht_operations_bss_t *eht_ops_bss)
+{
+    if (!oper || !eht_ops_bss) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Null parameter(s)\n", __func__, __LINE__);
+        return;
+    }
+
+    memset(eht_ops_bss, 0, sizeof(*eht_ops_bss));
+
+    bool is_eht = ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
+    if (!is_eht) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,
+            "%s:%d: Radio is not operating in EHT (Wi-Fi 7) mode: wifi7_supported=%d variant=0x%x is_eht=%d\n",
+            __func__, __LINE__,
+            (radio_cap != NULL) ? (int)radio_cap->wifi7_supported : -1,
+            (unsigned int)oper->variant, (int)is_eht);
+        return;
+    }
+    /* Determine whether the radio is operating in EHT (Wi-Fi 7) mode. */
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: EHT ops detect: wifi7_supported=%d variant=0x%x is_eht=%d "
+        "channel=%u channelWidth=%u\n",
+        __func__, __LINE__,
+        (radio_cap != NULL) ? (int)radio_cap->wifi7_supported : -1,
+        (unsigned int)oper->variant, (int)is_eht,
+        oper->channel, (unsigned int)oper->channelWidth);
+
+    eht_ops_bss->op_info_valid          = is_eht ? 1 : 0;
+    eht_ops_bss->disabled_subchannel_valid = 0;
+
+    if (radio_cap != NULL) {
+        unsigned int copy_len = sizeof(eht_ops_bss->eht_msc_nss_set);
+        if (copy_len > EHT_MCS_NSS_CAPAB_LEN) {
+            copy_len = EHT_MCS_NSS_CAPAB_LEN;
+        }
+        memcpy(eht_ops_bss->eht_msc_nss_set, radio_cap->eht_mcs, copy_len);
+    }
+
+    /* Control byte, CCFS0 and CCFS1 are derived from channel and channelWidth
+     * using the same 802.11be block-centre arithmetic as the HAL. */
+    unsigned char d_control = 0, d_ccfs0 = 0, d_ccfs1 = 0;
+    eht_op_params_from_oper(oper, &d_control, &d_ccfs0, &d_ccfs1);
+    eht_ops_bss->control = d_control;
+    eht_ops_bss->ccfs0   = d_ccfs0;
+    eht_ops_bss->ccfs1   = d_ccfs1;
+
+    /* --- Puncturing / disabled subchannel bitmap --- */
+    if (oper->puncturingInfo.punct_bitmap != 0) {
+        eht_ops_bss->disabled_subchannel_valid = 1;
+        eht_ops_bss->disabled_subchannel_bitmap[0] =
+            (unsigned char)(oper->puncturingInfo.punct_bitmap & 0xFF);
+        eht_ops_bss->disabled_subchannel_bitmap[1] =
+            (unsigned char)((oper->puncturingInfo.punct_bitmap >> 8) & 0xFF);
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: EHT ops: op_info_valid=%u control=%u ccfs0=%u ccfs1=%u punct=0x%04x\n",
+        __func__, __LINE__,
+        eht_ops_bss->op_info_valid, eht_ops_bss->control,
+        eht_ops_bss->ccfs0, eht_ops_bss->ccfs1,
+        oper->puncturingInfo.punct_bitmap);
+}
+
+/* Fill Channel Scan Capability op class list for one radio.
+ *
+ * Per spec (EasyMesh Channel Scan Capabilities):
+ *   Num_Chan = 0  ->  agent can scan ALL channels in the operating class.
+ *   Num_Chan > 0  ->  agent can only scan the listed channels.
+ *
+ * For each op class in oper_param->operatingClasses[], the full E-4 channel
+ * list is looked up from hal_radio_cap->op_class_ch_list[] and the nonOperable[]
+ * channels are subtracted to produce the explicit scannable channel list.
+ * If the op class is absent from the HAL table, num=0 is emitted
+ * (spec-safe: implies all channels scannable).
+ */
+static void fill_scan_cap_op_classes(const wifi_radio_capabilities_t *hal_radio_cap,
+    const wifi_radio_operationParam_t *oper_param,
+    em_channel_scan_cap_radio_t *ch_scan)
+{
+
+    if ((hal_radio_cap == NULL) || (oper_param == NULL) || (ch_scan == NULL)) {
+        return;
+    }
+
+    ch_scan->op_classes_num = 0;
+
+    for (unsigned int i = 0; i < oper_param->numOperatingClasses &&
+         ch_scan->op_classes_num < EM_MAX_OPCLASS; i++) {
+
+        const wifi_operating_classes_t *oper_oc = &oper_param->operatingClasses[i];
+        const op_class_ch_list_t *oc = NULL;
+        em_scan_cap_op_class_info_t *scan_entry = &ch_scan->op_classes[ch_scan->op_classes_num];
+
+        scan_entry->op_class = (unsigned char)oper_oc->opClass;
+        memset(scan_entry->channels.channel, 0, EM_MAX_CHANNELS_IN_LIST);
+
+        /* Look up the full HAL channel list for this operating class. */
+        for (unsigned int j = 0; j < hal_radio_cap->num_op_class_entries; j++) {
+            if (hal_radio_cap->op_class_ch_list[j].op_class == oper_oc->opClass) {
+                oc = &hal_radio_cap->op_class_ch_list[j];
+                break;
+            }
+        }
+
+        if (oc == NULL) {
+            /* Op class absent from HAL table: emit num=0 (all channels scannable). */
+            scan_entry->num = 0;
+            ch_scan->op_classes_num++;
+            continue;
+        }
+
+        unsigned char count = 0;
+        unsigned int ch_limit = (oc->num_channels < MAX_CHANNELS_PER_OP_CLASS)
+                                    ? oc->num_channels : MAX_CHANNELS_PER_OP_CLASS;
+        unsigned int non_oper_count = oper_oc->numberOfNonOperChan < MAXNUMNONOPERABLECHANNELS
+                                         ? oper_oc->numberOfNonOperChan : MAXNUMNONOPERABLECHANNELS;
+        for (unsigned int ci = 0; ci < ch_limit && count < EM_MAX_CHANNELS_IN_LIST; ci++) {
+            bool excluded = false;
+            for (unsigned int ni = 0; ni < non_oper_count; ni++) {
+                if ((unsigned int)oc->channels[ci] == oper_oc->nonOperable[ni]) {
+                    excluded = true;
+                    break;
+                }
+            }
+            if (!excluded) {
+                scan_entry->channels.channel[count++] = oc->channels[ci];
+            }
+        }
+
+        /* Num_Chan = 0 means "all channels scannable" per EasyMesh spec,
+         * so skip this op class if filtering left no scannable channels. */
+        if (count == 0) {
+            continue;
+        }
+        scan_entry->num = count;
+
+        ch_scan->op_classes_num++;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: ch_scan->op_classes_num: %d\n",
+        __func__, __LINE__, ch_scan->op_classes_num);
+}
 /* Helper function to translate radio capabilities from OneWifi to EasyMesh */
 static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_property_t *wifi_prop,
     int radio_index,
-    em_radio_cap_info_t *cap_info)
+    em_radio_cap_info_t *cap_info,
+    const wifi_radio_operationParam_t *oper_param)
 {
     wifi_radio_capabilities_t *radio_cap;
     em_ap_ht_cap_t  *em_ht_cap;
@@ -428,7 +785,7 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
     memcpy(em_ht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
     memcpy(em_vht_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
     memcpy(em_he_cap->ruid, cap_info->ruid.mac, sizeof(mac_address_t));
-
+    cap_info->mode = radio_cap->mode[0];
     // HT capabilities
     em_ht_cap->ht_sprt_40mhz = (radio_cap->ht_capab & (1 << 1)) ? 1 : 0;
     em_ht_cap->gi_sprt_40mhz = (radio_cap->ht_capab & (1 << 6)) ? 1 : 0;
@@ -679,6 +1036,16 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
             wifi7_radio->bsta_str_support, wifi7_radio->bsta_nstr_support, wifi7_radio->bsta_emlsr_support, wifi7_radio->bsta_emlmr_support);
     }
 
+    memset(&cap_info->ch_scan, 0, sizeof(cap_info->ch_scan));
+    memcpy(cap_info->ch_scan.ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    cap_info->ch_scan.scan_impact = radio_cap->scan_impact;
+    cap_info->ch_scan.boot_only = radio_cap->boot_only;
+    cap_info->ch_scan.min_scan_interval = radio_cap->min_scan_interval;
+
+    memset(&cap_info->cac_cap, 0, sizeof(em_cac_cap_radio_t));
+    memcpy(cap_info->cac_cap.ruid, cap_info->ruid.mac, sizeof(mac_address_t));
+    fill_cac_cap(radio_cap, oper_param, &cap_info->cac_cap);
+
     return webconfig_error_none;
 }
 
@@ -736,6 +1103,11 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
 
         oper_param = &decoded_params->radios[index].oper;
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
+        if (radio_index >= MAX_NUM_RADIOS) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: invalid radio_index %u for radio '%s'\n",
+                __func__, __LINE__, radio_index, decoded_params->radios[index].name);
+            continue;
+        }
         em_radio_info->enabled = oper_param->enable;
         //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
@@ -780,6 +1152,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_op_class_info->op_class = oper_param->operatingClass;
         em_op_class_info->id.op_class = oper_param->operatingClass;
         em_op_class_info->channel = oper_param->channel;
+        em_op_class_info->tx_power = oper_param->transmitPower;
 
         //Incrementing the number of operating classes by one, as the dml lacks an operating class for current.
         proto->set_num_op_class(proto->data_model, (op_class_count+1));
@@ -812,7 +1185,10 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %d and mac:%s and radio_index:%d\n", __func__,
                 __LINE__, index, mac_str, radio_index);
 
-            translate_radio_capability_to_easymesh(wifi_prop, radio_index, radio_cap);
+            translate_radio_capability_to_easymesh(wifi_prop, radio_index, radio_cap, oper_param);
+
+            // Populate ch_scan.op_classes[] for Channel Scan Capabilities.
+            fill_scan_cap_op_classes(&wifi_prop->radiocap[radio_index], oper_param, &radio_cap->ch_scan);
         }
     }
 
@@ -869,7 +1245,51 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
         return webconfig_error_translate_to_easymesh;
     }
     snprintf(vap_row->ruid.name, sizeof(vap_row->ruid.name), "%s", radio_iface_map->radio_name);
-    mac_address_from_name(radio_iface_map->interface_name,vap_row->ruid.mac);	
+    mac_address_from_name(radio_iface_map->interface_name, vap_row->ruid.mac);
+
+    return webconfig_error_none;
+}
+
+// Fill em_assoc_sta_mld_info_t from assoc_dev_data and VAP info for Wi-Fi 7 MLD-capable clients
+static webconfig_error_t fill_assoc_sta_mld_info_from_assoc_dev(
+    em_assoc_sta_mld_info_t *sta_mld_info, assoc_dev_data_t *assoc_dev_data, wifi_vap_info_t *vap,
+    webconfig_external_easymesh_t *proto)
+{
+    char ap_mld_mac_str[32] = {};
+    char bssid_mac_str[32] = {};
+
+    if (sta_mld_info == NULL || assoc_dev_data == NULL || vap == NULL || proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: input argument is NULL\n", __func__,
+            __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    memset(sta_mld_info, 0, sizeof(em_assoc_sta_mld_info_t));
+    memcpy(sta_mld_info->mac_addr, assoc_dev_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
+
+    uint8_mac_to_string_mac(vap->u.bss_info.bssid, bssid_mac_str);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Found AP MLD information for bssid=%s\n", __func__,
+        __LINE__, bssid_mac_str);
+    uint8_mac_to_string_mac(vap->u.bss_info.mld_info.common_info.mld_addr, ap_mld_mac_str);
+    if (WiFi_IsValidMacAddr(ap_mld_mac_str)) {
+        memcpy(sta_mld_info->ap_mld_mac_addr, vap->u.bss_info.mld_info.common_info.mld_addr,
+            sizeof(mac_address_t));
+    } else {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No AP MLD MAC available for bssid %s\n",
+            __func__, __LINE__, bssid_mac_str);
+    }
+
+    sta_mld_info->str = (assoc_dev_data->mld_info.cli_MLModeCapa & STR) ? true : false;
+    sta_mld_info->nstr = (assoc_dev_data->mld_info.cli_MLModeCapa & NSTR) ? true : false;
+    sta_mld_info->emlsr = (assoc_dev_data->mld_info.cli_MLModeCapa & eMLSR) ? true : false;
+    sta_mld_info->emlmr = (assoc_dev_data->mld_info.cli_MLModeCapa & eMLMR) ? true : false;
+
+    // One affiliated STA entry per link (one entry per VAP visit)
+    sta_mld_info->num_affiliated_sta = 1;
+    memcpy(sta_mld_info->affiliated_sta[0].bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
+    memcpy(sta_mld_info->affiliated_sta[0].mac_addr, assoc_dev_data->link_address,
+        sizeof(mac_address_t));
+
     return webconfig_error_none;
 }
 
@@ -878,7 +1298,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
 {
     em_sta_info_t *em_sta_dev_info = NULL;
     unsigned int associated_client_count = 0;
-    unsigned int i = 0, j = 0, tag_len = 0;
+    unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0;
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     rdk_wifi_radio_t *radio = NULL;
     wifi_vap_info_map_t *vap_map = NULL;
@@ -971,11 +1391,14 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     }
                     mgmt = (struct ieee80211_mgmt *) assoc_dev_data->sta_data.msg_data.data;
                     tag_len = assoc_dev_data->sta_data.msg_data.frame.len - IEEE80211_HDRLEN - sizeof(mgmt->u.assoc_req);
-                    if (tag_len > EM_MAX_FRAME_BODY_LEN) {
-                        tag_len = EM_MAX_FRAME_BODY_LEN-1;
+                    /* Store the full 802.11 association request frame body:
+                     * fixed fields (capab_info 2B + listen_interval 2B) followed by IEs. */
+                    fixed_len = (unsigned int)sizeof(mgmt->u.assoc_req);
+                    if (fixed_len + tag_len > EM_MAX_FRAME_BODY_LEN) {
+                        tag_len = EM_MAX_FRAME_BODY_LEN - fixed_len;
                     }
-                    memcpy(em_sta_dev_info->frame_body, mgmt->u.assoc_req.variable, tag_len);
-                    em_sta_dev_info->frame_body_len = tag_len;
+                    memcpy(em_sta_dev_info->frame_body, &mgmt->u.assoc_req, fixed_len + tag_len);
+                    em_sta_dev_info->frame_body_len = fixed_len + tag_len;
 
                     if (assoc_dev_data->client_state == 0) {
                         em_sta_dev_info->associated = true;
@@ -985,6 +1408,22 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_disassoc);
                     }
                     free(em_sta_dev_info);
+
+                    // Update assoc STA MLD for Wi-Fi 7 MLD-capable clients on AP mode VAPs
+                    if (assoc_dev_data->client_state == 0 &&
+                        assoc_dev_data->dev_stats.cli_MLDEnable == true &&
+                        vap->vap_mode == wifi_vap_mode_ap) {
+                        em_assoc_sta_mld_info_t assoc_sta_mld_info;
+                        webconfig_error_t mld_ret = fill_assoc_sta_mld_info_from_assoc_dev(
+                            &assoc_sta_mld_info, assoc_dev_data, vap, proto);
+                        if (mld_ret == webconfig_error_none) {
+                            proto->update_assoc_sta_mld_info(proto->data_model,
+                                &assoc_sta_mld_info);
+                            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                                "%s:%d: Assoc STA MLD info updated for client on vap '%s'\n\n",
+                                __func__, __LINE__, rdk_vap_info->vap_name);
+                        }
+                    }
                     associated_client_count++;
                     assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
                 }
@@ -1214,7 +1653,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
             int found = 0;
             for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
                 ap_metrics = &em_ap_report->radio_reports[i].vap_reports[k];
-                if (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) == 0) {
+                if (memcmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) == 0) {
                     found = 1;
                     break;
                 }
@@ -1748,6 +2187,12 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                 return webconfig_error_translate_to_easymesh;
             }
 
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == FALSE) {
+                fill_eht_ops_from_radio(&radio->oper,
+                    (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
+                    &em_bss_info->eht_ops);
+            }
+
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
                 // details for STA
@@ -1892,6 +2337,12 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_easymesh;
             }
+
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == FALSE) {
+                fill_eht_ops_from_radio(&radio->oper,
+                    (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
+                    &vap_info_row->eht_ops);
+            }
         }
     }
     return webconfig_error_none;
@@ -2018,6 +2469,12 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
             } else {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_easymesh;
+            }
+
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == FALSE) {
+                fill_eht_ops_from_radio(&radio->oper,
+                    (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
+                    &vap_info_row->eht_ops);
             }
 
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
@@ -3083,12 +3540,24 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
     }
 
     // backhaul bss config policy
-    memcpy(policy_cfg->backhaul_bss_config_policy.bssid, em_policy_cfg->bh_bss_cfg_policy.bssid,
-        sizeof(bssid_t));
-    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed =
-        em_policy_cfg->bh_bss_cfg_policy.p1_bsta_disallowed;
-    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed =
-        em_policy_cfg->bh_bss_cfg_policy.p2_bsta_disallowed;
+    static const unsigned char null_bssid[sizeof(bssid_t)] = {0};
+    policy_cfg->num_backhaul_bss_config = 0;
+    for (unsigned int i = 0; i < em_policy_cfg->num_bh_bss_cfg && i < EM_MAX_BACKHAUL_BSS_POLICY; i++) {
+        if (memcmp(em_policy_cfg->bh_bss_cfg_policy[i].bssid, null_bssid, sizeof(bssid_t)) == 0) {
+            continue;
+        }
+        memcpy(policy_cfg->backhaul_bss_config_policy[policy_cfg->num_backhaul_bss_config].bssid,
+            em_policy_cfg->bh_bss_cfg_policy[i].bssid, sizeof(bssid_t));
+        policy_cfg->backhaul_bss_config_policy[policy_cfg->num_backhaul_bss_config].profile_1_bsta_disallowed =
+            em_policy_cfg->bh_bss_cfg_policy[i].p1_bsta_disallowed;
+        policy_cfg->backhaul_bss_config_policy[policy_cfg->num_backhaul_bss_config].profile_2_bsta_disallowed =
+            em_policy_cfg->bh_bss_cfg_policy[i].p2_bsta_disallowed;
+        policy_cfg->num_backhaul_bss_config++;
+    }
+
+    // default 802.1Q settings policy
+    policy_cfg->default_8021q_policy.primary_vid = em_policy_cfg->def_8021q_settings.primary_vlan_id;
+    policy_cfg->default_8021q_policy.default_pcp = em_policy_cfg->def_8021q_settings.default_pcp;
 
     // channel scan reporting policy
     policy_cfg->channel_scan_reporting_policy.report_independent_channel_scan =
@@ -3111,6 +3580,47 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 7) & 1;
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_status =
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 5) & 1;
+    }
+
+    // radio steering parameters
+    if (em_policy_cfg->steering_policy.radio_num > EM_MAX_RADIO_POLICY) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of radios in steering policy: %d\n", __func__, __LINE__, em_policy_cfg->steering_policy.radio_num);
+        return webconfig_error_invalid_subdoc;
+    }
+    policy_cfg->radio_steering_policies.radio_count = em_policy_cfg->steering_policy.radio_num;
+    for (int i = 0; i < policy_cfg->radio_steering_policies.radio_count && i < EM_MAX_RADIO_POLICY; i++) {
+        memcpy(policy_cfg->radio_steering_policies.radio_steering_policy[i].ruid,
+            em_policy_cfg->steering_policy.radio_steer_policy[i].ruid, sizeof(mac_addr_t));
+        policy_cfg->radio_steering_policies.radio_steering_policy[i].policy =
+            em_policy_cfg->steering_policy.radio_steer_policy[i].steering_policy;
+        policy_cfg->radio_steering_policies.radio_steering_policy[i].util_threshold =
+            em_policy_cfg->steering_policy.radio_steer_policy[i].channel_util_thresh;
+        policy_cfg->radio_steering_policies.radio_steering_policy[i].rcpi_threshold =
+            em_policy_cfg->steering_policy.radio_steer_policy[i].rssi_steering_thresh;
+    }
+
+    // unsuccessful association policy
+    policy_cfg->unsuccess_assoc_policy.report_unassoc_sta =
+        em_policy_cfg->unsuccessful_assoc_policy.rprt_flag;
+    policy_cfg->unsuccess_assoc_policy.max_reporting_rate =
+        em_policy_cfg->unsuccessful_assoc_policy.max_rprt_rate;
+
+    // QoS management policy
+    policy_cfg->num_qos_mgt = 0;
+    for (unsigned int qi = 0; qi < em_policy_cfg->num_qos_mgmt && qi < EM_MAX_QOS_POLICY; qi++) {
+        policy_cfg->qos_mgt_policy[qi].num_mscs = em_policy_cfg->qos_mgmt_policy[qi].mscs_disallowed_num;
+        for (int i = 0; i < policy_cfg->qos_mgt_policy[qi].num_mscs && i < EM_MAX_QOS_MAC; i++) {
+            memcpy(policy_cfg->qos_mgt_policy[qi].mscs_mac[i],
+                em_policy_cfg->qos_mgmt_policy[qi].mac_addr_mscs_disallowed[i].sta_mac_addr,
+                sizeof(mac_addr_t));
+        }
+        policy_cfg->qos_mgt_policy[qi].num_scs = em_policy_cfg->qos_mgmt_policy[qi].scs_disallowed_num;
+        for (int i = 0; i < policy_cfg->qos_mgt_policy[qi].num_scs && i < EM_MAX_QOS_MAC; i++) {
+            memcpy(policy_cfg->qos_mgt_policy[qi].scs_mac[i],
+                em_policy_cfg->qos_mgmt_policy[qi].mac_addr_scs_disallowed[i].sta_mac_addr,
+                sizeof(mac_addr_t));
+        }
+        policy_cfg->num_qos_mgt++;
     }
 
     return webconfig_error_none;
