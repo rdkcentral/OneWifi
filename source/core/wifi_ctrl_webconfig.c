@@ -2195,7 +2195,7 @@ static int mlo_fronthaul_subdoc_for_vap(unsigned int vap_index, webconfig_subdoc
 }
 
 /* Triggered when a radio's BE-variant or enable state changes. Re-applies the
- * fronthaul VAP subdocs so MLO eligibility is recomputed inside the normal
+ * relevant VAP subdocs so MLO eligibility is recomputed inside the normal
  * apply pipeline. Only VAPs on the changed radios (radio_bitmap) that actually
  * carry MLD config are considered, and only their subdoc types are re-injected.
  * If nothing qualifies, no work is done. */
