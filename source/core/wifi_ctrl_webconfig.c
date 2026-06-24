@@ -2186,8 +2186,8 @@ static int mlo_fronthaul_subdoc_for_vap(unsigned int vap_index, webconfig_subdoc
         *out = webconfig_subdoc_type_xfinity;
     } else if (isVapLnf(vap_index)) {
         *out = webconfig_subdoc_type_lnf;
-    } else if (isVapMesh(vap_index)) {
-        *out = webconfig_subdoc_type_mesh;
+    } else if (isVapMeshBackhaul(vap_index)) {
+        *out = webconfig_subdoc_type_mesh_backhaul;
     } else {
         return -1;
     }
@@ -2219,20 +2219,22 @@ static void trigger_mlo_vap_reconfiguration(wifi_ctrl_t *ctrl, unsigned int radi
 
         for (k = 0; k < vap_map->num_vaps; k++) {
             wifi_vap_info_t *vap = &vap_map->vap_array[k];
-            wifi_mld_common_info_t *mld_conf = &vap->u.bss_info.mld_info.common_info;
+            wifi_mld_common_info_t *mld_conf = NULL;
             webconfig_subdoc_type_t subdoc;
 
             if (isVapSTAMesh(vap->vap_index)) {
                 continue;
             }
 
-            /* Only VAPs with valid MLD config participate in MLO. */
-            if (mld_conf->mld_id >= MLD_UNIT_COUNT ||
-                mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
+            if (mlo_fronthaul_subdoc_for_vap(vap->vap_index, &subdoc) != 0) {
                 continue;
             }
 
-            if (mlo_fronthaul_subdoc_for_vap(vap->vap_index, &subdoc) != 0) {
+            mld_conf = &vap->u.bss_info.mld_info.common_info;
+
+            /* Only VAPs with valid MLD config participate in MLO. */
+            if (mld_conf->mld_id >= MLD_UNIT_COUNT ||
+                mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
                 continue;
             }
 
