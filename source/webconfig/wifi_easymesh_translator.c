@@ -381,6 +381,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_op_class_info->id.op_class = oper_param->operatingClass;
         em_op_class_info->op_class = oper_param->operatingClass;
         em_op_class_info->channel = oper_param->channel;
+        em_op_class_info->tx_power = oper_param->transmitPower;
         no_of_opclass++;
         proto->set_num_op_class(proto->data_model,no_of_opclass);
     }
@@ -1151,6 +1152,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_op_class_info->op_class = oper_param->operatingClass;
         em_op_class_info->id.op_class = oper_param->operatingClass;
         em_op_class_info->channel = oper_param->channel;
+        em_op_class_info->tx_power = oper_param->transmitPower;
 
         //Incrementing the number of operating classes by one, as the dml lacks an operating class for current.
         proto->set_num_op_class(proto->data_model, (op_class_count+1));
@@ -1651,7 +1653,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
             int found = 0;
             for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
                 ap_metrics = &em_ap_report->radio_reports[i].vap_reports[k];
-                if (strncmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) == 0) {
+                if (memcmp(ap_metrics->vap_metrics.bssid, vap->u.bss_info.bssid, sizeof(bssid_t)) == 0) {
                     found = 1;
                     break;
                 }

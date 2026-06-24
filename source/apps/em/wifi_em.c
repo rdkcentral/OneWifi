@@ -2669,6 +2669,30 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
     switch (event->sub_type) {
     case wifi_event_type_notify_monitor_done:
         is_monitor_done = TRUE;
+        {
+            wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+            unsigned int num_radios = getNumberRadios();
+            for (unsigned int i = 0; i < num_radios; i++) {
+                ULONG curr_txpower = 0;
+                int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
+                if (rc != RETURN_OK) {
+                    wifi_util_error_print(WIFI_EM, "%s:%d: failed to read tx power for radio_index=%u (rc=%d)\n",
+                        __func__, __LINE__, i, rc);
+                    continue;
+                }
+                if (curr_txpower == 0) {
+                    wifi_util_error_print(WIFI_EM, "%s:%d: tx power reported as 0 for radio_index=%u; defaulting to 100\n",
+                        __func__, __LINE__, i);
+                    curr_txpower = 100;
+                }
+
+                pthread_mutex_lock(&wifi_mgr->data_cache_lock);
+                wifi_mgr->radio_config[i].oper.transmitPower = (UINT)curr_txpower;
+                pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
+                wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n",
+                    __func__, __LINE__, i, curr_txpower);
+            }
+        }
         break;
 
     case wifi_event_type_start_channel_scan:
@@ -3110,6 +3134,12 @@ bus_error_t set_disconn_scan_none_state(char *name, raw_data_t *p_data, bus_user
     return bus_error_success;
 }
 
+bus_error_t webconfig_dummy(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    //Place holder to add the handling of subdoc thats received from em_agent
+    return bus_error_success;
+}
+
 int em_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RETURN_OK;
@@ -3147,7 +3177,13 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { bus_data_type_string, false, 0, 0, 0, NULL } },
         { WIFI_EM_CLIENT_ASSOC_CTRL_REQ, bus_element_type_method,
             { NULL, controller_set_client_acl_rules, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-            { bus_data_type_bytes, true, 0, 0, 0, NULL } }
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_WEBCONFIG_SET_UNASSOC_STA, bus_element_type_method,
+            { NULL, webconfig_dummy, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_EM_UNASSOC_STA_LINK_METRICS_RESP, bus_element_type_method,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
 
     };
 

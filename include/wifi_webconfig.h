@@ -36,6 +36,7 @@ extern "C" {
 #define WIFI_WEBCONFIG_GET_ASSOC        "Device.WiFi.AssociatedClients"
 #define WIFI_WEBCONFIG_GET_ACL          "Device.WiFi.MacFilter"
 #define WIFI_WEBCONFIG_GET_CSI          "Device.WiFi.CSI"
+#define WIFI_WEBCONFIG_SET_UNASSOC_STA  "Device.WiFi.UnAssoc.STA"	
 
 #define WIFI_WEBCONFIG_PRIVATE_VAP      "Device.WiFi.Private"
 #define WIFI_WEBCONFIG_HOME_VAP         "Device.WiFi.Home"
@@ -142,6 +143,7 @@ typedef enum {
     webconfig_subdoc_type_em_channel_stats,
     webconfig_subdoc_type_em_sta_link_metrics,
     webconfig_subdoc_type_em_ap_metrics_report,
+    webconfig_subdoc_type_em_unassoc_sta_link_metrics,
 #endif
     webconfig_subdoc_type_memwraptool,
     webconfig_subdoc_type_link_report,
