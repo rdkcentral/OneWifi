@@ -269,6 +269,15 @@ LDFLAGS = $(LIBDIRS) $(LIBS)
 
 PROGRAM = $(INSTALLDIR)/bin/OneWifi
 
+TEST_PROGRAM  = $(INSTALLDIR)/bin/em_topo_test
+TEST_SOURCES  = $(ONE_WIFI_HOME)/source/apps/test/test.c
+TEST_OBJECTS  = $(TEST_SOURCES:.c=.o)
+TEST_CFLAGS   = -g -Os -fPIC \
+    -I$(STAGING_DIR)/usr/include \
+    -DBANANA_PI_PORT -D_PLATFORM_BANANAPI_R4_ -DEM_APP \
+    -DEM_WEBSOCKET_PUSH
+TEST_LDFLAGS  = -L$(STAGING_DIR)/usr/lib -lssl -lcrypto -lcjson
+
 INCLUDEDIRS = \
     -I$(WIFI_CCSP_COMMON_LIB)/source/cosa/include \
     -I$(WIFI_CCSP_COMMON_LIB)/source/cosa/include/linux \
@@ -538,7 +547,7 @@ $(BUILD_DIR):
 #
 
 
-all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY) $(PROGRAM)
+all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY) $(PROGRAM) $(TEST_PROGRAM)
 
 $(CMN_LIBRARY): $(ALL_CMN_LIB_OBJECTS)
 	$(AR) -rcs $@  $^
@@ -566,6 +575,12 @@ $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 $(PROGRAM): $(ALLOBJECTS)
 	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
+$(TEST_PROGRAM): $(TEST_OBJECTS)
+	$(CC) -o $@ $(TEST_OBJECTS) $(TEST_LDFLAGS)
+
+$(ONE_WIFI_HOME)/source/apps/test/%.o: $(ONE_WIFI_HOME)/source/apps/test/%.c
+	$(CC) $(TEST_CFLAGS) -o $@ -c $<
+
 #
 # Object targets: rules that define objects, their dependencies, and
 # a list of commands for compilation.
@@ -580,7 +595,7 @@ $(PROGRAM): $(ALLOBJECTS)
 # Clean target: "make -f Makefile.Linux clean" to remove unwanted objects and executables.
 #
 clean:
-	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY)  $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY)$(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
+	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY)  $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY)$(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM) $(TEST_OBJECTS) $(TEST_PROGRAM)
 
 #
 # Run target: "make -f Makefile.Linux run" to execute the application
