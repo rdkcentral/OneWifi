@@ -5470,8 +5470,7 @@ SSID_GetParamIntValue
             *pInt = -1;
             return TRUE;
         }
-        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE ||
-            !isRadioBeEnabled(pcfg->radio_index)) {
+        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE) {
             *pInt = -1;
         } else {
             *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
@@ -6014,13 +6013,6 @@ SSID_SetParamIntValue
         }
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
         tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
-
-        if (tmp_mld_enable == TRUE && !isRadioBeEnabled(pcfg->radio_index)) {
-            wifi_util_error_print(WIFI_DMCLI,
-                "%s:%d Cannot set MLDUnit on VAP %d: radio %d has no BE mode\n", __FUNCTION__,
-                __LINE__, pcfg->vap_index, pcfg->radio_index);
-            return FALSE;
-        }
 
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
             if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
@@ -6899,11 +6891,7 @@ AccessPoint_GetParamBoolValue
     if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
     {
         /* collect value */
-        if (!isRadioBeEnabled(pcfg->radio_index)) {
-            *pBool = FALSE;
-        } else {
-            *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
-        }
+        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
         return TRUE;
     }
 
@@ -7264,11 +7252,7 @@ AccessPoint_GetParamUlongValue
 
     if( AnscEqualString(ParamName, "MLD_ID", TRUE))
     {
-        if (!isRadioBeEnabled(pcfg->radio_index)) {
-            *puLong = UNDEFINED_MLD_ID;
-        } else {
-            *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
-        }
+        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
         return TRUE;
     }
 
@@ -7440,10 +7424,8 @@ AccessPoint_GetParamStringValue
 
         if (isVapSTAMesh(pcfg->vap_index)) {
             mac = zero_mac;
-        } else if (isRadioBeEnabled(pcfg->radio_index)) {
-            mac = pcfg->u.bss_info.mld_info.common_info.mld_addr;
         } else {
-            mac = pcfg->u.bss_info.bssid;
+            mac = pcfg->u.bss_info.mld_info.common_info.mld_addr;
         }
 
         snprintf(pValue, *pUlSize, "%02X:%02X:%02X:%02X:%02X:%02X",

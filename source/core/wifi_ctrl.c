@@ -3281,18 +3281,6 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
     return wifi_mgr->radio_config[radioIndex].vaps.num_vaps;
 }
 
-BOOL isRadioBeEnabled(UINT radio_index)
-{
-#ifdef CONFIG_IEEE80211BE
-    wifi_radio_operationParam_t *radio_param = getRadioOperationParam(radio_index);
-
-    if (radio_param != NULL && radio_param->variant & WIFI_80211_VARIANT_BE) {
-        return TRUE;
-    }
-#endif /* CONFIG_IEEE80211BE */
-    return FALSE;
-}
-
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 /* A radio is MLO-capable only if it is enabled AND running 802.11be. */
 static bool is_radio_mlo_capable(unsigned int radio_index)
@@ -3458,6 +3446,11 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                     mld_conf->mld_enable = false;
                 }
 
+                /* Skip disabled VAPs */
+                if (target_vap->u.bss_info.enabled == false) {
+                    continue;
+                }
+
                 /* Validate MLD configuration bounds */
                 if (mld_conf->mld_id >= MLD_UNIT_COUNT || mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
                     continue;
@@ -3478,7 +3471,7 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 }
 
                 /* Main link (link_id == 0) provides the shared MLD MAC address */
-                if (mld_conf->mld_link_id == 0 && target_vap->u.bss_info.enabled == true) {
+                if (mld_conf->mld_link_id == 0) {
                     main_link_vap = target_vap;
                     memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
                 }
