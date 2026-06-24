@@ -120,6 +120,10 @@ static int remove_link_stats_impl(stats_arg_t *stats)
 /* PERIODIC_STATS (msg_type 1) – periodic monitor poll batch */
 static int process_lq_stats_impl(stats_arg_t *stats, int len)
 {
+    /* Maximum clients per IPC datagram.  Keeps individual datagrams small
+     * (~19 KB) so the kernel socket buffer can hold multiple in-flight
+     * without hitting EAGAIN when 50+ clients are connected. */
+#define LQ_IPC_BATCH_SIZE 16
 
     for (int i = 0; i < len; i++) {
         wifi_util_info_print(WIFI_APPS,
@@ -132,10 +136,19 @@ static int process_lq_stats_impl(stats_arg_t *stats, int len)
             (long long)stats[i].total_disconnected_time.tv_sec);
     }
 
-    int rc = lq_ipc_send(LQ_IPC_MSG_PERIODIC_STATS, stats,
-                         (uint32_t)len, sizeof(stats_arg_t));
-    wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->PERIODIC_STATS] lq_ipc_send rc=%d\n",
-        __func__, __LINE__, rc);
+    int rc = 0;
+    int offset = 0;
+    while (offset < len) {
+        int chunk = (len - offset > LQ_IPC_BATCH_SIZE) ? LQ_IPC_BATCH_SIZE : (len - offset);
+        int ret = lq_ipc_send(LQ_IPC_MSG_PERIODIC_STATS, &stats[offset],
+                              (uint32_t)chunk, sizeof(stats_arg_t));
+        if (ret < 0) {
+            rc = ret;
+        }
+        offset += chunk;
+    }
+    wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->PERIODIC_STATS] total=%d batches=%d rc=%d\n",
+        __func__, __LINE__, len, (len + LQ_IPC_BATCH_SIZE - 1) / LQ_IPC_BATCH_SIZE, rc);
     return rc;
 }
 

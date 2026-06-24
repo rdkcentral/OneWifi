@@ -43,10 +43,16 @@ static int lq_ipc_open_fd(void)
         return 0;
     lq_ipc_fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
     if (lq_ipc_fd < 0) {
-        wifi_util_error_print(WIFI_MON,
+        wifi_util_error_print(WIFI_APPS,
             "%s:%d socket() failed: %s\n", __func__, __LINE__, strerror(errno));
         return -1;
     }
+
+    /* Increase send buffer to handle bursts when 50+ clients are tracked.
+     * Matches the receiver (wei) SO_RCVBUF of 4 MB. */
+    int sndbuf = 4 * 1024 * 1024;
+    setsockopt(lq_ipc_fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
+
     return 0;
 }
 
@@ -182,7 +188,7 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
     size_t alloc_sz = sizeof(lq_tlv_t) + data_sz;
     uint8_t *buf = (uint8_t *)malloc(alloc_sz);
     if (!buf) {
-        wifi_util_error_print(WIFI_MON,
+        wifi_util_error_print(WIFI_APPS,
             "%s:%d malloc(%zu) failed\n", __func__, __LINE__, alloc_sz);
         return -1;
     }
@@ -213,7 +219,7 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
         }
 
         int err = errno;
-        wifi_util_error_print(WIFI_MON,
+        wifi_util_error_print(WIFI_APPS,
             "%s:%d [IPC-SEND] sendto(%s) failed: %s (attempt %d)\n",
             __func__, __LINE__, LQ_STATS_SOCKET_PATH, strerror(err), attempt + 1);
 

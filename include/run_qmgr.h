@@ -145,9 +145,6 @@ int set_max_snr_radios(radio_max_snr_t *max_snr_val);
 /* Sets score params booster flags via bitmask */
 int set_score_params(uint32_t mask);
 
-/* Gets score params booster flags as bitmask */
-uint32_t get_score_params_mask(void);
-
 /* Connection Affinity related helper functions */
 int update_affinity_stats(stats_arg_t *arg,bool flag);
 
