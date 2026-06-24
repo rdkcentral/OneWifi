@@ -40,7 +40,7 @@
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 //5 seconds
 #define MAX_RESET_RADIO_PARAMS_RETRY_COUNTER  (5000 / 100)
 
-#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x" // FOR DUMMY PR
 #define MAC_ARG(arg) \
     arg[0], \
     arg[1], \
