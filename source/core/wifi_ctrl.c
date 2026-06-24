@@ -3280,6 +3280,18 @@ BOOL isRadioBeEnabled(UINT radio_index)
 }
 
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+/* A radio is MLO-capable only if it is enabled, not in EcoPowerDown, and running 802.11be. */
+static bool is_radio_mlo_capable(unsigned int radio_index)
+{
+    wifi_radio_operationParam_t *radio_param = getRadioOperationParam(radio_index);
+
+    if (radio_param == NULL) {
+        return false;
+    }
+    return radio_param->enable && !radio_param->EcoPowerDown &&
+        (radio_param->variant & WIFI_80211_VARIANT_BE);
+}
+
 static bool is_mlo_wpa3_personal(wifi_security_modes_t mode)
 {
     return (mode == wifi_security_mode_wpa3_personal ||
@@ -3439,6 +3451,15 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
 
                 /* Only collect VAPs belonging to the current MLD unit */
                 if (mld_conf->mld_id != i) {
+                    continue;
+                }
+
+                /* Radio must be enabled and in 802.11be mode for MLO VAP */
+                if (is_radio_mlo_capable(mgr_vap->radio_index) == false) {
+                    wifi_util_info_print(log_type,
+                        "%s:%d: vap_index=%d excluded from MLO unit %d "
+                        "(radio %u not enabled/EDPD/BE)\n",
+                        __func__, __LINE__, mgr_vap->vap_index, i, mgr_vap->radio_index);
                     continue;
                 }
 
