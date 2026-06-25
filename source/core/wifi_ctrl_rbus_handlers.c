@@ -4273,6 +4273,79 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
      return;
 }
 
+/**
+ * @brief RBus set handler for Device.WiFi.X_RDKCENTRAL-COM_StartACS.
+ *
+ * Receives a JSON payload containing an ACS channel exclusion list and
+ * pushes it to the wifi control queue for processing by
+ * process_start_acs_command().
+ *
+ * The JSON payload must contain the following fields:
+ *   - "Version"     : Must be "1.0"
+ *   - "SubDocName"  : Must be "Acs"
+ *   - "RadioName"   : Target radio name (e.g. "radio1", "radio2", "radio3")
+ *   - "AcsList"     : Array of exclusion entries, each containing:
+ *       - "opclass"                  : IEEE 802.11 Annex E operating class
+ *       - "exclude_channels_length"  : Number of channels to exclude
+ *       - "exclude_channels"         : Array of channel numbers
+ *
+ * An empty "AcsList" array clears the exclusion list.
+ *
+ * Example JSON (set exclusion list):
+ *   {"Version":"1.0","SubDocName":"Acs","RadioName":"radio2",
+ *    "AcsList":[{"opclass":115,"exclude_channels_length":2,
+ *    "exclude_channels":[36,40]}]}
+ *
+ * Example JSON (clear exclusion list):
+ *   {"Version":"1.0","SubDocName":"Acs","RadioName":"radio2",
+ *    "AcsList":[]}
+ *
+ * @param[in] name       Fully qualified RBus element name
+ * @param[in] p_data     Input data: bus_data_type_string containing the
+ *                       JSON payload
+ * @param[in] user_data  Bus user data (unused)
+ *
+ * @return bus_error_success              On success (queued for processing)
+ * @return bus_error_element_name_missing If name is NULL
+ * @return bus_error_invalid_input        If data type is not string, or
+ *                                        payload is NULL or empty
+ */
+bus_error_t set_StartACS(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    char *pTmp = NULL;
+    unsigned int payload_len = 0;
+
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d element name is not found\r\n", __func__, __LINE__);
+        return bus_error_element_name_missing;
+    }
+
+    if ((p_data->data_type != bus_data_type_string)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n",
+            __func__, __LINE__, p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    pTmp = (char *)p_data->raw_data.bytes;
+    payload_len = p_data->raw_data_len;
+
+    if (pTmp == NULL || pTmp[0] == '\0' || payload_len == 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d payload is NULL or empty\n",
+            __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    pTmp[payload_len] = '\0';
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d StartACS request received: '%s'\n",
+        __func__, __LINE__, pTmp);
+
+    push_event_to_ctrl_queue(pTmp, (payload_len + 1), wifi_event_type_command,
+        wifi_event_type_command_start_acs, NULL);
+
+    return bus_error_success;
+}
 
 void bus_register_handlers(wifi_ctrl_t *ctrl)
 {
@@ -4447,7 +4520,10 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_IGNITE_STATUS, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
-    };
+                                { WIFI_RADIO_START_ACS, bus_element_type_method,
+                                    { NULL, set_StartACS, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
+	 };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);
     if (rc != bus_error_success) {

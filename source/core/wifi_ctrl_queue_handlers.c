@@ -4328,6 +4328,387 @@ void process_rsn_override_rfc(bool type)
     tgt_vap_map = NULL;
 }
 
+#define ACS_SUBDOC_VERSION      "1.0"
+#define ACS_SUBDOC_NAME         "Acs"
+#define ACS_MAX_EXCLUDE_ENTRIES 256
+
+/**
+ * @brief Decoded result of ACS exclusion JSON subdoc.
+ */
+ typedef struct {
+    int radio_index; /**< 0-based radio index */
+    wifi_hal_acs_exclude_t *excl_list; /**< Allocated array of exclusion entries (caller frees) */
+    int excl_count; /**< Number of entries in excl_list */
+} acs_exclusion_decoded_t;
+
+/**
+ * @brief Validate the top-level subdoc fields: Version and SubDocName.
+ *
+ * @param root  Parsed cJSON root object
+ * @return RETURN_OK on success, RETURN_ERR on failure
+ */
+static int validate_acs_subdoc_header(const cJSON *root)
+{
+    cJSON *version_obj = cJSON_GetObjectItemCaseSensitive(root, "Version");
+    cJSON *subdoc_obj = cJSON_GetObjectItemCaseSensitive(root, "SubDocName");
+
+    if (!cJSON_IsString(version_obj) || version_obj->valuestring == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'Version' is missing or not a string\n", __func__, __LINE__);
+        goto err;
+    }
+
+    if (0 != strcmp(version_obj->valuestring, ACS_SUBDOC_VERSION)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unsupported Version '%s', expected '%s'\n",
+            __func__, __LINE__, version_obj->valuestring, ACS_SUBDOC_VERSION);
+        goto err;
+    }
+
+    if (!cJSON_IsString(subdoc_obj) || subdoc_obj->valuestring == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'SubDocName' is missing or not a string\n", __func__, __LINE__);
+        goto err;
+    }
+
+    if (0 != strcmp(subdoc_obj->valuestring, ACS_SUBDOC_NAME)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unexpected SubDocName '%s', expected '%s'\n",
+            __func__, __LINE__, subdoc_obj->valuestring, ACS_SUBDOC_NAME);
+        goto err;
+    }
+
+    return RETURN_OK;
+
+err:
+    return RETURN_ERR;
+}
+
+/**
+ * @brief Validate and resolve the RadioName field to a 0-based radio index.
+ *
+ * @param root  Parsed cJSON root object
+ * @return 0-based radio index on success, RETURN_ERR on failure
+ */
+static int validate_acs_radio_name(const cJSON *root)
+{
+    cJSON *radio_name_obj = cJSON_GetObjectItemCaseSensitive(root, "RadioName");
+    int radioIndex;
+
+    if (!cJSON_IsString(radio_name_obj) || radio_name_obj->valuestring == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'RadioName' is missing or not a string\n", __func__, __LINE__);
+        goto err;
+    }
+
+    radioIndex = convert_radio_name_to_radio_index(radio_name_obj->valuestring);
+    if (radioIndex < 0 || radioIndex >= (int)getNumberRadios()) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid RadioName '%s' (resolved index=%d)\n",
+            __func__, __LINE__, radio_name_obj->valuestring, radioIndex);
+        goto err;
+    }
+
+    return radioIndex;
+
+err:
+    return RETURN_ERR;
+}
+
+/**
+ * @brief Validate a single ACS List entry JSON object.
+ *
+ * Checks that opclass, exclude_channels_length, and exclude_channels are
+ * present and have the correct types. Also verifies that the actual number
+ * of channels in the array matches exclude_channels_length.
+ *
+ * @param entry  cJSON object representing one ACS List entry
+ * @return RETURN_OK on success, RETURN_ERR on failure
+ */
+static int validate_acs_list_entry(const cJSON *entry)
+{
+    cJSON *opclass_obj = cJSON_GetObjectItemCaseSensitive(entry, "opclass");
+    cJSON *ch_len_obj = cJSON_GetObjectItemCaseSensitive(entry, "exclude_channels_length");
+    cJSON *channels_obj = cJSON_GetObjectItemCaseSensitive(entry, "exclude_channels");
+
+    if (!cJSON_IsNumber(opclass_obj)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'opclass' is missing or not a number\n", __func__, __LINE__);
+        goto err;
+    }
+
+    if (opclass_obj->valueint <= 0 || opclass_obj->valueint > 255) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'opclass' value %d out of valid range [1..255]\n",
+            __func__, __LINE__, opclass_obj->valueint);
+        goto err;
+    }
+
+    if (!cJSON_IsNumber(ch_len_obj)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'exclude_channels_length' is missing or not a number\n",
+            __func__, __LINE__);
+        goto err;
+    }
+
+    if (ch_len_obj->valueint <= 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'exclude_channels_length' must be > 0, got %d\n",
+            __func__, __LINE__, ch_len_obj->valueint);
+        goto err;
+    }
+
+    if (!cJSON_IsArray(channels_obj)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'exclude_channels' is missing or not an array\n",
+            __func__, __LINE__);
+        goto err;
+    }
+
+    int actual_count = cJSON_GetArraySize(channels_obj);
+    if (actual_count != ch_len_obj->valueint) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'exclude_channels' array size %d does not match "
+            "'exclude_channels_length' %d for opclass %d\n",
+            __func__, __LINE__, actual_count, ch_len_obj->valueint,
+            opclass_obj->valueint);
+        goto err;
+    }
+
+    /* Validate each channel is a number */
+    cJSON *ch = NULL;
+    cJSON_ArrayForEach(ch, channels_obj) {
+        if (!cJSON_IsNumber(ch)) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Non-numeric channel value in opclass %d\n",
+                __func__, __LINE__, opclass_obj->valueint);
+            goto err;
+        }
+        if (ch->valueint <= 0 || ch->valueint > 255) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Channel value %d out of range [1..255] in opclass %d\n",
+                __func__, __LINE__, ch->valueint, opclass_obj->valueint);
+            goto err;
+        }
+    }
+
+    return RETURN_OK;
+
+err:
+    return RETURN_ERR;
+}
+
+/**
+ * @brief Decode ACS exclusion JSON into a binary struct acs_exclude array.
+ *
+ * Parses and validates the full JSON subdoc, then builds a flat array of
+ * {op_class, channel} pairs.
+ *
+ * Expected JSON:
+ *   {
+ *     "Version": "1.0",
+ *     "SubDocName": "Acs",
+ *     "RadioName": "radio2",
+ *     "AcsList": [
+ *       { "opclass": 115, "exclude_channels_length": 2, "exclude_channels": [36, 40] },
+ *       { "opclass": 128, "exclude_channels_length": 1, "exclude_channels": [157] }
+ *     ]
+ *   }
+ *
+ * An empty AcsList [] results in excl_list=NULL, excl_count=0 (clear).
+ *
+ * @param[in]  json_str  NULL-terminated JSON string
+ * @param[out] decoded   Decoded result (caller must free decoded->excl_list)
+ * @return RETURN_OK on success, RETURN_ERR on failure
+ */
+static int decode_acs_exclusion_json(const char *json_str, acs_exclusion_decoded_t *decoded)
+{
+    cJSON *root = NULL;
+    cJSON *acs_list = NULL;
+    cJSON *entry = NULL;
+    cJSON *channel_obj = NULL;
+    int total_channels = 0;
+    int excl_count = 0;
+
+    if (json_str == NULL || decoded == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL input parameter\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(decoded, 0, sizeof(acs_exclusion_decoded_t));
+    decoded->radio_index = -1;
+
+    root = cJSON_Parse(json_str);
+    if (root == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to parse JSON: %s\n", __func__, __LINE__,
+            cJSON_GetErrorPtr() ? cJSON_GetErrorPtr() : "unknown error");
+        return RETURN_ERR;
+    }
+
+    /* Validate Version and SubDocName */
+    if (RETURN_OK != validate_acs_subdoc_header(root)) {
+        goto err;
+    }
+
+    /* Validate and resolve RadioName */
+    decoded->radio_index = validate_acs_radio_name(root);
+    if (decoded->radio_index < 0) {
+        goto err;
+    }
+
+    /* Validate AcsList array */
+    acs_list = cJSON_GetObjectItemCaseSensitive(root, "AcsList");
+    if (!cJSON_IsArray(acs_list)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'AcsList' is missing or not an array\n", __func__, __LINE__);
+        goto err;
+    }
+
+    /* Empty array = clear exclusion list */
+    if (0 == cJSON_GetArraySize(acs_list)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Empty AcsList, will clear exclusion list for radio %d\n",
+            __func__, __LINE__, decoded->radio_index);
+        cJSON_Delete(root);
+        return RETURN_OK;
+    }
+
+    /* Validate each entry and count total channels */
+    cJSON_ArrayForEach(entry, acs_list) {
+        if (RETURN_OK != validate_acs_list_entry(entry)) {
+            goto err;
+        }
+        cJSON *ch_len_obj = cJSON_GetObjectItemCaseSensitive(entry, "exclude_channels_length");
+        total_channels += ch_len_obj->valueint;
+    }
+
+    if (total_channels > ACS_MAX_EXCLUDE_ENTRIES) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Total exclusion channels %d exceeds maximum %d\n",
+            __func__, __LINE__, total_channels, ACS_MAX_EXCLUDE_ENTRIES);
+        goto err;
+    }
+
+
+    /* Allocate memory for exclusion list */
+    decoded->excl_list = malloc(sizeof(wifi_hal_acs_exclude_t) * total_channels);
+    if (decoded->excl_list == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate %d entries\n",
+            __func__, __LINE__, total_channels);
+        goto err;
+    }
+
+    cJSON_ArrayForEach(entry, acs_list) {
+        cJSON *opclass_obj = cJSON_GetObjectItemCaseSensitive(entry, "opclass");
+        cJSON *channels_arr = cJSON_GetObjectItemCaseSensitive(entry, "exclude_channels");
+        int op_class = opclass_obj->valueint;
+
+        cJSON_ArrayForEach(channel_obj, channels_arr) {
+            decoded->excl_list[excl_count].op_class = op_class;
+            decoded->excl_list[excl_count].channel = channel_obj->valueint;
+            excl_count++;
+        }
+    }
+    decoded->excl_count = excl_count;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Decoded %d exclusion entries for radio %d\n",
+        __func__, __LINE__, excl_count, decoded->radio_index);
+
+    cJSON_Delete(root);
+    return RETURN_OK;
+
+err:
+    cJSON_Delete(root);
+    free(decoded->excl_list);
+    decoded->excl_list = NULL;
+    decoded->excl_count = 0;
+    decoded->radio_index = -1;
+    return RETURN_ERR;
+}
+
+/**
+ * @brief Process the StartACS command from the control queue.
+ *
+ * This function is the queue handler for the wifi_event_type_command_start_acs
+ * event. It performs the following steps:
+ *
+ * 1. Decodes the incoming JSON payload into a binary array of
+ *    wifi_hal_acs_exclude_t entries using decode_acs_exclusion_json().
+ *    The JSON must contain valid "Version" ("1.0"), "SubDocName" ("Acs"),
+ *    "RadioName", and "AcsList" fields.
+ *
+ * 2. Validates that ACS (autoChannelEnabled) is active on the target radio.
+ *
+ * 3. Passes the decoded exclusion list to the HAL via
+ *    wifi_hal_set_acs_exclusion_list(), which copies it into the
+ *    hostapd-internal configuration under mutex protection. The HAL also
+ *    checks whether the current operating channel and bandwidth match any
+ *    entry in the exclusion list.
+ *
+ * 4. If the current operating channel is excluded, restarts ACS
+ *    (stop + start) to force a channel change. If the current channel is
+ *    not excluded, the list is stored for the next ACS cycle but no
+ *    immediate action is taken.
+ *
+ * 5. Frees the locally allocated exclusion list.
+ *
+ * An empty "AcsList" array in the JSON clears the exclusion list.
+ *
+ * @param[in] ctrl  Pointer to the wifi control context
+ * @param[in] data  Pointer to the NULL-terminated JSON string payload
+ * @param[in] len   Length of the payload including the NULL terminator
+ */
+void process_start_acs_command(wifi_ctrl_t *ctrl, void *data, unsigned int len)
+{
+    wifi_radio_operationParam_t *radio_params = NULL;
+    acs_exclusion_decoded_t decoded = { 0 };
+    wifi_radio_index_t radioIndex = -1;
+    int ret = 0, operating_channel_excluded = 0;
+
+
+    if (data == NULL || len == 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL or empty input\n", __func__, __LINE__);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d StartACS JSON received: '%s'\n", __func__, __LINE__, (char *)data);
+
+    if (RETURN_OK != decode_acs_exclusion_json((const char *)data, &decoded)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to decode ACS exclusion JSON\n", __func__, __LINE__);
+        return;
+    }
+    radioIndex = decoded.radio_index;
+
+    radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radioIndex);
+    if (radio_params == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: Failed to get radio params for index:%d\n", __func__, __LINE__, radioIndex);
+        goto done;
+    }
+
+    if (!radio_params->autoChannelEnabled) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: ACS is not enabled for radioIndex:%d\n", __func__, __LINE__, radioIndex);
+        goto done;
+    }
+
+    /* Pass ACS exclusion list to HAL */
+    ret = wifi_hal_set_acs_exclusion_list(radioIndex, decoded.excl_list, decoded.excl_count, &operating_channel_excluded);
+    if (ret != WIFI_HAL_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_hal_set_acs_exclusion_list failed (radio=%d)\n",
+            __func__, __LINE__, radioIndex);
+        goto done;
+    }
+
+    if (operating_channel_excluded) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d ACS: operating channel is excluded with updated exclusion list\n",
+        __func__, __LINE__);
+
+    } else {
+        goto done;
+    }
+
+    /* Stop-Start ACS if current channel and bandwidth are excluded */
+    stop_wifi_sched_timer(radioIndex, ctrl, wifi_acs_sched);
+    ret = mxl_wifi_hal_set_acs(radioIndex, false);
+    if (ret) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to stop ACS on radio %u\n", __func__, __LINE__, radioIndex);
+    } else {
+        ret = mxl_wifi_hal_set_acs(radioIndex, true);
+        if (ret) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start ACS on radio %u\n", __func__, __LINE__, radioIndex);
+        }
+    }
+    start_wifi_sched_timer(radioIndex, ctrl, wifi_acs_sched);
+
+    wifi_util_info_print(WIFI_CTRL,"%s:%d ACS restart is %s on radio %u\n",
+        __func__, __LINE__, (ret ? "failed" : "successful"), radioIndex);
+
+done:
+    free(decoded.excl_list);
+}
+
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     wifi_event_subtype_t subtype)
 {
@@ -4508,6 +4889,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_xfinity_rrm:
     case wifi_event_type_sm_app_enable:
         // not handle here
+        break;
+    case wifi_event_type_command_start_acs:
+        process_start_acs_command(ctrl, data, len);
         break;
     default:
         wifi_util_error_print(WIFI_CTRL, "[%s]:WIFI hal handler not supported this event %s\r\n",
