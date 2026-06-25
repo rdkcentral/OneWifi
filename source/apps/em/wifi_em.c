@@ -3372,9 +3372,13 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_EM_UNASSOC_STA_LINK_METRICS_RESP, bus_element_type_method,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_NASTA_RESPONSE_EVENT, bus_element_type_event,
+            { NULL, NULL, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
         { WIFI_EM_FAILED_CONNECTION, bus_element_type_event,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } }
+
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;

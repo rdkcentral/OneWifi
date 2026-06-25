@@ -4320,21 +4320,32 @@ bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
     wifi_util_info_print(WIFI_CTRL, "%s:%d NaSta query for vap %u, pushing to ctrl queue\r\n",
         __func__, __LINE__, vap_idx);
 
-    push_event_to_ctrl_queue(enriched_str, (strlen(enriched_str) + 1),
-        wifi_event_type_webconfig, wifi_event_webconfig_set_data_nasta, NULL);
+    if (push_event_to_ctrl_queue(enriched_str, (strlen(enriched_str) + 1),
+        wifi_event_type_webconfig, wifi_event_webconfig_set_data_nasta, NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to push NaSta query to ctrl queue\r\n", __func__, __LINE__);
+        cJSON_free(enriched_str);
+        return bus_error_out_of_resources;
+    }
 
     cJSON_free(enriched_str);
+    enriched_str = NULL;
 
     /* Return an ack so the synchronous RBUS invoke succeeds;
        the actual NaSta response is published asynchronously via
        Device.WiFi.EM.NaStaResponse event. */
     if (outParams != NULL) {
         char *ack = strdup("{\"Status\":\"Accepted\"}");
-        if (ack != NULL) {
-            outParams->value.data_type = bus_data_type_string;
-            outParams->value.raw_data.bytes = ack;
-            outParams->value.raw_data_len = strlen(ack) + 1;
+        if (ack == NULL) {
+            return bus_error_out_of_resources;
         }
+
+        outParams->value.data_type = bus_data_type_string;
+        outParams->value.raw_data.bytes = ack;
+        outParams->value.raw_data_len = strlen(ack) + 1;
+        outParams->is_data_set = true;
+        outParams->status = bus_error_success;
+        outParams->ref_count = 1;
+        outParams->next_data = NULL;
     }
 
     return bus_error_success;
@@ -4516,9 +4527,6 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_ACCESSPOINT_GET_NASTA, bus_element_type_method,
                                     { NULL, NULL, NULL, NULL, NULL, get_NaSta }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
-                                { WIFI_NASTA_RESPONSE_EVENT, bus_element_type_event,
-                                    { NULL, NULL, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
-                                    { bus_data_type_string, false, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);
