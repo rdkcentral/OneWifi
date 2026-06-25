@@ -227,7 +227,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                 cJSON_Delete(passPointStats);
                 return RETURN_ERR;
             }
-            copy_string((char*)ouiStr, anqpParam->valuestring);
+            snprintf((char*)ouiStr, sizeof(ouiStr), "%s", anqpParam->valuestring);
         }
         //Covert the incoming string to HEX
         for(i = 0; i < ouiStrLen; i++){
@@ -393,7 +393,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                         cJSON_Delete(passPointStats);
                         return RETURN_ERR;
                     }
-                    copy_string((char*)authStr,subParam_1->valuestring);
+                    snprintf((char*)authStr, sizeof(authStr), "%s", subParam_1->valuestring);
                                 
                     //Covert the incoming string to HEX
                     for(i = 0; i < authStrLen; i++){ 
@@ -460,10 +460,10 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
 
         validate_param_string(anqpEntry,"MCC",anqpParam);
         if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -1)){
-            copy_string((char*)mccStr,anqpParam->valuestring);
+            snprintf((char*)mccStr, sizeof(mccStr), "%s", anqpParam->valuestring);
         }else if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -2)){
             mccStr[0] = '0';
-            copy_string((char*)&mccStr[1], anqpParam->valuestring);
+            snprintf((char*)&mccStr[1], sizeof(mccStr) - 1, "%s", anqpParam->valuestring);
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MCC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MCC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
@@ -473,10 +473,10 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
 
         validate_param_string(anqpEntry,"MNC",anqpParam);
         if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -1)){
-            copy_string((char*)mncStr, anqpParam->valuestring);
+            snprintf((char*)mncStr, sizeof(mncStr), "%s", anqpParam->valuestring);
         }else if(strlen(anqpParam->valuestring) ==  (sizeof(mccStr) -2)){
             mncStr[0] = '0';
-            copy_string((char*)&mncStr[1], anqpParam->valuestring);
+            snprintf((char*)&mncStr[1], sizeof(mncStr) - 1, "%s", anqpParam->valuestring);
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MNC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MNC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1); 
@@ -844,7 +844,7 @@ int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, 
     vap_info->u.bss_info.interworking.interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
 
     validate_param_string(interworking, "HESSID", param);
-    copy_string(vap_info->u.bss_info.interworking.interworking.hessid,param->valuestring);
+    snprintf(vap_info->u.bss_info.interworking.interworking.hessid, sizeof(vap_info->u.bss_info.interworking.interworking.hessid), "%s", param->valuestring);
     if (WiFi_IsValidMacAddr(vap_info->u.bss_info.interworking.interworking.hessid) != TRUE) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for HESSID\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
@@ -953,7 +953,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	validate_param_string(radius, "RadiusServerIPAddr", param);
 	if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-	    copy_string((char *)vap_info->u.bss_info.security.u.radius.ip,param->valuestring);
+	    snprintf((char *)vap_info->u.bss_info.security.u.radius.ip, sizeof(vap_info->u.bss_info.security.u.radius.ip), "%s", param->valuestring);
 	}
     else {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);	
@@ -976,12 +976,12 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	vap_info->u.bss_info.security.u.radius.port = param->valuedouble;
 
 	validate_param_string(radius, "RadiusSecret", param);
-	copy_string(vap_info->u.bss_info.security.u.radius.key, param->valuestring);
+	snprintf(vap_info->u.bss_info.security.u.radius.key, sizeof(vap_info->u.bss_info.security.u.radius.key), "%s", param->valuestring);
 
 	validate_param_string(radius, "SecondaryRadiusServerIPAddr", param);
 	if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-        copy_string((char *)vap_info->u.bss_info.security.u.radius.s_ip,param->valuestring);
+        snprintf((char *)vap_info->u.bss_info.security.u.radius.s_ip, sizeof(vap_info->u.bss_info.security.u.radius.s_ip), "%s", param->valuestring);
 	}
     else {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
@@ -1003,7 +1003,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	validate_param_integer(radius, "SecondaryRadiusServerPort", param);
 	vap_info->u.bss_info.security.u.radius.s_port = param->valuedouble;
 	validate_param_string(radius, "SecondaryRadiusSecret", param);
-	copy_string(vap_info->u.bss_info.security.u.radius.s_key, param->valuestring);
+	snprintf(vap_info->u.bss_info.security.u.radius.s_key, sizeof(vap_info->u.bss_info.security.u.radius.s_key), "%s", param->valuestring);
 
         validate_param_string(radius, "DasServerIPAddr", param);
         if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
@@ -1019,7 +1019,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
         vap_info->u.bss_info.security.u.radius.dasport = param->valuedouble;
 
         validate_param_string(radius, "DasSecret", param);
-        copy_string(vap_info->u.bss_info.security.u.radius.daskey, param->valuestring);
+        snprintf(vap_info->u.bss_info.security.u.radius.daskey, sizeof(vap_info->u.bss_info.security.u.radius.daskey), "%s", param->valuestring);
 
         //max_auth_attempts
         validate_param_integer(radius, "MaxAuthAttempts", param);
@@ -1733,7 +1733,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //WpsPin
     validate_param_string(global_cfg, "WpsPin", param);
-    copy_string(global_info->wps_pin, param->valuestring);
+    snprintf(global_info->wps_pin, sizeof(global_info->wps_pin), "%s", param->valuestring);
 
     // BandsteeringEnable
     validate_param_bool(global_cfg, "BandsteeringEnable", param);
@@ -1789,7 +1789,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //WifiRegionCode
     validate_param_string(global_cfg, "WifiRegionCode", param);
-    copy_string(global_info->wifi_region_code, param->valuestring);
+    snprintf(global_info->wifi_region_code, sizeof(global_info->wifi_region_code), "%s", param->valuestring);
 
     // DiagnosticEnable
     validate_param_bool(global_cfg, "DiagnosticEnable", param);
@@ -1805,19 +1805,19 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //NormalizedRssiList
     validate_param_string(global_cfg, "NormalizedRssiList", param);
-    copy_string(global_info->normalized_rssi_list, param->valuestring);
+    snprintf(global_info->normalized_rssi_list, sizeof(global_info->normalized_rssi_list), "%s", param->valuestring);
 
     //SNRList
     validate_param_string(global_cfg, "SNRList", param);
-    copy_string(global_info->snr_list, param->valuestring);
+    snprintf(global_info->snr_list, sizeof(global_info->snr_list), "%s", param->valuestring);
 
     //CliStatList
     validate_param_string(global_cfg, "CliStatList", param);
-    copy_string(global_info->cli_stat_list, param->valuestring);
+    snprintf(global_info->cli_stat_list, sizeof(global_info->cli_stat_list), "%s", param->valuestring);
 
     //TxRxRateList
     validate_param_string(global_cfg, "TxRxRatetList", param);
-    copy_string(global_info->txrx_rate_list, param->valuestring);
+    snprintf(global_info->txrx_rate_list, sizeof(global_info->txrx_rate_list), "%s", param->valuestring);
 
     // MgtFrameRateLimitEnable
     validate_param_bool(global_cfg, "MgtFrameRateLimitEnable", param);
