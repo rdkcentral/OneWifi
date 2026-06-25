@@ -35,6 +35,7 @@ extern "C" {
 #define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
 #define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
+#define WIFI_EM_UNASSOC_STA_LINK_METRICS_RESP "Device.WiFi.EM.NaStaResponse"
 
 #define WNM_CATEGORY               10
 #define IEEE80211_HDRLEN           24

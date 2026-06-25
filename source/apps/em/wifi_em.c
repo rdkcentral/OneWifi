@@ -3410,7 +3410,13 @@ static bus_error_t send_beacon_query(char *event_name, raw_data_t *p_data, void 
             __func__, __LINE__);
         return bus_error_general;
     }
+    
+    return bus_error_success;
+}
 
+bus_error_t webconfig_dummy(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    //Place holder to add the handling of subdoc thats received from em_agent
     return bus_error_success;
 }
 
@@ -3454,7 +3460,14 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { bus_data_type_string, false, 0, 0, 0, NULL } },
         { WIFI_EM_CLIENT_ASSOC_CTRL_REQ, bus_element_type_method,
             { NULL, controller_set_client_acl_rules, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-            { bus_data_type_bytes, true, 0, 0, 0, NULL } }
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_WEBCONFIG_SET_UNASSOC_STA, bus_element_type_method,
+            { NULL, webconfig_dummy, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_EM_UNASSOC_STA_LINK_METRICS_RESP, bus_element_type_method,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
+
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;
