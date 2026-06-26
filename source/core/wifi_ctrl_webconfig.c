@@ -2119,6 +2119,132 @@ static int check_and_reset_channel_change(void *arg)
     return RETURN_OK;
 }
 
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+/* A radio's BE-variant or enable transition affects MLO eligibility. */
+static bool is_radio_mlo_trigger_changed(wifi_radio_operationParam_t *old_p,
+    wifi_radio_operationParam_t *new_p)
+{
+    bool old_be = (old_p->variant & WIFI_80211_VARIANT_BE) != 0;
+    bool new_be = (new_p->variant & WIFI_80211_VARIANT_BE) != 0;
+    bool old_enabled = old_p->enable && !old_p->EcoPowerDown;
+    bool new_enabled = new_p->enable && !new_p->EcoPowerDown;
+
+    return (old_enabled != new_enabled) || (old_be != new_be);
+}
+
+/* Re-encode the current mgr VAP config for one subdoc type and re-inject it
+ * into the ctrl queue. The standard decode -> webconfig_hal_*_vap_apply path
+ * calls update_mld_groups(data, ...) itself, so MLO is re-resolved against the
+ * new radio state. */
+static void reinject_vap_subdoc(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t subdoc_type)
+{
+    webconfig_subdoc_data_t *data;
+    char *str;
+
+    data = calloc(1, sizeof(*data));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: alloc failed\n", __func__, __LINE__);
+        return;
+    }
+
+    webconfig_init_subdoc_data(data);
+
+    if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) == webconfig_error_none) {
+        str = data->u.encoded.raw;
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+            wifi_event_webconfig_set_data, NULL);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: re-injected VAP subdoc type %d for MLO reconfig\n",
+            __func__, __LINE__, subdoc_type);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: encode failed for subdoc type %d\n", __func__,
+            __LINE__, subdoc_type);
+    }
+
+    webconfig_data_free(data);
+    free(data);
+}
+
+static int mlo_fronthaul_subdoc_for_vap(unsigned int vap_index, webconfig_subdoc_type_t *out)
+{
+    if (isVapPrivate(vap_index)) {
+        *out = webconfig_subdoc_type_private;
+    } else if (isVapXhs(vap_index)) {
+        *out = webconfig_subdoc_type_home;
+    } else if (isVapHotspot(vap_index) || isVapHotspotSecure(vap_index)) {
+        *out = webconfig_subdoc_type_xfinity;
+    } else if (isVapLnf(vap_index)) {
+        *out = webconfig_subdoc_type_lnf;
+    } else if (isVapMeshBackhaul(vap_index)) {
+        *out = webconfig_subdoc_type_mesh_backhaul;
+    } else {
+        return -1;
+    }
+    return 0;
+}
+
+/* Triggered when a radio's BE-variant or enable state changes. Re-applies the
+ * relevant VAP subdocs so MLO eligibility is recomputed inside the normal
+ * apply pipeline. Only VAPs on the changed radios (radio_bitmap) that actually
+ * carry MLD config are considered, and only their subdoc types are re-injected.
+ * If nothing qualifies, no work is done. */
+static void trigger_mlo_vap_reconfiguration(wifi_ctrl_t *ctrl, unsigned int radio_bitmap)
+{
+    uint64_t subdoc_mask = 0;
+    unsigned int r_idx, k;
+
+    for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
+        wifi_vap_info_map_t *vap_map;
+
+        /* Only radios whose BE/enable actually changed affect MLO groups. */
+        if ((radio_bitmap & (1u << r_idx)) == 0) {
+            continue;
+        }
+
+        vap_map = get_wifidb_vap_map(r_idx);
+        if (vap_map == NULL) {
+            continue;
+        }
+
+        for (k = 0; k < vap_map->num_vaps; k++) {
+            wifi_vap_info_t *vap = &vap_map->vap_array[k];
+            wifi_mld_common_info_t *mld_conf = NULL;
+            webconfig_subdoc_type_t subdoc;
+
+            if (isVapSTAMesh(vap->vap_index)) {
+                continue;
+            }
+
+            if (mlo_fronthaul_subdoc_for_vap(vap->vap_index, &subdoc) != 0) {
+                continue;
+            }
+
+            mld_conf = &vap->u.bss_info.mld_info.common_info;
+
+            /* Only VAPs with valid MLD config participate in MLO. */
+            if (mld_conf->mld_id >= MLD_UNIT_COUNT ||
+                mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
+                continue;
+            }
+
+            subdoc_mask |= (1ull << subdoc);
+        }
+    }
+
+    if (subdoc_mask == 0) {
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d: no MLO-configured VAPs on changed radios, skipping MLO reconfig\n",
+            __func__, __LINE__);
+        return;
+    }
+
+    while (subdoc_mask != 0) {
+        unsigned int subdoc = (unsigned int)__builtin_ctzll(subdoc_mask);
+        subdoc_mask &= ~(1ull << subdoc);
+        reinject_vap_subdoc(ctrl, (webconfig_subdoc_type_t)subdoc);
+    }
+}
+#endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -2129,6 +2255,9 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     int is_changed = 0;
     bool is_radio_6g_modified = false;
     vap_svc_t *pub_svc = NULL;
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    unsigned int mlo_changed_radio_bitmap = 0;
+#endif
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
     bool old_ecomode = false;
     bool new_ecomode = false;
@@ -2170,6 +2299,12 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         if ((is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true)) {
             // radio data changed apply
             is_changed = 1;
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+            /* Capture BE/enable transition before mgr cache is overwritten below. */
+            if (is_radio_mlo_trigger_changed(&mgr_radio_data->oper, &radio_data->oper)) {
+                mlo_changed_radio_bitmap |= (1u << mgr_radio_data->vaps.radio_index);
+            }
+#endif
             if (IS_CHANGED(mgr_radio_data->oper.enable,radio_data->oper.enable) &&
                 is_6g_supported_device(&mgr->hal_cap.wifi_prop)) {
                 wifi_util_info_print(WIFI_MGR,"Radio enable field is modified from mgr_radio_data->oper->enable=%d and radio_data->oper->enable=%d\n",
@@ -2264,6 +2399,12 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             wifi_util_info_print(WIFI_MGR, "%s:%d: Received radio config for radio %u is same, not applying\n", __func__, __LINE__, mgr_radio_data->vaps.radio_index);
         }
     }
+
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    if (mlo_changed_radio_bitmap != 0) {
+        trigger_mlo_vap_reconfiguration(ctrl, mlo_changed_radio_bitmap);
+    }
+#endif
     return RETURN_OK;
 }
 
@@ -2278,6 +2419,9 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
     int is_changed = 0;
     bool is_radio_6g_modified = false;
     vap_svc_t *pub_svc = NULL;
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    unsigned int mlo_changed_radio_bitmap = 0;
+#endif
 #if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
     bool old_ecomode = false;
     bool new_ecomode = false;
@@ -2334,6 +2478,12 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
     if ((is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true)) {
         // radio data changed apply
         is_changed = 1;
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+        /* Capture BE/enable transition before mgr cache is overwritten below. */
+        if (is_radio_mlo_trigger_changed(&mgr_radio_data->oper, &radio_data->oper)) {
+            mlo_changed_radio_bitmap |= (1u << mgr_radio_data->vaps.radio_index);
+        }
+#endif
         if (IS_CHANGED(mgr_radio_data->oper.enable, radio_data->oper.enable) &&
             is_6g_supported_device(&mgr->hal_cap.wifi_prop)) {
             wifi_util_info_print(WIFI_MGR,
@@ -2439,6 +2589,15 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             "%s:%d: Received radio config for radio %u is same, not applying\n", __func__, __LINE__,
             mgr_radio_data->vaps.radio_index);
     }
+
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    /* A BE-variant or enable change alters MLO eligibility. Re-apply the
+     * fronthaul VAP subdocs so update_mld_groups re-resolves groups against
+     * the new radio state. */
+    if (mlo_changed_radio_bitmap != 0) {
+        trigger_mlo_vap_reconfiguration(ctrl, mlo_changed_radio_bitmap);
+    }
+#endif
     return RETURN_OK;
 }
 
