@@ -118,6 +118,8 @@ typedef enum {
     wifi_event_hal_csa_beacon_frame,
     wifi_event_hal_wps_results,
     wifi_event_hal_wnm_action_frame,
+    wifi_event_hal_pre_assoc_fail,
+    wifi_event_hal_post_assoc_fail,
     /* counters for auth/assoc/reassoc frames,
     eap, and other status codes are defined in the HAL */
     wifi_event_hal_auth_frame_status_code,
