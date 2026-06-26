@@ -1815,7 +1815,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
 
         // Report is configured to arrive per radio
         // Consolidate all reports and send one report
-        for (j = 0; j < radio->vaps.num_vaps; j++) {
+        for (j = 0; j < radio->vaps.num_vaps && j < MAX_NUM_VAP_PER_RADIO; j++) {
             wifi_util_dbg_print(WIFI_EM,"%s:%d vap iterator: %d\n", __func__, __LINE__, j);
             vap_info = &vap_map->vap_array[j];
             if (vap_info == NULL) {
@@ -1877,6 +1877,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                 if (vap_report->sta_link_metrics == NULL) {
                     wifi_util_error_print(WIFI_EM, "%s:%d malloc failed for sta_link_metrics\n",
                         __func__, __LINE__);
+                    vap_report->is_sta_link_metrics_enabled = false;
                     vap_report->sta_cnt = 0;
                     continue;
                 }
@@ -1908,6 +1909,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                 if (vap_report->sta_traffic_stats == NULL) {
                     wifi_util_error_print(WIFI_EM, "%s:%d malloc failed for sta_traffic_stats\n",
                         __func__, __LINE__);
+                    vap_report->is_sta_traffic_stats_enabled = false;
                     vap_report->sta_cnt = 0;
                     continue;
                 }
@@ -1950,6 +1952,8 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                         free(vap_report->sta_traffic_stats);
                         vap_report->sta_traffic_stats = NULL;
                     }
+                    vap_report->is_sta_link_metrics_enabled = false;
+                    vap_report->is_sta_traffic_stats_enabled = false;
                     vap_report->sta_cnt = 0;
                     continue;
                 }
@@ -2023,7 +2027,7 @@ cleanup:
     // Cleanup allocated memory
     if (data != NULL) {
         for (int j = 0; j < req_radio_count; j++) {
-            for (int i = 0; i < radio->vaps.num_vaps; i++) {
+            for (int i = 0; i < radio->vaps.num_vaps && i < MAX_NUM_VAP_PER_RADIO; i++) {
                 vap_report = &data->u.decoded.em_ap_metrics_report.radio_reports[j].vap_reports[i];
                 if (vap_report->sta_link_metrics != NULL) {
                     free(vap_report->sta_link_metrics);
