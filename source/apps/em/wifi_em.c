@@ -1509,10 +1509,9 @@ static int em_handle_failed_connection(wifi_app_t *app, void *arg)
 
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 {
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
     char client_mac[32];
-    int vap_index = assoc_data->ap_index;
+    int vap_index;
     unsigned char key[64] = { 0 };
     mac_addr_str_t sta_mac_str, bss_str;
     int i = 0;
@@ -1525,11 +1524,25 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d : Sta disassoc event \n", __func__, __LINE__);
 
+    if (assoc_data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: NULL arg\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    vap_index = assoc_data->ap_index;
+
+    vap_info = getVapInfo(vap_index);
+    if (vap_info == NULL) {
+        wifi_util_dbg_print(WIFI_EM, "%s:%d Vap not found for vap index:%d\n",
+            __func__, __LINE__, vap_index);
+        return RETURN_ERR;
+    }
+
     radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
     if (radio_index == RETURN_ERR) {
         wifi_util_dbg_print(WIFI_EM, "%s:%d could not find radio_index=%d for vap index = %d\n",
             __func__, __LINE__, radio_index, vap_index);
-        return 0;
+        return RETURN_ERR;
     }
 
     for (i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
@@ -1549,24 +1562,29 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
         return RETURN_ERR;
     }
 
-    vap_info = getVapInfo(vap_index);
-    if (vap_info == NULL) {
-        wifi_util_dbg_print(WIFI_EM, "%s:%d Vap not found for vap index:%d\n",
-            __func__, __LINE__, vap_index);
-        return RETURN_ERR;
-    }
-    to_mac_str(vap_info->u.bss_info.bssid, bss_str);
+	 to_mac_str(vap_info->u.bss_info.bssid, bss_str);
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, sta_mac_str);
     snprintf(key, 64, "%s@%s", bss_str, sta_mac_str);
     stats = (wifi_associated_dev3_timestamp_t *)hash_map_remove(
         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map, key);
-    if (stats == NULL) {
+    if (stats != NULL) {
+        /* Publish the latest cached per-STA counters. */
+        memcpy(&assoc_data->dev_stats, &stats->associated_dev3, sizeof(wifi_associated_dev3_t));
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s disassociated\n", __func__,
+            __LINE__, sta_mac_str);
+	 } else {
         wifi_util_error_print(WIFI_EM, "%s:%d: Sta Mac %s not present in hash map\n", __func__,
             __LINE__, sta_mac_str);
-        return 0;
     }
-    wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s disassociated\n", __func__,
-        __LINE__, sta_mac_str);
+
+    if (em_publish_client_disassoc_stats(app, vap_info, assoc_data) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Failed to publish %s\n", __func__, __LINE__,
+            WIFI_EM_CLIENT_DISASSOC_STATS);
+    }
+
+    if (stats != NULL) {
+        free(stats);
+    }
 
     to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
     sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_remove(
@@ -1575,12 +1593,136 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     if (t_sta_data == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: Mac %s not present in hash map\n", __func__,
             __LINE__, client_mac);
-        return 0;
+        return RETURN_OK;
     }
 
     free(t_sta_data);
 
-    return 0;
+    return RETURN_OK;
+}
+
+static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *vap_info,
+    assoc_dev_data_t *assoc_data)
+{
+#define DISASSOC_JSON_BUF_SZ    1536
+#define DISASSOC_AFF_BUF_SZ     (256 * MAX_NUM_RADIOS)
+
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = { 0 };
+    char *json_buf = NULL;
+    char *affiliated_buf = NULL;
+    mac_addr_str_t bssid_str, sta_str, mld_str;
+    size_t aff_pos;
+    unsigned int link_idx;
+    int first_entry;
+    int rc = RETURN_ERR;
+
+    if ((vap_info == NULL) || (assoc_data == NULL)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: invalid input\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    json_buf = (char *)malloc(DISASSOC_JSON_BUF_SZ);
+    if (json_buf == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: malloc failed for json_buf\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    affiliated_buf = (char *)malloc(DISASSOC_AFF_BUF_SZ);
+    if (affiliated_buf == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: malloc failed for affiliated_buf\n", __func__, __LINE__);
+        free(json_buf);
+        return RETURN_ERR;
+    }
+
+    to_mac_str(vap_info->u.bss_info.bssid, bssid_str);
+    to_mac_str(assoc_data->dev_stats.cli_MACAddress, sta_str);
+
+    /*
+     * Affiliated STA Metrics, Wi-Fi 7 MLO.
+     * wifi_mld_sta_link_info_t carries per-link validity (cli_Valid) but no
+     * per-link STA MAC or traffic counters.  We emit one entry per valid link
+     * using the MLD MAC (cli_MLDAddr) as the STA identifier and zeros for
+     * traffic counters.
+     * TODO: replace the MLD MAC and zero stats with the actual per-link values.
+     */
+    aff_pos = 0;
+    affiliated_buf[aff_pos++] = '[';
+    affiliated_buf[aff_pos] = '\0';
+    first_entry = 1;
+
+    if (assoc_data->mld_info.cli_MLDSta) {
+        to_mac_str(assoc_data->dev_stats.cli_MLDAddr, mld_str);
+        for (link_idx = 0; link_idx < MAX_NUM_RADIOS; link_idx++) {
+            if (!assoc_data->mld_info.cli_LinkInfo[link_idx].cli_Valid) {
+                continue;
+            }
+            int written = snprintf(affiliated_buf + aff_pos, DISASSOC_AFF_BUF_SZ - aff_pos,
+                "%s{\"STA MacAddress\":\"%s\","
+                "\"BytesSent\":0,\"BytesReceived\":0,"
+                "\"PacketsSent\":0,\"PacketsReceived\":0,"
+                "\"PacketsSentErrors\":0}",
+                first_entry ? "" : ",",
+                mld_str);
+            if (written < 0 || (size_t)written >= (DISASSOC_AFF_BUF_SZ - aff_pos)) {
+                /* truncation or error - no room for more entries */
+                wifi_util_error_print(WIFI_EM, "%s:%d : no room in affiliated_buf\n", __func__, __LINE__);
+                aff_pos = DISASSOC_AFF_BUF_SZ - 1;
+                break;
+            }
+            aff_pos += (size_t)written;
+            first_entry = 0;
+        }
+    }
+
+    /* reserve the last bytes for ']' + '\0' */
+    if (aff_pos > DISASSOC_AFF_BUF_SZ - 2) {
+        aff_pos = DISASSOC_AFF_BUF_SZ - 2;
+    }
+    affiliated_buf[aff_pos++] = ']';
+    affiliated_buf[aff_pos] = '\0';
+
+    snprintf(json_buf, DISASSOC_JSON_BUF_SZ,
+        "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
+        "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u,"
+        "\"Traffic Stats\":{\"BytesSent\":%llu,\"BytesReceived\":%llu,"
+        "\"PacketsSent\":%llu,\"PacketsReceived\":%llu,\"TxPacketsErrors\":%llu,"
+        "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu},"
+        "\"Affiliated STA Metrics\":%s}",
+        bssid_str,
+        sta_str,
+        (unsigned int)assoc_data->reason,
+        (unsigned long long)assoc_data->dev_stats.cli_BytesSent,
+        (unsigned long long)assoc_data->dev_stats.cli_BytesReceived,
+        (unsigned long long)assoc_data->dev_stats.cli_PacketsSent,
+        (unsigned long long)assoc_data->dev_stats.cli_PacketsReceived,
+        (unsigned long long)assoc_data->dev_stats.cli_ErrorsSent,
+        (unsigned long long)assoc_data->dev_stats.cli_RxErrors,
+        (unsigned long long)assoc_data->dev_stats.cli_RetransCount,
+        affiliated_buf);
+
+    free(affiliated_buf);
+    affiliated_buf = NULL;
+
+    rdata.data_type = bus_data_type_string;
+    rdata.raw_data.bytes = (void *)json_buf;
+    rdata.raw_data_len = strlen(json_buf) + 1;
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle,
+        WIFI_EM_CLIENT_DISASSOC_STATS, &rdata);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn failed rc=%d\n",
+            __func__, __LINE__, rc);
+        rc = RETURN_ERR;
+    } else {
+        rc = RETURN_OK;
+    }
+
+    free(json_buf);
+    return rc;
+
+#undef DISASSOC_JSON_BUF_SZ
+#undef DISASSOC_AFF_BUF_SZ
 }
 
 static int em_handle_sta_conn_status(wifi_app_t *app, void *data)
@@ -3289,6 +3431,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } },
         { WIFI_EM_FAILED_CONNECTION, bus_element_type_event,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_EM_CLIENT_DISASSOC_STATS, bus_element_type_event,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } }
     };
