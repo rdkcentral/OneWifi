@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <jansson.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 
 #include "os_socket.h"
@@ -47,6 +48,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pjs_gen_c.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
+
+#ifdef UNIT_TEST
+#include "ovsdb_sync_test.h"
+#endif /* UNIT_TEST */
 
 
 /* OVSDB response buffers can be HUGE */
@@ -180,6 +185,89 @@ static pthread_mutex_t ovsdb_lock;
  * can be changed to use a timer to close the connection after a period of inactivity.
  */
 
+/* List of sensitive JSON keys whose values must be redacted before logging */
+static const char * const g_sensitive_keys[] = {
+    "psk", "password", "passwd", "pwd", "secret", "token",
+    "auth_token", "access_token", "refresh_token", "api_key",
+    "private_key", "certificate", "cert", "key", "passphrase",
+    /* OVSDB schema-specific credential fields (Wifi_VIF_Config, AW_LM_Config) */
+    "wpa_psks", "radius_srv_secret", "upload_token"
+};
+static const int g_num_sensitive_keys =
+    (int)(sizeof(g_sensitive_keys) / sizeof(g_sensitive_keys[0]));
+
+/* File-scope recursive helper to redact sensitive values in a JSON object/array.
+ * Mutation (json_object_set_new) is performed inline during iteration: this is
+ * safe in Jansson because replacing a value only updates the value pointer and
+ * never adds or removes hash-table entries, so the iterator stays valid. */
+static void redact_sensitive_values(json_t *obj)
+{
+    if (json_is_object(obj)) {
+        const char *key;
+        json_t *value;
+        json_object_foreach(obj, key, value) {
+            int is_sensitive = 0;
+            for (int i = 0; i < g_num_sensitive_keys; i++) {
+                if (strcasecmp(key, g_sensitive_keys[i]) == 0) {
+                    is_sensitive = 1;
+                    break;
+                }
+            }
+            if (is_sensitive) {
+                /* Fail-closed: if allocation fails, the sensitive value remains
+                 * but we log a warning rather than silently leaving secrets in logs. */
+                json_t *redacted = json_string("[REDACTED]");
+                if (redacted == NULL) {
+                    LOGW("redact_sensitive_values: allocation failure for key '%s'", key);
+                } else if (json_object_set_new(obj, key, redacted) != 0) {
+                    /* json_object_set_new does NOT steal the ref on failure */
+                    json_decref(redacted);
+                    LOGW("redact_sensitive_values: failed to redact key '%s'", key);
+                }
+            } else if (json_is_object(value) || json_is_array(value)) {
+                redact_sensitive_values(value);
+            }
+        }
+    } else if (json_is_array(obj)) {
+        size_t index;
+        json_t *value;
+        json_array_foreach(obj, index, value) {
+            if (json_is_object(value) || json_is_array(value)) {
+                redact_sensitive_values(value);
+            }
+        }
+    }
+}
+
+/* Helper function to create a sanitized JSON string for logging (redacts sensitive fields).
+ * When compiled with -DUNIT_TEST the symbol is exported so unit tests can link against it;
+ * in production builds it remains translation-unit local (static). */
+#ifdef UNIT_TEST
+char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
+#else
+static char* ovsdb_sanitize_json_for_logging(json_t *jsdata)
+#endif
+{
+    if (!jsdata) {
+        return NULL;
+    }
+
+    /* Create a deep copy to avoid modifying the original */
+    json_t *sanitized = json_deep_copy(jsdata);
+    if (!sanitized) {
+        return NULL;
+    }
+
+    redact_sensitive_values(sanitized);
+
+    /* Serialize the sanitized JSON */
+    char *result = json_dumps(sanitized, JSON_COMPACT);
+    json_decref(sanitized);
+
+    return result;
+}
+
+
 json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
 {
     int     ovs_fd = -1;
@@ -201,14 +289,29 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     }
     ovs_fd = g_wifidb->wifidb_wfd;
 
-    LOGD("SYNC: Writing sync operation: %s", json_dumps_static(jsdata, 0));
+    /* Compute sanitized log string lazily: only when debug logging is enabled
+     * (to avoid expensive deep-copy + serialisation on the hot path) and
+     * reuse for the error path if json_dump_callback() fails. */
+    char *sanitized_log = NULL;
+    if (LOG_SEVERITY_ENABLED(LOG_SEVERITY_DEBUG)) {
+        sanitized_log = ovsdb_sanitize_json_for_logging(jsdata);
+        LOGD("SYNC: Writing sync operation: %s", sanitized_log ? sanitized_log : "(null)");
+    }
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
+        /* Compute sanitized log for the error path if not already done above */
+        if (!sanitized_log) {
+            sanitized_log = ovsdb_sanitize_json_for_logging(jsdata);
+        }
+        if (sanitized_log) {
+            wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", sanitized_log);
+        }
         LOGE("SYNC: Error during sync write to OVSDB: %s", strerror(errno));
-        wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", json_dumps_static(jsdata, 0));
         wifidb_print("SYNC: Error during sync write to OVSDB: %s\r\n", strerror(errno));
+        free(sanitized_log);
         goto error;
     }
+    free(sanitized_log);
 
     /*
         Each db transaction has 5 operation types:
