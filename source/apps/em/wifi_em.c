@@ -96,6 +96,19 @@ em_ap_metrics_report_cache_t em_ap_metrics_report_cache = { 0 };
 client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
 client_type_data_t client_type_info = { 0 };
 
+/* Internal helper that carries the fields for a failed-connection event.
+ * NOT the RBUS payload; em_publish_failed_connection() serialises this struct
+ * into a JSON string before publishing:
+ *   {"bssid":"<xx:xx:xx:xx:xx:xx>","sta_mac":"<xx:xx:xx:xx:xx:xx>","status":<u16>,"reason":<u16>}
+ * For pre-association failures (auth/assoc reject): status != 0, reason = 0.
+ * For post-association failures (deauth/disassoc):  status = 0, reason != 0. */
+typedef struct {
+    uint8_t  bssid[6];
+    uint8_t  sta_mac[6];
+    uint16_t status;
+    uint16_t reason;
+} wifi_em_failed_conn_t;
+
 static int em_rssi_to_rcpi(int rssi)
 {
     if (!rssi)
@@ -1544,6 +1557,91 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
     }
 
     return RETURN_OK;
+}
+
+/* Maximum size of the WIFI_EM_FAILED_CONNECTION JSON payload (bytes, including NUL).
+ * Worst case: {"bssid":"XX:XX:XX:XX:XX:XX","sta_mac":"XX:XX:XX:XX:XX:XX","status":65535,"reason":65535}
+ * = 2*17 (MACs) + 2*5 (uint16 digits) + 49 (fixed JSON syntax) + 1 (NUL) = 94 bytes; 128 gives headroom. */
+#define EM_FAILED_CONN_JSON_MAX  128
+
+static int em_publish_failed_connection(const wifi_em_failed_conn_t *fc)
+{
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = {0};
+    mac_addr_str_t bssid_str, sta_str;
+    char json_buf[EM_FAILED_CONN_JSON_MAX];
+    int n;
+    bus_error_t rc;
+
+    to_mac_str(fc->bssid,   bssid_str);
+    to_mac_str(fc->sta_mac, sta_str);
+
+    n = snprintf(json_buf, sizeof(json_buf),
+        "{\"bssid\":\"%s\",\"sta_mac\":\"%s\",\"status\":%u,\"reason\":%u}",
+        bssid_str, sta_str, (unsigned int)fc->status, (unsigned int)fc->reason);
+    if (n < 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: snprintf failed (n=%d)\n",
+            __func__, __LINE__, n);
+        return RETURN_ERR;
+    } else if (n >= (int)sizeof(json_buf)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: JSON truncated (n=%d, max=%zu)\n",
+            __func__, __LINE__, n, sizeof(json_buf));
+        return RETURN_ERR;
+    }
+
+    rdata.data_type = bus_data_type_string;
+    rdata.raw_data.bytes = (void *)json_buf;
+    rdata.raw_data_len = (size_t)n + 1;
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle,
+        WIFI_EM_FAILED_CONNECTION, &rdata);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn failed rc=%d\n",
+            __func__, __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
+static int em_handle_failed_connection(wifi_app_t *app, void *arg)
+{
+    sta_fail_data_t sd;
+    wifi_vap_info_t *vap_info;
+    wifi_em_failed_conn_t fc;
+    mac_addr_str_t sta_str, bss_str;
+
+    (void)app;
+
+    if (arg == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: NULL arg\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    /* Copy from the event-queue buffer into an aligned local before field access. */
+    memcpy(&sd, arg, sizeof(sd));
+
+    vap_info = getVapInfo(sd.ap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: getVapInfo failed for ap_index=%d\n",
+            __func__, __LINE__, sd.ap_index);
+        return RETURN_ERR;
+    }
+
+    memset(&fc, 0, sizeof(fc));
+    memcpy(fc.bssid,   vap_info->u.bss_info.bssid, sizeof(fc.bssid));
+    memcpy(fc.sta_mac, sd.sta_mac,                 sizeof(fc.sta_mac));
+    fc.status = sd.status;
+    fc.reason = sd.reason;
+
+    to_mac_str(fc.bssid,   bss_str);
+    to_mac_str(fc.sta_mac, sta_str);
+    wifi_util_dbg_print(WIFI_EM,
+        "%s:%d: failed_connection bssid=%s sta=%s status=%u reason=%u\n",
+        __func__, __LINE__, bss_str, sta_str,
+        (unsigned int)fc.status, (unsigned int)fc.reason);
+
+    return em_publish_failed_connection(&fc);
 }
 
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
@@ -3098,6 +3196,12 @@ int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *da
         em_handle_disassoc_device(app, data);
         break;
 
+    case wifi_event_hal_pre_assoc_fail:
+    case wifi_event_hal_post_assoc_fail:
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: failed_connection event sub_type=%d\n", __func__, __LINE__, sub_type);
+        em_handle_failed_connection(app, data);
+        break;
+
     case wifi_event_hal_sta_conn_status:
         em_handle_sta_conn_status(app, data);
         break;
@@ -3467,7 +3571,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_EM_UNASSOC_STA_LINK_METRICS_RESP, bus_element_type_method,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } },
-
+        { WIFI_EM_FAILED_CONNECTION, bus_element_type_event,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_string, false, 0, 0, 0, NULL } }
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;

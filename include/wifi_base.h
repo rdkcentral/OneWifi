@@ -27,6 +27,7 @@ extern "C" {
 #include "collection.h"
 #include <pthread.h>
 #include <sys/time.h>
+#include <stdint.h>
 #include "wifi_hal.h"
 
 #define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
@@ -1039,6 +1040,26 @@ typedef struct {
     hash_map_t *mlo_sta_map;
 } wifi_mld_unit_t;
 #endif /* CONFIG_IEEE80211BE */
+
+/* Carries the 802.11 status/reason code for a failed connection event.
+ * For pre-association failures (auth/assoc reject): set status, leave reason=0.
+ * For post-association failures (deauth/disassoc):  set reason, leave status=0.
+ * Fields are ordered to minimise internal padding between members; trailing
+ * tail-padding (if any) is compiler-controlled and not part of the payload size
+ * contract — always use sizeof(sta_fail_data_t) for queue operations.
+ * The struct is a host-local representation copied into the ctrl-queue event buffer.
+ * Consumers may cast `event->u.core_data.msg` to `const sta_fail_data_t *` when
+ * `event->u.core_data.len == sizeof(sta_fail_data_t)`; alternatively, memcpy into a
+ *  local `sta_fail_data_t` is also acceptable.
+ * If a serialized "wire" layout becomes required
+ * later, introduce a distinct packed wire-struct and perform explicit
+ * serialization/deserialization. */
+typedef struct {
+    int32_t        ap_index;
+    uint16_t       status;
+    uint16_t       reason;
+    mac_address_t  sta_mac;
+} sta_fail_data_t;
 
 struct active_msmt_data;
 
