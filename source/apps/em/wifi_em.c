@@ -109,6 +109,10 @@ typedef struct {
 
 //em_ap_metrics_report_cache_t em_ap_metrics_report_cache[MAX_NUM_RADIOS] = { 0 };
 em_ap_metrics_report_cache_t em_ap_metrics_report_cache = { 0 };
+/* Guards all client_stats_map hash maps in em_ap_metrics_report_cache against
+ * concurrent put/remove/traversal from the disassoc path and the scheduled
+ * AP report task. */
+static pthread_mutex_t em_client_stats_map_lock = PTHREAD_MUTEX_INITIALIZER;
 client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
 client_type_data_t client_type_info = { 0 };
 
@@ -351,6 +355,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
     wifi_util_dbg_print(WIFI_EM, "%s:%d key while updating cache is =%s and arr_vap_index:%d\n",
         __func__, __LINE__, key, arr_vap_index);
 
+    pthread_mutex_lock(&em_client_stats_map_lock);
     stats = (wifi_associated_dev3_timestamp_t *)hash_map_get(
         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map, key);
     if (stats == NULL) {
@@ -359,6 +364,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
         if (new_stats == NULL) {
             wifi_util_error_print(WIFI_EM, "%s:%d null stats=%d\n", __func__, __LINE__,
                 radio_index);
+            pthread_mutex_unlock(&em_client_stats_map_lock);
             return RETURN_ERR;
         }
         memcpy(&new_stats->associated_dev3, dev3, sizeof(wifi_associated_dev3_t));
@@ -374,6 +380,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
             stats->last_update_time = *timestamp;
         }
     }
+    pthread_mutex_unlock(&em_client_stats_map_lock);
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d added sample for radio_index=%d, vap_index=%d, client=%s\n",
         __func__, __LINE__, radio_index, vap_index, mac_str);
@@ -1670,10 +1677,9 @@ static int em_handle_failed_connection(wifi_app_t *app, void *arg)
 
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 {
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
     char client_mac[32];
-    int vap_index = assoc_data->ap_index;
+    int vap_index;
     unsigned char key[64] = { 0 };
     mac_addr_str_t sta_mac_str, bss_str;
     int i = 0;
@@ -1686,11 +1692,25 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d : Sta disassoc event \n", __func__, __LINE__);
 
+    if (assoc_data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: NULL arg\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    vap_index = assoc_data->ap_index;
+
+    vap_info = getVapInfo(vap_index);
+    if (vap_info == NULL) {
+        wifi_util_dbg_print(WIFI_EM, "%s:%d Vap not found for vap index:%d\n", __func__, __LINE__,
+            vap_index);
+        return RETURN_ERR;
+    }
+
     radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
     if (radio_index == RETURN_ERR) {
         wifi_util_dbg_print(WIFI_EM, "%s:%d could not find radio_index=%d for vap index = %d\n",
             __func__, __LINE__, radio_index, vap_index);
-        return 0;
+        return RETURN_ERR;
     }
 
     for (i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
@@ -1710,24 +1730,31 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
         return RETURN_ERR;
     }
 
-    vap_info = getVapInfo(vap_index);
-    if (vap_info == NULL) {
-        wifi_util_dbg_print(WIFI_EM, "%s:%d Vap not found for vap index:%d\n",
-            __func__, __LINE__, vap_index);
-        return RETURN_ERR;
-    }
     to_mac_str(vap_info->u.bss_info.bssid, bss_str);
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, sta_mac_str);
     snprintf(key, 64, "%s@%s", bss_str, sta_mac_str);
+    pthread_mutex_lock(&em_client_stats_map_lock);
     stats = (wifi_associated_dev3_timestamp_t *)hash_map_remove(
         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map, key);
-    if (stats == NULL) {
+    pthread_mutex_unlock(&em_client_stats_map_lock);
+    if (stats != NULL) {
+        /* Publish the latest cached per-STA counters. */
+        memcpy(&assoc_data->dev_stats, &stats->associated_dev3, sizeof(wifi_associated_dev3_t));
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s disassociated\n", __func__, __LINE__,
+            sta_mac_str);
+    } else {
         wifi_util_error_print(WIFI_EM, "%s:%d: Sta Mac %s not present in hash map\n", __func__,
             __LINE__, sta_mac_str);
-        return 0;
     }
-    wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s disassociated\n", __func__,
-        __LINE__, sta_mac_str);
+
+    if (em_publish_client_disassoc_stats(app, vap_info, assoc_data) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Failed to publish %s\n", __func__, __LINE__,
+            WIFI_EM_CLIENT_DISASSOC_STATS);
+    }
+
+    if (stats != NULL) {
+        free(stats);
+    }
 
     to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
     sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_remove(
@@ -1736,12 +1763,126 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     if (t_sta_data == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: Mac %s not present in hash map\n", __func__,
             __LINE__, client_mac);
-        return 0;
+        return RETURN_OK;
     }
 
     free(t_sta_data);
 
-    return 0;
+    return RETURN_OK;
+}
+
+static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *vap_info,
+    assoc_dev_data_t *assoc_data)
+{
+#define DISASSOC_JSON_BUF_SZ 1536
+#define DISASSOC_AFF_BUF_SZ (256 * MAX_NUM_RADIOS)
+
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = { 0 };
+    char *json_buf = NULL;
+    char *affiliated_buf = NULL;
+    mac_addr_str_t bssid_str, sta_str, mld_str;
+    size_t aff_pos;
+    int rc = RETURN_ERR;
+
+    if ((vap_info == NULL) || (assoc_data == NULL)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: invalid input\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    json_buf = (char *)malloc(DISASSOC_JSON_BUF_SZ);
+    if (json_buf == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: malloc failed for json_buf\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    affiliated_buf = (char *)malloc(DISASSOC_AFF_BUF_SZ);
+    if (affiliated_buf == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: malloc failed for affiliated_buf\n", __func__,
+            __LINE__);
+        free(json_buf);
+        return RETURN_ERR;
+    }
+
+    to_mac_str(vap_info->u.bss_info.bssid, bssid_str);
+    to_mac_str(assoc_data->dev_stats.cli_MACAddress, sta_str);
+
+    /*
+     * Affiliated STA Metrics, Wi-Fi 7 MLO.
+     * mld_info.cli_LinkInfo[].cli_Valid is never populated on the disassoc
+     * path (HAL producers only set AP index, STA MAC, and reason code), so
+     * it cannot be used here. dev_stats.cli_MLDEnable/cli_MLDAddr are
+     * restored earlier from the cached per-STA stats and reliably reflect
+     * the MLD state recorded at connect time, so we use those instead.
+     * TODO: replace the zeroed traffic counters with actual per-link values.
+     */
+    aff_pos = 0;
+    affiliated_buf[aff_pos++] = '[';
+    affiliated_buf[aff_pos] = '\0';
+
+    if (assoc_data->dev_stats.cli_MLDEnable) {
+        to_mac_str(assoc_data->dev_stats.cli_MLDAddr, mld_str);
+        int written = snprintf(affiliated_buf + aff_pos, DISASSOC_AFF_BUF_SZ - aff_pos,
+            "{\"STA MacAddress\":\"%s\","
+            "\"BytesSent\":0,\"BytesReceived\":0,"
+            "\"PacketsSent\":0,\"PacketsReceived\":0,"
+            "\"PacketsSentErrors\":0}",
+            mld_str);
+        if (written < 0 || (size_t)written >= (DISASSOC_AFF_BUF_SZ - aff_pos)) {
+            /* truncation or error - no room for more entries */
+            wifi_util_error_print(WIFI_EM, "%s:%d : no room in affiliated_buf\n", __func__,
+                __LINE__);
+            aff_pos = DISASSOC_AFF_BUF_SZ - 1;
+        } else {
+            aff_pos += (size_t)written;
+        }
+    }
+
+    /* reserve the last bytes for ']' + '\0' */
+    if (aff_pos > DISASSOC_AFF_BUF_SZ - 2) {
+        aff_pos = DISASSOC_AFF_BUF_SZ - 2;
+    }
+    affiliated_buf[aff_pos++] = ']';
+    affiliated_buf[aff_pos] = '\0';
+
+    snprintf(json_buf, DISASSOC_JSON_BUF_SZ,
+        "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
+        "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u,"
+        "\"Traffic Stats\":{\"BytesSent\":%llu,\"BytesReceived\":%llu,"
+        "\"PacketsSent\":%llu,\"PacketsReceived\":%llu,\"TxPacketsErrors\":%llu,"
+        "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu},"
+        "\"Affiliated STA Metrics\":%s}",
+        bssid_str, sta_str, (unsigned int)assoc_data->reason,
+        (unsigned long long)assoc_data->dev_stats.cli_BytesSent,
+        (unsigned long long)assoc_data->dev_stats.cli_BytesReceived,
+        (unsigned long long)assoc_data->dev_stats.cli_PacketsSent,
+        (unsigned long long)assoc_data->dev_stats.cli_PacketsReceived,
+        (unsigned long long)assoc_data->dev_stats.cli_ErrorsSent,
+        (unsigned long long)assoc_data->dev_stats.cli_RxErrors,
+        (unsigned long long)assoc_data->dev_stats.cli_RetransCount, affiliated_buf);
+
+    free(affiliated_buf);
+    affiliated_buf = NULL;
+
+    rdata.data_type = bus_data_type_string;
+    rdata.raw_data.bytes = (void *)json_buf;
+    rdata.raw_data_len = strlen(json_buf) + 1;
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle,
+        WIFI_EM_CLIENT_DISASSOC_STATS, &rdata);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn failed rc=%d\n", __func__,
+            __LINE__, rc);
+        rc = RETURN_ERR;
+    } else {
+        rc = RETURN_OK;
+    }
+
+    free(json_buf);
+    return rc;
+
+#undef DISASSOC_JSON_BUF_SZ
+#undef DISASSOC_AFF_BUF_SZ
 }
 
 static int em_handle_sta_conn_status(wifi_app_t *app, void *data)
@@ -2022,6 +2163,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                 }
                 memset(vap_report->sta_link_metrics, 0,
                     vap_report->sta_cnt * sizeof(per_sta_metrics_t));
+                pthread_mutex_lock(&em_client_stats_map_lock);
                 stats = hash_map_get_first(
                     em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map);
                 cnt = 0;
@@ -2032,6 +2174,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map, stats);
                     cnt++;
                 }
+                pthread_mutex_unlock(&em_client_stats_map_lock);
                 vap_report->sta_cnt = cnt;
                 vap_report->vap_metrics.num_of_assoc_stas = cnt;
 
@@ -2055,6 +2198,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                 memset(vap_report->sta_traffic_stats, 0,
                     vap_report->sta_cnt * sizeof(assoc_sta_traffic_stats_t));
 
+                pthread_mutex_lock(&em_client_stats_map_lock);
                 stats = hash_map_get_first(
                     em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map);
                 cnt = 0;
@@ -2064,6 +2208,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map, stats);
                     cnt++;
                 }
+                pthread_mutex_unlock(&em_client_stats_map_lock);
                 vap_report->sta_cnt = cnt;
                 vap_report->vap_metrics.num_of_assoc_stas = cnt;
                 break;
@@ -2103,6 +2248,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                     vap_report->sta_cnt * sizeof(assoc_sta_traffic_stats_t));
                 cnt = 0;
 
+                pthread_mutex_lock(&em_client_stats_map_lock);
                 stats = hash_map_get_first(
                     em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map);
                 while ((stats != NULL) && (cnt < vap_report->sta_cnt)) {
@@ -2113,6 +2259,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].client_stats_map, stats);
                     cnt++;
                 }
+                pthread_mutex_unlock(&em_client_stats_map_lock);
                 vap_report->sta_cnt = cnt;
                 vap_report->vap_metrics.num_of_assoc_stas = cnt;
                 break;
@@ -4177,6 +4324,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { NULL, cacr_set_client_acl_rules, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, true, 0, 0, 0, NULL } },
         { WIFI_EM_FAILED_CONNECTION, bus_element_type_event,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_EM_CLIENT_DISASSOC_STATS, bus_element_type_event,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } }
     };
