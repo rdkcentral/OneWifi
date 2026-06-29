@@ -1276,6 +1276,9 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
             case wifi_action_frame_type_public:
                 get_action_frame_evt_params(frame, len, &mgmt_frame, &evt_subtype);
                 break;
+            case wifi_action_frame_type_radio_msmt:
+                evt_subtype = wifi_event_br_report;
+                break;
             default:
                 break;
         }

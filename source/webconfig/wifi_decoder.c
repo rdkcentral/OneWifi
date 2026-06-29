@@ -6341,6 +6341,9 @@ webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
 {
     const cJSON *param = NULL;
     char key[64] = { 0 };
+    double frame_len;
+    size_t report_hex_len;
+    size_t expected_hex_len;
     unsigned char *out_ptr;
     // Vap Name.
     decode_param_string(obj_sta_cfg, "VapName", param);
@@ -6357,14 +6360,46 @@ webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
 
     // FrameLen
     decode_param_integer(obj_sta_cfg, "FrameLen", param);
-    sta_data->data_len = param->valuedouble;
+    frame_len = param->valuedouble;
+    if (frame_len <= 0 || frame_len > MAX_FRAME_SZ) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: invalid FrameLen=%f (max=%u)\n",
+            __func__, __LINE__, frame_len, MAX_FRAME_SZ);
+        return webconfig_error_decode;
+    }
+
+    sta_data->data_len = (unsigned int)frame_len;
+    if ((double)sta_data->data_len != frame_len) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: non-integer FrameLen=%f\n",
+            __func__, __LINE__, frame_len);
+        return webconfig_error_decode;
+    }
 
     decode_param_string(obj_sta_cfg, "ReportData", param);
-    out_ptr = stringtohex(strlen(param->valuestring), param->valuestring, sta_data->data_len,
+    report_hex_len = strlen(param->valuestring);
+    expected_hex_len = (size_t)sta_data->data_len * 2;
+    if ((report_hex_len & 0x1) != 0 || report_hex_len != expected_hex_len) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: invalid ReportData length=%zu, expected=%zu for FrameLen=%u\n",
+            __func__, __LINE__, report_hex_len, expected_hex_len, sta_data->data_len);
+        return webconfig_error_decode;
+    }
+
+    sta_data->data = (unsigned char *)malloc(sta_data->data_len);
+    if (sta_data->data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to allocate %u bytes for report data\n",
+            __func__, __LINE__, sta_data->data_len);
+        return webconfig_error_decode;
+    }
+
+    out_ptr = stringtohex(report_hex_len, param->valuestring, sta_data->data_len,
         sta_data->data);
     if (out_ptr == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error to convert ot string \n", __func__,
-            __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error converting string to hex\n",
+            __func__, __LINE__);
+        free(sta_data->data);
+        sta_data->data = NULL;
         return webconfig_error_decode;
     }
 
