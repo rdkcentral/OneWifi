@@ -36,7 +36,6 @@ extern "C" {
 #define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
 #define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
-#define WIFI_NASTA_RESPONSE_EVENT             "Device.WiFi.EM.NaStaResponse"
 #define WIFI_EM_FAILED_CONNECTION             "Device.WiFi.EM.FailedConnection"
 
 #define WNM_CATEGORY               10

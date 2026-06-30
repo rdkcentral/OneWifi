@@ -4527,6 +4527,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_ACCESSPOINT_GET_NASTA, bus_element_type_method,
                                     { NULL, NULL, NULL, NULL, NULL, get_NaSta }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_NASTA_RESPONSE_EVENT, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);
