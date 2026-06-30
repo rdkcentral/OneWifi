@@ -56,11 +56,6 @@ static void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module,
  * EasyMesh topology streaming over VB-SB WebSocket (wss://)
  * ================================================================ */
 
-/* Message format toggle:
- * EM_TOPO_MSG_FORMAT_PYTHON  — matches xb_topology_client.py envelope
- * Comment out to use the legacy start_id/ordering_id/end_id format */
-#define EM_TOPO_MSG_FORMAT_PYTHON 1
-
 #define EM_TOPO_STREAM_URL_SIZE    4096
 #define EM_TOPO_STREAM_TOKEN_KEY   "token="
 #define EM_TOPO_STREAM_SAT_URL     "https://devprimary.vbautobot.comcast.com:6002/get_sat"
@@ -382,42 +377,26 @@ static void em_topo_stream_send_topology(const char *topology_json)
         return;
     }
 
-#ifdef EM_TOPO_MSG_FORMAT_PYTHON
-    /* Python-compatible format: {"type","gatewayMac","timestamp"(ISO8601),"payload"(object)} */
-    {
-        struct tm tm_utc;
-        gmtime_r(&tv_now.tv_sec, &tm_utc);
-        strftime(ts_buf, sizeof(ts_buf), "%Y-%m-%dT%H:%M:%S+00:00", &tm_utc);
-    }
-    cJSON *payload_obj = cJSON_Parse(topology_json);
-    if (payload_obj == NULL) {
-        wifi_util_dbg_print(WIFI_APPS, "[TOPO-WS] topology_json parse failed, sending as string");
-        cJSON_AddStringToObject(envelope, "type",       "topology");
-        cJSON_AddStringToObject(envelope, "gatewayMac", g_em_topo_gateway_mac);
-        cJSON_AddStringToObject(envelope, "timestamp",  ts_buf);
-        cJSON_AddStringToObject(envelope, "payload",    topology_json);
-    } else {
-        cJSON_AddStringToObject(envelope, "type",       "topology");
-        cJSON_AddStringToObject(envelope, "gatewayMac", g_em_topo_gateway_mac);
-        cJSON_AddStringToObject(envelope, "timestamp",  ts_buf);
-        cJSON_AddItemToObject(envelope,   "payload",    payload_obj);
-    }
-#else
-    /* Legacy format: {"start_id","ordering_id","app_type","timestamp"(mmddyyHHMMSS),"payload"(string),"end_id"} */
+    /* Format: {"cm_mac","ordering_id","app_type","timestamp"(mmddyyHHMMSS),"payload"(string)} */
     {
         struct tm tm_now;
         char id_buf[32] = {0};
         localtime_r(&tv_now.tv_sec, &tm_now);
         strftime(ts_buf, sizeof(ts_buf), "%m%d%y%H%M%S", &tm_now);
         snprintf(id_buf, sizeof(id_buf), "%llu", g_em_topo_order_id);
-        cJSON_AddStringToObject(envelope, "start_id",    id_buf);
+        cJSON_AddStringToObject(envelope, "cm_mac",      g_em_topo_gateway_mac);
         cJSON_AddStringToObject(envelope, "ordering_id", id_buf);
         cJSON_AddStringToObject(envelope, "app_type",    "easyMesh");
         cJSON_AddStringToObject(envelope, "timestamp",   ts_buf);
-        cJSON_AddStringToObject(envelope, "payload",     topology_json);
-        cJSON_AddStringToObject(envelope, "end_id",      id_buf);
+        {
+            cJSON *payload_obj = cJSON_Parse(topology_json);
+            if (payload_obj) {
+                cJSON_AddItemToObject(envelope, "payload", payload_obj);
+            } else {
+                cJSON_AddStringToObject(envelope, "payload", topology_json);
+            }
+        }
     }
-#endif
 
     envelope_str = cJSON_PrintUnformatted(envelope);
     cJSON_Delete(envelope);
@@ -582,7 +561,7 @@ int main()
 
     /* Fetch gateway MAC address (used in Python-format envelope) */
     {
-        FILE *mac_fp = popen("deviceinfo.sh -emac 2>/dev/null || "
+        FILE *mac_fp = popen("deviceinfo.sh -cmac 2>/dev/null || "
                              "cat /sys/class/net/brlan0/address 2>/dev/null || "
                              "cat /sys/class/net/erouter0/address 2>/dev/null", "r");
         if (mac_fp) {
