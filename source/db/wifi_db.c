@@ -299,6 +299,21 @@ static int init_interworking_config_default(int vapIndex,
     return 0;
 }
 
+int wifidb_get_default_mld_link_id(int band)
+{
+#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+    switch (band) {
+    case WIFI_FREQUENCY_2_4_BAND: return 2;
+    case WIFI_FREQUENCY_5_BAND:   return 0;
+    case WIFI_FREQUENCY_6_BAND:   return 1;
+    default:                      return 255;
+    }
+#else
+    (void)band;
+    return 255;
+#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
+}
+
 static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config)
 {
@@ -552,11 +567,10 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.mld_info.common_info.mld_id = 0;
         }
 #else
-        /*TODO: Are values correct?  */
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg.u.bss_info.mld_info.common_info.mld_id = 255;
-#endif
-        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
+#endif /* _PLATFORM_BANANAPI_R4_ */
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
@@ -992,6 +1006,7 @@ int get_all_param_from_psm_and_set_into_db(void)
    return 0;
 }
 #endif
+
 void wifidb_init(wifi_db_t *db)
 {
     db->desc.init_fn = init_wifidb;
