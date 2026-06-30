@@ -261,9 +261,9 @@ bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out
 
 /* 5GHz radio */
 #define MIN_FREQ_MHZ_5G 5180
-#define MAX_FREQ_MHZ_5G 5825
+#define MAX_FREQ_MHZ_5G 5885
 #define MIN_CHANNEL_5G 36
-#define MAX_CHANNEL_5G 165
+#define MAX_CHANNEL_5G 177
 
 /* 5GHz Low radio */
 #define MIN_FREQ_MHZ_5GL 5180
@@ -273,9 +273,9 @@ bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out
 
 /* 5GHz High radio */
 #define MIN_FREQ_MHZ_5GH 5500
-#define MAX_FREQ_MHZ_5GH 5825
+#define MAX_FREQ_MHZ_5GH 5885
 #define MIN_CHANNEL_5GH 100
-#define MAX_CHANNEL_5GH 165
+#define MAX_CHANNEL_5GH 177
 
 /* 6GHz radio */
 #define MIN_FREQ_MHZ_6G 5955
