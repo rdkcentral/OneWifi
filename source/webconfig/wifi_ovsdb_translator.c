@@ -617,6 +617,8 @@ void get_translator_config_wpa_mfp(
     } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition ||
         vap->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility) {
+        vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
     } else {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
     }
