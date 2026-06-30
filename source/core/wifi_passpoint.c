@@ -846,12 +846,20 @@ INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
 	return RETURN_ERR;
     }
-    wifi_interworking_t anqpData;
+    wifi_interworking_t *anqpData = NULL;
+
+    anqpData = (wifi_interworking_t *)malloc(sizeof(wifi_interworking_t));
+    if (anqpData == NULL) {
+        wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     wifi_InterworkingElement_t interworking;
     cJSON *mainEntry = NULL;
 
     if(!JSON_STR){
         wifi_util_dbg_print(WIFI_PASSPOINT,"JSON String is NULL\n");
+        free(anqpData);
         return RETURN_ERR;
     }
 
@@ -859,6 +867,7 @@ INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
 
     if (NULL == passPointCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to parse JSON\n");
+        free(anqpData);
         return RETURN_ERR;
     }
 
@@ -866,51 +875,55 @@ INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
     if(NULL == mainEntry){
         wifi_util_dbg_print(WIFI_PASSPOINT,"ANQP entry is NULL\n");
         cJSON_Delete(passPointCfg);
+        free(anqpData);
         return RETURN_ERR;
     }
    
-    memset((char *)&anqpData,0,sizeof(wifi_interworking_t));
+    memset(anqpData, 0, sizeof(wifi_interworking_t));
     (void)memset(&interworking, 0, sizeof(interworking));
     wifi_getApInterworkingElement(apIns,&interworking);
-    (void)memcpy(&anqpData.interworking, &interworking, sizeof(interworking));
+    memcpy(&anqpData->interworking, &interworking, sizeof(interworking));
 
 #ifndef LINUX_VM_PORT
-    if (validate_anqp(mainEntry, &anqpData, &execRetVal) != 0) {
+    if (validate_anqp(mainEntry, anqpData, &execRetVal) != 0) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed. Error: %s\n", __func__, __LINE__,execRetVal.ErrorMsg);
         cJSON_Delete(passPointCfg);
+        free(anqpData);
         return RETURN_ERR;
     }
 #endif
 
     if (memcmp(&g_interworking_data[apIns].roamingConsortium,
-            &anqpData.roamingConsortium,
-        sizeof(anqpData.roamingConsortium)) != 0) {
+            &anqpData->roamingConsortium,
+        sizeof(anqpData->roamingConsortium)) != 0) {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
         if (RETURN_OK != wifi_pushApRoamingConsortiumElement(apIns, 
-                     &anqpData.roamingConsortium)) {
+                     &anqpData->roamingConsortium)) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s: Failed to push Roaming Consotrium to hal for wlan %d\n",
                             __FUNCTION__, apIns);
             cJSON_Delete(passPointCfg);
+            free(anqpData);
             return RETURN_ERR;
         }
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s: Applied Roaming Consortium configuration successfully for wlan %d\n",
                    __FUNCTION__, apIns);
 #endif
-        memcpy(&g_interworking_data[apIns].roamingConsortium,&anqpData.roamingConsortium,
-               sizeof(anqpData.roamingConsortium));
+        memcpy(&g_interworking_data[apIns].roamingConsortium,&anqpData->roamingConsortium,
+               sizeof(anqpData->roamingConsortium));
 
         //Update TR-181
-	pCfg->roamingConsortium.wifiRoamingConsortiumCount = anqpData.roamingConsortium.wifiRoamingConsortiumCount;
-        memcpy(&pCfg->roamingConsortium.wifiRoamingConsortiumOui,&anqpData.roamingConsortium.wifiRoamingConsortiumOui,
+	pCfg->roamingConsortium.wifiRoamingConsortiumCount = anqpData->roamingConsortium.wifiRoamingConsortiumCount;
+        memcpy(&pCfg->roamingConsortium.wifiRoamingConsortiumOui,&anqpData->roamingConsortium.wifiRoamingConsortiumOui,
                sizeof(pCfg->roamingConsortium.wifiRoamingConsortiumOui));
-        memcpy(&pCfg->roamingConsortium.wifiRoamingConsortiumLen,&anqpData.roamingConsortium.wifiRoamingConsortiumLen,
+        memcpy(&pCfg->roamingConsortium.wifiRoamingConsortiumLen,&anqpData->roamingConsortium.wifiRoamingConsortiumLen,
                sizeof(pCfg->roamingConsortium.wifiRoamingConsortiumLen));//ONE_WIFI
     }
 
-    memcpy(&g_interworking_data[apIns].anqp, &anqpData.anqp, sizeof(wifi_anqp_settings_t));
+    memcpy(&g_interworking_data[apIns].anqp, &anqpData->anqp, sizeof(wifi_anqp_settings_t));
     wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation Success. Updating ANQP Config\n", __func__, __LINE__);
 
     cJSON_Delete(passPointCfg);
+    free(anqpData);
 
     return RETURN_OK;
 }
@@ -1057,12 +1070,20 @@ INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 	return RETURN_ERR;
     }
     
-    wifi_interworking_t passpointCfg;
+    wifi_interworking_t *passpointCfg = NULL;
+
+    passpointCfg = (wifi_interworking_t *)malloc(sizeof(wifi_interworking_t));
+    if (passpointCfg == NULL) {
+        wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     wifi_InterworkingElement_t interworking;
     cJSON *mainEntry = NULL;
     
     if(!JSON_STR){
         wifi_util_dbg_print(WIFI_PASSPOINT,"JSON String is NULL\n");
+        free(passpointCfg);
         return RETURN_ERR;
     }
     
@@ -1070,6 +1091,7 @@ INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     
     if (NULL == passPointObj) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to parse JSON\n");
+        free(passpointCfg);
         return RETURN_ERR;
     }
     
@@ -1077,6 +1099,7 @@ INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     if(NULL == mainEntry){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Passpoint entry is NULL\n");
         cJSON_Delete(passPointObj);
+        free(passpointCfg);
         return RETURN_ERR;
     }
 
@@ -1086,14 +1109,15 @@ INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     get_wifi_rfc_parameters(RFC_WIFI_PASSPOINT, (bool *)&g_passpoint_RFC);//ONE_WIFI
 #endif
 
-    memset((char *)&passpointCfg,0,sizeof(wifi_interworking_t));
+    memset(passpointCfg,0,sizeof(wifi_interworking_t));
     (void)memset(&interworking, 0, sizeof(interworking));
     wifi_getApInterworkingElement(apIns,&interworking);//TBD -A
-    (void)memcpy(&passpointCfg.interworking, &interworking, sizeof(interworking));
+    memcpy(&passpointCfg->interworking, &interworking, sizeof(interworking));
 #ifndef LINUX_VM_PORT
-    if (validate_passpoint(mainEntry, &passpointCfg, &execRetVal) != 0) {   
+    if (validate_passpoint(mainEntry, passpointCfg, &execRetVal) != 0) {
        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed. Error: %s\n", __func__, __LINE__,execRetVal.ErrorMsg);
        cJSON_Delete(passPointObj);
+       free(passpointCfg);
        return RETURN_ERR;
     }
 #endif
@@ -1103,27 +1127,29 @@ INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     wifi_getApEnable(apIns, &apEnable);
     wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Enable flag of AP Index: %d is %d \n", __func__, __LINE__,apIns, apEnable);
     if(apEnable) {
-        if(RETURN_OK == enablePassPointSettings(apIns, passpointCfg.passpoint.enable,
-                                                       passpointCfg.passpoint.gafDisable,
-                                                       passpointCfg.passpoint.p2pDisable,
-                                                       passpointCfg.passpoint.l2tif)) {
+        if(RETURN_OK == enablePassPointSettings(apIns, passpointCfg->passpoint.enable,
+                                                       passpointCfg->passpoint.gafDisable,
+                                                       passpointCfg->passpoint.p2pDisable,
+                                                       passpointCfg->passpoint.l2tif)) {
              wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Successfully set Passpoint Config\n", __func__, __LINE__);
 
-	     pCfg->passpoint.enable = passpointCfg.passpoint.enable;
-             pCfg->passpoint.gafDisable = passpointCfg.passpoint.gafDisable;
-             pCfg->passpoint.p2pDisable = passpointCfg.passpoint.p2pDisable;
-             pCfg->passpoint.l2tif = passpointCfg.passpoint.l2tif;//ONE_WIFI
+	     pCfg->passpoint.enable = passpointCfg->passpoint.enable;
+             pCfg->passpoint.gafDisable = passpointCfg->passpoint.gafDisable;
+             pCfg->passpoint.p2pDisable = passpointCfg->passpoint.p2pDisable;
+             pCfg->passpoint.l2tif = passpointCfg->passpoint.l2tif;//ONE_WIFI
          }else{
              wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Error Setting Passpoint Enable Status on AP: %d\n", __func__, __LINE__,apIns);
              cJSON_Delete(passPointObj);
+             free(passpointCfg);
              return RETURN_ERR;
         }
     } else {
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: VAP is disabled. Not Initializing Passpoint Enable Status on AP: %d\n", __func__, __LINE__,apIns);
     }
-    memcpy((char *)&g_interworking_data[apIns].passpoint,&passpointCfg.passpoint,sizeof(wifi_passpoint_settings_t));
+    memcpy((char *)&g_interworking_data[apIns].passpoint,&passpointCfg->passpoint,sizeof(wifi_passpoint_settings_t));
 
     cJSON_Delete(passPointObj);
+    free(passpointCfg);
 #else
     UNREFERENCED_PARAMETER(JSON_STR);
 #endif
