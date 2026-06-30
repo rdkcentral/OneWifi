@@ -5259,7 +5259,7 @@ webconfig_error_t  translate_config_from_ovsdb_for_vif_neighbors(webconfig_subdo
     const struct schema_Wifi_VIF_Neighbors **table;
     struct schema_Wifi_VIF_Neighbors *client_row;
     webconfig_external_ovsdb_t *proto;
-    vif_neighbors_t *vif_neighbor_entry;
+    vif_neighbors_t *vif_neighbor_entry = NULL;
     vif_neighbors_t temp_vif_neighbor;
     unsigned int i = 0;
     webconfig_error_t rc = webconfig_error_none;
