@@ -4273,6 +4273,44 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
      return;
 }
 
+bus_error_t set_IgnoreDisassocTimer(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    int ap_idx = 0, ret;
+    bool enable = false;
+    ignore_disassoc_timer_cmd_t cmd;
+
+    (void)user_data;
+    if ((p_data == NULL) || (name == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL input\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    if (p_data->data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: wrong data type %d\n",
+                              __func__, __LINE__, p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    /* name: "Device.WiFi.AccessPoint.<idx>.X_RDKCENTRAL-COM_Ignore11vDisassoc" */
+    ret = sscanf(name, "Device.WiFi.AccessPoint.%d.", &ap_idx);
+    if (ret != 1 || ap_idx < 1 || ap_idx > MAX_VAP) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid vap index %u\n",
+                              __func__, __LINE__, ap_idx);
+        return bus_error_destination_not_found;
+    }
+    ap_idx -= 1; /* convert 1-based DM index to 0-based */
+
+    enable = p_data->raw_data.b;
+    memset(&cmd, 0, sizeof(cmd));
+    cmd.ap_idx = ap_idx;
+    cmd.ignore  = enable;
+
+    push_event_to_ctrl_queue(&cmd, sizeof(cmd),
+                             wifi_event_type_command,
+                             wifi_event_type_command_setIgnoreDisassocTimer,
+                             NULL);
+    return bus_error_success;
+}
 
 void bus_register_handlers(wifi_ctrl_t *ctrl)
 {
@@ -4447,6 +4485,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_IGNITE_STATUS, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNORE_DISASSOC_IMMINENT, bus_element_type_method,
+                                    { NULL, set_IgnoreDisassocTimer, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_boolean, true, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);
