@@ -113,7 +113,9 @@ void    *queue_peek  (queue_t *q, uint32_t index)
 {
     element_t    *e;
     uint32_t i = 0;
-    
+    if (q == NULL) {
+        return NULL;
+    }
     if (index >= queue_count(q)) {
         return NULL;
     }
@@ -247,6 +249,9 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     } else {
         prev->next = e->next;
     }
+    if (map->itr == e) {
+        map->itr = NULL;
+    }
     free(e);
     map->queue->count--;
 
@@ -357,7 +362,11 @@ void  hash_map_cleanup(hash_map_t *map)
     hash_element_t *he;
     element_t    *e, *tmp;
     
-    if (map == NULL || map->queue == NULL || map->queue->head == NULL) {
+    if (map == NULL) {
+        return;
+    }
+    map->itr = NULL;
+    if (map->queue == NULL || map->queue->head == NULL) {
         return;
     }
     e = map->queue->head;
