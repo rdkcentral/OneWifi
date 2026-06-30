@@ -267,7 +267,7 @@ HOSTAP_LIB_FLAGS +=  -DHOSTAPD_2_11 -DCONFIG_WEP -DFEATURE_SUPPORT_RADIUSGREYLIS
                          -DEAP_SAKE -DEAP_GPSK -DEAP_PWD -DIEEE8021X_EAPOL -DCONFIG_IEEE80211W -DRDK_ONEWIFI -DCONFIG_GENERIC_MLO -DCONFIG_MLO -fPIC -DPIC -DKERNEL_6_6 -DCONFIG_AP
 
 # wifi agent rules
-LDFLAGS = $(LIBDIRS) $(LIBS)
+LDFLAGS += $(LIBDIRS) $(LIBS)
 
 PROGRAM = $(INSTALLDIR)/bin/OneWifi
 
@@ -450,13 +450,13 @@ ifdef EASY_MESH_NODE
 endif
 
 ifdef ONEWIFI_CSI_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/csi/*.c)	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/csi/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_csi.c
 endif
 
 
 ifdef ONEWIFI_CAC_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/cac/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/cac/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_cac.c
 endif
 
@@ -466,12 +466,12 @@ ifdef ONEWIFI_MOTION_APP_SUPPORT
 endif
 
 ifdef ONEWIFI_HARVESTER_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/harvester/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/harvester/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_harvester.c
 endif
 
 ifdef ONEWIFI_LEVL_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/levl/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/levl/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_levl.c
 endif
 
@@ -480,7 +480,7 @@ ifdef ONEWIFI_WHIX_APP_SUPPORT
 endif
 
 ifdef ONEWIFI_BLASTER_APP_SUPPORT 
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/blaster/*.c) \
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/blaster/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_blaster.c
 endif
 
@@ -537,7 +537,7 @@ else
 CFLAGS += -DPLATFORM_OSX
 endif
 
-LDFLAGS = $(LIBDIRS) $(LIBS)
+LDFLAGS += $(LIBDIRS) $(LIBS)
 
 $(BUILD_DIR):
 	@mkdir -p $(INSTALLDIR)/lib
