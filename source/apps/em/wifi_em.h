@@ -49,6 +49,7 @@ extern "C" {
 
 #define MAX_LOCAL_SSIDS 16
 #define MAX_SSID_LEN    33
+#define WIFI_EM_DISASSOC_CLIENT               "Device.WiFi.EM.DisassocClient"
 
 typedef struct wifi_app wifi_app_t;
 
