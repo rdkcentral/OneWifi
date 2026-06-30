@@ -3360,9 +3360,6 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_EM_CLIENT_ASSOC_CTRL_REQ, bus_element_type_method,
             { NULL, controller_set_client_acl_rules, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, true, 0, 0, 0, NULL } },
-        { WIFI_NASTA_RESPONSE_EVENT, bus_element_type_event,
-            { NULL, NULL, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
-            { bus_data_type_string, false, 0, 0, 0, NULL } },
         { WIFI_EM_FAILED_CONNECTION, bus_element_type_event,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
             { bus_data_type_string, false, 0, 0, 0, NULL } }
