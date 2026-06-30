@@ -126,7 +126,8 @@ webconfig_error_t encode_nasta_query_subdoc(webconfig_t *config,
     }
     cJSON_AddItemToObject(json, "UnassociatedSTALinkMetricsResponse", resp_obj);
 
-    cJSON_AddNumberToObject(resp_obj, "num_sta", resp->num_sta);
+    cJSON_AddNumberToObject(resp_obj, "num_sta",
+        (resp->num_sta > MAX_NASTA_RESPONSE_STAS) ? MAX_NASTA_RESPONSE_STAS : resp->num_sta);
 
     sta_array = cJSON_CreateArray();
     if (sta_array == NULL) {
