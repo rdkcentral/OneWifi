@@ -1051,7 +1051,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     else
     {
         /* Set default value */
-        l_interworking_RFC = 0;
+        l_interworking_RFC = 1;
     }
     push_rfc_dml_cache_to_one_wifidb(l_interworking_RFC,wifi_event_type_wifi_interworking_rfc);
     retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-Passpoint.Enable", NULL, &strValue);
@@ -1062,7 +1062,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     else
     {
         /* Set default value */
-        l_passpoint_RFC = 0;
+        l_passpoint_RFC = 1;
     }
 
     push_rfc_dml_cache_to_one_wifidb(l_passpoint_RFC,wifi_event_type_wifi_passpoint_rfc);
