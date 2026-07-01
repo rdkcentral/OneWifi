@@ -1166,11 +1166,15 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     wifi_mgmt_frame.frame.phy_rate = frame->phy_rate;
     wifi_mgmt_frame.frame.token = frame->token;
     wifi_mgmt_frame.frame.recv_freq = frame->recv_freq;
+    if (frame->len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Received frame len: %d, more than allowed allocation\n", __func__, __LINE__, frame->len);
+        return RETURN_ERR;
+    }
     wifi_mgmt_frame.frame.len = frame->len;
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    push_event_to_ctrl_queue(&wifi_mgmt_frame, sizeof(wifi_mgmt_frame), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }
@@ -1298,6 +1302,7 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
 {
     unsigned short query_len, *pquery_len;
     unsigned char *query_req;
+    unsigned char *frame_end = frame + len;
     wifi_advertisementProtoElement_t *adv_proto_elem;
     wifi_advertisementProtoTuple_t *adv_tuple;
     const char dpp_oui[3] = {0x50, 0x6f, 0x9a};
@@ -1309,8 +1314,24 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d: advertisement proto element id:%d length:%d\n", __func__, __LINE__, adv_proto_elem->id, adv_proto_elem->len);
 
     pquery_len = (unsigned short*)((unsigned char *)&adv_proto_elem->proto_tuple + adv_proto_elem->len);
-    query_len = *pquery_len;
+
+    if ((unsigned char *)pquery_len + sizeof(unsigned short) > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Invalid GAS initial request frame, query_len field out of bounds\n", __func__, __LINE__);
+        return;
+    }
+
+    memcpy(&query_len, pquery_len, sizeof(unsigned short));
     query_req = (unsigned char *)((unsigned char *)pquery_len + sizeof(unsigned short));
+
+    if (query_req + query_len > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Invalid GAS initial request frame, query length exceeds frame length\n", __func__, __LINE__);
+        return;
+    }
+
+     if (query_len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Invalid GAS initial request frame, query length exceeds max frame size\n", __func__, __LINE__);
+        return;
+     }
 
     switch (adv_tuple->adv_proto_id) {
 
