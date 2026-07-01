@@ -3620,6 +3620,64 @@ int dfs_nop_finish_timer(void *args)
     return TIMER_TASK_COMPLETE;
 }
 
+static void publish_dfs_event(wifi_ctrl_t *ctrl, unsigned char radio_index,
+    wifi_radio_operationParam_t *radio_params,
+    wifi_channel_change_event_t *ch_chg,
+    em_dfs_evnt_type_t event_type,
+    unsigned short sec_remain_non_occ_dur)
+{
+    webconfig_subdoc_data_t *data;
+    raw_data_t rdata;
+    bus_error_t rc;
+
+    wifi_util_error_print(WIFI_CTRL, "%s:%d: Start*****\n", __func__, __LINE__);
+
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: malloc failed\n", __func__, __LINE__);
+        return;
+    }
+
+    if (radio_params == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: radio_params NULL\n", __func__, __LINE__);
+        return;
+    }
+
+    // Populate the CAC event structure
+    data->u.decoded.dfs_event.event_type = event_type;
+    data->u.decoded.dfs_event.radio_index = radio_index;
+    data->u.decoded.dfs_event.op_class = radio_params->operatingClass;
+    data->u.decoded.dfs_event.channel = ch_chg->channel;
+    data->u.decoded.dfs_event.sec_remain_non_occ_dur = sec_remain_non_occ_dur;
+    data->u.decoded.dfs_event.status = 0;
+
+    // Encode to JSON using WebConfig
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dfs_event) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Error encoding DFS event\n", __func__, __LINE__);
+        webconfig_data_free(data);
+        free(data);
+        return;
+    }
+
+    memset(&rdata, 0, sizeof(raw_data_t));
+    rdata.data_type = bus_data_type_string;
+    rdata.raw_data.bytes = (void *)data->u.encoded.raw;
+    rdata.raw_data_len = strlen(data->u.encoded.raw) + 1;
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"raw data=%s\n",(char*)rdata.raw_data.bytes);
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_DFS_EVENT, &rdata);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to publish DFS event, error: %d\n",
+        __func__, __LINE__, rc);
+    }
+    else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Published DFS event, type: %d,",__func__, __LINE__, event_type);
+    }
+
+    webconfig_data_free(data);
+    free(data);
+}
+
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_nop_start_reboot, unsigned int dfs_timer_secs)
 {
     wifi_radio_operationParam_t *radio_params = NULL;
@@ -3747,6 +3805,28 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             goto cleanup;
         }
 
+        // Get radio MAC address
+        mac_address_t radio_mac;
+        radio_interface_mapping_t *radio_iface_map = NULL;
+        wifi_platform_property_t *wifi_prop = &g_wifidb->hal_cap.wifi_prop;
+        bool radio_mac_valid = false;
+
+        for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
+            if (wifi_prop->radio_interface_map[k].radio_index == ch_chg->radioIndex) {
+                radio_iface_map = &(wifi_prop->radio_interface_map[k]);
+                break;
+            }
+        }
+
+        if (radio_iface_map != NULL) {
+            if (mac_address_from_name(radio_iface_map->interface_name, radio_mac) == 0) {
+                radio_mac_valid = true;
+                mac_addr_str_t mac_str;
+                to_mac_str(radio_mac, mac_str);
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Radio MAC: %s\n", __func__, __LINE__, mac_str);
+            }
+        }
+
         switch (ch_chg->sub_event)
         {
             case WIFI_EVENT_RADAR_DETECTED :
@@ -3755,6 +3835,12 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                     /* Ignore the duplicate radar events for the same channel triggered within 2 seconds */
                     break;
                 }
+
+                if (radio_mac_valid) {
+                    unsigned short sec_remain = 1800;
+                    publish_dfs_event(ctrl, ch_chg->radioIndex, radio_params, ch_chg, em_dfs_evnt_type_radar_detected, sec_remain);
+                }
+
                 unsigned int channel_index = 0;
                 l_radio->radarInfo.last_channel = ch_chg->channel;
                 l_radio->radarInfo.num_detected++;
@@ -3786,9 +3872,17 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 break;
             case WIFI_EVENT_RADAR_CAC_FINISHED :
                 chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
+                if (radio_mac_valid) {
+                    publish_dfs_event(ctrl, ch_chg->radioIndex, radio_params, ch_chg, em_dfs_evnt_type_finished, 0);
+                }
+
                 break;
             case WIFI_EVENT_RADAR_CAC_ABORTED :
                 chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
+                if (radio_mac_valid) {
+                    publish_dfs_event(ctrl, ch_chg->radioIndex, radio_params, ch_chg, em_dfs_evnt_type_aborted, 0);
+                }
+
                 break;
             case WIFI_EVENT_RADAR_NOP_FINISHED :
                 if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
@@ -3819,12 +3913,24 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                     }
                 }
                 chan_state = CHAN_STATE_DFS_NOP_FINISHED;
+                if (radio_mac_valid) {
+                    publish_dfs_event(ctrl, ch_chg->radioIndex, radio_params, ch_chg, em_dfs_evnt_type_nop_finished, 0);
+                }
+
                 break;
             case WIFI_EVENT_RADAR_PRE_CAC_EXPIRED :
                 chan_state = CHAN_STATE_DFS_NOP_FINISHED;
+                if (radio_mac_valid) {
+                    publish_dfs_event(ctrl, ch_chg->radioIndex, radio_params, ch_chg, em_dfs_evnt_type_nop_finished, 0);
+                }
+
                 break;
             case WIFI_EVENT_RADAR_CAC_STARTED :
                 chan_state = CHAN_STATE_DFS_CAC_START;
+                if (radio_mac_valid) {
+                    publish_dfs_event(ctrl, ch_chg->radioIndex, radio_params, ch_chg, em_dfs_evnt_type_started, 0);
+                }
+
                 break;
         }
 

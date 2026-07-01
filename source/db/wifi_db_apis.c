@@ -7347,6 +7347,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef CONFIG_IEEE80211BE
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+            cfg->DfsEnabled = true;
+            cfg->DfsEnabledBootup = true;
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg->operatingClass = 128;
@@ -7363,6 +7365,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef CONFIG_IEEE80211BE
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+            cfg->DfsEnabled = true;
+            cfg->DfsEnabledBootup = true;
             break;
         case WIFI_FREQUENCY_6_BAND:
             cfg->operatingClass = 134;

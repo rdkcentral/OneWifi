@@ -496,6 +496,7 @@ ifdef EM_APP
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_ap_metrics_report.c
 endif
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_link_report.c
+	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_dfs_event.c
 
 ifdef WIFI_SENSING_APP_SUPPORT
     CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/wifi_sensing/src/*.c)
