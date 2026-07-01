@@ -861,6 +861,10 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     rdk_wifi_vap_info_t *mgr_rdk_vap_info, *rdk_vap_info;
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
     int ret = 0;
+#if defined(_PLATFORM_BANANAPI_R4_)
+    bool dml_cache_update_needed = false;
+    webconfig_subdoc_data_t *dml_cache_update_subdoc = NULL;
+#endif
 
     for (i = 0; i < size; i++) {
 
@@ -1033,32 +1037,41 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                        vap_svc_event_none, &pub);
                 }
             }
-            /* XXX: This memcpy should be deleted later. Mgr's cache should be
-             * updated only from WifiDb callbacks (see update_fn).
-             *
-             * Problems:
-             * 1. memcpy would be executed even if wifi_hal_createVAP/webconfig_set_ow_core_vif_config failed
-             * 2. MAC is updated by ow_core_update_vap_mac for XE2. Currently, schema_Wifi_VAP_Config doesn't have mac field
-             * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
-             */
 
+#if defined(_PLATFORM_BANANAPI_R4_)
+            if (memcmp(&p_tgt_vap_map->vap_array[0], vap_info, sizeof(wifi_vap_info_t)) != 0) {
+                update_global_cache(p_tgt_vap_map, &tgt_rdk_vap_info);
+                if (dml_cache_update_needed == false) {
+                    dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
+                        sizeof(webconfig_subdoc_data_t));
+                    if (dml_cache_update_subdoc == NULL) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s:%d: malloc failed to allocate webconfig_subdoc_data_t, size %d\n",
+                            __func__, __LINE__, sizeof(webconfig_subdoc_data_t));
+                        free(p_tgt_vap_map);
+                        return RETURN_ERR;
+                    }
+                }
+                dml_cache_update_needed = true;
+            }
+#else
             // Updating ignite enable/disable config via this memcpy
-        memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
-        
-        // This block of code is only used for updating VAP mac.
-            //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.bss_info.bssid)) {
-            //    memcpy(vap_info->u.bss_info.bssid, p_tgt_vap_map->vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
-            //}
-            //else if (vap_info->vap_mode == wifi_vap_mode_sta && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.sta_info.mac)){
-            //    memcpy(vap_info->u.sta_info.mac, p_tgt_vap_map->vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
-           // }
+            memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+#endif
             free(p_tgt_vap_map);
-
         } else {
             wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Received vap config is same for %s, not applying\n",
                         __func__, __LINE__, vap_names[i]);
         }
     }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+    if (dml_cache_update_needed) {
+        webconfig_init_subdoc_data(dml_cache_update_subdoc);
+        update_dml_cache(ctrl, dml_cache_update_subdoc);
+    }
+    free(dml_cache_update_subdoc);
+#endif
 
     return RETURN_OK;
 }
