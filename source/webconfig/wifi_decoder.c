@@ -5050,6 +5050,20 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
             radio_cap->wifi7_supported = (value_object->type & cJSON_True) ? true : false;
         }
 
+        value_object = cJSON_GetObjectItem(object, "MLOOperationalCap");
+        if (value_object != NULL && cJSON_IsNumber(value_object)) {
+            radio_cap->mldOperationalCap = (wifi_multi_link_modes_t)value_object->valueint;
+        } else {
+            radio_cap->mldOperationalCap = (wifi_multi_link_modes_t)0;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "TIDLinkMapNegotiation");
+        if (value_object != NULL && cJSON_IsBool(value_object)) {
+            radio_cap->TIDLinkMapNegotiation = (value_object->type & cJSON_True) ? true : false;
+        } else {
+            radio_cap->TIDLinkMapNegotiation = false;
+        }
+
         value_object = cJSON_GetObjectItem(object, "EHTMACCap");
         if (value_object != NULL && cJSON_IsNumber(value_object)) {
             radio_cap->eht_mac_cap = (UCHAR)value_object->valuedouble;
