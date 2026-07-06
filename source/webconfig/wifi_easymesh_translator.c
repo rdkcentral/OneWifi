@@ -1510,6 +1510,10 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
             em_sta_dev_info->errors_tx                = client_stats[count].cli_ErrorsSent;
         }
     }
+    free((*assoc_device_stats)->stat_pointer);
+    (*assoc_device_stats)->stat_pointer = NULL;
+    free(*assoc_device_stats);
+    *assoc_device_stats = NULL;
     return webconfig_error_none;
 }
 
@@ -1583,6 +1587,8 @@ webconfig_error_t translate_sta_link_metrics_object_to_easy_mesh_sta_info(webcon
             proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_assoc);
         }
     }
+    free(params->em_sta_link_metrics_rsp.per_sta_metrics);
+    params->em_sta_link_metrics_rsp.per_sta_metrics = NULL;
     return webconfig_error_none;
 }
 
@@ -3018,6 +3024,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
     proto = (webconfig_external_easymesh_t *)params->external_protos;
     if (proto == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external proto is NULL\n", __func__, __LINE__);
+        free(channel_st);
+        params->collect_stats.stats = NULL;
         return webconfig_error_translate_to_easymesh;
     }
 
@@ -3079,6 +3087,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No of scan results : %d \n", __func__, __LINE__,
         count);
 
+    free(channel_st);
+    params->collect_stats.stats = NULL;
     return webconfig_error_none;
 }
 #endif
