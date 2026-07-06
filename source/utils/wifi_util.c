@@ -4959,6 +4959,21 @@ bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t
     return (valid_mask & (1u << encr)) != 0;
 }
 
+void wpa2_personal_gcmp_fallback_to_aes(wifi_vap_security_t *security_info)
+{
+    if (security_info == NULL) {
+        return;
+    }
+
+    if (security_info->mode == wifi_security_mode_wpa2_personal &&
+        security_info->encr == wifi_encryption_aes_gcmp256) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d enforcing WPA2-Personal encryption fallback AES+GCMP(%d)->AES(%d)\n",
+            __func__, __LINE__, wifi_encryption_aes_gcmp256, wifi_encryption_aes);
+        security_info->encr = wifi_encryption_aes;
+    }
+}
+
 int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)
 {
     int index;
