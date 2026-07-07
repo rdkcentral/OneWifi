@@ -2039,6 +2039,50 @@ static void wei_rfc_handler(char *event_name, bus_data_prop_t *p_data, void *use
 
 }
 
+/* DMCLI-NEW: observe Device.WEI.LinkQualityThreshold (double) and
+ * Device.WEI.LinkQualityDuration (uint32) published by wei when set via dmcli.
+ * Diagnostic-only:
+ * onewifi logs the received value so the end-to-end path can be traced.
+ * Remove this handler and its subscriptions once the feature is validated. */
+static void wei_lq_tuning_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
+{
+    (void)userData;
+
+    if (strcmp(event_name, WEI_LINKQ_THRESHOLD_RFC) == 0) {
+        if (p_data->value.data_type != bus_data_type_string ||
+            p_data->value.raw_data.bytes == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "DMCLI-NEW %s:%d Invalid threshold event,%s:%x\n", __func__, __LINE__,
+                event_name, p_data->value.data_type);
+            return;
+        }
+
+        double val = strtod((char *)p_data->value.raw_data.bytes, NULL);
+        wifi_util_info_print(WIFI_CTRL,
+            "DMCLI-NEW %s:%d recvd %s = %.3f (string=\"%s\")\n", __func__, __LINE__,
+            event_name, val, (char *)p_data->value.raw_data.bytes);
+        return;
+    }
+
+    if (strcmp(event_name, WEI_LINKQ_DURATION_RFC) == 0) {
+        if (p_data->value.data_type != bus_data_type_uint32) {
+            wifi_util_error_print(WIFI_CTRL,
+                "DMCLI-NEW %s:%d Invalid duration event,%s:%x\n", __func__, __LINE__,
+                event_name, p_data->value.data_type);
+            return;
+        }
+
+        wifi_util_info_print(WIFI_CTRL,
+            "DMCLI-NEW %s:%d recvd %s = %u\n", __func__, __LINE__,
+            event_name, p_data->value.raw_data.u32);
+        return;
+    }
+
+    wifi_util_error_print(WIFI_CTRL,
+        "DMCLI-NEW %s:%d unknown tuning event %s\n", __func__, __LINE__,
+        event_name ? event_name : "NULL");
+}
+
 static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
@@ -2495,7 +2539,12 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         ret1 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_CONNECTED_RFC, wei_rfc_handler, NULL,0);
         ret2 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_STAYCONNECTED_RFC, wei_rfc_handler, NULL,0);
         ret3 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_GETCONNECTED_RFC, wei_rfc_handler, NULL,0);
-        if (ret1 == 0 && ret2 ==0 && ret3 == 0) {    
+        /* DMCLI-NEW: subscribe to the two WEI tuning params for diagnostics */
+        int ret4 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_LINKQ_THRESHOLD_RFC, wei_lq_tuning_handler, NULL,0);
+        int ret5 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_LINKQ_DURATION_RFC, wei_lq_tuning_handler, NULL,0);
+        wifi_util_info_print(WIFI_CTRL, "DMCLI-NEW %s:%d wei tuning subscribe rc thr=%d dur=%d\n",
+            __FUNCTION__, __LINE__, ret4, ret5);
+        if (ret1 == 0 && ret2 ==0 && ret3 == 0 && ret4 == 0 && ret5 == 0) {    
 	    ctrl->wei_events_subscribed = true;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d wei event subscribe success\n",
                 __FUNCTION__, __LINE__);

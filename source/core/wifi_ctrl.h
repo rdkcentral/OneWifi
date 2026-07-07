@@ -121,6 +121,9 @@ extern "C" {
 #define WEI_CONNECTED_RFC        "Device.WEI.WhenConnected"
 #define WEI_STAYCONNECTED_RFC        "Device.WEI.StayingConnected"
 #define WEI_GETCONNECTED_RFC        "Device.WEI.GettingConnected"
+/* DMCLI-NEW: WEI tuning params (uint), published by wei and observed here */
+#define WEI_LINKQ_THRESHOLD_RFC  "Device.WEI.LinkQualityThreshold"
+#define WEI_LINKQ_DURATION_RFC   "Device.WEI.LinkQualityDuration"
 
 extern bool is_sta_set;
 
