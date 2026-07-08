@@ -346,7 +346,11 @@ static bool dppline_copysts(dppline_stats_t * dst, void * sts)
                             dst->u.survey.list = calloc(1, size);
                         }
                         else {
-                            dst->u.survey.list = realloc(dst->u.survey.list, size);
+                            void *tmp = realloc(dst->u.survey.list, size);
+                            if (!tmp) {
+                                return false;
+                            }
+                            dst->u.survey.list = tmp;
                             memset(&dst->u.survey.list[dst->u.survey.qty],
                                     0,
                                     sizeof(dpp_survey_record_t));
@@ -578,7 +582,7 @@ static bool dppline_copysts(dppline_stats_t * dst, void * sts)
                         thermal_record != NULL;
                         thermal_record = ds_dlist_inext(&result_iter))
                 {
-                    thermal_size += (dst->u.device.thermal_qty + 1) * sizeof(dpp_device_thermal_record_t);
+                    thermal_size = (dst->u.device.thermal_qty + 1) * sizeof(dpp_device_thermal_record_t);
                     if (!dst->u.device.thermal_qty)
                     {
                         dst->u.device.thermal_list = calloc(1, thermal_size);
@@ -693,31 +697,35 @@ static bool dppline_copysts(dppline_stats_t * dst, void * sts)
 
                 dst->u.client_auth_fails.radio_type = report_data->radio_type;
                 ds_dlist_iforeach(&report_data->bsses, bss_entry, bss_iter) {
-                    const size_t bss_size = (dst->u.client_auth_fails.qty + 1) * sizeof(dpp_client_auth_fails_bss_t);
+                    const size_t bss_size = (dst->u.client_auth_fails.qty + 1) * sizeof(dppline_client_auth_fails_bss_rec_t);
                     if (!dst->u.client_auth_fails.qty) {
                         dst->u.client_auth_fails.list = calloc(1, bss_size);
                     }
                     else {
-                        dst->u.client_auth_fails.list = realloc(dst->u.client_auth_fails.list, bss_size);
-                        if (!dst->u.client_auth_fails.list)
-                            continue;
+                        void *tmp = realloc(dst->u.client_auth_fails.list, bss_size);
+                        if (!tmp) {
+                            return false;
+                        }
+                        dst->u.client_auth_fails.list = tmp;
 
-                        memset(&dst->u.client_auth_fails.list[dst->u.client_auth_fails.qty], 0, sizeof(dpp_client_auth_fails_bss_t));
+                        memset(&dst->u.client_auth_fails.list[dst->u.client_auth_fails.qty], 0, sizeof(dppline_client_auth_fails_bss_rec_t));
                     }
 
                     STRSCPY_WARN(dst->u.client_auth_fails.list[dst->u.client_auth_fails.qty].if_name, bss_entry->if_name);
                     ds_dlist_iforeach(&bss_entry->clients, client_entry, client_iter) {
                         dppline_client_auth_fails_bss_rec_t *dst_bss = &dst->u.client_auth_fails.list[dst->u.client_auth_fails.qty];
-                        const size_t client_size = (dst_bss->qty + 1) * sizeof(dpp_client_auth_fails_client_t);
+                        const size_t client_size = (dst_bss->qty + 1) * sizeof(dppline_client_auth_fails_client_rec_t);
                         if (!dst_bss->qty) {
                             dst_bss->list = calloc(1, client_size);
                         }
                         else {
-                            dst_bss->list = realloc(dst_bss->list, client_size);
-                            if (!dst_bss->list)
-                                continue;
+                            void *tmp = realloc(dst_bss->list, client_size);
+                            if (!tmp) {
+                                return false;
+                            }
+                            dst_bss->list = tmp;
 
-                            memset(&dst_bss->list[dst_bss->qty], 0, sizeof(dpp_client_auth_fails_client_t));
+                            memset(&dst_bss->list[dst_bss->qty], 0, sizeof(dppline_client_auth_fails_client_rec_t));
                         }
 
                         STRSCPY_WARN(dst_bss->list[dst_bss->qty].mac, client_entry->mac);

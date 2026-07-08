@@ -593,6 +593,7 @@ void upload_single_client_msmt_data(sta_data_t *sta_info)
      }
      //Free up memory
      avro_value_decref(&adr);
+     avro_value_iface_decref(iface);
      avro_writer_free(writer);
 
      size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
