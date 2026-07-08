@@ -500,7 +500,7 @@ static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *
         elem = NULL;
 
         const struct element *sub;
-        for_each_element_id(sub, EHT_ML_SUB_ELEM_PER_STA_PROFILE, sub_start, sub_len)
+        for_each_element_id(sub, MULTI_LINK_SUB_ELEM_ID_PER_STA_PROFILE, sub_start, sub_len)
         {
             /*
              * Per-STA Profile subelement data layout:
@@ -513,7 +513,7 @@ static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *
             }
 
             u16 sta_ctrl = (u16)(sub->data[1] << 8) | sub->data[0];
-            if (!(sta_ctrl & EHT_PER_STA_CTRL_MAC_ADDR_PRESENT_MSK)) {
+            if (!(sta_ctrl & BASIC_MLE_STA_CTRL_PRES_STA_MAC)) {
                 continue;
             }
 
