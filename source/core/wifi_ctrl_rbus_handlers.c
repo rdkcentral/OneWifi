@@ -28,6 +28,7 @@
 #include "wifi_webconfig.h"
 #include "run_qmgr.h"
 #include "wifi_stubs.h"
+#include "wifi_ctrl_acs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -4297,6 +4298,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_WEBCONFIG_GET_ASSOC, bus_element_type_method,
                                     { get_assoc_clients_data, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_RADIO_START_ACS, bus_element_type_method,
+                                    { NULL, set_StartACS, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
                                 { WIFI_IGNITE_NAMESPACE, bus_element_type_table,
                                     { NULL, NULL, ignite_table_addrowhandler, ignite_table_removerowhandler, eventSubHandler, NULL}, slow_speed, num_of_radio,
                                     { bus_data_type_object, false, 0, 0, 0, NULL } },
