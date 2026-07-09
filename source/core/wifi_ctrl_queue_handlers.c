@@ -4328,6 +4328,39 @@ void process_rsn_override_rfc(bool type)
     tgt_vap_map = NULL;
 }
 
+void process_set_ignore_disassoc_timer_command(wifi_ctrl_t *ctrl,
+                                               void *data, unsigned int len)
+{
+    ignore_11v_disassoc_cmd_t *cmd = NULL;
+
+    if ((data == NULL) || (ctrl == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL input\n", __func__, __LINE__);
+        return;
+    }
+
+    if (len < sizeof(ignore_11v_disassoc_cmd_t)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: invalid data len %u, expected %zu\n",
+                              __func__, __LINE__, len, sizeof(ignore_11v_disassoc_cmd_t));
+        return;
+    }
+
+    cmd = (ignore_11v_disassoc_cmd_t *)data;
+
+    if ((cmd->ap_idx < 0) || (cmd->ap_idx >= (int)getTotalNumberVAPs())) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: invalid ap_idx %d\n",
+                              __func__, __LINE__, cmd->ap_idx);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: ap_idx=%d ignore_11v_disassoc=%d\n",
+                         __func__, __LINE__, cmd->ap_idx, cmd->ignore);
+
+    if (wifi_setApIgnoreBTMDisassocTimer(cmd->ap_idx, cmd->ignore) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: HAL call failed for ap_idx=%d\n",
+                              __func__, __LINE__, cmd->ap_idx);
+    }
+}
+
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     wifi_event_subtype_t subtype)
 {
@@ -4508,6 +4541,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_xfinity_rrm:
     case wifi_event_type_sm_app_enable:
         // not handle here
+        break;
+    case wifi_event_type_command_set_ignore_disassoc_timer:
+        process_set_ignore_disassoc_timer_command(ctrl, data, len);
         break;
     default:
         wifi_util_error_print(WIFI_CTRL, "[%s]:WIFI hal handler not supported this event %s\r\n",

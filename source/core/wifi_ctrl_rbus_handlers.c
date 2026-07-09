@@ -4273,6 +4273,64 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
      return;
 }
 
+bus_error_t set_ignore_disassoc_timer(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    int ap_idx = 0;
+    ignore_11v_disassoc_cmd_t cmd;
+    const char *prefix = "Device.WiFi.AccessPoint.";
+    const char *suffix = ".X_RDKCENTRAL-COM_Ignore11vDisassoc";
+    char *endptr = NULL;
+    long ap_idx_long = 0;
+
+    (void)user_data;
+    if ((p_data == NULL) || (name == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL input\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    if (p_data->data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: wrong data type %d\n",
+                              __func__, __LINE__, p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    /* name: "Device.WiFi.AccessPoint.<idx>.X_RDKCENTRAL-COM_Ignore11vDisassoc" */
+    if (strncmp(name, prefix, strlen(prefix)) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid name %s\n", __func__, __LINE__, name);
+        return bus_error_destination_not_found;
+    }
+
+    ap_idx_long = strtol(name + strlen(prefix), &endptr, 10);
+    if (endptr == (name + strlen(prefix)) || ap_idx_long < 1 || ap_idx_long > INT_MAX || strcmp(endptr, suffix) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid vap index %ld\n",
+                              __func__, __LINE__, ap_idx_long);
+        return bus_error_destination_not_found;
+    }
+
+    ap_idx = (int)ap_idx_long;
+
+    ap_idx -= 1; /* convert 1-based DM index to 0-based vap index */
+    if (convert_vap_index_to_vap_array_index(&get_wifimgr_obj()->hal_cap.wifi_prop,
+            (unsigned int)ap_idx) < 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid vap index %d\n",
+                              __func__, __LINE__, ap_idx + 1);
+        return bus_error_destination_not_found;
+    }
+
+    memset(&cmd, 0, sizeof(cmd));
+    cmd.ap_idx = ap_idx;
+    cmd.ignore  = p_data->raw_data.b;
+
+    if (push_event_to_ctrl_queue(&cmd, sizeof(cmd),
+                                 wifi_event_type_command,
+                                 wifi_event_type_command_set_ignore_disassoc_timer,
+                                 NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to enqueue command for ap_idx=%d\n",
+                              __func__, __LINE__, cmd.ap_idx);
+        return bus_error_out_of_resources;
+    }
+    return bus_error_success;
+}
 
 void bus_register_handlers(wifi_ctrl_t *ctrl)
 {
@@ -4447,6 +4505,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_IGNITE_STATUS, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_IGNORE_11V_DISASSOC, bus_element_type_property,
+                                    { NULL, set_ignore_disassoc_timer, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_boolean, true, 0, 0, 0, NULL } },
     };
 
     rc = get_bus_descriptor()->bus_open_fn(&ctrl->handle, component_name);
