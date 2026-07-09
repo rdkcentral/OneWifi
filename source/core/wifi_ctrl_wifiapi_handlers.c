@@ -425,15 +425,21 @@ static void wifiapi_handle_set_btm_request(char **args, unsigned int num_args,
     btm_request->requestMode = BTM_REQMODE_PREF_LIST_INCL |
         (disassoc_imminent ? BTM_REQMODE_DISASSOC_IMMINENT : 0);
 
+    if (num_args > 5 && !disassoc_imminent) {
+        snprintf(result_buf, result_buf_size,
+            "Disassoc timer provided but disassoc imminent is 0; timer is only valid when imminent=1\n");
+        free(btm_request);
+        return;
+    }
+
     if (disassoc_imminent && num_args > 5) {
         char *end = NULL;
         long t = strtol(args[5], &end, 10);
-        if (end == args[5] || *end != '\0') {
-            t = 0;
-        } else if (t < 0) {
-            t = 0;
-        } else if (t > 65535) {
-            t = 65535;
+        if (end == args[5] || *end != '\0' || t < 0 || t > 65535) {
+            snprintf(result_buf, result_buf_size,
+                "Invalid disassoc timer value '%s' (expected 0-65535)\n", args[5]);
+            free(btm_request);
+            return;
         }
         btm_request->timer = (USHORT)t;
     } else {
