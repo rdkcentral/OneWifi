@@ -4321,10 +4321,14 @@ bus_error_t set_ignore_disassoc_timer(char *name, raw_data_t *p_data, bus_user_d
     cmd.ap_idx = ap_idx;
     cmd.ignore  = p_data->raw_data.b;
 
-    push_event_to_ctrl_queue(&cmd, sizeof(cmd),
-                             wifi_event_type_command,
-                             wifi_event_type_command_set_ignore_disassoc_timer,
-                             NULL);
+    if (push_event_to_ctrl_queue(&cmd, sizeof(cmd),
+                                 wifi_event_type_command,
+                                 wifi_event_type_command_set_ignore_disassoc_timer,
+                                 NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to enqueue command for ap_idx=%d\n",
+                              __func__, __LINE__, cmd.ap_idx);
+        return bus_error_out_of_resources;
+    }
     return bus_error_success;
 }
 
