@@ -46,8 +46,8 @@ extern "C" {
  * Uses LINKQ_DL_SNR..LINKQ_INT_RECONN (bits 0-7) defined above.
  * Valid mask is LINKQ_VALID_MASK (0xFF). */
 
-#define LINK_QTY_B0  1.386
-#define LINK_QTY_B1  0.02
+#define LINK_QTY_B0  -9.495604
+#define LINK_QTY_B1  0.081093
 typedef struct {
     char path[MAX_FILE_NAME_SZ];
     char output_file[MAX_FILE_NAME_SZ];
