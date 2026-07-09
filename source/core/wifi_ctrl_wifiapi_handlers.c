@@ -413,7 +413,13 @@ static void wifiapi_handle_set_btm_request(char **args, unsigned int num_args,
     if (num_args > 4) {
         char *end_imminent = NULL;
         long v = strtol(args[4], &end_imminent, 10);
-        disassoc_imminent = !(end_imminent == args[4] || *end_imminent != '\0') && (v != 0);
+        if (end_imminent == args[4] || *end_imminent != '\0' || (v != 0 && v != 1)) {
+            snprintf(result_buf, result_buf_size,
+                "Invalid disassoc imminent value '%s' (expected 0 or 1)\n", args[4]);
+            free(btm_request);
+            return;
+        }
+        disassoc_imminent = (v == 1);
     }
 
     btm_request->requestMode = BTM_REQMODE_PREF_LIST_INCL |
