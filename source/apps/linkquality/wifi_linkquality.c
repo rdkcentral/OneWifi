@@ -44,6 +44,7 @@
 #define IGNITE_INITIAL_PUBLISH_ITERATIONS 5
 #define MAX_STR_LEN 128
 #define IGNITE_SCORE_THRESHOLD_BUFF 64
+#define NOISE_FLOOR (-95)
 
 static char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
@@ -570,7 +571,9 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
     affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index,&affinity_arg->channel_utilization);
     affinity_arg->status_code = 0;
+    affinity_arg->dev.cli_SNR = msg->frame.sig_dbm - NOISE_FLOOR;
     // dhcp_event = 0 (not a DHCP update) from memset
+    wifi_util_info_print(WIFI_APPS," %s:%d auth client snr =%d\n",__func__,__LINE__,affinity_arg->dev.cli_SNR);
     
     if (req)   {
         affinity_arg->event = sub_event;
@@ -602,6 +605,8 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
     affinity_arg->vap_index = msg->frame.ap_index;
     affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index, &affinity_arg->channel_utilization);
+    affinity_arg->dev.cli_SNR = msg->frame.sig_dbm - NOISE_FLOOR;
+    wifi_util_info_print(WIFI_APPS," %s:%d assoc client snr =%d\n",__func__,__LINE__,affinity_arg->dev.cli_SNR);
     
     // dhcp_event = 0 (not a DHCP update) from memset
     if (req)   {
@@ -621,6 +626,9 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
             }
             affinity_arg->event = sub_event;
             affinity_arg->status_code = status;
+            affinity_arg->dev.cli_SNR = msg->frame.sig_dbm - NOISE_FLOOR;
+            affinity_arg->vap_index = msg->frame.ap_index;
+            affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
 
             // if Status is success add AP mac address into stats_arg_t
             if (status == 0) {
@@ -633,8 +641,8 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
                 }
 
             }
-            wifi_util_info_print(WIFI_CTRL, " %s:%d Calling get_lq_descriptor()->periodic_caffinity_stats_update_fn for MAC %s, event=%d, status=%d\n",
-                __func__, __LINE__, affinity_arg->mac_str, sub_event, status);
+            wifi_util_info_print(WIFI_CTRL, " %s:%d Calling get_lq_descriptor()->periodic_caffinity_stats_update_fn for MAC %s, event=%d, status=%d\n snr = %d",
+                __func__, __LINE__, affinity_arg->mac_str, sub_event, status,affinity_arg->dev.cli_SNR);
             get_lq_descriptor()->periodic_caffinity_stats_update_fn(affinity_arg,1);
         }
     }
