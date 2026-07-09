@@ -1621,7 +1621,7 @@ int webconfig_nasta_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *da
     config = &ctrl->webconfig;
     memset(&response, 0, sizeof(nasta_response_t));
 
-    wifi_util_info_print(WIFI_CTRL, "%s:%d: Processing NaSta query: vap=%u, %u opclass entries\n",
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Processing NaSta query: vap=%u, %u opclass entries\n",
         __func__, __LINE__, query->vap_index, query->num_opclass);
 
     for (oc_idx = 0; oc_idx < query->num_opclass && oc_idx < MAX_NASTA_OPCLASS_ENTRIES; oc_idx++) {
@@ -1668,7 +1668,7 @@ int webconfig_nasta_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *da
     }
 
 publish_response:
-    wifi_util_info_print(WIFI_CTRL, "%s:%d: NaSta query complete, %u STAs in response\n",
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: NaSta query complete, %u STAs in response\n",
         __func__, __LINE__, response.num_sta);
 
     /* Encode the response as JSON and publish via RBUS event */
