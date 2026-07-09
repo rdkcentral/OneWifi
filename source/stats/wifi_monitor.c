@@ -28,6 +28,7 @@
 #include <sys/time.h>
 #include "collection.h"
 #include "wifi_hal.h"
+#include "wifi_hal_rdk_framework.h"
 #include "wifi_mgr.h"
 #include "wifi_stubs.h"
 #include "wifi_util.h"
@@ -3992,6 +3993,40 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     return 0;
 }
 
+int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short ether_type)
+{
+    mac_address_t sta_mac;
+    char cli_ip_str[IP_STR_LEN] = { 0 };
+    char cli_interface_str[IFNAMSIZ] = { 0 };
+    const int reason = WLAN_REASON_PREV_AUTH_NOT_VALID;
+
+    if (src_mac == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d input mac is NULL for ap_index:%d\n",
+            __func__, __LINE__, ap_index);
+        return -1;
+    }
+
+    str_to_mac_bytes(src_mac, sta_mac);
+
+     /* Only force a disassoc when the STA has no IPv4 yet, where the
+      * unprotected frames are blocking DHCP from ever succeeding. */
+    if (csi_getClientIpAddress(src_mac, cli_ip_str, cli_interface_str, 1) == 0 &&
+        cli_ip_str[0] != '\0') {
+        wifi_util_info_print(WIFI_MON,
+            "%s:%d: [FC_WEP] client[%s] has IPv4 %s on %s - no action\n",
+            __func__, __LINE__, src_mac, cli_ip_str, cli_interface_str);
+        return 0;
+    }
+
+    wifi_util_info_print(WIFI_MON,
+        "%s:%d: [FC_WEP] client[%s] on ap:%d (ethertype:0x%04x) has no IPv4 - disassociating\n",
+        __func__, __LINE__, src_mac, ap_index, ether_type);
+
+    wifi_hal_disassoc(ap_index, reason, sta_mac);
+
+    return 0;
+}
+
 void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_data)
 {
     wifi_vap_security_t *vapSecurity = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(radius_data->apIndex);
@@ -4755,6 +4790,7 @@ int init_wifi_monitor()
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
+    wifi_hal_apFrameDropUnencrypted_callback_register(device_frame_drop_unencrypted);
     wifi_hal_ap_max_client_rejection_callback_register(device_max_client_rejection);
     wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
