@@ -24,6 +24,7 @@
 #include "wifi_hal.h"
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
+#include "wifi_hal_rdk_framework.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -1622,6 +1623,33 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     return 0;
 }
 
+static int em_handle_hal_channel_change(wifi_app_t *app, void *data)
+{
+    wifi_channel_change_event_t *ch_chg = (wifi_channel_change_event_t *)data;
+
+    if (ch_chg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL channel change data!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = {0};
+    rdata.raw_data.bytes = malloc(sizeof(wifi_channel_change_event_t));
+
+    if (rdata.raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Could not allocate for wifi_channel_change_event_t\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    rdata.data_type = bus_data_type_bytes;
+    memcpy(rdata.raw_data.bytes, ch_chg, sizeof(wifi_channel_change_event_t));
+    rdata.raw_data_len = sizeof(wifi_channel_change_event_t);
+    get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle, WIFI_EM_HAL_CHANNEL_CHANGE, &rdata);
+    free(rdata.raw_data.bytes);
+
+    return RETURN_OK;
+}
+
 static int em_handle_sta_conn_status(wifi_app_t *app, void *data)
 {
     rdk_sta_data_t *sta_data = (rdk_sta_data_t *)data;
@@ -3054,6 +3082,12 @@ int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *da
 
     case wifi_event_hal_wnm_action_frame:
         em_handle_wnm_action_frame(app, data);
+        break;
+
+    case wifi_event_hal_channel_change:
+        wifi_util_info_print(WIFI_EM, "%s:%d: case wifi_event_hal_channel_change \n", __func__,
+            __LINE__);
+        em_handle_hal_channel_change(app, data);
         break;
 
     default:

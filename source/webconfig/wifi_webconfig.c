@@ -794,6 +794,17 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_link_report].translate_to_subdoc = translate_to_link_report_subdoc;
     config->subdocs[webconfig_subdoc_type_link_report].translate_from_subdoc = translate_from_link_report_subdoc;
     
+    config->subdocs[webconfig_subdoc_type_dfs_event].type = webconfig_subdoc_type_dfs_event;
+    strcpy(config->subdocs[webconfig_subdoc_type_dfs_event].name, "DFSEvent");
+    config->subdocs[webconfig_subdoc_type_dfs_event].major = 1;
+    config->subdocs[webconfig_subdoc_type_dfs_event].minor = 1;
+    config->subdocs[webconfig_subdoc_type_dfs_event].init_subdoc = init_dfs_event_subdoc;
+    config->subdocs[webconfig_subdoc_type_dfs_event].init_subdoc(&config->subdocs[webconfig_subdoc_type_dfs_event]);
+    config->subdocs[webconfig_subdoc_type_dfs_event].access_check_subdoc = access_check_dfs_event_subdoc;
+    config->subdocs[webconfig_subdoc_type_dfs_event].encode_subdoc = encode_dfs_event_subdoc;
+    config->subdocs[webconfig_subdoc_type_dfs_event].decode_subdoc = decode_dfs_event_subdoc;
+    config->subdocs[webconfig_subdoc_type_dfs_event].translate_to_subdoc = translate_to_dfs_event_subdoc;
+    config->subdocs[webconfig_subdoc_type_dfs_event].translate_from_subdoc = translate_from_dfs_event_subdoc;
 
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;
