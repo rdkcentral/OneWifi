@@ -178,7 +178,7 @@ static cJSON* merge_with_references(cJSON* base, cJSON* ref_node)
         if (!existing) {
             /* Deep copy instead of reference to avoid dangling child pointer
                when follow_ref_if_any deletes $ref through the wrapper */
-            cJSON* copy = cJSON_Duplicate(child, 1);
+            cJSON* copy = cJSON_Duplicate(child, true);
             if (!copy) {
                 wifi_util_error_print(WIFI_DMCLI, "%s:%d: Failed to duplicate schema node for key '%s'\n",
                                     __func__, __LINE__, child->string ? child->string : "(null)");
