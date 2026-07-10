@@ -822,20 +822,20 @@ int sm_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
-static void sm_app_enable_handler(char *event_name, raw_data_t *p_data)
+static void sm_app_enable_handler(char *event_name, bus_data_prop_t *p_data)
 {
     bool sm_app_enable;
 
     wifi_util_dbg_print(WIFI_SM, "%s:%d recvd event\n", __func__, __LINE__);
 
     if ((strcmp(event_name, BUS_SM_APP_ENABLE) != 0) ||
-        (p_data->data_type != bus_data_type_boolean)) {
+        (p_data->value.data_type != bus_data_type_boolean)) {
         wifi_util_error_print(WIFI_SM, "%s:%d invalid event received,%s:%x\n", __func__, __LINE__,
-            event_name, p_data->data_type);
+            event_name, p_data->value.data_type);
         return;
     }
 
-    sm_app_enable = p_data->raw_data.b;
+    sm_app_enable = p_data->value.raw_data.b;
 
     push_event_to_ctrl_queue(&sm_app_enable, sizeof(sm_app_enable), wifi_event_type_command,
         wifi_event_type_sm_app_enable, NULL);

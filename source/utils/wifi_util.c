@@ -1805,6 +1805,63 @@ int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t
     return RETURN_ERR;
 }
 
+/*
+ * The three helpers below replicate the lookup-table logic of
+ * get_bw80_center_freq(), get_bw160_center_freq(), get_bw320_center_freq()
+ * from rdk-wifi-hal/src/wifi_hal_nl80211_utils.c, but:
+ *   - use distinct names to avoid colliding with the HAL at link time
+ *     (OneWifi links both this lib and rdk-wifi-hal)
+ *   - return the center channel index directly (unsigned char) instead of a
+ *     frequency in MHz, skipping the ieee80211_chan_to_freq round-trip
+ *     that update_hostap_iface() immediately undoes via ieee80211_freq_to_chan
+ */
+unsigned char wifi_get_bw80_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {42, 58, 106, 122, 138, 155};
+    static const unsigned char centers_6g[] = {7, 23, 39, 55, 71, 87, 103, 119, 135, 151, 167, 183, 199, 215};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 6)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 6)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw160_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {50, 114, 163};
+    static const unsigned char centers_6g[] = {15, 47, 79, 111, 143, 175, 207};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 14)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 14)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw320_center_ch(unsigned int ch)
+{
+    unsigned int i;
+    static const unsigned char centers_6g[] = {31, 63, 95, 127, 159, 191};
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    for (i = 0; i < n_6g; i++)
+        if (ch <= (unsigned int)(centers_6g[i] + 30)) return centers_6g[i];
+    return centers_6g[n_6g - 1];
+}
+
 int is_ssid_name_valid(char *ssid_name)
 {
     int i = 0, ssid_len;
@@ -2903,6 +2960,96 @@ int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsign
 
     return RETURN_ERR;
 }
+
+typedef struct {
+    wifi_freq_bands_t band;
+    const char *band_str;
+} freq_band_str_map_t;
+
+static const freq_band_str_map_t freq_band_str_map[] = {
+    { WIFI_FREQUENCY_2_4_BAND, NAME_FREQUENCY_2_4_G },
+    { WIFI_FREQUENCY_5_BAND,   NAME_FREQUENCY_5_G },
+    { WIFI_FREQUENCY_5L_BAND,  NAME_FREQUENCY_5L_G },
+    { WIFI_FREQUENCY_5H_BAND,  NAME_FREQUENCY_5H_G },
+    { WIFI_FREQUENCY_6_BAND,   NAME_FREQUENCY_6_G },
+};
+
+const char *convert_freq_band_to_band_str_g(int freq_band)
+{
+    unsigned int i = 0;
+
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (freq_band_str_map[i].band == (wifi_freq_bands_t)freq_band) {
+            return freq_band_str_map[i].band_str;
+        }
+    }
+    return NULL;
+}
+
+#if defined(CONFIG_IEEE80211BE)
+#define MLO_SUFFIX "_mlo"
+#define MLO_SUFFIX_LEN 4
+bool is_mlo_vap_name(const char *name)
+{
+    size_t len = 0;
+
+    if (name == NULL) {
+        return false;
+    }
+    len = strlen(name);
+    return (len > MLO_SUFFIX_LEN && strncmp(name + len - MLO_SUFFIX_LEN, MLO_SUFFIX, MLO_SUFFIX_LEN) == 0);
+}
+
+static bool get_mlo_base_name(const char *mlo_vap_name, char *base, size_t base_size)
+{
+    size_t base_len = 0;
+
+    if (base == NULL || !is_mlo_vap_name(mlo_vap_name)) {
+        return false;
+    }
+    base_len = strlen(mlo_vap_name) - MLO_SUFFIX_LEN;
+    if (base_len >= base_size) {
+        return false;
+    }
+    memcpy(base, mlo_vap_name, base_len);
+    base[base_len] = '\0';
+    return true;
+}
+
+bool get_per_radio_vap_name_from_mlo(const char *mlo_vap_name, const char *band_str, char *out, size_t out_size)
+{
+    wifi_vap_name_t base = { 0 };
+
+    if (!get_mlo_base_name(mlo_vap_name, base, sizeof(base))) {
+        return false;
+    }
+    snprintf(out, out_size, "%s_%s", base, band_str);
+    return true;
+}
+
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size)
+{
+    int len = 0;
+    unsigned int i = 0;
+    const char *last_underscore = NULL;
+
+    if (vap_name == NULL || out == NULL) {
+        return false;
+    }
+    last_underscore = strrchr(vap_name, '_');
+    if (last_underscore == NULL) {
+        return false;
+    }
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (strcmp(last_underscore + 1, freq_band_str_map[i].band_str) == 0) {
+            len = last_underscore - vap_name;
+            snprintf(out, out_size, "%.*s" MLO_SUFFIX, len, vap_name);
+            return true;
+        }
+    }
+    return false;
+}
+#endif /* CONFIG_IEEE80211BE */
 
 struct wifiStdHalMap
 {
@@ -4046,8 +4193,6 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             //should not be executed for BPi
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
             is_mld_addr_changed(vap_info_old, vap_info_new) ||
 #endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
@@ -4812,4 +4957,35 @@ bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t
     }
 
     return (valid_mask & (1u << encr)) != 0;
+}
+
+int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)
+{
+    int index;
+    int num_vaps;
+    wifi_interface_name_idex_map_t *if_prop;
+    char st[64] = "";
+
+    if ((wifi_prop == NULL) || (wifi_prop->interface_map == NULL) || (mac == NULL)) {
+         return -1;
+    }
+
+    memset(mac, 0, sizeof(mac_address_t));
+    TOTAL_INTERFACES(num_vaps, wifi_prop);
+    if_prop = wifi_prop->interface_map;
+
+    for (index = 0; index < num_vaps; ++index) {
+        if (if_prop->rdk_radio_index == radio_index) {
+            if (!strncmp(if_prop->vap_name, "mesh_sta", strlen("mesh_sta"))) {
+                mac_address_from_name(if_prop->interface_name, mac);
+                uint8_mac_to_string_mac(mac, st);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d interface_name=%s and mac address=%s\n",
+                    __func__, __LINE__, if_prop->interface_name, st);
+                return 0;
+            }
+        }
+        if_prop++;
+    }
+
+    return -1;
 }

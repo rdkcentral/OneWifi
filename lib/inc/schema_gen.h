@@ -150,8 +150,6 @@
         PJS_OVS_BOOL(mld_enable) \
         PJS_OVS_INT(mld_id) \
         PJS_OVS_INT(mld_link_id) \
-        PJS_OVS_STRING(mld_addr, 32 + 1) \
-        PJS_OVS_BOOL(mld_apply) \
         PJS_OVS_BOOL(mdu_enabled)\
         PJS_OVS_INT(speed_tier)\
         PJS_OVS_STRING(repurposed_bridge_name, 8 + 1)\
@@ -219,6 +217,7 @@
         PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
         PJS_OVS_BOOL(link_quality_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
+        PJS_OVS_BOOL(multiap_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -2114,8 +2113,6 @@
     COLUMN(mld_enable)\
     COLUMN(mld_id)\
     COLUMN(mld_link_id)\
-    COLUMN(mld_addr)\
-    COLUMN(mld_apply)\
     COLUMN(interop_ctrl)\
     COLUMN(mdu_enabled)\
     COLUMN(speed_tier)\
@@ -2173,6 +2170,7 @@
     COLUMN(tcm_secure_6g_rfc) \
     COLUMN(wpa3_compatibility_enable) \
     COLUMN(csi_analytics_enabled_rfc) \
+    COLUMN(multiap_rfc) \
     COLUMN(link_quality_rfc) \
     COLUMN(xfi_tel_enable_rfc) \
 
@@ -3501,8 +3499,6 @@
 #define SCHEMA__Wifi_VAP_Config__mld_enable "mld_enable"
 #define SCHEMA__Wifi_VAP_Config__mld_id "mld_id"
 #define SCHEMA__Wifi_VAP_Config__mld_link_id "mld_link_id"
-#define SCHEMA__Wifi_VAP_Config__mld_addr "mld_addr"
-#define SCHEMA__Wifi_VAP_Config__mld_apply "mld_apply"
 #define SCHEMA__Wifi_VAP_Config__mdu_enabled "mdu_enabled"
 #define SCHEMA__Wifi_VAP_Config__speed_tier "speed_tier"
 #define SCHEMA__Wifi_VAP_Config__repurposed_bridge_name "repurposed_bridge_name"
@@ -3553,6 +3549,7 @@
 #define SCHEMA__Wifi_Rfc_Config__tcm_secure_6g_rfc "tcm_secure_6g_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
 #define SCHEMA__Wifi_Rfc_Config__csi_analytics_enabled_rfc "csi_analytics_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
 #define SCHEMA__Wifi_Rfc_Config__link_quality_rfc "link_quality_rfc"
 #define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
 
