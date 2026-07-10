@@ -540,6 +540,35 @@ typedef struct {
     link_report_t *links;
 } report_batch_t;
 
+/* Unassociated STA (NaSta) query/response structures */
+#define MAX_NASTA_OPCLASS_ENTRIES   8
+#define MAX_NASTA_CHANNELS          8
+#define MAX_NASTA_STA_PER_CHANNEL   8
+#define MAX_NASTA_RESPONSE_STAS     (MAX_NASTA_OPCLASS_ENTRIES * MAX_NASTA_CHANNELS * MAX_NASTA_STA_PER_CHANNEL)
+
+typedef struct {
+    unsigned int num_sta;
+    wifi_na_sta_info_t sta_list[MAX_NASTA_RESPONSE_STAS];
+} nasta_response_t;
+
+typedef struct {
+    mac_address_t sta_macs[MAX_NASTA_STA_PER_CHANNEL];
+    unsigned int sta_list_length;
+    unsigned int channel;
+} nasta_channel_entry_t;
+
+typedef struct {
+    unsigned int opclass;
+    unsigned int channels_length;
+    nasta_channel_entry_t channels[MAX_NASTA_CHANNELS];
+} nasta_opclass_entry_t;
+
+typedef struct {
+    unsigned int vap_index;
+    unsigned int num_opclass;
+    nasta_opclass_entry_t opclass_list[MAX_NASTA_OPCLASS_ENTRIES];
+} nasta_query_t;
+
 typedef struct {
     unsigned int rss_check_interval; //minutes
     unsigned int rss_threshold; //kbytes
