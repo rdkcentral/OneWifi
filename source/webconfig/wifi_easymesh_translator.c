@@ -54,6 +54,25 @@ static webconfig_subdoc_data_t  webconfig_easymesh_data;
 /* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to  */
 static char *webconfig_easymesh_raw_data_ptr = NULL;
 
+static wifi_radio_capabilities_t *
+get_radio_cap_from_radio_index(wifi_platform_property_t *wifi_prop,
+    unsigned int radio_index)
+{
+    unsigned int i;
+
+    if (wifi_prop == NULL) {
+        return NULL;
+    }
+
+    for (i = 0; i < wifi_prop->numRadios; i++) {
+        if (wifi_prop->radiocap[i].rdk_radio_index == radio_index) {
+            return &wifi_prop->radiocap[i];
+        }
+    }
+
+    return NULL;
+}
+
 void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
 {
         if (strncmp("private_ssid", vapname, strlen("private_ssid")) == 0) {
@@ -204,6 +223,55 @@ void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_securit
 
 }
 
+static void
+populate_device_mlo_capabilities(em_device_info_t *device_info,
+    const webconfig_subdoc_decoded_data_t *decoded_params,
+    wifi_platform_property_t *wifi_prop)
+{
+    const rdk_wifi_radio_t *radio;
+    wifi_radio_capabilities_t *radio_cap;
+    unsigned char mlo_capable_radio_count = 0;
+    unsigned char tid_link_mapping_cap = 0;
+    unsigned int i, num_radios;
+    int radio_index;
+
+    if (device_info == NULL || decoded_params == NULL || wifi_prop == NULL) {
+        return;
+    }
+
+    num_radios = decoded_params->num_radios;
+    if (num_radios > MAX_NUM_RADIOS) {
+        num_radios = MAX_NUM_RADIOS;
+    }
+
+    for (i = 0; i < num_radios; i++) {
+        radio = &decoded_params->radios[i];
+
+        radio_index = convert_radio_name_to_radio_index(radio->name);
+        if (radio_index < 0 || (unsigned int)radio_index >= MAX_NUM_RADIOS) {
+            continue;
+        }
+
+        radio_cap = get_radio_cap_from_radio_index(wifi_prop, (unsigned int)radio_index);
+        if (radio_cap == NULL || !radio_cap->wifi7_supported) {
+            continue;
+        }
+
+        if (radio_cap->mldOperationalCap != 0 && mlo_capable_radio_count < MAX_NUM_MLD_LINKS) {
+            mlo_capable_radio_count++;
+        }
+
+        if (radio_cap->TIDLinkMapNegotiation) {
+            tid_link_mapping_cap = 1;
+        }
+    }
+
+    device_info->max_nummlds = (mlo_capable_radio_count > 0) ? MLD_UNIT_COUNT : 0;
+    device_info->apmld_maxlinks = mlo_capable_radio_count;
+    device_info->bstamld_maxlinks = mlo_capable_radio_count;
+    device_info->tidlink_map = (unsigned char)(tid_link_mapping_cap & 0x3);
+}
+
 // This routine converts DML webconfig subdoc values to em_device_info_t,em_network_info_t easymesh structures
 webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc_data_t *data)
 {
@@ -264,6 +332,7 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     }
     device_info->dfs_enable = dfs_enable;
     default_em_device_info(device_info,security_info);
+    populate_device_mlo_capabilities(device_info, decoded_params, wifi_prop);
 
     // Fill the network_info structure
     memcpy(network_info->colocated_agent_id.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
@@ -747,7 +816,7 @@ static void fill_scan_cap_op_classes(const wifi_radio_capabilities_t *hal_radio_
 }
 /* Helper function to translate radio capabilities from OneWifi to EasyMesh */
 static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_property_t *wifi_prop,
-    int radio_index,
+    unsigned int radio_index,
     em_radio_cap_info_t *cap_info,
     const wifi_radio_operationParam_t *oper_param)
 {
@@ -765,11 +834,16 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
     uint16_t rx_map = 0, tx_map = 0, rx_mcs = 0, tx_mcs = 0;
 
     if (cap_info == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer or get_radio_cap not set\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL cap_info pointer\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
 
-    radio_cap = &wifi_prop->radiocap[radio_index];
+    radio_cap = get_radio_cap_from_radio_index(wifi_prop, radio_index);
+    if (radio_cap == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap lookup failed for radio_index:%u\n",
+            __func__, __LINE__, radio_index);
+        return webconfig_error_translate_to_easymesh;
+    }
     em_ht_cap = &cap_info->ht_cap;
     em_vht_cap = &cap_info->vht_cap;
     em_he_cap = &cap_info->he_cap;
@@ -1063,6 +1137,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
     wifi_radio_operationParam_t *oper_param;
     webconfig_subdoc_decoded_data_t *decoded_params;
     mac_addr_str_t mac_str;
+    wifi_radio_capabilities_t *hal_radio_cap;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -1174,21 +1249,32 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_radio_info->associated_sta_link_mterics_inclusion_policy = 0;
         snprintf(em_radio_info->chip_vendor, sizeof(em_radio_info->chip_vendor), "%s", wifi_prop->manufacturer);
 
-        em_radio_cap_info_t *radio_cap = proto->get_radio_cap(proto->data_model, wifi_prop->radiocap[index].rdk_radio_index);
+        em_radio_cap_info_t *radio_cap = proto->get_radio_cap(proto->data_model, radio_iface_map->radio_index);
         if (radio_cap == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap not found\n", __func__, __LINE__);
             return webconfig_error_translate_to_easymesh;
         }
-        if (radio_iface_map->radio_index == wifi_prop->radiocap[index].rdk_radio_index) {
-            memcpy(radio_cap->ruid.mac, em_radio_info->intf.mac, sizeof(mac_address_t));
-            uint8_mac_to_string_mac(radio_cap->ruid.mac, mac_str);
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %d and mac:%s and radio_index:%d\n", __func__,
-                __LINE__, index, mac_str, radio_index);
+        memcpy(radio_cap->ruid.mac, em_radio_info->intf.mac, sizeof(mac_address_t));
+        uint8_mac_to_string_mac(radio_cap->ruid.mac, mac_str);
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %u and mac:%s and radio_index:%u\n", __func__,
+            __LINE__, index, mac_str, radio_index);
 
-            translate_radio_capability_to_easymesh(wifi_prop, radio_index, radio_cap, oper_param);
+        if (translate_radio_capability_to_easymesh(wifi_prop, radio_iface_map->radio_index, radio_cap, oper_param) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: Failed to translate radio capabilities for radio_index:%u\n",
+                __func__, __LINE__, radio_iface_map->radio_index);
+            return webconfig_error_translate_to_easymesh;
+        }
 
-            // Populate ch_scan.op_classes[] for Channel Scan Capabilities.
-            fill_scan_cap_op_classes(&wifi_prop->radiocap[radio_index], oper_param, &radio_cap->ch_scan);
+        // Populate ch_scan.op_classes[] for Channel Scan Capabilities.
+        hal_radio_cap = get_radio_cap_from_radio_index(wifi_prop, radio_iface_map->radio_index);
+        if (hal_radio_cap != NULL) {
+            fill_scan_cap_op_classes(hal_radio_cap, oper_param, &radio_cap->ch_scan);
+        } else {
+            radio_cap->ch_scan.op_classes_num = 0;
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: Missing HAL radio capabilities for radio_index:%u, marking channel scan op classes unavailable\n",
+                __func__, __LINE__, radio_iface_map->radio_index);
         }
     }
 
