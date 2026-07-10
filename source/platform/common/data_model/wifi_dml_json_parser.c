@@ -182,9 +182,6 @@ static cJSON* merge_with_references(cJSON* base, cJSON* ref_node)
             if (!copy) {
                 wifi_util_error_print(WIFI_DMCLI, "%s:%d: Failed to duplicate schema node for key '%s'\n",
                                     __func__, __LINE__, child->string ? child->string : "(null)");
-            } else if (!child->string) {
-                wifi_util_error_print(WIFI_DMCLI, "%s:%d: Cannot add schema node with NULL key\n", __func__, __LINE__);
-                cJSON_Delete(copy);
             } else {
                 cJSON_AddItemToObject(base, child->string, copy);
             }
