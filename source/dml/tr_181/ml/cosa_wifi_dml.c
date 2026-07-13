@@ -365,6 +365,11 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
+    {
+        *pBool = rfc_pcfg->multiap_rfc;
+        return TRUE;
+    }
 
     if (AnscEqualString(ParamName, "DFS", TRUE))
     {
@@ -598,6 +603,7 @@ WiFi_GetParamUlongValue
         *puLong = numOfRadios;
         return TRUE;
     }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -1191,6 +1197,13 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
+    {
+        if(bValue != rfc_pcfg->multiap_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_multiap_rfc);
+        }
+        return TRUE;
+    }
 
     if (AnscEqualString(ParamName, "Log_Upload", TRUE))
     {
@@ -5511,6 +5524,18 @@ SSID_GetParamUlongValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "X_RDK_MLDLinkID", TRUE))
+    {
+        wifi_mld_common_info_t *mld_common_info = NULL;
+
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
+        } else {
+            mld_common_info = &pcfg->u.bss_info.mld_info.common_info;
+        }
+        *puLong = (uint32_t)mld_common_info->mld_link_id;
+        return TRUE;
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
@@ -5943,6 +5968,7 @@ SSID_SetParamIntValue
         }
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
         tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
+
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
             if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
                 return TRUE;
@@ -6001,6 +6027,60 @@ SSID_SetParamUlongValue
         ULONG                       uValue
     )
 {
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    uint8_t instance_number = (uint8_t)convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name) +1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+
+    if (vapInfo == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        return FALSE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_MLDLinkID", TRUE))
+    {
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+            return TRUE;
+        }
+
+        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
+         * So when MLD_Link_ID is updated for one VAP, we need to update it for all VAPs of the same radio.
+         */
+        unsigned int total_vaps = getTotalNumberVAPs();
+
+        for (unsigned int vap_idx = 0; vap_idx < total_vaps; vap_idx++) {
+            wifi_vap_info_t *temp_vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(vap_idx);
+            if (temp_vapInfo == NULL) {
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for vap index:%d\n",
+                    __FUNCTION__, __LINE__, vap_idx);
+                continue;
+            }
+            if (temp_vapInfo->radio_index != pcfg->radio_index) {
+                continue;
+            }
+            if (isVapSTAMesh(vap_idx)) {
+                continue;
+            }
+            wifi_util_dbg_print(WIFI_DMCLI,
+                "%s:%d Updating mld_link_id radio_index %d vap index:%d old val %u new val %u\n",
+                __FUNCTION__, __LINE__, temp_vapInfo->radio_index, vap_idx,
+                temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
+            if (temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
+                continue;
+            }
+            temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
+            set_dml_cache_vap_config_changed(vap_idx);
+        }
+        return TRUE;
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
@@ -6770,13 +6850,6 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MLD_Apply", TRUE))
-    {
-        /* collect value */
-        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_apply;
-        return TRUE;
-    }
-
     if( AnscEqualString(ParamName, "WMMCapability", TRUE))
     {
         /* collect value */
@@ -7134,13 +7207,27 @@ AccessPoint_GetParamUlongValue
 
     if( AnscEqualString(ParamName, "MLD_ID", TRUE))
     {
-        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        wifi_mld_common_info_t *mld_common_info = NULL;
+
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
+        } else {
+            mld_common_info = &pcfg->u.bss_info.mld_info.common_info;
+        }
+        *puLong = mld_common_info->mld_id;
         return TRUE;
     }
 
     if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
     {
-        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_link_id;
+        wifi_mld_common_info_t *mld_common_info = NULL;
+
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
+        } else {
+            mld_common_info = &pcfg->u.bss_info.mld_info.common_info;
+        }
+        *puLong = mld_common_info->mld_link_id;
         return TRUE;
     }
 
@@ -7293,37 +7380,21 @@ AccessPoint_GetParamStringValue
 
     }
 
-    if( AnscEqualString(ParamName, "MLD_Addr", TRUE))
-    {
-        char buff[24] = {0};
+    if (AnscEqualString(ParamName, "MLD_Addr", TRUE)) {
+        unsigned char *mac;
+        mac_address_t zero_mac = { 0 };
+
         if (isVapSTAMesh(pcfg->vap_index)) {
-            _ansc_sprintf
-            (
-                buff,
-                "%02X:%02X:%02X:%02X:%02X:%02X",
-                0x0,
-                0x0,
-                0x0,
-                0x0,
-                0x0,
-                0x0
-            );
+            mac = zero_mac;
         } else {
-            _ansc_sprintf
-            (
-                buff,
-                "%02X:%02X:%02X:%02X:%02X:%02X",
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[0],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[1],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[2],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[3],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[4],
-                pcfg->u.bss_info.mld_info.common_info.mld_addr[5]
-            );
+            mac = pcfg->u.bss_info.mld_info.common_info.mld_addr;
         }
-        memcpy(pValue, buff, strlen(buff)+1);
+
+        snprintf(pValue, *pUlSize, "%02X:%02X:%02X:%02X:%02X:%02X",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
         return 0;
-     }
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return -1;
 }
@@ -7446,32 +7517,6 @@ AccessPoint_SetParamBoolValue
         
         /* save update to backup */
         vapInfo->u.bss_info.showSsid = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
-
-    if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
-    {
-        if ( vapInfo->u.bss_info.mld_info.common_info.mld_enable == bValue )
-        {
-            return TRUE;
-        }
-
-        /* save update to backup */
-        vapInfo->u.bss_info.mld_info.common_info.mld_enable = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
-
-    if( AnscEqualString(ParamName, "MLD_Apply", TRUE))
-    {
-        if ( vapInfo->u.bss_info.mld_info.common_info.mld_apply == bValue )
-        {
-            return TRUE;
-        }
-
-        /* save update to backup */
-        vapInfo->u.bss_info.mld_info.common_info.mld_apply = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -7890,60 +7935,6 @@ AccessPoint_SetParamUlongValue
     if( AnscEqualString(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkThreshold", TRUE))
     {
         cfg->associated_devices_highwatermark_threshold = uValue;
-        return TRUE;
-    }
-
-    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
-    {
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
-            return TRUE;
-        }
-        if ( vapInfo->u.bss_info.mld_info.common_info.mld_id == (unsigned int)uValue )
-        {
-            return  TRUE;
-        }
-        /* save update to backup */
-        vapInfo->u.bss_info.mld_info.common_info.mld_id = uValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
-
-    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
-    {
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
-            return TRUE;
-        }
-
-        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
-         * So when MLD_Link_ID is updated for one VAP, we need to update it for all VAPs of the same radio.
-         */
-        unsigned int total_vaps = getTotalNumberVAPs();
-
-        for (unsigned int vap_idx = 0; vap_idx < total_vaps; vap_idx++) {
-            wifi_vap_info_t *temp_vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(vap_idx);
-            if (temp_vapInfo == NULL) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for vap index:%d\n",
-                    __FUNCTION__, __LINE__, vap_idx);
-                continue;
-            }
-            if (temp_vapInfo->radio_index != pcfg->radio_index) {
-                continue;
-            }
-            if (isVapSTAMesh(vap_idx)) {
-                continue;
-            }
-            wifi_util_dbg_print(WIFI_DMCLI,
-                "%s:%d Updating mld_link_id radio_index %d vap index:%d old val %u new val %u\n",
-                __FUNCTION__, __LINE__, temp_vapInfo->radio_index, vap_idx,
-                uValue, temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id);
-            if (temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
-                continue;
-            }
-            temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
-            set_dml_cache_vap_config_changed(vap_idx);
-        }
         return TRUE;
     }
 

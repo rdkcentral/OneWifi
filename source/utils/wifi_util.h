@@ -116,6 +116,7 @@ typedef enum {
     WIFI_MEMWRAPTOOL,
     WIFI_TCM,
     WIFI_EC,
+    WIFI_SENSING,
 } wifi_dbg_type_t;
 
 typedef enum {
@@ -125,7 +126,7 @@ typedef enum {
     WIFI_LOG_LVL_MAX
 } wifi_log_level_t;
 
-void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...);
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...);
 
 #define wifi_util_dbg_print(module, format, ...) \
     wifi_util_print(WIFI_LOG_LVL_DEBUG, module, format, ##__VA_ARGS__)
@@ -232,6 +233,13 @@ typedef struct {
 #define NAME_FREQUENCY_6_G "6g"
 #define NAME_FREQUENCY_5H_G "5gh"
 #define NAME_FREQUENCY_5L_G "5gl"
+
+#if defined(CONFIG_IEEE80211BE)
+bool is_mlo_vap_name(const char *name);
+bool get_per_radio_vap_name_from_mlo(const char *mlo_vap_name, const char *band_str,
+    char *out, size_t out_size);
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size);
+#endif
 
 #define NAME_FREQUENCY_2_4 "2"
 #define NAME_FREQUENCY_5 "5"
@@ -411,6 +419,7 @@ int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *
     char *buf, size_t buf_size, bool dfs_enabled);
 int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsigned int radio_index,
     int *band);
+const char *convert_freq_band_to_band_str_g(int freq_band);
 void wifidb_print(char *format, ...);
 void copy_string(char *destination, char *source);
 bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum,
@@ -468,6 +477,7 @@ int interfacename_from_mac(const mac_address_t *mac, char *ifname);
 int mac_address_from_name(const char *ifname, mac_address_t mac);
 bool is_zero_mac(const uint8_t *mac);
 bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr);
+int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac);
 #ifdef __cplusplus
 }
 #endif

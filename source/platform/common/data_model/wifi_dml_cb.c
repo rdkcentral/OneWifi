@@ -2496,6 +2496,7 @@ bool ssid_set_param_int_value(void *obj_ins_context, char *param_name, int input
         }
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, input_value);
         tmp_mld_enable = (input_value == -1) ? false : true;
+
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
             if (tmp_mld_enable == false && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
                 return true;

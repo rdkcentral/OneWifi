@@ -86,6 +86,7 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_NOTIFY_INTEROP_DETAILS                    "Device.WiFi.AccessPoint.{i}.InteropDetails" 
 #define WIFI_CSA_BEACON_FRAME_RECEIVED                 "Device.WiFi.CSABeaconFrameRecieved"
+#define HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED       "Device.X_COMCAST-COM_GRE.Hotspot.RejectAssociatedClient"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
@@ -98,6 +99,7 @@ extern "C" {
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
+#define MIN_MLO_GROUP_SIZE 2
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -174,7 +176,9 @@ typedef enum {
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
     wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
     wifi_app_inst_link_quality = wifi_app_inst_base << 19,
-    wifi_app_inst_max = wifi_app_inst_base << 20
+    wifi_app_inst_wifi_sensing = wifi_app_inst_base << 20,
+    wifi_app_inst_multiap = wifi_app_inst_base << 21,
+    wifi_app_inst_max = wifi_app_inst_base << 22
 } wifi_app_inst_t;
 
 typedef struct {
@@ -244,6 +248,8 @@ typedef struct {
     unsigned char DestMac[MAC_ADDRESS_LENGTH];
     unsigned int StepId;
     int ApIndex;
+    bool isMLO;
+    int mldApIndex[MAX_NUM_RADIOS - 1];
 } active_msmt_step_t;
 
 typedef enum {
@@ -541,6 +547,7 @@ typedef struct {
     bool memwraptool_app_rfc;
     bool link_quality_rfc;
     bool xfi_tel_enable_rfc;
+    bool multiap_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -897,6 +904,9 @@ typedef struct {
     int noise_floor;
     int channel_util;
     int vlan_id;
+    eapol_msg_type_t   eapol_msg_type;     /* M1 / M2 / M3 */
+    eapol_frame_type_t eapol_frame_type;   /* Assoc / Reassoc */
+    unsigned int eapol_status_type_counts[6];
     int access_accept_counts;
     int eap_success_counts;
     int eap_failure_reason_counts;
@@ -962,6 +972,18 @@ typedef struct {
     bool association_link;
     mac_address_t link_address;
 } __attribute__((__packed__)) assoc_dev_data_t;
+
+#if defined(CONFIG_IEEE80211BE)
+typedef struct {
+    unsigned int num_links;
+    assoc_dev_data_t links[MAX_NUM_RADIOS];
+} mlo_client_t;
+
+typedef struct {
+    wifi_vap_name_t vap_name;
+    hash_map_t *mlo_sta_map;
+} wifi_mld_unit_t;
+#endif /* CONFIG_IEEE80211BE */
 
 struct active_msmt_data;
 

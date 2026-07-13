@@ -1524,10 +1524,6 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
     validate_param_bool(vap, "MLD_Enable", param);
 	vap_info->u.bss_info.mld_info.common_info.mld_enable = (param->type & cJSON_True) ? true:false;
 
-    // MLD Apply
-	validate_param_bool(vap, "MLD_Apply", param);
-	vap_info->u.bss_info.mld_info.common_info.mld_apply = (param->type & cJSON_True) ? true:false;
-
     // MLD ID
 	validate_param_integer(vap, "MLD_ID", param);
 	vap_info->u.bss_info.mld_info.common_info.mld_id = param->valuedouble;
