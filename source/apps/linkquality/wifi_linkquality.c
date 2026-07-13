@@ -644,6 +644,11 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
             wifi_util_info_print(WIFI_CTRL, " %s:%d Calling get_lq_descriptor()->periodic_caffinity_stats_update_fn for MAC %s, event=%d, status=%d\n snr = %d",
                 __func__, __LINE__, affinity_arg->mac_str, sub_event, status,affinity_arg->dev.cli_SNR);
             get_lq_descriptor()->periodic_caffinity_stats_update_fn(affinity_arg,1);
+        } else if (sub_event == wifi_event_hal_sta_conn_status) {
+            affinity_arg->event = sub_event;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Sending sta_conn_status to WEI for MAC %s snr=%d\n",
+                __func__, __LINE__, affinity_arg->mac_str, affinity_arg->dev.cli_SNR);
+            get_lq_descriptor()->periodic_caffinity_stats_update_fn(affinity_arg, 1);
         }
     }
     free(affinity_arg);
