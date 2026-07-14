@@ -1968,6 +1968,44 @@ static int remove_all_mac_acl_entries_from_cache_and_db(rdk_wifi_vap_info_t *cur
     return RETURN_OK;
 }
 
+static void destroy_non_aliased_acl_maps(webconfig_subdoc_decoded_data_t *data)
+{
+    unsigned int radio_index, vap_index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    rdk_wifi_vap_info_t *decoded_vap;
+    rdk_wifi_vap_info_t *mgr_vap;
+    acl_entry_t *acl_entry, *temp_acl_entry;
+    mac_addr_str_t mac_str;
+
+    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        for (vap_index = 0; vap_index < getNumberVAPsPerRadio(radio_index); vap_index++) {
+            decoded_vap = &data->radios[radio_index].vaps.rdk_vap_array[vap_index];
+            mgr_vap = &mgr->radio_config[radio_index].vaps.rdk_vap_array[vap_index];
+
+            if (decoded_vap->acl_map == NULL) {
+                continue;
+            }
+            /* Skip aliased maps — the mgr owns these */
+            if (decoded_vap->acl_map == mgr_vap->acl_map) {
+                continue;
+            }
+
+            /* Drain entries and destroy the decoded map */
+            acl_entry = hash_map_get_first(decoded_vap->acl_map);
+            while (acl_entry != NULL) {
+                to_mac_str(acl_entry->mac, mac_str);
+                acl_entry = hash_map_get_next(decoded_vap->acl_map, acl_entry);
+                temp_acl_entry = hash_map_remove(decoded_vap->acl_map, mac_str);
+                if (temp_acl_entry != NULL) {
+                    free(temp_acl_entry);
+                }
+            }
+            hash_map_destroy(decoded_vap->acl_map);
+            decoded_vap->acl_map = NULL;
+        }
+    }
+}
+
 int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, webconfig_subdoc_type_t subdoc_type)
 {
     unsigned int radio_index, vap_index;
@@ -1994,8 +2032,8 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
             }
 
             if (new_config->acl_map == current_config->acl_map) {
-                wifi_util_dbg_print(WIFI_MGR,"%s %d Same data returning \n", __func__, __LINE__);
-                return RETURN_OK;
+                wifi_util_dbg_print(WIFI_MGR,"%s %d Same data %d, skipping \n", __func__, __LINE__, vap_index);
+                continue;
             }
 
             if ((subdoc_type == webconfig_subdoc_type_mesh) && (isVapMeshBackhaul(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) == FALSE) {
@@ -2086,18 +2124,8 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
         }
     }
 
-    if ((new_config != NULL) && (new_config->acl_map != NULL)) {
-        new_acl_entry = hash_map_get_first(new_config->acl_map);
-        while (new_acl_entry != NULL) {
-            to_mac_str(new_acl_entry->mac,new_mac_str);
-            new_acl_entry = hash_map_get_next(new_config->acl_map,new_acl_entry);
-            temp_acl_entry = hash_map_remove(new_config->acl_map, new_mac_str);
-            if (temp_acl_entry != NULL) {
-                free(temp_acl_entry);
-            }
-        }
-        hash_map_destroy(new_config->acl_map);
-    }
+    /* Free all decoded ACL maps that are not aliased to the mgr's live cache */
+    destroy_non_aliased_acl_maps(data);
     return ret;
 }
 
