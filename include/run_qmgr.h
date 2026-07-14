@@ -77,6 +77,9 @@ typedef struct {
     int radio_2g_max_snr;
     int radio_5g_max_snr;
     int radio_6g_max_snr;
+    int radio_2g_max_snr_be;
+    int radio_5g_max_snr_be;
+    int radio_6g_max_snr_be;
 } radio_max_snr_t;
 
 typedef struct {
