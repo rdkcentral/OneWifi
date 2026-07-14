@@ -591,7 +591,7 @@ typedef struct {
     unsigned int radio_index;
     int channel_utilization;
     dev_stats_t dev;
-    char cli_operating_standard[64];
+    bool is_be;
     struct timespec total_connected_time;
     struct timespec total_disconnected_time;
     int event;

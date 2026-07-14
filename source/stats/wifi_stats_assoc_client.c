@@ -170,7 +170,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     bool rf_down_mesh_sta = false;
     linkquality_data_t *link_data = NULL;
     wifi_rfc_dml_parameters_t *rfc_param = NULL;
-    
+
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (c_elem == NULL) {
@@ -297,23 +297,33 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             link_data[i].size = num_devs;
             to_sta_key(dev_array[i].cli_MACAddress, link_data[i].stats.mac_str);
             copy_assocstats_dev_stats(&dev_array[i], &link_data[i].stats.dev);
-            strncpy(link_data[i].stats.cli_operating_standard,
-                dev_array[i].cli_OperatingStandard,
-                sizeof(link_data[i].stats.cli_operating_standard) - 1);
-            link_data[i].stats.cli_operating_standard[
-                sizeof(link_data[i].stats.cli_operating_standard) - 1] = '\0';
             link_data[i].stats.vap_index = args->vap_index;
             link_data[i].stats.radio_index = getRadioIndexFromAp(args->vap_index);
+#ifdef CONFIG_IEEE80211BE
+            wifi_radio_operationParam_t *radioOperation = NULL;
+	    radioOperation = getRadioOperationParam(link_data[i].stats.radio_index);
+	    if (radioOperation->variant & WIFI_80211_VARIANT_BE)
+	    {
+	      link_data[i].stats.is_be = true;
+	      wifi_util_dbg_print(WIFI_MON,"%s:%d This is a BE Radio\n",__func__,__LINE__);
+	    } else {
+	      wifi_util_dbg_print(WIFI_MON,"%s:%d This is a not an BE Radio\n",__func__,__LINE__);
+	      link_data[i].stats.is_be = false;
+	    }
+#else 
+	      link_data[i].stats.is_be = false;
+      
+#endif
             get_radio_channel_utilization(link_data[i].stats.radio_index,&link_data[i].stats.channel_utilization);
             wifi_util_dbg_print(WIFI_MON,
                     "cli_SNR:%d cli_PacketsSent:%lu cli_ErrorsSent:%lu cli_LastDataDownlinkRate:%d "
                     "cli_MaxDownlinkRate=%d vap_index=%d radio_index=%d channel_utilization=%d "
-                    "cli_operating_standard=%s\n",
+                    "radio_is_be=%d\n",
                     dev_array[i].cli_SNR, dev_array[i].cli_PacketsSent, dev_array[i].cli_ErrorsSent,
                     dev_array[i].cli_LastDataDownlinkRate, dev_array[i].cli_MaxDownlinkRate,
                     link_data[i].stats.vap_index, link_data[i].stats.radio_index,
                     link_data[i].stats.channel_utilization,
-                    link_data[i].stats.cli_operating_standard);
+                    link_data[i].stats.is_be);
         }
     }
     events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
