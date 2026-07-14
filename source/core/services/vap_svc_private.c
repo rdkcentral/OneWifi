@@ -92,7 +92,11 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map = NULL;
     int ret;
-    
+#if defined(_PLATFORM_BANANAPI_R4_)
+    bool dml_cache_update_needed = false;
+    webconfig_subdoc_data_t *dml_cache_update_subdoc = NULL;
+#endif
+
     p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (p_tgt_vap_map == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __FUNCTION__,__LINE__);
@@ -110,6 +114,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         if (configure_lnf_psk_radius_from_hotspot(&p_tgt_vap_map->vap_array[0]) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d configure_lnf_psk_radius_from_hotspot failed\n", __FUNCTION__, __LINE__);
+            free(p_tgt_vap_map);
             return -1;
         }
 #if defined(_WNXL11BWL_PRODUCT_REQ_)
@@ -141,7 +146,15 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         }
 
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
-        
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (memcmp(&map->vap_array[i], &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t)) !=
+            0) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: VAP config changed for vap_index %d\n",
+                __func__, __LINE__, p_tgt_vap_map->vap_array[0].vap_index);
+            dml_cache_update_needed = true;
+        }
+#endif
+
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         get_wifidb_obj()->desc.print_fn("%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
@@ -156,6 +169,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             if (lnf_vap_info == NULL) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d LnF VAP info not found for vap_index=%d\n",
                     __FUNCTION__, __LINE__, map->vap_array[i].vap_index);
+                free(p_tgt_vap_map);
                 return -1;
             }
             if (lnf_vap_info->u.bss_info.mdu_enabled) {
@@ -168,6 +182,9 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                     sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
             }
         }
+#if defined(_PLATFORM_BANANAPI_R4_)
+        update_global_cache(p_tgt_vap_map, &rdk_vap_info[i]);
+#endif
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
         get_wifidb_obj()->desc.update_wifi_vap_info_fn(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
@@ -178,6 +195,26 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                 &map->vap_array[i].u.bss_info.security);
 
     }
+#if defined(_PLATFORM_BANANAPI_R4_)
+    if (dml_cache_update_needed) {
+        dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
+            sizeof(webconfig_subdoc_data_t));
+        if (dml_cache_update_subdoc == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: malloc failed to allocate webconfig_subdoc_data_t, size %zu\n", __func__,
+                __LINE__, sizeof(webconfig_subdoc_data_t));
+            free(p_tgt_vap_map);
+            return -1;
+        }
+        webconfig_init_subdoc_data(dml_cache_update_subdoc);
+        if (update_dml_cache((wifi_ctrl_t *)svc->ctrl, dml_cache_update_subdoc) == RETURN_ERR) {
+            free(dml_cache_update_subdoc);
+            free(p_tgt_vap_map);
+            return -1;
+        }
+    }
+    free(dml_cache_update_subdoc);
+#endif
     free(p_tgt_vap_map);
 
     return 0;

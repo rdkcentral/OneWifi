@@ -821,6 +821,7 @@ int webconfig_bus_apply_for_dml_thread_update(wifi_ctrl_t *ctrl,
     memset(&rdata, 0, sizeof(raw_data_t));
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)data->raw;
+    rdata.raw_data_len = strlen(data->raw) + 1;
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_INIT_DML_DATA,
         &rdata);
