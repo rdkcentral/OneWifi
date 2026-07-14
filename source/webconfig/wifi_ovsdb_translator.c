@@ -3331,6 +3331,7 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
                 assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
                 continue;
             }
+
             if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
                 break;
@@ -3340,13 +3341,9 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client row empty for the client number %d\n", __func__, __LINE__, associated_client_count);
                 return webconfig_error_translate_to_ovsdb;
             }
-            snprintf(client_row->mac, sizeof(client_row->mac), "%02x:%02x:%02x:%02x:%02x:%02x",
-                assoc_dev_data->dev_stats.cli_MACAddress[0],
-                assoc_dev_data->dev_stats.cli_MACAddress[1],
-                assoc_dev_data->dev_stats.cli_MACAddress[2],
-                assoc_dev_data->dev_stats.cli_MACAddress[3],
-                assoc_dev_data->dev_stats.cli_MACAddress[4],
-                assoc_dev_data->dev_stats.cli_MACAddress[5]);
+             snprintf(client_row->mac, sizeof(client_row->mac), "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1],
+                    assoc_dev_data->dev_stats.cli_MACAddress[2], assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4],
+                    assoc_dev_data->dev_stats.cli_MACAddress[5]);
 
             {
                 to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, client_row->mac);
