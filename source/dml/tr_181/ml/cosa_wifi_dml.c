@@ -9245,7 +9245,15 @@ Security_SetParamStringValue
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa_personal:
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
             case wifi_security_mode_wpa2_personal:
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Preserve AES/AES+TKIP and normalize invalid carry-over values. */
+                apply_wpa2_personal_encr_policy(l_security_cfg);
+                break;
             case wifi_security_mode_wpa_wpa2_personal:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
