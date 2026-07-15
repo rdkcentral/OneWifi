@@ -347,6 +347,7 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
 		$(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_temperature.c    \
 		$(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
 		$(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
+		$(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_nasta.c       \
 		$(ONE_WIFI_HOME)/source/utils/wifi_util.c	\
 
 MATH_UTIL_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/utils/math_utils/src/*.cpp) \
