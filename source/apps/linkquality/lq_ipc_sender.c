@@ -63,13 +63,9 @@ static const char *lq_msg_type_str(uint32_t type)
     case LQ_IPC_MSG_DISCONNECT:       return "DISCONNECT";
     case LQ_IPC_MSG_RAPID_DISCONNECT: return "RAPID_DISCONNECT";
     case LQ_IPC_MSG_CAFFINITY_EVENT:  return "CAFFINITY_EVENT";
-    case LQ_IPC_MSG_START_METRICS:    return "START_METRICS";
-    case LQ_IPC_MSG_STOP_METRICS:     return "STOP_METRICS";
     case LQ_IPC_MSG_REGISTER_STA:     return "REGISTER_STA";
     case LQ_IPC_MSG_UNREGISTER_STA:   return "UNREGISTER_STA";
     case LQ_IPC_MSG_REINIT_METRICS:   return "REINIT_METRICS";
-    case LQ_IPC_MSG_SET_MAX_SNR:      return "SET_MAX_SNR";
-    case LQ_IPC_MSG_SET_SCORE_PARAMS: return "SET_SCORE_PARAMS";
     default:                          return "UNKNOWN";
     }
 }

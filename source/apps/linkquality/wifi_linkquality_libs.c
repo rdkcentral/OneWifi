@@ -67,25 +67,6 @@ static void unregister_station_mac_impl(const char *str)
         __func__, __LINE__, rc);
 }
 
-/* START_METRICS (msg_type 5) – ctrl startup */
-static int start_link_metrics_impl()
-{
-
-    int rc = lq_ipc_send(LQ_IPC_MSG_START_METRICS, NULL, 0, 0);
-    wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->START_METRICS] lq_ipc_send rc=%d\n",
-        __func__, __LINE__, rc);
-    return rc;
-}
-
-/* STOP_METRICS (msg_type 6) – ctrl shutdown */
-static int stop_link_metrics_impl()
-{
-
-    int rc = lq_ipc_send(LQ_IPC_MSG_STOP_METRICS, NULL, 0, 0);
-    wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->STOP_METRICS] lq_ipc_send rc=%d\n",
-        __func__, __LINE__, rc);
-    return rc;
-}
 
 /* RAPID_DISCONNECT (msg_type 3) – rapid connect/disconnect detection */
 static int disconnect_link_stats_impl(stats_arg_t *stats)
@@ -189,8 +170,6 @@ wifi_lq_descriptor_t* get_lq_descriptor()
         desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_impl;
         desc.register_station_mac_fn            = register_station_mac_impl;
         desc.unregister_station_mac_fn          = unregister_station_mac_impl;
-        desc.start_link_metrics_fn              = start_link_metrics_impl;
-        desc.stop_link_metrics_fn               = stop_link_metrics_impl;
         desc.disconnect_link_stats_fn           = disconnect_link_stats_impl;
         desc.reinit_link_metrics_fn             = reinit_link_metrics_impl;
         desc.remove_link_stats_fn               = remove_link_stats_impl;

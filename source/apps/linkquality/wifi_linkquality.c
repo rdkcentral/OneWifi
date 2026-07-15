@@ -268,23 +268,15 @@ int link_quality_unregister_station(wifi_app_t *apps, wifi_event_t *arg)
 int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
 {
       
-    wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     
-    
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
-    if (rfc_param->wei_wc_rfc || rfc_param->wei_gc_rfc || rfc_param->wei_sc_rfc) {
-          wifi_util_error_print(WIFI_CTRL,"%s:%d start link_event \n", __func__, __LINE__);
-    }
-    get_lq_descriptor()->start_link_metrics_fn();
-
-
     /* qmgr callbacks and max-SNR setup run on both GW and Extender */
     if (ctrl->network_mode == rdk_dev_mode_type_em_node
       || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
 #ifdef EM_APP
+        get_lq_descriptor()->start_link_metrics_fn();
         qmgr_register_batch_callback(publish_qmgr_subdoc);
-        wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
+         wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
             __func__, __LINE__, ctrl->network_mode);
 #endif
     }
@@ -295,9 +287,14 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
 int link_quality_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl->network_mode == rdk_dev_mode_type_em_node
+      || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
 
-    get_lq_descriptor()->stop_link_metrics_fn();
-
+#ifdef EM_APP
+        get_lq_descriptor()->stop_link_metrics_fn();
+#endif
+    }
     ignite_lq_state_t *ignite = &apps->data.u.linkquality.ignite;
     if (ignite->score_log_timer_id != 0) {
         scheduler_cancel_timer_task(apps->ctrl->sched, ignite->score_log_timer_id);

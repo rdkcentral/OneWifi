@@ -32,24 +32,17 @@
  * DISCONNECT       → remove_link_stats()
  * RAPID_DISCONNECT → disconnect_link_stats()
  * CAFFINITY_EVENT  → periodic_caffinity_stats_update() [single entry, HAL/DHCP]
- * START_METRICS    → start_link_metrics() + set_max_snr_radios()
- * STOP_METRICS     → stop_link_metrics()
  * REGISTER_STA     → register_station_mac() [ignite]
  * UNREGISTER_STA   → unregister_station_mac() [ignite]
  * REINIT_METRICS   → reinit_link_metrics() [server_arg_t payload]
- * SET_MAX_SNR      → set_max_snr_radios() [radio_max_snr_t payload]
  */
 #define LQ_IPC_MSG_PERIODIC_STATS    1
 #define LQ_IPC_MSG_DISCONNECT        2
 #define LQ_IPC_MSG_RAPID_DISCONNECT  3
 #define LQ_IPC_MSG_CAFFINITY_EVENT   4
-#define LQ_IPC_MSG_START_METRICS     5
-#define LQ_IPC_MSG_STOP_METRICS      6
-#define LQ_IPC_MSG_REGISTER_STA      7
-#define LQ_IPC_MSG_UNREGISTER_STA    8
-#define LQ_IPC_MSG_REINIT_METRICS    9
-#define LQ_IPC_MSG_SET_MAX_SNR      10
-#define LQ_IPC_MSG_SET_SCORE_PARAMS 11
+#define LQ_IPC_MSG_REGISTER_STA      5
+#define LQ_IPC_MSG_UNREGISTER_STA    6
+#define LQ_IPC_MSG_REINIT_METRICS    7
 
 /*
  * LQ TLV — the entire datagram is a single TLV, no wrapper header.
