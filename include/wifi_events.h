@@ -170,6 +170,7 @@ typedef enum {
     wifi_event_type_start_sta_channel_scan,
     wifi_event_type_link_quality_rfc,
     wifi_event_type_xfi_tel_enable_rfc,
+    wifi_event_type_multiap_rfc,
     wifi_event_command_max,
 
     wifi_event_monitor_diagnostics = wifi_event_type_base
@@ -207,6 +208,7 @@ typedef enum {
     wifi_event_monitor_update_interop_interval,
     wifi_event_monitor_channel_status,
     wifi_event_monitor_eap_status,
+    wifi_event_monitor_reassoc_req,
     wifi_event_monitor_max,
 
     // Tunnel

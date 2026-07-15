@@ -29,8 +29,9 @@
 #include "wifi_analytics.h"
 //#include <ieee80211.h>
 #include "common/ieee802_11_defs.h"
-#include <fcntl.h>
+#include "common/ieee802_11_common.h"
 #include <errno.h>
+#include <fcntl.h>
 
 #define WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE   "Device.WiFi.Events.VAP.%d.Frames.Mgmt"
 #define CSI_LEVL_PIPE                           "/tmp/csi_levl_pipe"
@@ -213,6 +214,12 @@ void update_probe_map(wifi_app_t *apps, char *mac_key)
             if (mac_key != NULL) {
                 elem = hash_map_remove(probe_map, mac_key);
                 if (elem != NULL) {
+                    probe_frame_t *probe_req_frame = NULL;
+                    while (ds_dlist_is_empty(&elem->probe_req_frames_list) == false) {
+                        probe_req_frame = ds_dlist_head(&elem->probe_req_frames_list);
+                        ds_dlist_remove(&elem->probe_req_frames_list, probe_req_frame);
+                        free(probe_req_frame);
+                    }
                     free(elem);
                 }
             }
@@ -256,17 +263,50 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
     str_tolower(mac_str);
+    probe_frame_t *msg_copy = (probe_frame_t *)malloc(sizeof(probe_frame_t));
+    if (msg_copy == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d malloc failed for probe_frame_t\r\n", __func__,
+            __LINE__);
+        pthread_mutex_unlock(&app->data.u.levl.lock);
+        return;
+    }
+    memset(msg_copy, 0, sizeof(probe_frame_t));
+    memcpy(&msg_copy->probe_frame, msg, sizeof(frame_data_t));
+
     if ((elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str)) == NULL) {
         elem = (probe_req_elem_t *)malloc(sizeof(probe_req_elem_t));
+        if (elem == NULL) {
+            wifi_util_error_print(WIFI_APPS, "%s:%d malloc failed for probe_req_elem_t\r\n",
+                __func__, __LINE__);
+            pthread_mutex_unlock(&app->data.u.levl.lock);
+            free(msg_copy);
+            return;
+        }
         memset(elem, 0, sizeof(probe_req_elem_t));
-        memcpy(&elem->msg_data, msg, sizeof(frame_data_t));
         memcpy(elem->mac_str, mac_str, sizeof(mac_addr_str_t));
+
+        ds_dlist_init(&elem->probe_req_frames_list, probe_frame_t, node);
+        ds_dlist_insert_tail(&elem->probe_req_frames_list, msg_copy);
         hash_map_put(app->data.u.levl.probe_req_map, strdup(mac_str), elem);
         elem->curr_alive_time_sec = get_current_time_in_sec();
         wifi_util_info_print(WIFI_APPS,"%s:%d wifi mgmt probe frame message for %s time:%ld\r\n", __func__, __LINE__, mac_str, elem->curr_alive_time_sec);
     } else {
-        memset(&elem->msg_data, 0, sizeof(elem->msg_data));
-        memcpy(&elem->msg_data, msg, sizeof(frame_data_t));
+        bool found = false;
+        probe_frame_t *saved_probe_req = NULL;
+
+        ds_dlist_foreach(&elem->probe_req_frames_list, saved_probe_req) {
+            if (saved_probe_req->probe_frame.frame.ap_index == msg->frame.ap_index) {
+                memset(&saved_probe_req->probe_frame, 0, sizeof(frame_data_t));
+                memcpy(&saved_probe_req->probe_frame, msg, sizeof(frame_data_t));
+                found = true;
+                free(msg_copy);
+                break;
+            }
+        }
+
+        if (!found) {
+            ds_dlist_insert_tail(&elem->probe_req_frames_list, msg_copy);
+        }
     }
     pthread_mutex_unlock(&app->data.u.levl.lock);
 }
@@ -276,23 +316,231 @@ void apps_probe_rsp_frame_event(wifi_app_t *app, frame_data_t *msg)
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi probe rsp mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
 }
 
+#ifdef CONFIG_IEEE80211BE
+void replace_sa_with_mld_mac(struct ieee80211_mgmt *frame, frame_data_t *msg)
+{
+    const struct element *ie_elem = NULL;
+    u8 *ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
+    size_t ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ?
+        0 :
+        msg->frame.len - (IEEE80211_HDRLEN + 4);
+
+    for_each_element_extid(ie_elem, WLAN_EID_EXT_MULTI_LINK, (const u8 *)ie_ptr, ie_len)
+    {
+        /* Need at least: ext_id(1) + ml_control(2) + common_info_len(1) */
+        if (ie_elem->datalen < 4) {
+            continue;
+        }
+
+        u16 ml_control = (u16)(ie_elem->data[2] << 8) | ie_elem->data[1];
+        if ((ml_control & MULTI_LINK_CONTROL_TYPE_MASK) != MULTI_LINK_CONTROL_TYPE_BASIC) {
+            continue;
+        }
+
+        /* common_info_len includes the length byte itself */
+        u8 common_info_len = ie_elem->data[3];
+        if (common_info_len < 1 || ie_elem->datalen < (size_t)(1 + 2 + common_info_len)) {
+            continue;
+        }
+
+        if (common_info_len > ETH_ALEN) {
+            u8 *comm_info = (u8 *)ie_elem->data + 4;
+            memcpy(&frame->sa, comm_info, sizeof(mac_address_t));
+        }
+    }
+}
+#endif
+
 void apps_auth_frame_event(wifi_app_t *app, frame_data_t *msg)
 {
     char namespace[50];
-    //wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n",__FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
     snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
+#ifdef CONFIG_IEEE80211BE
+    struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)msg->data;
+    replace_sa_with_mld_mac(frame, msg);
+#endif
     mgmt_frame_bus_send(&app->handle, namespace, msg);
 }
 
+#ifndef CONFIG_IEEE80211BE
+static void get_probe_req_in_band(wifi_app_t *app, probe_req_elem_t *elem, frame_data_t *msg,
+    ds_dlist_t *probe_req_frames_to_send)
+{
+    probe_frame_t *probe_req_frame = NULL;
+    probe_frame_t *tmp_probe_req_frame = NULL;
+    ds_dlist_foreach_safe(&elem->probe_req_frames_list, probe_req_frame, tmp_probe_req_frame) {
+        if (probe_req_frame->probe_frame.frame.ap_index == msg->frame.ap_index) {
+            ds_dlist_remove(&elem->probe_req_frames_list, probe_req_frame);
+            ds_dlist_insert_tail(probe_req_frames_to_send, probe_req_frame);
+            return;
+        }
+    }
+
+    if (ds_dlist_is_empty(&elem->probe_req_frames_list) == false) {
+        // At this point just include any frame
+        probe_req_frame = ds_dlist_head(&elem->probe_req_frames_list);
+        ds_dlist_remove(&elem->probe_req_frames_list, probe_req_frame);
+        ds_dlist_insert_tail(probe_req_frames_to_send, probe_req_frame);
+    }
+}
+#endif
+
+#ifdef CONFIG_IEEE80211BE
+// For Broadcom, link MAC is being replaced with MLD MAC address in Assoc frames while ProbeReq
+// comes in nondeterministic MAC. Replaced MAC is being sent as an additional param in vendor
+// specific IE. We need to determine if there is any ProbeReq in here for any link MAC or any MLD
+// MAC related to this Assoc. Currently we assume that different band Assoc vs ProbeReq frames are
+// acceptable.
+
+static void extract_probe_req(wifi_app_t *app, probe_req_elem_t *elem, const mac_addr_str_t mac_str,
+    ds_dlist_t *probe_req_frames_to_send)
+{
+    probe_frame_t *probe_req_frame = NULL;
+    probe_frame_t *tmp_probe_req_frame = NULL;
+
+    ds_dlist_foreach_safe(&elem->probe_req_frames_list, probe_req_frame, tmp_probe_req_frame) {
+        ds_dlist_remove(&elem->probe_req_frames_list, probe_req_frame);
+        ds_dlist_insert_tail(probe_req_frames_to_send, probe_req_frame);
+    }
+    elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
+    free(elem);
+}
+
+static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *msg,
+    wifi_app_t *app, ds_dlist_t *probe_req_frames_to_send)
+{
+    probe_req_elem_t *elem = NULL;
+    const struct element *ie_elem = NULL;
+    u8 *ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
+    size_t ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ?
+        0 :
+        msg->frame.len - (IEEE80211_HDRLEN + 4);
+    mac_addr_str_t mac_str = { 0 };
+
+    to_mac_str(frame->sa, mac_str);
+    elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str);
+    if (elem != NULL) {
+        wifi_util_dbg_print(WIFI_APPS,
+            "%s:%d: found matching ProbeReq frames with assoc SA MAC: %s\n", __func__, __LINE__,
+            mac_str);
+        extract_probe_req(app, elem, mac_str, probe_req_frames_to_send);
+    }
+
+#ifndef _PLATFORM_BANANAPI_R4_
+    // Since this is Broadcom specific, first try to find the special
+    // vendor IE with replaced link MAC
+    for_each_element_id(ie_elem, WLAN_EID_VENDOR_SPECIFIC, (const u8 *)ie_ptr, ie_len)
+    {
+        if (ie_elem->datalen < (size_t)(4 + 3 + ETH_ALEN)) {
+            continue;
+        }
+
+        u8 oui_type = ie_elem->data[3];
+        if (oui_type != VENDOR_MLO_OUI_TYPE) {
+            continue;
+        }
+
+        to_mac_str((u8 *)(ie_elem->data + 4 + 3), mac_str);
+        elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str);
+        if (elem != NULL) {
+            wifi_util_dbg_print(WIFI_APPS,
+                "%s:%d: found matching ProbeReq frames with MAC: %s on vendor IE\n", __func__,
+                __LINE__, mac_str);
+            extract_probe_req(app, elem, mac_str, probe_req_frames_to_send);
+        }
+    }
+
+    ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
+    ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ? 0 : msg->frame.len - (IEEE80211_HDRLEN + 4);
+#endif
+
+    for_each_element_extid(ie_elem, WLAN_EID_EXT_MULTI_LINK, (const u8 *)ie_ptr, ie_len)
+    {
+        elem = NULL;
+        /*
+         * ie_elem->data layout (Extension IE, ext ID already matched):
+         *   data[0]    = Extension ID (107), consumed by iterator
+         *   data[1..2] = ML Control (le16)
+         *   data[3]    = Common Info Length (includes the length byte itself)
+         *   data[4..]  = Common Info data (MLD MAC, Link ID, etc.)
+         * After common info: Per-STA Profile subelements (TLV, ID=0)
+         */
+
+        /* Need at least: ext_id(1) + ml_control(2) + common_info_len(1) */
+        if (ie_elem->datalen < 4) {
+            continue;
+        }
+
+        u16 ml_control = (u16)(ie_elem->data[2] << 8) | ie_elem->data[1];
+        if ((ml_control & MULTI_LINK_CONTROL_TYPE_MASK) != MULTI_LINK_CONTROL_TYPE_BASIC) {
+            continue;
+        }
+
+        /* common_info_len includes the length byte itself */
+        u8 common_info_len = ie_elem->data[3];
+        if (common_info_len < 1 || ie_elem->datalen < (size_t)(1 + 2 + common_info_len)) {
+            continue;
+        }
+
+        if (common_info_len > ETH_ALEN) {
+            u8 *comm_info = (u8 *)ie_elem->data + 4;
+            to_mac_str(comm_info, mac_str);
+            elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str);
+            if (elem != NULL) {
+                wifi_util_dbg_print(WIFI_APPS, "%s:%d: found matching ProbeReq with MLD MAC: %s\n",
+                    __func__, __LINE__, mac_str);
+                extract_probe_req(app, elem, mac_str, probe_req_frames_to_send);
+            }
+        }
+
+        /* Subelements start after: ext_id(1) + ml_control(2) + common_info(common_info_len) */
+        const u8 *sub_start = ie_elem->data + 1 + 2 + common_info_len;
+        size_t sub_len = ie_elem->datalen - (1 + 2 + common_info_len);
+        elem = NULL;
+
+        const struct element *sub;
+        for_each_element_id(sub, EHT_ML_SUB_ELEM_PER_STA_PROFILE, sub_start, sub_len)
+        {
+            /*
+             * Per-STA Profile subelement data layout:
+             *   data[0..1] = STA Control (le16)
+             *   data[2]    = STA Info Length (includes itself)
+             *   data[3..8] = Link MAC Address (if MAC_ADDR_PRESENT flag set)
+             */
+            if (sub->datalen < 2 + 1 + ETH_ALEN) {
+                continue;
+            }
+
+            u16 sta_ctrl = (u16)(sub->data[1] << 8) | sub->data[0];
+            if (!(sta_ctrl & EHT_PER_STA_CTRL_MAC_ADDR_PRESENT_MSK)) {
+                continue;
+            }
+
+            to_mac_str((u8 *)(sub->data + 3), mac_str);
+            elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str);
+            if (elem != NULL) {
+                wifi_util_dbg_print(WIFI_APPS,
+                    "%s:%d: found matching ProbeReq with STA profile MAC: %s\n", __func__, __LINE__,
+                    mac_str);
+                extract_probe_req(app, elem, mac_str, probe_req_frames_to_send);
+            }
+        }
+    }
+}
+#endif
 
 void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
 {
     struct ieee80211_mgmt *frame;
     mac_addr_str_t mac_str = { 0 };
     char *str;
-    probe_req_elem_t *elem;
     char namespace[50];
+    probe_frame_t *probe_req_frame = NULL;
+    probe_frame_t *tmp_probe_req_frame = NULL;
+
+    ds_dlist_t probe_req_frames_to_send;
+    ds_dlist_init(&probe_req_frames_to_send, probe_frame_t, node);
 
     frame = (struct ieee80211_mgmt *)msg->data;
     str = to_mac_str(frame->sa, mac_str);
@@ -307,27 +555,47 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
             __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
     pthread_mutex_lock(&app->data.u.levl.lock);
-    elem = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
+#ifdef CONFIG_IEEE80211BE
+    // Try to find matching probe req for MLO case
+    find_matching_probe_req(frame, msg, app, &probe_req_frames_to_send);
+#else
+    probe_req_elem_t *elem;
+    elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str);
+    if (elem != NULL) {
+        get_probe_req_in_band(app, elem, msg, &probe_req_frames_to_send);
+    }
+#endif
     pthread_mutex_unlock(&app->data.u.levl.lock);
-    if (elem == NULL) {
+
+    if (ds_dlist_is_empty(&probe_req_frames_to_send)) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d:probe not found for mac address:%s\n", __func__, __LINE__, str);
         //assert(1);
         // assoc request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
         mgmt_frame_bus_send(&app->handle, namespace, msg);
     } else {
-        // prob request bus send
-        snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, elem->msg_data.frame.ap_index+1);
-        mgmt_frame_bus_send(&app->handle, namespace, &elem->msg_data);
+        // probe request bus send
+        ds_dlist_foreach_safe(&probe_req_frames_to_send, probe_req_frame, tmp_probe_req_frame) {
+#ifdef CONFIG_IEEE80211BE
+            struct ieee80211_mgmt *probe =
+                (struct ieee80211_mgmt *)probe_req_frame->probe_frame.data;
+            memcpy(&probe->sa, &frame->sa, sizeof(mac_address_t));
+#endif
+            snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE,
+                probe_req_frame->probe_frame.frame.ap_index + 1);
+            mgmt_frame_bus_send(&app->handle, namespace, &probe_req_frame->probe_frame);
+            ds_dlist_remove(&probe_req_frames_to_send, probe_req_frame);
+            free(probe_req_frame);
+        }
 
         // assoc request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
         mgmt_frame_bus_send(&app->handle, namespace, msg);
 
-        free(elem);
-        wifi_util_dbg_print(WIFI_APPS,"%s:%d Send probe and assoc ap_index:%d length:%d type:%d dir:%d rssi:%d\r\n",
-                __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm);
-
+        wifi_util_dbg_print(WIFI_APPS,
+            "%s:%d Send probe and assoc ap_index:%d length:%d type:%d dir:%d rssi:%d\r\n",
+            __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type,
+            msg->frame.dir, msg->frame.sig_dbm);
     }
 }
 
@@ -343,6 +611,10 @@ void apps_reassoc_req_frame_event(wifi_app_t *apps, frame_data_t *msg)
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi reassoc req mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n",
             __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
     snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
+#ifdef CONFIG_IEEE80211BE
+    struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)msg->data;
+    replace_sa_with_mld_mac(frame, msg);
+#endif
     mgmt_frame_bus_send(&apps->handle, namespace, msg);
 }
 
@@ -994,9 +1266,16 @@ int apps_frame_event_exec_timeout(wifi_app_t *apps)
         l_temp_elem = l_elem;
         l_elem = hash_map_get_next(probe_map, l_elem);
         if (delta_time_sec >= MAX_PROBE_TTL_TIME) {
-            l_temp_elem = hash_map_remove(probe_map, l_temp_elem->mac_str);
+            l_temp_elem = (probe_req_elem_t *)hash_map_remove(probe_map, l_temp_elem->mac_str);
             if (l_temp_elem != NULL) {
                 wifi_util_info_print(WIFI_APPS,"%s:%d probe map entry removed for mac_str:%s\r\n", __func__, __LINE__, l_temp_elem->mac_str);
+                probe_req_elem_t *probe_req_data = (probe_req_elem_t *)l_temp_elem;
+                probe_frame_t *probe_req_frame = NULL;
+                while (ds_dlist_is_empty(&probe_req_data->probe_req_frames_list) == false) {
+                    probe_req_frame = ds_dlist_head(&probe_req_data->probe_req_frames_list);
+                    ds_dlist_remove(&probe_req_data->probe_req_frames_list, probe_req_frame);
+                    free(probe_req_frame);
+                }
                 free(l_temp_elem);
             }
         }
@@ -1244,8 +1523,15 @@ int levl_deinit(wifi_app_t *app)
         memset(mac_str, 0, sizeof(mac_addr_str_t));
         memcpy(mac_str, probe_data->mac_str, sizeof(mac_addr_str_t));
         probe_data = hash_map_get_next(app->data.u.levl.probe_req_map, probe_data);
-        tmp_data = hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
+        tmp_data = (probe_req_elem_t *)hash_map_remove(app->data.u.levl.probe_req_map, mac_str);
         if (tmp_data != NULL) {
+            probe_req_elem_t *probe_req_data = (probe_req_elem_t *)tmp_data;
+            probe_frame_t *probe_req_frame = NULL;
+            while (ds_dlist_is_empty(&probe_req_data->probe_req_frames_list) == false) {
+                probe_req_frame = ds_dlist_head(&probe_req_data->probe_req_frames_list);
+                ds_dlist_remove(&probe_req_data->probe_req_frames_list, probe_req_frame);
+                free(probe_req_frame);
+            }
             free(tmp_data);
         }
     }

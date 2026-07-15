@@ -96,6 +96,7 @@
         PJS_OVS_INT(server_retries)\
         PJS_OVS_BOOL(wpa3_transition_disable)\
         PJS_OVS_INT(security_mode_new)\
+        PJS_OVS_INT(encryption_method_new)\
     )
 
 #define PJS_SCHEMA_Wifi_VAP_Config \
@@ -152,8 +153,6 @@
         PJS_OVS_BOOL(mld_enable) \
         PJS_OVS_INT(mld_id) \
         PJS_OVS_INT(mld_link_id) \
-        PJS_OVS_STRING(mld_addr, 32 + 1) \
-        PJS_OVS_BOOL(mld_apply) \
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -211,6 +210,7 @@
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
         PJS_OVS_BOOL(link_quality_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
+        PJS_OVS_BOOL(multiap_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -2056,7 +2056,8 @@
     COLUMN(identity_req_retry_interval)\
     COLUMN(server_retries)\
     COLUMN(wpa3_transition_disable)\
-    COLUMN(security_mode_new)
+    COLUMN(security_mode_new)\
+    COLUMN(encryption_method_new)
 
 #define SCHEMA__Wifi_VAP_Config "Wifi_VAP_Config"
 #define SCHEMA_COLUMN__Wifi_VAP_Config(COLUMN) \
@@ -2109,9 +2110,7 @@
     COLUMN(repurposed_bridge_name)\
     COLUMN(mld_enable)\
     COLUMN(mld_id)\
-    COLUMN(mld_link_id)\
-    COLUMN(mld_addr)\
-    COLUMN(mld_apply)
+    COLUMN(mld_link_id)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -2160,6 +2159,7 @@
     COLUMN(wpa3_compatibility_enable) \
     COLUMN(link_quality_rfc) \
     COLUMN(xfi_tel_enable_rfc) \
+    COLUMN(multiap_rfc) \
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3438,6 +3438,7 @@
 #define SCHEMA__Wifi_Security_Config__server_retries "server_retries"
 #define SCHEMA__Wifi_Security_Config__wpa3_transition_disable "wpa3_transition_disable"
 #define SCHEMA__Wifi_Security_Config__security_mode_new "security_mode_new"
+#define SCHEMA__Wifi_Security_Config__encryption_method_new "encryption_method_new"
 
 #define SCHEMA__Wifi_VAP_Config__vap_name "vap_name"
 #define SCHEMA__Wifi_VAP_Config__radio_name "radio_name"
@@ -3489,8 +3490,6 @@
 #define SCHEMA__Wifi_VAP_Config__mld_enable "mld_enable"
 #define SCHEMA__Wifi_VAP_Config__mld_id "mld_id"
 #define SCHEMA__Wifi_VAP_Config__mld_link_id "mld_link_id"
-#define SCHEMA__Wifi_VAP_Config__mld_addr "mld_addr"
-#define SCHEMA__Wifi_VAP_Config__mld_apply "mld_apply"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"
@@ -3533,6 +3532,8 @@
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
 #define SCHEMA__Wifi_Rfc_Config__link_quality_rfc "link_quality_rfc"
 #define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
+#define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
+
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"

@@ -421,7 +421,7 @@ char *getDeviceMac()
 #if defined(_COSA_BCM_MIPS_)
 #define CPE_MAC_NAMESPACE "Device.DPoE.Mac_address"
 #else
-#ifdef _SKY_HUB_COMMON_PRODUCT_REQ_
+#if defined(_SKY_HUB_COMMON_PRODUCT_REQ_) || defined(PON_GATEWAY)
 #define CPE_MAC_NAMESPACE "Device.DeviceInfo.X_COMCAST-COM_WAN_MAC"
 #else
 #define CPE_MAC_NAMESPACE "Device.X_CISCO_COM_CableModem.MACAddress"

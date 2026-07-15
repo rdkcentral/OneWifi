@@ -45,6 +45,9 @@ patch_filenames="hostap-patches/0001-OneWifi-related-hostap-patch-for-2.10-based
 echo "Applying patches ..."
 git am $patch_filenames
 
+#Apply additional patches
+patch -p3 --no-backup-if-mismatch < hostap-patches/xfi-tel-complete_2_10.patch
+
 #Delete the hostap-patches directory after applying
 rm -rf hostap-patches
 

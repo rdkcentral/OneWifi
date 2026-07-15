@@ -717,7 +717,7 @@ char *get_formatted_time(char *time)
     return time;
 }
 
-void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...)
 {
     char buff[256] = {0};
     va_list list;
@@ -840,6 +840,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         case WIFI_EC: {
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
             snprintf(module_filename, sizeof(module_filename), "wifiEc");
+            break;
+        }
+        case WIFI_SENSING: {
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSensing");
+            snprintf(module_filename, sizeof(module_filename), "wifiSensing");
             break;
         }
         default:
@@ -2014,24 +2019,33 @@ typedef struct {
     const char keys[16][MAX_SEC_LEN];
     int len;
     wifi_security_modes_t mode;
+    wifi_encryption_method_t encryption;
 } security_mapping_table_t;
 
 static const security_mapping_table_t security_map[] = {
-    { .keys = { "wpa-psk" },        .len = 1, .mode = wifi_security_mode_wpa_personal },
-    { .keys = { "wpa2-psk" },       .len = 1, .mode = wifi_security_mode_wpa2_personal },
-    { .keys = { "wpa2-eap" },       .len = 1, .mode = wifi_security_mode_wpa2_enterprise },
-    { .keys = { "sae" },            .len = 1, .mode = wifi_security_mode_wpa3_personal },
-    { .keys = { "aes" },            .len = 1, .mode = wifi_security_mode_wpa3_enterprise },
-    { .keys = { "enhanced-open" },  .len = 1, .mode = wifi_security_mode_enhanced_open },
-    { .keys = { "wpa-eap" },        .len = 1, .mode = wifi_security_mode_wpa_enterprise },
-    { .keys = { "wpa-eap", "wpa2-eap" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_enterprise },
-    { .keys = { "wpa2-psk", "sae" },        .len = 2, .mode = wifi_security_mode_wpa3_transition },
-    { .keys = { "wpa-psk", "wpa2-psk" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_personal },
-    { .keys = { "wpa2-psk", "sae", "rsno" },    .len = 3, .mode = wifi_security_mode_wpa3_compatibility }
+    { .keys = { "wpa-psk" },                 .len = 1, .mode = wifi_security_mode_wpa_personal,         .encryption = wifi_encryption_tkip },
+    { .keys = { "wpa-eap" },                 .len = 1, .mode = wifi_security_mode_wpa_enterprise,       .encryption = wifi_encryption_tkip },
+    { .keys = { "wpa2-psk" },                .len = 1, .mode = wifi_security_mode_wpa2_personal,        .encryption = wifi_encryption_aes },
+    { .keys = { "wpa2-eap" },                .len = 1, .mode = wifi_security_mode_wpa2_enterprise,      .encryption = wifi_encryption_aes },
+#ifdef CONFIG_IEEE80211BE
+    { .keys = { "sae" },                     .len = 1, .mode = wifi_security_mode_wpa3_personal,        .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "aes" },                     .len = 1, .mode = wifi_security_mode_wpa3_enterprise,      .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "wpa2-psk", "sae" },         .len = 2, .mode = wifi_security_mode_wpa3_transition,      .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "wpa2-psk", "sae", "rsno" }, .len = 3, .mode = wifi_security_mode_wpa3_compatibility,   .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "enhanced-open" },           .len = 1, .mode = wifi_security_mode_enhanced_open,        .encryption = wifi_encryption_aes_gcmp256 },
+#else
+    { .keys = { "sae" },                     .len = 1, .mode = wifi_security_mode_wpa3_personal,        .encryption = wifi_encryption_aes },
+    { .keys = { "aes" },                     .len = 1, .mode = wifi_security_mode_wpa3_enterprise,      .encryption = wifi_encryption_aes },
+    { .keys = { "wpa2-psk", "sae" },         .len = 2, .mode = wifi_security_mode_wpa3_transition,      .encryption = wifi_encryption_aes },
+    { .keys = { "wpa2-psk", "sae", "rsno" }, .len = 3, .mode = wifi_security_mode_wpa3_compatibility,   .encryption = wifi_encryption_aes },
+    { .keys = { "enhanced-open" },           .len = 1, .mode = wifi_security_mode_enhanced_open,        .encryption = wifi_encryption_aes },
+#endif
+    { .keys = { "wpa-eap", "wpa2-eap" },     .len = 2, .mode = wifi_security_mode_wpa_wpa2_enterprise,  .encryption = wifi_encryption_aes_tkip },
+    { .keys = { "wpa-psk", "wpa2-psk" },     .len = 2, .mode = wifi_security_mode_wpa_wpa2_personal,    .encryption = wifi_encryption_aes_tkip }
 };
 
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
-    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN])
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN], wifi_encryption_method_t *enum_encr)
 {
     int i, j = 0;
     int num_key_found = 0;
@@ -2059,6 +2073,8 @@ int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned 
             }
             if (num_key_found == wpa_key_mgmt_len) {
                 *enum_sec = security_map[i].mode;
+                if (enum_encr)
+                    *enum_encr = security_map[i].encryption;
                 return RETURN_OK;
             }
         }
@@ -2880,6 +2896,96 @@ int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsign
 
     return RETURN_ERR;
 }
+
+typedef struct {
+    wifi_freq_bands_t band;
+    const char *band_str;
+} freq_band_str_map_t;
+
+static const freq_band_str_map_t freq_band_str_map[] = {
+    { WIFI_FREQUENCY_2_4_BAND, NAME_FREQUENCY_2_4_G },
+    { WIFI_FREQUENCY_5_BAND,   NAME_FREQUENCY_5_G },
+    { WIFI_FREQUENCY_5L_BAND,  NAME_FREQUENCY_5L_G },
+    { WIFI_FREQUENCY_5H_BAND,  NAME_FREQUENCY_5H_G },
+    { WIFI_FREQUENCY_6_BAND,   NAME_FREQUENCY_6_G },
+};
+
+const char *convert_freq_band_to_band_str_g(int freq_band)
+{
+    unsigned int i = 0;
+
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (freq_band_str_map[i].band == (wifi_freq_bands_t)freq_band) {
+            return freq_band_str_map[i].band_str;
+        }
+    }
+    return NULL;
+}
+
+#if defined(CONFIG_IEEE80211BE)
+#define MLO_SUFFIX "_mlo"
+#define MLO_SUFFIX_LEN 4
+bool is_mlo_vap_name(const char *name)
+{
+    size_t len = 0;
+
+    if (name == NULL) {
+        return false;
+    }
+    len = strlen(name);
+    return (len > MLO_SUFFIX_LEN && strncmp(name + len - MLO_SUFFIX_LEN, MLO_SUFFIX, MLO_SUFFIX_LEN) == 0);
+}
+
+static bool get_mlo_base_name(const char *mlo_vap_name, char *base, size_t base_size)
+{
+    size_t base_len = 0;
+
+    if (base == NULL || !is_mlo_vap_name(mlo_vap_name)) {
+        return false;
+    }
+    base_len = strlen(mlo_vap_name) - MLO_SUFFIX_LEN;
+    if (base_len >= base_size) {
+        return false;
+    }
+    memcpy(base, mlo_vap_name, base_len);
+    base[base_len] = '\0';
+    return true;
+}
+
+bool get_per_radio_vap_name_from_mlo(const char *mlo_vap_name, const char *band_str, char *out, size_t out_size)
+{
+    wifi_vap_name_t base = { 0 };
+
+    if (!get_mlo_base_name(mlo_vap_name, base, sizeof(base))) {
+        return false;
+    }
+    snprintf(out, out_size, "%s_%s", base, band_str);
+    return true;
+}
+
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size)
+{
+    int len = 0;
+    unsigned int i = 0;
+    const char *last_underscore = NULL;
+
+    if (vap_name == NULL || out == NULL) {
+        return false;
+    }
+    last_underscore = strrchr(vap_name, '_');
+    if (last_underscore == NULL) {
+        return false;
+    }
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (strcmp(last_underscore + 1, freq_band_str_map[i].band_str) == 0) {
+            len = last_underscore - vap_name;
+            snprintf(out, out_size, "%.*s" MLO_SUFFIX, len, vap_name);
+            return true;
+        }
+    }
+    return false;
+}
+#endif /* CONFIG_IEEE80211BE */
 
 struct wifiStdHalMap
 {
@@ -3825,7 +3931,7 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
-#ifdef CONFIG_IEEE80211BE
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
 {
     if ((vap_info_old == NULL) || (vap_info_new == NULL)) {
@@ -3851,7 +3957,7 @@ static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *
     }
     return false;
 }
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
 
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
@@ -3955,13 +4061,12 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+            //should not be executed for BPi
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-#ifdef CONFIG_IEEE80211BE
             is_mld_addr_changed(vap_info_old, vap_info_new) ||
-#endif /* CONFIG_IEEE80211BE */
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,
@@ -4720,4 +4825,79 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
     close(sock);
 
     return 0;
+}
+
+bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr)
+{
+    uint32_t valid_mask = 0;
+
+    switch (mode) {
+    case wifi_security_mode_enhanced_open:
+        valid_mask = (1u << wifi_encryption_none) | (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa3_enterprise:
+    case wifi_security_mode_wpa3_personal:
+    case wifi_security_mode_wpa3_compatibility:
+    case wifi_security_mode_wpa3_transition:
+        valid_mask = (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa2_personal:
+    case wifi_security_mode_wpa2_enterprise:
+    case wifi_security_mode_wpa_wpa2_personal:
+    case wifi_security_mode_wpa_wpa2_enterprise:
+        valid_mask = (1u << wifi_encryption_aes) | (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_wpa_personal:
+    case wifi_security_mode_wpa_enterprise:
+        valid_mask = (1u << wifi_encryption_tkip) | (1u << wifi_encryption_aes) |
+                     (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_none:
+        return true; /* no encryption required */
+    default:
+        return false; /* unknown mode: reject */
+    }
+
+    return (valid_mask & (1u << encr)) != 0;
+}
+
+int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)
+{
+    int index;
+    int num_vaps;
+    wifi_interface_name_idex_map_t *if_prop;
+    char st[64] = "";
+
+    if ((wifi_prop == NULL) || (wifi_prop->interface_map == NULL) || (mac == NULL)) {
+         return -1;
+    }
+
+    memset(mac, 0, sizeof(mac_address_t));
+    TOTAL_INTERFACES(num_vaps, wifi_prop);
+    if_prop = wifi_prop->interface_map;
+
+    for (index = 0; index < num_vaps; ++index) {
+        if (if_prop->rdk_radio_index == radio_index) {
+            if (!strncmp(if_prop->vap_name, "mesh_sta", strlen("mesh_sta"))) {
+                mac_address_from_name(if_prop->interface_name, mac);
+                uint8_mac_to_string_mac(mac, st);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d interface_name=%s and mac address=%s\n",
+                    __func__, __LINE__, if_prop->interface_name, st);
+                return 0;
+            }
+        }
+        if_prop++;
+    }
+
+    return -1;
 }
