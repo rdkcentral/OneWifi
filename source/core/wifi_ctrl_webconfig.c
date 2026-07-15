@@ -2022,6 +2022,11 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 continue;
             }
 
+            if ((subdoc_type != webconfig_subdoc_type_mac_filter) &&
+                isVapHotspot(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) {
+                continue;
+            }
+
             if(current_config->is_mac_filter_initialized == true)  {
                 if (current_config->acl_map != NULL) {
                     current_acl_entry = hash_map_get_first(current_config->acl_map);
