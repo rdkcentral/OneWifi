@@ -4664,9 +4664,10 @@ webconfig_error_t  translate_config_from_ovsdb_for_stats_config(webconfig_subdoc
     const struct schema_Wifi_Stats_Config **table;
     struct schema_Wifi_Stats_Config *config_row;
     webconfig_external_ovsdb_t *proto;
-    stats_config_t    *stat_config_entry;
+    stats_config_t    *stat_config_entry = NULL;
     stats_config_t    temp_stat_config_entry;
     unsigned int i = 0;
+    webconfig_error_t rc = webconfig_error_none;
 
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
     if (proto == NULL) {
@@ -4691,26 +4692,45 @@ webconfig_error_t  translate_config_from_ovsdb_for_stats_config(webconfig_subdoc
         config_row = (struct schema_Wifi_Stats_Config *)table[i];
         if (config_row == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: config_row is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
+
         }
         memset(&temp_stat_config_entry, 0, sizeof(stats_config_t));
         if (translate_statsconfig_from_ovsdb_to_rdk(config_row, &temp_stat_config_entry) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: translation of stat_config failed for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
-        }
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
 
+        }
         stat_config_entry = NULL;
         stat_config_entry = (stats_config_t *)malloc(sizeof(stats_config_t));
         if (stat_config_entry == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: stat_config is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
         }
         memset(stat_config_entry, 0, sizeof(stats_config_t));
         memcpy(stat_config_entry, &temp_stat_config_entry, sizeof(stats_config_t));
         hash_map_put(data->u.decoded.stats_config_map, strdup(temp_stat_config_entry.stats_cfg_id), stat_config_entry);
+        stat_config_entry = NULL;
     }
 
     return webconfig_error_none;
+
+cleanup:
+    /* free current allocation only */
+    if (stat_config_entry != NULL) {
+        free(stat_config_entry);
+        stat_config_entry = NULL;
+    }
+
+    /* simple map cleanup (important for leak fix) */
+    if (data->u.decoded.stats_config_map != NULL) {
+        hash_map_destroy(data->u.decoded.stats_config_map);
+        data->u.decoded.stats_config_map = NULL;
+    }
+    return rc;
 }
 
 webconfig_error_t translate_steerconfig_from_ovsdb_to_rdk(const struct schema_Band_Steering_Config *config_row, steering_config_t *st_cfg, wifi_platform_property_t *wifi_prop)
@@ -4778,10 +4798,11 @@ webconfig_error_t  translate_config_from_ovsdb_for_steering_config(webconfig_sub
     const struct schema_Band_Steering_Config **table;
     struct schema_Band_Steering_Config *config_row;
     webconfig_external_ovsdb_t *proto;
-    steering_config_t *steer_config_entry;
+    steering_config_t *steer_config_entry = NULL;
     steering_config_t temp_steer_config;
     unsigned int i = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    webconfig_error_t rc = webconfig_error_none;
 
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
     if (proto == NULL) {
@@ -4810,27 +4831,45 @@ webconfig_error_t  translate_config_from_ovsdb_for_steering_config(webconfig_sub
         config_row = (struct schema_Band_Steering_Config *)table[i];
         if (config_row == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: config_row is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
         }
 
 
         memset(&temp_steer_config, 0, sizeof(steering_config_t));
         if (translate_steerconfig_from_ovsdb_to_rdk(config_row, &temp_steer_config, wifi_prop) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: translation of steer_config failed for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
         }
 
         steer_config_entry = (steering_config_t *)malloc(sizeof(steering_config_t));
         if (steer_config_entry == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: steer_config is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
         }
         memset(steer_config_entry, 0, sizeof(steering_config_t));
         memcpy(steer_config_entry, &temp_steer_config, sizeof(steering_config_t));
         hash_map_put(data->u.decoded.steering_config_map, strdup(temp_steer_config.steering_cfg_id), steer_config_entry);
+        steer_config_entry = NULL;
     }
 
     return webconfig_error_none;
+    
+ /* free current allocation */
+ cleanup:
+    if (steer_config_entry != NULL) {
+        free(steer_config_entry);
+        steer_config_entry = NULL;
+    }
+
+    /* destroy map (simple cleanup) */
+    if (data->u.decoded.steering_config_map != NULL) {
+        hash_map_destroy(data->u.decoded.steering_config_map);
+        data->u.decoded.steering_config_map = NULL;
+    }
+    return rc;
 }
 
 webconfig_error_t translate_steerconfig_from_rdk_to_ovsdb(struct schema_Band_Steering_Config *config_row, const steering_config_t *st_cfg, wifi_platform_property_t *wifi_prop)
@@ -5117,9 +5156,10 @@ webconfig_error_t  translate_config_from_ovsdb_for_steering_clients(webconfig_su
     const struct schema_Band_Steering_Clients **table;
     struct schema_Band_Steering_Clients *client_row;
     webconfig_external_ovsdb_t *proto;
-    band_steering_clients_t *steering_client_entry;
+    band_steering_clients_t *steering_client_entry = NULL;
     band_steering_clients_t temp_steering_client;
     unsigned int i = 0;
+    webconfig_error_t rc = webconfig_error_none;
 
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
     if (proto == NULL) {
@@ -5143,26 +5183,45 @@ webconfig_error_t  translate_config_from_ovsdb_for_steering_clients(webconfig_su
         client_row = (struct schema_Band_Steering_Clients *)table[i];
         if (client_row == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client_row is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
         }
 
         memset(&temp_steering_client, 0, sizeof(band_steering_clients_t));
         if (translate_steeringclients_from_ovsdb_to_rdk(client_row, &temp_steering_client) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: translation of steer_config failed for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
         }
 
         steering_client_entry = (band_steering_clients_t *)malloc(sizeof(band_steering_clients_t));
         if (steering_client_entry == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: steer_config is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
+
         }
         memset(steering_client_entry, 0, sizeof(band_steering_clients_t));
         memcpy(steering_client_entry, &temp_steering_client, sizeof(band_steering_clients_t));
         hash_map_put(data->u.decoded.steering_client_map, strdup(temp_steering_client.steering_client_id), steering_client_entry);
+        steering_client_entry = NULL;
+    }
+    
+    return webconfig_error_none;
+
+cleanup:
+    /* free current allocation */
+    if (steering_client_entry != NULL) {
+        free(steering_client_entry);
+        steering_client_entry = NULL;
     }
 
-    return webconfig_error_none;
+    /* destroy map to avoid partial leaks */
+    if (data->u.decoded.steering_client_map != NULL) {
+        hash_map_destroy(data->u.decoded.steering_client_map);
+        data->u.decoded.steering_client_map = NULL;
+    }
+    return rc;
 }
 
 webconfig_error_t translate_vif_neighbors_from_ovsdb_to_rdk(const struct schema_Wifi_VIF_Neighbors *neighbor_row, vif_neighbors_t *neighbor_cfg)
@@ -5200,9 +5259,10 @@ webconfig_error_t  translate_config_from_ovsdb_for_vif_neighbors(webconfig_subdo
     const struct schema_Wifi_VIF_Neighbors **table;
     struct schema_Wifi_VIF_Neighbors *client_row;
     webconfig_external_ovsdb_t *proto;
-    vif_neighbors_t *vif_neighbor_entry;
+    vif_neighbors_t *vif_neighbor_entry = NULL;
     vif_neighbors_t temp_vif_neighbor;
     unsigned int i = 0;
+    webconfig_error_t rc = webconfig_error_none;
 
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
     if (proto == NULL) {
@@ -5226,26 +5286,47 @@ webconfig_error_t  translate_config_from_ovsdb_for_vif_neighbors(webconfig_subdo
         client_row = (struct schema_Wifi_VIF_Neighbors *)table[i];
         if (client_row == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client_row is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
+
         }
 
         memset(&temp_vif_neighbor, 0, sizeof(vif_neighbors_t));
         if (translate_vif_neighbors_from_ovsdb_to_rdk(client_row, &temp_vif_neighbor) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: translation of vif_neighbor failed for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
+
         }
 
         vif_neighbor_entry = (vif_neighbors_t *)malloc(sizeof(vif_neighbors_t));
         if (vif_neighbor_entry == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: steer_config is NULL for %d\n", __func__, __LINE__, i);
-            return webconfig_error_translate_from_ovsdb;
+            rc = webconfig_error_translate_from_ovsdb;
+            goto cleanup;
+
         }
         memset(vif_neighbor_entry, 0, sizeof(vif_neighbors_t));
         memcpy(vif_neighbor_entry, &temp_vif_neighbor, sizeof(vif_neighbors_t));
         hash_map_put(data->u.decoded.vif_neighbors_map, strdup(temp_vif_neighbor.neighbor_id), vif_neighbor_entry);
+        vif_neighbor_entry = NULL;
     }
 
     return webconfig_error_none;
+cleanup:
+    /* free current allocation */
+    if (vif_neighbor_entry != NULL) {
+        free(vif_neighbor_entry);
+        vif_neighbor_entry = NULL;
+    }
+
+    /* destroy map on failure */
+    if (data->u.decoded.vif_neighbors_map != NULL) {
+        hash_map_destroy(data->u.decoded.vif_neighbors_map);
+        data->u.decoded.vif_neighbors_map = NULL;
+    }
+
+    return rc;
 }
 
 
