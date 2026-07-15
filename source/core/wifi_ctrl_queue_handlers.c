@@ -2500,8 +2500,8 @@ void process_assoc_device_event(void *data)
             wifi_util_error_print(WIFI_CTRL, "%s:%d No valid associated link found for MLD STA " MAC_FMT "\n",
                 __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
         }
-        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected " MAC_FMT " with %d links\n",
-            __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress), num_links);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected with %d links " MAC_FMT "\n",
+            __func__, __LINE__, num_links, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
     } else {
         assoc_dev_event(assoc_data);
     }
