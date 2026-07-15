@@ -359,10 +359,13 @@ int get_sec_encr_int_from_string(const char *p_sec_encr_name,
     DM_CHECK_NULL_WITH_RC(p_sec_encr_type, ret);
 
     wifi_sec_encr_hal_map_t wifi_sec_encr_map[] = {
-        { wifi_encryption_none,     "NONE"     },
-        { wifi_encryption_tkip,     "TKIP"     },
-        { wifi_encryption_aes,      "AES"      },
-        { wifi_encryption_aes_tkip, "AES+TKIP" }
+        { wifi_encryption_none,        "NONE"     },
+        { wifi_encryption_tkip,        "TKIP"     },
+        { wifi_encryption_aes,         "AES"      },
+        { wifi_encryption_aes_tkip,    "AES+TKIP" },
+#ifdef CONFIG_IEEE80211BE
+        { wifi_encryption_aes_gcmp256, "AES+GCMP" },
+#endif /* CONFIG_IEEE80211BE */
     };
 
     for (counter = 0; counter < (uint32_t)ARRAY_SZ(wifi_sec_encr_map); ++counter) {
@@ -381,10 +384,13 @@ int get_sec_encr_string_from_int(wifi_encryption_method_t l_sec_encr_type, char 
     uint32_t index;
     bool str_found = false;
     wifi_sec_encr_hal_map_t wifi_sec_encr_map[] = {
-        { wifi_encryption_none,     "NONE"     },
-        { wifi_encryption_tkip,     "TKIP"     },
-        { wifi_encryption_aes,      "AES"      },
-        { wifi_encryption_aes_tkip, "AES+TKIP" }
+        { wifi_encryption_none,        "NONE"     },
+        { wifi_encryption_tkip,        "TKIP"     },
+        { wifi_encryption_aes,         "AES"      },
+        { wifi_encryption_aes_tkip,    "AES+TKIP" },
+#ifdef CONFIG_IEEE80211BE
+        { wifi_encryption_aes_gcmp256, "AES+GCMP" },
+#endif /* CONFIG_IEEE80211BE */
     };
 
     for (index = 0; index < (uint32_t)ARRAY_SZ(wifi_sec_encr_map); index++) {
@@ -1862,7 +1868,7 @@ char *getDeviceMac(void)
 #if defined(_COSA_BCM_MIPS_)
 #define CPE_MAC_NAMESPACE "Device.DPoE.Mac_address"
 #else
-#ifdef _SKY_HUB_COMMON_PRODUCT_REQ_
+#if defined(_SKY_HUB_COMMON_PRODUCT_REQ_) || defined(PON_GATEWAY)
 #define CPE_MAC_NAMESPACE "Device.DeviceInfo.X_COMCAST-COM_WAN_MAC"
 #else
 #define CPE_MAC_NAMESPACE "Device.X_CISCO_COM_CableModem.MACAddress"

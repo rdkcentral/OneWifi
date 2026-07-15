@@ -44,6 +44,7 @@
 #include "schema.h"
 #include "schema_gen.h"
 #include "webconfig_external_proto.h"
+#include "wifi_base.h"
 
 #define BLASTER_STATE_LEN    10
 #define INVALID_INDEX        256
@@ -872,7 +873,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.sta_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.sta_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.sta_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.sta_info.security.mfp = wifi_mfp_cfg_required;
             }
             continue;
@@ -936,14 +941,22 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             } else {
 #if defined(_XB8_PRODUCT_REQ_)||defined(_PP203X_PRODUCT_REQ_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 #else
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif
@@ -965,7 +978,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
             default_vap_info->u.bss_info.mac_filter_enable = true;
@@ -997,7 +1014,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+#ifdef CONFIG_IEEE80211BE
+                default_vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
         }
@@ -2112,7 +2133,7 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec_new(wifi_vap_info_t *va
     }
 
     enum_sec = vap->u.bss_info.security.mode;
-    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt)) != RETURN_OK) {
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt, NULL)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
             "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
         return webconfig_error_translate_to_ovsdb;
@@ -2440,7 +2461,7 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi
         } else {
             int len = 0, wpa_psk_index = 0;
             wifi_security_modes_t enum_sec = vap->u.sta_info.security.mode;
-            if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt)) != RETURN_OK) {
+            if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt, NULL)) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n",
                     __func__, __LINE__, vap->u.sta_info.security.mode);
                 return webconfig_error_translate_to_ovsdb;
@@ -2809,6 +2830,22 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: No vif_radio_idx_conversion warning for %d\n", __func__, __LINE__, vap->vap_index);
     }
 
+ #if defined(CONFIG_IEEE80211BE)
+    if (vap->u.bss_info.mld_info.common_info.mld_enable && vap->u.bss_info.mld_info.common_info.mld_id != UNDEFINED_MLD_ID) {
+        // MLD_Addr
+        to_mac_str((unsigned char*)vap->u.bss_info.mld_info.common_info.mld_addr, vap_row->mld_addr);
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_addr to %s\n", __func__, __LINE__, vap_row->mld_addr);
+
+        // mld_if_name
+
+        if (get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name))) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.bss_info.mld_info.common_info.mld_id);
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Couldn't find vap. vap_name = %s.\n", __func__, __LINE__, vap->vap_name);
+        }
+    }
+#endif
+
     // Unset all unused parameters
     vap_row->wds_exists = false;
     vap_row->ft_mobility_domain_exists=false;
@@ -2900,7 +2937,7 @@ static webconfig_error_t translate_vap_info_to_vif_state_sec_new(wifi_vap_info_t
     }
 
     enum_sec = vap->u.bss_info.security.mode;
-    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt)) != RETURN_OK) {
+    if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt, NULL)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
             "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
         return webconfig_error_translate_to_ovsdb;
@@ -3019,6 +3056,21 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
                                                     vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5]);
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap_row->parent=%s\n", __func__, __LINE__, vap_row->parent);
     }
+
+#if defined(CONFIG_IEEE80211BE)
+    if (vap->u.sta_info.mld_info.common_info.mld_enable && vap->u.sta_info.mld_info.common_info.mld_id != UNDEFINED_MLD_ID) {
+        // MLD_Addr
+        to_mac_str((unsigned char*)vap->u.sta_info.mld_info.common_info.mld_addr, vap_row->mld_addr);
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_addr to %s\n", __func__, __LINE__, vap_row->mld_addr);
+
+        // mld_if_name
+        if (get_mlo_vap_name_from_per_radio(vap->vap_name, vap_row->mld_if_name, sizeof(vap_row->mld_if_name))) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating mld_if_name to %s. mld_id=%d.\n", __func__, __LINE__, vap_row->mld_if_name, vap->u.sta_info.mld_info.common_info.mld_id);
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Couldn't find vap. vap_name = %s.\n", __func__, __LINE__, vap->vap_name);
+        }
+    }
+#endif
 
     vap_row->vlan_id = iface_map->vlan_id;
 
@@ -3177,7 +3229,7 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_
             int len = 0, wpa_psk_index = 0;
             wifi_security_modes_t enum_sec = vap->u.sta_info.security.mode;
 
-            if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt)) != RETURN_OK) {
+            if ((key_mgmt_conversion(&enum_sec, &len, ENUM_TO_STRING, 0, (char(*)[])vap_row->wpa_key_mgmt, NULL)) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
                 return webconfig_error_translate_to_ovsdb;
             }
@@ -3303,7 +3355,6 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
 
         while (assoc_dev_data != NULL) {
-
             if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
                 break;
@@ -3313,10 +3364,17 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client row empty for the client number %d\n", __func__, __LINE__, associated_client_count);
                 return webconfig_error_translate_to_ovsdb;
             }
-            snprintf(client_row->mac, sizeof(client_row->mac), "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1],
-                    assoc_dev_data->dev_stats.cli_MACAddress[2], assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4],
-                    assoc_dev_data->dev_stats.cli_MACAddress[5]);
 
+#if defined(CONFIG_IEEE80211BE)
+            if (assoc_dev_data->dev_stats.cli_MLDEnable) {
+                /* This is MLO client. Add mld_addr to the row. Use Link assdress for mac*/
+                to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, client_row->mld_addr);
+                to_mac_str(assoc_dev_data->link_address, client_row->mac);
+            } else
+#endif
+            {
+                to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, client_row->mac);
+            }
             if (assoc_dev_data->dev_stats.cli_Active == true) {
                 snprintf(client_row->state, sizeof(client_row->state), "active");
             } else {
@@ -3773,21 +3831,25 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_new(const struct
 {
     int len = 0;
     wifi_security_modes_t enum_sec;
+    wifi_encryption_method_t enum_encr;
 
     if (vap_row->wpa == false) {
         vap->u.bss_info.security.mode = wifi_security_mode_none;
+        vap->u.bss_info.security.encr = wifi_encryption_none;
     } else {
         if (vap_row->wpa_key_mgmt_len == 0)  {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d wpa_key_mgmt_len is 0\n", __func__, __LINE__);
             return webconfig_error_translate_from_ovsdb;
         }
 
-        if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->wpa_key_mgmt_len, (char(*)[])vap_row->wpa_key_mgmt)) != RETURN_OK) {
+        if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM,
+            vap_row->wpa_key_mgmt_len, (char(*)[])vap_row->wpa_key_mgmt, &enum_encr)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: %s\n",
                 __func__, __LINE__, vap_row->wpa_key_mgmt[0] ? vap_row->wpa_key_mgmt[0] : "NULL");
             return webconfig_error_translate_from_ovsdb;
         }
         vap->u.bss_info.security.mode = enum_sec;
+        vap->u.bss_info.security.encr = enum_encr;
     }
 
     get_translator_config_wpa_mfp(vap);
@@ -4189,21 +4251,25 @@ webconfig_error_t translate_ovsdb_config_to_vap_info_personal_sec(const struct s
     } else {
         if (vap_row->wpa == false) {
             vap->u.sta_info.security.mode = wifi_security_mode_none;
+            vap->u.bss_info.security.encr = wifi_encryption_none;
         } else {
             int len = 0;
             wifi_security_modes_t enum_sec;
+            wifi_encryption_method_t enum_encr;
 
             if (vap_row->wpa_key_mgmt_len == 0)  {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;
             }
 
-            if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->wpa_key_mgmt_len, (char(*)[])vap_row->wpa_key_mgmt)) != RETURN_OK) {
+            if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->wpa_key_mgmt_len,
+                    (char(*)[])vap_row->wpa_key_mgmt, &enum_encr)) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n",
                     __func__, __LINE__, (vap_row->wpa_key_mgmt[0]) ? vap_row->wpa_key_mgmt[0]: "NULL");
                 return webconfig_error_translate_from_ovsdb;
             }
             vap->u.sta_info.security.mode = enum_sec;
+            vap->u.bss_info.security.encr = enum_encr;
 
             if (vap_row->wpa_psks_len == 0)  {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_psks_len is 0\n", __func__, __LINE__);

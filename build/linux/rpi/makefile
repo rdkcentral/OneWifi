@@ -223,6 +223,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/core \
     -I$(ONE_WIFI_HOME)/source/apps \
     -I$(ONE_WIFI_HOME)/source/apps/analytics \
+    -I$(ONE_WIFI_HOME)/source/apps/multi_ap \
     -I$(ONE_WIFI_HOME)/source/apps/blaster \
     -I$(ONE_WIFI_HOME)/source/apps/cac \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
@@ -237,6 +238,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/easyconnect \
     -I$(ONE_WIFI_HOME)/source/apps/em \
     -I$(ONE_WIFI_HOME)/source/apps/linkquality \
+    -I$(ONE_WIFI_HOME)/source/apps/wifi_sensing/inc \
     -I$(ONE_WIFI_HOME)/source/utils/quality_mgr/inc/ \
     -I$(ONE_WIFI_HOME)/source/utils/math_utils/inc/ \
     -I$(ONE_WIFI_HOME)/source/core/services \
@@ -421,6 +423,10 @@ ifdef EM_APP
 endif
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_link_report.c
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_ignite.c
+
+ifdef WIFI_SENSING_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/wifi_sensing/src/*.c)
+endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
 
