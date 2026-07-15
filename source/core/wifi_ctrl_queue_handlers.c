@@ -3454,9 +3454,13 @@ int dfs_nop_finish_timer(void *args)
     if (dfs_radio_index >= n) {
         wifi_util_error_print(WIFI_CTRL, "%s: ch=%d not found in any 5G radio radarDetected\n", __FUNCTION__, nop_fin_dfs_ch);
         return TIMER_TASK_COMPLETE;
-}
+    }
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
+    if (radio_params == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: wrong index for radio map: %d\n", __FUNCTION__, __LINE__, dfs_radio_index);
+        return TIMER_TASK_COMPLETE;
+    }
     memset(&radio_channel_param, 0, sizeof(radio_channel_param));
     strncpy(radarDetected_temp, radio_params->radarDetected, sizeof(radarDetected_temp));
 
