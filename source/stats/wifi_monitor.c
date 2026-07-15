@@ -3996,6 +3996,7 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
 int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short ether_type)
 {
     mac_address_t sta_mac;
+    assoc_dev_data_t assoc_data;
     char cli_ip_str[IP_STR_LEN] = { 0 };
     char cli_interface_str[IFNAMSIZ] = { 0 };
     const int reason = WLAN_REASON_PREV_AUTH_NOT_VALID;
@@ -4019,10 +4020,16 @@ int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short et
     }
 
     wifi_util_info_print(WIFI_MON,
-        "%s:%d: [FC_WEP] client[%s] on ap:%d (ethertype:0x%04x) has no IPv4 - disassociating\n",
+        "%s:%d: [FC_WEP] client[%s] on ap:%d (ethertype:0x%04x) has no IPv4 - "
+        "queueing disassoc\n",
         __func__, __LINE__, src_mac, ap_index, ether_type);
 
-    wifi_hal_disassoc(ap_index, reason, sta_mac);
+    memset(&assoc_data, 0, sizeof(assoc_data));
+    assoc_data.ap_index = ap_index;
+    assoc_data.reason = reason;
+    memcpy(assoc_data.dev_stats.cli_MACAddress, sta_mac, sizeof(mac_address_t));
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data),
+        wifi_event_type_command, wifi_event_type_command_frame_drop_unenc, NULL);
 
     return 0;
 }
