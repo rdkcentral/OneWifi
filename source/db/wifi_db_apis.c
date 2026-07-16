@@ -7339,7 +7339,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             else
                 cfg->channel = 1;
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
-#if defined(_XER5_PRODUCT_REQ_)
+#if defined(_XER5_PRODUCT_REQ_) || defined(QCOM_ATH12K_PORT)
             cfg->variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AX;
 #else
             cfg->variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
@@ -7349,7 +7349,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* NEWPLATFORM_PORT */
 
 #if defined(CONFIG_IEEE80211BE)
-#if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_) || defined(QCOM_ATH12K_PORT)
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif
 #if defined(_PLATFORM_BANANAPI_R4_)

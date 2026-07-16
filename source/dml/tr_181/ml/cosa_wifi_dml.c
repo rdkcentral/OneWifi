@@ -88,7 +88,7 @@
 
 #if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || \
     defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || \
-    defined(_XER2_PRODUCT_REQ_)
+    defined(_XER2_PRODUCT_REQ_) ||  defined(QCOM_ATH12K_PORT)
 #include "ccsp_base_api.h"
 #include "messagebus_interface_helper.h"
 
@@ -3838,6 +3838,42 @@ Radio_SetParamUlongValue
         if (guardIntervalDmlEnumtoHalEnum(uValue, &tmpGuardInterval) != ANSC_STATUS_SUCCESS)
         {
             return FALSE;
+        }
+
+        /* Validate GI value against current operating mode (variant).
+         *
+         * EHT (BE) / HE (AX) : 800ns, 1600ns, 3200ns, Auto  — 400ns NOT supported
+         * VHT (AC) / HT  (N) : 400ns, 800ns, Auto            — 1600ns/3200ns NOT supported
+         * Legacy (A/B/G)      : Auto only                     — all specific GI NOT supported
+         */
+        if (tmpGuardInterval != wifi_guard_interval_auto) {
+            wifi_ieee80211Variant_t variant = wifiRadioOperParam->variant;
+            if ((variant & WIFI_80211_VARIANT_BE) || (variant & WIFI_80211_VARIANT_AX)) {
+                /* EHT: 800ns, 1600ns, 3200ns only */
+                if (tmpGuardInterval == wifi_guard_interval_400) {
+                    wifi_util_error_print(WIFI_DMCLI,
+                        "%s:%d: GuardInterval 400ns not supported for EHT mode (variant=0x%x)\n",
+                        __func__, __LINE__, variant);
+                    return FALSE;
+                }
+            } else if ((variant & WIFI_80211_VARIANT_AC) || (variant & WIFI_80211_VARIANT_N)) {
+                /* HT/VHT: 400ns (SGI) and 800ns (LGI) only */
+                if (tmpGuardInterval == wifi_guard_interval_1600 ||
+                    tmpGuardInterval == wifi_guard_interval_3200) {
+                    wifi_util_error_print(WIFI_DMCLI,
+                        "%s:%d: GuardInterval %dns not supported for HT/VHT mode (variant=0x%x)\n",
+                        __func__, __LINE__,
+                        (tmpGuardInterval == wifi_guard_interval_1600) ? 1600 : 3200,
+                        variant);
+                    return FALSE;
+                }
+            } else {
+                /* Legacy (A/B/G): GI not applicable — only Auto is valid */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval not applicable for legacy mode (variant=0x%x), only Auto allowed\n",
+                    __func__, __LINE__, variant);
+                return FALSE;
+            }
         }
 
         if(wifiRadioOperParam->guardInterval == tmpGuardInterval)

@@ -2966,7 +2966,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         frame_len = frame_icmpv4_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
+#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_) && !defined (QCOM_ATH12K_PORT))
             wifi_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,
@@ -2988,7 +2988,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         frame_len = frame_icmpv6_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
+#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_) && !defined (QCOM_ATH12K_PORT))
             wifi_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,
