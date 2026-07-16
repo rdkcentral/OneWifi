@@ -92,7 +92,7 @@ INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
 
 void update_pinger_config(int ap_index, mac_addr_t mac_addr, bool pause_pinger)
 {
-#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
+#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_) && !defined (QCOM_ATH12K_PORT))
     wifi_monitor_data_t *data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     if (data ==  NULL) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
