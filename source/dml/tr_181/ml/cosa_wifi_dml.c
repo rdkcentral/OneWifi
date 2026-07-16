@@ -9307,6 +9307,7 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa2_personal:
 				l_security_cfg->u.key.type = wifi_security_key_type_psk;
 				l_security_cfg->mfp = wifi_mfp_cfg_optional;
+				wpa2_personal_gcmp_fallback_to_aes(l_security_cfg);
 				break;
             case wifi_security_mode_wpa_wpa2_personal:
 				l_security_cfg->u.key.type = wifi_security_key_type_psk;
