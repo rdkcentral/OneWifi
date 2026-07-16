@@ -2537,17 +2537,17 @@ wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_st
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num)
 {
     int channels_2g_40_mhz[11][2] = {
-        {1, 3},
-        {2, 4},
-        {3, 5},
-        {4, 6},
-        {5, 7},
-        {6, 8},
-        {7, 9},
-        {8, 6},
-        {9, 7},
-        {10, 8},
-        {11, 9}
+        {1, 5},
+        {2, 6},
+        {3, 7},
+        {4, 8},
+        {5, 9},
+        {6, 10},
+        {7, 11},
+        {8, 4},
+        {9, 5},
+        {10, 6},
+        {11, 7}
     };
     int channels_5g_40_mhz[12][2] = {
         {36, 40},
