@@ -1183,6 +1183,12 @@ INSTMSMT_PH2 -->
                             <writable>true</writable>
                         </parameter>
                         <parameter>
+                            <name>X_RDK_MLDLinkID</name>
+                            <type>unsignedInt[0:255]</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
                             <name>OperatingChannelBandwidth</name>
                             <type>string: Auto(0),20MHz(1),40MHz(2),80MHz(3),160MHz(4),80_80MHz(5),320MHz(6)</type>
                             <syntax>uint32/mapped</syntax>
@@ -1970,12 +1976,6 @@ INSTMSMT_PH2 -->
                             <name>MLDUnit</name>
                             <type>int[-1:24]</type>
                             <syntax>int</syntax>
-                            <writable>true</writable>
-                        </parameter>
-                        <parameter>
-                            <name>X_RDK_MLDLinkID</name>
-                            <type>unsignedInt[0:255]</type>
-                            <syntax>uint32</syntax>
                             <writable>true</writable>
                         </parameter>
                         <parameter>

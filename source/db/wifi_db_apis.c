@@ -94,6 +94,7 @@
 #define ONEWIFI_DB_VERSION_ENCR_NEW_FLAG 100049
 #define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100050
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100051
+#define ONEWIFI_DB_VERSION_RADIO_MLD_LINK_ID_FLAG 100052
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -450,6 +451,7 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         }
 
         l_radio_cfg->autoChannelEnabled = new_rec->auto_channel_enabled;
+        l_radio_cfg->mldLinkId = new_rec->mld_link_id;
         l_radio_cfg->channel = new_rec->channel;
         l_radio_cfg->channelWidth = new_rec->channel_width;
         if ((new_rec->hw_mode != 0) && (validate_wifi_hw_variant(new_rec->freq_band, new_rec->hw_mode) == RETURN_OK)) {
@@ -2074,6 +2076,8 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     cfg.chan_util_selfheal_enable = config->chanUtilSelfHealEnable;
     cfg.eco_power_down = config->EcoPowerDown;
     cfg.dfs_timer = config->DFSTimer;
+    cfg.mld_link_id = config->mldLinkId;
+
     if(strlen(config->radarDetected) != 0) {
         strncpy(cfg.radar_detected, config->radarDetected, sizeof(cfg.radar_detected));
     }
@@ -2207,6 +2211,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     oper_radio->channel = cfg->channel;
     oper_radio->channelWidth = cfg->channel_width;
     oper_radio->DfsEnabled = cfg->dfs_enabled;
+    config->mldLinkId = cfg->mld_link_id;
 
     if (wifi_radio_operationParam_validation(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap, oper_radio) == RETURN_OK) {
         if((is_bootup) && (config->band == WIFI_FREQUENCY_5L_BAND
@@ -5067,6 +5072,35 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
             return;
         }
     }
+
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_RADIO_MLD_LINK_ID_FLAG) {
+        wifi_vap_info_map_t *vap_map = get_wifidb_vap_map(index);
+
+        wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d mldLinkId, old db version: %d\n",
+            __func__, __LINE__, index, g_wifidb->db_version);
+        if (vap_map == NULL) {
+            wifi_util_error_print(WIFI_DB, "%s:%d failed to get vap map for radio %d\n", __func__,
+                __LINE__, index);
+        } else {
+            unsigned int vap_idx;
+
+            for (vap_idx = 0; vap_idx < vap_map->num_vaps; vap_idx++) {
+                if (!isVapPrivate(vap_map->vap_array[vap_idx].vap_index)) {
+                    continue;
+                }
+                config->mldLinkId = vap_map->vap_array[vap_idx].u.bss_info.mld_info.common_info.mld_link_id;
+                wifi_util_info_print(WIFI_DB,
+                    "%s:%d radio %d mldLinkId set to %d from private vap %s\n", __func__, __LINE__,
+                    index, config->mldLinkId, vap_map->vap_array[vap_idx].vap_name);
+                break;
+            }
+            if (wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+                wifi_util_error_print(WIFI_DB, "%s:%d error in updating radio config\n", __func__,
+                    __LINE__);
+                return;
+            }
+        }
+    }
 #endif /* CONFIG_IEEE80211BE */
 }
 
@@ -7439,6 +7473,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg->chanUtilThreshold = 90;
     cfg->chanUtilSelfHealEnable = 0;
     cfg->EcoPowerDown = false;
+    cfg->mldLinkId = 255;
     cfg->factoryResetSsid = 0;
     if ((is_device_type_sr213() == true) && (WIFI_FREQUENCY_2_4_BAND == cfg->band)) {
         cfg->basicDataTransmitRates = WIFI_BITRATE_1MBPS | WIFI_BITRATE_2MBPS |

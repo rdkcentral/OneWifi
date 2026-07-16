@@ -3276,10 +3276,8 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
 
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 /* A radio is MLO-capable only if it is enabled, not in EcoPowerDown, and running 802.11be. */
-static bool is_radio_mlo_capable(unsigned int radio_index)
+static bool is_radio_mlo_capable(wifi_radio_operationParam_t *radio_param)
 {
-    wifi_radio_operationParam_t *radio_param = getRadioOperationParam(radio_index);
-
     if (radio_param == NULL) {
         return false;
     }
@@ -3394,9 +3392,13 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
         /* --- STEP 1: Seed MLD Address and Collect Candidates for this unit --- */
         for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
             wifi_vap_info_map_t *mgr_vap_map = get_wifidb_vap_map(r_idx);
+            wifi_radio_operationParam_t *radio_oper = NULL;
+
             if (mgr_vap_map == NULL) {
                 continue;
             }
+
+            radio_oper = getRadioOperationParam(r_idx);
 
             for (k = 0; k < mgr_vap_map->num_vaps; k++) {
                 wifi_vap_info_t *mgr_vap = &mgr_vap_map->vap_array[k];
@@ -3432,6 +3434,11 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                  * Subsequent group iterations must not overwrite values
                  * already propagated by an earlier group. */
                 if (i == 0) {
+                    /* MLD Link ID is radio-scoped: when the radio carries a valid link id,
+                     * it is the source of truth and is propagated to all of its VAPs. */
+                    if (radio_oper != NULL) {
+                        mld_conf->mld_link_id = radio_oper->mldLinkId;
+                    }
                     memcpy(mld_conf->mld_addr, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
                     if (mld_conf->mld_enable) {
                         radio_bitmap |= (1u << mgr_vap->radio_index);
@@ -3455,7 +3462,7 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 }
 
                 /* Radio must be enabled and in 802.11be mode for MLO VAP */
-                if (is_radio_mlo_capable(mgr_vap->radio_index) == false) {
+                if (is_radio_mlo_capable(radio_oper) == false) {
                     wifi_util_info_print(log_type,
                         "%s:%d: vap_index=%d excluded from MLO unit %d "
                         "(radio %u not enabled/EDPD/BE)\n",

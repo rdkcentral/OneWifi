@@ -336,6 +336,9 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // EcoPowerDown
     cJSON_AddBoolToObject(radio_object, "EcoPowerDown", radio_info->EcoPowerDown);
 
+    // MldLinkId
+    cJSON_AddNumberToObject(radio_object, "MldLinkId", radio_info->mldLinkId);
+
     //Tscan
     cJSON_AddNumberToObject(radio_object, "Tscan", radio_feat->OffChanTscanInMsec);
 

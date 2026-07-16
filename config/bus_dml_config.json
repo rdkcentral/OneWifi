@@ -1084,6 +1084,10 @@
 										"$ref": "#/definitions/uint32_t",
 										"writable": true
 									},
+									"X_RDK_MLDLinkID": {
+										"$ref": "#/definitions/linkid_t",
+										"writable": true
+									},
 									"AutoChannelSupported": {
 										"type": "boolean",
 										"writable": false
@@ -1327,10 +1331,6 @@
 									"X_COMCAST-COM_DefaultSSID": {
 										"type": "string",
 										"writable": false
-									},
-									"X_RDK_MLDLinkID": {
-										"$ref": "#/definitions/linkid_t",
-										"writable": true
 									}
 								}
 							}

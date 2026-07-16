@@ -867,6 +867,8 @@ bool radio_get_param_uint_value(void *obj_ins_context, char *param_name, uint32_
         dml_radio_default *dm_radio_default = get_radio_default_obj(radio_index);
         DM_CHECK_NULL_WITH_RC(dm_radio_default, false);
         *output_value = dm_radio_default->ExtensionChannel;
+    } else if (STR_CMP(param_name, "X_RDK_MLDLinkID")) {
+        *output_value = pcfg->mldLinkId;
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -1299,6 +1301,19 @@ bool radio_set_param_uint_value(void *obj_ins_context, char *param_name, uint32_
         if (dm_radio_default->ExtensionChannel != output_value) {
             dm_radio_default->ExtensionChannel = output_value;
         }
+    } else if (STR_CMP(param_name, "X_RDK_MLDLinkID")) {
+        if (output_value != 255 && output_value >= MAX_NUM_MLD_LINKS) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid X_RDK_MLDLinkID value %u\n", __func__,
+                __LINE__, output_value);
+            return false;
+        }
+        if (dm_radio_param->mldLinkId == output_value) {
+            return true;
+        }
+        dm_radio_param->mldLinkId = output_value;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: mldLinkId=%u radio_index=%d\n", __func__, __LINE__,
+            dm_radio_param->mldLinkId, radio_index);
+        is_radio_config_changed = true;
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -2241,15 +2256,6 @@ bool ssid_get_param_uint_value(void *obj_ins_context, char *param_name, uint32_t
 
     if (STR_CMP(param_name, "LastChange")) {
         *output_value = (uint32_t)get_current_time_in_sec();
-    } else if (STR_CMP(param_name, "X_RDK_MLDLinkID")) {
-        wifi_mld_common_info_t *mld_common_info = NULL;
-
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
-        } else {
-            mld_common_info = &pcfg->u.bss_info.mld_info.common_info;
-        }
-        *output_value = (uint32_t)mld_common_info->mld_link_id;
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -2538,47 +2544,9 @@ bool ssid_set_param_uint_value(void *obj_ins_context, char *param_name, uint32_t
 
     DM_CHECK_NULL_WITH_RC(pcfg, false);
 
-   if (STR_CMP(param_name, "X_RDK_MLDLinkID")) {
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
-            return TRUE;
-        }
-
-        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
-         * So when MLD_Link_ID is updated for one VAP, we need to update it for all VAPs of the same radio.
-         */
-        unsigned int total_vaps = getTotalNumberVAPs();
-
-        for (unsigned int vap_idx = 0; vap_idx < total_vaps; vap_idx++) {
-            wifi_vap_info_t *temp_vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(vap_idx);
-            if (temp_vapInfo == NULL) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for vap index:%d\n",
-                    __FUNCTION__, __LINE__, vap_idx);
-                continue;
-            }
-            if (temp_vapInfo->radio_index != pcfg->radio_index) {
-                continue;
-            }
-            if (isVapSTAMesh(vap_idx)) {
-                continue;
-            }
-            wifi_util_dbg_print(WIFI_DMCLI,
-                "%s:%d Updating mld_link_id radio_index %d vap index:%d old val %u new val %u\n",
-                __FUNCTION__, __LINE__, temp_vapInfo->radio_index, vap_idx,
-                (uint32_t)temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id, output_value);
-            if (temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id == output_value) {
-                continue;
-            }
-            temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = output_value;
-            set_dml_cache_vap_config_changed(vap_idx);
-        }
-        return true;
-    } else {
-        wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
-        return false;
-    }
-
-    return true;
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
+        param_name);
+    return false;
 }
 
 bool ssid_set_param_string_value(void *obj_ins_context, char *param_name,

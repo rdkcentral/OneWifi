@@ -1597,6 +1597,7 @@
         PJS_OVS_INT(dfs_timer) \
         PJS_OVS_STRING(radar_detected, 256 + 1) \
         PJS_OVS_STRING(amsdu_tid, 128 + 1) \
+        PJS_OVS_INT(mld_link_id) \
     )
 
 #define PJS_SCHEMA_Wifi_Global_Config \
@@ -3299,7 +3300,8 @@
     COLUMN(Tidle) \
     COLUMN(dfs_timer) \
     COLUMN(radar_detected) \
-    COLUMN(amsdu_tid)
+    COLUMN(amsdu_tid) \
+    COLUMN(mld_link_id) \
 
 #define SCHEMA__Wifi_Global_Config "Wifi_Global_Config"
 #define SCHEMA_COLUMN__Wifi_Global_Config(COLUMN) \
@@ -4591,6 +4593,7 @@
 #define SCHEMA__Wifi_Radio_Config__dfs_timer "dfs_timer"
 #define SCHEMA__Wifi_Radio_Config__radar_detected "radar_detected"
 #define SCHEMA__Wifi_Radio_Config__amsdu_tid "amsdu_tid"
+#define SCHEMA__Wifi_Radio_Config__mld_link_id "mld_link_id"
 
 #define SCHEMA__Wifi_Global_Config__gas_config "gas_config"
 #define SCHEMA__Wifi_Global_Config__notify_wifi_changes "notify_wifi_changes"

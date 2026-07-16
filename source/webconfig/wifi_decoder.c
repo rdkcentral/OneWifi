@@ -3309,6 +3309,9 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     }
 #endif // FEATURE_SUPPORT_ECOPOWERDOWN
 
+    decode_param_integer(obj_radio, "MldLinkId", param);
+    radio_info->mldLinkId = param->valuedouble;
+
     // Tscan
     decode_param_integer(obj_radio, "Tscan", param);
     radio_feat->OffChanTscanInMsec = param->valuedouble;
