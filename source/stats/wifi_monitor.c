@@ -4004,7 +4004,14 @@ int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short et
     if (src_mac == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d input mac is NULL for ap_index:%d\n",
             __func__, __LINE__, ap_index);
-        return -1;
+        return RETURN_ERR;
+    }
+
+    if (active_sta_connection_status(ap_index, src_mac) == false) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d: [FC_WEP] client[%s] not active on ap:%d - ignoring\n",
+            __func__, __LINE__, src_mac, ap_index);
+        return RETURN_OK;
     }
 
     str_to_mac_bytes(src_mac, sta_mac);
@@ -4016,7 +4023,7 @@ int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short et
         wifi_util_info_print(WIFI_MON,
             "%s:%d: [FC_WEP] client[%s] has IPv4 %s on %s - no action\n",
             __func__, __LINE__, src_mac, cli_ip_str, cli_interface_str);
-        return 0;
+        return RETURN_OK;
     }
 
     wifi_util_info_print(WIFI_MON,
@@ -4028,10 +4035,15 @@ int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short et
     assoc_data.ap_index = ap_index;
     assoc_data.reason = reason;
     memcpy(assoc_data.dev_stats.cli_MACAddress, sta_mac, sizeof(mac_address_t));
-    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data),
-        wifi_event_type_command, wifi_event_type_command_frame_drop_unenc, NULL);
+    if (push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data),
+            wifi_event_type_command, wifi_event_type_command_frame_drop_unenc, NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON,
+            "%s:%d: [FC_WEP] failed to queue disassoc for client[%s] on ap:%d\n",
+            __func__, __LINE__, src_mac, ap_index);
+        return RETURN_ERR;
+    }
 
-    return 0;
+    return RETURN_OK;
 }
 
 void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_data)

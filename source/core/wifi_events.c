@@ -219,6 +219,7 @@ bool is_high_priority_event(wifi_event_subtype_t sub_type)
     switch (sub_type) {
     case wifi_event_type_notify_monitor_done:
     case wifi_event_type_command_factory_reset:
+    case wifi_event_type_command_frame_drop_unenc:
     case wifi_event_type_eth_bh_status:
     case wifi_event_type_xfinity_enable:
     case wifi_event_type_prefer_private_rfc:
