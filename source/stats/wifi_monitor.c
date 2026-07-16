@@ -4020,7 +4020,7 @@ int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short et
       * unprotected frames are blocking DHCP from ever succeeding. */
     if (csi_getClientIpAddress(src_mac, cli_ip_str, cli_interface_str, 1) == 0 &&
         cli_ip_str[0] != '\0') {
-        wifi_util_info_print(WIFI_MON,
+        wifi_util_dbg_print(WIFI_MON,
             "%s:%d: [FC_WEP] client[%s] has IPv4 %s on %s - no action\n",
             __func__, __LINE__, src_mac, cli_ip_str, cli_interface_str);
         return RETURN_OK;
