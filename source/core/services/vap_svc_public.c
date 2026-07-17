@@ -160,6 +160,9 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     bool enabled;
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map;
+#ifndef _PLATFORM_BANANAPI_R4_
+    wifi_vap_info_map_t *p_tgt_created_vap_map;
+#endif
     bool greylist_rfc = false;
     bool rfc_passpoint_enable = false;
     wifi_ctrl_t *ctrl;
@@ -176,6 +179,16 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
         return -1;
     }
+#ifndef _PLATFORM_BANANAPI_R4_
+    p_tgt_created_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (p_tgt_created_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
+        free(p_tgt_vap_map);
+        return -1;
+    }
+    memset((unsigned char *)p_tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
+    p_tgt_created_vap_map->num_vaps = 0;
+#endif
     wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (rfc_info) {
         greylist_rfc = rfc_info->radiusgreylist_rfc;
@@ -256,10 +269,16 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                    p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = true;
                 }
         }
-        wifi_util_error_print(WIFI_CTRL,"%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
-        update_global_cache(p_tgt_vap_map, &rdk_vap_info[i]);
+        wifi_util_error_print(WIFI_CTRL, "%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,
+            p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
             sizeof(wifi_vap_info_t));
+#ifdef _PLATFORM_BANANAPI_R4_
+        update_global_cache(p_tgt_vap_map, &rdk_vap_info[i]);
+#else
+        memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i],
+            (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+#endif
         get_wifidb_obj()->desc.update_wifi_vap_info_fn(map->vap_array[i].vap_name, &map->vap_array[i],
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(map->vap_array[i].vap_name,
@@ -277,6 +296,9 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             scheduler_add_timer_task(ctrl->sched, FALSE, NULL, update_managementFramePower, NULL, MFPC_TIMER * 1000, 1, FALSE);
         }
     }
+#ifndef _PLATFORM_BANANAPI_R4_
+    update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
+#endif
 #if defined(_PLATFORM_BANANAPI_R4_)
     if (dml_cache_update_needed) {
         dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
@@ -300,6 +322,9 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     //Load all the Acl entries related to the created public vaps
     update_xfinity_acl_entries(p_tgt_vap_map->vap_array[0].vap_name);
     free(p_tgt_vap_map);
+#ifndef _PLATFORM_BANANAPI_R4_
+    free(p_tgt_created_vap_map);
+#endif
     return 0;
 }
 int update_xfinity_acl_entries(char* tgt_vap_name)
