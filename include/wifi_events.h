@@ -130,6 +130,7 @@ typedef enum {
     wifi_event_type_dfs_atbootup_rfc,
     wifi_event_type_command_kickmac,
     wifi_event_type_command_kick_assoc_devices,
+    wifi_event_type_command_frame_drop_unenc,
     wifi_event_type_command_wps,
     wifi_event_type_command_wps_pin,
     wifi_event_type_command_wps_cancel,
