@@ -3353,6 +3353,47 @@ typedef struct {
 } mld_group_entry_t;
 
 /**
+ * get_radio_private_mld_link_id - Return the authoritative MLD link id for a radio.
+ *
+ * MLD_Link_ID is a per-radio configuration whose authoritative value lives on the
+ * private VAP; every other VAP on the radio inherits it. Resolve the private VAP's
+ * mld_link_id for the given radio, honoring the webconfig target data when present and
+ * falling back to the mgr cache otherwise.
+ *
+ * @return The private VAP's mld_link_id, or UNDEFINED_MLD_LINK_ID when no private VAP exists.
+ */
+static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_map,
+    webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int vap_names_size)
+{
+    unsigned int vap_idx, name_idx;
+
+    for (vap_idx = 0; vap_idx < mgr_vap_map->num_vaps; vap_idx++) {
+        wifi_vap_info_t *mgr_vap = &mgr_vap_map->vap_array[vap_idx];
+        wifi_vap_info_t *target_vap = mgr_vap;
+
+        if (!isVapPrivate(mgr_vap->vap_index)) {
+            continue;
+        }
+
+        if (data != NULL) {
+            for (name_idx = 0; name_idx < vap_names_size; name_idx++) {
+                if (strcmp(vap_names[name_idx], mgr_vap->vap_name) == 0) {
+                    wifi_vap_info_t *wc_vap = webconfig_find_vap_by_name(data, mgr_vap->vap_name);
+                    if (wc_vap != NULL) {
+                        target_vap = wc_vap;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return target_vap->u.bss_info.mld_info.common_info.mld_link_id;
+    }
+
+    return UNDEFINED_MLD_LINK_ID;
+}
+
+/**
  * update_mld_groups - Common MLO group validation and propagation.
  *
  * Iterates all MLD units (0..MLD_UNIT_COUNT-1). For each unit, walks all
@@ -3394,9 +3435,14 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
         /* --- STEP 1: Seed MLD Address and Collect Candidates for this unit --- */
         for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
             wifi_vap_info_map_t *mgr_vap_map = get_wifidb_vap_map(r_idx);
+            unsigned int radio_mld_link_id = UNDEFINED_MLD_LINK_ID;
+
             if (mgr_vap_map == NULL) {
                 continue;
             }
+
+            radio_mld_link_id = get_radio_private_mld_link_id(mgr_vap_map, data, vap_names,
+                vap_names_size);
 
             for (k = 0; k < mgr_vap_map->num_vaps; k++) {
                 wifi_vap_info_t *mgr_vap = &mgr_vap_map->vap_array[k];
@@ -3427,6 +3473,17 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 }
 
                 mld_conf = &target_vap->u.bss_info.mld_info.common_info;
+
+                /* MLD link id is a per-radio setting; take the authoritative value from
+                 * the private VAP and apply it to every VAP on this radio. */
+                if (mld_conf->mld_link_id != radio_mld_link_id) {
+                    wifi_util_dbg_print(log_type,
+                        "%s:%d: vap_index=%d mld_link_id=%u overridden by private VAP value %u\n",
+                        __func__, __LINE__, mgr_vap->vap_index, mld_conf->mld_link_id, radio_mld_link_id);
+
+                    radio_bitmap |= (1u << mgr_vap->radio_index);
+                    mld_conf->mld_link_id = radio_mld_link_id;
+                }
 
                 /* Seed mld_addr and disable MLD on first pass only.
                  * Subsequent group iterations must not overwrite values
