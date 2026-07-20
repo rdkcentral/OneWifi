@@ -118,12 +118,7 @@ extern "C" {
 #define BUS_WFA_DML_CONFIG_FILE "Data_Elements_JSON_Schema_v3.0.json"
 
 #define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
-#define WEI_CONNECTED_RFC        "Device.WEI.WhenConnected"
-#define WEI_STAYCONNECTED_RFC        "Device.WEI.StayingConnected"
-#define WEI_GETCONNECTED_RFC        "Device.WEI.GettingConnected"
-/* DMCLI-NEW: WEI tuning params (uint), published by wei and observed here */
-#define WEI_LINKQ_THRESHOLD_RFC  "Device.WEI.LinkQualityThreshold"
-#define WEI_LINKQ_DURATION_RFC   "Device.WEI.LinkQualityDuration"
+#define WEI_RFC        "Device.X_RDKCENTRAL-COM_WEI.Enable"
 
 extern bool is_sta_set;
 

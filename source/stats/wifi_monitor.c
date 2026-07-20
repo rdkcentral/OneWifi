@@ -4110,7 +4110,7 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
         return 0;
     }
 
-    if (rfc_param != NULL && (rfc_param->wei_wc_rfc || rfc_param->wei_sc_rfc || rfc_param->wei_gc_rfc
+    if (rfc_param != NULL && (rfc_param->wei_rfc
             || (ctrl != NULL && (ctrl->network_mode == rdk_dev_mode_type_em_node
             || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node)))) {
         link_quality_measurement = true;

@@ -94,7 +94,6 @@ extern "C" {
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 #define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
 #define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
-#define WIFI_LINK_QUALITY_GW      "Device.WiFi.LQGateWay"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -648,9 +647,7 @@ typedef struct {
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
-    bool wei_wc_rfc;
-    bool wei_sc_rfc;
-    bool wei_gc_rfc;
+    bool wei_rfc;
     bool xfi_tel_enable_rfc;
     bool multiap_rfc;
 } wifi_rfc_dml_parameters_t;

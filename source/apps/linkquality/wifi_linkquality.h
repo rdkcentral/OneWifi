@@ -32,7 +32,6 @@ extern "C" {
 #include "wifi_linkquality_libs.h"
 
 #define MAX_STR_LEN_LQ 128
-#define MAX_BUFF_LEN 1048
 #define IGNITE_SCORE_LOG_INTERVAL_MS 900000 // 15 mins
 #define IGNITE_INITIAL_PUBLISH_ITERATIONS 5
 

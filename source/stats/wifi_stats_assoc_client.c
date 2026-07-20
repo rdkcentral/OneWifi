@@ -228,7 +228,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     }
 
     rfc_param = get_ctrl_rfc_parameters();
-    if (rfc_param->wei_wc_rfc || rfc_param->wei_sc_rfc || rfc_param->wei_gc_rfc
+    if (rfc_param->wei_rfc 
          || ctrl->network_mode == rdk_dev_mode_type_em_node
         || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         link_quality_measurement = true;

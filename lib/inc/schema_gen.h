@@ -217,9 +217,7 @@
         PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
         PJS_OVS_BOOL(multiap_rfc) \
-        PJS_OVS_BOOL(wei_wc_rfc) \
-        PJS_OVS_BOOL(wei_gc_rfc) \
-        PJS_OVS_BOOL(wei_sc_rfc) \
+        PJS_OVS_BOOL(wei_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -2174,9 +2172,7 @@
     COLUMN(csi_analytics_enabled_rfc) \
     COLUMN(multiap_rfc) \
     COLUMN(xfi_tel_enable_rfc) \
-    COLUMN(wei_wc_rfc) \
-    COLUMN(wei_sc_rfc) \
-    COLUMN(wei_gc_rfc) 
+    COLUMN(wei_rfc) 
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3555,9 +3551,7 @@
 #define SCHEMA__Wifi_Rfc_Config__csi_analytics_enabled_rfc "csi_analytics_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
 #define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
-#define SCHEMA__Wifi_Rfc_Config__wei_wc_rfc "wei_wc_rfc"
-#define SCHEMA__Wifi_Rfc_Config__wei_sc_rfc "wei_sc_rfc"
-#define SCHEMA__Wifi_Rfc_Config__wei_gc_rfc "wei_gc_rfc"
+#define SCHEMA__Wifi_Rfc_Config__wei_rfc "wei_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
