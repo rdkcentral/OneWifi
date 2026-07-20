@@ -5163,8 +5163,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
        // defined(_SCXF11BFL_PRODUCT_REQ_)
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || \
-    defined(_XER2_PRODUCT_REQ_)		
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
                 config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
                 wifi_util_info_print(WIFI_DB,

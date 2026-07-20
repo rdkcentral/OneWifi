@@ -70,7 +70,7 @@ struct ovs_vapname_cloudvifname_map {
 
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_) || \
     defined (_SCER11BEL_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || \
-    defined (_SCXF11BFL_PRODUCT_REQ_)
+    defined (_SCXF11BFL_PRODUCT_REQ_) || defined (_XER2_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
     {"bhaul-ap-l50", "mesh_backhaul_5gl"},
@@ -126,15 +126,6 @@ struct ovs_vapname_cloudvifname_map cloud_vif_map[] = {
        {"wl1",   "private_ssid_5g"},
        {"bhaul-ap-24", "mesh_backhaul_2g"},
        {"bhaul-ap-50", "mesh_backhaul_5g"},
-};
-#elif defined (_XER2_PRODUCT_REQ_)
-struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
-    {"bhaul-ap-24",  "mesh_backhaul_2g"},
-    {"bhaul-ap-50",  "mesh_backhaul_5g"},
-    {"home-ap-24",   "private_ssid_2g"},
-    {"home-ap-50",   "private_ssid_5g"},
-    {"bhaul-sta-24", "mesh_sta_2g"},
-    {"bhaul-sta-50", "mesh_sta_5g"},
 };
 #else
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
