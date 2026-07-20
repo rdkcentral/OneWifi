@@ -3823,9 +3823,11 @@ int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *r
     rdk_wifi_vap_info_t *rdk_vaps;
     wifi_vap_info_map_t *vap_map = NULL;
     uint8_t i = 0, vap_index = 0;
+    bool found = false;
 
     for (i = 0; i < tgt_vap_map->num_vaps; i++) {
         vap_index = tgt_vap_map->vap_array[i].vap_index;
+        found = false;
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
         if (vap_map == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d global vap_map null radio_index:%d\n", __func__,
@@ -3840,11 +3842,28 @@ int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *r
         }
         for (j = 0; j < vap_map->num_vaps; j++) {
             if (vap_map->vap_array[j].vap_index == vap_index) {
+                found = true;
                 memcpy((unsigned char *)&vap_map->vap_array[j],
                     (unsigned char *)&tgt_vap_map->vap_array[i], sizeof(wifi_vap_info_t));
+#ifdef _PLATFORM_BANANAPI_R4_
+                // Selective sync of rdk_vap_info fields only.
+                // DO NOT memcpy the entire structure because some apply paths use partial
+                // decoded structs and full-copy can skew the internal state for
+                // i.e. vap_names/index, hashmaps
+                rdk_vaps[j].exists = rdk_vap_info[i].exists;
+                rdk_vaps[j].force_apply = rdk_vap_info[i].force_apply;
+#else
                 memcpy(&rdk_vaps[j], &rdk_vap_info[i], sizeof(rdk_wifi_vap_info_t));
+#endif
                 break;
             }
+        }
+
+        if (found == false) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Could not find target vap in manager cache for radio_index:%d "
+                "vap_index:%d\n",
+                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index, vap_index);
         }
     }
 
