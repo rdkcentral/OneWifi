@@ -1467,6 +1467,26 @@ cleanup:
     }
 }
 
+void process_frame_drop_unenc_command_event(void *data)
+{
+    assoc_dev_data_t *req;
+    mac_addr_str_t mac_str;
+
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL data\n", __func__, __LINE__);
+        return;
+    }
+
+    req = (assoc_dev_data_t *)data;
+    to_mac_str(req->dev_stats.cli_MACAddress, mac_str);
+
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: [FC_WEP] disassociating client %s on ap:%d reason=%d\n",
+        __func__, __LINE__, mac_str, req->ap_index, req->reason);
+
+    wifi_hal_disassoc(req->ap_index, req->reason, req->dev_stats.cli_MACAddress);
+}
+
 void process_kick_assoc_devices_event(void *data)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Entry\n", __func__, __LINE__);
@@ -4219,6 +4239,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_command_kick_assoc_devices:
         process_kick_assoc_devices_event(data);
+        break;
+
+    case wifi_event_type_command_frame_drop_unenc:
+        process_frame_drop_unenc_command_event(data);
         break;
 
     case wifi_event_type_command_wps:
