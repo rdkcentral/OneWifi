@@ -1848,8 +1848,25 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
 
             //index cannot be vap index below right for cache retrieval, have to search in the all cache for each vaps and check vap index
             ap_metrics = &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].ap_metrics;
-            ap_metrics->num_of_assoc_stas = hash_map_count(
-                wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[j].associated_devices_map);
+            rdk_wifi_vap_info_t *rdk_vap_info = &wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[j];
+            pthread_mutex_t *assoc_lock = rdk_vap_info->associated_devices_lock;
+
+            if (assoc_lock != NULL) {
+                pthread_mutex_lock(assoc_lock);
+            }
+
+            if (rdk_vap_info->associated_devices_map == NULL) {
+                wifi_util_dbg_print(WIFI_EM,
+                    "%s:%d: associated_devices_map is NULL for radio_index %d and vap_index %d\n",
+                    __func__, __LINE__, radio_index, rdk_vap_info->vap_index);
+                ap_metrics->num_of_assoc_stas = 0;
+            } else {
+                ap_metrics->num_of_assoc_stas = hash_map_count(rdk_vap_info->associated_devices_map);
+            }
+
+            if (assoc_lock != NULL) {
+                pthread_mutex_unlock(assoc_lock);
+            }
             vap_report->sta_cnt = ap_metrics->num_of_assoc_stas;
             memcpy(ap_metrics->bssid, vap_info->u.bss_info.bssid, sizeof(bssid_t));
             memcpy(&vap_report->vap_metrics, ap_metrics, sizeof(ap_metrics_t));
@@ -2114,7 +2131,7 @@ int ap_metrics_collector_config(wifi_app_t *app, wifi_monitor_data_t *data,
         radio_index = em_get_radio_index_from_mac(
             em_config->radio_metrics_policies.radio_metrics_policy[i].ruid);
 
-        if (index == RETURN_ERR) {
+        if (radio_index == RETURN_ERR) {
             return RETURN_ERR;
         }
 
