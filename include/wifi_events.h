@@ -248,6 +248,7 @@ typedef struct {
     wifi_event_type_t     event_type;
     wifi_event_subtype_t  sub_type;
     wifi_event_route_t    route;
+    unsigned int          mon_data_len;
     union {
         wifi_monitor_data_t *mon_data;
         wifi_core_data_t    core_data;
