@@ -27,6 +27,7 @@ extern "C" {
 #include "collection.h"
 #include <pthread.h>
 #include <sys/time.h>
+#include <stdint.h>
 #include "wifi_hal.h"
 
 #define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
@@ -91,10 +92,16 @@ extern "C" {
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
+#define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
+#define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
 #endif /*MAX_NUM_MLD_LINKS*/
+
+#ifndef UNDEFINED_MLD_LINK_ID
+#define UNDEFINED_MLD_LINK_ID 255
+#endif
 
 #define UNDEFINED_MLD_ID 255
 #define MLD_UNIT_COUNT 8
@@ -537,6 +544,35 @@ typedef struct {
     size_t link_count;
     link_report_t *links;
 } report_batch_t;
+
+/* Unassociated STA (NaSta) query/response structures */
+#define MAX_NASTA_OPCLASS_ENTRIES   8
+#define MAX_NASTA_CHANNELS          8
+#define MAX_NASTA_STA_PER_CHANNEL   8
+#define MAX_NASTA_RESPONSE_STAS     (MAX_NASTA_OPCLASS_ENTRIES * MAX_NASTA_CHANNELS * MAX_NASTA_STA_PER_CHANNEL)
+
+typedef struct {
+    unsigned int num_sta;
+    wifi_na_sta_info_t sta_list[MAX_NASTA_RESPONSE_STAS];
+} nasta_response_t;
+
+typedef struct {
+    mac_address_t sta_macs[MAX_NASTA_STA_PER_CHANNEL];
+    unsigned int sta_list_length;
+    unsigned int channel;
+} nasta_channel_entry_t;
+
+typedef struct {
+    unsigned int opclass;
+    unsigned int channels_length;
+    nasta_channel_entry_t channels[MAX_NASTA_CHANNELS];
+} nasta_opclass_entry_t;
+
+typedef struct {
+    unsigned int vap_index;
+    unsigned int num_opclass;
+    nasta_opclass_entry_t opclass_list[MAX_NASTA_OPCLASS_ENTRIES];
+} nasta_query_t;
 
 typedef struct {
     unsigned int rss_check_interval; //minutes
@@ -1034,6 +1070,26 @@ typedef struct {
     hash_map_t *mlo_sta_map;
 } wifi_mld_unit_t;
 #endif /* CONFIG_IEEE80211BE */
+
+/* Carries the 802.11 status/reason code for a failed connection event.
+ * For pre-association failures (auth/assoc reject): set status, leave reason=0.
+ * For post-association failures (deauth/disassoc):  set reason, leave status=0.
+ * Fields are ordered to minimise internal padding between members; trailing
+ * tail-padding (if any) is compiler-controlled and not part of the payload size
+ * contract — always use sizeof(sta_fail_data_t) for queue operations.
+ * The struct is a host-local representation copied into the ctrl-queue event buffer.
+ * Consumers may cast `event->u.core_data.msg` to `const sta_fail_data_t *` when
+ * `event->u.core_data.len == sizeof(sta_fail_data_t)`; alternatively, memcpy into a
+ *  local `sta_fail_data_t` is also acceptable.
+ * If a serialized "wire" layout becomes required
+ * later, introduce a distinct packed wire-struct and perform explicit
+ * serialization/deserialization. */
+typedef struct {
+    int32_t        ap_index;
+    uint16_t       status;
+    uint16_t       reason;
+    mac_address_t  sta_mac;
+} sta_fail_data_t;
 
 struct active_msmt_data;
 

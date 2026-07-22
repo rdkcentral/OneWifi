@@ -80,6 +80,10 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_webconfig_set_data_sta_bssid)
         DOC2S(wifi_event_webconfig_data_req_from_dml)
         DOC2S(wifi_event_webconfig_set_data_force_apply)
+        DOC2S(wifi_event_webconfig_em_config)
+        DOC2S(wifi_event_webconfig_br_report)
+        DOC2S(wifi_event_webconfig_set_ignite_data)
+        DOC2S(wifi_event_webconfig_set_data_nasta)
         DOC2S(wifi_event_webconfig_max)
         DOC2S(wifi_event_hal_unknown_frame)
         DOC2S(wifi_event_hal_mgmt_frames)
@@ -108,6 +112,8 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_csi_data)
         DOC2S(wifi_event_hal_wps_results)
         DOC2S(wifi_event_hal_wnm_action_frame)
+        DOC2S(wifi_event_hal_pre_assoc_fail)
+        DOC2S(wifi_event_hal_post_assoc_fail)
         DOC2S(wifi_event_hal_max)
         DOC2S(wifi_event_type_active_gw_check)
         DOC2S(wifi_event_type_command_factory_reset)
@@ -119,6 +125,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_dfs_atbootup_rfc)
         DOC2S(wifi_event_type_command_kickmac)
         DOC2S(wifi_event_type_command_kick_assoc_devices)
+        DOC2S(wifi_event_type_command_frame_drop_unenc)
         DOC2S(wifi_event_type_command_wps)
         DOC2S(wifi_event_type_command_wps_pin)
         DOC2S(wifi_event_type_command_wps_cancel)
@@ -198,7 +205,6 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_xfinity_tunnel_max)
         DOC2S(wifi_event_type_wifiapi_execution)
         DOC2S(wifi_event_type_wifiapi_max)
-        DOC2S(wifi_event_webconfig_br_report)
         DOC2S(wifi_event_br_report)
     default:
         wifi_util_error_print(WIFI_CTRL, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
@@ -213,6 +219,7 @@ bool is_high_priority_event(wifi_event_subtype_t sub_type)
     switch (sub_type) {
     case wifi_event_type_notify_monitor_done:
     case wifi_event_type_command_factory_reset:
+    case wifi_event_type_command_frame_drop_unenc:
     case wifi_event_type_eth_bh_status:
     case wifi_event_type_xfinity_enable:
     case wifi_event_type_prefer_private_rfc:
