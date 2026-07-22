@@ -275,7 +275,7 @@ if [ -n "${IF_MESHBR50}" ] && [ $USE_BRIDGEUTILS -eq 0 ]; then
     echo "Configuring $IF_MESHBR50"
     bridge_set_mtu $IF_MESHBR50 $BRIDGE_MTU
     ifconfig $IF_MESHBR50 $MESHBR50_IP
-    if [ "$MODEL_NUM" == "$X50" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ] || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "$WNX" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ] || ["$MODEL_NUM" == "XER2" ]; then
+    if [ "$MODEL_NUM" == "$X50" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "CWA438TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "SCXF11BFL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ] || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "$WNX" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "$CGA4" ] || [ "$MODEL_NUM" == "XER2" ]; then
      ifconfig $IF_MESHBR50 mtu $BRIDGE_MTU
      ifconfig $IF_MESHVAP50 mtu $BRIDGE_MTU
     fi
