@@ -547,6 +547,7 @@ typedef struct {
     unsigned int cli_LastDataDownlinkRate;
     unsigned int cli_LastDataUplinkRate;
     bool cli_PowerSaveMode;
+    unsigned int cli_sleepTime;  /* station sleep time from HAL (seconds) */
 } dev_stats_t;
 
 typedef struct {

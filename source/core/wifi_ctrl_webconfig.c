@@ -1648,7 +1648,9 @@ int webconfig_nasta_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *da
                 req_params.op_class = oc->opclass;
                 req_params.channel = ch->channel;
 
-                rc = wifi_getNASta(query->vap_index, &req_params, &sta_info);
+                /* TODO: wifi_getNASta not yet implemented in HAL */
+                /* rc = wifi_getNASta(query->vap_index, &req_params, &sta_info); */
+                rc = WIFI_HAL_ERROR;
                 if (rc != WIFI_HAL_SUCCESS) {
                     wifi_util_error_print(WIFI_CTRL,
                         "%s:%d: wifi_getNASta failed for STA "
