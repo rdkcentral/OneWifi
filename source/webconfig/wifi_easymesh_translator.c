@@ -323,7 +323,16 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     memcpy(device_info->backhaul_alid.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
     interfacename_from_mac((const mac_address_t *)device_info->backhaul_alid.mac,device_info->backhaul_alid.name);
     //proto->set_num_radio(proto->data_model, wifi_prop->numRadios);
+    /* Report the device's regulatory country as Network.Device.{i}.CountryCode.
+       Default to US, override only for an in range enum (conversion does not bounds check). */
     snprintf(device_info->country_code, sizeof(device_info->country_code), "US");
+    if (decoded_params->num_radios > 0) {
+        wifi_countrycode_type_t cc_enum = decoded_params->radios[0].oper.countryCode;
+        if ((unsigned int)cc_enum < MAX_WIFI_COUNTRYCODE) {
+            country_code_conversion(&cc_enum, device_info->country_code,
+                                    sizeof(device_info->country_code), ENUM_TO_STRING);
+        }
+    }
     for (unsigned int i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         dfs_enable  = radio->oper.DfsEnabled;
