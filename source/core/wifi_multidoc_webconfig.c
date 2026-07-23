@@ -502,7 +502,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             }
             return RETURN_ERR;
         }
-
+    }
         if (isVapHotspot(vap_info->vap_index)) {
         radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
         if (!radius_param) {
@@ -737,7 +737,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
         strncpy(radius_info->s_key, value, sizeof(radius_info->s_key) - 1);
         }
-    }
     return RETURN_OK;
 }
 
