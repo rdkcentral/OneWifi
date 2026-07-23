@@ -33,7 +33,6 @@
 #include "wifi_stubs.h"
 #include "run_qmgr.h"
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
-#define MAX_VAP_INDEX 24
 
 #define CHAN_UTIL_INTERVAL_MS 900000 // 15 mins
 #define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour

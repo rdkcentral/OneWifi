@@ -118,6 +118,7 @@ extern "C" {
 #define BUS_WFA_DML_CONFIG_FILE "Data_Elements_JSON_Schema_v3.0.json"
 
 #define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
+#define MAX_VAP_INDEX 24
 
 extern bool is_sta_set;
 
