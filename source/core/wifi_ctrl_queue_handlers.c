@@ -3340,9 +3340,9 @@ int dfs_nop_start_timer(void *args)
         return RETURN_ERR;
     }
 
-    /* Process only the 5G radio this timer was scheduled for (index passed via args) */
+    /* Process only the 5G radio this timer was scheduled for. args points to stable
+       static storage owned by the caller (start_radios); it is non-owning, do not free it. */
     unsigned int dfs_radio_index = *(unsigned int *)args;
-    free(args);
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
     if (radio_params == NULL) {

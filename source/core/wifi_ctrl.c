@@ -462,6 +462,8 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
     uint8_t num_of_radios = getNumberRadios();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_platform_property_t *wifi_prop = (wifi_platform_property_t *)get_wifi_hal_cap_prop();
+    /* Stable per-radio storage for the dfs_nop_start_timer arg (non-owning, must outlive the task) */
+    static unsigned int dfs_nop_radio_index[MAX_NUM_RADIOS];
 
     wifi_util_info_print(WIFI_CTRL, "%s(): Start radios %d\n", __FUNCTION__, num_of_radios);
     // Check for the number of radios
@@ -544,18 +546,12 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
             }
 
             if (strcmp(wifi_radio_oper_param->radarDetected, " ")) {
-                unsigned int *dfs_radio_index = (unsigned int *)malloc(sizeof(unsigned int));
-                if (dfs_radio_index == NULL) {
-                    wifi_util_error_print(WIFI_CTRL, "%s:%d malloc failed for dfs_radio_index\n",
-                        __func__, __LINE__);
-                } else {
-                    *dfs_radio_index = index;
-                    wifi_util_info_print(WIFI_CTRL,
-                        "%s:%d Triggering dfs_nop_start_timer for radio:%d radar:%s \n", __func__,
-                        __LINE__, index, wifi_radio_oper_param->radarDetected);
-                    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, dfs_nop_start_timer,
-                        dfs_radio_index, (60 * 1000), 1, FALSE);
-                }
+                dfs_nop_radio_index[index] = index;
+                wifi_util_info_print(WIFI_CTRL,
+                    "%s:%d Triggering dfs_nop_start_timer for radio:%d radar:%s \n", __func__,
+                    __LINE__, index, wifi_radio_oper_param->radarDetected);
+                scheduler_add_timer_task(ctrl->sched, FALSE, NULL, dfs_nop_start_timer,
+                    &dfs_nop_radio_index[index], (60 * 1000), 1, FALSE);
             }
         }
 
