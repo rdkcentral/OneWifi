@@ -544,11 +544,18 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
             }
 
             if (strcmp(wifi_radio_oper_param->radarDetected, " ")) {
-                wifi_util_info_print(WIFI_CTRL,
-                    "%s:%d Triggering dfs_nop_start_timer for radar:%s \n", __func__, __LINE__,
-                    wifi_radio_oper_param->radarDetected);
-                scheduler_add_timer_task(ctrl->sched, FALSE, NULL, dfs_nop_start_timer, NULL,
-                    (60 * 1000), 1, FALSE);
+                unsigned int *dfs_radio_index = (unsigned int *)malloc(sizeof(unsigned int));
+                if (dfs_radio_index == NULL) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d malloc failed for dfs_radio_index\n",
+                        __func__, __LINE__);
+                } else {
+                    *dfs_radio_index = index;
+                    wifi_util_info_print(WIFI_CTRL,
+                        "%s:%d Triggering dfs_nop_start_timer for radio:%d radar:%s \n", __func__,
+                        __LINE__, index, wifi_radio_oper_param->radarDetected);
+                    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, dfs_nop_start_timer,
+                        dfs_radio_index, (60 * 1000), 1, FALSE);
+                }
             }
         }
 
