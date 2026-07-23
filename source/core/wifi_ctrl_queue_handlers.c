@@ -1521,6 +1521,26 @@ cleanup:
     }
 }
 
+void process_frame_drop_unenc_command_event(void *data)
+{
+    assoc_dev_data_t *req;
+    mac_addr_str_t mac_str;
+
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL data\n", __func__, __LINE__);
+        return;
+    }
+
+    req = (assoc_dev_data_t *)data;
+    to_mac_str(req->dev_stats.cli_MACAddress, mac_str);
+
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: [FC_WEP] disassociating client %s on ap:%d reason=%d\n",
+        __func__, __LINE__, mac_str, req->ap_index, req->reason);
+
+    wifi_hal_disassoc(req->ap_index, req->reason, req->dev_stats.cli_MACAddress);
+}
+
 void process_kick_assoc_devices_event(void *data)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Entry\n", __func__, __LINE__);
@@ -2553,8 +2573,8 @@ void process_assoc_device_event(void *data)
             wifi_util_error_print(WIFI_CTRL, "%s:%d No valid associated link found for MLD STA " MAC_FMT "\n",
                 __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
         }
-        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected " MAC_FMT " with %d links\n",
-            __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress), num_links);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected with %d links " MAC_FMT "\n",
+            __func__, __LINE__, num_links, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
     } else {
         assoc_dev_event(assoc_data);
     }
@@ -4386,6 +4406,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         process_kick_assoc_devices_event(data);
         break;
 
+    case wifi_event_type_command_frame_drop_unenc:
+        process_frame_drop_unenc_command_event(data);
+        break;
+
     case wifi_event_type_command_wps:
         process_wps_command_event(*(unsigned int *)data);
         break;
@@ -4780,6 +4804,21 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         }
         webconfig_decode(config, data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
+        webconfig_data_free(data);
+        break;
+
+    case wifi_event_webconfig_set_data_nasta:
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+            sizeof(wifi_hal_capability_t));
+        if (raw == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data for NaSta\n",
+                __func__, __LINE__);
+            free(data);
+            data = NULL;
+            return;
+        }
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
+        webconfig_decode(config, data, raw);
         webconfig_data_free(data);
         break;
 
