@@ -202,7 +202,7 @@ webconfig_error_t decode_ipv6_address(char *ip) {
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *interworking_info)
+static webconfig_error_t decode_anqp_object_impl(const cJSON *anqp, wifi_interworking_t *interworking_info, cJSON *passPointStats, cJSON *statsList)
 {
     cJSON *anqpElement = NULL;
     cJSON *anqpList = NULL;
@@ -212,13 +212,10 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     cJSON *subEntry = NULL;
     cJSON *subParam = NULL;
     UCHAR *next_pos = NULL;
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: bharathi Entered\n", __func__, __LINE__);
 
-    cJSON *passPointStats = cJSON_CreateObject(); 
-    cJSON *statsMainEntry = cJSON_AddObjectToObject(passPointStats, "PassPointStats");
-    cJSON *statsList = cJSON_AddArrayToObject(statsMainEntry, "ANQPResponse");
     if(!anqp || !interworking_info){
         wifi_util_dbg_print(WIFI_WEBCONFIG,"Anqp entry is NULL\n");
-	cJSON_Delete(passPointStats);
         return webconfig_error_decode;
     }
 
@@ -229,7 +226,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_array(anqpElement, "VenueInfo", anqpList);
     if(cJSON_GetArraySize(anqpList) > 16){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
         return webconfig_error_venue_entries;
     } else if (cJSON_GetArraySize(anqpList)) {
         //Venue List is non-empty. Update capability List
@@ -252,7 +248,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
-	    cJSON_Delete(passPointStats);
             return webconfig_error_venue_name_size;
         }
         cJSON *realmStats = cJSON_CreateObject();
@@ -275,7 +270,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_array(anqpElement,"OI",anqpList);
     if(cJSON_GetArraySize(anqpList) > 32){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Only 32 OUI supported in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
         return webconfig_error_oui_entries;
     }
     int ouiCount = 0;
@@ -289,7 +283,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
             ouiStrLen = strlen(anqpParam->valuestring);
             if((ouiStrLen < 6) || (ouiStrLen > 30) || (ouiStrLen % 2)){
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid OUI Length in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-		cJSON_Delete(passPointStats);
                 return webconfig_error_oui_length;
             }
             strcpy((char*)ouiStr, anqpParam->valuestring);
@@ -304,7 +297,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                 ouiStr[i] -= ('A' - 10);//A=10
             }else{
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid OUI in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-		cJSON_Delete(passPointStats);
                 return webconfig_error_oui_char;
             }
             if(i%2){
@@ -335,7 +327,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_integer(anqpElement,"IPv6AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (2 < anqpParam->valuedouble)){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid IPAddressTypeAvailabilityANQPElement. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
         return webconfig_error_ipaddress;
     }
     interworking_info->anqp.ipAddressInfo.field_format = (UCHAR)anqpParam->valuedouble;
@@ -343,7 +334,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     decode_param_integer(anqpElement,"IPv4AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (7 < anqpParam->valuedouble)){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid IPAddressTypeAvailabilityANQPElement. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
         return webconfig_error_ipaddress;
     }
     interworking_info->anqp.ipAddressInfo.field_format |= ((UCHAR)anqpParam->valuedouble << 2);
@@ -358,7 +348,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     naiElem->nai_realm_count = cJSON_GetArraySize(anqpList);
     if(naiElem->nai_realm_count > 20) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Only 20 Realm Entries are supported. Discarding Configuration\n", __func__, __LINE__);
-	cJSON_Delete(passPointStats);
         return webconfig_error_realm_entries;
     }
     next_pos = (UCHAR *)naiElem;
@@ -380,7 +369,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         decode_param_string(anqpEntry,"Realms",anqpParam);
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Realm Length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
-	    cJSON_Delete(passPointStats);
             return webconfig_error_realm_length;
         }
         realmInfoBuf->realm_length = strlen(anqpParam->valuestring);
@@ -401,7 +389,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         eap_method_count = cJSON_GetArraySize(subList);
         if(eap_method_count > 16){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: EAP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
-	    cJSON_Delete(passPointStats);
             return webconfig_error_eap_entries;
         }
         *next_pos = eap_method_count;
@@ -422,7 +409,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
             eapBuf->auth_param_count = cJSON_GetArraySize(subList_1);
             if(eapBuf->auth_param_count > 16){
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Auth entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
-		cJSON_Delete(passPointStats);
                 return webconfig_error_auth_entries;
             }
             next_pos += sizeof(eapBuf->auth_param_count);
@@ -438,7 +424,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                 subParam_1 = cJSON_GetObjectItem(subEntry_1,"Value");
                 if(!subParam_1){
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Auth Parameter Value not prensent in NAIRealmANQPElement EAP Data. Discarding Configuration\n", __func__, __LINE__);
-		    cJSON_Delete(passPointStats);
                     return webconfig_error_auth_param;
                 } else if (subParam_1->valuedouble) {
                     authBuf->length = 1;
@@ -447,7 +432,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                     authStrLen = strlen(subParam_1->valuestring);
                     if((authStrLen != 2) && (authStrLen != 14)){
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
-			cJSON_Delete(passPointStats);
                         return webconfig_error_eap_length;
                     }
                     snprintf((char*)authStr, sizeof(authStr), "%s", subParam_1->valuestring);
@@ -462,7 +446,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                             authStr[i] -= ('A' - 10);//A=10
                         }else{
                             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EAP val in NAIRealmANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
-			    cJSON_Delete(passPointStats);
                             return webconfig_error_eap_value;
                         }
                         if(i%2){
@@ -504,7 +487,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     if(plmnInfoBuf->number_of_plmns > 16){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: 3GPP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Exceeded max number of 3GPP entries",sizeof(execRetVal->ErrorMsg)-1);
-	cJSON_Delete(passPointStats);
         return webconfig_error_decode;
      }
 
@@ -523,7 +505,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         }else{
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MCC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid MCC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
-	    cJSON_Delete(passPointStats);
             return webconfig_error_decode;
         }
 
@@ -536,7 +517,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         }else{
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MNC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid MNC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
-	    cJSON_Delete(passPointStats);
             return webconfig_error_decode;
         }
         wifi_plmn_t *plmnBuf = (wifi_plmn_t *)next_pos;
@@ -567,7 +547,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     if(cJSON_GetArraySize(anqpList) > 4){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Only 4 Entries supported in DomainNameANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Exceeded max no of entries in DomainNameANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
-	cJSON_Delete(passPointStats);
         return webconfig_error_decode;
     }
     next_pos = (UCHAR *)&interworking_info->anqp.domainNameInfo;
@@ -578,7 +557,6 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Domain name length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid Domain name length",sizeof(execRetVal->ErrorMsg)-1);
-	    cJSON_Delete(passPointStats);
             return webconfig_error_decode;
         }
         nameBuf->length = strlen(anqpParam->valuestring);
@@ -600,10 +578,39 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     if (interworking_info->anqp.domainInfoLength) {
         interworking_info->anqp.capabilityInfo.capabilityList[interworking_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_domain_name;
     }
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: bharathi Exiting\n", __func__, __LINE__);
 
     cJSON_PrintPreallocated(passPointStats, (char *)&interworking_info->anqp.passpointStats,sizeof(interworking_info->anqp.passpointStats), false);
-    cJSON_Delete(passPointStats);
     return webconfig_error_none;
+}
+
+webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *ii)
+{
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: bharathi Entered\n", __func__, __LINE__);
+    cJSON *passPointStats = cJSON_CreateObject();
+    if (passPointStats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to create passPointStats object (OOM)\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    cJSON *mainEntry = cJSON_AddObjectToObject(passPointStats, "PassPointStats");
+    if (!mainEntry) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to add PassPointStats object (OOM)\n", __func__, __LINE__);
+        cJSON_Delete(passPointStats);
+        return webconfig_error_decode;
+    }
+
+    cJSON *statsList = cJSON_AddArrayToObject(mainEntry, "ANQPResponse");
+    if (!statsList) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to add ANQPResponse array (OOM)\n", __func__, __LINE__);
+        cJSON_Delete(passPointStats);
+        return webconfig_error_decode;
+    }
+
+    webconfig_error_t rc = decode_anqp_object_impl(anqp, ii, passPointStats, statsList);
+    cJSON_Delete(passPointStats);
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: bharathi Exiting\n", __func__, __LINE__);
+    return rc;
 }
 
 webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interworking_t *interworking_info)
@@ -5623,14 +5630,61 @@ webconfig_error_t decode_vif_neighbors_object(hash_map_t **neighbors_map, cJSON 
     return webconfig_error_none;
 }
 
+static webconfig_error_t decode_radio_chan_entry(cJSON *radio_stats, radio_chan_data_t *out)
+{
+    const cJSON *param;
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered Decoding radio channel entry\n", __func__, __LINE__);
+    decode_param_integer(radio_stats, "ChannelNumber", param);
+    out->ch_number = param->valuedouble;
+
+    decode_param_integer(radio_stats, "ChannelNoise", param);
+    out->ch_noise = param->valuedouble;
+
+    decode_param_bool(radio_stats, "RadarNoise", param);
+    out->ch_radar_noise = (param->type & cJSON_True) ? true:false;
+
+    decode_param_integer(radio_stats, "RSSI", param);
+    out->ch_max_80211_rssi = param->valuedouble;
+
+    decode_param_integer(radio_stats, "Non80211Noise", param);
+    out->ch_non_80211_noise = param->valuedouble;
+
+    decode_param_integer(radio_stats, "ChannelUtilization", param);
+    out->ch_utilization = param->valuedouble;
+
+    decode_param_integer(radio_stats,"TotalUtilization", param);
+    out->ch_utilization_total = param->valuedouble;
+
+    decode_param_integer(radio_stats, "UtilizationBusy", param);
+    out->ch_utilization_busy = param->valuedouble;
+
+    decode_param_integer(radio_stats, "UtilizationBusyTx", param);
+    out->ch_utilization_busy_tx = param->valuedouble;
+
+    decode_param_integer(radio_stats, "UtilizationBusyRx", param);
+    out->ch_utilization_busy_rx = param->valuedouble;
+
+    decode_param_integer(radio_stats, "UtilizationBusySelf",  param);
+    out->ch_utilization_busy_self = param->valuedouble;
+
+    decode_param_integer(radio_stats, "UtilizationBusyExt", param);
+    out->ch_utilization_busy_ext = param->valuedouble;
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response_t **chan_stats, cJSON *json)
 {
     cJSON *radio_stats_arr;
     cJSON *radio_stats;
-    const cJSON  *param;
+    const cJSON  *param_radio;
+    const cJSON  *param_scan;
     int size = 0;
     radio_chan_data_t *chan_data = NULL;
     wifi_neighborScanMode_t scan_mode;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
 
     if (json == NULL || chan_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || chan_stats is NULL\n", __func__, __LINE__);
@@ -5646,22 +5700,20 @@ webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response
     }
     size = cJSON_GetArraySize(radio_stats_arr);
 
+    decode_param_integer(json, "RadioIndex", param_radio);
+
+    decode_param_string(json, "ScanMode", param_scan);
+    if (scan_mode_type_conversion(&scan_mode, param_scan->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param_scan->valuestring);
+        return webconfig_error_decode;
+    }
+
     *chan_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*chan_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
-
-    decode_param_integer(json, "RadioIndex", param);
-    (*chan_stats)->args.radio_index = param->valuedouble;
-
-    decode_param_string(json, "ScanMode", param);
-    if (scan_mode_type_conversion(&scan_mode, param->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param->valuestring);
-        free(*chan_stats);
-        *chan_stats = NULL;
-        return webconfig_error_decode;
-    }
+    (*chan_stats)->args.radio_index = param_radio->valuedouble;
     (*chan_stats)->args.scan_mode = scan_mode;
 
     chan_data = (radio_chan_data_t*) malloc(sizeof(radio_chan_data_t) * size);
@@ -5682,41 +5734,12 @@ webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response
             return webconfig_error_decode;
         }
 
-        decode_param_integer(radio_stats, "ChannelNumber", param);
-        chan_data[count].ch_number = param->valuedouble;
-
-        decode_param_integer(radio_stats, "ChannelNoise", param);
-        chan_data[count].ch_noise = param->valuedouble;
-
-        decode_param_bool(radio_stats, "RadarNoise", param);
-        chan_data[count].ch_radar_noise = (param->type & cJSON_True) ? true:false;
-
-        decode_param_integer(radio_stats, "RSSI", param);
-        chan_data[count].ch_max_80211_rssi = param->valuedouble;
-
-        decode_param_integer(radio_stats, "Non80211Noise", param);
-        chan_data[count].ch_non_80211_noise = param->valuedouble;
-
-        decode_param_integer(radio_stats, "ChannelUtilization", param);
-        chan_data[count].ch_utilization = param->valuedouble;
-
-        decode_param_integer(radio_stats,"TotalUtilization", param);
-        chan_data[count].ch_utilization_total = param->valuedouble;
-
-        decode_param_integer(radio_stats, "UtilizationBusy", param);
-        chan_data[count].ch_utilization_busy = param->valuedouble;
-
-        decode_param_integer(radio_stats, "UtilizationBusyTx", param);
-        chan_data[count].ch_utilization_busy_tx = param->valuedouble;
-
-        decode_param_integer(radio_stats, "UtilizationBusyRx", param);
-        chan_data[count].ch_utilization_busy_rx = param->valuedouble;
-
-        decode_param_integer(radio_stats, "UtilizationBusySelf",  param);
-        chan_data[count].ch_utilization_busy_self = param->valuedouble;
-
-        decode_param_integer(radio_stats, "UtilizationBusyExt", param);
-        chan_data[count].ch_utilization_busy_ext = param->valuedouble;
+         if (decode_radio_chan_entry(radio_stats, &chan_data[count]) != webconfig_error_none) {
+            free(chan_data);
+            free(*chan_stats);
+            *chan_stats = NULL;
+            return webconfig_error_decode;
+        }
     }
     (*chan_stats)->stat_pointer = chan_data;
     (*chan_stats)->stat_array_size = size;
@@ -5724,14 +5747,85 @@ webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response
     return webconfig_error_none;
 }
 
+static webconfig_error_t decode_neighbor_stats_entry(cJSON *neighbor_stats, wifi_neighbor_ap2_t *out)
+{
+    const cJSON *param;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
+
+    if ((neighbor_stats == NULL) || (out == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid input parameter\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    memset(out, 0, sizeof(*out));
+
+    param = cJSON_GetObjectItem(neighbor_stats, "ap_SSID");
+    if ((param != NULL) && cJSON_IsString(param) && (param->valuestring != NULL)) {
+        strncpy(out->ap_SSID, param->valuestring, sizeof(out->ap_SSID) - 1);
+    }
+
+    decode_param_string(neighbor_stats, "ap_BSSID", param);
+    strncpy(out->ap_BSSID, param->valuestring, sizeof(out->ap_BSSID) - 1);
+
+    decode_param_string(neighbor_stats, "ap_Mode", param);
+    strncpy(out->ap_Mode, param->valuestring, sizeof(out->ap_Mode) - 1);
+
+    decode_param_integer(neighbor_stats, "ap_Channel", param);  
+    out->ap_Channel = param->valuedouble;
+
+    decode_param_integer(neighbor_stats, "ap_SignalStrength", param);  
+    out->ap_SignalStrength = param->valuedouble;
+
+    decode_param_string(neighbor_stats, "ap_SecurityModeEnabled", param);  
+    strncpy(out->ap_SecurityModeEnabled, param->valuestring, sizeof(out->ap_SecurityModeEnabled) - 1);
+
+    decode_param_string(neighbor_stats, "ap_EncryptionMode", param);
+    strncpy(out->ap_EncryptionMode, param->valuestring, sizeof(out->ap_EncryptionMode) - 1);
+
+    decode_param_string(neighbor_stats, "ap_OperatingFrequencyBand", param);
+    strncpy(out->ap_OperatingFrequencyBand, param->valuestring, sizeof(out->ap_OperatingFrequencyBand) - 1);
+
+    decode_param_string(neighbor_stats, "ap_SupportedStandards", param);
+    strncpy(out->ap_SupportedStandards, param->valuestring, sizeof(out->ap_SupportedStandards) - 1);
+  
+    decode_param_string(neighbor_stats, "ap_OperatingStandards", param);
+    strncpy(out->ap_OperatingStandards, param->valuestring, sizeof(out->ap_OperatingStandards) - 1);
+  
+    decode_param_string(neighbor_stats, "ap_OperatingChannelBandwidth", param);
+    strncpy(out->ap_OperatingChannelBandwidth, param->valuestring, sizeof(out->ap_OperatingChannelBandwidth) - 1);  
+  
+    decode_param_integer(neighbor_stats, "ap_BeaconPeriod", param);
+    out->ap_BeaconPeriod = param->valuedouble;
+  
+    decode_param_integer(neighbor_stats, "ap_Noise", param);
+    out->ap_Noise = param->valuedouble;
+  
+    decode_param_string(neighbor_stats, "ap_BasicDataTransferRates", param);
+    strncpy(out->ap_BasicDataTransferRates, param->valuestring, sizeof(out->ap_BasicDataTransferRates) - 1);
+  
+    decode_param_string(neighbor_stats, "ap_SupportedDataTransferRates", param);
+    strncpy(out->ap_SupportedDataTransferRates, param->valuestring, sizeof(out->ap_SupportedDataTransferRates) - 1);
+  
+    decode_param_integer(neighbor_stats, "ap_DTIMPeriod", param);
+    out->ap_DTIMPeriod = param->valuedouble;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
+
+    decode_param_integer(neighbor_stats, "ap_ChannelUtilization", param);
+    out->ap_ChannelUtilization = param->valuedouble;
+  
+    return webconfig_error_none;  
+}  
+
 webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **chan_stats, cJSON *json)
 {
     cJSON *neighbor_stats_arr;
     cJSON *neighbor_stats;
-    const cJSON  *param;
+    const cJSON  *param_radio;
+    const cJSON  *param_scan;
     int size = 0;
     wifi_neighbor_ap2_t *neighbor_stats_data = NULL;
     wifi_neighborScanMode_t scan_mode;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
 
     if (json == NULL || chan_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || chan_stats is NULL\n", __func__, __LINE__);
@@ -5747,22 +5841,21 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
     }
     size = cJSON_GetArraySize(neighbor_stats_arr);
 
+    decode_param_integer(json, "RadioIndex", param_radio);
+
+    decode_param_string(json, "ScanMode", param_scan);
+    if (scan_mode_type_conversion(&scan_mode, param_scan->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param_scan->valuestring);
+        return webconfig_error_decode;
+    }
+
     *chan_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*chan_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
-    decode_param_integer(json, "RadioIndex", param);
-    (*chan_stats)->args.radio_index = param->valuedouble;
-
-    decode_param_string(json, "ScanMode", param);
-    if (scan_mode_type_conversion(&scan_mode, param->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
-        free(*chan_stats);
-        *chan_stats = NULL;
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param->valuestring);
-        return webconfig_error_decode;
-    }
+    (*chan_stats)->args.radio_index = param_radio->valuedouble;
     (*chan_stats)->args.scan_mode = scan_mode;
 
     if (size == 0) {
@@ -5790,63 +5883,17 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
             return webconfig_error_decode;
         }
 
-        param = cJSON_GetObjectItem(neighbor_stats, "ap_SSID");
-        if ((param != NULL) && (param->valuestring != NULL)) {
-            strncpy(neighbor_stats_data[count].ap_SSID, param->valuestring, sizeof(neighbor_stats_data[count].ap_SSID) - 1);
+       if (decode_neighbor_stats_entry(neighbor_stats, &neighbor_stats_data[count]) != webconfig_error_none) {
+            free(neighbor_stats_data);
+            free(*chan_stats);
+            *chan_stats = NULL;
+            return webconfig_error_decode;
         }
-
-        decode_param_string(neighbor_stats, "ap_BSSID", param);
-        strncpy(neighbor_stats_data[count].ap_BSSID, param->valuestring, sizeof(neighbor_stats_data[count].ap_BSSID) - 1);
-
-        decode_param_string(neighbor_stats, "ap_Mode", param);
-        strncpy(neighbor_stats_data[count].ap_Mode, param->valuestring, sizeof(neighbor_stats_data[count].ap_Mode) - 1);
-
-        decode_param_integer(neighbor_stats, "ap_Channel", param);
-        neighbor_stats_data[count].ap_Channel = param->valuedouble;
-
-        decode_param_integer(neighbor_stats, "ap_SignalStrength", param);
-        neighbor_stats_data[count].ap_SignalStrength = param->valuedouble;
-
-        decode_param_string(neighbor_stats, "ap_SecurityModeEnabled", param);
-        strncpy(neighbor_stats_data[count].ap_SecurityModeEnabled, param->valuestring, sizeof(neighbor_stats_data[count].ap_SecurityModeEnabled) - 1);
-
-        decode_param_string(neighbor_stats, "ap_EncryptionMode", param);
-        strncpy(neighbor_stats_data[count].ap_EncryptionMode, param->valuestring, sizeof(neighbor_stats_data[count].ap_EncryptionMode) - 1);
-
-        decode_param_string(neighbor_stats, "ap_OperatingFrequencyBand", param);
-        strncpy(neighbor_stats_data[count].ap_OperatingFrequencyBand, param->valuestring, sizeof(neighbor_stats_data[count].ap_OperatingFrequencyBand) - 1);
-
-        decode_param_string(neighbor_stats, "ap_SupportedStandards", param);
-        strncpy(neighbor_stats_data[count].ap_SupportedStandards, param->valuestring, sizeof(neighbor_stats_data[count].ap_SupportedStandards) - 1);
-
-        decode_param_string(neighbor_stats, "ap_OperatingStandards", param);
-        strncpy(neighbor_stats_data[count].ap_OperatingStandards, param->valuestring, sizeof(neighbor_stats_data[count].ap_OperatingStandards) - 1);
-
-        decode_param_string(neighbor_stats, "ap_OperatingChannelBandwidth", param);
-        strncpy(neighbor_stats_data[count].ap_OperatingChannelBandwidth, param->valuestring, sizeof(neighbor_stats_data[count].ap_OperatingChannelBandwidth) - 1);
-
-        decode_param_integer(neighbor_stats, "ap_BeaconPeriod", param);
-        neighbor_stats_data[count].ap_BeaconPeriod = param->valuedouble;
-
-        decode_param_integer(neighbor_stats, "ap_Noise", param);
-        neighbor_stats_data[count].ap_Noise = param->valuedouble;
-
-        decode_param_string(neighbor_stats, "ap_BasicDataTransferRates", param);
-        strncpy(neighbor_stats_data[count].ap_BasicDataTransferRates, param->valuestring, sizeof(neighbor_stats_data[count].ap_BasicDataTransferRates) - 1);
-
-        decode_param_string(neighbor_stats, "ap_SupportedDataTransferRates", param);
-        strncpy(neighbor_stats_data[count].ap_SupportedDataTransferRates, param->valuestring, sizeof(neighbor_stats_data[count].ap_SupportedDataTransferRates) - 1);
-
-        decode_param_integer(neighbor_stats, "ap_DTIMPeriod", param);
-        neighbor_stats_data[count].ap_DTIMPeriod = param->valuedouble;
-
-        decode_param_integer(neighbor_stats, "ap_ChannelUtilization", param);
-        neighbor_stats_data[count].ap_ChannelUtilization = param->valuedouble;
-
     }
     (*chan_stats)->stat_pointer = neighbor_stats_data;
     (*chan_stats)->stat_array_size = size;
 
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -5977,13 +6024,137 @@ webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_
 }
 #endif
 
+static webconfig_error_t decode_assocdev_stats_entry(cJSON *assoc_data, wifi_associated_dev3_t *out)
+{
+    const cJSON *param;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
+
+    if ((assoc_data == NULL) || (out == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid input parameter\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    memset(out, 0, sizeof(*out));
+
+    decode_param_string(assoc_data, "cli_MACAddress", param);
+    string_mac_to_uint8_mac(out->cli_MACAddress, param->valuestring);
+
+    decode_param_bool(assoc_data, "cli_AuthenticationState", param);
+    out->cli_AuthenticationState = (param->type & cJSON_True) ? true:false;
+
+    decode_param_integer(assoc_data, "cli_LastDataDownlinkRate", param);
+    out->cli_LastDataDownlinkRate = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_LastDataUplinkRate", param);
+    out->cli_LastDataUplinkRate = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_SignalStrength", param);
+    out->cli_SignalStrength = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_Retransmissions", param);
+    out->cli_Retransmissions = param->valuedouble;
+
+    decode_param_bool(assoc_data, "cli_Active", param);
+    out->cli_Active = (param->type & cJSON_True) ? true:false;
+
+    decode_param_allow_empty_string(assoc_data, "cli_OperatingStandard", param);
+    strncpy(out->cli_OperatingStandard, param->valuestring, sizeof(out->cli_OperatingStandard) - 1);
+
+    decode_param_allow_empty_string(assoc_data, "cli_OperatingChannelBandwidth", param);
+    strncpy(out->cli_OperatingChannelBandwidth, param->valuestring, sizeof(out->cli_OperatingChannelBandwidth) - 1);
+
+    decode_param_integer(assoc_data, "cli_SNR", param);
+    out->cli_SNR = param->valuedouble;
+
+    param = cJSON_GetObjectItem(assoc_data, "cli_InterferenceSources");
+    if ((param != NULL) && cJSON_IsString(param) && (param->valuestring != NULL)) {
+        strncpy(out->cli_InterferenceSources, param->valuestring, sizeof(out->cli_InterferenceSources) - 1);
+    }
+
+    decode_param_integer(assoc_data, "cli_DataFramesSentAck", param);
+    out->cli_DataFramesSentAck = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_DataFramesSentNoAck", param);
+    out->cli_DataFramesSentNoAck = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_BytesSent", param);
+    out->cli_BytesSent = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_BytesReceived", param);
+    out->cli_BytesReceived = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_Retransmissions", param);  
+    out->cli_Retransmissions = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_RSSI", param);
+    out->cli_RSSI = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_MinRSSI", param);
+    out->cli_MinRSSI = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_MaxRSSI", param);
+    out->cli_MaxRSSI = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_Disassociations", param);
+    out->cli_Disassociations = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_AuthenticationFailures", param);
+    out->cli_AuthenticationFailures = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_Associations", param);
+    out->cli_Associations = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_PacketsSent", param);
+    out->cli_PacketsSent = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_PacketsReceived", param);
+    out->cli_PacketsReceived = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_ErrorsSent", param);
+    out->cli_ErrorsSent = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_RetransCount", param);
+    out->cli_RetransCount = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_FailedRetransCount", param);
+    out->cli_FailedRetransCount = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_RetryCount", param);
+    out->cli_RetryCount = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_MultipleRetryCount", param);
+    out->cli_MultipleRetryCount = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_MaxDownlinkRate", param);
+    out->cli_MaxDownlinkRate = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_MaxUplinkRate", param);
+    out->cli_MaxUplinkRate = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_activeNumSpatialStreams", param);
+    out->cli_activeNumSpatialStreams = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_TxFrames", param);
+    out->cli_TxFrames = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_RxRetries", param);
+    out->cli_RxRetries = param->valuedouble;
+
+    decode_param_integer(assoc_data, "cli_RxErrors", param);
+    out->cli_RxErrors = param->valuedouble;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_stats, cJSON *json)
 {
     cJSON *assoc_stats_arr;
     cJSON *assoc_data;
-    const cJSON *param;
+    const cJSON  *param;
     int size = 0;
     wifi_associated_dev3_t *client_stats_data = NULL;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
 
     if (json == NULL || assoc_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: cjson || assoc_stats is NULL\n", __func__, __LINE__);
@@ -5991,7 +6162,6 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     }
 
     *assoc_stats = NULL;
-
     assoc_stats_arr = cJSON_GetObjectItem(json, "AssociatedDeviceStats");
     if ((assoc_stats_arr == NULL) && (cJSON_IsObject(assoc_stats_arr) == false)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__,
@@ -6000,15 +6170,15 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     }
     size = cJSON_GetArraySize(assoc_stats_arr);
 
-    *assoc_stats = (wifi_provider_response_t *)calloc(1, sizeof(wifi_provider_response_t));
+    decode_param_integer(json, "VapIndex", param);
 
+    *assoc_stats = (wifi_provider_response_t *)calloc(1, sizeof(wifi_provider_response_t));
     if (*assoc_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__,
             __LINE__);
         return webconfig_error_decode;
     }
 
-    decode_param_integer(json, "VapIndex", param);
     (*assoc_stats)->args.vap_index = param->valuedouble;
 
     if (size == 0) {
@@ -6017,7 +6187,7 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
         free(*assoc_stats);
         *assoc_stats = NULL;
         wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Associated Device stats array size is %d\n",
-            __func__, __LINE__, (*assoc_stats)->stat_array_size);
+            __func__, __LINE__, size);
         return webconfig_error_none;
     } else {
         client_stats_data = (wifi_associated_dev3_t *)malloc(sizeof(wifi_associated_dev3_t) * size);
@@ -6041,119 +6211,90 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
             return webconfig_error_decode;
         }
 
-        decode_param_string(assoc_data, "cli_MACAddress", param);
-        string_mac_to_uint8_mac(client_stats_data[count].cli_MACAddress, param->valuestring);
-
-        decode_param_bool(assoc_data, "cli_AuthenticationState", param);
-        client_stats_data[count].cli_AuthenticationState = (param->type & cJSON_True) ? true :
-                                                                                        false;
-
-        decode_param_integer(assoc_data, "cli_LastDataDownlinkRate", param);
-        client_stats_data[count].cli_LastDataDownlinkRate = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_LastDataUplinkRate", param);
-        client_stats_data[count].cli_LastDataUplinkRate = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_SignalStrength", param);
-        client_stats_data[count].cli_SignalStrength = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_Retransmissions", param);
-        client_stats_data[count].cli_Retransmissions = param->valuedouble;
-
-        decode_param_bool(assoc_data, "cli_Active", param);
-        client_stats_data[count].cli_Active = (param->type & cJSON_True) ? true : false;
-
-        decode_param_allow_empty_string(assoc_data, "cli_OperatingStandard", param);
-        strncpy(client_stats_data[count].cli_OperatingStandard, param->valuestring,
-            sizeof(client_stats_data[count].cli_OperatingStandard) - 1);
-
-        decode_param_allow_empty_string(assoc_data, "cli_OperatingChannelBandwidth", param);
-        strncpy(client_stats_data[count].cli_OperatingChannelBandwidth, param->valuestring,
-            sizeof(client_stats_data[count].cli_OperatingChannelBandwidth) - 1);
-
-        decode_param_integer(assoc_data, "cli_SNR", param);
-        client_stats_data[count].cli_SNR = param->valuedouble;
-
-        param = cJSON_GetObjectItem(assoc_data, "cli_InterferenceSources");
-        if (param != NULL) {
-            strncpy(client_stats_data[count].cli_InterferenceSources, param->valuestring,
-                sizeof(client_stats_data[count].cli_InterferenceSources) - 1);
+        if (decode_assocdev_stats_entry(assoc_data, &client_stats_data[count]) != webconfig_error_none) {
+            free(client_stats_data);
+            free(*assoc_stats);
+            *assoc_stats = NULL;
+            return webconfig_error_decode;
         }
-
-        decode_param_integer(assoc_data, "cli_DataFramesSentAck", param);
-        client_stats_data[count].cli_DataFramesSentAck = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_DataFramesSentNoAck", param);
-        client_stats_data[count].cli_DataFramesSentNoAck = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_BytesSent", param);
-        client_stats_data[count].cli_BytesSent = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_BytesReceived", param);
-        client_stats_data[count].cli_BytesReceived = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_Retransmissions", param);
-        client_stats_data[count].cli_Retransmissions = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_RSSI", param);
-        client_stats_data[count].cli_RSSI = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_MinRSSI", param);
-        client_stats_data[count].cli_MinRSSI = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_MaxRSSI", param);
-        client_stats_data[count].cli_MaxRSSI = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_Disassociations", param);
-        client_stats_data[count].cli_Disassociations = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_AuthenticationFailures", param);
-        client_stats_data[count].cli_AuthenticationFailures = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_Associations", param);
-        client_stats_data[count].cli_Associations = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_PacketsSent", param);
-        client_stats_data[count].cli_PacketsSent = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_PacketsReceived", param);
-        client_stats_data[count].cli_PacketsReceived = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_ErrorsSent", param);
-        client_stats_data[count].cli_ErrorsSent = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_RetransCount", param);
-        client_stats_data[count].cli_RetransCount = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_FailedRetransCount", param);
-        client_stats_data[count].cli_FailedRetransCount = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_RetryCount", param);
-        client_stats_data[count].cli_RetryCount = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_MultipleRetryCount", param);
-        client_stats_data[count].cli_MultipleRetryCount = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_MaxDownlinkRate", param);
-        client_stats_data[count].cli_MaxDownlinkRate = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_MaxUplinkRate", param);
-        client_stats_data[count].cli_MaxUplinkRate = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_activeNumSpatialStreams", param);
-        client_stats_data[count].cli_activeNumSpatialStreams = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_TxFrames", param);
-        client_stats_data[count].cli_TxFrames = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_RxRetries", param);
-        client_stats_data[count].cli_RxRetries = param->valuedouble;
-
-        decode_param_integer(assoc_data, "cli_RxErrors", param);
-        client_stats_data[count].cli_RxErrors = param->valuedouble;
     }
     (*assoc_stats)->stat_pointer = client_stats_data;
     (*assoc_stats)->stat_array_size = size;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
+    return webconfig_error_none;
+}
+
+static webconfig_error_t decode_radiodiag_stats_entry(cJSON *diag_data, radio_data_t *out)
+{
+    const cJSON *param;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
+
+    decode_param_integer(diag_data, "primary_radio_channel", param);
+    out->primary_radio_channel = param->valuedouble;
+
+    decode_param_integer(diag_data, "RadioActivityFactor", param);
+    out->RadioActivityFactor = param->valuedouble;
+
+    decode_param_integer(diag_data, "CarrierSenseThreshold_Exceeded", param);
+    out->CarrierSenseThreshold_Exceeded = param->valuedouble;
+
+    decode_param_integer(diag_data, "NoiseFloor", param);
+    out->NoiseFloor = param->valuedouble;
+
+    decode_param_integer(diag_data, "channelUtil", param);
+    out->channelUtil = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_BytesSent", param);
+    out->radio_BytesSent = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_BytesReceived", param);
+    out->radio_BytesReceived = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_PacketsSent", param);
+    out->radio_PacketsSent = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_PacketsReceived", param);
+    out->radio_PacketsReceived = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_ErrorsSent", param);
+    out->radio_ErrorsSent = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_ErrorsReceived", param);
+    out->radio_ErrorsReceived = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_DiscardPacketsSent", param);
+    out->radio_DiscardPacketsSent = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_DiscardPacketsReceived", param);
+    out->radio_DiscardPacketsReceived = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_InvalidMACCount", param);
+    out->radio_InvalidMACCount = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_PacketsOtherReceived", param);
+    out->radio_PacketsOtherReceived = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_RetransmissionMetirc", param);
+    out->radio_RetransmissionMetirc = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_PLCPErrorCount", param);
+    out->radio_PLCPErrorCount = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_FCSErrorCount", param);
+    out->radio_FCSErrorCount = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_MaximumNoiseFloorOnChannel", param);
+    out->radio_MaximumNoiseFloorOnChannel = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_MinimumNoiseFloorOnChannel", param);
+    out->radio_MinimumNoiseFloorOnChannel = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_MedianNoiseFloorOnChannel", param);
+    out->radio_MedianNoiseFloorOnChannel = param->valuedouble;
+
+    decode_param_integer(diag_data, "radio_StatisticsStartTime", param);
+    out->radio_StatisticsStartTime = param->valuedouble;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
 
     return webconfig_error_none;
 }
@@ -6162,12 +6303,13 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
 {
     cJSON *diag_stats_arr;
     cJSON *diag_data;
-    const cJSON  *param;
+    const cJSON *param = NULL;
     int size = 0;
     radio_data_t *diagnostic_data = NULL;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
 
     if (json == NULL || diag_stats == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || diag_stats is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: cjson || diag_stats is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
@@ -6179,13 +6321,14 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
     }
     size = cJSON_GetArraySize(diag_stats_arr);
 
+    decode_param_integer(json, "RadioIndex", param);
+
     *diag_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*diag_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
-    decode_param_integer(json, "RadioIndex", param);
     (*diag_stats)->args.radio_index = param->valuedouble;
 
     diagnostic_data = (radio_data_t*) malloc(sizeof(radio_data_t) * size);
@@ -6206,74 +6349,16 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
             return webconfig_error_decode;
         }
 
-        decode_param_integer(diag_data, "primary_radio_channel", param);
-        diagnostic_data[count].primary_radio_channel = param->valuedouble;
-
-        decode_param_integer(diag_data, "RadioActivityFactor", param);
-        diagnostic_data[count].RadioActivityFactor = param->valuedouble;
-
-        decode_param_integer(diag_data, "CarrierSenseThreshold_Exceeded", param);
-        diagnostic_data[count].CarrierSenseThreshold_Exceeded = param->valuedouble;
-
-        decode_param_integer(diag_data, "NoiseFloor", param);
-        diagnostic_data[count].NoiseFloor = param->valuedouble;
-
-        decode_param_integer(diag_data, "channelUtil", param);
-        diagnostic_data[count].channelUtil = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_BytesSent", param);
-        diagnostic_data[count].radio_BytesSent = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_BytesReceived", param);
-        diagnostic_data[count].radio_BytesReceived = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_PacketsSent", param);
-        diagnostic_data[count].radio_PacketsSent = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_PacketsReceived", param);
-        diagnostic_data[count].radio_PacketsReceived = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_ErrorsSent", param);
-        diagnostic_data[count].radio_ErrorsSent = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_ErrorsReceived", param);
-        diagnostic_data[count].radio_ErrorsReceived = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_DiscardPacketsSent", param);
-        diagnostic_data[count].radio_DiscardPacketsSent = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_DiscardPacketsReceived", param);
-        diagnostic_data[count].radio_DiscardPacketsReceived = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_InvalidMACCount", param);
-        diagnostic_data[count].radio_InvalidMACCount = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_PacketsOtherReceived", param);
-        diagnostic_data[count].radio_PacketsOtherReceived = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_RetransmissionMetirc", param);
-        diagnostic_data[count].radio_RetransmissionMetirc = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_PLCPErrorCount", param);
-        diagnostic_data[count].radio_PLCPErrorCount = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_FCSErrorCount", param);
-        diagnostic_data[count].radio_FCSErrorCount = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_MaximumNoiseFloorOnChannel", param);
-        diagnostic_data[count].radio_MaximumNoiseFloorOnChannel = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_MinimumNoiseFloorOnChannel", param);
-        diagnostic_data[count].radio_MinimumNoiseFloorOnChannel = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_MedianNoiseFloorOnChannel", param);
-        diagnostic_data[count].radio_MedianNoiseFloorOnChannel = param->valuedouble;
-
-        decode_param_integer(diag_data, "radio_StatisticsStartTime", param);
-        diagnostic_data[count].radio_StatisticsStartTime = param->valuedouble;
+        if (decode_radiodiag_stats_entry(diag_data, &diagnostic_data[count]) != webconfig_error_none) {
+            free(diagnostic_data);
+            free(*diag_stats);
+            *diag_stats = NULL;
+            return webconfig_error_decode;
+        }
     }
     (*diag_stats)->stat_pointer = diagnostic_data;
     (*diag_stats)->stat_array_size = size;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
 
     return webconfig_error_none;
 }
@@ -6285,6 +6370,7 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
     const cJSON  *param;
     int size = 0;
     radio_data_t *temperature_data = NULL;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi entered\n", __func__, __LINE__);
 
     if (json == NULL || temp_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson || temp_stats is NULL\n", __func__, __LINE__);
@@ -6299,13 +6385,14 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
     }
     size = cJSON_GetArraySize(temp_stats_arr);
 
+    decode_param_integer(json, "RadioIndex", param);
+
     *temp_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*temp_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
-    decode_param_integer(json, "RadioIndex", param);
     (*temp_stats)->args.radio_index = param->valuedouble;
 
     temperature_data = (radio_data_t*) malloc(sizeof(radio_data_t) * size);
@@ -6326,12 +6413,19 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
             return webconfig_error_decode;
         }
 
-        decode_param_integer(temp_data, "Radio_Temperature", param);
+        param = cJSON_GetObjectItem(temp_data, "Radio_Temperature");
+        if ((param == NULL) || (cJSON_IsNumber(param) == false)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation failed for key: Radio_Temperature\n", __func__, __LINE__);
+            free(temperature_data);
+            free(*temp_stats);
+            *temp_stats = NULL;
+            return webconfig_error_decode;
+        }
         temperature_data[count].radio_Temperature = param->valuedouble;
     }
     (*temp_stats)->stat_pointer = temperature_data;
     (*temp_stats)->stat_array_size = size;
-
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: bharathi exiting\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
