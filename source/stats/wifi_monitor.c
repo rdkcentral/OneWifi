@@ -1026,12 +1026,13 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
 {
     unsigned int pos = 0;
     sta_data_t *sta_data = NULL;
+    unsigned int sta_count = 0;
+    unsigned int buf_size = CLIENTDIAG_JSON_BUFFER_SIZE * (sizeof(char)) * BSS_MAX_NUM_STATIONS;
     if (harvester_buf[vap_index] == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s %d Harvester Buffer is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    pos = snprintf(harvester_buf[vap_index],
-                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS,
+    pos = snprintf(harvester_buf[vap_index], buf_size,
                 "{"
                 "\"Version\":\"1.0\","
                 "\"AssociatedClientsDiagnostics\":["
@@ -1042,8 +1043,18 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
     pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_data = hash_map_get_first(g_monitor_module.bssid_data[vap_index].sta_map);
     while (sta_data != NULL) {
-        pos += snprintf(&harvester_buf[vap_index][pos],
-                (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos, "{"
+            /* Bounds check: stop serializing if we are approaching buffer limit.
+             * Reserve 64 bytes for the closing JSON brackets and null terminator.
+             */
+            if (pos >= (buf_size - 64)) {
+                wifi_util_error_print(WIFI_MON,
+                    "%s %d Buffer overflow prevented for vap %d, pos=%u buf_size=%u sta_count=%u\n",
+                    __func__, __LINE__, vap_index, pos, buf_size, sta_count);
+                break;
+            }
+            sta_count++;
+            pos += snprintf(&harvester_buf[vap_index][pos],
+                        buf_size - pos, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDEnable\":\"%d\","

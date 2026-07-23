@@ -248,6 +248,42 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             free(dev_array);
             dev_array = NULL;
         }
+
+        /* wifi_getApAssociatedDeviceDiagnosticResult3 failed - still perform stale entry cleanup on sta_map to prevent
+         * unbounded growth, entries added by process_connect() would never be cleaned up, eventually
+         * causing buffer overflow in harvester_get_associated_device_info().
+         */
+        pthread_mutex_lock(&mon_data->data_lock);
+        sta_map = mon_data->bssid_data[vap_array_index].sta_map;
+        if (sta_map != NULL) {
+            struct timespec tv_now_err;
+            clock_gettime(CLOCK_MONOTONIC, &tv_now_err);
+            sta = hash_map_get_first(sta_map);
+            while (sta != NULL) {
+                tmp_sta = NULL;
+                if (sta->dev_stats.cli_Active == false &&
+                    timespecisset(&(sta->last_disconnected_time))) {
+                    unsigned int disc_time = tv_now_err.tv_sec - sta->last_disconnected_time.tv_sec;
+                    if (disc_time > mon_data->bssid_data[vap_array_index].ap_params.rapid_reconnect_threshold) {
+                        tmp_sta = sta;
+                    }
+                }
+                sta = hash_map_get_next(sta_map, sta);
+                if (tmp_sta != NULL) {
+                    sta_key_t rm_key;
+                    to_sta_key(tmp_sta->sta_mac, rm_key);
+                    wifi_util_info_print(WIFI_MON,
+                        "%s:%d wifi_getApAssociatedDeviceDiagnosticResult3 failed: removing stale device %s from map of ap:%d\n",
+                        __func__, __LINE__, rm_key, args->vap_index);
+                    tmp_sta = hash_map_remove(sta_map, rm_key);
+                    if (tmp_sta != NULL) {
+                        free(tmp_sta);
+                        tmp_sta = NULL;
+                    }
+                }
+            }
+        }
+        pthread_mutex_unlock(&mon_data->data_lock);
         return RETURN_ERR;
     }
 
