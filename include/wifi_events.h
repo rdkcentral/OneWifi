@@ -184,7 +184,7 @@ typedef enum {
     wifi_event_type_multiap_rfc,
     wifi_event_type_xfi_tel_enable_rfc,
     wifi_event_type_sm_app_enable,
-    wifi_event_type_wei_rfc,
+    wifi_event_type_wei_rfc_mask,
     wifi_event_type_send_btm_req,
     wifi_event_command_max,
 

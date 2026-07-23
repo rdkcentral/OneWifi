@@ -760,6 +760,8 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
 
 int link_quality_event(wifi_app_t *app, wifi_event_t *event)
 {
+    wifi_rfc_dml_parameters_t *rfc_param = NULL;
+    rfc_param = get_ctrl_rfc_parameters();
     switch (event->event_type) {
         case wifi_event_type_webconfig:
             exec_event_webconfig_event(app, event);
@@ -770,8 +772,9 @@ int link_quality_event(wifi_app_t *app, wifi_event_t *event)
             break;
 
         case wifi_event_type_hal_ind:
-            exec_event_hal_ind(app, event->sub_type, event->u.core_data.msg);
-            break;
+            if ((rfc_param->wei_rfc_mask & WEI_RFC_SC) || (rfc_param->wei_rfc_mask & WEI_RFC_GC))
+                exec_event_hal_ind(app, event->sub_type, event->u.core_data.msg);
+	    break;
 
         default:
             break;
