@@ -299,21 +299,6 @@ static int init_interworking_config_default(int vapIndex,
     return 0;
 }
 
-int wifidb_get_default_mld_link_id(int band)
-{
-#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
-    switch (band) {
-    case WIFI_FREQUENCY_2_4_BAND: return 2;
-    case WIFI_FREQUENCY_5_BAND:   return 1;
-    case WIFI_FREQUENCY_6_BAND:   return 0;
-    default:                      return UNDEFINED_MLD_LINK_ID;
-    }
-#else
-    (void)band;
-    return UNDEFINED_MLD_LINK_ID;
-#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
-}
-
 static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config)
 {
@@ -385,13 +370,15 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.enabled = false;
         cfg.u.sta_info.scan_params.period = 10;
         memset(ssid, 0, sizeof(ssid));
-        if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
+        int ret_ssid = wifi_hal_get_default_ssid(ssid, vap_index);
+        if (ret_ssid == 0) {
             strcpy(cfg.u.sta_info.ssid, ssid);
         } else {
             strcpy(cfg.u.sta_info.ssid, vap_name);
         }
         memset(password, 0, sizeof(password));
-        if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
+        int ret_key = wifi_hal_get_default_keypassphrase(password, vap_index);
+        if (ret_key == 0) {
             strcpy(cfg.u.sta_info.security.u.key.key, password);
         } else {
             strcpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY);
@@ -400,6 +387,23 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(cfg.u.sta_info.security.u.key.key), vap_name);
             strncpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.u.key.key));
         }
+
+#ifdef UWM_EXT_WPS_SUPPORT
+        // Set valid_bh_credentials: 1 if SSID is not vap_name and key is not INVALID_KEY
+        int cmp_ssid_ne_vap = (strcmp(cfg.u.sta_info.ssid, vap_name) != 0);
+        int cmp_key_ne_invalid = (strcmp((char *)cfg.u.sta_info.security.u.key.key, INVALID_KEY) != 0);
+        if (cmp_ssid_ne_vap && cmp_key_ne_invalid) {
+            cfg.u.sta_info.valid_bh_credentials = TRUE;
+            wifi_util_info_print(WIFI_DB, "%s:%d: Set valid_bh_credentials=1 for vap '%s' (SSID=%s)\n",
+                __func__, __LINE__, vap_name, cfg.u.sta_info.ssid);
+        } else {
+            cfg.u.sta_info.valid_bh_credentials = FALSE;
+            wifi_util_dbg_print(WIFI_DB, "%s:%d: Set valid_bh_credentials=0 for vap '%s' (SSID=%s, key=%s)\n",
+                __func__, __LINE__, vap_name, cfg.u.sta_info.ssid,
+                strcmp((char *)cfg.u.sta_info.security.u.key.key, INVALID_KEY) == 0 ? "INVALID" : "valid");
+        }
+#endif
+
         cfg.u.sta_info.scan_params.channel.band = band;
         cfg.u.sta_info.scan_params.channel.channel = 0;
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
@@ -567,10 +571,11 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.mld_info.common_info.mld_id = 0;
         }
 #else
+        /*TODO: Are values correct?  */
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg.u.bss_info.mld_info.common_info.mld_id = 255;
-#endif /* _PLATFORM_BANANAPI_R4_ */
-        cfg.u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
+#endif
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
@@ -1006,7 +1011,6 @@ int get_all_param_from_psm_and_set_into_db(void)
    return 0;
 }
 #endif
-
 void wifidb_init(wifi_db_t *db)
 {
     db->desc.init_fn = init_wifidb;

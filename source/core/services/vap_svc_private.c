@@ -21,9 +21,11 @@
 #include <stdbool.h>
 #include "stdlib.h"
 #include <sys/time.h>
+#include <string.h>
 #include "vap_svc.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
+#include "wifi_hal.h"
 
 bool vap_svc_is_private(unsigned int vap_index)
 {
@@ -92,10 +94,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map = NULL;
     int ret;
-#if defined(_PLATFORM_BANANAPI_R4_)
-    bool dml_cache_update_needed = false;
-    webconfig_subdoc_data_t *dml_cache_update_subdoc = NULL;
-#endif
+    wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
 
     p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (p_tgt_vap_map == NULL) {
@@ -117,6 +116,38 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             free(p_tgt_vap_map);
             return -1;
         }
+
+#if defined(_PLATFORM_BANANAPI_R4_) && defined(EM_WPS_FH_HACK)
+        {
+            int band;
+            wifi_vap_info_t *vap = &p_tgt_vap_map->vap_array[0];
+            unsigned int vap_index = map->vap_array[i].vap_index;
+
+            if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) == RETURN_OK) {
+                /*
+                 * Private SSID on 2.4/5 GHz with WPS: disable MLO/MLD and use WPA2-Personal + PSK.
+                 * MLD left enabled while forcing WPA2 breaks hostapd / EasyMesh topology; WPS also
+                 * expects classic WPA2-PSK on these bands.
+                 */
+                if (isVapPrivate(vap_index) && map->vap_array[i].u.bss_info.wps.enable &&
+                    band != WIFI_FREQUENCY_6_BAND) {
+                    vap->u.bss_info.mld_info.common_info.mld_enable = 0;
+                    vap->u.bss_info.mld_info.common_info.mld_id = 255;
+                    vap->u.bss_info.mld_info.common_info.mld_link_id = 255;
+                    memset(vap->u.bss_info.mld_info.common_info.mld_addr, 0,
+                        sizeof(vap->u.bss_info.mld_info.common_info.mld_addr));
+                    vap->u.bss_info.mld_info.common_info.mld_apply = 1;
+
+                    vap->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                    vap->u.bss_info.security.encr = wifi_encryption_aes;
+                    vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                    vap->u.bss_info.security.wpa3_transition_disable = false;
+                    vap->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
+                }
+            }
+        }
+#endif
+
 #if defined(_WNXL11BWL_PRODUCT_REQ_)
         if (rdk_vap_info[i].exists == false && isVapPrivate(map->vap_array[i].vap_index)) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE \n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
@@ -137,6 +168,42 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
 #endif /* !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
 
+        // If WPS is enabled on private VAP, copy mesh backhaul credentials into multi_ap_backhaul structure
+        if (map->vap_array[i].u.bss_info.wps.enable && isVapPrivate(map->vap_array[i].vap_index)) {
+            wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = {0};
+            unsigned int num_vaps = get_list_of_mesh_backhaul(wifi_prop, MAX_NUM_RADIOS, vap_names);
+            wifi_vap_info_t *backhaul_vap_info = NULL;
+
+            if (num_vaps > 0) {
+                int backhaul_vap_index = convert_vap_name_to_index(wifi_prop, vap_names[0]);
+                if (backhaul_vap_index >= 0) {
+                    backhaul_vap_info = get_wifidb_vap_parameters(backhaul_vap_index);
+                }
+            }
+            if (backhaul_vap_info != NULL &&
+                strlen((char *)backhaul_vap_info->u.bss_info.ssid) > 0 &&
+                strlen((char *)backhaul_vap_info->u.bss_info.security.u.key.key) > 0 &&
+                strcmp((char *)backhaul_vap_info->u.bss_info.security.u.key.key, INVALID_KEY) != 0) {
+                memset(p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_ssid, 0,
+                       sizeof(p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_ssid));
+                strncpy((char *)p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_ssid,
+                       (char *)backhaul_vap_info->u.bss_info.ssid,
+                       sizeof(p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_ssid) - 1);
+
+                memset(p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_network_key, 0,
+                       sizeof(p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_network_key));
+                strncpy((char *)p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_network_key,
+                       (char *)backhaul_vap_info->u.bss_info.security.u.key.key,
+                       sizeof(p_tgt_vap_map->vap_array[0].u.bss_info.multi_ap_backhaul_network_key) - 1);
+
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Copied mesh backhaul credentials to multi_ap_backhaul for private VAP %d\n",
+                                   __FUNCTION__, __LINE__, map->vap_array[i].vap_index);
+            } else {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d Mesh backhaul credentials not found or invalid, WPS enabled without backhaul for VAP %d\n",
+                                   __FUNCTION__, __LINE__, map->vap_array[i].vap_index);
+            }
+        }
+
         ret = wifi_hal_createVAP(radio_index, p_tgt_vap_map);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
@@ -146,15 +213,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         }
 
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
-#if defined(_PLATFORM_BANANAPI_R4_)
-        if (memcmp(&map->vap_array[i], &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t)) !=
-            0) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d: VAP config changed for vap_index %d\n",
-                __func__, __LINE__, p_tgt_vap_map->vap_array[0].vap_index);
-            dml_cache_update_needed = true;
-        }
-#endif
-
+        
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         get_wifidb_obj()->desc.print_fn("%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
@@ -169,7 +228,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             if (lnf_vap_info == NULL) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d LnF VAP info not found for vap_index=%d\n",
                     __FUNCTION__, __LINE__, map->vap_array[i].vap_index);
-                free(p_tgt_vap_map);
                 return -1;
             }
             if (lnf_vap_info->u.bss_info.mdu_enabled) {
@@ -182,9 +240,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                     sizeof(lnf_vap_info->u.bss_info.security.repurposed_radius));
             }
         }
-#if defined(_PLATFORM_BANANAPI_R4_)
-        update_global_cache(p_tgt_vap_map, &rdk_vap_info[i]);
-#endif
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
         get_wifidb_obj()->desc.update_wifi_vap_info_fn(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
@@ -195,26 +250,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                 &map->vap_array[i].u.bss_info.security);
 
     }
-#if defined(_PLATFORM_BANANAPI_R4_)
-    if (dml_cache_update_needed) {
-        dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
-            sizeof(webconfig_subdoc_data_t));
-        if (dml_cache_update_subdoc == NULL) {
-            wifi_util_error_print(WIFI_CTRL,
-                "%s:%d: malloc failed to allocate webconfig_subdoc_data_t, size %zu\n", __func__,
-                __LINE__, sizeof(webconfig_subdoc_data_t));
-            free(p_tgt_vap_map);
-            return -1;
-        }
-        webconfig_init_subdoc_data(dml_cache_update_subdoc);
-        if (update_dml_cache((wifi_ctrl_t *)svc->ctrl, dml_cache_update_subdoc) == RETURN_ERR) {
-            free(dml_cache_update_subdoc);
-            free(p_tgt_vap_map);
-            return -1;
-        }
-    }
-    free(dml_cache_update_subdoc);
-#endif
     free(p_tgt_vap_map);
 
     return 0;
