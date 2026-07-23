@@ -404,11 +404,11 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
     } else if (!strcmp(value, "WPA2-Personal")) {
         vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
     } else if (!strcmp(value, "WPA-WPA2-Personal")) {
         vap_info->u.bss_info.security.mode = wifi_security_mode_wpa_wpa2_personal;
-        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+        vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
     } else if (!strcmp(value, "WPA3-Personal")) {
         vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
