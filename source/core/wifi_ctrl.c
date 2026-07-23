@@ -863,7 +863,7 @@ int start_wifi_services(void)
         }
         captive_portal_check();
 #if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && \
-        (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
+        (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_))
         /* Function to check for default SSID and Passphrase for Private VAPS
         if they are default and last-reboot reason is SW get the previous config from Webconfig */
         validate_and_sync_private_vap_credentials();
@@ -3353,6 +3353,47 @@ typedef struct {
 } mld_group_entry_t;
 
 /**
+ * get_radio_private_mld_link_id - Return the authoritative MLD link id for a radio.
+ *
+ * MLD_Link_ID is a per-radio configuration whose authoritative value lives on the
+ * private VAP; every other VAP on the radio inherits it. Resolve the private VAP's
+ * mld_link_id for the given radio, honoring the webconfig target data when present and
+ * falling back to the mgr cache otherwise.
+ *
+ * @return The private VAP's mld_link_id, or UNDEFINED_MLD_LINK_ID when no private VAP exists.
+ */
+static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_map,
+    webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int vap_names_size)
+{
+    unsigned int vap_idx, name_idx;
+
+    for (vap_idx = 0; vap_idx < mgr_vap_map->num_vaps; vap_idx++) {
+        wifi_vap_info_t *mgr_vap = &mgr_vap_map->vap_array[vap_idx];
+        wifi_vap_info_t *target_vap = mgr_vap;
+
+        if (!isVapPrivate(mgr_vap->vap_index)) {
+            continue;
+        }
+
+        if (data != NULL) {
+            for (name_idx = 0; name_idx < vap_names_size; name_idx++) {
+                if (strcmp(vap_names[name_idx], mgr_vap->vap_name) == 0) {
+                    wifi_vap_info_t *wc_vap = webconfig_find_vap_by_name(data, mgr_vap->vap_name);
+                    if (wc_vap != NULL) {
+                        target_vap = wc_vap;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return target_vap->u.bss_info.mld_info.common_info.mld_link_id;
+    }
+
+    return UNDEFINED_MLD_LINK_ID;
+}
+
+/**
  * update_mld_groups - Common MLO group validation and propagation.
  *
  * Iterates all MLD units (0..MLD_UNIT_COUNT-1). For each unit, walks all
@@ -3394,9 +3435,14 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
         /* --- STEP 1: Seed MLD Address and Collect Candidates for this unit --- */
         for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
             wifi_vap_info_map_t *mgr_vap_map = get_wifidb_vap_map(r_idx);
+            unsigned int radio_mld_link_id = UNDEFINED_MLD_LINK_ID;
+
             if (mgr_vap_map == NULL) {
                 continue;
             }
+
+            radio_mld_link_id = get_radio_private_mld_link_id(mgr_vap_map, data, vap_names,
+                vap_names_size);
 
             for (k = 0; k < mgr_vap_map->num_vaps; k++) {
                 wifi_vap_info_t *mgr_vap = &mgr_vap_map->vap_array[k];
@@ -3427,6 +3473,17 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 }
 
                 mld_conf = &target_vap->u.bss_info.mld_info.common_info;
+
+                /* MLD link id is a per-radio setting; take the authoritative value from
+                 * the private VAP and apply it to every VAP on this radio. */
+                if (mld_conf->mld_link_id != radio_mld_link_id) {
+                    wifi_util_dbg_print(log_type,
+                        "%s:%d: vap_index=%d mld_link_id=%u overridden by private VAP value %u\n",
+                        __func__, __LINE__, mgr_vap->vap_index, mld_conf->mld_link_id, radio_mld_link_id);
+
+                    radio_bitmap |= (1u << mgr_vap->radio_index);
+                    mld_conf->mld_link_id = radio_mld_link_id;
+                }
 
                 /* Seed mld_addr and disable MLD on first pass only.
                  * Subsequent group iterations must not overwrite values
@@ -3816,3 +3873,76 @@ static int switch_dfs_channel(void *arg)
     free(arg);
     return TIMER_TASK_COMPLETE;
 }
+
+int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info)
+{
+    uint8_t j = 0;
+    rdk_wifi_vap_info_t *rdk_vaps;
+    wifi_vap_info_map_t *vap_map = NULL;
+    uint8_t i = 0, vap_index = 0;
+    bool found = false;
+
+    for (i = 0; i < tgt_vap_map->num_vaps; i++) {
+        vap_index = tgt_vap_map->vap_array[i].vap_index;
+        found = false;
+        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
+        if (vap_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d global vap_map null radio_index:%d\n", __func__,
+                __LINE__, tgt_vap_map->vap_array[i].radio_index);
+            return RETURN_ERR;
+        }
+        rdk_vaps = get_wifidb_rdk_vaps(tgt_vap_map->vap_array[i].radio_index);
+        if (rdk_vaps == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vaps for radio index: %d\n",
+                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index);
+            return RETURN_ERR;
+        }
+        for (j = 0; j < vap_map->num_vaps; j++) {
+            if (vap_map->vap_array[j].vap_index == vap_index) {
+                found = true;
+                memcpy((unsigned char *)&vap_map->vap_array[j],
+                    (unsigned char *)&tgt_vap_map->vap_array[i], sizeof(wifi_vap_info_t));
+#ifdef _PLATFORM_BANANAPI_R4_
+                // Selective sync of rdk_vap_info fields only.
+                // DO NOT memcpy the entire structure because some apply paths use partial
+                // decoded structs and full-copy can skew the internal state for
+                // i.e. vap_names/index, hashmaps
+                rdk_vaps[j].exists = rdk_vap_info[i].exists;
+                rdk_vaps[j].force_apply = rdk_vap_info[i].force_apply;
+#else
+                memcpy(&rdk_vaps[j], &rdk_vap_info[i], sizeof(rdk_wifi_vap_info_t));
+#endif
+                break;
+            }
+        }
+
+        if (found == false) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Could not find target vap in manager cache for radio_index:%d "
+                "vap_index:%d\n",
+                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index, vap_index);
+        }
+    }
+
+    return RETURN_OK;
+}
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc)
+{
+    int ret = RETURN_OK;
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
+    if (webconfig_encode(&ctrl->webconfig, dml_cache_update_subdoc, webconfig_subdoc_type_dml) ==
+        webconfig_error_none) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
+    } else {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d webconfig_encode failed ! DML cache may store incorrect values !\n",
+            __FUNCTION__, __LINE__);
+        ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_all_cfg_rsp_pending;
+        ret = RETURN_ERR;
+    }
+    webconfig_data_free(dml_cache_update_subdoc);
+    return ret;
+}
+#endif

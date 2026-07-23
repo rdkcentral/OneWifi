@@ -464,6 +464,19 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_ignite].translate_to_subdoc = translate_to_ignite_subdoc;
     config->subdocs[webconfig_subdoc_type_ignite].translate_from_subdoc = translate_from_ignite_subdoc;
 
+    //webconfig_subdoc_type_nasta_query
+    config->subdocs[webconfig_subdoc_type_nasta_query].type = webconfig_subdoc_type_nasta_query;
+    strcpy(config->subdocs[webconfig_subdoc_type_nasta_query].name, "UnassocStaQuery");
+    config->subdocs[webconfig_subdoc_type_nasta_query].major = 1;
+    config->subdocs[webconfig_subdoc_type_nasta_query].minor = 0;
+    config->subdocs[webconfig_subdoc_type_nasta_query].init_subdoc = init_nasta_query_subdoc;
+    config->subdocs[webconfig_subdoc_type_nasta_query].init_subdoc(&config->subdocs[webconfig_subdoc_type_nasta_query]);
+    config->subdocs[webconfig_subdoc_type_nasta_query].access_check_subdoc = access_check_nasta_query_subdoc;
+    config->subdocs[webconfig_subdoc_type_nasta_query].encode_subdoc = encode_nasta_query_subdoc;
+    config->subdocs[webconfig_subdoc_type_nasta_query].decode_subdoc = decode_nasta_query_subdoc;
+    config->subdocs[webconfig_subdoc_type_nasta_query].translate_to_subdoc = translate_to_nasta_query_subdoc;
+    config->subdocs[webconfig_subdoc_type_nasta_query].translate_from_subdoc = translate_from_nasta_query_subdoc;
+
 #ifdef ONEWIFI_HARVESTER_APP_SUPPORT
     config->subdocs[webconfig_subdoc_type_harvester].type = webconfig_subdoc_type_harvester;
     strcpy(config->subdocs[webconfig_subdoc_type_harvester].name, "instant measurement config");

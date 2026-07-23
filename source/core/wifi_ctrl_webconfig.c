@@ -1602,6 +1602,113 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     return RETURN_OK;
 }
 
+int webconfig_nasta_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    nasta_query_t *query;
+    nasta_response_t response;
+    unsigned int oc_idx, ch_idx, sta_idx;
+    int rc;
+    raw_data_t rdata;
+    webconfig_subdoc_data_t resp_data;
+    webconfig_t *config;
+
+    if (ctrl == NULL || data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    query = &data->nasta_query;
+    config = &ctrl->webconfig;
+    memset(&response, 0, sizeof(nasta_response_t));
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Processing NaSta query: vap=%u, %u opclass entries\n",
+        __func__, __LINE__, query->vap_index, query->num_opclass);
+
+    for (oc_idx = 0; oc_idx < query->num_opclass && oc_idx < MAX_NASTA_OPCLASS_ENTRIES; oc_idx++) {
+        nasta_opclass_entry_t *oc = &query->opclass_list[oc_idx];
+
+        for (ch_idx = 0; ch_idx < oc->channels_length && ch_idx < MAX_NASTA_CHANNELS; ch_idx++) {
+            nasta_channel_entry_t *ch = &oc->channels[ch_idx];
+
+            for (sta_idx = 0; sta_idx < ch->sta_list_length && sta_idx < MAX_NASTA_STA_PER_CHANNEL; sta_idx++) {
+                wifi_na_sta_req_params_t req_params;
+                wifi_na_sta_info_t sta_info;
+
+                if (response.num_sta >= MAX_NASTA_RESPONSE_STAS) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d: Response STA list full (%d)\n",
+                        __func__, __LINE__, MAX_NASTA_RESPONSE_STAS);
+                    goto publish_response;
+                }
+
+                memset(&req_params, 0, sizeof(req_params));
+                memset(&sta_info, 0, sizeof(sta_info));
+
+                memcpy(req_params.sta_mac, ch->sta_macs[sta_idx], sizeof(mac_address_t));
+                req_params.op_class = oc->opclass;
+                req_params.channel = ch->channel;
+
+                rc = wifi_getNASta(query->vap_index, &req_params, &sta_info);
+                if (rc != WIFI_HAL_SUCCESS) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d: wifi_getNASta failed for STA "
+                        "%02X:%02X:%02X:%02X:%02X:%02X on ch %u (rc=%d)\n",
+                        __func__, __LINE__,
+                        ch->sta_macs[sta_idx][0], ch->sta_macs[sta_idx][1],
+                        ch->sta_macs[sta_idx][2], ch->sta_macs[sta_idx][3],
+                        ch->sta_macs[sta_idx][4], ch->sta_macs[sta_idx][5],
+                        ch->channel, rc);
+                    continue;
+                }
+
+                memcpy(&response.sta_list[response.num_sta], &sta_info, sizeof(wifi_na_sta_info_t));
+                response.num_sta++;
+            }
+        }
+    }
+
+publish_response:
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: NaSta query complete, %u STAs in response\n",
+        __func__, __LINE__, response.num_sta);
+
+    /* Encode the response as JSON and publish via RBUS event */
+    memset(&resp_data, 0, sizeof(webconfig_subdoc_data_t));
+    resp_data.type = webconfig_subdoc_type_nasta_query;
+    resp_data.descriptor = webconfig_data_descriptor_decoded;
+    resp_data.u.decoded.nasta_response = &response;
+    memcpy(&resp_data.u.decoded.hal_cap, &data->hal_cap, sizeof(wifi_hal_capability_t));
+
+    webconfig_subdoc_t *nasta_doc = &config->subdocs[webconfig_subdoc_type_nasta_query];
+    if (nasta_doc->encode_subdoc(config, &resp_data) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to encode NaSta response\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (resp_data.u.encoded.raw != NULL) {
+        memset(&rdata, 0, sizeof(raw_data_t));
+        rdata.data_type = bus_data_type_string;
+        rdata.raw_data.bytes = (void *)resp_data.u.encoded.raw;
+        rdata.raw_data_len = (strlen(resp_data.u.encoded.raw) + 1);
+
+        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle,
+            WIFI_NASTA_RESPONSE_EVENT, &rdata);
+        if (rc != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Failed to publish NaSta response event (rc=%d)\n",
+                __func__, __LINE__, rc);
+        } else {
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d: Published NaSta response: %u STAs\n",
+                __func__, __LINE__, response.num_sta);
+        }
+
+        free(resp_data.u.encoded.raw);
+    }
+
+    return RETURN_OK;
+}
+
 int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_cac_apply\n");
@@ -1892,6 +1999,11 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
             }
 
             if ((subdoc_type == webconfig_subdoc_type_mesh) && (isVapMeshBackhaul(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) == FALSE) {
+                continue;
+            }
+
+            if ((subdoc_type != webconfig_subdoc_type_mac_filter) &&
+                isVapHotspot(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) {
                 continue;
             }
 
@@ -3184,6 +3296,12 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_hal_single_radio_apply(ctrl, &data->u.decoded, doc->type);
 
                 }
+            }
+        break;
+
+        case webconfig_subdoc_type_nasta_query:
+            if (!(data->descriptor & webconfig_data_descriptor_encoded)) {
+                ret = webconfig_nasta_apply(ctrl, &data->u.decoded);
             }
         break;
 

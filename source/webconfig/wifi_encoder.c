@@ -2432,6 +2432,10 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 #ifdef CONFIG_IEEE80211BE
         /* WiFi7 (EHT) capabilities */
         cJSON_AddBoolToObject(object, "WiFi7Supported", wifi_prop->radiocap[i].wifi7_supported);
+        cJSON_AddNumberToObject(object, "MLOOperationalCap",
+            wifi_prop->radiocap[i].mldOperationalCap);
+        cJSON_AddBoolToObject(object, "TIDLinkMapNegotiation",
+            wifi_prop->radiocap[i].TIDLinkMapNegotiation);
 
         cJSON_AddNumberToObject(object, "EHTMACCap", wifi_prop->radiocap[i].eht_mac_cap);
 
