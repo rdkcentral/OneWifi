@@ -458,19 +458,30 @@ int scheduler_update_timeout(struct scheduler *sched, int id, struct timespec ne
     if (sched == NULL) {
         return -1;
     }
+
+    pthread_mutex_lock(&sched->lock);
+
     for (i = 0; i < sched->num_tasks; i++) {
         tt = queue_peek(sched->timer_list, i);
         if (tt != NULL && tt->id == id) {
             timespecadd(&new_time, &(tt->interval), &(tt->timeout));
+            pthread_mutex_unlock(&sched->lock);
+            return 0;
         }
     }
+
     for (i = 0; i < sched->num_hp_tasks; i++) {
         tt = queue_peek(sched->high_priority_timer_list, i);
         if (tt != NULL && tt->id == id) {
             timespecadd(&new_time, &(tt->interval), &(tt->timeout));
+
+            pthread_mutex_unlock(&sched->lock);
+            return 0;
         }
     }
-    return 0;
+    pthread_mutex_unlock(&sched->lock);
+
+    return -1;
 }
 
 static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec t_now)
