@@ -736,6 +736,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             return RETURN_ERR;
         }
         strncpy(radius_info->s_key, value, sizeof(radius_info->s_key) - 1);
+        }
     }
     return RETURN_OK;
 }
