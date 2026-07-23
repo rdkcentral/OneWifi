@@ -545,7 +545,8 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
                 }
             }
 
-            if (strcmp(wifi_radio_oper_param->radarDetected, " ")) {
+            if (strcmp(wifi_radio_oper_param->radarDetected, " ") != 0 &&
+                strlen(wifi_radio_oper_param->radarDetected) != 0) {
                 dfs_nop_radio_index[index] = index;
                 wifi_util_info_print(WIFI_CTRL,
                     "%s:%d Triggering dfs_nop_start_timer for radio:%d radar:%s \n", __func__,
