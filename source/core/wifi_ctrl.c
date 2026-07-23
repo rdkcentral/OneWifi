@@ -211,13 +211,14 @@ int reboot_device(wifi_ctrl_t *ctrl)
         return RETURN_ERR;
     }
 
-    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
+/*    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
         "Device.X_CISCO_COM_DeviceControl.RebootDevice", "Device");
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
             __LINE__, rc);
         return RETURN_ERR;
-    }
+    }*/
+    system("(sleep 9;dmcli eRT setv Device.X_CISCO_COM_DeviceControl.RebootDevice string Device)&");
 
     return RETURN_OK;
 }
