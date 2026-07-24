@@ -158,6 +158,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/em/wifi_em.c $(top_srcdir)/source/a
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/em/
 endif
 
+
 if ONEWIFI_STA_MGR_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/sta_mgr/wifi_sta_mgr.c
 endif
