@@ -2181,13 +2181,6 @@ static int reboot_device_callback(void *arg)
 }
 #endif
 
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN) && !defined(DISABLE_ECO_REBOOT)
-static int reboot_device_callback(void *arg)
-{
-     return reboot_device((wifi_ctrl_t*)arg);
-}
-#endif
-
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
 #define ECOMODE_COMPLETE_MARKER_FILE "/tmp/ecomode_operation_done"
 #define MAX_RETRY_VALUE 15
