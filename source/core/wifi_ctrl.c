@@ -3349,7 +3349,7 @@ static wifi_vap_info_t *webconfig_find_vap_by_name(webconfig_subdoc_decoded_data
 typedef struct {
     wifi_mld_common_info_t *mld_conf;
     wifi_vap_info_t        *vap_info;
-    bool                    is_compatible;
+    bool                   is_compatible;
 } mld_group_entry_t;
 
 /**
@@ -3411,7 +3411,7 @@ static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_m
  * @param vap_names      Array of VAP names to filter (ignored if data == NULL)
  * @param vap_names_size Number of entries in vap_names (ignored if data == NULL)
  * @param log_type       Log module (WIFI_MGR, WIFI_DB, etc.)
- * @return Bitmask of radio indices where mld_enable was changed
+ * @return Bitmask of radio indices where mld_enable or link_id was changed
  */
 unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
     char **vap_names, unsigned int vap_names_size, wifi_dbg_type_t log_type)
@@ -3421,6 +3421,8 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
     mac_addr_str_t mac_str = { 0 };
     unsigned int radio_bitmap = 0;
     unsigned int i;
+    /* MLD_enable cached array representing original state of mld_enable VAPs.*/
+    bool original_mld_enable[MAX_VAP_INDEX] = { 0 };
 
     for (i = 0; i < MLD_UNIT_COUNT; i++) {
         unsigned int total_candidates = 0;
@@ -3448,6 +3450,7 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 wifi_vap_info_t *mgr_vap = &mgr_vap_map->vap_array[k];
                 wifi_vap_info_t *target_vap = NULL;
                 wifi_mld_common_info_t *mld_conf = NULL;
+                bool was_enabled = false;
 
                 if (isVapSTAMesh(mgr_vap->vap_index)) {
                     continue;
@@ -3487,22 +3490,30 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
 
                 /* Seed mld_addr and disable MLD on first pass only.
                  * Subsequent group iterations must not overwrite values
-                 * already propagated by an earlier group. */
+                 * already propagated by an earlier group.*/
                 if (i == 0) {
+                    original_mld_enable[mgr_vap->vap_index] = mgr_vap->u.bss_info.mld_info.common_info.mld_enable;
                     memcpy(mld_conf->mld_addr, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
-                    if (mld_conf->mld_enable) {
-                        radio_bitmap |= (1u << mgr_vap->radio_index);
-                    }
                     mld_conf->mld_enable = false;
                 }
-
+                /* Use captured baseline to avoid re-reading mutated manager state */
+                was_enabled = original_mld_enable[mgr_vap->vap_index];
                 /* Skip disabled VAPs */
                 if (target_vap->u.bss_info.enabled == false) {
+                    if (was_enabled) {
+                        wifi_util_info_print(log_type, "%s:%d: target_vap->u.bss_info.enabled false\n",
+                        __func__, __LINE__);
+                    }
                     continue;
                 }
 
                 /* Validate MLD configuration bounds */
                 if (mld_conf->mld_id >= MLD_UNIT_COUNT || mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
+                    if (was_enabled) {
+                        wifi_util_info_print(log_type, "%s:%d: mld_id=%u mld_link_id=%u\n",
+                        __func__, __LINE__, mld_conf->mld_id, mld_conf->mld_link_id);
+                        radio_bitmap |= (1u << mgr_vap->radio_index);
+                    }
                     continue;
                 }
 
@@ -3517,6 +3528,9 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                         "%s:%d: vap_index=%d excluded from MLO unit %d "
                         "(radio %u not enabled/EDPD/BE)\n",
                         __func__, __LINE__, mgr_vap->vap_index, i, mgr_vap->radio_index);
+                    if (was_enabled) {
+                        radio_bitmap |= (1u << mgr_vap->radio_index);
+                    }
                     continue;
                 }
 
@@ -3563,6 +3577,12 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                     "%s:%d: MLO group %d disabled (compatible_count=%u, main_link=%s)\n",
                     __func__, __LINE__, i, compatible_count,
                     main_link_vap ? "Found" : "Missing");
+                for (k = 0; k < total_candidates; k++) {
+                    mld_group_entry_t *entry = &entries[k];
+                    if (original_mld_enable[entry->vap_info->vap_index] == true) {
+                        radio_bitmap |= (1u << entry->vap_info->radio_index);
+                    }
+                }
             }
             continue;
         }
@@ -3574,12 +3594,21 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 mld_group_entry_t *entry = &entries[j];
 
                 if (!entry->is_compatible) {
+                    if (original_mld_enable[entry->vap_info->vap_index] == true) {
+                        wifi_util_info_print(log_type, "%s:%d: not compatible, but was true in mgr cache\n",
+                        __func__, __LINE__);
+                        radio_bitmap |= (1u << entry->vap_info->radio_index);
+                    }
                     continue;
                 }
 
                 entry->mld_conf->mld_enable = true;
                 memcpy(entry->mld_conf->mld_addr, mlo_mac, sizeof(mac_address_t));
-                radio_bitmap |= (1u << entry->vap_info->radio_index);
+                if (original_mld_enable[entry->vap_info->vap_index] == false) {
+                        wifi_util_info_print(log_type, "%s:%d: compatible, was false in mgr cache\n",
+                        __func__, __LINE__);
+                    radio_bitmap |= (1u << entry->vap_info->radio_index);
+                }
 
                 wifi_util_info_print(log_type,
                     "%s:%d: MLO Enabled! mld_addr=%s for vap_index=%d (link_id=%d, mld_id=%d)\n",
