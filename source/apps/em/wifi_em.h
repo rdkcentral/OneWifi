@@ -28,6 +28,7 @@ extern "C" {
 
 #define WIFI_EM_CHANNEL_SCAN_REQUEST          "Device.WiFi.EM.ChannelScanRequest"
 #define WIFI_EM_CHANNEL_SCAN_REPORT           "Device.WiFi.EM.ChannelScanReport"
+#define WIFI_EM_BEACON_QUERY                  "Device.WiFi.EM.BeaconQuery"
 #define WIFI_EM_BEACON_REPORT                 "Device.WiFi.EM.BeaconReport"
 #define WIFI_EM_STA_LINK_METRICS_REPORT       "Device.WiFi.EM.STALinkMetricsReport"
 #define WIFI_EM_ASSOCIATION_STATUS            "Device.WiFi.EM.AssociationStatus"
@@ -75,6 +76,8 @@ typedef enum {
 typedef struct {
     em_config_t           em_config;
     int sched_handler_id;
+    hash_map_t *beacon_map;
+    ap_metrics_policy_t ap_metrics_policy;
 } em_data_t;
 
 typedef struct {

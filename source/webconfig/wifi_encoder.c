@@ -3039,7 +3039,6 @@ void print_hex_dump(unsigned int length, unsigned char *buffer)
 webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_data,
     cJSON **beacon_report_obj)
 {
-    char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
     if (sta_data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
@@ -3051,16 +3050,21 @@ webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_d
         return webconfig_error_encode;
     }
 
-    memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
-    if (sta_data->data_len != 0) {
-        // print_hex_dump(sta_data->data_len, sta_data->data);
-        hextostring(sta_data->data_len, sta_data->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
-        // printf("assoc_frame_string:%s\n", assoc_frame_string);
-    } else {
+    if (sta_data->data_len == 0 || sta_data->data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
+
+    size_t hex_buf_len = sta_data->data_len * 2 + 1;
+    char *assoc_frame_string = (char *)malloc(hex_buf_len);
+    if (assoc_frame_string == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to allocate hex buffer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    memset(assoc_frame_string, 0, hex_buf_len);
+    hextostring(sta_data->data_len, sta_data->data, hex_buf_len, assoc_frame_string);
     cJSON_AddStringToObject(*beacon_report_obj, "ReportData", assoc_frame_string);
+    free(assoc_frame_string);
     return webconfig_error_none;
 }
 #endif
