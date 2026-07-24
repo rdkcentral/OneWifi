@@ -1651,21 +1651,21 @@ typedef struct {
 } dev_stats_t;
 
 typedef struct {
-    mac_addr_t sta_mac;
-    mac_addr_t ap_mac;
+    mac_addr_str_t sta_mac;
+    mac_addr_str_t ap_mac;
     unsigned int vap_index;
     unsigned int radio_index;
     int channel_utilization;
     dev_stats_t dev;
     struct timespec total_connected_time;
     struct timespec total_disconnected_time;
-    // int event;
-    // unsigned int status_code;
-    // int dhcp_event;
-    // int dhcp_msg_type;
-    // char dhcp_hostname[256];
-    // char dhcp_vendor_class[256];
-    // char dhcp_param_list[512];
+    int event;
+    unsigned int status_code;
+    int dhcp_event;
+    int dhcp_msg_type;
+    char dhcp_hostname[256];
+    char dhcp_vendor_class[256];
+    char dhcp_param_list[512];
 } wei_data_t;
 
 #endif // EM_APP
