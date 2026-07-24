@@ -2799,22 +2799,29 @@ unsigned short csum(unsigned short *ptr,int nbytes)
     return(answer);
 }
 
-int frame_icmpv4_ping(char *buffer, char *dest_ip, char *source_ip)
+static int frame_icmpv4_ping(char *buffer, size_t buffer_len, char *dest_ip, char *source_ip)
 {
     char *data;
     int buffer_size;
-    //ip header
-    struct iphdr *ip = (struct iphdr *) buffer;
     static int pingCount = 1;
-    //ICMP header
-    struct icmphdr *icmp = (struct icmphdr *) (buffer + sizeof (struct iphdr));
+
     if(buffer == NULL || dest_ip == NULL || source_ip == NULL) {
         wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, buffer, dest_ip, source_ip);
         return 0;
     }
-    data = buffer + sizeof(struct iphdr) + sizeof(struct icmphdr);
-    strcpy(data , "stats ping");
-    buffer_size = sizeof (struct iphdr) + sizeof (struct icmphdr) + strlen(data);
+
+    size_t header_size = sizeof(struct iphdr) + sizeof(struct icmphdr);
+    if ( buffer_len <= header_size) {
+        return 0;
+    }
+    //ip header
+    struct iphdr *ip = (struct iphdr *) buffer;
+    //ICMP header
+    struct icmphdr *icmp = (struct icmphdr *) (buffer + sizeof (struct iphdr));
+
+    data = buffer + header_size;
+    snprintf(data , buffer_len - header_size, "stats ping");
+    buffer_size = header_size + strlen(data);
 
     //ICMP_HEADER
     //
@@ -2840,10 +2847,22 @@ int frame_icmpv4_ping(char *buffer, char *dest_ip, char *source_ip)
     return buffer_size;
 }
 
-int frame_icmpv6_ping(char *buffer, char *dest_ip, char *source_ip)
+static int frame_icmpv6_ping(char *buffer, size_t buffer_len, char *dest_ip, char *source_ip)
 {
     char *data;
     int buffer_size;
+
+    if(buffer == NULL || dest_ip == NULL || source_ip == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, buffer, dest_ip, source_ip);
+        return 0;
+    }
+
+    size_t header_size = sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);
+
+    if ( buffer_len <= header_size) {
+        return 0;
+    }
+
     struct ip6_hdr* ip  = (struct ip6_hdr*) buffer;
     struct icmp6_hdr* icmp = (struct icmp6_hdr*)(buffer + sizeof(struct ip6_hdr));
 
@@ -2859,9 +2878,9 @@ int frame_icmpv6_ping(char *buffer, char *dest_ip, char *source_ip)
     char sample[1024] = {0};
     struct ip6_pseu* pseu = (struct ip6_pseu*)sample;
 
-    data = (char *)(buffer + sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr));
-    strcpy(data, "stats ping");
-    buffer_size = sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr) + strlen(data);
+    data = (char *)(buffer + header_size);
+    snprintf(data, buffer_len - header_size, "stats ping");
+    buffer_size = header_size + strlen(data);
     icmp->icmp6_type = ICMP6_ECHO_REQUEST;
     icmp->icmp6_code = 0;
 
@@ -2963,7 +2982,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
     }
     //build a layer 3 packet , tcp ping
     if(af_family) {
-        frame_len = frame_icmpv4_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
+        frame_len = frame_icmpv4_ping(buffer, sizeof(buffer), cli_ip_str, src_ip_str);
         //send buffer
         if(frame_len) {
 #if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
@@ -2985,7 +3004,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
 #endif
         }
     } else {
-        frame_len = frame_icmpv6_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
+        frame_len = frame_icmpv6_ping(buffer, sizeof(buffer), cli_ip_str, src_ip_str);
         //send buffer
         if(frame_len) {
 #if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
