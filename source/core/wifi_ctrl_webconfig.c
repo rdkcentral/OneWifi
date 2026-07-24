@@ -2208,7 +2208,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     }
     system("systemctl restart onewifi.service");
 #else
-    reboot_device(ctrl);
+    scheduler_add_timer_task(ctrl->sched, TRUE, NULL, reboot_device, ctrl, (10 * 1000), 1, TRUE);
 #endif
 }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
