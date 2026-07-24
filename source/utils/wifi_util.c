@@ -3690,7 +3690,7 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
     int start_index = 0;
     int ch_count = 0;
     const void *hal_cap_channels = NULL;
-    int ref_ch_list_5g[] = {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161,165};
+    int ref_ch_list_5g[] = {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161,165,169,173,177};
     INT non_dfs_ch_hal_cap[MAX_CHANNELS] = {'\0'};
     INT hal_cap_channel_val;
 
