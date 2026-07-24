@@ -2847,7 +2847,7 @@ bus_error_t apply_ignite_config(char *paramName,
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str;
     unsigned int num_of_radios = getNumberRadios();
 
@@ -2863,13 +2863,19 @@ bus_error_t apply_ignite_config(char *paramName,
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d No pending changes\n", __func__, __LINE__);
         return bus_error_success;
     }
-
-    // Prepare data for encoding
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.u.decoded.num_radios = num_of_radios;
+      /* Allocate on heap instead of stack */
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+          pthread_mutex_unlock(&g_apply_ignite_config.lock);  // IMPORTANT: unlock before return
+          wifi_util_error_print(WIFI_CTRL, "%s:%d malloc failed\n", __func__, __LINE__);
+          return bus_error_general;
+    }
+      //Prepare data for encoding
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+        data->u.decoded.num_radios = num_of_radios;
 
     // Copy pending config to data
-    memcpy(&data.u.decoded.ignite_config, &g_apply_ignite_config.config,
+    memcpy(data->u.decoded.ignite_config, &g_apply_ignite_config.config,
            num_of_radios * sizeof(ignite_config_t));
 
     // Clear dirty flag
@@ -2878,19 +2884,21 @@ bus_error_t apply_ignite_config(char *paramName,
     pthread_mutex_unlock(&g_apply_ignite_config.lock);
 
     // Encode and push to queue
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_ignite)
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_ignite)
         == webconfig_error_none) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
-        str = (char *)data.u.encoded.raw;
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+        str = (char *)data->u.encoded.raw;
+        push_event_to_ctrl_queue(str, strlen(str)+1, wifi_event_type_webconfig,
                                  wifi_event_webconfig_set_ignite_data, NULL);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig_encode failed\n", __func__, __LINE__);
-        webconfig_data_free(&data);
+        webconfig_data_free(data);
+        free(data);
         return bus_error_general;
     }
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
     return bus_error_success;
 }
 
@@ -4225,6 +4233,7 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data, bus_user_data_t 
         push_event_to_ctrl_queue((const cJSON *)data->u.encoded.raw,
             (strlen(data->u.encoded.raw) + 1), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_force_apply, NULL);
+        webconfig_data_free(data);
         free(data);
         return bus_error_success;
     }
