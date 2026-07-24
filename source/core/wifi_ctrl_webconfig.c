@@ -1968,6 +1968,24 @@ static int remove_all_mac_acl_entries_from_cache_and_db(rdk_wifi_vap_info_t *cur
     return RETURN_OK;
 }
 
+void webconfig_free_decoded_acl_maps(webconfig_subdoc_decoded_data_t *decoded)
+{
+    unsigned int r, v;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    rdk_wifi_vap_info_t *dec_vap, *mgr_vap;
+
+    for (r = 0; r < getNumberRadios(); r++) {
+        for (v = 0; v < getNumberVAPsPerRadio(r); v++) {
+            dec_vap = &decoded->radios[r].vaps.rdk_vap_array[v];
+            mgr_vap = &mgr->radio_config[r].vaps.rdk_vap_array[v];
+            if (dec_vap->acl_map != NULL && dec_vap->acl_map != mgr_vap->acl_map) {
+                hash_map_destroy(dec_vap->acl_map);
+            }
+            dec_vap->acl_map = NULL;
+        }
+    }
+}
+
 int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, webconfig_subdoc_type_t subdoc_type)
 {
     unsigned int radio_index, vap_index;
@@ -1994,8 +2012,8 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
             }
 
             if (new_config->acl_map == current_config->acl_map) {
-                wifi_util_dbg_print(WIFI_MGR,"%s %d Same data returning \n", __func__, __LINE__);
-                return RETURN_OK;
+                wifi_util_dbg_print(WIFI_MGR,"%s %d Same data %d, skipping \n", __func__, __LINE__, vap_index);
+                continue;
             }
 
             if ((subdoc_type == webconfig_subdoc_type_mesh) && (isVapMeshBackhaul(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) == FALSE) {
@@ -2091,18 +2109,8 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
         }
     }
 
-    if ((new_config != NULL) && (new_config->acl_map != NULL)) {
-        new_acl_entry = hash_map_get_first(new_config->acl_map);
-        while (new_acl_entry != NULL) {
-            to_mac_str(new_acl_entry->mac,new_mac_str);
-            new_acl_entry = hash_map_get_next(new_config->acl_map,new_acl_entry);
-            temp_acl_entry = hash_map_remove(new_config->acl_map, new_mac_str);
-            if (temp_acl_entry != NULL) {
-                free(temp_acl_entry);
-            }
-        }
-        hash_map_destroy(new_config->acl_map);
-    }
+    /* Free all decoded ACL maps that are not aliased to the mgr's live cache */
+    webconfig_free_decoded_acl_maps(data);
     return ret;
 }
 
