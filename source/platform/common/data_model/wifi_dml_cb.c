@@ -4820,10 +4820,16 @@ bool wps_set_param_bool_value(void *obj_ins_context, char *param_name, bool outp
             }
         }
     } else if (STR_CMP(param_name, "X_CISCO_COM_CancelSession")) {
-        instance_number -= 1;
+        if (p_dm_vap_info->u.bss_info.wps.enable == false) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: WPS not enabled for %s, cancel session not supported\n",
+                __func__, __LINE__, p_dm_vap_info->vap_name);
+            return false;
+        }
+        INT vap_index = (INT)(instance_number - 1);
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: WPS cancel for vap %d\n", __func__, __LINE__,
-            instance_number);
-        push_event_to_ctrl_queue(&instance_number, sizeof(instance_number), wifi_event_type_command,
+            vap_index);
+        push_event_to_ctrl_queue(&vap_index, sizeof(vap_index), wifi_event_type_command,
             wifi_event_type_command_wps_cancel, NULL);
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
