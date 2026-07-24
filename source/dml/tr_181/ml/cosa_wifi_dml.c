@@ -8907,7 +8907,13 @@ Security_SetParamBoolValue
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
     {
-        if (l_security_cfg->wpa3_transition_disable != bValue) {
+            if (l_security_cfg->mode != wifi_security_mode_wpa3_transition) {
+                char secModeStr[64] = {0};
+                convert_sec_mode_enable_int_str(l_security_cfg->mode, secModeStr);
+                wifi_util_error_print(WIFI_DMCLI, "%s:%d TransitionDisable cannot be set when mode is %s\n", __func__, __LINE__, secModeStr);
+                return FALSE;
+            }
+	    if (l_security_cfg->wpa3_transition_disable != bValue) {
             l_security_cfg->wpa3_transition_disable = bValue;
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value=%d\n",
                 __func__, __LINE__, l_security_cfg->wpa3_transition_disable, bValue);

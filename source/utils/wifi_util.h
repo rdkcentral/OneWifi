@@ -313,6 +313,7 @@ int convert_radio_name_to_radio_index(char *name);
 int convert_radio_index_to_radio_name(int index, char *name);
 int convert_security_mode_integer_to_string(int m, char *mode);
 int convert_security_mode_string_to_integer(int *m, char *mode);
+int convert_sec_mode_enable_int_str(int sec_mode_enable, char *secModeStr);
 int convert_freq_band_to_radio_index(int band, int *radio_index);
 BOOL is_radio_band_5G(int band);
 int convert_ifname_to_radio_index(wifi_platform_property_t *wifi_prop, char *if_name,
