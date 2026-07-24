@@ -660,10 +660,13 @@ int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,voi
         return RETURN_ERR;
     }
     
-    // Get frame data
-    frame_data_t *msg = (frame_data_t *)arg;
+    /* The disassoc_device event carries assoc_dev_data_t (the same type the
+     * motion/whix/sensing apps consume), NOT frame_data_t. It includes the
+     * driver-provided 802.11 disconnect reason, which WEI uses to distinguish an
+     * EAPOL/auth failure (wrong password, RADIUS reject, ...) from a clean leave. */
+    assoc_dev_data_t *msg = (assoc_dev_data_t *)arg;
     
-    // Fill the affinity_arg with frame data 
+    // Fill the affinity_arg with disassoc data 
     stats_arg_t *affinity_arg = (stats_arg_t *) malloc(sizeof(stats_arg_t));
     if (affinity_arg == NULL) {
         wifi_util_info_print(WIFI_APPS," %s:%d unable to alloc memory\n",__func__,__LINE__);
@@ -671,10 +674,12 @@ int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,voi
     }
     
     memset(affinity_arg, 0, sizeof(stats_arg_t));
-    to_mac_str(msg->frame.sta_mac, affinity_arg->mac_str);
-    affinity_arg->vap_index = msg->frame.ap_index;
-    affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
+    to_mac_str(msg->dev_stats.cli_MACAddress, affinity_arg->mac_str);
+    affinity_arg->vap_index = msg->ap_index;
+    affinity_arg->radio_index = getRadioIndexFromAp(msg->ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index, &affinity_arg->channel_utilization);
+    /* Carry the 802.11 disconnect reason in status_code for WEI to classify. */
+    affinity_arg->status_code = msg->reason;
     
     if (req) {
         affinity_arg->event = sub_event;

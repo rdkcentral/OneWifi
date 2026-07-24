@@ -3924,6 +3924,35 @@ int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int re
     return 0;
 }
 
+/* Post-association auth failures that must still be surfaced to the caffinity /
+ * GettingConnected (WEI) path even when the STA never became "active": a
+ * wrong-password client fails the 4-way handshake and is removed before it is
+ * ever authorized, so the normal (is_sta_active) disassoc path is skipped and
+ * the real reason (2/14/15/23...) is otherwise lost. Clean/none reasons
+ * (0/3/4/5/8/45) on an inactive STA remain filtered out. */
+static bool is_post_assoc_auth_failure(int reason)
+{
+    switch (reason) {
+    case 1:   /* unspecified                          */
+    case 2:   /* previous auth no longer valid (PSK)  */
+    case 13:  /* invalid information element          */
+    case 14:  /* MIC failure (wrong password)         */
+    case 15:  /* 4-way handshake timeout              */
+    case 16:  /* group key handshake timeout          */
+    case 17:  /* handshake element mismatch           */
+    case 18:  /* invalid group cipher                 */
+    case 19:  /* invalid pairwise cipher              */
+    case 20:  /* invalid AKM                          */
+    case 21:  /* unsupported RSN version              */
+    case 22:  /* invalid RSN capabilities             */
+    case 23:  /* 802.1X / RADIUS auth failed          */
+    case 24:  /* cipher rejected by security policy   */
+        return true;
+    default:
+        return false;
+    }
+}
+
 int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, int reason)
 {
     wifi_monitor_data_t *data = NULL;
@@ -3973,9 +4002,13 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     free(data);
     data = NULL;
 
-    if (is_sta_active == false) {
+    if (is_sta_active == false && !is_post_assoc_auth_failure(reason)) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
         return 0;
+    }
+    if (is_sta_active == false) {
+        wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
+            __func__, __LINE__, src_mac, ap_index, reason);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
@@ -4229,9 +4262,13 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
     free(data);
     data = NULL;
 
-    if (is_sta_active == false) {
+    if (is_sta_active == false && !is_post_assoc_auth_failure(reason)) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
         return 0;
+    }
+    if (is_sta_active == false) {
+        wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
+            __func__, __LINE__, src_mac, ap_index, reason);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
