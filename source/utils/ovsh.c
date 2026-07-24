@@ -584,11 +584,13 @@ bool ovsh_insert(char *table, json_t *where, int coln, char *colv[], json_t *par
             json_t *j_parent_col = json_object_get(a_parent, "parent_col");     // json string
             json_t *j_parent_where = json_object_get(a_parent, "parent_where"); // json array
 
+            char *j_where_str = json_dumps(j_parent_where, 0);
             DEBUG("  [%d] You specified PARENT: parent_table=%s, "
                   "parent_col=%s, parent_where=%s\n", i,
                    json_string_value(j_parent_table),
                    json_string_value(j_parent_col),
-                   json_dumps(j_parent_where, 0));
+                   j_where_str ? j_where_str : "null");
+            if (j_where_str) free(j_where_str);
 
             json_t *mutations = json_pack("[ [ s, s, [ s, [ [ s : s ] ] ] ] ]",
                     json_string_value(j_parent_col),
@@ -1114,8 +1116,15 @@ bool json_stringify(json_t *jval, char *dst, size_t dst_sz)
             if (json_compact_uuid(jval, dst, dst_sz)) return true;
         }
         char *str = json_dumps(jval, JSON_COMPACT);
-        snprintf(dst, dst_sz, "%s", str);
-        free(str);
+        if (str != NULL)
+        {
+            snprintf(dst, dst_sz, "%s", str);
+            free(str);
+        }
+        else
+        {
+            snprintf(dst, dst_sz, "(null)");
+        }
     }
     else
     {
@@ -1530,15 +1539,29 @@ void ovsdb_close(int fd)
  */
 json_t *ovsdb_json_exec(char *method, json_t *params)
 {
-    char buf[128*1024];
+    char *buf = (char *)malloc(128*1024);
+    if (buf == NULL) {
+        return NULL;
+    }
 
     char   *str = NULL;
     json_t *jres = NULL;
     int     db = -1;
 
     json_t *jexec = json_pack("{ s:s, s:o, s:i }", "method", method, "params", params, "id", getpid());
+    if (jexec == NULL)
+    {
+        free(buf);
+        return NULL;
+    }
 
     str = json_dumps(jexec, 0);
+    if (str == NULL)
+    {
+        free(buf);
+        if (jexec != NULL) json_decref(jexec);
+        return NULL;
+    }
     DEBUG(">>>>>>> %s\n", str);
 
     db = ovsdb_connect();
@@ -1555,7 +1578,7 @@ json_t *ovsdb_json_exec(char *method, json_t *params)
     }
 
     ssize_t nrd;
-    nrd = read(db, buf, sizeof(buf) - 1);
+    nrd = read(db, buf, 128*1024 - 1);
     if (nrd < 0)
     {
         goto error;
@@ -1569,7 +1592,9 @@ json_t *ovsdb_json_exec(char *method, json_t *params)
 
 error:
     if (str != NULL) free(str);
+    if (jexec != NULL) json_decref(jexec);
     if (db >= 0) ovsdb_close(db);
+    if (buf != NULL) free(buf);
 
     return jres;
 }
@@ -1647,10 +1672,11 @@ bool ovsdb_json_show_count(json_t *jobj)
     if (ovsh_opt_format == OVSH_FORMAT_JSON)
     {
         char *str = json_dumps(jres, JSON_COMPACT);
-
-        printf("%s\n", str);
-
-        free(str);
+        if (str != NULL)
+        {
+            printf("%s\n", str);
+            free(str);
+        }
     }
     else
     {
@@ -1722,10 +1748,11 @@ bool ovsdb_json_show_uuid(json_t *jobj, json_t **a_juuid)
     if (ovsh_opt_format == OVSH_FORMAT_JSON)
     {
         char *str = json_dumps(jres, JSON_COMPACT);
-
-        printf("%s\n", str);
-
-        free(str);
+        if (str != NULL)
+        {
+            printf("%s\n", str);
+            free(str);
+        }
     }
     else
     {
@@ -1885,8 +1912,11 @@ error:
 bool ovsdb_json_show_result_json(json_t *jrows)
 {
     char *str = json_dumps(jrows, JSON_INDENT(4) | JSON_PRESERVE_ORDER);
-    printf("%s\n", str);
-    free(str);
+    if (str != NULL)
+    {
+        printf("%s\n", str);
+        free(str);
+    }
 
     return true;
 }
