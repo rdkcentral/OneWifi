@@ -438,7 +438,7 @@ element_node_t *bus_insert_element(he_bus_handle_t handle, element_node_t *root,
            Its presumed a provider will register more elements under this, such as
             Device.WiFi.AccessPoint.{i}.Foo etc,...
          */
-        if (elem->type == he_bus_element_type_table) {
+        if (elem->type == he_bus_element_type_table && current_node->child == NULL) {
             // trigger add table registration callback
             element_node_t *rowTemplate = get_empty_element_node();
             rowTemplate->parent = current_node;
@@ -903,7 +903,8 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
 
     char *event_name;
     he_bus_raw_data_msg_t sub_data = { 0 };
-    he_bus_raw_data_t payload_data;
+    he_bus_raw_data_t payload_data = { 0 };
+    he_bus_stretch_buff_t raw_buff = { 0 };
     int ret;
     sub_payload_data_t sub_input_data;
 
@@ -921,8 +922,8 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
         if (p_sub_data != NULL) {
             he_bus_core_error_print("%s:%d event:%s already subscribe with provider\r\n", __func__,
                 __LINE__, event_name);
-            return he_bus_error_subscription_already_exist; // @TODO TBD Do we need to return error
-                                                            // or not ?
+            status = he_bus_error_subscription_already_exist;
+            goto cleanup; // @TODO TBD Do we need to return error or not ?
         } else {
             sub_input_data.action = sub_data_map[index].action;
             sub_input_data.interval = sub_data_map[index].interval;
@@ -937,18 +938,17 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
             if (status != he_bus_error_success) {
                 he_bus_core_error_print("%s:%d rem bus payload preapre is failed:%d for %s\r\n",
                     __func__, __LINE__, status, event_name);
-                return status;
+                he_bus_free(payload_data.raw_data.bytes);
+                goto cleanup;
             }
         }
     }
 
-    he_bus_stretch_buff_t raw_buff = { 0 };
-
     if (convert_bus_raw_msg_data_to_buffer(&sub_data, &raw_buff) != he_bus_error_success) {
         he_bus_core_error_print("%s:%d wrong data for :%s namespace\r\n", __func__, __LINE__,
             sub_data.component_name);
-        FREE_BUFF_MEMORY(raw_buff.buff);
-        return he_bus_error_invalid_input;
+        status = he_bus_error_invalid_input;
+        goto cleanup;
     }
 
     he_bus_core_info_print("%s:%d event:%s subscribe event sub type:%d\r\n", __func__, __LINE__,
@@ -992,7 +992,8 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
         if (ret != HE_BUS_RETURN_OK) {
             he_bus_core_info_print("%s:%d event:%s subscribe send failure:%d\r\n", __func__,
                 __LINE__, event_name, ret);
-            return he_bus_error_destination_not_reachable;
+            status = he_bus_error_destination_not_reachable;
+            goto cleanup;
         } else {
             for (uint32_t index = 0; index < num_of_sub; index++) {
                 save_bus_sub_event_entries(handle, handle->sub_map, &sub_data_map[index]);
@@ -1000,6 +1001,7 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
         }
     }
 
+cleanup:
     FREE_BUFF_MEMORY(raw_buff.buff);
     free_bus_msg_obj_data(&sub_data.data_obj);
     return status;
