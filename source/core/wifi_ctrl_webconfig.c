@@ -2174,7 +2174,14 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     return false;
 }
 
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined (FEATURE_SUPPORT_ECOPOWERDOWN) && !defined(DISABLE_ECO_REBOOT)
+static int reboot_device_callback(void *arg)
+{
+     return reboot_device((wifi_ctrl_t*)arg);
+}
+#endif
+
+#if defined (FEATURE_SUPPORT_ECOPOWERDOWN) && !defined(DISABLE_ECO_REBOOT)
 static int reboot_device_callback(void *arg)
 {
      return reboot_device((wifi_ctrl_t*)arg);
