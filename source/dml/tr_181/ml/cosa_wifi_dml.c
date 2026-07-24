@@ -87,8 +87,7 @@
 #endif
 
 #if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || \
-    defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || \
-    defined(_XER2_PRODUCT_REQ_)
+    defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 #include "ccsp_base_api.h"
 #include "messagebus_interface_helper.h"
 
@@ -5064,7 +5063,7 @@ AMSDU_TID_GetEntry(ANSC_HANDLE hInsContext, ULONG nIndex, ULONG *pInsNumber)
 
 BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_) && !defined(_XER2_PRODUCT_REQ_)	
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;
@@ -5147,7 +5146,7 @@ BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL 
 
 BOOL AMSDU_TID_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_) && !defined(_XER2_PRODUCT_REQ_)
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;
@@ -5471,7 +5470,8 @@ SSID_GetParamIntValue
             *pInt = -1;
             return TRUE;
         }
-        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE) {
+        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE ||
+            !isRadioBeEnabled(pcfg->radio_index)) {
             *pInt = -1;
         } else {
             *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
@@ -6015,6 +6015,13 @@ SSID_SetParamIntValue
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
         tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
 
+        if (tmp_mld_enable == TRUE && !isRadioBeEnabled(pcfg->radio_index)) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d Cannot set MLDUnit on VAP %d: radio %d has no BE mode\n", __FUNCTION__,
+                __LINE__, pcfg->vap_index, pcfg->radio_index);
+            return FALSE;
+        }
+
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
             if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
                 return TRUE;
@@ -6092,29 +6099,39 @@ SSID_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_MLDLinkID", TRUE))
     {
-        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
-         * MLD_Link_ID can be updated only for private VAP, other VAPs populated automatically from the same radio.
-         */
-        if (!isVapPrivate(pcfg->vap_index)) {
+        if (isVapSTAMesh(pcfg->vap_index)) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
-            return FALSE;
-        }
-
-        if (uValue != UNDEFINED_MLD_LINK_ID && uValue >= MAX_NUM_MLD_LINKS) {
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid X_RDK_MLDLinkID value %lu\n", __func__,
-                __LINE__, uValue);
-            return FALSE;
-        }
-
-        wifi_util_dbg_print(WIFI_DMCLI,
-            "%s:%d Updating mld_link_id radio_index %d vap name %s old val %u new val %lu\n",
-            __FUNCTION__, __LINE__, vapInfo->radio_index, pcfg->vap_name,
-            vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
             return TRUE;
         }
-        vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
+
+        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
+         * So when MLD_Link_ID is updated for one VAP, we need to update it for all VAPs of the same radio.
+         */
+        unsigned int total_vaps = getTotalNumberVAPs();
+
+        for (unsigned int vap_idx = 0; vap_idx < total_vaps; vap_idx++) {
+            wifi_vap_info_t *temp_vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(vap_idx);
+            if (temp_vapInfo == NULL) {
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for vap index:%d\n",
+                    __FUNCTION__, __LINE__, vap_idx);
+                continue;
+            }
+            if (temp_vapInfo->radio_index != pcfg->radio_index) {
+                continue;
+            }
+            if (isVapSTAMesh(vap_idx)) {
+                continue;
+            }
+            wifi_util_dbg_print(WIFI_DMCLI,
+                "%s:%d Updating mld_link_id radio_index %d vap index:%d old val %u new val %u\n",
+                __FUNCTION__, __LINE__, temp_vapInfo->radio_index, vap_idx,
+                temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
+            if (temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
+                continue;
+            }
+            temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
+            set_dml_cache_vap_config_changed(vap_idx);
+        }
         return TRUE;
     }
 
@@ -6882,7 +6899,11 @@ AccessPoint_GetParamBoolValue
     if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
     {
         /* collect value */
-        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
+        if (!isRadioBeEnabled(pcfg->radio_index)) {
+            *pBool = FALSE;
+        } else {
+            *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
+        }
         return TRUE;
     }
 
@@ -7243,14 +7264,11 @@ AccessPoint_GetParamUlongValue
 
     if( AnscEqualString(ParamName, "MLD_ID", TRUE))
     {
-        wifi_mld_common_info_t *mld_common_info = NULL;
-
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
+        if (!isRadioBeEnabled(pcfg->radio_index)) {
+            *puLong = UNDEFINED_MLD_ID;
         } else {
-            mld_common_info = &pcfg->u.bss_info.mld_info.common_info;
+            *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
         }
-        *puLong = mld_common_info->mld_id;
         return TRUE;
     }
 
@@ -7422,8 +7440,10 @@ AccessPoint_GetParamStringValue
 
         if (isVapSTAMesh(pcfg->vap_index)) {
             mac = zero_mac;
-        } else {
+        } else if (isRadioBeEnabled(pcfg->radio_index)) {
             mac = pcfg->u.bss_info.mld_info.common_info.mld_addr;
+        } else {
+            mac = pcfg->u.bss_info.bssid;
         }
 
         snprintf(pValue, *pUlSize, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -9298,7 +9318,6 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa2_personal:
 				l_security_cfg->u.key.type = wifi_security_key_type_psk;
 				l_security_cfg->mfp = wifi_mfp_cfg_optional;
-				wpa2_personal_gcmp_fallback_to_aes(l_security_cfg);
 				break;
             case wifi_security_mode_wpa_wpa2_personal:
 				l_security_cfg->u.key.type = wifi_security_key_type_psk;
@@ -11930,10 +11949,12 @@ WPS_GetParamBoolValue
         return FALSE;
     }
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+#endif
 
     if( AnscEqualString(ParamName, "Enable", TRUE))
     {
@@ -12382,10 +12403,14 @@ WPS_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
         return FALSE;
     }
+
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+#endif
+
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
         if (vapInfo->u.bss_info.wps.enable != bValue) {
@@ -12688,6 +12713,12 @@ WPS_SetParamIntValue
                 __FUNCTION__, __LINE__, instance_number);
             return FALSE;
         }
+#ifdef UWM_EXT_WPS_SUPPORT
+        /* STA interface (extender backhaul): skip private AP validation - WPS client is allowed */
+        if (isVapSTAMesh((UINT)wlanIndex) || pcfg->vap_mode == wifi_vap_mode_sta) {
+            return TRUE;
+        }
+#endif
         if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }
