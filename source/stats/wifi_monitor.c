@@ -2578,6 +2578,7 @@ static void rtattr_parse(struct rtattr *table[], int max, struct rtattr *rta, in
     }
 }
 
+#define IP_ADDR_NLBUF_SIZE 16384
 int getlocalIPAddress(char *ifname, char *ip, bool af_family)
 {
     struct {
@@ -2586,7 +2587,7 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
     } req;
 
     int status;
-    char buf[16384];
+    char *buf = NULL;
     struct nlmsghdr *nlm;
     struct ifaddrmsg *rtmp;
     unsigned char family;
@@ -2599,10 +2600,16 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
         wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p\n",__func__, ifname, ip);
         return -1;
     }
+    buf = malloc(IP_ADDR_NLBUF_SIZE);
+    if (buf == NULL) {
+        wifi_util_error_print(WIFI_MON, "Memory allocation failed for netlink buffer\n");
+        return -1;
+    }
 
     fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
     if (fd < 0 ) {
         wifi_util_error_print(WIFI_MON, "Socket error\n");
+        free(buf);
         return -1;
     }
 
@@ -2620,13 +2627,15 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
     if(status<0) {
         wifi_util_error_print(WIFI_MON, "Send error\n");
         close(fd);
+        free(buf);
         return -1;
     }
 
-    status = recv(fd, buf, sizeof(buf), 0);
+    status = recv(fd, buf, IP_ADDR_NLBUF_SIZE, 0);
     if(status<0) {
         wifi_util_error_print(WIFI_MON, "receive error\n");
         close(fd);
+        free(buf);
         return -1;
     }
 
@@ -2637,6 +2646,7 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
         if (req_len<0 || len>status || !NLMSG_OK(nlm, status)) {
             wifi_util_error_print(WIFI_MON, "length error\n");
             close(fd);
+            free(buf);
             return -1;
         }
         rtmp = (struct ifaddrmsg *)NLMSG_DATA(nlm);
@@ -2646,6 +2656,7 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
             if(!strcasecmp(ifname, if_name) && table[IFA_ADDRESS]) {
                 inet_ntop(family, RTA_DATA(table[IFA_ADDRESS]), ip, 64);
                 close(fd);
+                free(buf);
                 return 0;
             }
         }
@@ -2653,6 +2664,7 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
         nlm = (struct nlmsghdr*)((char*)nlm + NLMSG_ALIGN(len));
     }
     close(fd);
+    free(buf);
     return -1;
 }
 
@@ -2691,23 +2703,30 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
     } req;
 
     int status;
-    char buf[16384];
+    char *buf = NULL;
     struct nlmsghdr *nlm;
     struct ndmsg *rtmp;
     struct rtattr * table[NDA_MAX+1];
-    int fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+    int fd;
     char if_name[IFNAMSIZ] = {'\0'};
     unsigned char tmp_mac[18];
     unsigned char af_family;
 
     if(mac == NULL || ip == NULL || interface == NULL) {
         wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, mac, ip, interface);
-        if (fd >= 0)
-            close(fd);
         return -1;
     }
+
+    buf = malloc(IP_ADDR_NLBUF_SIZE);
+    if (!buf) {
+        wifi_util_error_print(WIFI_MON, "Memory allocation failed for netlink buffer\n");
+        return -1;
+    }
+
+    fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
     if (fd < 0 ) {
         wifi_util_error_print(WIFI_MON, "Socket error\n");
+        free(buf);
         return -1;
     }
     req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct ndmsg));
@@ -2725,13 +2744,15 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
     if (status < 0) {
         wifi_util_error_print(WIFI_MON, "Socket send error\n");
         close(fd);
+        free(buf);
         return -1;
     }
 
-    status = recv(fd, buf, sizeof(buf), 0);
+    status = recv(fd, buf, IP_ADDR_NLBUF_SIZE, 0);
     if (status < 0) {
         wifi_util_error_print(WIFI_MON, "Socket receive error\n");
         close(fd);
+        free(buf);
         return -1;
     }
 
@@ -2742,6 +2763,7 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
         if (req_len<0 || len>status || !NLMSG_OK(nlm, status)) {
             wifi_util_error_print(WIFI_MON, "packet length error\n");
             close(fd);
+            free(buf);
             return -1;
         }
 
@@ -2758,6 +2780,7 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
                         if_indextoname(rtmp->ndm_ifindex, if_name);
                         strncpy(interface, if_name, IFNAMSIZ);
                         close(fd);
+                        free(buf);
                         return 0;
                     }
                 }
@@ -2767,6 +2790,7 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
         nlm = (struct nlmsghdr*)((char*)nlm + NLMSG_ALIGN(len));
     }
     close(fd);
+    free(buf);
     return -1;
 }
 
