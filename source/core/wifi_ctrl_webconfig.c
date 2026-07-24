@@ -2174,6 +2174,13 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     return false;
 }
 
+#if defined (FEATURE_SUPPORT_ECOPOWERDOWN) && !defined(DISABLE_ECO_REBOOT)
+static int reboot_device_callback(void *arg)
+{
+     return reboot_device((wifi_ctrl_t*)arg);
+}
+#endif
+
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
 #define ECOMODE_COMPLETE_MARKER_FILE "/tmp/ecomode_operation_done"
 #define MAX_RETRY_VALUE 15
@@ -2208,7 +2215,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     }
     system("systemctl restart onewifi.service");
 #else
-    reboot_device(ctrl);
+    scheduler_add_timer_task(ctrl->sched, TRUE, NULL, reboot_device_callback, ctrl, (10 * 1000), 1, FALSE);
 #endif
 }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
