@@ -503,7 +503,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             return RETURN_ERR;
         }
     }
-        if (isVapHotspot(vap_info->vap_index)) {
+    if (isVapHotspot(vap_info->vap_index)) {
         radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
         if (!radius_param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusSettings\"\n", __func__);
