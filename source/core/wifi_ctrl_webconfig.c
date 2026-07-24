@@ -2208,7 +2208,14 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     }
     system("systemctl restart onewifi.service");
 #else
-    reboot_device(ctrl);
+    if (access("/tmp/ECOMODE_wl0_completed" , F_OK) == 0 && (access("/tmp/ECOMODE_wl1" , F_OK) == 0) && (access("/tmp/ECOMODE_wl2" , F_OK) == 0))
+        return;
+    else if(access("/tmp/ECOMODE_wl0_completed" , F_OK) == 0 && (access("/tmp/ECOMODE_wl1_completed" , F_OK) == 0) && (access("/tmp/ECOMODE_wl2" , F_OK) == 0))
+       return;
+    else if((access("/tmp/ECOMODE_wl0_completed" , F_OK) == 0 && (access("/tmp/ECOMODE_wl1" , F_OK) == 0))
+       return;
+    else
+       reboot_device(ctrl);
 #endif
 }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)

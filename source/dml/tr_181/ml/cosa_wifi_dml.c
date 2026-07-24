@@ -3374,6 +3374,14 @@ Radio_SetParamBoolValue
         }
         /* save update to backup */
         wifiRadioOperParam->EcoPowerDown = bValue;
+        if(wlanIndex == 0)
+            get_stubs_descriptor()->v_secure_system_fn("touch /tmp/ECOMODE_wl0");
+        else if(wlanIndex == 1)
+            get_stubs_descriptor()->v_secure_system_fn("touch /tmp/ECOMODE_wl1");
+        else
+            get_stubs_descriptor()->v_secure_system_fn("touch /tmp/ECOMODE_wl2");
+
+
 #ifdef FEATURE_SUPPORT_ECOPOWERDOWN
         wifiRadioOperParam->enable = ( (wifiRadioOperParam->EcoPowerDown) ? false : true);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated radio enable status based on EcoPowerDown, EcoPowerDown = %d, Enable = %d  \n", __func__, __LINE__,wifiRadioOperParam->EcoPowerDown, wifiRadioOperParam->enable);
