@@ -136,7 +136,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                     vap->u.bss_info.mld_info.common_info.mld_link_id = 255;
                     memset(vap->u.bss_info.mld_info.common_info.mld_addr, 0,
                         sizeof(vap->u.bss_info.mld_info.common_info.mld_addr));
-                    vap->u.bss_info.mld_info.common_info.mld_apply = 1;
 
                     vap->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                     vap->u.bss_info.security.encr = wifi_encryption_aes;
