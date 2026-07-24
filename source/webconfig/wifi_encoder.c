@@ -2753,17 +2753,10 @@ webconfig_error_t encode_radio_channel_radio_params(wifi_provider_response_t *ch
 
     radio_chan_data_t *chan_data = chan_stats->stat_pointer;
 
-    radio_stats_obj = cJSON_CreateObject();
-    if (radio_stats_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
-
     for (unsigned int count = 0; count < chan_stats->stat_array_size; count++) {
         radio_stats_obj = cJSON_CreateObject();
         if (radio_stats_obj == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
-            cJSON_Delete(radio_stats_obj);
             return webconfig_error_encode;
         }
         cJSON_AddItemToArray(radio_stats, radio_stats_obj);

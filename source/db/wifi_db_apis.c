@@ -3292,7 +3292,6 @@ int wifidb_update_ignite_config(ignite_config_t *ignite_cfg)
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path,
             &table_Wifi_Ignite_Config,
             where, &count);
-    if (where) { json_decref(where); where = NULL; }
     if (pcfg && count > 0) {
         memcpy(&cfg, pcfg, sizeof(cfg));
         update = true;
@@ -3332,7 +3331,6 @@ int wifidb_update_ignite_config(ignite_config_t *ignite_cfg)
         ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path,
                 &table_Wifi_Ignite_Config,
                 where, &cfg);
-        if (where) { json_decref(where); where = NULL; }
 
         if (ret <= 0) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Update failed\n",

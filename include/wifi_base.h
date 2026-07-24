@@ -480,7 +480,6 @@ typedef struct {
         client_stats_enable_t   flag;
         instant_msmt_t      imsmt;
         active_msmt_t       amsmt;
-        associated_devs_t   devs;
         csi_mon_t           csi_mon;
         wifi_mon_stats_config_t mon_stats_config;
         frame_data_t msg;

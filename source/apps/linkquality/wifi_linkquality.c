@@ -67,6 +67,7 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Error in encoding link report\n", __func__,
               __LINE__);
+        webconfig_data_free(data);
         free(data);
         return;
     }
@@ -80,17 +81,22 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_link_quality);
     if (wifi_app == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
+        webconfig_data_free(data);
+        free(data);
         return;
     }
     status = get_bus_descriptor()->bus_event_publish_fn(&wifi_app->ctrl->handle, WIFI_QUALITY_LINKREPORT, &rdata);
     if (status != bus_error_success) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, status);
+        webconfig_data_free(data);
         free(data);
         return ;
     }
-    if(data)
+    if (data) {
+        webconfig_data_free(data);
         free(data);
+    }
     return;
 }
 
