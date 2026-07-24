@@ -235,7 +235,7 @@ int apps_mgr_link_quality_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t typ
     wifi_app_t  *app = NULL;
     wifi_event_t *event;
 
-    event = (wifi_event_t *)create_wifi_event((len), type, sub_type);
+    event = (wifi_event_t *)create_wifi_event(0, type, sub_type);
     if (event == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s %d failed to allocate memory to event\n",__FUNCTION__, __LINE__);
         return RETURN_ERR;
@@ -253,6 +253,12 @@ int apps_mgr_link_quality_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t typ
     }
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_link_quality);
+
+    if (app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d assert - NULL Pointer\n", __FUNCTION__, __LINE__);
+        destroy_wifi_event(event);
+        return RETURN_ERR;
+    }
 
     app->desc.event_fn(app, event);
 

@@ -1551,6 +1551,12 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
         return webconfig_error_decode;
     }
 
+    if (params->collect_stats.stats == NULL) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d: no associated device stats to translate\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
+
     assoc_device_stats = (wifi_provider_response_t **)&params->collect_stats.stats;
     sta_size = (*assoc_device_stats)->stat_array_size;
 

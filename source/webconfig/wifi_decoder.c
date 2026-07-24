@@ -6028,12 +6028,10 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     (*assoc_stats)->args.vap_index = param->valuedouble;
 
     if (size == 0) {
-        (*assoc_stats)->stat_pointer = NULL;
-        (*assoc_stats)->stat_array_size = 0;
         free(*assoc_stats);
         *assoc_stats = NULL;
         wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Associated Device stats array size is %d\n",
-            __func__, __LINE__, (*assoc_stats)->stat_array_size);
+            __func__, __LINE__, size);
         return webconfig_error_none;
     } else {
         client_stats_data = (wifi_associated_dev3_t *)malloc(sizeof(wifi_associated_dev3_t) * size);
