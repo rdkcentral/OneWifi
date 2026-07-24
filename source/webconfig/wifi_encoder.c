@@ -2753,17 +2753,11 @@ webconfig_error_t encode_radio_channel_radio_params(wifi_provider_response_t *ch
 
     radio_chan_data_t *chan_data = chan_stats->stat_pointer;
 
-    radio_stats_obj = cJSON_CreateObject();
-    if (radio_stats_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
 
     for (unsigned int count = 0; count < chan_stats->stat_array_size; count++) {
         radio_stats_obj = cJSON_CreateObject();
         if (radio_stats_obj == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
-            cJSON_Delete(radio_stats_obj);
             return webconfig_error_encode;
         }
         cJSON_AddItemToArray(radio_stats, radio_stats_obj);
@@ -2788,17 +2782,11 @@ webconfig_error_t encode_neighbor_radio_params(wifi_provider_response_t *neigh_s
     cJSON *neighbor_stats_obj;
     wifi_neighbor_ap2_t *neighbor_data = neigh_stats->stat_pointer;
 
-    neighbor_stats_obj = cJSON_CreateObject();
-    if (neighbor_stats_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
 
     for (unsigned int count = 0; count < neigh_stats->stat_array_size; count++) {
         neighbor_stats_obj = cJSON_CreateObject();
         if (neighbor_stats_obj == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
-            cJSON_Delete(neighbor_stats_obj);
             return webconfig_error_encode;
         }
         cJSON_AddItemToArray(neigh_stats_obj, neighbor_stats_obj);
@@ -2899,17 +2887,11 @@ webconfig_error_t encode_assocdevice_params(wifi_provider_response_t *assoc_dev_
     cJSON *client_stats_obj;
     sta_data_t *client_stats = assoc_dev_stats->stat_pointer;
 
-    client_stats_obj = cJSON_CreateObject();
-    if (client_stats_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
 
     for (unsigned int count = 0; count < assoc_dev_stats->stat_array_size; count++) {
         client_stats_obj = cJSON_CreateObject();
         if (client_stats_obj == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
-            cJSON_Delete(client_stats_obj);
             return webconfig_error_encode;
         }
 
@@ -2958,11 +2940,6 @@ webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_st
     cJSON *diag_obj;
     radio_data_t *diag_stats = radiodiag_stats->stat_pointer;
 
-    diag_obj = cJSON_CreateObject();
-    if (diag_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
 
     for (unsigned int count = 0; count < radiodiag_stats->stat_array_size; count++) {
         diag_obj = cJSON_CreateObject();
@@ -3070,11 +3047,6 @@ webconfig_error_t encode_radio_temperature_params(wifi_provider_response_t *radi
     cJSON *temp_obj;
     radio_data_t *temp_stats = radiotemperature_stats->stat_pointer;
 
-    temp_obj = cJSON_CreateObject();
-    if (temp_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
 
     for (unsigned int count = 0; count < radiotemperature_stats->stat_array_size; count++) {
         temp_obj = cJSON_CreateObject();
