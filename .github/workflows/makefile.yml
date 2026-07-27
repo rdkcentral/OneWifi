@@ -67,7 +67,6 @@ jobs:
                                 gnupg \
                                 file \
                                 golang \
-                                libjson-c-dev \
                                 libgtest-dev \
                                 libgmock-dev
 
