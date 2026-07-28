@@ -155,11 +155,6 @@ void update_apmld_map()
     memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
 
     for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
-        if (isRadioBeEnabled(r_idx) != TRUE) {
-            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Radio %d does not have BE mode enabled, skip\n", __func__, __LINE__, r_idx);
-            continue;
-        }
-
         mgr_vap_info_map = get_wifidb_vap_map(r_idx);
         if (mgr_vap_info_map == NULL) {
             wifi_util_error_print(WIFI_DMCLI, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
@@ -172,6 +167,11 @@ void update_apmld_map()
             wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
             unsigned int id = mld_info->mld_id;
             unsigned int mld_idx;
+
+            if (isVapSTAMesh(vap_config->vap_index)) {
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d VAP %s is a STA mesh, skip\n", __func__, __LINE__, vap_config->vap_name);
+                continue;
+            }
 
             if (!mld_info->mld_enable) {
                 wifi_util_dbg_print(WIFI_DMCLI, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);

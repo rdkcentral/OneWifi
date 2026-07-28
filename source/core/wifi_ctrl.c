@@ -462,6 +462,8 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
     uint8_t num_of_radios = getNumberRadios();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_platform_property_t *wifi_prop = (wifi_platform_property_t *)get_wifi_hal_cap_prop();
+    /* Stable per-radio storage for the dfs_nop_start_timer arg (non-owning, must outlive the task) */
+    static unsigned int dfs_nop_radio_index[MAX_NUM_RADIOS];
 
     wifi_util_info_print(WIFI_CTRL, "%s(): Start radios %d\n", __FUNCTION__, num_of_radios);
     // Check for the number of radios
@@ -543,12 +545,14 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
                 }
             }
 
-            if (strcmp(wifi_radio_oper_param->radarDetected, " ")) {
+            if (strcmp(wifi_radio_oper_param->radarDetected, " ") != 0 &&
+                strlen(wifi_radio_oper_param->radarDetected) != 0) {
+                dfs_nop_radio_index[index] = index;
                 wifi_util_info_print(WIFI_CTRL,
-                    "%s:%d Triggering dfs_nop_start_timer for radar:%s \n", __func__, __LINE__,
-                    wifi_radio_oper_param->radarDetected);
-                scheduler_add_timer_task(ctrl->sched, FALSE, NULL, dfs_nop_start_timer, NULL,
-                    (60 * 1000), 1, FALSE);
+                    "%s:%d Triggering dfs_nop_start_timer for radio:%d radar:%s \n", __func__,
+                    __LINE__, index, wifi_radio_oper_param->radarDetected);
+                scheduler_add_timer_task(ctrl->sched, FALSE, NULL, dfs_nop_start_timer,
+                    &dfs_nop_radio_index[index], (60 * 1000), 1, FALSE);
             }
         }
 
@@ -3267,19 +3271,19 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
     return wifi_mgr->radio_config[radioIndex].vaps.num_vaps;
 }
 
-BOOL isRadioBeEnabled(UINT radio_index)
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+/* A radio is MLO-capable only if it is enabled, not in EcoPowerDown, and running 802.11be. */
+static bool is_radio_mlo_capable(unsigned int radio_index)
 {
-#ifdef CONFIG_IEEE80211BE
     wifi_radio_operationParam_t *radio_param = getRadioOperationParam(radio_index);
 
-    if (radio_param != NULL && radio_param->variant & WIFI_80211_VARIANT_BE) {
-        return TRUE;
+    if (radio_param == NULL) {
+        return false;
     }
-#endif /* CONFIG_IEEE80211BE */
-    return FALSE;
+    return radio_param->enable && !radio_param->EcoPowerDown &&
+        (radio_param->variant & WIFI_80211_VARIANT_BE);
 }
 
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 static bool is_mlo_wpa3_personal(wifi_security_modes_t mode)
 {
     return (mode == wifi_security_mode_wpa3_personal ||
@@ -3432,6 +3436,11 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                     mld_conf->mld_enable = false;
                 }
 
+                /* Skip disabled VAPs */
+                if (target_vap->u.bss_info.enabled == false) {
+                    continue;
+                }
+
                 /* Validate MLD configuration bounds */
                 if (mld_conf->mld_id >= MLD_UNIT_COUNT || mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
                     continue;
@@ -3442,8 +3451,17 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                     continue;
                 }
 
+                /* Radio must be enabled and in 802.11be mode for MLO VAP */
+                if (is_radio_mlo_capable(mgr_vap->radio_index) == false) {
+                    wifi_util_info_print(log_type,
+                        "%s:%d: vap_index=%d excluded from MLO unit %d "
+                        "(radio %u not enabled/EDPD/BE)\n",
+                        __func__, __LINE__, mgr_vap->vap_index, i, mgr_vap->radio_index);
+                    continue;
+                }
+
                 /* Main link (link_id == 0) provides the shared MLD MAC address */
-                if (mld_conf->mld_link_id == 0 && target_vap->u.bss_info.enabled == true) {
+                if (mld_conf->mld_link_id == 0) {
                     main_link_vap = target_vap;
                     memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
                 }

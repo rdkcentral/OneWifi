@@ -4396,6 +4396,7 @@ int init_wifi_monitor()
     update_ecomode_radios();
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
+    snprintf(g_monitor_module.neighbor_scan_cfg.DiagnosticsState, sizeof(g_monitor_module.neighbor_scan_cfg.DiagnosticsState), "None");
     uptimeval=get_sys_uptime();
     chan_util_upload_period = get_chan_util_upload_period();
     wifi_util_dbg_print(WIFI_MON, "%s:%d system uptime val is %ld and upload period is %d in secs\n",
