@@ -3776,7 +3776,7 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
 int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short ether_type)
 {
     mac_address_t sta_mac;
-    assoc_dev_data_t assoc_data;
+    assoc_dev_data_t assoc_data = { 0 };
     char cli_ip_str[IP_STR_LEN] = { 0 };
     char cli_interface_str[IFNAMSIZ] = { 0 };
     const int reason = WLAN_REASON_PREV_AUTH_NOT_VALID;
@@ -3800,18 +3800,15 @@ int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short et
       * unprotected frames are blocking DHCP from ever succeeding. */
     if (csi_getClientIpAddress(src_mac, cli_ip_str, cli_interface_str, 1) == 0 &&
         cli_ip_str[0] != '\0') {
-        wifi_util_dbg_print(WIFI_MON,
-            "%s:%d: [FC_WEP] client[%s] has IPv4 %s on %s - no action\n",
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: [FC_WEP] client[%s] has IPv4 %s on %s - no action\n",
             __func__, __LINE__, src_mac, cli_ip_str, cli_interface_str);
         return RETURN_OK;
     }
 
     wifi_util_info_print(WIFI_MON,
-        "%s:%d: [FC_WEP] client[%s] on ap:%d (ethertype:0x%04x) has no IPv4 - "
-        "queueing disassoc\n",
+        "%s:%d: [FC_WEP] client[%s] on ap:%d (ethertype:0x%04x) has no IPv4 - queueing disassoc\n",
         __func__, __LINE__, src_mac, ap_index, ether_type);
 
-    memset(&assoc_data, 0, sizeof(assoc_data));
     assoc_data.ap_index = ap_index;
     assoc_data.reason = reason;
     memcpy(assoc_data.dev_stats.cli_MACAddress, sta_mac, sizeof(mac_address_t));
