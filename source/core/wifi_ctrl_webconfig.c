@@ -1060,6 +1060,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
     }
 
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mlo_rfc_enable(false);
+#endif
     return RETURN_OK;
 }
 
@@ -1745,10 +1748,11 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
 
 int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1767,10 +1771,11 @@ int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
 int webconfig_hal_home_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1789,10 +1794,11 @@ int webconfig_hal_home_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
 
 int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1811,10 +1817,11 @@ int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
 int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1833,10 +1840,11 @@ int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data
 
 int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
     char *vap_name = NULL;
-    char *vap_names[MAX_VAP];
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1856,9 +1864,10 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
 int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int num_vaps = 0;
-    unsigned int ap_index;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    unsigned int ap_index = 0;
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1878,9 +1887,10 @@ int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int num_vaps = 0;
-    unsigned int ap_index;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    unsigned int ap_index = 0;
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){

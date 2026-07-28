@@ -40,12 +40,23 @@
 #include "run_qmgr.h"
 #define EASYMESH_OFF_FLAG "/nvram/rdkb_user_easymesh_off"
 
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+#define MLO_RFC_NOTIFY_PARAM_COUNT 2
+typedef struct mlo_rfc_status_params {
+    bool last_mlo_rfc_enable;
+    bool last_mlo_rfc_enable_notify_status_pending;
+    bool param_notify_status[MLO_RFC_NOTIFY_PARAM_COUNT];
+    int last_mlo_rfc_notify_task_id;
+} mlo_rfc_status_params_t;
+
+#endif
+
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
 void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype);
-
+int set_bus_bool_param(bus_handle_t *handle, const char *paramNames, bool data_value);
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl);
 static int pending_states_webconfig_analyzer(void *arg);
 static int bus_check_and_subscribe_events(void* arg);
@@ -1963,7 +1974,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     /* start wifi apps */
     wifi_hal_platform_post_init();
-
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mlo_rfc_enable(true);
+#endif
     if (monitor_ret == 0) {
         //Start Wifi Monitor Thread
         start_wifi_health_monitor_thread();
@@ -3386,6 +3399,128 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
 }
 
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+
+static int set_mlo_rfc_task(void *arg)
+{
+    mlo_rfc_status_params_t *mlo_rfc_status = (mlo_rfc_status_params_t *)arg;
+    bool all_params_updated = true;
+    static const char *notify_params[MLO_RFC_NOTIFY_PARAM_COUNT] = {
+        WIFI_NETWORKDEVICESSTATUS_MLORFCENABLE, WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE
+    };
+
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    if (wifi_mgr == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get wifi_mgr object\n", __FUNCTION__,
+            __LINE__);
+        return TIMER_TASK_COMPLETE;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Entering\n", __FUNCTION__, __LINE__);
+
+    for (int i = 0; i < MLO_RFC_NOTIFY_PARAM_COUNT; i++) {
+        const char *param_name = notify_params[i];
+
+        if (mlo_rfc_status->param_notify_status[i] == false) {
+            if (set_bus_bool_param(&wifi_mgr->ctrl.handle, param_name,
+                    mlo_rfc_status->last_mlo_rfc_enable) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to update %s\n", __FUNCTION__,
+                    __LINE__, param_name);
+                all_params_updated = false;
+            } else {
+                mlo_rfc_status->param_notify_status[i] = true;
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: Parameter %s updated to %s\n", __FUNCTION__,
+                    __LINE__, param_name, mlo_rfc_status->last_mlo_rfc_enable ? "true" : "false");
+            }
+        }
+    }
+
+    if (all_params_updated) {
+        mlo_rfc_status->last_mlo_rfc_enable_notify_status_pending = false;
+        return TIMER_TASK_COMPLETE;
+    }
+
+    if (scheduler_add_timer_task(wifi_mgr->ctrl.sched, FALSE,
+            &mlo_rfc_status->last_mlo_rfc_notify_task_id, set_mlo_rfc_task, mlo_rfc_status, 1000, 1,
+            FALSE) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to reschedule timer task\n", __FUNCTION__,
+            __LINE__);
+        mlo_rfc_status->last_mlo_rfc_enable_notify_status_pending = false;
+    }
+
+    return TIMER_TASK_COMPLETE;
+}
+/**
+ * Update the MLO RFC enable status based on the current VAP configurations.
+ * This function checks all radios and their VAPs to determine if any VAP has a
+ * valid MLD ID and updates the corresponding MLO RFC enable status IF there was
+ * a RFC status difference from previously recorded.
+ * @param init - true when it is being called from the bootup path,
+ *               false when it is being called from the vap config update path
+ */
+void update_mlo_rfc_enable(bool init)
+{
+    static mlo_rfc_status_params_t mlo_rfc_status = { 0 };
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    bool mlo_rfc_enable = false;
+    bool state_changed = false;
+    unsigned int i, j;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Entering\n", __FUNCTION__, __LINE__);
+
+    if (wifi_mgr == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get wifi_mgr object\n", __FUNCTION__,
+            __LINE__);
+        return;
+    }
+
+    for (i = 0; i < getNumberRadios(); i++) {
+        for (j = 0; j < getNumberVAPsPerRadio(i); j++) {
+            wifi_vap_info_t *vap = &wifi_mgr->radio_config[i].vaps.vap_map.vap_array[j];
+
+            if (isVapSTAMesh(vap->vap_index)) {
+                continue;
+            }
+
+            if (vap->u.bss_info.mld_info.common_info.mld_id < MLD_UNIT_COUNT) {
+                mlo_rfc_enable = true;
+                break;
+            }
+        }
+        if (mlo_rfc_enable) {
+            break;
+        }
+    }
+
+    state_changed = (mlo_rfc_enable != mlo_rfc_status.last_mlo_rfc_enable);
+    if (state_changed) {
+        mlo_rfc_status.last_mlo_rfc_enable = mlo_rfc_enable;
+    }
+
+    if (init || state_changed) {
+        if (mlo_rfc_status.last_mlo_rfc_enable_notify_status_pending) {
+            if (scheduler_cancel_timer_task(wifi_mgr->ctrl.sched,
+                    mlo_rfc_status.last_mlo_rfc_notify_task_id) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d: Failed to cancel previous MLO RFC notify task\n", __FUNCTION__,
+                    __LINE__);
+                mlo_rfc_status.last_mlo_rfc_enable_notify_status_pending = false;
+                // best-effort - proceed with the update
+            }
+        }
+
+        memset(&mlo_rfc_status.param_notify_status, 0, sizeof(mlo_rfc_status.param_notify_status));
+        mlo_rfc_status.last_mlo_rfc_enable_notify_status_pending = true;
+
+        if (scheduler_add_timer_task(wifi_mgr->ctrl.sched, FALSE,
+                &mlo_rfc_status.last_mlo_rfc_notify_task_id, set_mlo_rfc_task, &mlo_rfc_status,
+                1000, 1, FALSE) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to schedule timer task for MLO RFC\n",
+                __FUNCTION__, __LINE__);
+            mlo_rfc_status.last_mlo_rfc_enable_notify_status_pending = false;
+        }
+    }
+}
+
 /* A radio is MLO-capable only if it is enabled, not in EcoPowerDown, and running 802.11be. */
 static bool is_radio_mlo_capable(unsigned int radio_index)
 {
