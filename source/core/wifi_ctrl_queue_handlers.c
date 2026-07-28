@@ -2803,8 +2803,11 @@ void process_dfs_rfc(bool type)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
-    rfc_param->dfs_rfc = type;
-    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    int rfc_ret = get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    if (rfc_ret == 0) {
+	rfc_param->dfs_rfc = type;
+    }
+    get_wifi_db_rfc_parameters()->dfs_rfc = type;
 
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         wifi_radio_operationParam_t *radio_params = NULL;

@@ -2079,21 +2079,31 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
         //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
         if (WIFI_FREQUENCY_2_4_BAND == rcfg->band) {
+#if defined(RDKB_ONE_WIFI_PROD)
+            rfc_param->twoG80211axEnable_rfc = true;
+            get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+#endif /* defined(RDKB_ONE_WIFI_PROD) */
             if(rfc_param->twoG80211axEnable_rfc) {
                 rcfg->variant = rcfg->variant | WIFI_80211_VARIANT_AX;
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated default config with twoG80211axEnable_rfc\n",__func__, __LINE__);
             }
         }
 
-        //Update DFS RFC as disabled for 5GHz radio
+        //Update DFS RFC for 5GHz radio
+        //default bandwidth, which spans DFS channels, is retained after factory reset
         if( (WIFI_FREQUENCY_5_BAND == rcfg->band) || (WIFI_FREQUENCY_5L_BAND == rcfg->band) || (WIFI_FREQUENCY_5H_BAND == rcfg->band) ) {
             wifi_mgr_t *g_wifidb;
             g_wifidb = get_wifimgr_obj();
             rdk_wifi_radio_t *l_radio = NULL;
-
+#if defined(RDKB_ONE_WIFI_PROD)
+            // Enable DFS and update rfc Config
+            rcfg->DfsEnabled = TRUE;
+            rfc_param->dfs_rfc = TRUE;
+#else
             // Disable DFS and update rfc Config
             rcfg->DfsEnabled = FALSE;
             rfc_param->dfs_rfc = FALSE;
+#endif /* RDKB_ONE_WIFI_PROD */
             get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
             // No need to reset the channel and channel width, as it already done in wifidb_init_radio_config_default,
@@ -2113,7 +2123,11 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
             // Update PSM
             wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
+#if defined(RDKB_ONE_WIFI_PROD)
+            p_ccsp_desc->psm_set_value_fn(DFS_RFC_ENABLE_NAMESPACE, "true");
+#else
             p_ccsp_desc->psm_set_value_fn(DFS_RFC_ENABLE_NAMESPACE, "false");
+#endif /* RDKB_ONE_WIFI_PROD */
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated DFS RFC as %d\n",__func__, __LINE__, rfc_param->dfs_rfc);
         }
 

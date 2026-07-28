@@ -124,8 +124,14 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg.operatingClass = 128;
+#if defined(RDKB_ONE_WIFI_PROD)
+	    cfg.channel = 100;
+	    cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+	    cfg.DfsEnabled = true;
+#else
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+#endif /* RDKB_ONE_WIFI_PROD */
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 
 #ifdef CONFIG_IEEE80211BE
