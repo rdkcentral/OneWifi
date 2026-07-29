@@ -551,10 +551,7 @@ typedef struct {
     unsigned int cli_LastDataDownlinkRate;
     unsigned int cli_LastDataUplinkRate;
     bool cli_PowerSaveMode;
-    unsigned int cli_sleepTime;  /* accumulated PS sleep time from HAL, in MILLISECONDS
-                                  * (driver sleep_time_us / 1000, carried by the
-                                  * RDK_VENDOR_ATTR_STA_INFO_PS_SLEEP_TIME_MS netlink attr).
-                                  * Consumers must divide by 1000 to get seconds. */
+    unsigned long cli_sleepTime;
 } dev_stats_t;
 
 typedef struct {
