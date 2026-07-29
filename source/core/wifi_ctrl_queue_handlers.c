@@ -2761,6 +2761,8 @@ void process_wpa3_rfc(bool type)
             vapInfo->u.bss_info.security.wpa3_transition_disable = false;
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            /* When WPA3 RFC enables transition mode, restore transition encryption policy. */
+            apply_wpa3_transition_encr_policy(&vapInfo->u.bss_info.security);
         } else {
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
                 continue;
@@ -2769,6 +2771,8 @@ void process_wpa3_rfc(bool type)
             if ((radio_params->band == WIFI_FREQUENCY_2_4_BAND) ||  (radio_params->band == WIFI_FREQUENCY_5_BAND) ||
                 (radio_params->band == WIFI_FREQUENCY_5L_BAND) || (radio_params->band == WIFI_FREQUENCY_5H_BAND)) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                /* RFC disable should not leave WPA2 with invalid encryption. */
+                apply_wpa2_personal_encr_policy(&vapInfo->u.bss_info.security);
             }
         }
 
@@ -4311,6 +4315,8 @@ void process_rsn_override_rfc(bool type)
                 (radio_params->band == WIFI_FREQUENCY_5L_BAND) || (radio_params->band == WIFI_FREQUENCY_5H_BAND)) {
                     vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+                    /* RFC disable should not leave WPA2 with invalid encryption. */
+                    apply_wpa2_personal_encr_policy(&vapInfo->u.bss_info.security);
             }
 
         if(rfc_param->wpa3_rfc) {
@@ -4318,6 +4324,8 @@ void process_rsn_override_rfc(bool type)
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+                /* When RSN override re-enables WPA3 transition, restore its encryption policy. */
+                apply_wpa3_transition_encr_policy(&vapInfo->u.bss_info.security);
             }
 #if defined(CONFIG_IEEE80211BE)
             if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
