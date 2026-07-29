@@ -1916,10 +1916,10 @@
             "max": 1
           }
         },
-        "wei_rfc_mask": {
+        "wei_rfc": {
           "type": {
             "key": {
-              "type": "integer"
+              "type": "boolean"
             },
             "min": 0,
             "max": 1

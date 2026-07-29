@@ -2014,21 +2014,21 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
         wifi_event_type_command_mesh_status, NULL);
 }
 
-static void wei_rfc_mask_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
+static void wei_rfc_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
    (void)userData;
-    int wei_status = 0;
+    bool wei_status = false;
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event event_name=%s\n", __func__, __LINE__,event_name);
 
-    if(p_data->value.data_type != bus_data_type_uint32) {
+    if(p_data->value.data_type != bus_data_type_boolean) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->value.data_type);
         return;
     }
 
     wei_status = p_data->value.raw_data.b;
    push_event_to_ctrl_queue(&wei_status, sizeof(wei_status), wifi_event_type_command,
-         wifi_event_type_wei_rfc_mask, NULL);
+         wifi_event_type_wei_rfc, NULL);
 
 }
 
@@ -2486,7 +2486,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
 
     if (ctrl->wei_events_subscribed == false) {
         int ret1 = -1;
-        ret1 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_RFC_MASK, wei_rfc_mask_handler, NULL,0);
+        ret1 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_RFC, wei_rfc_handler, NULL,0);
         if (ret1 == 0 )  {    
 	    ctrl->wei_events_subscribed = true;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d wei event subscribe success\n",
