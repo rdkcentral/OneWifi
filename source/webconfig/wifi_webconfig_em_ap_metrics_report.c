@@ -133,6 +133,25 @@ webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
     return webconfig_error_none;
 }
 
+// frees the per-vap arrays allocated by decode_em_ap_metrics_report_object
+static void free_em_ap_metrics_report_params(webconfig_subdoc_decoded_data_t *params)
+{
+    for (int r = 0; r < MAX_NUM_RADIOS; r++) {
+        for (int v = 0; v < MAX_NUM_VAP_PER_RADIO; v++) {
+            em_vap_metrics_t *vap_report = &params->em_ap_metrics_report.radio_reports[r].vap_reports[v];
+
+            if (vap_report->sta_traffic_stats != NULL) {
+                free(vap_report->sta_traffic_stats);
+                vap_report->sta_traffic_stats = NULL;
+            }
+            if (vap_report->sta_link_metrics != NULL) {
+                free(vap_report->sta_link_metrics);
+                vap_report->sta_link_metrics = NULL;
+            }
+        }
+    }
+}
+
 webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
@@ -174,6 +193,14 @@ webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
     if (em_ap_report_arr == NULL || !cJSON_IsArray(em_ap_report_arr)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid or missing EMAPMetricsReport\n",
             __func__, __LINE__);
+        cJSON_Delete(json);
+        return webconfig_error_decode;
+    }
+
+    if (cJSON_GetArraySize(em_ap_report_arr) > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: EMAPMetricsReport has %d entries, max is %d\n",
+            __func__, __LINE__, cJSON_GetArraySize(em_ap_report_arr), MAX_NUM_RADIOS);
+        cJSON_Delete(json);
         return webconfig_error_decode;
     }
 
@@ -182,17 +209,22 @@ webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
         if (em_ap_report_obj == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EMAPMetricsReport object at index %d\n",
                 __func__, __LINE__, i);
+            free_em_ap_metrics_report_params(params);
+            cJSON_Delete(json);
             return webconfig_error_decode;
         }
 
         if(decode_em_ap_metrics_report_object(em_ap_report_obj, &params->em_ap_metrics_report.radio_reports[i]) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decode_em_ap_metrics_report_object failed\n", __func__, __LINE__);
+            free_em_ap_metrics_report_params(params);
             cJSON_Delete(json);
             return webconfig_error_decode;
         }
     }
     params->em_ap_metrics_report.radio_count = i;
 
+    // the subdoc decoder owns u.encoded.json (see decode_radio_subdoc)
+    cJSON_Delete(json);
     return webconfig_error_none;
 }
 #endif
