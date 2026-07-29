@@ -466,6 +466,7 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_EM, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, rc);
+        free(data->u.encoded.raw);
         free(data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics);
         free(data);
         return RETURN_ERR;
@@ -477,8 +478,11 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
         }
     }
 
+    free(data->u.encoded.raw);
     free(data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics);
     free(data);
+
+    return RETURN_OK;
 }
 
 static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats, size_t stats_num,
@@ -896,10 +900,12 @@ static int em_publish_stats_data(channel_scan_response_t *scan_response)
     if (status != bus_error_success) {
         wifi_util_error_print(WIFI_EM, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, status);
+        free(data->u.encoded.raw);
         free(data->u.decoded.collect_stats.stats);
         free(data);
         return RETURN_ERR;
     }
+    free(data->u.encoded.raw);
     free(data->u.decoded.collect_stats.stats);
     free(data);
 
@@ -2044,7 +2050,8 @@ cleanup:
     // Cleanup allocated memory
     if (data != NULL) {
         for (int j = 0; j < req_radio_count; j++) {
-            for (int i = 0; i < radio->vaps.num_vaps && i < MAX_NUM_VAP_PER_RADIO; i++) {
+            // num_vaps differs per radio; unused entries are NULL
+            for (int i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
                 vap_report = &data->u.decoded.em_ap_metrics_report.radio_reports[j].vap_reports[i];
                 if (vap_report->sta_link_metrics != NULL) {
                     free(vap_report->sta_link_metrics);
@@ -2054,6 +2061,8 @@ cleanup:
                 }
             }
         }
+        // u.encoded.raw is NULL if encode was not reached (data is memset)
+        free(data->u.encoded.raw);
         free(data);
     }
 
@@ -2965,6 +2974,7 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn Event failed %d\n", __func__,
             __LINE__, rc);
+        free(wb_data->u.encoded.raw);
         free(wb_data);
         return RETURN_ERR;
     } else {
@@ -2972,6 +2982,8 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
             __LINE__, WIFI_EM_BEACON_REPORT);
     }
 
+    free(wb_data->u.encoded.raw);
+    free(wb_data);
     return RETURN_OK;
 }
 
