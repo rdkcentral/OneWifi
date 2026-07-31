@@ -568,6 +568,22 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
     affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index,&affinity_arg->channel_utilization);
     affinity_arg->status_code = 0;
+    if (sub_event == wifi_event_hal_auth_frame && msg->frame.len >= 30) {
+        struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
+        uint16_t st  = le_to_host16(frame->u.auth.status_code);
+        uint16_t seq = le_to_host16(frame->u.auth.auth_transaction);
+        if (st != 0 && st != 76 && st != 126 && st != 127) {
+            affinity_arg->status_code = st;
+            wifi_util_error_print(WIFI_CTRL,
+                "AUTH-ASSOC-CODE %s:%d AUTH FAILURE MAC=%s status_code=%u auth_seq=%u vap=%u radio=%u\n",
+                __func__, __LINE__, affinity_arg->mac_str, st, seq,
+                affinity_arg->vap_index, affinity_arg->radio_index);
+        } else {
+            wifi_util_info_print(WIFI_CTRL,
+                "AUTH-ASSOC-CODE %s:%d AUTH frame MAC=%s status_code=%u auth_seq=%u (attempt/continuation)\n",
+                __func__, __LINE__, affinity_arg->mac_str, st, seq);
+        }
+    }
     affinity_arg->dev.cli_SNR = msg->frame.sig_dbm - NOISE_FLOOR;
     // dhcp_event = 0 (not a DHCP update) from memset
     wifi_util_info_print(WIFI_APPS," %s:%d auth client snr =%d\n",__func__,__LINE__,affinity_arg->dev.cli_SNR);
@@ -614,10 +630,10 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
         if ((sub_event == wifi_event_hal_assoc_rsp_frame) || (sub_event == wifi_event_hal_reassoc_rsp_frame)) {
             struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
             uint16_t status = le_to_host16(frame->u.assoc_resp.status_code);
-            wifi_util_info_print(WIFI_CTRL," %s:%d wifi_event_hal_assoc_rsp_frame status_code=%d\n", __func__, __LINE__, status);
+	    wifi_util_info_print(WIFI_CTRL,"AUTH-ASSOC-CODE %s:%d ASSOC RESP MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n", __func__, __LINE__, affinity_arg->mac_str, sub_event, status, affinity_arg->vap_index, affinity_arg->radio_index);
             if (status != 0) {
                 wifi_util_error_print(WIFI_CTRL,
-                    "CAFF %s:%d ASSOC FAILURE MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n",
+		    "AUTH-ASSOC-CODE %s:%d ASSOC FAILURE MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n",
                     __func__, __LINE__, affinity_arg->mac_str, sub_event, status,
                     affinity_arg->vap_index, affinity_arg->radio_index);
             }
@@ -680,6 +696,11 @@ int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,voi
     get_radio_channel_utilization(affinity_arg->radio_index, &affinity_arg->channel_utilization);
     /* Carry the 802.11 disconnect reason in status_code for WEI to classify. */
     affinity_arg->status_code = msg->reason;
+    wifi_util_info_print(WIFI_CTRL,
+        "AUTH-ASSOC-CODE %s:%d %s MAC=%s reason=%d vap=%u radio=%u\n",
+        __func__, __LINE__,
+        (sub_event == wifi_event_hal_deauth_frame) ? "DEAUTH" : "DISASSOC",
+        affinity_arg->mac_str, msg->reason, affinity_arg->vap_index, affinity_arg->radio_index);
     
     if (req) {
         affinity_arg->event = sub_event;
@@ -715,7 +736,9 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             break;
         
         case wifi_event_hal_deauth_frame:
-            link_quality_apps_auth_event(apps,true,sub_type,arg);
+	    /* deauth delivers assoc_dev_data_t (802.11 reason), not frame_data_t —
+             * route through the disassoc handler so the reason reaches WEI. */
+	    link_quality_apps_disassoc_event(apps,true,sub_type,arg);
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             break;
      

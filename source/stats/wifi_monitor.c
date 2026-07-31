@@ -3643,6 +3643,32 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s status:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac,status,type);
 
+/* WPA3-SAE (and other auth/assoc) rejections arrive here in the AP's downlink
+     * status_code; the mgmt-frame path only sees the status-0 uplink frames, and the
+     * STA is pre-association (absent from the interop map that early-returns below).
+     * dest_mac is the STA on an AP->STA reject. Forward to WEI on the caffinity IPC as
+     * an auth failure. Skip SAE-continuation statuses (76/126/127 are progress). */
+    /* Assoc Response failures (status=53 etc.) are handled by the mgmt-frame assoc_rsp
+     * path; restrict this forward to Auth frames only to avoid double-counting. */
+    if (status != 0 && status != 76 && status != 126 && status != 127
+            && type == WIFI_MGMT_FRAME_TYPE_AUTH) {
+        stats_arg_t fail_arg;
+        memset(&fail_arg, 0, sizeof(fail_arg));
+        snprintf(fail_arg.mac_str, sizeof(fail_arg.mac_str), "%s", dest_mac);
+        fail_arg.vap_index = ap_index;
+        fail_arg.radio_index = getRadioIndexFromAp(ap_index);
+        fail_arg.event = wifi_event_hal_auth_frame;
+        fail_arg.status_code = (unsigned int)status;
+        fail_arg.dev.cli_SNR = -1;            /* -1 => WEI keeps its last SNR */
+        fail_arg.channel_utilization = -1;
+        wifi_util_info_print(WIFI_MON,
+            "AUTH-ASSOC-CODE %s:%d ap_status_code failure -> WEI MAC=%s status_code=%d type=%d vap=%d\n",
+            __func__, __LINE__, dest_mac, status, type, ap_index);
+        if (get_lq_descriptor() != NULL && get_lq_descriptor()->periodic_caffinity_stats_update_fn != NULL) {
+            get_lq_descriptor()->periodic_caffinity_stats_update_fn(&fail_arg, 1);
+        }
+    }
+
 #ifdef EM_APP
     report_connection_status(ap_index, src_mac, dest_mac, (unsigned short)status, false, 0);
 #endif // EM_APP
