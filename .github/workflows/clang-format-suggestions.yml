@@ -3,7 +3,7 @@ name: clang-format-suggestions
 # Stage 2/2. Fires when the "clang-format" workflow finishes.
 # Runs in the BASE-repo (trusted) context with a write-capable token, but it
 # NEVER checks out or executes PR code. It only reads the diff artifact from
-# stage 1 as passive data and posts it as review suggestions. 
+# stage 1 as passive data and posts it as review suggestions.
 # The actual commit to the branch happens only
 # when a human clicks "Commit suggestion".
 on:
