@@ -2508,7 +2508,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Security_Config, where, &count);
-    if (pcfg == NULL) {
+    if (pcfg == NULL || count == 0) {
         wifidb_print("%s:%d Table table_Wifi_Security_Config table not found, entry count=%d \n",__func__, __LINE__, count);
         return -1;
     }
@@ -6579,18 +6579,21 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         if((convert_radio_name_to_index(&index,pcfg->radio_name))!=0)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid radio name \n",__func__, __LINE__,pcfg->radio_name);
+            free(pcfg);
             return RETURN_ERR;
         }
         config->radio_index = index ;
         config->vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, pcfg->vap_name);
         if ((int)config->vap_index < 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,pcfg->vap_name);
+            free(pcfg);
             return RETURN_ERR;
         }
         strncpy(config->vap_name, pcfg->vap_name,(sizeof(config->vap_name)-1));
         vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, pcfg->vap_name);
         if ((int)vap_index < 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,pcfg->vap_name);
+            free(pcfg);
             return RETURN_ERR;
         }
         if (isVapLnfPsk(vap_index) && pcfg->mdu_enabled) {
@@ -6700,7 +6703,7 @@ int wifidb_get_wifi_security_config_old_mode(char *vap_name, int vap_index)
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Security_Config, where, &count);
 
-    if (pcfg == NULL) {
+    if (pcfg == NULL || count == 0) {
         wifidb_print("%s:%d Table table_Wifi_Security_Config table not found, entry count=%d \n",__func__, __LINE__, count);
 #if defined(CONFIG_IEEE80211BE)
         if(is_6g)
@@ -6713,6 +6716,7 @@ int wifidb_get_wifi_security_config_old_mode(char *vap_name, int vap_index)
 #if defined(CONFIG_IEEE80211BE)
     sec_mode_old = (is_6g && !pcfg->security_mode) ? wifi_security_mode_wpa3_personal : pcfg->security_mode;
 #endif /* CONFIG_IEEE80211BE */
+    free(pcfg);
     return sec_mode_old;
 }
 

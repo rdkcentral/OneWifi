@@ -3514,9 +3514,9 @@ void start_station_vaps(bool is_private, bool rf_status)
         str = data->u.encoded.raw;
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_dml, NULL);
-    } else {
-        webconfig_data_free(data);
     }
+
+    webconfig_data_free(data);
     free(data);
 }
 
