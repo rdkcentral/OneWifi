@@ -3466,6 +3466,8 @@ bus_error_t ap_get_handler(char *name, raw_data_t *p_data, bus_user_data_t *user
             if (p_data->raw_data.bytes == NULL) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
                     __LINE__, str_len);
+                free(harvester_buf[vap_array_index]);
+                harvester_buf[vap_array_index] = NULL;
                 pthread_mutex_unlock(&events_bus_data->events_bus_lock);
                 return bus_error_out_of_resources;
             }
