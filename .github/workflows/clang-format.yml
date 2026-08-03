@@ -23,7 +23,7 @@ jobs:
   clang-format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0                      # need base history to diff changed lines
           # For pull_request events actions/checkout defaults to the MERGE commit
@@ -37,7 +37,7 @@ jobs:
           python3 -m pip install --quiet "clang-format==18.1.8"   # bundles clang-format + git-clang-format
           clang-format --version
 
-      - name: Reformat only the changed .c/.h lines
+      - name: Reformat only the changed .c/.cpp/.h lines
         id: fmt
         run: |
           # Diff against the MERGE BASE, not the base branch tip. Now that we check
@@ -95,7 +95,7 @@ jobs:
 
       - name: Upload diff + metadata
         if: steps.fmt.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: clang-format-suggestions
           path: |
