@@ -8,8 +8,9 @@ name: clang-format
 on:
   pull_request:
     paths:
-      - '**.c'
-      - '**.h'
+      - '**/*.c'
+      - '**/*.cpp'
+      - '**/*.h'
 
 permissions:
   contents: read
