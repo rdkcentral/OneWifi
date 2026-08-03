@@ -112,15 +112,33 @@ jobs:
           python3 /tmp/conv.py < clang-format.diff
           python3 - <<'PYEOF'
           import json, os
+          # Large reviews trip rate limiting, and fail (often as a misleading 404).
+          # Retrying does not help, and GH doesn't publish a number. Cap instead.
+          # A PR needing more than this many fixes should just be formatted locally.
+          MAX = int(os.environ.get("MAX_COMMENTS", "25"))
           comments = json.load(open("/tmp/comments.json"))
+          total = len(comments)
+          if total > MAX:
+              comments = comments[:MAX]
+              json.dump(comments, open("/tmp/comments.json", "w"))   # keep the post step in sync
+          body = ("`clang-format` suggests the formatting changes below. "
+                  "Use **Commit suggestion** to apply them.")
+          if total > MAX:
+              body += (f"\n\n> **Note:** showing the first {MAX} of {total} suggestions. "
+                       "Apply these and push, and the rest will be posted on the next run — "
+                       "or fix them all at once locally:\n"
+                       "> ```\n"
+                       "> pip install clang-format==18.1.8\n"
+                       "> git-clang-format --style=file --extensions c,h <merge-base>\n"
+                       "> ```")
           review = {
               "commit_id": os.environ["head_sha"],
               "event": "COMMENT",
-              "body": "`clang-format` suggests the formatting changes below. "
-                      "Use **Commit suggestion** to apply them.",
+              "body": body,
               "comments": comments,
           }
           json.dump(review, open("/tmp/review.json", "w"))
+          print(f"posting {len(comments)} of {total} suggestion(s)")
           PYEOF
 
       - name: Post the review
@@ -137,7 +155,9 @@ jobs:
                  --input /tmp/review.json > /tmp/resp.json 2>/tmp/err.txt; then
             echo "::error::Failed to post review:"
             cat /tmp/err.txt
-            # 422 usually means a suggestion targeted a line outside the PR diff.
+            # 422 = a suggestion targeted a line outside the PR diff.
+            # 404 = usually rate limit from too many comments at once;
+            #       retrying will NOT help (same payload) — lower MAX_COMMENTS.
             exit 1
           fi
           echo "Review posted: $(python3 -c 'import json;print(json.load(open("/tmp/resp.json")).get("html_url",""))')"
