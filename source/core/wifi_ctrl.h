@@ -435,6 +435,9 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
     char **vap_names, unsigned int vap_names_size, wifi_dbg_type_t log_type);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
 
+wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
+wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
+
 #ifdef __cplusplus
 }
 #endif
