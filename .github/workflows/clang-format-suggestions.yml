@@ -16,10 +16,24 @@ permissions:
   pull-requests: write        # the only write scope required
   actions: read               # to download the artifact from the triggering run
 
+# Cancel run when a newer one starts AND dismiss stale/outdated review.
+# Both freshness check and the cancelled-run one MUST use fields populated
+# in a workflow_run context. Use head_repository.full_name + head_branch, they always exist.
+# Alternatives: pull_request.number is absent here, and workflow_run.pull_requests is empty
+# for fork PRs (known GH bug: actions/runner#3444, github/docs#22501).
+concurrency:
+  group: >-
+    clang-format-suggest-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
 jobs:
   suggest:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.event == 'pull_request'
+    # Exclude cancelled runs at the source (they can leave outdated artifact yet
+    # fire 'completed'). Allow failure too (if stage 1 fails, suggestions are still useful!
+    if: >-
+      github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.conclusion != 'cancelled'
     steps:
       - name: Download the diff artifact
         id: dl
@@ -38,8 +52,8 @@ jobs:
         if: steps.dl.outcome == 'success'
         run: |
           # A PR can modify stage 1/2 workflow file, so treat pr-meta.env as
-          # attacker-controlled: accept ONLY a bare integer and a 40-hex SHA,
-          # never append the file to GITHUB_ENV directly (env injection).
+          # attacker-controlled. Accept ONLY a bare integer and a SHA,
+          # never append the file to GITHUB_ENV directly (possible env injection).
           PR="$(grep -oP '^pr_number=\K[0-9]+$' pr-meta.env | head -1)"
           SHA="$(grep -oP '^head_sha=\K[0-9a-f]{40}$' pr-meta.env | head -1)"
           if [ -z "$PR" ] || [ -z "$SHA" ]; then
@@ -52,12 +66,9 @@ jobs:
       - name: Convert diff into review suggestions
         if: steps.dl.outcome == 'success'
         run: |
-          # A GitHub "Commit suggestion" button is just a review comment whose
-          # body contains a ```suggestion fenced block. No extra tooling needed.
-          #
-          # In stage 1's diff the OLD side (-) is the code currently in the PR
-          # head, so those are the lines we comment on; the NEW side (+) is the
-          # replacement text that goes inside the suggestion block.
+          # A "Commit suggestion" button is just a review comment containing
+          # a ```suggestion block. Stage 1's diff OLD side (-) = lines currently in
+          # the PR head (what we comment on); NEW side (+) = the replacement text.
           cat > /tmp/conv.py <<'PYEOF'
           import json, re, sys
           HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
@@ -113,8 +124,8 @@ jobs:
           python3 - <<'PYEOF'
           import json, os
           # Large reviews trip rate limiting, and fail (often as a misleading 404).
-          # Retrying does not help, and GH doesn't publish a number. Cap instead.
-          # A PR needing more than this many fixes should just be formatted locally.
+          # Retrying won't help, and GH doesn't publish a number. Cap instead.
+          # A PR needing more than this, should just be formatted locally.
           MAX = int(os.environ.get("MAX_COMMENTS", "25"))
           comments = json.load(open("/tmp/comments.json"))
           total = len(comments)
@@ -149,15 +160,48 @@ jobs:
           if [ "$(python3 -c 'import json;print(len(json.load(open("/tmp/comments.json"))))')" = "0" ]; then
             echo "No suggestions to post."; exit 0
           fi
-          # gh is preinstalled on GitHub-hosted runners.
+
+          # Freshness check: concurrency only cancels an IN-FLIGHT run, so a run
+          # that already moved past can still post outdated suggestions. Fail
+          # CLOSED-TO-ERROR on empty (means transient API failure), skip only 
+          # on a positively-observed different sha (gh stderr flows to the log).
+          current_sha="$(gh api "/repos/${{ github.repository }}/pulls/${pr_number}" --jq .head.sha)" || true
+          if [ -z "$current_sha" ]; then
+            echo "::error::Could not read current PR head sha (see log above)."
+            exit 1
+          fi
+          if [ "$current_sha" != "$head_sha" ]; then
+            echo "PR has moved past $head_sha (now at $current_sha) — skipping stale review."
+            exit 0
+          fi
+
+          # Stale-review cleanup: two quick pushes can leave two review threads
+          # (one soon to be outdated). Dismiss our OWN prior clang-format reviews first, so
+          # maximum one (current) set is live. Identify "ours" by the token's server-resolved
+          # identity (github-actions[bot]/Bot) + body marker,
+          # NEVER by any actor field that crossed the trust boundary. Non-fatal.
+          gh api "/repos/${{ github.repository }}/pulls/${pr_number}/reviews" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.user.type == "Bot")) | select(.body | startswith("`clang-format` suggests")) | select(.state != "DISMISSED") | .id' \
+            > /tmp/stale_ids.txt \
+            || { echo "::warning::Could not list existing reviews for cleanup (continuing)."; : > /tmp/stale_ids.txt; }
+          while read -r rid; do
+            [ -n "$rid" ] || continue
+            echo "Dismissing prior clang-format review $rid"
+            gh api --method PUT \
+              "/repos/${{ github.repository }}/pulls/${pr_number}/reviews/${rid}/dismissals" \
+              -f message="Superseded by a newer clang-format suggestion run." \
+              -f event="DISMISS" >/dev/null \
+              || echo "::warning::Failed to dismiss review $rid (continuing)."
+          done < /tmp/stale_ids.txt
+
+          # Post the fresh review. gh is preinstalled on GitHub-hosted runners.
           if ! gh api --method POST \
                  "/repos/${{ github.repository }}/pulls/${pr_number}/reviews" \
-                 --input /tmp/review.json > /tmp/resp.json 2>/tmp/err.txt; then
-            echo "::error::Failed to post review:"
-            cat /tmp/err.txt
-            # 422 = a suggestion targeted a line outside the PR diff.
-            # 404 = usually rate limit from too many comments at once;
-            #       retrying will NOT help (same payload) — lower MAX_COMMENTS.
+                 --input /tmp/review.json > /tmp/resp.json; then
+            echo "::error::Failed to post review (see log above)."
+            # 422 = suggestion targeted a line outside the PR diff.
+            # 404 = usually rate limit from too many comments; retrying won't help
+            #       (same payload) — lower MAX_COMMENTS.
             exit 1
           fi
           echo "Review posted: $(python3 -c 'import json;print(json.load(open("/tmp/resp.json")).get("html_url",""))')"
