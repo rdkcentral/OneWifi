@@ -15,10 +15,16 @@ jobs:
         platform:
           - name: "Raspberry Pi"
             makefile_path: "build/linux/rpi/makefile"
+            extra_coverage: "0"
+            extra_cflags: ""
           - name: "Banana Pi R4 - MLO"
             makefile_path: "build/linux/bpi/makefile"
+            extra_coverage: "1"
+            extra_cflags: "-DCONFIG_GENERIC_MLO"
           - name: "Platform Mock Unittests"
             makefile_path: "build/linux/mockplatform/makefile"
+            extra_coverage: "0"
+            extra_cflags: ""
       fail-fast: false
 
     name: Build for ${{ matrix.platform.name }}
@@ -60,6 +66,7 @@ jobs:
                                 libnl-route-3-dev \
                                 libavro-dev \
                                 libcjson1 libcjson-dev \
+                                libprotobuf-c-dev \
                                 libssl-dev \
                                 uuid-dev \
                                 libmysqlcppconn-dev \
@@ -96,4 +103,12 @@ jobs:
     - name: Build OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
       run: |
-        make -f ${{ matrix.platform.makefile_path }} all
+        make -f ${{ matrix.platform.makefile_path }} -j$(nproc) all
+      env:
+        # Coverage tier for the bpi target: "1" enables EXTRA_COV_FLAGS
+        # (ONEWIFI_DB_SUPPORT + memwraptool). Ignored by rpi/mockplatform.
+        EXTRA_COVERAGE: ${{ matrix.platform.extra_coverage }}
+        # Extra defines appended to CFLAGS. bpi appends via 'CFLAGS +=' (so the
+        # MLO build picks up -DCONFIG_GENERIC_MLO); rpi/mockplatform use
+        # 'CFLAGS =' and ignore it. -j is safe: PROGRAM depends on libwifihal.a.
+        CFLAGS: ${{ matrix.platform.extra_cflags }}

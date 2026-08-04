@@ -492,7 +492,9 @@ $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 # executing its link command.
 #
 
-$(PROGRAM): $(ALLOBJECTS)
+# PROGRAM links -lwifihal, so libwifihal.a must exist first; naming it as a
+# prerequisite makes `make -j` safe (objects alone don't order the archive).
+$(PROGRAM): $(HAL_LIBRARY) $(ALLOBJECTS)
 	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
 #
@@ -511,7 +513,7 @@ $(PROGRAM): $(ALLOBJECTS)
 #
 
 clean:
-	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY)$(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
+	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY) $(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
 
 #
 # Run target: "make -f Makefile.Linux run" to execute the application
