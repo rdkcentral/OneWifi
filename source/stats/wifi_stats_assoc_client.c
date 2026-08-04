@@ -249,34 +249,73 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             dev_array = NULL;
         }
 
-        /* wifi_getApAssociatedDeviceDiagnosticResult3 failed - still perform stale entry cleanup on sta_map to prevent
-         * unbounded growth, entries added by process_connect() would never be cleaned up, eventually
-         * causing buffer overflow in harvester_get_associated_device_info().
-         */
+        /* HAL call failed: still clean stale sta_map entries and preserve disconnect semantics. */
+        disconnect_event_queue = queue_create();
+        if (disconnect_event_queue == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d Failed to create queue\n", __func__, __LINE__);
+        }
+
         pthread_mutex_lock(&mon_data->data_lock);
         sta_map = mon_data->bssid_data[vap_array_index].sta_map;
         if (sta_map != NULL) {
             struct timespec tv_now_err;
             clock_gettime(CLOCK_MONOTONIC, &tv_now_err);
+
+            wifi_util_info_print(WIFI_MON,
+                "%s:%d HAL failure cleanup start vap:%d sta_map_count:%u\n",
+                __func__, __LINE__, args->vap_index, hash_map_count(sta_map));
+
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
+                int send_disconnect_event = 1;
                 tmp_sta = NULL;
-                if (sta->dev_stats.cli_Active == false &&
-                    timespecisset(&(sta->last_disconnected_time))) {
-                    unsigned int disc_time = tv_now_err.tv_sec - sta->last_disconnected_time.tv_sec;
-                    if (disc_time > mon_data->bssid_data[vap_array_index].ap_params.rapid_reconnect_threshold) {
+
+                if (timespecisset(&(sta->total_connected_time))) {
+                    if ((sta->dev_stats.cli_Active == false) &&
+                        timespecisset(&(sta->last_disconnected_time))) {
+                        disconnected_time =
+                            (tv_now_err.tv_sec - sta->last_disconnected_time.tv_sec);
+                        if (disconnected_time > mon_data->bssid_data[vap_array_index]
+                                                    .ap_params.rapid_reconnect_threshold) {
+                            tmp_sta = sta;
+                        }
+                    }
+                } else {
+                    /* Assoc-request-only: remove stale entries after 5 seconds, no disconnect event. */
+                    if ((sta->assoc_frame_data.frame_timestamp != 0) &&
+                        (tv_now_err.tv_sec - sta->assoc_frame_data.frame_timestamp > 5)) {
+                        send_disconnect_event = 0;
                         tmp_sta = sta;
                     }
                 }
+
                 sta = hash_map_get_next(sta_map, sta);
+
                 if (tmp_sta != NULL) {
-                    sta_key_t rm_key;
-                    to_sta_key(tmp_sta->sta_mac, rm_key);
-                    wifi_util_info_print(WIFI_MON,
-                        "%s:%d wifi_getApAssociatedDeviceDiagnosticResult3 failed: removing stale device %s from map of ap:%d\n",
-                        __func__, __LINE__, rm_key, args->vap_index);
-                    tmp_sta = hash_map_remove(sta_map, rm_key);
+                    memset(sta_key, 0, sizeof(sta_key_t));
+                    to_sta_key(tmp_sta->sta_mac, sta_key);
+
+                    if ((send_disconnect_event == 1) && (disconnect_event_queue != NULL)) {
+                        mac_addr = (unsigned char *)malloc(sizeof(mac_address_t));
+                        if (mac_addr != NULL) {
+                            memcpy(mac_addr, tmp_sta->sta_mac, sizeof(mac_address_t));
+                            if (queue_push(disconnect_event_queue, mac_addr) == -1) {
+                                wifi_util_error_print(WIFI_MON,
+                                    "%s:%d Failed to push mac_addr %02x:%02x:%02x:%02x:%02x:%02x to queue\n",
+                                    __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2],
+                                    mac_addr[3], mac_addr[4], mac_addr[5]);
+                                free(mac_addr);
+                                mac_addr = NULL;
+                            }
+                        }
+                    }
+
+                    tmp_sta = hash_map_remove(sta_map, sta_key);
                     if (tmp_sta != NULL) {
+                        wifi_util_info_print(WIFI_MON,
+                            "%s:%d HAL failure cleanup removed vap:%d sta:%s reason:%s\n",
+                            __func__, __LINE__, args->vap_index, sta_key,
+                            (send_disconnect_event == 1) ? "stale_disconnected" : "stale_assoc_only");
                         free(tmp_sta);
                         tmp_sta = NULL;
                     }
@@ -284,6 +323,18 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             }
         }
         pthread_mutex_unlock(&mon_data->data_lock);
+
+        if (disconnect_event_queue != NULL) {
+            while (queue_count(disconnect_event_queue) > 0) {
+                mac_addr = (unsigned char *)queue_pop(disconnect_event_queue);
+                if (mac_addr != NULL) {
+                    send_wifi_disconnect_event_to_ctrl(mac_addr, args->vap_index);
+                    free(mac_addr);
+                }
+            }
+            queue_destroy(disconnect_event_queue);
+        }
+
         return RETURN_ERR;
     }
 
