@@ -437,6 +437,9 @@ int process_recv_unicast_connected_clients_data(he_bus_handle_t handle, hash_map
                         he_bus_connection_info_t *temp_client = hash_map_remove(client_info_map,
                             key);
                         if (temp_client != NULL) {
+                            if (temp_client->fd != SOCKET_INVALID_FD) {
+                                close(temp_client->fd);
+                            }
                             he_bus_free(temp_client);
                         }
                         continue;
