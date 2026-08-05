@@ -378,7 +378,6 @@ INCLUDEDIRS = \
     -I$(WIFI_NETLINK)/include \
     -I$(WIFI_TROWER_BASE) \
     -I$(BASE_DIR)/build/linux/compat \
-    -I$(BASE_DIR)/.. \
 
 LIBDIRS = \
     -L$(INSTALLDIR)/lib \

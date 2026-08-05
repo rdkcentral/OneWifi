@@ -1,0 +1,20 @@
+# clang-tidy config for the OneWifi CI gate.  Step 0 = ADVISORY (nothing fatal).
+#
+# The Checks list disables the existing style and possibly false-positives members of bugprone-*,
+# leaving the real-bug checks.
+#
+# To enable gating: move a proven-clean check into WarningsAsErrors
+# (e.g. 'bugprone-not-null-terminated-result') once its sites are fixed.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-branch-clone,
+  -bugprone-narrowing-conversions,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-assignment-in-if-condition,
+  -bugprone-reserved-identifier,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -bugprone-too-small-loop-variable,
+  -bugprone-switch-missing-default-case
+WarningsAsErrors: ''

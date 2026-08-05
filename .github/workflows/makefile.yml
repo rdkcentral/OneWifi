@@ -25,6 +25,7 @@ jobs:
             makefile_path: "build/linux/bpi/makefile"
             extra_coverage: "1"
             extra_cflags: "-DCONFIG_GENERIC_MLO"
+            clang_tidy: true          # only this leg builds the compile DB + runs clang-tidy
           - name: "Platform Mock Unittests"
             makefile_path: "build/linux/mockplatform/makefile"
             extra_coverage: "0"
@@ -38,6 +39,7 @@ jobs:
       uses: actions/checkout@v6
       with:
         path: 'OneWifi'
+        fetch-depth: 0            # clang-tidy diffs changed source against the PR base
 
     - name: Clone unified-wifi-mesh repository
       run: |
@@ -84,7 +86,9 @@ jobs:
                                 libperl-dev \
                                 libjson-c-dev \
                                 libgtest-dev \
-                                libgmock-dev
+                                libgmock-dev \
+                                bear \
+                                clang-tidy-18
 
         # Steps for ucode installation required for hostapd compilation
         git clone https://github.com/jow-/ucode.git ucode
@@ -110,7 +114,9 @@ jobs:
       run: |
         # pipefail so make's exit status (not tee's) decides the step result.
         set -o pipefail
-        make -f ${{ matrix.platform.makefile_path }} -j$(nproc) all 2>&1 | tee build.log
+        # clang-tidy leg only: wrap make in `bear` so ONE build yields the objects
+        # AND compile_commands.json (no second build). Other legs run make plain.
+        ${{ matrix.platform.clang_tidy && 'bear --output compile_commands.json --' || '' }} make -f ${{ matrix.platform.makefile_path }} -j$(nproc) all 2>&1 | tee build.log
       env:
         # Coverage tier for the bpi target: "1" enables EXTRA_COV_FLAGS
         # (ONEWIFI_DB_SUPPORT + memwraptool). Ignored by rpi/mockplatform.
@@ -147,11 +153,10 @@ jobs:
             printf '%s\n' "$errs" | head -100
             echo '```'
           fi
-          # Warnings from OneWifi's OWN sources only, with location. HAL/hostap/
-          # mesh live in sibling trees reached via /OneWifi/../<repo>/, so drop
-          # any line naming those repos (their ERRORS still break the build and
-          # show above). OneWifi runs a Yocto-style clean baseline, so ideally
-          # this is empty; anything here is a newly-surfaced class to triage.
+          # Warnings from OneWifi's OWN sources only, with location.
+          # HAL/hostapd/mesh errors still break the build, so will be shown too.
+          # OneWifi runs a Yocto-style clean baseline, so anything here
+          # is a newly-surfaced bug to triage.
           warns=$(grep -hE ': warning:' "$LOG" \
                   | grep -vE 'rdk-wifi-hal|rdk-wifi-libhostap|unified-wifi-mesh' \
                   | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' \
@@ -163,5 +168,37 @@ jobs:
             echo '```'
           else
             echo "### ⚠️ OneWifi warnings: 0"
+          fi
+        } | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: clang-tidy (advisory) for ${{ matrix.platform.name }}
+      if: always() && matrix.platform.clang_tidy
+      working-directory: easymesh_project/OneWifi
+      run: |
+        # Advisory Step 0: NEVER fails the build. List of Checks is in the .clang-tidy.
+        # clang-diagnostic-* is filtered-out. Emits separate (from GCC) summary section
+        # + ::warning:: annotations, same visibility as the build errors.
+        [ -f compile_commands.json ] || { echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+        BASE='${{ github.event.pull_request.base.sha }}'
+        CHANGED=''
+        if [ -n "$BASE" ]; then
+          git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+          CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' 2>/dev/null \
+                    | grep -vE '^build/|hostap' || true)
+        fi
+        : > tidy.log
+        for f in $CHANGED; do
+          [ -f "$f" ] && clang-tidy-18 -p . --quiet "$f" 2>/dev/null \
+            | grep -E ': (warning|error):' | grep -v clang-diagnostic >> tidy.log || true
+        done
+        found=$(sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' tidy.log | sort -u || true)
+        if [ -n "$found" ]; then
+          printf '%s\n' "$found" | head -10 | sed 's/%/%25/g' \
+            | while IFS= read -r l; do echo "::warning::$l"; done
+        fi
+        {
+          if   [ -z "$CHANGED" ]; then echo "### 🔎 clang-tidy: no changed .c to scan"
+          elif [ -z "$found" ];   then echo "### 🔎 clang-tidy: clean on changed files"
+          else echo "### 🔎 clang-tidy ($(printf '%s\n' "$found" | wc -l) findings)"; echo '```'; printf '%s\n' "$found" | head -100; echo '```'
           fi
         } | tee -a "$GITHUB_STEP_SUMMARY"
