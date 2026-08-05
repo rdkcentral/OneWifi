@@ -1834,6 +1834,9 @@ void wpa3_enhanced_connection_akms_count(telemetry_data_t *sta, int expected_akm
 int handle_handshake_status(int ap_index, char *mac, int status)
 {
     wifi_util_dbg_print(WIFI_MON, "start %s:%s-%d for idx-%d\n", __func__, mac, status, ap_index);
+    unsigned int vap_array_index;
+    hash_map_t *link_sta_map;
+    sta_data_t *link_sta;
     hash_map_t *sta_map;
     interop_data_t *sta;
     sta_map = get_interop_sta_data_map(ap_index);
@@ -1844,12 +1847,27 @@ int handle_handshake_status(int ap_index, char *mac, int status)
     sta = (interop_data_t *)hash_map_get(sta_map, mac);
     if (NULL == sta) {
         wifi_util_error_print(WIFI_MON, "%s:%d station is not found for vap_index:%d station :%s \r\n", __func__, __LINE__, ap_index, mac);
-        return RETURN_ERR;
+        /* Still update eapol_m4_count in sta_data_t — interop map is not required for this. */
+    } else {
+        sta->status = sta->status + 1;
     }
-    sta->status= sta->status + 1;
+
+    getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    link_sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+    if (link_sta_map != NULL) {
+        link_sta = (sta_data_t *)hash_map_get(link_sta_map, mac);
+        if (link_sta != NULL && status > 0) {
+            link_sta->eapol_m4_count++;
+        }
+    }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
 	wifi_util_dbg_print(WIFI_MON, "%s:%s-%d for idx-%d exit and done\n", __func__, mac, status, ap_index);
 	return RETURN_OK;
 }
+
+void interop_update_eapol_status_counts(interop_data_t *sta);
 
 int eapol_timeout_type(int ap_index, char *mac, int type)
 {
@@ -1866,6 +1884,8 @@ int eapol_timeout_type(int ap_index, char *mac, int type)
         return RETURN_ERR;
     }
     sta->eapol_msg_type= type;
+    interop_update_eapol_status_counts(sta);
+
 	wifi_util_dbg_print(WIFI_MON, "%s:%s-%d for idx-%d exit and done\n", __func__, mac, type, ap_index);
 	return RETURN_OK;
 }
@@ -3665,20 +3685,20 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
             break;
         }
         if (fail_event != wifi_event_hal_unknown_frame) {
-            stats_arg_t fail_arg;
-            memset(&fail_arg, 0, sizeof(fail_arg));
-            snprintf(fail_arg.mac_str, sizeof(fail_arg.mac_str), "%s", dest_mac);
-            fail_arg.vap_index = ap_index;
-            fail_arg.radio_index = getRadioIndexFromAp(ap_index);
-            fail_arg.event = fail_event;
-            fail_arg.status_code = (unsigned int)status;
-            fail_arg.dev.cli_SNR = -1;
-            fail_arg.channel_utilization = -1;
             wifi_util_info_print(WIFI_MON,
                 "AUTH-ASSOC-CODE %s:%d ap_status_code -> WEI MAC=%s status=%d type=%d event=%d vap=%d\n",
                 __func__, __LINE__, dest_mac, status, type, (int)fail_event, ap_index);
-            if (get_lq_descriptor() != NULL && get_lq_descriptor()->periodic_caffinity_stats_update_fn != NULL) {
-                get_lq_descriptor()->periodic_caffinity_stats_update_fn(&fail_arg, 1);
+            wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+            if (ctrl != NULL) {
+                assoc_dev_data_t *fail_data = malloc(sizeof(assoc_dev_data_t));
+                if (fail_data != NULL) {
+                    memset(fail_data, 0, sizeof(assoc_dev_data_t));
+                    str_to_mac_bytes(dest_mac, fail_data->dev_stats.cli_MACAddress);
+                    fail_data->ap_index = ap_index;
+                    fail_data->reason = (unsigned int)status;
+                    /* channel_utilization and other fields filled in link_quality_apps_disassoc_event */
+                    apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, fail_event, fail_data, 0);
+                }
             }
         }
     }
@@ -4912,9 +4932,7 @@ int init_wifi_monitor()
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
     wifi_hal_stamode_callback_register(set_sta_client_mode);
     wifi_hal_apStatusCode_callback_register(ap_status_code);
-#if 0 /* wifi_hal_eapol_timeouts_callback_register not yet available in HAL */
 	wifi_hal_eapol_timeouts_callback_register(eapol_timeout_type);
-#endif
     wifi_hal_handshake_callback_register(handle_handshake_status);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.interop_id, reset_interop_sta_data, NULL, (get_chan_util_upload_period() * 1000), 0, FALSE);
