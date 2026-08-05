@@ -562,9 +562,12 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
         case bus_data_type_uint32:
             rbusValue_SetUInt32(value, bus_data->raw_data.u32);
         break;
-		case bus_data_type_uint8:
-		    rbusValue_SetUInt8(value, bus_data->raw_data.u8);
-		break;
+        case bus_data_type_uint8:
+            rbusValue_SetUInt8(value, bus_data->raw_data.u8);
+        break;
+        case bus_data_type_uint16:
+            rbusValue_SetUInt16(value, bus_data->raw_data.u16);
+        break;
         case bus_data_type_int32:
             rbusValue_SetInt32(value, bus_data->raw_data.i32);
         break;
@@ -591,6 +594,12 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
                         break;
                     case bus_data_type_uint32:
                         rbusProperty_AppendUInt32(property, data_prop->name, prop_value->raw_data.u32);
+                        break;
+                    case bus_data_type_uint8:
+                        rbusProperty_AppendUInt8(property, data_prop->name, prop_value->raw_data.u8);
+                        break;
+                    case bus_data_type_uint16:
+                        rbusProperty_AppendUInt16(property, data_prop->name, prop_value->raw_data.u16);
                         break;
                     default:
                         wifi_util_error_print(WIFI_BUS,"%s Rbus:%s value type not supported =%d\n",
