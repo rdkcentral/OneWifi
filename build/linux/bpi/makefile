@@ -667,6 +667,42 @@ RDK_HAL_WERROR = -Wall -Wextra \
     -Werror=array-bounds -Werror=stringop-overflow
 $(WIFI_RDK_HAL)/%.o: CFLAGS += $(RDK_HAL_WERROR)
 
+# ---------------------------------------------------------------------------
+# OneWifi own-source warning policy (scoped, SEPARATE from the HAL gate above).
+#
+# OneWifi's own .c/.cpp are NOT covered by RDK_HAL_WERROR (that block is scoped
+# to $(WIFI_RDK_HAL)/); hostap has its own -w block; the global CFLAGS carries
+# no -W flags. This block is the single home for OneWifi warning promotions and
+# suppressions, so HAL policy and OneWifi policy stay independently tunable and
+# never leak onto each other's objects. Warnings are splitted by language used.
+ONE_WIFI_WERROR = \
+    -Werror=nonnull -Werror=format \
+    -Werror=misleading-indentation -Werror=logical-not-parentheses
+
+# Known classes suppressed to keep the baseline silent. Valid for BOTH C and C++.
+ONE_WIFI_WARN = -Wall -Wextra $(ONE_WIFI_WERROR) \
+    -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable \
+    -Wno-sign-compare -Wno-type-limits -Wno-return-type -Wno-enum-conversion \
+    -Wno-maybe-uninitialized -Wno-address -Wno-format-security \
+    -Wno-missing-field-initializers -Wno-deprecated-declarations \
+    -Wno-stringop-truncation -Wno-stringop-overread -Wno-sizeof-pointer-memaccess
+
+# C-only classes (C++ makes these hard errors, so they cannot fire in .cpp).
+ONE_WIFI_WARN_CONLY = -Wno-implicit-function-declaration \
+    -Wno-incompatible-pointer-types -Wno-discarded-qualifiers \
+    -Wno-pointer-sign -Wno-int-conversion
+
+# C++-only class.
+ONE_WIFI_WARN_CXXONLY = -Wno-deprecated-copy
+
+# OneWifi's own objects, split by language so each compiler sees only flags valid
+# for it. These lists (defined above) together are exactly ALLOBJECTS, i.e. every
+# OneWifi own object; HAL/hostap objects are in neither, so they stay untouched.
+ONE_WIFI_C_OBJS   = $(COBJECTS) $(WEBCONFIG_OBJECTS) $(HEBUS_OBJECTS)
+ONE_WIFI_CXX_OBJS = $(MATH_UTIL_OBJECTS) $(QUALITY_MANAGER_OBJECTS)
+$(ONE_WIFI_C_OBJS):   CFLAGS += $(ONE_WIFI_WARN) $(ONE_WIFI_WARN_CONLY)
+$(ONE_WIFI_CXX_OBJS): CFLAGS += $(ONE_WIFI_WARN) $(ONE_WIFI_WARN_CXXONLY)
+
 $(BUILD_DIR):
 	@mkdir -p $(INSTALLDIR)/lib
 	@mkdir -p $(INSTALLDIR)/bin
