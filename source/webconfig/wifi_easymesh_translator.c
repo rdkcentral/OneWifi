@@ -152,9 +152,9 @@ static void webconfig_easymesh_free_assoc_maps(webconfig_subdoc_data_t *data)
         return;
     }
 
-    for (i = 0; i < decoded->num_radios; i++) {
+    for (i = 0; i < decoded->num_radios && i < MAX_NUM_RADIOS; i++) {
         rdk_wifi_vap_map_t *vap_map = &decoded->radios[i].vaps;
-        for (j = 0; j < vap_map->num_vaps; j++) {
+        for (j = 0; j < vap_map->num_vaps && j < MAX_NUM_VAP_PER_RADIO; j++) {
             rdk_wifi_vap_info_t *vap = &vap_map->rdk_vap_array[j];
 
             if (vap->associated_devices_map != NULL) {
