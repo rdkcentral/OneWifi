@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "develop" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -101,9 +105,12 @@ jobs:
         GITHUB_ACTOR: ${{ github.actor }}
 
     - name: Build OneWiFi for ${{ matrix.platform.name }}
+      id: build
       working-directory: easymesh_project/OneWifi
       run: |
-        make -f ${{ matrix.platform.makefile_path }} -j$(nproc) all
+        # pipefail so make's exit status (not tee's) decides the step result.
+        set -o pipefail
+        make -f ${{ matrix.platform.makefile_path }} -j$(nproc) all 2>&1 | tee build.log
       env:
         # Coverage tier for the bpi target: "1" enables EXTRA_COV_FLAGS
         # (ONEWIFI_DB_SUPPORT + memwraptool). Ignored by rpi/mockplatform.
@@ -112,3 +119,43 @@ jobs:
         # MLO build picks up -DCONFIG_GENERIC_MLO); rpi/mockplatform use
         # 'CFLAGS =' and ignore it. -j is safe: PROGRAM depends on libwifihal.a.
         CFLAGS: ${{ matrix.platform.extra_cflags }}
+
+    - name: Build summary for ${{ matrix.platform.name }}
+      if: always()   # run on failure too, so the red-build reason is surfaced
+      working-directory: easymesh_project/OneWifi
+      run: |
+        LOG=build.log
+        if [ ! -f "$LOG" ]; then
+          echo "## ${{ matrix.platform.name }} — no build log captured" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        # Compiler + linker + make errors: what usually explains a red build,
+        errs=$(grep -hE ': (error|fatal error):|undefined reference to|Error [0-9]+' "$LOG" \
+               | sed -E 's#[^ ]*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/#\1/#; s#//#/#g' \
+               | sort -u || true)
+        {
+          echo "## ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
+          if [ -n "$errs" ]; then
+            echo "### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo '```'
+            printf '%s\n' "$errs" | head -100
+            echo '```'
+          fi
+          # Warnings from OneWifi's OWN sources only, with location. HAL/hostap/
+          # mesh live in sibling trees reached via /OneWifi/../<repo>/, so drop
+          # any line naming those repos (their ERRORS still break the build and
+          # show above). OneWifi runs a Yocto-style clean baseline, so ideally
+          # this is empty; anything here is a newly-surfaced class to triage.
+          warns=$(grep -hE ': warning:' "$LOG" \
+                  | grep -vE 'rdk-wifi-hal|rdk-wifi-libhostap|unified-wifi-mesh' \
+                  | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' \
+                  | sort -u || true)
+          if [ -n "$warns" ]; then
+            echo "### ⚠️ OneWifi warnings ($(printf '%s\n' "$warns" | wc -l))"
+            echo '```'
+            printf '%s\n' "$warns" | head -100
+            echo '```'
+          else
+            echo "### ⚠️ OneWifi warnings: 0"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
