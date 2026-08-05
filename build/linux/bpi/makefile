@@ -645,7 +645,7 @@ endif
 
 LDFLAGS = $(LIBDIRS) $(LIBS)
 
-#scope out HOSTAP. so it's code does not generate ANY warnings
+#scope out HOSTAP. so its code does not generate ANY warnings
 $(WIFI_HOSTAP_SRC)/%.o: CFLAGS += -w -Wno-macro-redefined
 $(WIFI_HOSTAP_SUPPLICANT)/%.o: CFLAGS += -w -Wno-macro-redefined
 $(WIFI_HOSTAP_BASE)/hostapd/%.o: CFLAGS += -w -Wno-macro-redefined
@@ -674,7 +674,7 @@ $(WIFI_RDK_HAL)/%.o: CFLAGS += $(RDK_HAL_WERROR)
 # to $(WIFI_RDK_HAL)/); hostap has its own -w block; the global CFLAGS carries
 # no -W flags. This block is the single home for OneWifi warning promotions and
 # suppressions, so HAL policy and OneWifi policy stay independently tunable and
-# never leak onto each other's objects. Warnings are splitted by language used.
+# never leak onto each other's objects. Warnings are split by language used.
 ONE_WIFI_WERROR = \
     -Werror=nonnull -Werror=format \
     -Werror=misleading-indentation -Werror=logical-not-parentheses
