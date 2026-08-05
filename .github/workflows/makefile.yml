@@ -133,6 +133,12 @@ jobs:
         errs=$(grep -hE ': (error|fatal error):|undefined reference to|Error [0-9]+' "$LOG" \
                | sed -E 's#[^ ]*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/#\1/#; s#//#/#g' \
                | sort -u || true)
+        # Surface the top errors as ANNOTATIONS (the box at the top of the failed
+        # check, which people actually check) — not only the run-summary page.
+        if [ -n "$errs" ]; then
+          printf '%s\n' "$errs" | head -10 | sed 's/%/%25/g' \
+            | while IFS= read -r l; do echo "::error::$l"; done
+        fi
         {
           echo "## ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
           if [ -n "$errs" ]; then
@@ -158,4 +164,4 @@ jobs:
           else
             echo "### ⚠️ OneWifi warnings: 0"
           fi
-        } >> "$GITHUB_STEP_SUMMARY"
+        } | tee -a "$GITHUB_STEP_SUMMARY"

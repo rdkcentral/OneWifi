@@ -680,10 +680,13 @@ ONE_WIFI_WERROR = \
     -Werror=misleading-indentation -Werror=logical-not-parentheses
 
 # Known classes suppressed to keep the baseline silent. Valid for BOTH C and C++.
+# (-Werror=format promotes the whole -Wformat* family; -Wformat-truncation has
+# many sites so keep -Wno-, but -Wformat-overflow is left fatal - real overflows.)
 ONE_WIFI_WARN = -Wall -Wextra $(ONE_WIFI_WERROR) \
     -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable \
     -Wno-sign-compare -Wno-type-limits -Wno-return-type -Wno-enum-conversion \
-    -Wno-maybe-uninitialized -Wno-address -Wno-format-security \
+    -Wno-maybe-uninitialized -Wno-address \
+    -Wno-format-security -Wno-format-truncation \
     -Wno-missing-field-initializers -Wno-deprecated-declarations \
     -Wno-stringop-truncation -Wno-stringop-overread -Wno-sizeof-pointer-memaccess
 
