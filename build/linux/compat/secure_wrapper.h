@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 int   v_secure_system(const char *command);
-FILE *v_secure_popen(const char *direction, const char *command);
+FILE *v_secure_popen(const char *direction, const char *fmt, ...);
 int   v_secure_pclose(FILE *stream);
 
 #ifdef __cplusplus
