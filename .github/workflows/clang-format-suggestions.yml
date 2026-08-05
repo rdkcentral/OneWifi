@@ -48,16 +48,38 @@ jobs:
         if: steps.dl.outcome != 'success'
         run: echo "Stage 1 produced no formatting changes; done."
 
-      - name: Load PR metadata (strictly validated)
+      - name: Load and verify PR metadata (strictly validated)
         if: steps.dl.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Passed via env, not inlined into the script. This prevents hijacking of it.
+          EXPECTED_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          EXPECTED_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          # A PR can modify stage 1/2 workflow file, so treat pr-meta.env as
-          # attacker-controlled. Accept ONLY a bare integer and a SHA,
-          # never append the file to GITHUB_ENV directly (possible env injection).
+          # A fork PR can modify workflow file, so any envs from it as attacker-controlled.
+          # Validate in two steps:
+          #
+          # 1. FORMAT — Accept ONLY a bare integer and a SHA. Never source
+          #    the file into GITHUB_ENV directly (that would allow env injection).
           PR="$(grep -oP '^pr_number=\K[0-9]+$' pr-meta.env | head -1)"
           SHA="$(grep -oP '^head_sha=\K[0-9a-f]{40}$' pr-meta.env | head -1)"
           if [ -z "$PR" ] || [ -z "$SHA" ]; then
             echo "::error::Malformed PR metadata; refusing to continue."
+            exit 1
+          fi
+          # 2. IDENTITY — a number could still name a *different* PR, which would let a fork post
+          #    suggestions onto an arbitrary PR. Bind pr_number back to the run that triggered us.
+          #    PR #PR must have the same head repo + branch GitHub recorded for this workflow_run
+          #    — values a fork cannot forge. (head_sha freshness is re-checked at post time,
+          #    so it is not gated here.)
+          gh api "/repos/${{ github.repository }}/pulls/${PR}" > /tmp/pr.json || {
+            echo "::error::Could not read PR #${PR} from the API."
+            exit 1
+          }
+          pr_repo="$(jq -r '.head.repo.full_name' /tmp/pr.json)"
+          pr_branch="$(jq -r '.head.ref' /tmp/pr.json)"
+          if [ "$pr_repo" != "$EXPECTED_REPO" ] || [ "$pr_branch" != "$EXPECTED_BRANCH" ]; then
+            echo "::error::PR #${PR} ($pr_repo:$pr_branch) does not belong to the triggering run ($EXPECTED_REPO:$EXPECTED_BRANCH); refusing to continue."
             exit 1
           fi
           echo "pr_number=$PR" >> "$GITHUB_ENV"

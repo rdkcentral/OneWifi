@@ -37,7 +37,7 @@ jobs:
           python3 -m pip install --quiet "clang-format==18.1.8"   # bundles clang-format + git-clang-format
           clang-format --version
 
-      - name: Reformat only the changed .c/.h lines
+      - name: Reformat only the changed source lines
         id: fmt
         run: |
           # Diff against the MERGE BASE, not the base branch tip. Now that we check
