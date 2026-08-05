@@ -184,6 +184,18 @@ static void webconfig_easymesh_free_assoc_maps(webconfig_subdoc_data_t *data)
     }
 }
 
+/* Free all decoder-allocated memory that webconfig_data_free does not cover.
+ * Each individual free function is type-guarded, so this is safe to call
+ * unconditionally regardless of subdoc type. Add new per-subdoc free functions
+ * here as needed. */
+static void webconfig_easymesh_free_decoded(webconfig_subdoc_data_t *data)
+{
+#ifdef EM_APP
+    webconfig_easymesh_free_ap_metrics_report(data);
+#endif
+    webconfig_easymesh_free_assoc_maps(data);
+}
+
 // webconfig_easymesh_decode() will convert the onewifi structures to easymesh structures
 webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str,
         webconfig_external_easymesh_t *data,
@@ -195,16 +207,15 @@ webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str
     if (webconfig_decode(config, &webconfig_easymesh_data, str) != webconfig_error_none) {
         //        *data = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode failed\n", __func__, __LINE__);
+        webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
+        /* note: webconfig_data_free is called internally by webconfig_decode on error */
         return webconfig_error_decode;
     }
 
     wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_easymesh_data.type);
     *type = webconfig_easymesh_data.type;
     //debug_external_protos(&webconfig_easymesh_data, __func__, __LINE__);
-#ifdef EM_APP
-    webconfig_easymesh_free_ap_metrics_report(&webconfig_easymesh_data);
-#endif
-    webconfig_easymesh_free_assoc_maps(&webconfig_easymesh_data);
+    webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
     webconfig_data_free(&webconfig_easymesh_data);
     return webconfig_error_none;
 }
