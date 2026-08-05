@@ -146,8 +146,6 @@ static void webconfig_easymesh_free_ap_metrics_report(webconfig_subdoc_data_t *d
 static void webconfig_easymesh_free_assoc_maps(webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *decoded = &data->u.decoded;
-    assoc_dev_data_t *entry;
-    mac_addr_str_t mac_str;
     unsigned int i, j;
 
     if (data->type != webconfig_subdoc_type_associated_clients) {
@@ -160,23 +158,11 @@ static void webconfig_easymesh_free_assoc_maps(webconfig_subdoc_data_t *data)
             rdk_wifi_vap_info_t *vap = &vap_map->rdk_vap_array[j];
 
             if (vap->associated_devices_map != NULL) {
-                entry = hash_map_get_first(vap->associated_devices_map);
-                while (entry != NULL) {
-                    to_mac_str(entry->dev_stats.cli_MACAddress, mac_str);
-                    entry = hash_map_get_next(vap->associated_devices_map, entry);
-                    free(hash_map_remove(vap->associated_devices_map, mac_str));
-                }
                 hash_map_destroy(vap->associated_devices_map);
                 vap->associated_devices_map = NULL;
             }
 
             if (vap->associated_devices_diff_map != NULL) {
-                entry = hash_map_get_first(vap->associated_devices_diff_map);
-                while (entry != NULL) {
-                    to_mac_str(entry->dev_stats.cli_MACAddress, mac_str);
-                    entry = hash_map_get_next(vap->associated_devices_diff_map, entry);
-                    free(hash_map_remove(vap->associated_devices_diff_map, mac_str));
-                }
                 hash_map_destroy(vap->associated_devices_diff_map);
                 vap->associated_devices_diff_map = NULL;
             }
