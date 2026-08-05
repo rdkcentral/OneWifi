@@ -38,6 +38,7 @@
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 #include "run_qmgr.h"
+#define EASYMESH_OFF_FLAG "/nvram/rdkb_user_easymesh_off"
 
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
@@ -647,6 +648,14 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     get_wifidb_obj()->desc.get_wifi_global_param_fn(&global_param);
     // set all default return values first
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
+        if (access(EASYMESH_OFF_FLAG, F_OK) == 0) {
+             wifi_util_info_print(WIFI_CTRL, "%s:%d: detected %s, easy mesh is off\n",__func__, __LINE__, EASYMESH_OFF_FLAG);
+#ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
+            *ret_val = ONEWIFI_DEFAULT_NETWORKING_MODE;
+#else
+            *ret_val = (unsigned int)global_param.device_network_mode;
+#endif
+        } else {
 #if defined EASY_MESH_NODE
         wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
         int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
@@ -657,9 +666,15 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
                a valid colocated_mode */
             sleep(1);
             total_slept++;
+            if (total_slept >= 30) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Timeout waiting for valid colocated_mode, defaulting to em_node\n",
+                        __func__, __LINE__);
+                break;
+            }
             wifi_hal_getHalCapability(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap);
             colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
         }
+        total_slept = 0;
         if (colocated_mode == 1) {
             *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
         } else if (colocated_mode == 0) {
@@ -674,6 +689,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         *ret_val = (unsigned int)global_param.device_network_mode;
 #endif
 #endif
+        } /* EASYMESH_OFF_FLAG not present */
         ctrl->network_mode = (unsigned int)*ret_val;
 
 #ifdef ONEWIFI_DEFAULT_DEVICE_TYPE
@@ -1158,6 +1174,16 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     frame_data_t wifi_mgmt_frame;
 
     memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
+    if (frame == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid frame pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if ((frame->len > 0) && (!frame->data)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid frame data pointer for len: %d\n", __func__, __LINE__, frame->len);
+        return RETURN_ERR;
+    }
+
     wifi_mgmt_frame.frame.ap_index = ap_index;
     memcpy(wifi_mgmt_frame.frame.sta_mac, frame->sta_mac, sizeof(mac_address_t));
     wifi_mgmt_frame.frame.type = frame->type;
@@ -1166,11 +1192,15 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     wifi_mgmt_frame.frame.phy_rate = frame->phy_rate;
     wifi_mgmt_frame.frame.token = frame->token;
     wifi_mgmt_frame.frame.recv_freq = frame->recv_freq;
+    if (frame->len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Received frame len: %d, more than allowed allocation\n", __func__, __LINE__, frame->len);
+        return RETURN_ERR;
+    }
     wifi_mgmt_frame.frame.len = frame->len;
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    push_event_to_ctrl_queue(&wifi_mgmt_frame, sizeof(wifi_mgmt_frame), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }
@@ -1298,6 +1328,7 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
 {
     unsigned short query_len, *pquery_len;
     unsigned char *query_req;
+    unsigned char *frame_end = frame + len;
     wifi_advertisementProtoElement_t *adv_proto_elem;
     wifi_advertisementProtoTuple_t *adv_tuple;
     const char dpp_oui[3] = {0x50, 0x6f, 0x9a};
@@ -1308,9 +1339,38 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
 
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d: advertisement proto element id:%d length:%d\n", __func__, __LINE__, adv_proto_elem->id, adv_proto_elem->len);
 
-    pquery_len = (unsigned short*)((unsigned char *)&adv_proto_elem->proto_tuple + adv_proto_elem->len);
-    query_len = *pquery_len;
-    query_req = (unsigned char *)((unsigned char *)pquery_len + sizeof(unsigned short));
+    unsigned char *proto_tuple_ptr;
+    size_t remaining_len;
+
+    proto_tuple_ptr = (unsigned char *)&adv_proto_elem->proto_tuple;
+
+    if (proto_tuple_ptr > frame_end) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid GAS initial request frame\n", __func__, __LINE__);
+        return;
+    }
+
+    remaining_len = frame_end - proto_tuple_ptr;
+
+    if (remaining_len < adv_proto_elem->len + sizeof(query_len)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid GAS initial request frame, query_len field out of bounds\n", __func__, __LINE__);
+        return;
+    }
+
+    pquery_len = (unsigned short *)(proto_tuple_ptr + adv_proto_elem->len);
+
+    memcpy(&query_len, pquery_len, sizeof(query_len));
+
+    if ((size_t)query_len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid GAS initial request frame, query length exceeds max frame size\n", __func__, __LINE__);
+        return;
+    }
+
+    query_req = (unsigned char *)pquery_len + sizeof(query_len);
+
+    if ((size_t)(frame_end - query_req) < (size_t)query_len) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid GAS initial request frame, query length exceeds frame length\n", __func__, __LINE__);
+        return;
+    }
 
     switch (adv_tuple->adv_proto_id) {
 
@@ -3050,7 +3110,58 @@ wifi_vap_info_t *getVapInfo(UINT apIndex)
     wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input apIndex = %d not found \n", __FUNCTION__, apIndex);
     return NULL;
 }
+wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap)
+{
+    if (vap == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input vap is NULL\n", __FUNCTION__);
+        return NULL;
+    }
 
+    if (vap->vap_mode == wifi_vap_mode_ap) {
+        return &vap->u.bss_info.mld_info.common_info;
+    } else if (vap->vap_mode == wifi_vap_mode_sta) {
+        return &vap->u.sta_info.mld_info.common_info;
+    } else {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s: vap_index=%d mode=%d not AP/STA, skip\n",
+            __FUNCTION__, vap->vap_index, vap->vap_mode);
+        return NULL;
+    }
+}
+
+wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id)
+{
+    UINT radioIndex = 0;
+    UINT vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+
+    if (vapInfo == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input vapInfo is NULL\n", __FUNCTION__);
+        return NULL;
+    }
+    wifi_mld_common_info_t *input_mld = get_mld_from_vap_info(vapInfo);
+    if (input_mld == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input vapInfo is not MLO capable\n", __FUNCTION__);
+        return NULL;
+    }
+
+    for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
+            wifi_mld_common_info_t *mld = get_mld_from_vap_info(&wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex]);
+            if (mld == NULL) {
+                continue;
+            }
+            if (link_id == mld->mld_link_id && input_mld->mld_id == mld->mld_id) {
+                return &wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex];
+            } else {
+                continue;
+            }
+        }
+    }
+
+    wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input link_id = %d not found \n", __FUNCTION__, link_id);
+    return NULL;
+}
+ 
 
 //Returns the rdk_wifi_vap_info_t, here apIndex starts with 0 i.e., (dmlInstanceNumber-1)
 rdk_wifi_vap_info_t *getRdkVapInfo(UINT apIndex)
