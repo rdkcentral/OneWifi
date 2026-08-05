@@ -551,6 +551,7 @@ typedef struct {
     unsigned int cli_LastDataDownlinkRate;
     unsigned int cli_LastDataUplinkRate;
     bool cli_PowerSaveMode;
+    unsigned long cli_sleepTime;
 } dev_stats_t;
 
 typedef struct {
@@ -604,6 +605,12 @@ typedef struct {
     char dhcp_hostname[256];
     char dhcp_vendor_class[256];
     char dhcp_param_list[512];
+    unsigned int eapol_m1_count;
+    unsigned int eapol_m2_count;
+    unsigned int eapol_m3_count;
+    unsigned int eapol_m4_count;
+    unsigned int eapol_attempts;
+    unsigned int eapol_failures;
 } stats_arg_t;
 
 typedef struct {
@@ -1148,6 +1155,7 @@ typedef struct {
     bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
     struct timespec timestamp;
+    unsigned int    eapol_m4_count;
 
     /* wifi7 client specific data */
     bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */

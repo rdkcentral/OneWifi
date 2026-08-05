@@ -568,6 +568,22 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
     affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index,&affinity_arg->channel_utilization);
     affinity_arg->status_code = 0;
+    if (sub_event == wifi_event_hal_auth_frame && msg->frame.len >= 30) {
+        struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
+        uint16_t st  = le_to_host16(frame->u.auth.status_code);
+        uint16_t seq = le_to_host16(frame->u.auth.auth_transaction);
+        if (st != 0 && st != 76 && st != 126 && st != 127) {
+            affinity_arg->status_code = st;
+            wifi_util_error_print(WIFI_CTRL,
+                "AUTH-ASSOC-CODE %s:%d AUTH FAILURE MAC=%s status_code=%u auth_seq=%u vap=%u radio=%u\n",
+                __func__, __LINE__, affinity_arg->mac_str, st, seq,
+                affinity_arg->vap_index, affinity_arg->radio_index);
+        } else {
+            wifi_util_info_print(WIFI_CTRL,
+                "AUTH-ASSOC-CODE %s:%d AUTH frame MAC=%s status_code=%u auth_seq=%u (attempt/continuation)\n",
+                __func__, __LINE__, affinity_arg->mac_str, st, seq);
+        }
+    }
     affinity_arg->dev.cli_SNR = msg->frame.sig_dbm - NOISE_FLOOR;
     // dhcp_event = 0 (not a DHCP update) from memset
     wifi_util_info_print(WIFI_APPS," %s:%d auth client snr =%d\n",__func__,__LINE__,affinity_arg->dev.cli_SNR);
@@ -614,10 +630,10 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
         if ((sub_event == wifi_event_hal_assoc_rsp_frame) || (sub_event == wifi_event_hal_reassoc_rsp_frame)) {
             struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
             uint16_t status = le_to_host16(frame->u.assoc_resp.status_code);
-            wifi_util_info_print(WIFI_CTRL," %s:%d wifi_event_hal_assoc_rsp_frame status_code=%d\n", __func__, __LINE__, status);
+	    wifi_util_info_print(WIFI_CTRL,"AUTH-ASSOC-CODE %s:%d ASSOC RESP MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n", __func__, __LINE__, affinity_arg->mac_str, sub_event, status, affinity_arg->vap_index, affinity_arg->radio_index);
             if (status != 0) {
                 wifi_util_error_print(WIFI_CTRL,
-                    "CAFF %s:%d ASSOC FAILURE MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n",
+		    "AUTH-ASSOC-CODE %s:%d ASSOC FAILURE MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n",
                     __func__, __LINE__, affinity_arg->mac_str, sub_event, status,
                     affinity_arg->vap_index, affinity_arg->radio_index);
             }
@@ -660,10 +676,13 @@ int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,voi
         return RETURN_ERR;
     }
     
-    // Get frame data
-    frame_data_t *msg = (frame_data_t *)arg;
+    /* The disassoc_device event carries assoc_dev_data_t (the same type the
+     * motion/whix/sensing apps consume), NOT frame_data_t. It includes the
+     * driver-provided 802.11 disconnect reason, which WEI uses to distinguish an
+     * EAPOL/auth failure (wrong password, RADIUS reject, ...) from a clean leave. */
+    assoc_dev_data_t *msg = (assoc_dev_data_t *)arg;
     
-    // Fill the affinity_arg with frame data 
+    // Fill the affinity_arg with disassoc data 
     stats_arg_t *affinity_arg = (stats_arg_t *) malloc(sizeof(stats_arg_t));
     if (affinity_arg == NULL) {
         wifi_util_info_print(WIFI_APPS," %s:%d unable to alloc memory\n",__func__,__LINE__);
@@ -671,13 +690,28 @@ int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,voi
     }
     
     memset(affinity_arg, 0, sizeof(stats_arg_t));
-    to_mac_str(msg->frame.sta_mac, affinity_arg->mac_str);
-    affinity_arg->vap_index = msg->frame.ap_index;
-    affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
+    to_mac_str(msg->dev_stats.cli_MACAddress, affinity_arg->mac_str);
+    affinity_arg->vap_index = msg->ap_index;
+    affinity_arg->radio_index = getRadioIndexFromAp(msg->ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index, &affinity_arg->channel_utilization);
+    /* Carry the 802.11 disconnect reason in status_code for WEI to classify. */
+    affinity_arg->status_code = msg->reason;
+    wifi_util_info_print(WIFI_CTRL,
+        "AUTH-ASSOC-CODE %s:%d %s MAC=%s reason=%d vap=%u radio=%u\n",
+        __func__, __LINE__,
+        (sub_event == wifi_event_hal_deauth_frame) ? "DEAUTH" : "DISASSOC",
+        affinity_arg->mac_str, msg->reason, affinity_arg->vap_index, affinity_arg->radio_index);
     
     if (req) {
-        affinity_arg->event = sub_event;
+        /* DISASSOC with a WPA/auth-failure reason code → remap to DEAUTH so WEI counts m_auth_failures.
+         * Clean-leave reasons (0=unknown,3=leaving,4=inactivity,8=left BSS) stay as disassoc. */
+        wifi_event_subtype_t send_event = sub_event;
+        if (sub_event == wifi_event_hal_disassoc_device) {
+            unsigned int r = affinity_arg->status_code;
+            if (r != 0 && r != 3 && r != 4 && r != 8)
+                send_event = wifi_event_hal_deauth_frame;
+        }
+        affinity_arg->event = send_event;
         get_lq_descriptor()->periodic_caffinity_stats_update_fn(affinity_arg,1);
     }
     
@@ -710,7 +744,9 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             break;
         
         case wifi_event_hal_deauth_frame:
-            link_quality_apps_auth_event(apps,true,sub_type,arg);
+	    /* deauth delivers assoc_dev_data_t (802.11 reason), not frame_data_t —
+             * route through the disassoc handler so the reason reaches WEI. */
+	    link_quality_apps_disassoc_event(apps,true,sub_type,arg);
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             break;
      
@@ -721,7 +757,7 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
  
         case wifi_event_hal_assoc_rsp_frame:
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
-            link_quality_apps_assoc_event(apps,false,sub_type,arg);
+            link_quality_apps_disassoc_event(apps,true,sub_type,arg);
             break;
 
         case wifi_event_hal_reassoc_req_frame:
@@ -730,7 +766,7 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             break;
         case wifi_event_hal_reassoc_rsp_frame:
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
-            link_quality_apps_assoc_event(apps,false,sub_type,arg);
+            link_quality_apps_disassoc_event(apps,true,sub_type,arg);
             break;
      
         case wifi_event_hal_sta_conn_status:

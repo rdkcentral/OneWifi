@@ -5016,5 +5016,6 @@ int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsi
    dev->cli_MaxUplinkRate = assoc_dev->cli_MaxUplinkRate;  
    dev->cli_LastDataDownlinkRate = assoc_dev->cli_LastDataDownlinkRate;  
    dev->cli_LastDataUplinkRate = assoc_dev->cli_LastDataUplinkRate;  
- 
+   dev->cli_PowerSaveMode = assoc_dev->cli_PowerSaveMode;
+   dev->cli_sleepTime = assoc_dev->cli_sleepTime;
  } 

@@ -99,6 +99,12 @@ static void lq_ipc_log_stats_entries(uint32_t msg_type, const void *entries,
                 (long long)s[i].total_connected_time.tv_sec,
                 (long long)s[i].total_disconnected_time.tv_sec);
         }
+	/* AUTH-ASSOC-CODE trace: reason/status codes forwarded onewifi -> WEI */
+	if (msg_type == LQ_IPC_MSG_CAFFINITY_EVENT) {
+            wifi_util_info_print(WIFI_APPS,
+                "AUTH-ASSOC-CODE [IPC-SEND] MAC=%s event=%d status_code=%u vap=%u radio=%u\n",
+                s[i].mac_str, s[i].event, s[i].status_code, s[i].vap_index, s[i].radio_index);
+        }
     }
 }
 

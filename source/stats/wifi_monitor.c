@@ -1834,6 +1834,9 @@ void wpa3_enhanced_connection_akms_count(telemetry_data_t *sta, int expected_akm
 int handle_handshake_status(int ap_index, char *mac, int status)
 {
     wifi_util_dbg_print(WIFI_MON, "start %s:%s-%d for idx-%d\n", __func__, mac, status, ap_index);
+    unsigned int vap_array_index;
+    hash_map_t *link_sta_map;
+    sta_data_t *link_sta;
     hash_map_t *sta_map;
     interop_data_t *sta;
     sta_map = get_interop_sta_data_map(ap_index);
@@ -1844,12 +1847,27 @@ int handle_handshake_status(int ap_index, char *mac, int status)
     sta = (interop_data_t *)hash_map_get(sta_map, mac);
     if (NULL == sta) {
         wifi_util_error_print(WIFI_MON, "%s:%d station is not found for vap_index:%d station :%s \r\n", __func__, __LINE__, ap_index, mac);
-        return RETURN_ERR;
+        /* Still update eapol_m4_count in sta_data_t — interop map is not required for this. */
+    } else {
+        sta->status = sta->status + 1;
     }
-    sta->status= sta->status + 1;
+
+    getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    link_sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+    if (link_sta_map != NULL) {
+        link_sta = (sta_data_t *)hash_map_get(link_sta_map, mac);
+        if (link_sta != NULL && status > 0) {
+            link_sta->eapol_m4_count++;
+        }
+    }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
 	wifi_util_dbg_print(WIFI_MON, "%s:%s-%d for idx-%d exit and done\n", __func__, mac, status, ap_index);
 	return RETURN_OK;
 }
+
+void interop_update_eapol_status_counts(interop_data_t *sta);
 
 int eapol_timeout_type(int ap_index, char *mac, int type)
 {
@@ -1866,6 +1884,8 @@ int eapol_timeout_type(int ap_index, char *mac, int type)
         return RETURN_ERR;
     }
     sta->eapol_msg_type= type;
+    interop_update_eapol_status_counts(sta);
+
 	wifi_util_dbg_print(WIFI_MON, "%s:%s-%d for idx-%d exit and done\n", __func__, mac, type, ap_index);
 	return RETURN_OK;
 }
@@ -3643,6 +3663,46 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s status:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac,status,type);
 
+    /* AP downlink response failures forwarded to WEI.
+     * Skip SAE-continuation statuses (76=anti-clogging, 126=hash-to-element, 127=SAE-PK).
+     * AUTH_RSP has no mgmt_wifi_frame_recv case so this is its sole path.
+     * ASSOC/REASSOC_RSP may also arrive via the mgmt path; WEI caps prevent double-count. */
+    if (status != 0 && status != 76 && status != 126 && status != 127) {
+        wifi_event_subtype_t fail_event = wifi_event_hal_unknown_frame;
+        switch ((wifi_mgmtFrameType_t)type) {
+        case WIFI_MGMT_FRAME_TYPE_AUTH_RSP:
+            /* Use deauth event: failure only, no m_auth_attempts inflation
+             * (attempts already counted from STA uplink auth frames). */
+            fail_event = wifi_event_hal_deauth_frame;
+            break;
+        case WIFI_MGMT_FRAME_TYPE_ASSOC_RSP:
+            fail_event = wifi_event_hal_assoc_rsp_frame;
+            break;
+        case WIFI_MGMT_FRAME_TYPE_REASSOC_RSP:
+            fail_event = wifi_event_hal_reassoc_rsp_frame;
+            break;
+        default:
+            break;
+        }
+        if (fail_event != wifi_event_hal_unknown_frame) {
+            wifi_util_info_print(WIFI_MON,
+                "AUTH-ASSOC-CODE %s:%d ap_status_code -> WEI MAC=%s status=%d type=%d event=%d vap=%d\n",
+                __func__, __LINE__, dest_mac, status, type, (int)fail_event, ap_index);
+            wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+            if (ctrl != NULL) {
+                assoc_dev_data_t *fail_data = malloc(sizeof(assoc_dev_data_t));
+                if (fail_data != NULL) {
+                    memset(fail_data, 0, sizeof(assoc_dev_data_t));
+                    str_to_mac_bytes(dest_mac, fail_data->dev_stats.cli_MACAddress);
+                    fail_data->ap_index = ap_index;
+                    fail_data->reason = (unsigned int)status;
+                    /* channel_utilization and other fields filled in link_quality_apps_disassoc_event */
+                    apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, fail_event, fail_data, 0);
+                }
+            }
+        }
+    }
+
 #ifdef EM_APP
     report_connection_status(ap_index, src_mac, dest_mac, (unsigned short)status, false, 0);
 #endif // EM_APP
@@ -3924,6 +3984,35 @@ int ap_reason_code(int ap_index, char *src_mac, char *dest_mac, int type, int re
     return 0;
 }
 
+/* Post-association auth failures that must still be surfaced to the caffinity /
+ * GettingConnected (WEI) path even when the STA never became "active": a
+ * wrong-password client fails the 4-way handshake and is removed before it is
+ * ever authorized, so the normal (is_sta_active) disassoc path is skipped and
+ * the real reason (2/14/15/23...) is otherwise lost. Clean/none reasons
+ * (0/3/4/5/8/45) on an inactive STA remain filtered out. */
+static bool is_post_assoc_auth_failure(int reason)
+{
+    switch (reason) {
+    case 1:   /* unspecified                          */
+    case 2:   /* previous auth no longer valid (PSK)  */
+    case 13:  /* invalid information element          */
+    case 14:  /* MIC failure (wrong password)         */
+    case 15:  /* 4-way handshake timeout              */
+    case 16:  /* group key handshake timeout          */
+    case 17:  /* handshake element mismatch           */
+    case 18:  /* invalid group cipher                 */
+    case 19:  /* invalid pairwise cipher              */
+    case 20:  /* invalid AKM                          */
+    case 21:  /* unsupported RSN version              */
+    case 22:  /* invalid RSN capabilities             */
+    case 23:  /* 802.1X / RADIUS auth failed          */
+    case 24:  /* cipher rejected by security policy   */
+        return true;
+    default:
+        return false;
+    }
+}
+
 int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, int reason)
 {
     wifi_monitor_data_t *data = NULL;
@@ -3973,9 +4062,13 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     free(data);
     data = NULL;
 
-    if (is_sta_active == false) {
+    if (is_sta_active == false && !is_post_assoc_auth_failure(reason)) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
         return 0;
+    }
+    if (is_sta_active == false) {
+        wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
+            __func__, __LINE__, src_mac, ap_index, reason);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
@@ -4229,9 +4322,13 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
     free(data);
     data = NULL;
 
-    if (is_sta_active == false) {
+    if (is_sta_active == false && !is_post_assoc_auth_failure(reason)) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
         return 0;
+    }
+    if (is_sta_active == false) {
+        wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
+            __func__, __LINE__, src_mac, ap_index, reason);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
@@ -4828,15 +4925,14 @@ int init_wifi_monitor()
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
-    wifi_hal_apFrameDropUnencrypted_callback_register(device_frame_drop_unencrypted);
+    /* TODO: wifi_hal_apFrameDropUnencrypted_callback_register not yet in HAL */
+    /* wifi_hal_apFrameDropUnencrypted_callback_register(device_frame_drop_unencrypted); */
     wifi_hal_ap_max_client_rejection_callback_register(device_max_client_rejection);
     wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
     wifi_hal_stamode_callback_register(set_sta_client_mode);
     wifi_hal_apStatusCode_callback_register(ap_status_code);
-#if 0 /* wifi_hal_eapol_timeouts_callback_register not yet available in HAL */
 	wifi_hal_eapol_timeouts_callback_register(eapol_timeout_type);
-#endif
     wifi_hal_handshake_callback_register(handle_handshake_status);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.interop_id, reset_interop_sta_data, NULL, (get_chan_util_upload_period() * 1000), 0, FALSE);

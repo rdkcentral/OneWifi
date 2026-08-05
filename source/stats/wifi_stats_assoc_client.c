@@ -159,7 +159,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     unsigned char *mac_addr;
     queue_t *disconnect_event_queue;
     hash_map_t *sta_map;
+    hash_map_t *interop_sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
+    interop_data_t *interop_sta = NULL;
     int ret = RETURN_OK;
     int mld_mac_present = 0;
     mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
@@ -273,7 +275,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             "cli_RetransCount: %lu\ncli_FailedRetransCount: %lu\ncli_RetryCount: %lu\n"
             "cli_MultipleRetryCount: %lu\ncli_MaxDownlinkRate: %d\ncli_MaxUplinkRate: %d\n"
             "cli_activeNumSpatialStreams: %d\ncli_TxFrames: %llu\ncli_RxRetries: %llu\n"
-            "cli_RxErrors: %llu\ncli_PowerSaveMode: %lu\ncli_sleepTime: %lu\n",
+            "cli_RxErrors: %llu\n cli_PowerSaveMode:%d\ncli_sleepTime: %lu\n",
             to_sta_key(dev_array[i].cli_MACAddress, sta_key),
             to_sta_key(dev_array[i].cli_MLDAddr, mld_sta_key), dev_array[i].cli_MLDEnable,
             dev_array[i].cli_AuthenticationState, dev_array[i].cli_LastDataDownlinkRate,
@@ -443,8 +445,32 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 
             // Update link_data with the sta times for periodic caffinity stats update
             if (link_data && i < num_devs && ((link_quality_measurement) || (rf_down_mesh_sta))) {
+                unsigned int eap_m1 = 0;
+                unsigned int eap_m2 = 0;
+                unsigned int eap_m3 = 0;
+                unsigned int eap_failures = 0;
+
                 link_data[i].stats.total_connected_time = sta->total_connected_time;
                 link_data[i].stats.total_disconnected_time = sta->total_disconnected_time;
+
+                interop_sta_map = mon_data->bssid_data[vap_array_index].interop_sta_map;
+                if (interop_sta_map != NULL) {
+                    interop_sta = (interop_data_t *)hash_map_get(interop_sta_map, sta_key);
+                    if (interop_sta != NULL) {
+                        eap_m1 = interop_sta->eapol_status_type_counts[0] + interop_sta->eapol_status_type_counts[1];
+                        eap_m2 = interop_sta->eapol_status_type_counts[2] + interop_sta->eapol_status_type_counts[3];
+                        eap_m3 = interop_sta->eapol_status_type_counts[4] + interop_sta->eapol_status_type_counts[5];
+                    }
+                }
+
+                eap_failures = eap_m1 + eap_m2 + eap_m3;
+
+                link_data[i].stats.eapol_m1_count = eap_m1;
+                link_data[i].stats.eapol_m2_count = eap_m2;
+                link_data[i].stats.eapol_m3_count = eap_m3;
+                link_data[i].stats.eapol_m4_count = sta->eapol_m4_count;
+                link_data[i].stats.eapol_failures = eap_failures;
+                link_data[i].stats.eapol_attempts = eap_failures + sta->eapol_m4_count;
             }
 
             wifi_util_dbg_print(WIFI_MON,
