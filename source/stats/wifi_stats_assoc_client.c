@@ -164,6 +164,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     int mld_mac_present = 0;
     mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
+    time_t current_timestamp;
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int disconnected_time;
     bool link_quality_measurement = false;
@@ -249,7 +250,17 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             dev_array = NULL;
         }
 
-        /* HAL call failed: still clean stale sta_map entries and preserve disconnect semantics. */
+        /* wifi_getApAssociatedDeviceDiagnosticResult3 failure
+         * sta_map cleanup to mirroring success path behavior:
+         * 1) For previously connected clients: if cli_Active==false and
+         *    disconnected_time > rapid_reconnect_threshold, remove the entry
+         *    and enqueue disconnect_event for ctrl.
+	 *
+         * 2) For assoc-request-only entries (never connected): if
+         *    frame_timestamp is set and age > 5 seconds, remove the entry
+         *    without sending disconnect_event.
+         */
+
         disconnect_event_queue = queue_create();
         if (disconnect_event_queue == NULL) {
             wifi_util_error_print(WIFI_MON, "%s:%d Failed to create queue\n", __func__, __LINE__);
@@ -259,14 +270,17 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         sta_map = mon_data->bssid_data[vap_array_index].sta_map;
         if (sta_map != NULL) {
             struct timespec tv_now_err;
+            time_t current_timestamp_err;
             clock_gettime(CLOCK_MONOTONIC, &tv_now_err);
+            time(&current_timestamp_err);
 
             wifi_util_info_print(WIFI_MON,
-                "%s:%d HAL failure cleanup start vap:%d sta_map_count:%u\n",
-                __func__, __LINE__, args->vap_index, hash_map_count(sta_map));
+                "%s:%d  wifi_getApAssociatedDeviceDiagnosticResult3 failure cleanup : start vap:%d sta_map_count:%u threshold:%u\n",
+                __func__, __LINE__, args->vap_index, hash_map_count(sta_map),
+                mon_data->bssid_data[vap_array_index].ap_params.rapid_reconnect_threshold);
 
             sta = hash_map_get_first(sta_map);
-            while (sta != NULL) {
+           while (sta != NULL) {
                 int send_disconnect_event = 1;
                 tmp_sta = NULL;
 
@@ -281,9 +295,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                         }
                     }
                 } else {
-                    /* Assoc-request-only: remove stale entries after 5 seconds, no disconnect event. */
+                    /* Assoc-request-only entry: remove stale entries after 5 seconds,
+                     * but do not send disconnect event.
+                     */
                     if ((sta->assoc_frame_data.frame_timestamp != 0) &&
-                        (tv_now_err.tv_sec - sta->assoc_frame_data.frame_timestamp > 5)) {
+                        (current_timestamp_err - sta->assoc_frame_data.frame_timestamp > 5)) {
                         send_disconnect_event = 0;
                         tmp_sta = sta;
                     }
@@ -307,13 +323,17 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                                 free(mac_addr);
                                 mac_addr = NULL;
                             }
+                        } else {
+                            wifi_util_error_print(WIFI_MON,
+                                "%s:%d Failed to allocate memory for disconnect event on vap:%d\n",
+                                __func__, __LINE__, args->vap_index);
                         }
                     }
 
                     tmp_sta = hash_map_remove(sta_map, sta_key);
                     if (tmp_sta != NULL) {
                         wifi_util_info_print(WIFI_MON,
-                            "%s:%d HAL failure cleanup removed vap:%d sta:%s reason:%s\n",
+                            "%s:%d  wifi_getApAssociatedDeviceDiagnosticResult3 failure cleanup : removed vap:%d sta:%s reason:%s\n",
                             __func__, __LINE__, args->vap_index, sta_key,
                             (send_disconnect_event == 1) ? "stale_disconnected" : "stale_assoc_only");
                         free(tmp_sta);
@@ -321,6 +341,10 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     }
                 }
             }
+        } else {
+            wifi_util_info_print(WIFI_MON,
+                "%s:%d  wifi_getApAssociatedDeviceDiagnosticResult3 failure cleanup : skipped vap:%d sta_map is NULL\n",
+                __func__, __LINE__, args->vap_index);
         }
         pthread_mutex_unlock(&mon_data->data_lock);
 
@@ -329,6 +353,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 mac_addr = (unsigned char *)queue_pop(disconnect_event_queue);
                 if (mac_addr != NULL) {
                     send_wifi_disconnect_event_to_ctrl(mac_addr, args->vap_index);
+                    wifi_util_info_print(WIFI_MON,
+                        "%s:%d  wifi_getApAssociatedDeviceDiagnosticResult3 failure cleanup : sent disconnect event vap:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
+                        __func__, __LINE__, args->vap_index,
+                        mac_addr[0], mac_addr[1], mac_addr[2],
+                        mac_addr[3], mac_addr[4], mac_addr[5]);
                     free(mac_addr);
                 }
             }
@@ -413,6 +442,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     }
 
     clock_gettime(CLOCK_MONOTONIC, &tv_now);
+    time(&current_timestamp);
     sta_map = mon_data->bssid_data[vap_array_index].sta_map;
 
     if (num_devs != 0) {
@@ -614,7 +644,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 }
             } else {
                 // client never connected, only storing the assoc request.
-                if (tv_now.tv_sec - sta->assoc_frame_data.frame_timestamp > 5) {
+                if (current_timestamp - sta->assoc_frame_data.frame_timestamp > 5) {
                     // remove this entry after 5 seconds, should not trigger a disconnect event.
                     send_disconnect_event = 0;
                     tmp_sta = sta;

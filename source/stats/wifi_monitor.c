@@ -1025,6 +1025,9 @@ static int reset_interop_sta_data(void *arg) {
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
 {
     unsigned int pos = 0;
+    int written = 0;
+    unsigned int remaining = 0;
+    const unsigned int json_trailer_len = sizeof("]}]}");
     sta_data_t *sta_data = NULL;
     unsigned int sta_count = 0;
     unsigned int buf_size = CLIENTDIAG_JSON_BUFFER_SIZE * (sizeof(char)) * BSS_MAX_NUM_STATIONS;
@@ -1043,18 +1046,19 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
     pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_data = hash_map_get_first(g_monitor_module.bssid_data[vap_index].sta_map);
     while (sta_data != NULL) {
-            /* Bounds check: stop serializing if we are approaching buffer limit.
-             * Reserve 64 bytes for the closing JSON brackets and null terminator.
-             */
-            if (pos >= (buf_size - 64)) {
-                wifi_util_error_print(WIFI_MON,
-                    "%s %d Buffer overflow prevented for vap %d, pos=%u buf_size=%u sta_count=%u\n",
-                    __func__, __LINE__, vap_index, pos, buf_size, sta_count);
-                break;
-            }
-            sta_count++;
-            pos += snprintf(&harvester_buf[vap_index][pos],
-                        buf_size - pos, "{"
+
+        if (pos >= buf_size || (buf_size - pos) <= json_trailer_len) {
+            wifi_util_error_print(WIFI_MON,
+                "%s %d Buffer limit reached for vap %d, pos=%u buf_size=%u sta_count=%u\n",
+                __func__, __LINE__, vap_index, pos, buf_size, sta_count);
+            break;
+        }
+
+        remaining = buf_size - pos;
+        sta_count++;
+
+        written = snprintf(&harvester_buf[vap_index][pos],
+                remaining, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDEnable\":\"%d\","
@@ -1121,8 +1125,24 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                         sta_data->dev_stats.cli_Disassociations,
                         sta_data->dev_stats.cli_Retransmissions);
 
+        if (written < 0) {
+            wifi_util_error_print(WIFI_MON,
+                "%s %d snprintf failed for vap %d at sta_count=%u\n",
+               __func__, __LINE__, vap_index, sta_count);
+            break;
+        }
 
-        sta_data = hash_map_get_next(g_monitor_module.bssid_data[vap_index].sta_map, sta_data);
+        if ((unsigned int)written >= remaining) {
+            wifi_util_error_print(WIFI_MON,
+                "%s %d STA entry truncated for vap %d, stopping serialization pos=%u remaining=%u sta_count=%u\n",
+               __func__, __LINE__, vap_index, pos, remaining, sta_count);
+            harvester_buf[vap_index][pos] = '\0';
+           break;
+        }
+
+        pos += (unsigned int)written;
+
+	sta_data = hash_map_get_next(g_monitor_module.bssid_data[vap_index].sta_map, sta_data);
 
     }
     pthread_mutex_unlock(&g_monitor_module.data_lock);
