@@ -162,7 +162,7 @@ jobs:
                        "or fix them all at once locally:\n"
                        "> ```\n"
                        "> pip install clang-format==18.1.8\n"
-                       "> git-clang-format --style=file --extensions c,h <merge-base>\n"
+                       "> git-clang-format --style=file --extensions c,h,cpp <merge-base>\n"
                        "> ```")
           review = {
               "commit_id": os.environ["head_sha"],
