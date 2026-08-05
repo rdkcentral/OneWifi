@@ -51,7 +51,12 @@ typedef size_t rsize_t;
 #endif
 
 /* sprintf_s: returns number of characters written (>=0), negative on error,
- * mirroring safeclib so callers' `if (rc < EOK)` error checks behave. */
+ * mirroring safeclib so callers' `if (rc < EOK)` error checks behave.
+ * Truncation (output would exceed dmax-1 chars) is an ERROR in real safeclib,
+ * which clears dest and returns a negative constraint code (-ESNOSPC) - not the
+ * would-be length. vsnprintf instead returns that positive would-be length on
+ * truncation, which slips through callers' `rc < EOK` checks and would mask a
+ * bug that fails on a real RDK build. Convert it to the safeclib error form. */
 static inline int sprintf_s(char *dest, rsize_t dmax, const char *fmt, ...)
 {
     va_list ap;
@@ -62,6 +67,11 @@ static inline int sprintf_s(char *dest, rsize_t dmax, const char *fmt, ...)
     va_start(ap, fmt);
     rc = vsnprintf(dest, dmax, fmt, ap);
     va_end(ap);
+    if (rc < 0 || (rsize_t)rc >= dmax) {
+        /* encoding error or truncation: mirror safeclib - clear dest, fail. */
+        dest[0] = '\0';
+        return -1;
+    }
     return rc;
 }
 

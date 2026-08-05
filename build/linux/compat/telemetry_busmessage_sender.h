@@ -32,21 +32,21 @@ typedef enum {
 } T2ERROR;
 
 static inline void t2_init(char* name) {
-    // Stub: do nothing
+    (void)name;  // stub: parameter intentionally unused
 }
 
 static inline T2ERROR t2_event_s(const char* marker, char* value) {
-    // Stub: always return success
+    (void)marker; (void)value;  // stub: parameters intentionally unused
     return T2ERROR_SUCCESS;
 }
 
 static inline T2ERROR t2_event_d(const char* marker, int value) {
-    // Stub: always return success
+    (void)marker; (void)value;
     return T2ERROR_SUCCESS;
 }
 
 static inline T2ERROR t2_event_f(const char* marker, double value) {
-    // Stub: always return success
+    (void)marker; (void)value;
     return T2ERROR_SUCCESS;
 }
 
