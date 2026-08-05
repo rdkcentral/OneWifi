@@ -30,7 +30,7 @@ jobs:
   suggest:
     runs-on: ubuntu-latest
     # Exclude cancelled runs at the source (they can leave outdated artifact yet
-    # fire 'completed'). Allow failure too (if stage 1 fails, suggestions are still useful!
+    # fire 'completed'). Allow failure too (if stage 1 fails, suggestions are still useful!)
     if: >-
       github.event.workflow_run.event == 'pull_request'
       && github.event.workflow_run.conclusion != 'cancelled'
@@ -125,7 +125,7 @@ jobs:
           import json, os
           # Large reviews trip rate limiting, and fail (often as a misleading 404).
           # Retrying won't help, and GH doesn't publish a number. Cap instead.
-          # A PR needing more than this, should just be formatted locally.
+          # A PR needing more than this should just be formatted locally.
           MAX = int(os.environ.get("MAX_COMMENTS", "25"))
           comments = json.load(open("/tmp/comments.json"))
           total = len(comments)
@@ -163,8 +163,8 @@ jobs:
 
           # Freshness check: concurrency only cancels an IN-FLIGHT run, so a run
           # that already moved past can still post outdated suggestions. Fail
-          # CLOSED-TO-ERROR on empty (means transient API failure), skip only 
-          # on a positively-observed different sha (gh stderr flows to the log).
+          # CLOSED-TO-ERROR on empty (transient API failure), skip only on a
+          # positively-observed different sha (gh stderr flows to the log).
           current_sha="$(gh api "/repos/${{ github.repository }}/pulls/${pr_number}" --jq .head.sha)" || true
           if [ -z "$current_sha" ]; then
             echo "::error::Could not read current PR head sha (see log above)."

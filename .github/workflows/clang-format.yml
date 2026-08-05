@@ -7,7 +7,7 @@ name: clang-format
 # clang-format WOULD change and hands that diff to stage 2 as passive data.
 on:
   pull_request:
-    paths:
+    paths:            # they have to match --extensions <args> below
       - '**/*.c'
       - '**/*.cpp'
       - '**/*.h'
@@ -37,7 +37,7 @@ jobs:
           python3 -m pip install --quiet "clang-format==18.1.8"   # bundles clang-format + git-clang-format
           clang-format --version
 
-      - name: Reformat only the changed .c/.cpp/.h lines
+      - name: Reformat only the changed .c/.h lines
         id: fmt
         run: |
           # Diff against the MERGE BASE, not the base branch tip. Now that we check
@@ -59,14 +59,14 @@ jobs:
           # EXCLUDES+=(':!platform/vendor/*')      # whole directory (recursive)
           # EXCLUDES+=(':!src/example_file.c')     # single file
           # ==================================================================
-          # --extensions c,h is why nothing but C sources is ever formatted.
+          # --extensions c,h,cpp is why nothing but C/C++ sources is ever formatted.
           #
           # git-clang-format exit codes: 0 = nothing to do, 1 = it reformatted
           # something (this is NOT an error), 2+ = genuine failure. The default
           # shell is `bash -e`, so a bare call would abort the step on the
           # perfectly normal exit 1.
           set +e
-          git-clang-format --style=file --extensions c,h "$BASE_SHA" -- . "${EXCLUDES[@]}"
+          git-clang-format --style=file --extensions c,h,cpp "$BASE_SHA" -- . "${EXCLUDES[@]}"
           rc=$?
           set -e
           if [ "$rc" -ge 2 ]; then
