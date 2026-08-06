@@ -1333,6 +1333,22 @@ typedef struct {
     unsigned int            radio_Temperature;
 } radio_data_t;
 
+typedef struct {
+    assoc_dev_data_t *affiliated_sta[MAX_NUM_RADIOS];
+    UINT affiliated_sta_count;
+} stamld_data_t;
+
+typedef struct {
+    wifi_vap_info_t *mld_vaps[MAX_NUM_RADIOS];
+    UINT mld_vap_count;
+} mld_group_t;
+
+typedef struct {
+    mld_group_t mld_groups[MLD_UNIT_COUNT];
+    UINT mld_group_count;
+    hash_map_t *stamld[MLD_UNIT_COUNT]; /* Hash map keyed by MLD MAC address, contains stamld_data_t */
+} apmld_map_t;
+
 #ifdef EM_APP
 
 #define EM_MAX_OPERATING_CLASS 48
