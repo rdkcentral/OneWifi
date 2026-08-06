@@ -232,11 +232,21 @@ jobs:
           echo "head_sha=${{ github.event.pull_request.head.sha }}"
         } > ci-out/pr-meta.env
 
-    # One artifact per matrix leg (ci-summary-rpi / -bpi / -mock). Uploaded even
-    # on build failure (if: always()) so a red build still gets its summary
-    # posted. tidy-summary.md exists on the bpi leg only.
+    # Publish the summary artifact the PR-comment stage posts. Uploaded even on
+    # build failure (if: always()) so a red build still gets its summary posted.
+    # tidy-summary.md exists on the bpi leg only.
+    #
+    # scoped to bpi-only FOR NOW: only the Banana Pi leg (coverage + MLO, and the only
+    # leg running clang-tidy) is posted as a PR comment. rpi/mock still build and
+    # still gate the check. Their respective summaries stay on the action-run 'summary' page
+    # ($GITHUB_STEP_SUMMARY), we just don't paste is as comment; There's no infra yet to
+    # scope their findings down to the PR's changes, so a comment would be
+    # noise nobody acts on. The pr-comments.yml 'build' job already aggregates
+    # however many ci-summary-* artifacts exist, so:
+    #   TO POST ALL LEGS: delete the `&& matrix.platform.id == 'bpi'` clause below
+    #   (nothing to change in pr-comments.yml).
     - name: Upload CI summary artifact
-      if: always() && github.event_name == 'pull_request'
+      if: always() && github.event_name == 'pull_request' && matrix.platform.id == 'bpi'
       uses: actions/upload-artifact@v6
       with:
         name: ci-summary-${{ matrix.platform.id }}

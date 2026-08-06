@@ -172,6 +172,9 @@ jobs:
 
       # Pull every platform's summary for one combined comment. These files are
       # passive display text; the trust decision was already made above.
+      # NOTE: makefile.yml currently uploads only the bpi leg's summary, so today
+      # this resolves to a single artifact. It stays a wildcard on purpose — once
+      # rpi/mock are worth posting, enabling them there needs no change here.
       - name: Download all platform summaries
         if: steps.ctx.outputs.found == 'true'
         uses: actions/download-artifact@v7
