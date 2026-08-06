@@ -21,7 +21,7 @@ jobs:
         id: labeler
         with:
           # Use the repository's token to run in the context of the repository, not the PR author
-          token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const path = require('path');

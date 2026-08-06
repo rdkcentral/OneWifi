@@ -90,14 +90,20 @@ static inline errno_t strcpy_s(char *dest, rsize_t dmax, const char *src)
 
 static inline errno_t strncpy_s(char *dest, rsize_t dmax, const char *src, rsize_t n)
 {
+    rsize_t slen;
     if (dest == NULL || src == NULL || dmax == 0) {
         return -1;
     }
-    if (n >= dmax) {
-        n = dmax - 1;
+    /* effective copy length is min(strlen(src), n); if it leaves no room for the
+     * terminator (>= dmax) that is a truncation - mirror safeclib: clear + fail,
+     * do NOT silently clamp and return EOK (which would mask real-build bugs). */
+    slen = strnlen(src, n);
+    if (slen >= dmax) {
+        dest[0] = '\0';
+        return -1;
     }
-    strncpy(dest, src, n);
-    dest[n] = '\0';
+    strncpy(dest, src, slen);
+    dest[slen] = '\0';
     return EOK;
 }
 

@@ -654,7 +654,7 @@ $(WIFI_HOSTAP_BASE)/hostapd/%.o: CFLAGS += -w -Wno-macro-redefined
 # This build does not flag any warnings, so a PR reintroducing an already-fixed defect would 
 # pass here unnoticed. Mirror a curated slice of (-Wall -Werror -Wextra used in Yocto builds,
 # scoped to HAL objects only, using same way as the hostap -w lines above (path-prefix idiom).
-# OneWifi/hostap objects are unaffected. Warnings flagged by -Wall and -Wextra stay visible, \
+# OneWifi/hostap objects are unaffected. Warnings flagged by -Wall and -Wextra stay visible,
 # but non fatal. Only the listed classes are errors. List will grow as fixup's continue.
 RDK_HAL_WERROR = -Wall -Wextra \
     -Wno-unused-parameter -Wno-pointer-sign -Wno-sign-compare -Wno-type-limits \

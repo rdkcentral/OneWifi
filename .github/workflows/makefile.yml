@@ -10,6 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Stage 1 is deliberately read-only: it builds PR-controlled makefiles, so it
+# must hold no write scope. The PR-comment posting (writes) happens only in the
+# trusted workflow_run stage (pr-comments.yml).
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -18,15 +24,18 @@ jobs:
       matrix:
         platform:
           - name: "Raspberry Pi"
+            id: rpi              # stable slug for the ci-summary-<id> artifact name
             makefile_path: "build/linux/rpi/makefile"
             extra_coverage: "0"
             extra_cflags: ""
           - name: "Banana Pi R4 - MLO"
+            id: bpi
             makefile_path: "build/linux/bpi/makefile"
             extra_coverage: "1"
             extra_cflags: "-DCONFIG_GENERIC_MLO"
             clang_tidy: true          # only this leg builds the compile DB + runs clang-tidy
           - name: "Platform Mock Unittests"
+            id: mock
             makefile_path: "build/linux/mockplatform/makefile"
             extra_coverage: "0"
             extra_cflags: ""
@@ -40,6 +49,7 @@ jobs:
       with:
         path: 'OneWifi'
         fetch-depth: 0            # clang-tidy diffs changed source against the PR base
+        persist-credentials: false   # nothing here pushes; don't leave the token in .git/config
 
     - name: Clone unified-wifi-mesh repository
       run: |
@@ -95,18 +105,18 @@ jobs:
         cd ucode
         mkdir build && cd build
         cmake -DUBUS_SUPPORT=OFF -DUCI_SUPPORT=OFF -DULOOP_SUPPORT=OFF ..
-        make -j$(nproc)
+        make -j"$(nproc)"
         sudo make install
         sudo ldconfig
 
     - name: Setup OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
       run: |
-        git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-        git config --global user.name "${{ github.actor }}"
+        # $GITHUB_ACTOR is a built-in runner env var; use it rather than
+        # interpolating ${{ github.actor }} straight into the script.
+        git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        git config --global user.name "${GITHUB_ACTOR}"
         make -f ${{ matrix.platform.makefile_path }} setup
-      env:
-        GITHUB_ACTOR: ${{ github.actor }}
 
     - name: Build OneWiFi for ${{ matrix.platform.name }}
       id: build
@@ -116,7 +126,7 @@ jobs:
         set -o pipefail
         # clang-tidy leg only: wrap make in `bear` so ONE build yields the objects
         # AND compile_commands.json (no second build). Other legs run make plain.
-        ${{ matrix.platform.clang_tidy && 'bear --output compile_commands.json --' || '' }} make -f ${{ matrix.platform.makefile_path }} -j$(nproc) all 2>&1 | tee build.log
+        ${{ matrix.platform.clang_tidy && 'bear --output compile_commands.json --' || '' }} make -f ${{ matrix.platform.makefile_path }} -j"$(nproc)" all 2>&1 | tee build.log
       env:
         # Coverage tier for the bpi target: "1" enables EXTRA_COV_FLAGS
         # (ONEWIFI_DB_SUPPORT + memwraptool). Ignored by rpi/mockplatform.
@@ -130,9 +140,12 @@ jobs:
       if: always()   # run on failure too, so the red-build reason is surfaced
       working-directory: easymesh_project/OneWifi
       run: |
+        # ci-out/ collects the stage-1 artifacts the PR-comment stage posts.
+        mkdir -p ci-out
         LOG=build.log
         if [ ! -f "$LOG" ]; then
-          echo "## ${{ matrix.platform.name }} — no build log captured" >> "$GITHUB_STEP_SUMMARY"
+          echo "## ${{ matrix.platform.name }} — no build log captured" \
+            | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         # Compiler + linker + make errors: what usually explains a red build,
@@ -142,7 +155,7 @@ jobs:
         # Surface the top errors as ANNOTATIONS (the box at the top of the failed
         # check, which people actually check) — not only the run-summary page.
         if [ -n "$errs" ]; then
-          printf '%s\n' "$errs" | head -10 | sed 's/%/%25/g' \
+          printf '%s\n' "$errs" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::error::$l"; done
         fi
         {
@@ -153,7 +166,7 @@ jobs:
             printf '%s\n' "$errs" | head -100
             echo '```'
           fi
-          # Warnings from OneWifi's OWN sources only, with location.
+          # Warnings from OneWifi's own sources ONLY, with location.
           # HAL/hostapd/mesh errors still break the build, so will be shown too.
           # OneWifi runs a Yocto-style clean baseline, so anything here
           # is a newly-surfaced bug to triage.
@@ -169,7 +182,7 @@ jobs:
           else
             echo "### ⚠️ OneWifi warnings: 0"
           fi
-        } | tee -a "$GITHUB_STEP_SUMMARY"
+        } | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
 
     - name: clang-tidy (advisory) for ${{ matrix.platform.name }}
       if: always() && matrix.platform.clang_tidy
@@ -178,6 +191,7 @@ jobs:
         # Advisory Step 0: NEVER fails the build. List of Checks is in the .clang-tidy.
         # clang-diagnostic-* is filtered-out. Emits separate (from GCC) summary section
         # + ::warning:: annotations, same visibility as the build errors.
+        mkdir -p ci-out
         [ -f compile_commands.json ] || { echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
         BASE='${{ github.event.pull_request.base.sha }}'
         CHANGED=''
@@ -188,12 +202,14 @@ jobs:
         fi
         : > tidy.log
         for f in $CHANGED; do
-          [ -f "$f" ] && clang-tidy-18 -p . --quiet "$f" 2>/dev/null \
+          [ -f "$f" ] || continue
+          # || true: a no-match grep (exit 1) or a tidy hiccup must not abort the loop.
+          clang-tidy-18 -p . --quiet "$f" 2>/dev/null \
             | grep -E ': (warning|error):' | grep -v clang-diagnostic >> tidy.log || true
         done
         found=$(sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' tidy.log | sort -u || true)
         if [ -n "$found" ]; then
-          printf '%s\n' "$found" | head -10 | sed 's/%/%25/g' \
+          printf '%s\n' "$found" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
         {
@@ -201,4 +217,29 @@ jobs:
           elif [ -z "$found" ];   then echo "### 🔎 clang-tidy: clean on changed files"
           else echo "### 🔎 clang-tidy ($(printf '%s\n' "$found" | wc -l) findings)"; echo '```'; printf '%s\n' "$found" | head -100; echo '```'
           fi
-        } | tee -a "$GITHUB_STEP_SUMMARY"
+        } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+    # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
+    # Record the PR identity as passive data for the workflow_run poster to
+    # validate. Only meaningful on PRs; push builds skip it.
+    - name: Record PR metadata for the comment stage
+      if: always() && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      run: |
+        mkdir -p ci-out
+        {
+          echo "pr_number=${{ github.event.pull_request.number }}"
+          echo "head_sha=${{ github.event.pull_request.head.sha }}"
+        } > ci-out/pr-meta.env
+
+    # One artifact per matrix leg (ci-summary-rpi / -bpi / -mock). Uploaded even
+    # on build failure (if: always()) so a red build still gets its summary
+    # posted. tidy-summary.md exists on the bpi leg only.
+    - name: Upload CI summary artifact
+      if: always() && github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v6
+      with:
+        name: ci-summary-${{ matrix.platform.id }}
+        path: easymesh_project/OneWifi/ci-out
+        if-no-files-found: warn
+        retention-days: 1
