@@ -33,6 +33,20 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#if defined(CONFIG_IEEE80211BE) && !defined(_PLATFORM_BANANAPI_R4_)
+#ifndef ASSOC_LINK_ID_OFFSET
+#define ASSOC_LINK_ID_OFFSET		6
+#endif 
+
+#ifndef ASSOC_LINK_ADDR_OFFSET
+#define ASSOC_LINK_ADDR_OFFSET		7
+#endif
+typedef struct {
+    mac_address_t assoc_link_addr;
+    UINT assoc_link_id;
+} assoc_link_info_t;
+#endif // CONFIG_IEEE80211BE && !defined(_PLATFORM_BANANAPI_R4_)
+
 #define WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE   "Device.WiFi.Events.VAP.%d.Frames.Mgmt"
 #define CSI_LEVL_PIPE                           "/tmp/csi_levl_pipe"
 
@@ -407,6 +421,82 @@ static void extract_probe_req(wifi_app_t *app, probe_req_elem_t *elem, const mac
     free(elem);
 }
 
+#ifndef _PLATFORM_BANANAPI_R4_
+/*
+ * Parse the assoc frame to find the assoc link info from the vendor specific IE. 
+ * [in] msg - assoc frame message
+ * [out] assoc_link_info - assoc link info extracted from the assoc frame
+ */
+static int parse_assoc_link_info(frame_data_t *msg, assoc_link_info_t *assoc_link_info)
+{
+    const struct element *ie_elem = NULL;
+    struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)msg->data;
+    u8 *ie_ptr = NULL;
+    size_t ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ? 0 : msg->frame.len - (IEEE80211_HDRLEN + 4);
+
+    if (ie_len == 0) {
+        return RETURN_ERR;
+    }
+    ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
+    for_each_element_id(ie_elem, WLAN_EID_VENDOR_SPECIFIC, (const u8 *)ie_ptr, ie_len)
+    {
+        if (ie_elem->datalen < (size_t)(ASSOC_LINK_ADDR_OFFSET + ETH_ALEN)) {
+            continue;
+        }
+        unsigned int oui = WPA_GET_BE24(ie_elem->data);
+        if (oui != OUI_BROADCOM) {
+            continue;
+        }
+        u8 oui_type = ie_elem->data[3];
+        if (oui_type != VENDOR_MLO_OUI_TYPE) {
+            continue;
+        }
+        assoc_link_info->assoc_link_id = ie_elem->data[ASSOC_LINK_ID_OFFSET];
+        memcpy(assoc_link_info->assoc_link_addr, ie_elem->data + ASSOC_LINK_ADDR_OFFSET, ETH_ALEN);
+        //wifi_util_error_print(WIFI_APPS,"%s:%d assoc_link_id: %d\n", __func__, __LINE__, assoc_link_info->assoc_link_id);
+        return RETURN_OK;
+    }
+    return RETURN_ERR;
+}
+
+/* Correct frame.ap_index for MLO STA based on assoc link info from assoc frame */
+static void check_and_correct_reporting_vap_index(frame_data_t *msg, const mac_addr_str_t mac_str)
+{
+    assoc_link_info_t assoc_link_info = { 0 };
+    if (parse_assoc_link_info(msg, &assoc_link_info) != RETURN_OK) {
+        /* no assoc link info in assoc frame - link info is added only for MLO STAs */
+        //wifi_util_dbg_print(WIFI_APPS,"%s:%d STA %s no assoc link info in assoc frame \n", __func__, __LINE__, mac_str);
+        return;
+    }
+
+    wifi_vap_info_t *vap_info = getVapInfo(msg->frame.ap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d STA %s could not find vap for ap_index %d\n",
+            __func__, __LINE__, mac_str, msg->frame.ap_index);
+        return;
+    }
+
+    wifi_mld_common_info_t *mld = get_mld_from_vap_info(vap_info);
+    if (mld == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d STA %s could not find mld for ap_index %d\n",
+            __func__, __LINE__, mac_str, msg->frame.ap_index);
+        return;
+    }
+
+    if (mld->mld_link_id != assoc_link_info.assoc_link_id) {
+        wifi_vap_info_t *assoc_link_vap = get_mlo_partner_link_by_link_id(vap_info, assoc_link_info.assoc_link_id);
+        if (assoc_link_vap != NULL) {
+            msg->frame.ap_index = assoc_link_vap->vap_index;
+            wifi_util_dbg_print(WIFI_APPS,"%s:%d STA %s corrected ap_index to %d\n",
+                __func__, __LINE__,mac_str, msg->frame.ap_index);
+        } else {
+            wifi_util_error_print(WIFI_APPS,"%s:%d STA %s could not find vap for assoc link ID %d\n",
+                __func__, __LINE__, mac_str, assoc_link_info.assoc_link_id);
+        }
+    }
+}
+#endif /* !defined(_PLATFORM_BANANAPI_R4_)*/
+
 static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *msg,
     wifi_app_t *app, ds_dlist_t *probe_req_frames_to_send)
 {
@@ -430,18 +520,9 @@ static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *
 #ifndef _PLATFORM_BANANAPI_R4_
     // Since this is Broadcom specific, first try to find the special
     // vendor IE with replaced link MAC
-    for_each_element_id(ie_elem, WLAN_EID_VENDOR_SPECIFIC, (const u8 *)ie_ptr, ie_len)
-    {
-        if (ie_elem->datalen < (size_t)(4 + 3 + ETH_ALEN)) {
-            continue;
-        }
-
-        u8 oui_type = ie_elem->data[3];
-        if (oui_type != VENDOR_MLO_OUI_TYPE) {
-            continue;
-        }
-
-        to_mac_str((u8 *)(ie_elem->data + 4 + 3), mac_str);
+    assoc_link_info_t assoc_link_info = { 0 };
+    if (parse_assoc_link_info(msg, &assoc_link_info) == RETURN_OK) {
+        to_mac_str(assoc_link_info.assoc_link_addr, mac_str);
         elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str);
         if (elem != NULL) {
             wifi_util_dbg_print(WIFI_APPS,
@@ -450,9 +531,6 @@ static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *
             extract_probe_req(app, elem, mac_str, probe_req_frames_to_send);
         }
     }
-
-    ie_ptr = (u8 *)frame + IEEE80211_HDRLEN + 4;
-    ie_len = msg->frame.len < (IEEE80211_HDRLEN + 4) ? 0 : msg->frame.len - (IEEE80211_HDRLEN + 4);
 #endif
 
     for_each_element_extid(ie_elem, WLAN_EID_EXT_MULTI_LINK, (const u8 *)ie_ptr, ie_len)
@@ -550,7 +628,9 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     }
 
     str_tolower(mac_str);
-
+#if defined(CONFIG_IEEE80211BE) && !defined(_PLATFORM_BANANAPI_R4_)
+    check_and_correct_reporting_vap_index(msg, mac_str);
+#endif /* CONFIG_IEEE80211BE && !_PLATFORM_BANANAPI_R4_ */
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n",
             __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
