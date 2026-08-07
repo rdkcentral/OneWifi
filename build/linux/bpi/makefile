@@ -651,7 +651,7 @@ $(WIFI_HOSTAP_BASE)/hostapd/%.o: CFLAGS += -w -Wno-macro-redefined
 
 # ---------------------------------------------------------------------------
 # rdk-wifi-hal warning gate (scoped -Werror promotion).
-# This build does not flag any warnings, so a PR reintroducing an already-fixed defect would 
+# This build does not flag any warnings, so a PR reintroducing an already-fixed defect would
 # pass here unnoticed. Mirror a curated slice of (-Wall -Werror -Wextra used in Yocto builds,
 # scoped to HAL objects only, using same way as the hostap -w lines above (path-prefix idiom).
 # OneWifi/hostap objects are unaffected. Warnings flagged by -Wall and -Wextra stay visible,
@@ -714,7 +714,7 @@ $(BUILD_DIR):
 #
 
 
-all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY)   $(MATH_UTIL_LIBRARY)  $(QUALITY_MANAGER_LIBRARY) $(PROGRAM)
+all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY) $(MATH_UTIL_LIBRARY)  $(QUALITY_MANAGER_LIBRARY) $(PROGRAM)
 
 $(CMN_LIBRARY): $(ALL_CMN_LIB_OBJECTS)
 	$(AR)  $@  $^
