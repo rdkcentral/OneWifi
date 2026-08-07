@@ -1,5 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
+set -x
 ONEWIFI_DIR=$(pwd)
 OPENWRT_ROOT="$(pwd)/../../.."
 HOSTAP_DIR="$(pwd)/../rdk-wifi-libhostap"
@@ -102,6 +103,10 @@ else
     touch "$HOSTAP_PATCH_FLAG"
     echo "All patches applied successfully."
 fi
+
+touch build.env
+source "${ONEWIFI_DIR}/build/linux/bpi/extract_yocto_defines.sh"
+mv build.env ${ONEWIFI_DIR}/
 
 #Delete the meta-cmf-bananapi and meta-filogic directories after applying patches
 rm -rf meta-cmf-bananapi

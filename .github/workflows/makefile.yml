@@ -96,4 +96,7 @@ jobs:
     - name: Build OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
       run: |
+        if [[ -f build.env ]]; then
+            source build.env
+        fi
         make -f ${{ matrix.platform.makefile_path }} all
