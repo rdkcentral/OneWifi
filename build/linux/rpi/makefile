@@ -409,7 +409,7 @@ ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 endif
 
 ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
-    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)    \
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)
     WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_memwraptool.c
 endif
 ifdef ONEWIFI_STA_MGR_APP_SUPPORT
