@@ -25,7 +25,6 @@
 
 #ifdef ONEWIFI_DB_SUPPORT
 extern void init_wifidb(void);
-extern void init_wifidb_data(void);
 extern int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int start_wifidb();
 extern void wifidb_print(char *format, ...);
@@ -39,7 +38,6 @@ extern int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_
 extern int wifidb_init_global_config_default(wifi_global_param_t *config);
 extern int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config, rdk_wifi_vap_info_t *rdk_config);
-extern void  wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config);
 extern int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec);
 extern int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);

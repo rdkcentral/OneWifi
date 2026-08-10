@@ -38,6 +38,35 @@ EM_APP = 1
 ONEWIFI_STA_MGR_APP_SUPPORT = 1
 ONEWIFI_EASYCONNECT_APP_SUPPORT = 1
 
+# ============================================================================
+# CI coverage tiers
+#   baseline           : BananaPi app-coverage parity, always compiled
+#   EXTRA_COVERAGE=1  : Add light OneWifi feature/app flags (no heavy RDK deps)
+# EXTRA_COVERAGE is supplied by the workflow env.
+# Mock fake headers for the extra apps live in build/linux/compat.
+# ============================================================================
+
+# Missing apps for parity with Yocto builds
+ONEWIFI_ANALYTICS_APP_SUPPORT = 1
+ONEWIFI_BLASTER_APP_SUPPORT   = 1
+ONEWIFI_CAC_APP_SUPPORT       = 1
+ONEWIFI_CSI_APP_SUPPORT       = 1
+ONEWIFI_HARVESTER_APP_SUPPORT = 1
+ONEWIFI_LEVL_APP_SUPPORT      = 1
+ONEWIFI_MOTION_APP_SUPPORT    = 1
+ONEWIFI_WHIX_APP_SUPPORT      = 1
+FEATURE_OFF_CHANNEL_SCAN_5G   = 1
+# NOTE: the SM (stats-manager) app is NOT enabled on this target. SM and EM define
+# the same global helpers and as such cannot be linked into a single binary. The
+# BananaPi *extender* build ships SM; this CI target - EM, so EM wins.
+# SM enablement requires different build variant.
+
+
+# EXTRA_COVERAGE source toggles
+ifeq ($(EXTRA_COVERAGE),1)
+ONEWIFI_MEMWRAPTOOL_APP_SUPPORT = 1
+endif
+
 # wifi hal rules
 HAL_LIBRARY = $(INSTALLDIR)/lib/libwifihal.a
 WEBCONFIG_LIBRARY = $(INSTALLDIR)/lib/libwebconfig.a
@@ -338,6 +367,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/lib/const \
     -I$(ONE_WIFI_HOME)/lib/schema \
     -I$(ONE_WIFI_HOME)/lib/datapipeline \
+    -I$(ONE_WIFI_HOME)/lib/qm \
     -I$(WIFI_HAL_INTERFACE) \
     -I/usr/local/ssl/include/ \
     -I/usr/include/libnl3 \
@@ -347,6 +377,7 @@ INCLUDEDIRS = \
     -I$(WIFI_HOSTAP_SRC)/common \
     -I$(WIFI_NETLINK)/include \
     -I$(WIFI_TROWER_BASE) \
+    -I$(BASE_DIR)/build/linux/compat \
 
 LIBDIRS = \
     -L$(INSTALLDIR)/lib \
@@ -359,7 +390,7 @@ else
 LIBDIRS += -L$(INSTALLDIR)/lib/platform/darwin
 endif
 
-LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson
+LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson -lprotobuf-c
 
 #
 # The CXXSOURCES macro contains a list of source files.
@@ -400,6 +431,51 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(ONE_WIFI_HOME)/source/platform/linux/misc.c 	\
     $(ONE_WIFI_HOME)/source/platform/linux/bus.c	\
     $(ONE_WIFI_HOME)/source/platform/common/common.c   \
+    $(ONE_WIFI_HOME)/source/db/wifi_db_apis.c   \
+    $(ONE_WIFI_HOME)/lib/qm/qm_conn.c   \
+    $(ONE_WIFI_HOME)/lib/common/os_time.c   \
+    $(ONE_WIFI_HOME)/lib/common/monitor.c   \
+    $(ONE_WIFI_HOME)/lib/common/os.c   \
+    $(ONE_WIFI_HOME)/lib/common/os_util.c   \
+    $(ONE_WIFI_HOME)/lib/common/os_exec.c   \
+    $(ONE_WIFI_HOME)/lib/const/const.c   \
+    $(ONE_WIFI_HOME)/lib/ds/ds_tree.c   \
+    $(ONE_WIFI_HOME)/lib/json_util/string.c   \
+    $(ONE_WIFI_HOME)/lib/json_util/memdbg.c   \
+    $(ONE_WIFI_HOME)/lib/json_util/future.c   \
+    $(ONE_WIFI_HOME)/lib/log/log.c   \
+    $(ONE_WIFI_HOME)/lib/log/log_syslog.c   \
+    $(ONE_WIFI_HOME)/lib/log/log_stdout.c   \
+    $(ONE_WIFI_HOME)/lib/log/log_traceback.c   \
+    $(ONE_WIFI_HOME)/lib/schema/schema.c   \
+    $(ONE_WIFI_HOME)/lib/pktgen/pktgen.c   \
+    $(ONE_WIFI_HOME)/lib/datapipeline/dppline.c   \
+    $(ONE_WIFI_HOME)/lib/datapipeline/opensync_stats.pb-c.c   \
+    $(ONE_WIFI_HOME)/lib/datapipeline/osp_unit_rdk.c   \
+    $(ONE_WIFI_HOME)/lib/datapipeline/devinfo.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_backtrace.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_socket.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_nif_linux.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_regex.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_proc.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_file_ops.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_file.c   \
+    $(ONE_WIFI_HOME)/lib/osa/os_random.c   \
+    $(ONE_WIFI_HOME)/lib/pjs/pjs_array.c   \
+    $(ONE_WIFI_HOME)/lib/pjs/pjs_ovs_basic.c   \
+    $(ONE_WIFI_HOME)/lib/pjs/pjs_basic.c   \
+    $(ONE_WIFI_HOME)/lib/pjs/pjs_types.c   \
+    $(ONE_WIFI_HOME)/lib/pjs/pjs_ovs_set.c   \
+    $(ONE_WIFI_HOME)/lib/pjs/pjs_ovs_map.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb_method.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb_update.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb_sync.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb_sync_api.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb_table.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb_cache.c   \
+    $(ONE_WIFI_HOME)/lib/ovsdb/ovsdb_utils.c   \
+    $(BASE_DIR)/build/linux/compat/coverage_stubs.c   \
 
 WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_encoder.c	\
@@ -451,13 +527,13 @@ ifdef EASY_MESH_NODE
 endif
 
 ifdef ONEWIFI_CSI_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/csi/*.c)	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/csi/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_csi.c
 endif
 
 
 ifdef ONEWIFI_CAC_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/cac/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/cac/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_cac.c
 endif
 
@@ -467,12 +543,12 @@ ifdef ONEWIFI_MOTION_APP_SUPPORT
 endif
 
 ifdef ONEWIFI_HARVESTER_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/harvester/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/harvester/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_harvester.c
 endif
 
 ifdef ONEWIFI_LEVL_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/levl/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/levl/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_levl.c
 endif
 
@@ -481,7 +557,8 @@ ifdef ONEWIFI_WHIX_APP_SUPPORT
 endif
 
 ifdef ONEWIFI_BLASTER_APP_SUPPORT 
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/blaster/*.c) \
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/blaster/*.c)
+	CSOURCES += $(ONE_WIFI_HOME)/source/utils/ext_blaster.pb-c.c
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_blaster.c
 endif
 
@@ -495,6 +572,18 @@ endif
 
 ifdef ONEWIFI_STA_MGR_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_mgr/*.c)
+endif
+
+ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/analytics/*.c)
+endif
+
+ifdef SM_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sm/*.c)
+endif
+
+ifdef FEATURE_OFF_CHANNEL_SCAN_5G
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/ocs/*.c)
 endif
 
 ifdef EM_APP
@@ -529,8 +618,23 @@ ALL_HEBUS_LIB_OBJECTS = $(HEBUS_OBJECTS)
 
 ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(MATH_UTIL_OBJECTS) $(QUALITY_MANAGER_OBJECTS) $(HEBUS_OBJECTS)
 
-CFLAGS += $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -fcommon -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DBANANA_PI_PORT  -DNL80211_ACL -D_PLATFORM_BANANAPI_R4_ -DFEATURE_SINGLE_PHY -DEASY_MESH_NODE -DEM_APP \
-        -DONEWIFI_STA_MGR_APP_SUPPORT -DONEWIFI_EASYCONNECT_APP_SUPPORT
+CFLAGS += $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -fcommon -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DBANANA_PI_PORT  -DNL80211_ACL -D_PLATFORM_BANANAPI_R4_ -DFEATURE_SINGLE_PHY -DEASY_MESH_NODE -DEM_APP \
+        -DONEWIFI_STA_MGR_APP_SUPPORT -DONEWIFI_EASYCONNECT_APP_SUPPORT \
+        -DONEWIFI_ANALYTICS_APP_SUPPORT -DONEWIFI_BLASTER_APP_SUPPORT \
+        -DONEWIFI_CAC_APP_SUPPORT -DONEWIFI_CSI_APP_SUPPORT \
+        -DONEWIFI_HARVESTER_APP_SUPPORT -DONEWIFI_LEVL_APP_SUPPORT \
+        -DONEWIFI_MOTION_APP_SUPPORT -DONEWIFI_WHIX_APP_SUPPORT \
+        -DFEATURE_OFF_CHANNEL_SCAN_5G
+
+# ---- Coverage tier EXTRA defines, appended to CFLAGS only when the
+# matching env var is set (see explanation at top of file). 
+# ONEWIFI_DB_SUPPORT enables compilation of some of source/db/wifi_db_apis.c.
+EXTRA_COV_FLAGS = -DONEWIFI_DB_SUPPORT -DONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+
+
+ifeq ($(EXTRA_COVERAGE),1)
+CFLAGS += $(EXTRA_COV_FLAGS)
+endif
 
 ifneq ($(OS), Darwin)
 CFLAGS += -DPLATFORM_LINUX
@@ -539,6 +643,11 @@ CFLAGS += -DPLATFORM_OSX
 endif
 
 LDFLAGS = $(LIBDIRS) $(LIBS)
+
+# Shared per-object warning scoping + the HAL/OneWifi -Werror gate, kept in
+# one file so the bpi and rpi legs cannot drift. Requires WIFI_HOSTAP_*,
+# WIFI_RDK_HAL and the OneWifi object lists (all defined above) to be set first.
+include build/linux/makefile.common
 
 $(BUILD_DIR):
 	@mkdir -p $(INSTALLDIR)/lib
@@ -549,7 +658,7 @@ $(BUILD_DIR):
 #
 
 
-all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY)   $(MATH_UTIL_LIBRARY)  $(QUALITY_MANAGER_LIBRARY) $(PROGRAM)
+all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY) $(MATH_UTIL_LIBRARY)  $(QUALITY_MANAGER_LIBRARY) $(PROGRAM)
 
 $(CMN_LIBRARY): $(ALL_CMN_LIB_OBJECTS)
 	$(AR)  $@  $^
@@ -574,7 +683,9 @@ $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 # executing its link command.
 #
 
-$(PROGRAM): $(ALLOBJECTS)
+# PROGRAM links -lwifihal, so libwifihal.a must exist first; naming it as a
+# prerequisite makes `make -j` safe (objects alone don't order the archive).
+$(PROGRAM): $(HAL_LIBRARY) $(ALLOBJECTS)
 	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
 #
@@ -593,7 +704,7 @@ $(PROGRAM): $(ALLOBJECTS)
 #
 
 clean:
-	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY)$(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
+	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY) $(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
 
 #
 # Run target: "make -f Makefile.Linux run" to execute the application

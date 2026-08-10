@@ -1,0 +1,46 @@
+# Two tiers, both scoped to PR-changed .c/.cpp files by the workflow step:
+#   * Checks           -- the real-bug bugprone-* set (style / high-FP members
+#                         removed).  Reported as `warning:` -> ADVISORY.
+#   * WarningsAsErrors -- checks proven to have zero occurrences across the
+#                         OneWifi+rdk-wifi-hal tree, so promoting them cannot red an
+#                         untouched file.  Reported as `error:` -> FATAL (the
+#                         workflow fails the job on any of these).
+#
+# When sources get cleaned, move a proven-clean check from advisory into
+# WarningsAsErrors (e.g. 'bugprone-not-null-terminated-result' once its sites
+# are fixed). 'clang-diagnostic-*' is filtered out by the workflow so compiler
+# frontend noise (incl. clang-vs-gcc parse errors) can never act as gate.
+#
+# A deliberate hit on a gated check is waived inline: // NOLINT(<check-name>).
+# NOTE: findings are limited to changed .c/.cpp files (no HeaderFilterRegex), so
+# a violation introduced only in a header is not gated. An unbuilt changed file
+# (absent from compile_commands.json) can't resolve its includes and self-filters
+# to clang-diagnostic noise, so effectively only built files are judged.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-branch-clone,
+  -bugprone-narrowing-conversions,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-assignment-in-if-condition,
+  -bugprone-reserved-identifier,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -bugprone-too-small-loop-variable,
+  -bugprone-switch-missing-default-case
+
+# Promoted-to-fatal set: each verified at 0 occurrences over the first-party
+# build (OneWifi source/ + rdk-wifi-hal), so they gate with no source cleanup.
+WarningsAsErrors: >
+  bugprone-integer-division,
+  bugprone-suspicious-missing-comma,
+  bugprone-suspicious-semicolon,
+  bugprone-swapped-arguments,
+  bugprone-terminating-continue,
+  bugprone-posix-return,
+  bugprone-macro-repeated-side-effects,
+  bugprone-misplaced-operator-in-strlen-in-alloc,
+  bugprone-misplaced-pointer-arithmetic-in-alloc,
+  bugprone-string-literal-with-embedded-nul,
+  bugprone-incorrect-roundings,
+  bugprone-suspicious-enum-usage
