@@ -3848,26 +3848,26 @@ Radio_SetParamUlongValue
          */
         if (tmpGuardInterval != wifi_guard_interval_auto) {
             wifi_ieee80211Variant_t variant = wifiRadioOperParam->variant;
-            if ((variant & WIFI_80211_VARIANT_BE) || (variant & WIFI_80211_VARIANT_AX)) {
-                /* EHT: 800ns, 1600ns, 3200ns only */
-                if (tmpGuardInterval == wifi_guard_interval_400) {
-                    wifi_util_error_print(WIFI_DMCLI,
-                        "%s:%d: GuardInterval 400ns not supported for EHT mode (variant=0x%x)\n",
-                        __func__, __LINE__, variant);
-                    return FALSE;
-                }
-            } else if ((variant & WIFI_80211_VARIANT_AC) || (variant & WIFI_80211_VARIANT_N)) {
+            bool is_eht_he = (variant & WIFI_80211_VARIANT_BE) || (variant & WIFI_80211_VARIANT_AX);
+            bool is_vht_ht = (variant & WIFI_80211_VARIANT_AC) || (variant & WIFI_80211_VARIANT_N);
+
+            if (is_eht_he && (tmpGuardInterval == wifi_guard_interval_400)) {
+                /* EHT/HE: 800ns, 1600ns, 3200ns only */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval 400ns not supported for EHT/HE mode (variant=0x%x)\n",
+                    __func__, __LINE__, variant);
+                return FALSE;
+            } else if (!is_eht_he && is_vht_ht &&
+                       ((tmpGuardInterval == wifi_guard_interval_1600) ||
+                        (tmpGuardInterval == wifi_guard_interval_3200))) {
                 /* HT/VHT: 400ns (SGI) and 800ns (LGI) only */
-                if (tmpGuardInterval == wifi_guard_interval_1600 ||
-                    tmpGuardInterval == wifi_guard_interval_3200) {
-                    wifi_util_error_print(WIFI_DMCLI,
-                        "%s:%d: GuardInterval %dns not supported for HT/VHT mode (variant=0x%x)\n",
-                        __func__, __LINE__,
-                        (tmpGuardInterval == wifi_guard_interval_1600) ? 1600 : 3200,
-                        variant);
-                    return FALSE;
-                }
-            } else {
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval %dns not supported for HT/VHT mode (variant=0x%x)\n",
+                    __func__, __LINE__,
+                    (tmpGuardInterval == wifi_guard_interval_1600) ? 1600 : 3200,
+                    variant);
+                return FALSE;
+            } else if (!is_eht_he && !is_vht_ht) {
                 /* Legacy (A/B/G): GI not applicable — only Auto is valid */
                 wifi_util_error_print(WIFI_DMCLI,
                     "%s:%d: GuardInterval not applicable for legacy mode (variant=0x%x), only Auto allowed\n",

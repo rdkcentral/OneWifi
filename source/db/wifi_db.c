@@ -105,7 +105,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #if defined(CONFIG_IEEE80211BE) && (defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT))
             cfg.variant |= WIFI_80211_VARIANT_BE;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
-#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+#endif /* defined(CONFIG_IEEE80211BE) && (defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT)) */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
