@@ -8251,7 +8251,7 @@ void wifidb_init_default_value()
   Description : Init global cache with wifidb persistant data
  *************************************************************************************
 ********************************************** ****************************************/
-void init_wifidb_data()
+void init_wifidb_data(void)
 {
     static bool db_param_init = false;
     if (db_param_init == true) {

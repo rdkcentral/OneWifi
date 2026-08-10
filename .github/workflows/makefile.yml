@@ -24,7 +24,7 @@ jobs:
       matrix:
         platform:
           - name: "Raspberry Pi"
-            id: rpi              # stable slug for the ci-summary-<id> artifact name
+            id: rpi                   # has to be stable for the ci-summary-<id> stage
             makefile_path: "build/linux/rpi/makefile"
             extra_coverage: "0"
             extra_cflags: ""
@@ -48,8 +48,8 @@ jobs:
       uses: actions/checkout@v6
       with:
         path: 'OneWifi'
-        fetch-depth: 0            # clang-tidy diffs changed source against the PR base
-        persist-credentials: false   # nothing here pushes; don't leave the token in .git/config
+        fetch-depth: 0                # clang-tidy diffs changed source against the PR base
+        persist-credentials: false    # nothing here pushes; don't leave the token in .git/config
 
     - name: Clone unified-wifi-mesh repository
       run: |
@@ -184,40 +184,66 @@ jobs:
           fi
         } | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
 
-    - name: clang-tidy (advisory) for ${{ matrix.platform.name }}
+    - name: clang-tidy (gate + advisory) for ${{ matrix.platform.name }}
       if: always() && matrix.platform.clang_tidy
       working-directory: easymesh_project/OneWifi
       run: |
-        # Advisory Step 0: NEVER fails the build. List of Checks is in the .clang-tidy.
-        # clang-diagnostic-* is filtered-out. Emits separate (from GCC) summary section
-        # + ::warning:: annotations, same visibility as the build errors.
+        # Two-tier clang-tidy over PR-changed .c/.cpp files (see .clang-tidy):
+        #   * WarningsAsErrors checks    -> `error:`   -> FATAL (this step fails the job)
+        #   * rest of enabled bugprone-* -> `warning:` -> advisory only
+        # clang-diagnostic-* (most false positives and most noisy) is filtered out so it can NEVER
+        # gate. The gate is changed-files-only: a PR can only fail on a .c/.cpp it touched.
         mkdir -p ci-out
         [ -f compile_commands.json ] || { echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
         BASE='${{ github.event.pull_request.base.sha }}'
         CHANGED=''
         if [ -n "$BASE" ]; then
           git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
-          CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' 2>/dev/null \
+          # Changed file not present in compile_commands.json (not built) falls back to default
+          # flags. A real source then can't resolve its includes -> a fatal clang-diagnostic
+          # aborts file parsing before any check run on it -> that output is dropped by the
+          # clang-diagnostic filter below -> file can't fail. Thus, only built files are judged.
+          CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
                     | grep -vE '^build/|hostap' || true)
         fi
         : > tidy.log
         for f in $CHANGED; do
           [ -f "$f" ] || continue
-          # || true: a no-match grep (exit 1) or a tidy hiccup must not abort the loop.
+          # || true: a no-match grep (exit 1) or a clang-tidy hiccup must not abort the loop.
           clang-tidy-18 -p . --quiet "$f" 2>/dev/null \
             | grep -E ': (warning|error):' | grep -v clang-diagnostic >> tidy.log || true
         done
-        found=$(sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' tidy.log | sort -u || true)
-        if [ -n "$found" ]; then
-          printf '%s\n' "$found" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+        # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`.
+        gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
+        advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
+        if [ -n "$gated" ]; then
+          printf '%s\n' "$gated" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+            | while IFS= read -r l; do echo "::error::$l"; done
+        fi
+        if [ -n "$advis" ]; then
+          printf '%s\n' "$advis" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
         {
-          if   [ -z "$CHANGED" ]; then echo "### 🔎 clang-tidy: no changed .c to scan"
-          elif [ -z "$found" ];   then echo "### 🔎 clang-tidy: clean on changed files"
-          else echo "### 🔎 clang-tidy ($(printf '%s\n' "$found" | wc -l) findings)"; echo '```'; printf '%s\n' "$found" | head -100; echo '```'
+          if   [ -z "$CHANGED" ];     then echo "### 🔎 clang-tidy: no changed .c to scan"
+          elif [ -z "$gated$advis" ]; then echo "### 🔎 clang-tidy: clean on changed files"
+          else
+            if [ -n "$gated" ]; then
+              echo "### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
+              echo '```'; printf '%s\n' "$gated" | head -100; echo '```'
+              echo "_Fix the finding, or if it is a deliberate, waive it inline with \`// NOLINT(<check-name>)\` on that line._"
+            fi
+            if [ -n "$advis" ]; then
+              echo "### 🔎 clang-tidy advisory — $(printf '%s\n' "$advis" | wc -l) findings"
+              echo '```'; printf '%s\n' "$advis" | head -100; echo '```'
+            fi
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
+        # Gate AFTER the summary + artifact are written, on promoted checks only.
+        if [ -n "$gated" ]; then
+          echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed files" >&2
+          exit 1
+        fi
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
     # Record the PR identity as passive data for the workflow_run poster to
@@ -232,21 +258,24 @@ jobs:
           echo "head_sha=${{ github.event.pull_request.head.sha }}"
         } > ci-out/pr-meta.env
 
-    # Publish the summary artifact the PR-comment stage posts. Uploaded even on
-    # build failure (if: always()) so a red build still gets its summary posted.
-    # tidy-summary.md exists on the bpi leg only.
+    # Publish the summary artifact the PR-comment stage posts. Uploaded even on build failure
+    # (if: always()) so a red build still gets its summary posted. tidy-summary.md for now
+    # exists only on the bananapi build leg.
     #
-    # scoped to bpi-only FOR NOW: only the Banana Pi leg (coverage + MLO, and the only
-    # leg running clang-tidy) is posted as a PR comment. rpi/mock still build and
-    # still gate the check. Their respective summaries stay on the action-run 'summary' page
-    # ($GITHUB_STEP_SUMMARY), we just don't paste is as comment; There's no infra yet to
-    # scope their findings down to the PR's changes, so a comment would be
-    # noise nobody acts on. The pr-comments.yml 'build' job already aggregates
-    # however many ci-summary-* artifacts exist, so:
-    #   TO POST ALL LEGS: delete the `&& matrix.platform.id == 'bpi'` clause below
-    #   (nothing to change in pr-comments.yml).
+    # Scoped to the two device legs (bpi + rpi), NOT mock. Both devices run the Yocto-style
+    # clean baseline (-Wall -Wextra + explicit -Wno-), so their build-summaries are silent
+    # *UNLESS* a genuinely new warning *class* appears.
+    # NOTE: the build-summary greps the whole list of OneWifi warnings — it is NOT PR-diff-scoped
+    # (unlike the clang-tidy step). It relies on that silent baseline, so any un-suppressed
+    # residual warning would show on every PR. mock is the unittest leg (no clean-baseline gate)
+    # -> excluded to avoid exactly that noise.
+    # The pr-comments.yml 'build' job aggregates however many ci-summary-* exist
+    # (and anchors trust on ci-summary-bpi, so bpi must always upload), so:
+    #   TO ADD mock:     drop the `&& matrix.platform.id != 'mock'` clause below.
+    #   TO REVERT to bpi-only: change it back to `== 'bpi'`.
+    #   (nothing to change in pr-comments.yml either way.)
     - name: Upload CI summary artifact
-      if: always() && github.event_name == 'pull_request' && matrix.platform.id == 'bpi'
+      if: always() && github.event_name == 'pull_request' && matrix.platform.id != 'mock'
       uses: actions/upload-artifact@v6
       with:
         name: ci-summary-${{ matrix.platform.id }}
