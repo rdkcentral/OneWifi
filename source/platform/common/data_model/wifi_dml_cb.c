@@ -4518,7 +4518,7 @@ bool associated_sta_get_param_uint_value(void *obj_ins_context, char *param_name
     } else if (STR_CMP(param_name, "X_COMCAST-COM_AuthenticationFailures")) {
         *output_value = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
     } else if (STR_CMP(param_name, "X_RDK_CapSpaStr")) {
-        *output_value = assoc_dev_data->dev_stats.cli_CapableNumSpatialStreams;
+        *output_value = assoc_dev_data->dev_stats.cli_capableNumSpatialStreams;
     } else if (STR_CMP(param_name, "X_RDK_ActiveSpaStr")) {
         *output_value = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
     } else {

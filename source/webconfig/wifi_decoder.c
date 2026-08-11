@@ -3557,7 +3557,7 @@ static webconfig_error_t decode_assoc_dev_stats(const cJSON *obj, assoc_dev_data
     dev->dev_stats.cli_AuthenticationFailures = value->valuedouble;
 
     decode_param_integer(obj, "CapableNumSpatialStreams", value);
-    dev->dev_stats.cli_CapableNumSpatialStreams = value->valuedouble;
+    dev->dev_stats.cli_capableNumSpatialStreams = value->valuedouble;
 
     decode_param_integer(obj, "ActiveNumSpatialStreams", value);
     dev->dev_stats.cli_activeNumSpatialStreams = value->valuedouble;
@@ -6159,8 +6159,8 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
         decode_param_integer(assoc_data, "cli_MaxUplinkRate", param);
         client_stats_data[count].cli_MaxUplinkRate = param->valuedouble;
 
-        decode_param_integer(assoc_data, "cli_CapableNumSpatialStreams", param);
-        client_stats_data[count].cli_CapableNumSpatialStreams = param->valuedouble;
+        decode_param_integer(assoc_data, "cli_capableNumSpatialStreams", param);
+        client_stats_data[count].cli_capableNumSpatialStreams = param->valuedouble;
 
         decode_param_integer(assoc_data, "cli_activeNumSpatialStreams", param);
         client_stats_data[count].cli_activeNumSpatialStreams = param->valuedouble;

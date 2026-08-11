@@ -16772,7 +16772,7 @@ AssociatedDevice1_GetParamUlongValue
     if( AnscEqualString(ParamName, "X_RDK_CapSpaStr", TRUE))
     {
         /* collect value */
-        *puLong = assoc_dev_data->dev_stats.cli_CapableNumSpatialStreams;
+        *puLong = assoc_dev_data->dev_stats.cli_capableNumSpatialStreams;
         free(assoc_dev_data);
         return TRUE;
     }
