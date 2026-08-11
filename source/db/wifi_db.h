@@ -151,6 +151,12 @@ typedef struct {
 
 int start_wifidb();
 int init_wifidb_tables();
+/* Declared here (not in a .c) so both wifi_db.c legs -- the ONEWIFI_DB_SUPPORT
+ * externs and the non-DB stub definitions -- and wifi_db_apis.c share one
+ * prototype. Without it the non-DB leg implicitly declares these at their call
+ * sites, which then "conflict" with the real void definitions. */
+void init_wifidb_data(void);
+void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config);
 int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
     rdk_wifi_vap_info_t *rdk_config);
 

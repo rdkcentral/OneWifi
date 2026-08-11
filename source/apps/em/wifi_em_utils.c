@@ -35,15 +35,6 @@ char* survey_type_to_str(survey_type_t survey_type)
     return "unknown";
 }
 
-char* radio_index_to_radio_type_str(unsigned int radio_index)
-{
-    radio_type_t radio_type;
-
-    //radio_type = radio_index_to_dpp_radio_type(radio_index);
-
-    return radio_get_name_from_type(radio_type);
-}
-
 char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode)
 {
     /* for (size_t i = 0; i < ARRAY_SIZE(scan_type_mapping); i++) {

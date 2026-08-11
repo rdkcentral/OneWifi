@@ -1,0 +1,98 @@
+name: 'Upsert a sticky PR comment'
+description: >
+  Create-or-update a single PR issue comment identified by a hidden HTML marker,
+  so re-runs replace the previous body instead of adding new comments. Used for
+  the gcc build summary and the clang-tidy summary (the two "unify as one sticky
+  comment" payloads). Trusted stage-2 only: the caller must already have
+  established a validated pr-number via the pr-context action.
+
+inputs:
+  github-token:
+    description: 'Token with pull-requests:write.'
+    required: true
+  repository:
+    description: 'github.repository — owner/name of the base repo.'
+    required: true
+  pr-number:
+    description: 'Validated PR number (from pr-context).'
+    required: true
+  marker:
+    description: 'Stable id for this comment slot, e.g. "build-summary" or "clang-tidy". One sticky comment per marker.'
+    required: true
+  body-file:
+    description: 'Path to a file holding the Markdown body to post.'
+    required: true
+  bot-login:
+    description: 'Login of the identity that owns our comments (for the ownership match). Change this if you switch to a GitHub App token.'
+    required: false
+    default: 'github-actions[bot]'
+
+runs:
+  using: composite
+  steps:
+    - name: Upsert sticky comment (${{ inputs.marker }})
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ inputs.repository }}
+        PR: ${{ inputs.pr-number }}
+        MARKER: ${{ inputs.marker }}
+        BODY_FILE: ${{ inputs.body-file }}
+        BOT_LOGIN: ${{ inputs.bot-login }}
+      run: |
+        set -uo pipefail
+        if [ ! -f "$BODY_FILE" ]; then
+          echo "::error::body-file '$BODY_FILE' not found."
+          exit 1
+        fi
+        # Hidden marker: lets the next run find our comment for this slot without
+        # relying on any actor field that crossed the trust boundary.
+        TAG="<!-- onewifi-ci:${MARKER} -->"
+        { printf '%s\n\n' "$TAG"; cat "$BODY_FILE"; } > sticky-body.md
+
+        # Cap the body. GitHub rejects issue comments over ~65536 bytes, and the
+        # POST/PATCH would fail after everything else succeeded. Truncate with a
+        # note. if the cut lands inside a ``` code fence, close it first so the
+        # note isn't swallowed into the block.
+        MAXB=60000
+        if [ "$(wc -c < sticky-body.md)" -gt "$MAXB" ]; then
+          # iconv -c drops any invalid/incomplete UTF-8 the byte-cut may leave
+          # (the summaries contain emoji) so the JSON body stays valid.
+          head -c "$MAXB" sticky-body.md | iconv -f utf-8 -t utf-8 -c > sticky-body.cut
+          mv sticky-body.cut sticky-body.md
+          if [ $(( $(grep -c '```' sticky-body.md) % 2 )) -ne 0 ]; then
+            printf '\n```\n' >> sticky-body.md
+          fi
+          printf '\n\n_… truncated at %s bytes; see workflow run summary for full output._\n' "$MAXB" >> sticky-body.md
+        fi
+
+        # Find an existing comment we own for this marker. "Ours"  here means the bot
+        # identity (login + type == Bot) AND our marker. Login-matched so we
+        # can't patch some other bot's comment that only quoted our marker.
+        # $BOT_LOGIN and $TAG are workflow-trusted (not fork data), so shell
+        # interpolation into the filter is safe.
+        existing="$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
+          --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | contains(\"$TAG\")) | .id" \
+          2>/dev/null | head -1 || true)"
+
+        # -f (raw-field) sends the body as a plain string — no gh type-inference,
+        # no dependence on the '@file' loader. Bodies are small (capped upstream),
+        # so passing via one argv is safe.
+        body="$(cat sticky-body.md)"
+        if [ -n "$existing" ]; then
+          if gh api --method PATCH "/repos/$REPO/issues/comments/$existing" \
+               -f body="$body" >/dev/null; then
+            echo "Updated sticky '$MARKER' comment ($existing) on PR #$PR."
+          else
+            echo "::error::Failed to update sticky '$MARKER' comment $existing."
+            exit 1
+          fi
+        else
+          if gh api --method POST "/repos/$REPO/issues/$PR/comments" \
+               -f body="$body" >/dev/null; then
+            echo "Created sticky '$MARKER' comment on PR #$PR."
+          else
+            echo "::error::Failed to create sticky '$MARKER' comment."
+            exit 1
+          fi
+        fi
