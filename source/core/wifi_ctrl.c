@@ -205,6 +205,10 @@ int reboot_device(void* arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)arg;
     bus_error_t rc;
 
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        return TIMER_TASK_ERROR;
+    }
     wifi_util_dbg_print(WIFI_WEBCONFIG,
         "%s : Setting the reboot reason as ECO Mode Reboot and rebooting the device\n", __FUNCTION__);
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
