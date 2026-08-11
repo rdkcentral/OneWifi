@@ -110,6 +110,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         if (configure_lnf_psk_radius_from_hotspot(&p_tgt_vap_map->vap_array[0]) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d configure_lnf_psk_radius_from_hotspot failed\n", __FUNCTION__, __LINE__);
+            free(p_tgt_vap_map);
             return -1;
         }
 #if defined(_WNXL11BWL_PRODUCT_REQ_)
@@ -156,6 +157,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             if (lnf_vap_info == NULL) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d LnF VAP info not found for vap_index=%d\n",
                     __FUNCTION__, __LINE__, map->vap_array[i].vap_index);
+                free(p_tgt_vap_map);
                 return -1;
             }
             if (lnf_vap_info->u.bss_info.mdu_enabled) {
