@@ -909,6 +909,10 @@ int start_wifi_services(void)
         }
     }
 
+#if defined(_PLATFORM_BANANAPI_R4_) && defined(CONFIG_GENERIC_MLO)
+    //Necessary to keep in sync params updated by HAL
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
+#endif
     return RETURN_OK;
 }
 
