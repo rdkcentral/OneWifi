@@ -6,28 +6,50 @@ on:
   pull_request:
     branches: [ "develop" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Stage 1 is deliberately read-only: it builds PR-controlled makefiles, so it
+# must hold no write scope. The PR-comment posting (writes) happens only in the
+# trusted workflow_run stage (pr-comments.yml).
+permissions:
+  contents: read
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       matrix:
         platform:
           - name: "Raspberry Pi"
+            id: rpi                   # has to be stable for the ci-summary-<id> stage
             makefile_path: "build/linux/rpi/makefile"
+            extra_coverage: "0"
+            extra_cflags: ""
           - name: "Banana Pi R4 - MLO"
+            id: bpi
             makefile_path: "build/linux/bpi/makefile"
+            extra_coverage: "1"
+            extra_cflags: "-DCONFIG_GENERIC_MLO"
+            clang_tidy: true          # only this leg builds the compile DB + runs clang-tidy
           - name: "Platform Mock Unittests"
+            id: mock
             makefile_path: "build/linux/mockplatform/makefile"
+            extra_coverage: "0"
+            extra_cflags: ""
       fail-fast: false
 
     name: Build for ${{ matrix.platform.name }}
 
     steps:
     - name: Checkout current repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         path: 'OneWifi'
+        fetch-depth: 0                # clang-tidy diffs changed source against the PR base
+        persist-credentials: false    # nothing here pushes; don't leave the token in .git/config
 
     - name: Clone unified-wifi-mesh repository
       run: |
@@ -36,7 +58,7 @@ jobs:
         mv OneWifi easymesh_project/OneWifi
 
     - name: Cache dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: /var/cache/apt
         key: ${{ runner.os }}-apt-${{ hashFiles('**/apt-packages') }}
@@ -60,6 +82,7 @@ jobs:
                                 libnl-route-3-dev \
                                 libavro-dev \
                                 libcjson1 libcjson-dev \
+                                libprotobuf-c-dev \
                                 libssl-dev \
                                 uuid-dev \
                                 libmysqlcppconn-dev \
@@ -73,27 +96,189 @@ jobs:
                                 libperl-dev \
                                 libjson-c-dev \
                                 libgtest-dev \
-                                libgmock-dev
+                                libgmock-dev \
+                                bear \
+                                clang-tidy-18
 
         # Steps for ucode installation required for hostapd compilation
         git clone https://github.com/jow-/ucode.git ucode
         cd ucode
         mkdir build && cd build
         cmake -DUBUS_SUPPORT=OFF -DUCI_SUPPORT=OFF -DULOOP_SUPPORT=OFF ..
-        make -j$(nproc)
+        make -j"$(nproc)"
         sudo make install
         sudo ldconfig
 
     - name: Setup OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
       run: |
-        git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-        git config --global user.name "${{ github.actor }}"
+        # $GITHUB_ACTOR is a built-in runner env var; use it rather than
+        # interpolating ${{ github.actor }} straight into the script.
+        git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        git config --global user.name "${GITHUB_ACTOR}"
         make -f ${{ matrix.platform.makefile_path }} setup
-      env:
-        GITHUB_ACTOR: ${{ github.actor }}
 
     - name: Build OneWiFi for ${{ matrix.platform.name }}
+      id: build
       working-directory: easymesh_project/OneWifi
       run: |
-        make -f ${{ matrix.platform.makefile_path }} all
+        # pipefail so make's exit status (not tee's) decides the step result.
+        set -o pipefail
+        # clang-tidy leg only: wrap make in `bear` so ONE build yields the objects
+        # AND compile_commands.json (no second build). Other legs run make plain.
+        ${{ matrix.platform.clang_tidy && 'bear --output compile_commands.json --' || '' }} make -f ${{ matrix.platform.makefile_path }} -j"$(nproc)" all 2>&1 | tee build.log
+      env:
+        # Coverage tier for the bpi target: "1" enables EXTRA_COV_FLAGS
+        # (ONEWIFI_DB_SUPPORT + memwraptool). Ignored by rpi/mockplatform.
+        EXTRA_COVERAGE: ${{ matrix.platform.extra_coverage }}
+        # Extra defines appended to CFLAGS. bpi appends via 'CFLAGS +=' (so the
+        # MLO build picks up -DCONFIG_GENERIC_MLO); rpi/mockplatform use
+        # 'CFLAGS =' and ignore it. -j is safe: PROGRAM depends on libwifihal.a.
+        CFLAGS: ${{ matrix.platform.extra_cflags }}
+
+    - name: Build summary for ${{ matrix.platform.name }}
+      if: always()   # run on failure too, so the red-build reason is surfaced
+      working-directory: easymesh_project/OneWifi
+      run: |
+        # ci-out/ collects the stage-1 artifacts the PR-comment stage posts.
+        mkdir -p ci-out
+        LOG=build.log
+        if [ ! -f "$LOG" ]; then
+          echo "## ${{ matrix.platform.name }} — no build log captured" \
+            | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        # Compiler + linker + make errors: what usually explains a red build,
+        errs=$(grep -hE ': (error|fatal error):|undefined reference to|Error [0-9]+' "$LOG" \
+               | sed -E 's#[^ ]*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/#\1/#; s#//#/#g' \
+               | sort -u || true)
+        # Surface the top errors as ANNOTATIONS (the box at the top of the failed
+        # check, which people actually check) — not only the run-summary page.
+        if [ -n "$errs" ]; then
+          printf '%s\n' "$errs" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+            | while IFS= read -r l; do echo "::error::$l"; done
+        fi
+        {
+          echo "## ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
+          if [ -n "$errs" ]; then
+            echo "### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo '```'
+            printf '%s\n' "$errs" | head -100
+            echo '```'
+          fi
+          # Warnings from OneWifi's own sources ONLY, with location.
+          # HAL/hostapd/mesh errors still break the build, so will be shown too.
+          # OneWifi runs a Yocto-style clean baseline, so anything here
+          # is a newly-surfaced bug to triage.
+          warns=$(grep -hE ': warning:' "$LOG" \
+                  | grep -vE 'rdk-wifi-hal|rdk-wifi-libhostap|unified-wifi-mesh' \
+                  | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' \
+                  | sort -u || true)
+          if [ -n "$warns" ]; then
+            echo "### ⚠️ OneWifi warnings ($(printf '%s\n' "$warns" | wc -l))"
+            echo '```'
+            printf '%s\n' "$warns" | head -100
+            echo '```'
+          else
+            echo "### ⚠️ OneWifi warnings: 0"
+          fi
+        } | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: clang-tidy (gate + advisory) for ${{ matrix.platform.name }}
+      if: always() && matrix.platform.clang_tidy
+      working-directory: easymesh_project/OneWifi
+      run: |
+        # Two-tier clang-tidy over PR-changed .c/.cpp files (see .clang-tidy):
+        #   * WarningsAsErrors checks    -> `error:`   -> FATAL (this step fails the job)
+        #   * rest of enabled bugprone-* -> `warning:` -> advisory only
+        # clang-diagnostic-* (most false positives and most noisy) is filtered out so it can NEVER
+        # gate. The gate is changed-files-only: a PR can only fail on a .c/.cpp it touched.
+        mkdir -p ci-out
+        [ -f compile_commands.json ] || { echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+        BASE='${{ github.event.pull_request.base.sha }}'
+        CHANGED=''
+        if [ -n "$BASE" ]; then
+          git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+          # Changed file not present in compile_commands.json (not built) falls back to default
+          # flags. A real source then can't resolve its includes -> a fatal clang-diagnostic
+          # aborts file parsing before any check run on it -> that output is dropped by the
+          # clang-diagnostic filter below -> file can't fail. Thus, only built files are judged.
+          CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
+                    | grep -vE '^build/|hostap' || true)
+        fi
+        : > tidy.log
+        for f in $CHANGED; do
+          [ -f "$f" ] || continue
+          # || true: a no-match grep (exit 1) or a clang-tidy hiccup must not abort the loop.
+          clang-tidy-18 -p . --quiet "$f" 2>/dev/null \
+            | grep -E ': (warning|error):' | grep -v clang-diagnostic >> tidy.log || true
+        done
+        # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`.
+        gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
+        advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
+        if [ -n "$gated" ]; then
+          printf '%s\n' "$gated" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+            | while IFS= read -r l; do echo "::error::$l"; done
+        fi
+        if [ -n "$advis" ]; then
+          printf '%s\n' "$advis" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+            | while IFS= read -r l; do echo "::warning::$l"; done
+        fi
+        {
+          if   [ -z "$CHANGED" ];     then echo "### 🔎 clang-tidy: no changed .c to scan"
+          elif [ -z "$gated$advis" ]; then echo "### 🔎 clang-tidy: clean on changed files"
+          else
+            if [ -n "$gated" ]; then
+              echo "### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
+              echo '```'; printf '%s\n' "$gated" | head -100; echo '```'
+              echo "_Fix the finding, or if it is a deliberate, waive it inline with \`// NOLINT(<check-name>)\` on that line._"
+            fi
+            if [ -n "$advis" ]; then
+              echo "### 🔎 clang-tidy advisory — $(printf '%s\n' "$advis" | wc -l) findings"
+              echo '```'; printf '%s\n' "$advis" | head -100; echo '```'
+            fi
+          fi
+        } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
+        # Gate AFTER the summary + artifact are written, on promoted checks only.
+        if [ -n "$gated" ]; then
+          echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed files" >&2
+          exit 1
+        fi
+
+    # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
+    # Record the PR identity as passive data for the workflow_run poster to
+    # validate. Only meaningful on PRs; push builds skip it.
+    - name: Record PR metadata for the comment stage
+      if: always() && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      run: |
+        mkdir -p ci-out
+        {
+          echo "pr_number=${{ github.event.pull_request.number }}"
+          echo "head_sha=${{ github.event.pull_request.head.sha }}"
+        } > ci-out/pr-meta.env
+
+    # Publish the summary artifact the PR-comment stage posts. Uploaded even on build failure
+    # (if: always()) so a red build still gets its summary posted. tidy-summary.md for now
+    # exists only on the bananapi build leg.
+    #
+    # Scoped to the two device legs (bpi + rpi), NOT mock. Both devices run the Yocto-style
+    # clean baseline (-Wall -Wextra + explicit -Wno-), so their build-summaries are silent
+    # *UNLESS* a genuinely new warning *class* appears.
+    # NOTE: the build-summary greps the whole list of OneWifi warnings — it is NOT PR-diff-scoped
+    # (unlike the clang-tidy step). It relies on that silent baseline, so any un-suppressed
+    # residual warning would show on every PR. mock is the unittest leg (no clean-baseline gate)
+    # -> excluded to avoid exactly that noise.
+    # The pr-comments.yml 'build' job aggregates however many ci-summary-* exist
+    # (and anchors trust on ci-summary-bpi, so bpi must always upload), so:
+    #   TO ADD mock:     drop the `&& matrix.platform.id != 'mock'` clause below.
+    #   TO REVERT to bpi-only: change it back to `== 'bpi'`.
+    #   (nothing to change in pr-comments.yml either way.)
+    - name: Upload CI summary artifact
+      if: always() && github.event_name == 'pull_request' && matrix.platform.id != 'mock'
+      uses: actions/upload-artifact@v6
+      with:
+        name: ci-summary-${{ matrix.platform.id }}
+        path: easymesh_project/OneWifi/ci-out
+        if-no-files-found: warn
+        retention-days: 1

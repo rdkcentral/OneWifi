@@ -2,7 +2,7 @@
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
-  Copyright 2023 RDK Management
+  Copyright 2026 RDK Management
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -16,35 +16,20 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  **************************************************************************/
+/*
+ * CI coverage-build compatibility header.
+ *
+ * <rbus/rbus.h> is provided by the rbus package on real RDK builds. The linux
+ * mock/coverage build uses the he_bus abstraction instead, but source/apps/cac
+ * carries an unconditional `#include <rbus/rbus.h>` while referencing no rbus
+ * symbols. This empty stub satisfies that include without pulling rbus in.
+ * If a coverage tier ever needs real rbus types, expand this stub.
+ * Or remove reference to it from source/apps/cac.
+ *
+ * This file is NOT upstream and must never be pushed; it lives under
+ * build/linux/compat and is only on the include path for the coverage builds.
+ */
 
-#ifndef EASYMESH_UTILS_H
-#define EASYMESH_UTILS_H
-
-#include "wifi_base.h"
-#include "wifi_util.h"
-#include "wifi_ctrl.h"
-#include "ds_dlist.h"
-#include "dpp_types.h"
-#include <wifi_hal_generic.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define MSEC_IN_SEC  (1000ULL)
-#define NSEC_IN_MSEC (1000000ULL)
-#define USEC_IN_MSEC (1000ULL)
-
-/* conversion */
-char* survey_type_to_str(survey_type_t survey_type);
-char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
-
-/* time utils*/
-uint64_t get_real_ms();
-uint64_t timeval_to_ms(struct timeval *ts);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // EASYMESH_UTILS_H
+#ifndef RBUS_RBUS_FAKE_H
+#define RBUS_RBUS_FAKE_H
+#endif /* RBUS_RBUS_FAKE_H */
