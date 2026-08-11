@@ -418,6 +418,7 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
     {
         wifi_util_dbg_print(WIFI_BUS,"Token = [%s]\n", token);
         tokenFound = 0;
+        exact_instance = 0;
 
         if(next_node == NULL)
         {
@@ -463,6 +464,7 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
             for (sibling = next_node->parent->child; sibling != NULL; sibling = sibling->nextSibling) {
                 if (strcmp(sibling->name, token) == 0) {
                     exact_instance = 1;
+                    break;
                 }
             }
 
