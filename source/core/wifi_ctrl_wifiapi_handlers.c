@@ -662,7 +662,7 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
               dev_array[i].cli_ErrorsSent, dev_array[i].cli_RetransCount,
               dev_array[i].cli_FailedRetransCount, dev_array[i].cli_RetryCount,
               dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
-              dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_CapableNumSpatialStreams,
+              dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_capableNumSpatialStreams,
               dev_array[i].cli_activeNumSpatialStreams,
               dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
       }
