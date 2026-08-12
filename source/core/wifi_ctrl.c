@@ -200,16 +200,23 @@ unsigned int selfheal_event_publish_time(void)
      return atoi(buff) ? atoi(buff) : 1;
 }
 
-int reboot_device(wifi_ctrl_t *ctrl)
+int reboot_device(void* arg)
 {
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)arg;
     bus_error_t rc;
 
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        return TIMER_TASK_ERROR;
+    }
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s : Setting the reboot reason as ECO Mode Reboot and rebooting the device\n", __FUNCTION__);
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
         "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason", "ECO Mode Reboot");
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
             __LINE__, rc);
-        return RETURN_ERR;
+        return TIMER_TASK_ERROR;
     }
 
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
@@ -217,10 +224,10 @@ int reboot_device(wifi_ctrl_t *ctrl)
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
             __LINE__, rc);
-        return RETURN_ERR;
+        return TIMER_TASK_ERROR;
     }
 
-    return RETURN_OK;
+    return TIMER_TASK_COMPLETE;
 }
 
 void selfheal_event_publish(wifi_ctrl_t *ctrl)
@@ -636,6 +643,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 
     int rc = bus_error_success;
     unsigned int total_slept = 0;
+    unsigned int max_retries = 5;
     char *pTmp = NULL;
     // rdk_dev_mode_type_t mode;
     wifi_global_param_t global_param = { 0 };
@@ -699,6 +707,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #endif
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
+        max_retries = 0; // don't wait for tunnel status to be up at boot
     }
 
 #if defined EASY_MESH_NODE
@@ -711,16 +720,17 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 
    while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
         bus_error_success) {
-        sleep(1);
-        total_slept++;
-        if (total_slept >= 5) {
+        if (total_slept >= max_retries) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: Giving up on bus_data_get_fn for %s\n",
                 __func__, __LINE__, name);
+            get_bus_descriptor()->bus_data_free_fn(&data);
             return;
         }
 
-        get_bus_descriptor()->bus_data_free_fn(&data);
+        sleep(1);
+        total_slept++;
 
+        get_bus_descriptor()->bus_data_free_fn(&data);
         memset(&data, 0, sizeof(raw_data_t));
     }
 

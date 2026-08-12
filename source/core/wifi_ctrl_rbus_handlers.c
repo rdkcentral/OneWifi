@@ -2081,10 +2081,29 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
         wifi_event_type_command_mesh_status, NULL);
 }
 
+static void process_device_tunnel_status(const char *status)
+{
+    bool tunnel_status = false;
+    wifi_event_subtype_t ces_t;
+
+    if (strcmp(status, "Up") == 0) {
+        tunnel_status = true;
+    } else if (strcmp(status, "Down") == 0) {
+        tunnel_status = false;
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Received Unsupported value:%s\n", __func__,
+            __LINE__, status);
+        return;
+    }
+
+    ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up : wifi_event_type_xfinity_tunnel_down;
+    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
+        NULL);
+}
+
 static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
-    bool tunnel_status = false;
     char *pTmp = NULL;
 
     wifi_util_dbg_print(WIFI_CTRL, " %s:%d Recvd Event\n", __func__, __LINE__);
@@ -2097,26 +2116,46 @@ static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void 
             return;
         }
 
-        if (strcmp(pTmp, "Up") == 0) {
-            tunnel_status = true;
-        } else if (strcmp(pTmp, "Down") == 0) {
-            tunnel_status = false;
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Received Unsupported value\n", __func__,
-                __LINE__);
-            return;
-        }
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__,
-            event_name, tunnel_status);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%s\n", __func__, __LINE__,
+            event_name, pTmp);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s:%x\n", __func__, __LINE__,
             event_name, p_data->value.data_type);
         return;
     }
-    wifi_event_subtype_t ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up :
-                                                 wifi_event_type_xfinity_tunnel_down;
-    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
-        NULL);
+
+    process_device_tunnel_status(pTmp);
+}
+
+// Reads the current tunnel status directly so a late subscriber does not miss the
+// state transition that hotspotfd published before this subscription existed.
+static void sync_device_tunnel_status(wifi_ctrl_t *ctrl)
+{
+    bus_error_t rc;
+    char *status = NULL;
+    raw_data_t data;
+
+    memset(&data, 0, sizeof(raw_data_t));
+    rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS, &data);
+    if (rc != bus_error_success || data.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            WIFI_DEVICE_TUNNEL_STATUS, data.data_type, rc);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return;
+    }
+
+    status = (char *)data.raw_data.bytes;
+    if (status == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL tunnel status value\n", __func__, __LINE__);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d synced current tunnel status:%s\n", __func__, __LINE__,
+        status);
+    process_device_tunnel_status(status);
+    get_bus_descriptor()->bus_data_free_fn(&data);
 }
 
 static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_data, void *userData)
@@ -2555,6 +2594,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             ctrl->device_tunnel_status_subscribed = true;
             wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
                 __FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
+            sync_device_tunnel_status(ctrl);
         }
     }
 

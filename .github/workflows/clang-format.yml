@@ -1,0 +1,109 @@
+name: clang-format
+
+# Stage 1/2  (stage 2 = clang-format-suggestions.yml).
+# Runs the formatter over the PR's changed C lines. It is deliberately
+# read-only with no secrets: it may run over untrusted fork code, but it holds
+# no write token and can change nothing in the repo. It only records what
+# clang-format WOULD change and hands that diff to stage 2 as passive data.
+on:
+  pull_request:
+    paths:            # they have to match --extensions <args> below
+      - '**/*.c'
+      - '**/*.cpp'
+      - '**/*.h'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clang-format-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0                      # need base history to diff changed lines
+          # For pull_request events actions/checkout defaults to the merge commit
+          # (refs/pull/N/merge), whose line numbers do not match the PR head.
+          # Stage 2 posts review comments against head_sha, so the two must agree
+          # or suggestions land on the wrong lines (or are rejected with a 422).
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install clang-format 18.1.8
+        run: |
+          python3 -m pip install --quiet "clang-format==18.1.8"   # bundles clang-format + git-clang-format
+          clang-format --version
+
+      - name: Reformat only the changed source lines
+        id: fmt
+        run: |
+          # Diff against the MERGE BASE, not the base branch tip. Now that we check
+          # out the PR head, commits that landed on the base branch after this PR
+          # forked would otherwise appear as "changed lines", and we would suggest
+          # reformatting code the PR never touched (which stage 2 cannot post,
+          # since those lines are not part of the PR's diff).
+          BASE_SHA="$(git merge-base "${{ github.event.pull_request.base.sha }}" HEAD)" || {
+            echo "::error::Could not compute merge base — is fetch-depth: 0 set?"
+            exit 1
+          }
+          echo "Diffing against merge base: $BASE_SHA"
+          # ================== EXCLUDED PATHS (edit me) ======================
+          # Files/dirs here are never reformatted (e.g. vendor ports, imported
+          # headers/utils). Uses git pathspec syntax: ':!<pattern>'.
+          # Uncomment and adapt; List exclusions below instead, one line per exclusion.
+          #
+          EXCLUDES=()
+          # EXCLUDES+=(':!platform/vendor/*')      # whole directory (recursive)
+          # EXCLUDES+=(':!src/example_file.c')     # single file
+          # ==================================================================
+          # --extensions c,h,cpp is why nothing but C/C++ sources is ever formatted.
+          #
+          # git-clang-format exit codes: 0 = nothing to do, 1 = it reformatted
+          # something (this is NOT an error), 2+ = genuine failure. The default
+          # shell is `bash -e`, so a bare call would abort the step on the
+          # perfectly normal exit 1.
+          set +e
+          git-clang-format --style=file --extensions c,h,cpp "$BASE_SHA" -- . "${EXCLUDES[@]}"
+          rc=$?
+          set -e
+          if [ "$rc" -ge 2 ]; then
+            echo "::error::git-clang-format failed (exit $rc) — check .clang-format and the base SHA."
+            exit 1
+          fi
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Changed lines are already clang-format clean."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff | tee clang-format.diff
+            echo "::warning::clang-format has suggestions; they will be posted on this PR."
+            # ===== TO BLOCK MERGE (make this a required check): uncomment below.
+            # Suggestions still post either way, because workflow_run fires on failure too.
+            # exit 1
+          fi
+
+      # Record + upload metadata *always* (not only when changed==true). When the
+      # changed lines become clang-format clean there is no diff, but stage 2
+      # still needs the PR identity so it can dismiss any now-obsolete review it
+      # posted on an earlier push. clang-format.diff is present only when
+      # changed==true; if-no-files-found: ignore lets the clean case upload just
+      # pr-meta.env.
+      - name: Record PR metadata for the suggester
+        run: |
+          {
+            echo "pr_number=${{ github.event.pull_request.number }}"
+            echo "head_sha=${{ github.event.pull_request.head.sha }}"
+          } > pr-meta.env
+
+      - name: Upload diff + metadata
+        uses: actions/upload-artifact@v6
+        with:
+          name: clang-format-suggestions
+          path: |
+            clang-format.diff
+            pr-meta.env
+          if-no-files-found: ignore
+          retention-days: 1
