@@ -441,6 +441,7 @@ void update_mlo_rfc_enable(bool init);
 
 wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
 wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
+void update_apmld_map(apmld_map_t *apmld_map);
 
 #ifdef __cplusplus
 }
