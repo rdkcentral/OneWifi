@@ -134,6 +134,11 @@ void wifiapi_printradioconfig(char *buff, unsigned int buff_size, wifi_radio_ope
         idx += snprintf(&buff[idx], buff_size-idx, " be");
     }
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    else if (radio_config->variant & WIFI_80211_VARIANT_BN) {
+        idx += snprintf(&buff[idx], buff_size-idx, " bn");
+    }
+#endif /* CONFIG_IEEE80211BN */
 
     if (idx >= buff_size) return;
     idx += snprintf(&buff[idx], buff_size-idx, "\ncsa_beacon_count: %d\n", radio_config->csa_beacon_count);

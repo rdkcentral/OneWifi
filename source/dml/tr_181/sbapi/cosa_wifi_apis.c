@@ -230,8 +230,11 @@ struct  wifiStdCosaHalMap wifiStdDmlMap[] =
     {WIFI_80211_VARIANT_AD, COSA_DML_WIFI_STD_ad, "ad"},
     {WIFI_80211_VARIANT_AX, COSA_DML_WIFI_STD_ax, "ax"},
 #ifdef CONFIG_IEEE80211BE
-    {WIFI_80211_VARIANT_BE, COSA_DML_WIFI_STD_be, "be"}
+    {WIFI_80211_VARIANT_BE, COSA_DML_WIFI_STD_be, "be"},
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    {WIFI_80211_VARIANT_BN, COSA_DML_WIFI_STD_bn, "bn"},
+#endif /* CONFIG_IEEE80211BN */
 };
 
 /**************************************************************************

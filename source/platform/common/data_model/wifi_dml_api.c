@@ -611,8 +611,11 @@ int get_radio_variant_string_from_int(wifi_ieee80211Variant_t l_radio_variant,
         { WIFI_80211_VARIANT_AD, "ad" },
         { WIFI_80211_VARIANT_AX, "ax" },
 #ifdef CONFIG_IEEE80211BE
-        { WIFI_80211_VARIANT_BE, "be" }
+        { WIFI_80211_VARIANT_BE, "be" },
 #endif  /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        { WIFI_80211_VARIANT_BN, "bn" }
+#endif /* CONFIG_IEEE80211BN */
     };
 
     for (index = 0; index < (uint32_t)ARRAY_SZ(wifi_variant_map); index++) {
@@ -654,8 +657,11 @@ int get_radio_variant_int_from_string(const char *p_radio_variant_name,
         { WIFI_80211_VARIANT_AD, "ad" },
         { WIFI_80211_VARIANT_AX, "ax" },
 #ifdef CONFIG_IEEE80211BE
-        { WIFI_80211_VARIANT_BE, "be" }
+        { WIFI_80211_VARIANT_BE, "be" },
 #endif  /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        { WIFI_80211_VARIANT_BN, "bn" }
+#endif /* CONFIG_IEEE80211BN */
     };
 
     uint32_t index = 0;
