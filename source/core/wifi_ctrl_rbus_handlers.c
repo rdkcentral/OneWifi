@@ -2158,6 +2158,49 @@ static void sync_device_tunnel_status(wifi_ctrl_t *ctrl)
     get_bus_descriptor()->bus_data_free_fn(&data);
 }
 
+/* Handler for PAM-published GRE Tunnel.1.Status events */
+static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
+{
+    (void)userData;
+    char *pTmp = NULL;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_bus_desc_t *bus_desc = get_bus_descriptor();
+
+    if (strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Sneha Unexpected event: %s\n", __func__, __LINE__, event_name);
+        return;
+    }
+
+    if (p_data->value.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Sneha Invalid data type:%x for %s\n",
+                __func__, __LINE__, p_data->value.data_type, event_name);
+        return;
+    }
+
+    pTmp = (char *)p_data->value.raw_data.bytes;
+    if (pTmp == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Sneha NULL value for %s\n", __func__, __LINE__, event_name);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d %s Sneha value: %s\n", __func__, __LINE__, WIFI_HOTSPOT_STATUS, pTmp);
+
+    if (strcmp(pTmp, "Enabled") == 0) {
+        if (ctrl->device_tunnel_status_subscribed == false) {
+			bus_error_t rc = bus_desc->bus_event_subs_fn( &ctrl->handle,WIFI_DEVICE_TUNNEL_STATUS,eventReceiveHandler,NULL,0);
+			if (rc != bus_error_success && rc != bus_error_subscription_already_exist) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d %s Sneha subscribe failed with RC:%d\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS,rc);
+            } else {
+                ctrl->device_tunnel_status_subscribed = true;
+                wifi_util_info_print(WIFI_CTRL, "%s:%d %s Sneha subscribe success (hotspot Enabled) wit rc : %d\n", __FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS,rc);
+            }
+        }
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Sneha Hotspot status: %s, not subscribing to %s\n",
+                __func__, __LINE__, pTmp, WIFI_DEVICE_TUNNEL_STATUS);
+    }
+}
+
 static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
@@ -2585,19 +2628,32 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
-    if (ctrl->device_tunnel_status_subscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
-                eventReceiveHandler, NULL, 0) != bus_error_success) {
-            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d bus: bus event:%s subscribe
-            // failed\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
-        } else {
-            ctrl->device_tunnel_status_subscribed = true;
-            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
-                __FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
-            sync_device_tunnel_status(ctrl);
-        }
-    }
+    /* Subscribe to hotspot status updates published by PAM */
+if (ctrl->hotspot_status_subscribed == false) {
 
+    bus_error_t rc = bus_desc->bus_event_subs_fn(
+            &ctrl->handle,
+            WIFI_HOTSPOT_STATUS,
+            hotspotStatusHandler,
+            NULL,
+            0);
+
+if (rc == bus_error_success ||
+        rc == bus_error_subscription_already_exist) {
+
+        ctrl->hotspot_status_subscribed = true;
+
+        wifi_util_info_print(WIFI_CTRL,
+                "%s:%d Sneha %s subscription active rc=%d\n",
+                __FUNCTION__,
+                __LINE__,
+                WIFI_HOTSPOT_STATUS,
+                rc);
+
+    } else {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Sneha %s subscribe failed rc=%d\n",__FUNCTION__,__LINE__,WIFI_HOTSPOT_STATUS,rc);
+    }
+}
     if (consumer_app_file == 0 && ctrl->device_wps_test_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_WIFI_WPS_PIN_START,
                 wps_test_event_receive_handler, NULL, 0) != bus_error_success) {
