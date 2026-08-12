@@ -2513,15 +2513,15 @@ void process_assoc_device_event(void *data)
             }
         }
 
-        /* In case of MLO client upcoming LM_lite notification needs to be from assoc link */
+        /* Restore assoc link to assoc_data for future use in LM_lite notification and other notifications */
         if (assoc_link_idx != -1) {
             assoc_dev_update_mlo_link(assoc_data, assoc_link_idx);
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d No valid associated link found for MLD STA " MAC_FMT "\n",
                 __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
         }
-        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected with %d links " MAC_FMT "\n",
-            __func__, __LINE__, num_links, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
+        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected with %d links " MAC_FMT " assoc_vap_index: %d\n",
+            __func__, __LINE__, num_links, MAC_ARG(assoc_data->dev_stats.cli_MACAddress), assoc_data->ap_index);
     } else {
         assoc_dev_event(assoc_data);
     }
