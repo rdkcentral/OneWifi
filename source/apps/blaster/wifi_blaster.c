@@ -186,6 +186,22 @@ bool is_blaster_device_associated(int ap_index, mac_address_t sta_mac, bool *is_
     return false;
 }
 
+static bool is_blaster_device_associated_aap_link(mac_address_t sta_mac, active_msmt_step_t *step)
+{
+    //If it's an MLO client, check the AAP MLO links
+    if (step != NULL && step->isMLO) {
+        //step->mldApIndex contains only AAP indexes, since MAP is stored in step->ApIndex
+        for (int i = 0; i < MAX_NUM_RADIOS - 1; i++) {
+            int mld_index = step->mldApIndex[i];
+            if (mld_index != -1 && is_blaster_device_associated(mld_index, sta_mac, NULL)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 static bool DeviceCpuUtil_DataGet(unsigned int *util_cpu)
 {
     FILE *fp;
@@ -716,6 +732,41 @@ void SetActiveMsmtStepID(unsigned int StepId, ULONG StepIns)
     g_active_msmt->active_msmt.Step[StepIns].StepId = StepId;
 }
 
+static void SetActiveMAPIndex(UINT MldId, ULONG StepIns)
+{
+    wifi_actvie_msmt_t *g_active_msmt = get_wifi_blaster();
+    active_msmt_t *cfg = &g_active_msmt->active_msmt;
+    wifi_vap_info_t *vap = NULL;
+    if (!cfg->Step[StepIns].isMLO || MldId == UNDEFINED_MLD_ID)
+        return;
+
+    for (UINT i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(get_wifimgr_obj()->hal_cap, i);
+        vap = getVapInfo(vap_index);
+        if (vap && vap->vap_mode != wifi_vap_mode_sta && vap->u.bss_info.enabled &&
+            vap->u.bss_info.mld_info.common_info.mld_id == MldId &&
+            vap->u.bss_info.mld_info.common_info.mld_link_id == 0) {
+            //cfg->Step[StepIns].ApIndex needs to be MAP - packetgen must generate packets on MAP
+            if (cfg->Step[StepIns].ApIndex == (int)vap_index)
+                break;
+
+            //cfg->Step[StepIns].ApIndex is not MAP - we need to find MAP and set it to ApIndex
+            for (UINT j = 0; j < MAX_NUM_RADIOS - 1; j++)
+            {
+                if (cfg->Step[StepIns].mldApIndex[j] == (int)vap_index ||
+                    cfg->Step[StepIns].mldApIndex[j] == -1) {
+                    cfg->Step[StepIns].mldApIndex[j] = cfg->Step[StepIns].ApIndex;
+                    cfg->Step[StepIns].ApIndex = vap_index;
+                    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Found MAP VAP index:%u\n", __func__, __LINE__, vap_index);
+                    return;
+                }
+            }
+            wifi_util_error_print(WIFI_BLASTER, "%s:%d: MAP VAP index not found\n", __func__, __LINE__);
+            break;
+        }
+    }
+}
+
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : SetActiveMsmtStepDstMac                                       */
@@ -738,6 +789,8 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
     mac_address_t bmac;
     int i, j = 0;
     bool client_found = false;
+    UINT mld_id = UNDEFINED_MLD_ID;
+    wifi_vap_info_t *vap = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     active_msmt_t *cfg = &g_active_msmt->active_msmt;
     wifi_ctrl_t *ctrl = &mgr->ctrl;
@@ -766,27 +819,28 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         if (is_blaster_device_associated(vap_index, bmac, &cfg->Step[StepIns].isMLO) == true) {
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, DstMac,vap_index);
+            if (cfg->Step[StepIns].isMLO && mld_id == UNDEFINED_MLD_ID) {
+                vap = getVapInfo(vap_index);
+                if (vap)
+                    mld_id = vap->u.bss_info.mld_info.common_info.mld_id;
+            }
+            // Store associated MLD VAP indices
+            // ApIndex is set to the first match and may be reordered to MAP in SetActiveMAPIndex().
             if (!client_found) {
                 cfg->Step[StepIns].ApIndex = vap_index;
                 client_found = true;
             }
             else if (cfg->Step[StepIns].isMLO && (j < MAX_NUM_RADIOS - 1)){
-                wifi_vap_info_t *vap = NULL;
-                vap = getVapInfo(vap_index);
-// BCM specific, set MAP vap index as blast vap index
-                if (vap && vap->u.bss_info.mld_info.common_info.mld_link_id == 0) {
-                    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: found MAP\n", __func__, __LINE__);
-                    cfg->Step[StepIns].mldApIndex[j] = cfg->Step[StepIns].ApIndex;
-                    cfg->Step[StepIns].ApIndex = vap_index;
-                } else
-                    cfg->Step[StepIns].mldApIndex[j] = vap_index;
-//
+                cfg->Step[StepIns].mldApIndex[j] = vap_index;
                 j++;
             }
         }
     }
-    if (client_found)
+    if (client_found) {
+        //BCM Specific, pktgen need to be done on MAP interface, reorder if needed
+        SetActiveMAPIndex(mld_id, StepIns);
         return;
+    }
 
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: client %s not found \n", __func__, __LINE__, DstMac);
 
@@ -1442,7 +1496,8 @@ void WiFiBlastClient(void)
             /* WiFiBlastClient is derefered task, so client could disconnect
              * before it starts
              */
-            if (is_blaster_device_associated(apIndex, bmac, NULL) == false) {
+            if (is_blaster_device_associated(apIndex, bmac, NULL) == false &&
+                is_blaster_device_associated_aap_link(bmac, &g_active_msmt->curStepData) == false) {
 
                 if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
 
@@ -1991,7 +2046,8 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 if (ctrl->network_mode == rdk_dev_mode_type_ext) {
                     active_msmt_status_t status;
 
-                    if (is_blaster_device_associated(index, bmac, NULL) == false) {
+                    if (is_blaster_device_associated(index, bmac, NULL) == false &&
+                        is_blaster_device_associated_aap_link(bmac, &g_active_msmt->curStepData) == false) {
                         snprintf(msg, sizeof(msg), "The MAC is disconnected");
                         status = ACTIVE_MSMT_STATUS_NO_CLIENT;
                     }
