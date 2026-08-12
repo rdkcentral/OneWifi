@@ -1943,6 +1943,14 @@ wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_cha
         }
     }
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    if ( variant & WIFI_80211_VARIANT_BN ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_320MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_320MHZ;
+        }
+    }
+#endif /* CONFIG_IEEE80211BN */
+
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d variant:%d supported bandwidth:%d current_bw:%d \r\n", __func__, __LINE__, variant, supported_bw, current_bw);
     if (supported_bw < current_bw) {
         return supported_bw;
