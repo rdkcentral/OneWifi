@@ -820,6 +820,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     sta_key_t sta_key;
     char buff[MAX_BUFF_SIZE];
     char telemetryBuff[MAX_BUFF_SIZE];
+    char spatialStreamsBuff[MAX_BUFF_SIZE];
     char tmp[128];
     BOOL sendIndication = false;
     char trflag[MAX_VAP] = { 0 };
@@ -925,6 +926,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     memset(buff, 0, MAX_BUFF_SIZE);
     getVAPArrayIndexFromVAPIndex(vap_index, &vap_array_index);
     memset(telemetryBuff, 0, MAX_BUFF_SIZE);
+    memset(spatialStreamsBuff, 0, MAX_BUFF_SIZE);
     get_formatted_time(tmp);
     snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_MAC_%d:", tmp, vap_index + 1);
     for (i = 0; i < num_devs; i++) {
@@ -932,6 +934,9 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
             snprintf(tmp, 32, "%s,", to_sta_key(sta[i].sta_mac, sta_key));
             strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+            snprintf(tmp, 32, "%d/%d,", sta[i].dev_stats.cli_capableNumSpatialStreams,
+                sta[i].dev_stats.cli_activeNumSpatialStreams);
+            strncat(spatialStreamsBuff, tmp, MAX_BUFF_SIZE - strlen(spatialStreamsBuff) - 1);
             active_num_dev++;
         }
     }
@@ -997,6 +1002,15 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     } else {
         wifi_util_error_print(WIFI_APPS, "%s-%d Failed to get band for radio Index %d\n", __func__,
             __LINE__, radioIndex);
+    }
+    if (isVapPrivate(vap_index)) {
+        get_formatted_time(tmp);
+        memset(buff, 0, MAX_BUFF_SIZE);
+        snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_CAPSS_%d:%s\n", tmp, radioIndex + 1,
+            spatialStreamsBuff);
+        write_to_file(wifi_health_log, buff);
+        snprintf(eventName, sizeof(eventName), "WIFI_CAPSS_%d_split", radioIndex + 1);
+        get_stubs_descriptor()->t2_event_s_fn(eventName, spatialStreamsBuff);
     }
     /* If number of device connected is 0, then dont print the markers */
     if (0 == active_num_dev) {
