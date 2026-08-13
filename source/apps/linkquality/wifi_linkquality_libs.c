@@ -42,6 +42,8 @@
 /* CAFFINITY_EVENT (msg_type 4) – HAL/DHCP events for caffinity scoring */
 static int periodic_caffinity_stats_update_impl(stats_arg_t *stats, int len)
 {
+    wifi_util_info_print(WIFI_APPS,"%s:%d vap_index =%d\n",__func__,__LINE__,
+    stats->vap_index);
     int rc = lq_ipc_send(LQ_IPC_MSG_CAFFINITY_EVENT, stats,
                          (uint32_t)len, sizeof(stats_arg_t));
     return rc;
@@ -71,6 +73,8 @@ static void unregister_station_mac_impl(const char *str)
 /* RAPID_DISCONNECT (msg_type 3) – rapid connect/disconnect detection */
 static int disconnect_link_stats_impl(stats_arg_t *stats)
 {
+    wifi_util_info_print(WIFI_APPS,"%s:%d vap_index =%d\n",__func__,__LINE__,
+    stats->vap_index);
     int rc = lq_ipc_send(LQ_IPC_MSG_RAPID_DISCONNECT, stats, 1,
                          sizeof(stats_arg_t));
     wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->RAPID_DISCONNECT] lq_ipc_send rc=%d\n",
@@ -91,6 +95,8 @@ static int reinit_link_metrics_impl(server_arg_t *arg)
 /* DISCONNECT (msg_type 2) – client permanently left sta_map */
 static int remove_link_stats_impl(stats_arg_t *stats)
 {
+    wifi_util_info_print(WIFI_APPS,"%s:%d vap_index =%d\n",__func__,__LINE__,
+    stats->vap_index);
 
     int rc = lq_ipc_send(LQ_IPC_MSG_DISCONNECT, stats, 1,sizeof(stats_arg_t));
     wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->DISCONNECT] lq_ipc_send rc=%d\n",

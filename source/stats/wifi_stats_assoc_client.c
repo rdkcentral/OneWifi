@@ -564,14 +564,17 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                         if (disconnect_link_data != NULL) {
                             memset(disconnect_link_data, 0, sizeof(linkquality_data_t));
                             to_sta_key(sta->dev_stats.cli_MACAddress, disconnect_link_data->stats.mac_str);
+                            disconnect_link_data->stats.vap_index = args->vap_index;
                             wifi_util_dbg_print(WIFI_MON,
-                                "%s:%d: diag client disassociated sta mac=%s\n", __func__, __LINE__,
-                                disconnect_link_data->stats.mac_str);
+                                "%s:%d: diag client disassociated sta mac=%s vap_index =%d\n", __func__, __LINE__,
+                                disconnect_link_data->stats.mac_str,disconnect_link_data->stats.vap_index);
 
                             if (rf_down_mesh_sta) {
+			         wifi_util_dbg_print(WIFI_MON,"%s:%d\n",__func__,__LINE__);
                                 apps_mgr_link_quality_event(&ctrl->apps_mgr,
                                     wifi_event_type_hal_ind, wifi_event_exec_stop, disconnect_link_data, 0);
                             } else {
+			         wifi_util_dbg_print(WIFI_MON,"%s:%d\n",__func__,__LINE__);
                                 sta->rapid_disconnect_flag = true;
                                 apps_mgr_link_quality_event(&ctrl->apps_mgr,
                                     wifi_event_type_hal_ind, wifi_event_exec_timeout, disconnect_link_data, 0);
@@ -609,7 +612,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 if (remove_link_data != NULL) {
                     memset(remove_link_data, 0, sizeof(linkquality_data_t));
                     to_sta_key(tmp_sta->dev_stats.cli_MACAddress, remove_link_data->stats.mac_str);
-                    wifi_util_dbg_print(WIFI_MON, "%s:%d:  diag client disassociated  sta mac=%s:\n", __func__, __LINE__,remove_link_data->stats.mac_str);
+                    remove_link_data->stats.vap_index = args->vap_index;
+                    wifi_util_dbg_print(WIFI_MON, "%s:%d:  diag client disassociated  sta mac=%s vap_index:%d\n", __func__, __LINE__,remove_link_data->stats.mac_str,remove_link_data->stats.vap_index);
+			         wifi_util_dbg_print(WIFI_MON,"%s:%d\n",__func__,__LINE__);
                     apps_mgr_link_quality_event(&ctrl->apps_mgr,wifi_event_type_hal_ind, wifi_event_exec_stop, remove_link_data, 0);
                 }
             }

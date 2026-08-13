@@ -469,13 +469,14 @@ int link_quality_event_exec_timeout(wifi_app_t *apps, void *arg, int len)
        stats_array[i] = data[i].stats;
         wifi_util_dbg_print(
             WIFI_APPS,
-            "%s:%d idx=%d mac=%s  snr=%d phy=%d\n",
+            "%s:%d idx=%d mac=%s  snr=%d phy=%d vap_index =%d mac=%s\n",
             __func__, __LINE__,
             i,
             stats_array[i].mac_str,
             stats_array[i].dev.cli_SNR,
             stats_array[i].dev.cli_LastDataDownlinkRate,
-            stats_array[i].vap_index
+            stats_array[i].vap_index,
+            stats_array[i].ap_mac_str
         );
     }
     get_lq_descriptor()->process_lq_stats_fn(stats_array, num_devs);
@@ -721,7 +722,6 @@ int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,voi
 
 int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
-    wifi_util_info_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
     if (!arg) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL arg\n", __func__, __LINE__);
          return RETURN_ERR;
@@ -731,10 +731,12 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             break;
 
         case wifi_event_exec_stop:
+            wifi_util_info_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
             link_quality_hal_disconnect(apps, arg);
             break;
 
-        case wifi_event_exec_timeout:
+        case  wifi_event_exec_timeout:
+            wifi_util_info_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
             link_quality_hal_rapid_connect(apps, arg);
             break;
 
@@ -791,8 +793,6 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
 
 int link_quality_event(wifi_app_t *app, wifi_event_t *event)
 {
-    wifi_rfc_dml_parameters_t *rfc_param = NULL;
-    rfc_param = get_ctrl_rfc_parameters();
     switch (event->event_type) {
         case wifi_event_type_webconfig:
             exec_event_webconfig_event(app, event);
@@ -803,7 +803,6 @@ int link_quality_event(wifi_app_t *app, wifi_event_t *event)
             break;
 
         case wifi_event_type_hal_ind:
-            if ((rfc_param->wei_rfc_mask & WEI_RFC_SC) || (rfc_param->wei_rfc_mask & WEI_RFC_GC))
                 exec_event_hal_ind(app, event->sub_type, event->u.core_data.msg);
 	    break;
 
