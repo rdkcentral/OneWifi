@@ -142,74 +142,6 @@ UINT get_num_radio_dml()
     }
 }
 
-void update_apmld_map()
-{
-    webconfig_dml_t* dml = get_webconfig_dml();
-    apmld_map_t *apmld_map = &dml->apmld_map;
-    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
-    unsigned int num_radios = getNumberRadios();
-    int mld_id_to_idx[MLD_UNIT_COUNT];
-
-    apmld_map->mld_group_count = 0;
-    memset(apmld_map->mld_groups, 0, sizeof(apmld_map->mld_groups));
-    memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
-
-    for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
-        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
-        if (mgr_vap_info_map == NULL) {
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
-            apmld_map->mld_group_count = 0;
-            return;
-        }
-
-        for (unsigned int k = 0; k < mgr_vap_info_map->num_vaps; k++) {
-            wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
-            wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
-            unsigned int id = mld_info->mld_id;
-            unsigned int mld_idx;
-
-            if (isVapSTAMesh(vap_config->vap_index)) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d VAP %s is a STA mesh, skip\n", __func__, __LINE__, vap_config->vap_name);
-                continue;
-            }
-
-            if (!mld_info->mld_enable) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
-                continue;
-            }
-
-            if (id >= MLD_UNIT_COUNT) {
-                wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid MLD ID: %u\n", __func__, __LINE__, id);
-                continue;
-            }
-
-            // Check if MLD ID already has an index
-            if (mld_id_to_idx[id] == -1) {
-                // New MLD ID
-                if (apmld_map->mld_group_count >= MLD_UNIT_COUNT) {
-                    wifi_util_error_print(WIFI_DMCLI, "%s:%d MLD count exceeds maximum\n", __func__, __LINE__);
-                    continue;
-                }
-                mld_idx = apmld_map->mld_group_count;
-                mld_id_to_idx[id] = mld_idx;
-                apmld_map->mld_group_count++;
-            } else {
-                // Existing MLD ID
-                mld_idx = mld_id_to_idx[id];
-            }
-
-            // Store VAP in MLD group
-            mld_group_t *mld_group = &apmld_map->mld_groups[mld_idx];
-            if (mld_group->mld_vap_count < MAX_NUM_RADIOS) {
-                mld_group->mld_vaps[mld_group->mld_vap_count] = vap_config;
-                mld_group->mld_vap_count++;
-            }
-        }
-    }
-
-    wifi_util_info_print(WIFI_DMCLI, "%s:%d Total MLD count = %d\n", __func__, __LINE__, apmld_map->mld_group_count);
-}
-
 UINT get_num_apmld_dml()
 {
     webconfig_dml_t* dml = get_webconfig_dml();
@@ -1855,7 +1787,7 @@ void update_dml_radio_default() {
             radio_cfg[i].MaxBitRate = 1147;
 #endif /* CONFIG_IEEE80211BE */
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1869,7 +1801,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1883,7 +1815,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1897,7 +1829,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
