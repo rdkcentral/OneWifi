@@ -2181,8 +2181,8 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
         return;
     }
 
-    wifi_util_info_print(WIFI_CTRL, "%s:%d %s value:%s\n",
-        __func__, __LINE__, WIFI_HOTSPOT_STATUS, status);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d %s value:%s\n", __func__, __LINE__, WIFI_HOTSPOT_STATUS,
+        status);
 
     if (strcmp(status, "Enabled") == 0) {
         if (ctrl->device_tunnel_status_subscribed == false) {
