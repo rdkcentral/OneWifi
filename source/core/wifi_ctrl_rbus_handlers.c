@@ -2650,17 +2650,9 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
 #endif
 
     /* Subscribe to hotspot status updates published by PAM */
-if (ctrl->hotspot_status_subscribed == false) {
-    bus_error_t rc = bus_desc->bus_event_subs_fn(
-        &ctrl->handle,
-        WIFI_HOTSPOT_STATUS,
-        hotspotStatusHandler,
-        NULL,
-        0);
-
-    if (rc == bus_error_success ||
-        rc == bus_error_subscription_already_exist) {
-        ctrl->hotspot_status_subscribed = true;
+    if (ctrl->hotspot_status_subscribed == false) {
+        bus_error_t rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS,
+            hotspotStatusHandler, NULL, 0);
 
         wifi_util_info_print(WIFI_CTRL,
             "%s:%d %s subscription active, rc:%d\n",
