@@ -2654,13 +2654,15 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         bus_error_t rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS,
             hotspotStatusHandler, NULL, 0);
 
-        wifi_util_info_print(WIFI_CTRL,
-            "%s:%d %s subscription active, rc:%d\n",
-            __func__, __LINE__, WIFI_HOTSPOT_STATUS, rc);
-    } else {
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d %s subscription failed, rc:%d\n",
-            __func__, __LINE__, WIFI_HOTSPOT_STATUS, rc);
+        if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
+            ctrl->hotspot_status_subscribed = true;
+
+            wifi_util_info_print(WIFI_CTRL, "%s:%d %s subscription active, rc:%d\n", __func__,
+                __LINE__, WIFI_HOTSPOT_STATUS, rc);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d %s subscription failed, rc:%d\n", __func__,
+                __LINE__, WIFI_HOTSPOT_STATUS, rc);
+        }
     }
 }
     if (consumer_app_file == 0 && ctrl->device_wps_test_subscribed == false) {
