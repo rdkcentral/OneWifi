@@ -2177,8 +2177,7 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
 
     status = (char *)p_data->value.raw_data.bytes;
     if (status == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL hotspot status\n",
-            __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL hotspot status\n", __func__, __LINE__);
         return;
     }
 
