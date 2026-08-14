@@ -2066,42 +2066,118 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
         wifi_event_type_command_mesh_status, NULL);
 }
 
+static void process_device_tunnel_status(const char *status)
+{
+    bool tunnel_status = false;
+    wifi_event_subtype_t ces_t;
+
+    if (strcmp(status, "Up") == 0) {
+        tunnel_status = true;
+    } else if (strcmp(status, "Down") != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Received Unsupported value:%s\n", __func__,
+            __LINE__, status);
+        return;
+    }
+
+    ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up : wifi_event_type_xfinity_tunnel_down;
+    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
+        NULL);
+}
+
 static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
-    bool tunnel_status = false;
     char *pTmp = NULL;
 
     wifi_util_dbg_print(WIFI_CTRL, " %s:%d Recvd Event\n", __func__, __LINE__);
 
     if ((strcmp(event_name, WIFI_DEVICE_TUNNEL_STATUS) == 0) && p_data->value.data_type == bus_data_type_string) {
-
         pTmp = (char *)p_data->value.raw_data.bytes;
-        if(pTmp == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__, event_name);
+        if (pTmp == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to get value in event:%s\n", __func__,
+                __LINE__, event_name);
             return;
         }
-
-        if (strcmp(pTmp, "Up") == 0) {
-            tunnel_status = true;
-        } else if (strcmp(pTmp, "Down") == 0) {
-            tunnel_status = false;
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Received Unsupported value\n", __func__,
-                __LINE__);
-            return;
-        }
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__,
-            event_name, tunnel_status);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s:%x\n", __func__, __LINE__,
             event_name, p_data->value.data_type);
         return;
     }
-    wifi_event_subtype_t ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up :
-                                                 wifi_event_type_xfinity_tunnel_down;
-    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
-        NULL);
+
+    process_device_tunnel_status(pTmp);
+}
+
+static void sync_device_tunnel_status(wifi_ctrl_t *ctrl)
+{
+    bus_error_t rc;
+    raw_data_t data;
+    char *status = NULL;
+
+    memset(&data, 0, sizeof(raw_data_t));
+    rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS, &data);
+    if (rc != bus_error_success || data.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            WIFI_DEVICE_TUNNEL_STATUS, data.data_type, rc);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return;
+    }
+
+    status = (char *)data.raw_data.bytes;
+    if (status != NULL) {
+        process_device_tunnel_status(status);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL tunnel status value\n", __func__, __LINE__);
+    }
+    get_bus_descriptor()->bus_data_free_fn(&data);
+}
+
+static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
+{
+    (void)userData;
+    char *status = NULL;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_bus_desc_t *bus_desc = get_bus_descriptor();
+    bus_error_t rc;
+
+    if (ctrl == NULL || bus_desc == NULL || strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
+        p_data->value.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid hotspot status event\n", __func__, __LINE__);
+        return;
+    }
+
+    status = (char *)p_data->value.raw_data.bytes;
+    if (status == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL hotspot status\n", __func__, __LINE__);
+        return;
+    }
+
+    if (strcmp(status, "Enabled") == 0) {
+        if (ctrl->device_tunnel_status_subscribed == false) {
+            rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
+                eventReceiveHandler, NULL, 0);
+            if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
+                ctrl->device_tunnel_status_subscribed = true;
+                sync_device_tunnel_status(ctrl);
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to subscribe to %s, rc:%d\n",
+                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
+            }
+        }
+    } else if (strcmp(status, "Disabled") == 0) {
+        if (ctrl->device_tunnel_status_subscribed == true) {
+            rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS);
+            if (rc == bus_error_success) {
+                ctrl->device_tunnel_status_subscribed = false;
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to unsubscribe from %s, rc:%d\n",
+                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
+            }
+        }
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unsupported hotspot status:%s\n", __func__,
+            __LINE__, status);
+    }
 }
 
 static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_data, void *userData)
@@ -2531,15 +2607,14 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
-    if (ctrl->device_tunnel_status_subscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
-                eventReceiveHandler, NULL, 0) != bus_error_success) {
-            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d bus: bus event:%s subscribe
-            // failed\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
+    if (ctrl->hotspot_status_subscribed == false) {
+        bus_error_t rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS,
+            hotspotStatusHandler, NULL, 0);
+        if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
+            ctrl->hotspot_status_subscribed = true;
         } else {
-            ctrl->device_tunnel_status_subscribed = true;
-            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
-                __FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d %s subscription failed, rc:%d\n", __func__,
+                __LINE__, WIFI_HOTSPOT_STATUS, rc);
         }
     }
 
