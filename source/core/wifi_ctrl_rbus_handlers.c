@@ -2168,8 +2168,7 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
     wifi_bus_desc_t *bus_desc = get_bus_descriptor();
     bus_error_t rc;
 
-    if (ctrl == NULL || bus_desc == NULL ||
-        strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
+    if (ctrl == NULL || bus_desc == NULL || strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
         p_data->value.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid hotspot status event\n",
             __func__, __LINE__);
