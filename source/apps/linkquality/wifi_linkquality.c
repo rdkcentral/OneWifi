@@ -629,6 +629,12 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
     } else {
         // Check sub_event for wifi_event_hal_assoc_rsp_frame OR wifi_event_hal_reassoc_rsp_frame
         if ((sub_event == wifi_event_hal_assoc_rsp_frame) || (sub_event == wifi_event_hal_reassoc_rsp_frame)) {
+            if (msg->frame.len < 28) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d short assoc/reassoc resp frame len=%u MAC=%s\n",
+                    __func__, __LINE__, msg->frame.len, affinity_arg->mac_str);
+                free(affinity_arg);
+                return RETURN_ERR;
+            }
             struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
             uint16_t status = le_to_host16(frame->u.assoc_resp.status_code);
 	    wifi_util_info_print(WIFI_CTRL,"AUTH-ASSOC-CODE %s:%d ASSOC RESP MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n", __func__, __LINE__, affinity_arg->mac_str, sub_event, status, affinity_arg->vap_index, affinity_arg->radio_index);
@@ -668,6 +674,71 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
     free(affinity_arg);
     return RETURN_OK;
 }
+/* Handles the *_status_code subtypes raised by ap_status_code(). Their payload is
+ * assoc_dev_data_t with the 802.11 status in ->reason (the AP-transmitted response is
+ * only ever seen as a scalar status from the HAL, never as a frame), which is why they
+ * use their own subtypes instead of the frame_data_t-carrying *_frame ones.
+ * The outgoing event is mapped back onto the canonical *_frame subtype so WEI keeps its
+ * existing vocabulary and needs no change - WEI only ever receives stats_arg_t. */
+int link_quality_apps_status_code_event(wifi_app_t *app, int sub_event, void *arg)
+{
+    wifi_util_info_print(WIFI_APPS,"Enter %s:%d sub_event=%d\n",__func__,__LINE__,sub_event);
+
+    if (!arg) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL arg\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    assoc_dev_data_t *msg = (assoc_dev_data_t *)arg;
+    wifi_event_subtype_t send_event;
+
+    switch (sub_event) {
+        case wifi_event_hal_auth_frame_status_code:
+            send_event = wifi_event_hal_auth_frame;
+            break;
+        case wifi_event_hal_assoc_rsp_frame_status_code:
+            send_event = wifi_event_hal_assoc_rsp_frame;
+            break;
+        case wifi_event_hal_reassoc_rsp_frame_status_code:
+            send_event = wifi_event_hal_reassoc_rsp_frame;
+            break;
+        case wifi_event_hal_eap_status_code:
+            send_event = wifi_event_hal_eap_status_code;
+            break;
+        default:
+            wifi_util_error_print(WIFI_CTRL, "%s:%d unexpected sub_event=%d\n",
+                __func__, __LINE__, sub_event);
+            return RETURN_ERR;
+    }
+
+    stats_arg_t *affinity_arg = (stats_arg_t *) malloc(sizeof(stats_arg_t));
+    if (affinity_arg == NULL) {
+        wifi_util_info_print(WIFI_APPS," %s:%d unable to alloc memory\n",__func__,__LINE__);
+        return RETURN_ERR;
+    }
+    memset(affinity_arg, 0, sizeof(stats_arg_t));
+
+    to_mac_str(msg->dev_stats.cli_MACAddress, affinity_arg->mac_str);
+    affinity_arg->vap_index = msg->ap_index;
+    affinity_arg->radio_index = getRadioIndexFromAp(msg->ap_index);
+    get_radio_channel_utilization(affinity_arg->radio_index, &affinity_arg->channel_utilization);
+    affinity_arg->status_code = msg->reason;
+    affinity_arg->event = send_event;
+    /* No RSSI on this path; negative keeps WEI's "cli_SNR >= 0" guard from
+     * overwriting m_snr_assoc with a bogus value. */
+    affinity_arg->dev.cli_SNR = -1;
+
+    wifi_util_error_print(WIFI_CTRL,
+        "AUTH-ASSOC-CODE %s:%d STATUS-CODE MAC=%s sub_event=%d -> event=%d status_code=%d vap=%u radio=%u\n",
+        __func__, __LINE__, affinity_arg->mac_str, sub_event, (int)send_event,
+        msg->reason, affinity_arg->vap_index, affinity_arg->radio_index);
+
+    get_lq_descriptor()->periodic_caffinity_stats_update_fn(affinity_arg, 1);
+
+    free(affinity_arg);
+    return RETURN_OK;
+}
+
 int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,void *arg)
 {
     wifi_util_info_print(WIFI_APPS,"Enter %s:%d\n",__func__,__LINE__);
@@ -758,8 +829,11 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             break;
  
         case wifi_event_hal_assoc_rsp_frame:
+            /* arg is frame_data_t (raw frame from mgmt_wifi_frame_recv's ctrl-queue
+             * broadcast), not assoc_dev_data_t -- must go through the frame_data_t-aware
+             * parser (req=false) or status_code is read from the wrong struct layout. */
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
-            link_quality_apps_disassoc_event(apps,true,sub_type,arg);
+            link_quality_apps_assoc_event(apps,false,sub_type,arg);
             break;
 
         case wifi_event_hal_reassoc_req_frame:
@@ -767,10 +841,22 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             link_quality_apps_assoc_event(apps,true,sub_type,arg);
             break;
         case wifi_event_hal_reassoc_rsp_frame:
+            /* Same as assoc_rsp_frame above: arg is frame_data_t, not assoc_dev_data_t. */
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
-            link_quality_apps_disassoc_event(apps,true,sub_type,arg);
+            link_quality_apps_assoc_event(apps,false,sub_type,arg);
             break;
      
+        /* assoc_dev_data_t payloads from ap_status_code (status in ->reason). Kept on
+         * their own subtypes so the cast is unambiguous - the *_frame subtypes above
+         * carry frame_data_t from the mgmt_wifi_frame_recv broadcast. */
+        case wifi_event_hal_auth_frame_status_code:
+        case wifi_event_hal_assoc_rsp_frame_status_code:
+        case wifi_event_hal_reassoc_rsp_frame_status_code:
+        case wifi_event_hal_eap_status_code:
+            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            link_quality_apps_status_code_event(apps,sub_type,arg);
+            break;
+
         case wifi_event_hal_sta_conn_status:
             //move the func call to here
             wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);

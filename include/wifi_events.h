@@ -121,6 +121,18 @@ typedef enum {
     wifi_event_hal_wnm_action_frame,
     wifi_event_hal_pre_assoc_fail,
     wifi_event_hal_post_assoc_fail,
+    /* Status-code variants of the auth/(re)assoc responses, raised by ap_status_code().
+     * They carry assoc_dev_data_t (status in ->reason), NOT frame_data_t like the
+     * same-named *_frame events that mgmt_wifi_frame_recv() broadcasts. The subtype is
+     * the payload-type tag: consumers must cast on it and never on the *_frame subtype.
+     * Keep these APPENDED here - wei/include/wei_events.h hardcodes the numeric values
+     * of the events above (260..271), so inserting mid-block would desync WEI. */
+    wifi_event_hal_auth_frame_status_code,
+    wifi_event_hal_assoc_rsp_frame_status_code,
+    wifi_event_hal_reassoc_rsp_frame_status_code,
+    /* RADIUS/EAP verdict from wifi_radiusEapFailure_callback. Carries
+     * assoc_dev_data_t with wifi_eap_status_code_t in ->reason. */
+    wifi_event_hal_eap_status_code,
     wifi_event_hal_max,
 
     // Commands
@@ -237,6 +249,9 @@ typedef enum {
         << (wifi_event_type_wifiapi + 22), // wifi_event_type_base << 28
     wifi_event_type_wifiapi_max = wifi_event_type_base << 31
 } wifi_event_subtype_t;
+
+_Static_assert(wifi_event_hal_eap_status_code == 290,
+    "wei/include/wei_events.h hardcodes 290 - do not insert events above this line");
 
 typedef struct {
     wifi_sub_component_t    dst;

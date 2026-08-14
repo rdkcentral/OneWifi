@@ -1155,6 +1155,9 @@ typedef struct {
     bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
     struct timespec timestamp;
+    unsigned int    eapol_m1_count;
+    unsigned int    eapol_m2_count;
+    unsigned int    eapol_m3_count;
     unsigned int    eapol_m4_count;
 
     /* wifi7 client specific data */

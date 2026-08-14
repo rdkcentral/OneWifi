@@ -1890,6 +1890,40 @@ int eapol_timeout_type(int ap_index, char *mac, int type)
 	return RETURN_OK;
 }
 
+int handle_eapol_key_msg(int ap_index, char *mac, wifi_eapol_key_msg_t msg_type, unsigned int replay_counter)
+{
+    unsigned int vap_array_index;
+    hash_map_t *link_sta_map;
+    sta_data_t *link_sta;
+
+    getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    link_sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+    if (link_sta_map != NULL) {
+        link_sta = (sta_data_t *)hash_map_get(link_sta_map, mac);
+        if (link_sta != NULL) {
+            switch (msg_type) {
+            case wifi_eapol_key_msg_m1:
+                link_sta->eapol_m1_count++;
+                break;
+            case wifi_eapol_key_msg_m2:
+                link_sta->eapol_m2_count++;
+                break;
+            case wifi_eapol_key_msg_m3:
+                link_sta->eapol_m3_count++;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    wifi_util_dbg_print(WIFI_MON, "%s:%s-%d for idx-%d replay:%d exit and done\n", __func__, mac,
+        msg_type, ap_index, replay_counter);
+    return RETURN_OK;
+}
+
 int set_sta_client_mode(int ap_index, char *mac, int key_mgmt, frame_type_t frame_type, int band, int mode) {
     hash_map_t *sta_map;
     telemetry_data_t *sta;
@@ -3662,24 +3696,26 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
         return -1;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d details of vap_index:%d src_mac :%s dest_mac :%s status:%d type:%d \r\n", __func__, __LINE__, ap_index, src_mac, dest_mac,status,type);
-
-    /* AP downlink response failures forwarded to WEI.
-     * Skip SAE-continuation statuses (76=anti-clogging, 126=hash-to-element, 127=SAE-PK).
-     * AUTH_RSP has no mgmt_wifi_frame_recv case so this is its sole path.
-     * ASSOC/REASSOC_RSP may also arrive via the mgmt path; WEI caps prevent double-count. */
+    /* Authoritative status for AP downlink responses. The ctrl-queue/hal_ind broadcast
+     * (mgmt_wifi_frame_recv) carries the firmware-regenerated frame whose status_code
+     * always reads 0, so this callback is the only source of the real value.
+     * The payload is assoc_dev_data_t (status carried in ->reason), so it is raised
+     * under the dedicated *_status_code subtypes - never under the *_frame subtypes,
+     * which the broadcast already uses for frame_data_t. The subtype is what tells the
+     * consumer which struct to cast to.
+     * Skip SAE-continuation statuses (76=anti-clogging, 126=hash-to-element,
+     * 127=SAE-PK) - those are normal protocol steps, not failures. */
     if (status != 0 && status != 76 && status != 126 && status != 127) {
         wifi_event_subtype_t fail_event = wifi_event_hal_unknown_frame;
         switch ((wifi_mgmtFrameType_t)type) {
         case WIFI_MGMT_FRAME_TYPE_AUTH_RSP:
-            /* Use deauth event: failure only, no m_auth_attempts inflation
-             * (attempts already counted from STA uplink auth frames). */
-            fail_event = wifi_event_hal_deauth_frame;
+            fail_event = wifi_event_hal_auth_frame_status_code;
             break;
         case WIFI_MGMT_FRAME_TYPE_ASSOC_RSP:
-            fail_event = wifi_event_hal_assoc_rsp_frame;
+            fail_event = wifi_event_hal_assoc_rsp_frame_status_code;
             break;
         case WIFI_MGMT_FRAME_TYPE_REASSOC_RSP:
-            fail_event = wifi_event_hal_reassoc_rsp_frame;
+            fail_event = wifi_event_hal_reassoc_rsp_frame_status_code;
             break;
         default:
             break;
@@ -3696,7 +3732,7 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
                     str_to_mac_bytes(dest_mac, fail_data->dev_stats.cli_MACAddress);
                     fail_data->ap_index = ap_index;
                     fail_data->reason = (unsigned int)status;
-                    /* channel_utilization and other fields filled in link_quality_apps_disassoc_event */
+                    /* len 0: the pointer is stored as-is and freed by destroy_wifi_event() */
                     apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, fail_event, fail_data, 0);
                 }
             }
@@ -4171,6 +4207,40 @@ int radius_eap_failure_callback(unsigned int apIndex, mac_address_t mac_addr, in
     radius_eap_data.failure_reason = reason;
     push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
     process_eap_status(apIndex, mac_addr, reason);
+
+    /* Second dispatch: forward the EAP verdict to the linkquality app (WEI gc_score).
+     * Normalize exactly like process_eap_status(): reason 2 maps to 23, and only real
+     * failures propagate - skip reason 1, ACCESS_ACCEPT(0) and EAP_SUCCESS(3). */
+    int norm_reason = reason;
+    if (norm_reason == 2) {
+        norm_reason = 23;
+    }
+    if (norm_reason != 1 && norm_reason != WIFI_ACCESS_ACCEPT_STATUS &&
+        norm_reason != WIFI_EAP_SUCCESS_STATUS) {
+        mac_addr_str_t eap_mac_str;
+        to_mac_str(mac_addr, eap_mac_str);
+        wifi_util_info_print(WIFI_MON,
+            "AUTH-ASSOC-CODE %s:%d radius_eap_failure -> WEI MAC=%s raw=%d norm=%d event=%d vap=%d\n",
+            __func__, __LINE__, eap_mac_str, reason, norm_reason,
+            (int)wifi_event_hal_eap_status_code, apIndex);
+        wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+        if (ctrl == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d wifi ctrl obj is NULL\n", __func__, __LINE__);
+        } else {
+            assoc_dev_data_t *eap_data = malloc(sizeof(assoc_dev_data_t));
+            if (eap_data == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d malloc failed for eap_data\n", __func__, __LINE__);
+            } else {
+                memset(eap_data, 0, sizeof(assoc_dev_data_t));
+                memcpy(eap_data->dev_stats.cli_MACAddress, mac_addr, sizeof(mac_address_t));
+                eap_data->ap_index = apIndex;
+                eap_data->reason = (unsigned int)norm_reason;
+                /* len 0: the pointer is stored as-is and freed by destroy_wifi_event() */
+                apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_hal_ind,
+                    wifi_event_hal_eap_status_code, eap_data, 0);
+            }
+        }
+    }
      return 0;
 }
 
@@ -4934,6 +5004,7 @@ int init_wifi_monitor()
     wifi_hal_apStatusCode_callback_register(ap_status_code);
 	wifi_hal_eapol_timeouts_callback_register(eapol_timeout_type);
     wifi_hal_handshake_callback_register(handle_handshake_status);
+    wifi_hal_eapol_key_callback_register(handle_eapol_key_msg);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.interop_id, reset_interop_sta_data, NULL, (get_chan_util_upload_period() * 1000), 0, FALSE);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, reset_wpa3_enhanced_sta_data, NULL, (MAX_AKM_REPORT_REFRESH_PERIOD * 1000), 0, FALSE);
