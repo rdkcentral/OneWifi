@@ -1547,7 +1547,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     ctrl->bus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
-  ctrl->hotspot_status_subscribed = false;
+    ctrl->hotspot_status_subscribed = false;
 
 #if defined (FEATURE_SUPPORT_WEBCONFIG)
     register_with_webconfig_framework();
