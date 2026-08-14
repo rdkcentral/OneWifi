@@ -4830,7 +4830,11 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifiinterworking_rfc = false;
     rfc_config.radiusgreylist_rfc = false;
     rfc_config.dfsatbootup_rfc = false;
+#if defined(RDKB_ONE_WIFI_PROD)
+    rfc_config.dfs_rfc = true;
+#else
     rfc_config.dfs_rfc = false;
+#endif /* RDKB_ONE_WIFI_PROD */
     rfc_config.levl_enabled_rfc = false;
     rfc_config.memwraptool_app_rfc = true;
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
@@ -5069,6 +5073,40 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
         }
     }
 #endif /* CONFIG_IEEE80211BE */
+
+#if defined(RDKB_ONE_WIFI_PROD)
+    {
+        bool cfg_changed = false;
+        if (config->band == WIFI_FREQUENCY_2_4_BAND) {
+            config->variant |= WIFI_80211_VARIANT_AX;
+#ifdef CONFIG_IEEE80211BE
+            config->variant |= WIFI_80211_VARIANT_BE;
+#endif /* CONFIG_IEEE80211BE */
+            cfg_changed = true;
+        }
+
+        if (is_radio_band_5G(config->band) && (get_wifi_db_rfc_parameters()->dfs_rfc == true)) {
+            /* Persisted channel may be a stale UNII-3 primary that doesn't support
+             * 160MHz (only 36-64 and 100-128 do); correct it before forcing the width. */
+            bool channel_supports_160mhz = (config->channel >= 36 && config->channel <= 64) ||
+                (config->channel >= 100 && config->channel <= 128);
+            if (!channel_supports_160mhz) {
+                wifi_util_info_print(WIFI_DB, "%s:%d: radio %d channel %d does not support "
+                    "160MHz, correcting channel before forcing width\n", __func__, __LINE__,
+                    index, config->channel);
+                config->channel = (config->band == WIFI_FREQUENCY_5H_BAND) ? 100 : 44;
+            }
+            config->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+            config->DfsEnabled = true;
+            cfg_changed = true;
+        }
+        if (cfg_changed &&
+            wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB, "%s:%d error in updating radio config\n",
+                __func__, __LINE__);
+        }
+    }
+#endif /* RDKB_ONE_WIFI_PROD */
 }
 
 int wifidb_get_default_mld_link_id(int band)
@@ -7349,7 +7387,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* NEWPLATFORM_PORT */
 
 #if defined(CONFIG_IEEE80211BE)
-#if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_) || defined(RDKB_ONE_WIFI_PROD)
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif
 #if defined(_PLATFORM_BANANAPI_R4_)
@@ -7372,7 +7410,14 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
                 cfg->channel = 36;
             else
                 cfg->channel = 44;
+#if defined(RDKB_ONE_WIFI_PROD)
+            cfg->DfsEnabled = true;
+            cfg->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+#else
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+#endif /* RDKB_ONE_WIFI_PROD */
+
+
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->DfsEnabled = true;
@@ -7390,8 +7435,14 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg->operatingClass = 128;
-            cfg->channel = 157;
+#if defined(RDKB_ONE_WIFI_PROD)
+            cfg->DfsEnabled = true;
+            cfg->channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+            cfg->channel = 100;
+#else
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+            cfg->channel = 157;
+#endif /* RDKB_ONE_WIFI_PROD */
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->beaconInterval = 200;
@@ -7649,7 +7700,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                     cfg->u.sta_info.scan_params.channel.channel = 44;
                 break;
             case WIFI_FREQUENCY_5H_BAND:
+#if defined(RDKB_ONE_WIFI_PROD)
+                /* Matches the WIFI_FREQUENCY_5H_BAND radio default above:
+                 * PROD defaults this band to 160MHz, and channel 157 is not
+                 * valid for a 160MHz span on this hardware. */
+                cfg->u.sta_info.scan_params.channel.channel = 100;
+#else
                 cfg->u.sta_info.scan_params.channel.channel = 157;
+#endif /* RDKB_ONE_WIFI_PROD */
                 break;
             case WIFI_FREQUENCY_6_BAND:
                 cfg->u.sta_info.scan_params.channel.channel = 5;
@@ -8364,6 +8422,12 @@ void init_wifidb_data(void)
 #ifdef ALWAYS_ENABLE_AX_2G
         wifidb_update_rfc_config(0, rfc_param);
 #endif
+#if defined(RDKB_ONE_WIFI_PROD)
+        rfc_param->dfs_rfc = true;
+        rfc_param->twoG80211axEnable_rfc = true;
+        wifidb_update_rfc_config(0, rfc_param);
+#endif /* RDKB_ONE_WIFI_PROD */
+
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
