@@ -2211,8 +2211,7 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
                     "%s:%d Unsubscribed from %s\n",
                     __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
             } else {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d Failed to unsubscribe from %s, rc:%d\n",
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to unsubscribe from %s, rc:%d\n",
                     __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
             }
         }
