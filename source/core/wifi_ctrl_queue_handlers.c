@@ -2566,15 +2566,15 @@ void process_assoc_device_event(void *data)
             }
         }
 
-        /* In case of MLO client upcoming LM_lite notification needs to be from assoc link */
+        /* Restore assoc link to assoc_data for future use in LM_lite notification and other notifications */
         if (assoc_link_idx != -1) {
             assoc_dev_update_mlo_link(assoc_data, assoc_link_idx);
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d No valid associated link found for MLD STA " MAC_FMT "\n",
                 __func__, __LINE__, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
         }
-        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected with %d links " MAC_FMT "\n",
-            __func__, __LINE__, num_links, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
+        wifi_util_info_print(WIFI_CTRL, "%s:%d MLO client connected with %d links " MAC_FMT " assoc_vap_index: %d\n",
+            __func__, __LINE__, num_links, MAC_ARG(assoc_data->dev_stats.cli_MACAddress), assoc_data->ap_index);
     } else {
         assoc_dev_event(assoc_data);
     }
@@ -2761,6 +2761,8 @@ void process_wpa3_rfc(bool type)
             vapInfo->u.bss_info.security.wpa3_transition_disable = false;
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            /* When WPA3 RFC enables transition mode, restore transition encryption policy. */
+            apply_wpa3_transition_encr_policy(&vapInfo->u.bss_info.security);
         } else {
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
                 continue;
@@ -2769,6 +2771,8 @@ void process_wpa3_rfc(bool type)
             if ((radio_params->band == WIFI_FREQUENCY_2_4_BAND) ||  (radio_params->band == WIFI_FREQUENCY_5_BAND) ||
                 (radio_params->band == WIFI_FREQUENCY_5L_BAND) || (radio_params->band == WIFI_FREQUENCY_5H_BAND)) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                /* RFC disable should not leave WPA2 with invalid encryption. */
+                apply_wpa2_personal_encr_policy(&vapInfo->u.bss_info.security);
             }
         }
 
@@ -3841,6 +3845,12 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_NOP_FINISHED;
                 break;
             case WIFI_EVENT_RADAR_PRE_CAC_EXPIRED :
+                /* BCM43684 fires this per 20MHz sub-band when vacating a DFS channel.
+                 * Default to nop_finished; the loop guard below preserves cac_completed
+                 * for channels that passed full regulatory CAC (SHARMAN-4249). */
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d PRE_CAC_EXPIRED: radio:%d ch:%d bw:%d\n",
+                    __func__, __LINE__, ch_chg->radioIndex, ch_chg->channel, ch_chg->channelWidth);
                 chan_state = CHAN_STATE_DFS_NOP_FINISHED;
                 break;
             case WIFI_EVENT_RADAR_CAC_STARTED :
@@ -3893,7 +3903,13 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                         ch_chg->sub_event != WIFI_EVENT_RADAR_NOP_FINISHED) {
                         wifi_util_error_print(WIFI_CTRL,
                             "%s:%d Channel %d already in NOP_START, ignoring state change to %d from radar subtype %d\n",
-                            __func__, __LINE__, ch_chg->channel, chan_state, radio_params->channel_map[j].ch_state);
+                            __func__, __LINE__, ch_chg->channel, chan_state, ch_chg->sub_event);
+                    } else if (ch_chg->sub_event == WIFI_EVENT_RADAR_PRE_CAC_EXPIRED &&
+                               radio_params->channel_map[j].ch_state == CHAN_STATE_DFS_CAC_COMPLETED) {
+                        /* SHARMAN-4249: preserve cac_completed -- BCM43684 fires PRE_CAC_EXPIRED per 20MHz subband on DFS channel leave */
+                        wifi_util_dbg_print(WIFI_CTRL,
+                            "%s:%d PRE_CAC_EXPIRED on ch %d: preserving cac_completed, not resetting to nop_finished\n",
+                            __func__, __LINE__, ch_chg->channel);
                     } else {
                         radio_params->channel_map[j].ch_state = chan_state;
                     }
@@ -4299,6 +4315,8 @@ void process_rsn_override_rfc(bool type)
                 (radio_params->band == WIFI_FREQUENCY_5L_BAND) || (radio_params->band == WIFI_FREQUENCY_5H_BAND)) {
                     vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+                    /* RFC disable should not leave WPA2 with invalid encryption. */
+                    apply_wpa2_personal_encr_policy(&vapInfo->u.bss_info.security);
             }
 
         if(rfc_param->wpa3_rfc) {
@@ -4306,6 +4324,8 @@ void process_rsn_override_rfc(bool type)
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+                /* When RSN override re-enables WPA3 transition, restore its encryption policy. */
+                apply_wpa3_transition_encr_policy(&vapInfo->u.bss_info.security);
             }
 #if defined(CONFIG_IEEE80211BE)
             if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
