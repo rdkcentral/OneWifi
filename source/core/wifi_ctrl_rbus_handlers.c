@@ -2217,9 +2217,8 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
             }
         }
     } else {
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d Unsupported hotspot status:%s\n",
-            __func__, __LINE__, status);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unsupported hotspot status:%s\n", __func__,
+            __LINE__, status);
     }
 }
 
