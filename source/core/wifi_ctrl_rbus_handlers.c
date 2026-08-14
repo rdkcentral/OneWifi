@@ -2200,8 +2200,7 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
         }
     } else if (strcmp(status, "Disabled") == 0) {
         if (ctrl->device_tunnel_status_subscribed == true) {
-            rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle,
-                WIFI_DEVICE_TUNNEL_STATUS);
+            rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS);
 
             if (rc == bus_error_success) {
                 ctrl->device_tunnel_status_subscribed = false;
