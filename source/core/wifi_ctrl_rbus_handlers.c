@@ -2162,42 +2162,65 @@ static void sync_device_tunnel_status(wifi_ctrl_t *ctrl)
 static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
-    char *pTmp = NULL;
+
+    char *status = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_bus_desc_t *bus_desc = get_bus_descriptor();
+    bus_error_t rc;
 
-    if (strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Sneha Unexpected event: %s\n", __func__, __LINE__, event_name);
+    if (ctrl == NULL || bus_desc == NULL ||
+        strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
+        p_data->value.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid hotspot status event\n",
+            __func__, __LINE__);
         return;
     }
 
-    if (p_data->value.data_type != bus_data_type_string) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Sneha Invalid data type:%x for %s\n",
-                __func__, __LINE__, p_data->value.data_type, event_name);
+    status = (char *)p_data->value.raw_data.bytes;
+    if (status == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL hotspot status\n",
+            __func__, __LINE__);
         return;
     }
 
-    pTmp = (char *)p_data->value.raw_data.bytes;
-    if (pTmp == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Sneha NULL value for %s\n", __func__, __LINE__, event_name);
-        return;
-    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d %s value:%s\n",
+        __func__, __LINE__, WIFI_HOTSPOT_STATUS, status);
 
-    wifi_util_info_print(WIFI_CTRL, "%s:%d %s Sneha value: %s\n", __func__, __LINE__, WIFI_HOTSPOT_STATUS, pTmp);
-
-    if (strcmp(pTmp, "Enabled") == 0) {
+    if (strcmp(status, "Enabled") == 0) {
         if (ctrl->device_tunnel_status_subscribed == false) {
-			bus_error_t rc = bus_desc->bus_event_subs_fn( &ctrl->handle,WIFI_DEVICE_TUNNEL_STATUS,eventReceiveHandler,NULL,0);
-			if (rc != bus_error_success && rc != bus_error_subscription_already_exist) {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d %s Sneha subscribe failed with RC:%d\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS,rc);
-            } else {
+            rc = bus_desc->bus_event_subs_fn(&ctrl->handle,
+                WIFI_DEVICE_TUNNEL_STATUS, eventReceiveHandler, NULL, 0);
+
+            if (rc == bus_error_success ||
+                rc == bus_error_subscription_already_exist) {
                 ctrl->device_tunnel_status_subscribed = true;
-                wifi_util_info_print(WIFI_CTRL, "%s:%d %s Sneha subscribe success (hotspot Enabled) wit rc : %d\n", __FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS,rc);
+                sync_device_tunnel_status(ctrl);
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Failed to subscribe to %s, rc:%d\n",
+                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
+            }
+        }
+    } else if (strcmp(status, "Disabled") == 0) {
+        if (ctrl->device_tunnel_status_subscribed == true) {
+            rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle,
+                WIFI_DEVICE_TUNNEL_STATUS);
+
+            if (rc == bus_error_success) {
+                ctrl->device_tunnel_status_subscribed = false;
+                wifi_util_info_print(WIFI_CTRL,
+                    "%s:%d Unsubscribed from %s\n",
+                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Failed to unsubscribe from %s, rc:%d\n",
+                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
             }
         }
     } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d Sneha Hotspot status: %s, not subscribing to %s\n",
-                __func__, __LINE__, pTmp, WIFI_DEVICE_TUNNEL_STATUS);
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d Unsupported hotspot status:%s\n",
+            __func__, __LINE__, status);
     }
 }
 
