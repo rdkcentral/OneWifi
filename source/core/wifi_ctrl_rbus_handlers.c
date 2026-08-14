@@ -2193,8 +2193,7 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
                 ctrl->device_tunnel_status_subscribed = true;
                 sync_device_tunnel_status(ctrl);
             } else {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d Failed to subscribe to %s, rc:%d\n",
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to subscribe to %s, rc:%d\n",
                     __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
             }
         }
