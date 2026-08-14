@@ -2186,8 +2186,8 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
 
     if (strcmp(status, "Enabled") == 0) {
         if (ctrl->device_tunnel_status_subscribed == false) {
-            rc = bus_desc->bus_event_subs_fn(&ctrl->handle,
-                WIFI_DEVICE_TUNNEL_STATUS, eventReceiveHandler, NULL, 0);
+            rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
+                eventReceiveHandler, NULL, 0);
 
             if (rc == bus_error_success ||
                 rc == bus_error_subscription_already_exist) {
