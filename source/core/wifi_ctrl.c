@@ -1458,6 +1458,10 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     //Register to BUS for webconfig interactions
     bus_register_handlers(ctrl);
 
+    ctrl->bus_events_subscribed = false;
+    ctrl->tunnel_events_subscribed = false;
+    ctrl->hotspot_status_subscribed = false;
+
     // subscribe for BUS events
     bus_subscribe_events(ctrl);
 
@@ -1474,10 +1478,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     wifi_chan_event_register(channel_change_callback);
 
     wifi_wpsEvent_callback_register(wps_event_callback);
-
-    ctrl->bus_events_subscribed = false;
-    ctrl->tunnel_events_subscribed = false;
-  ctrl->hotspot_status_subscribed = false;
 
 #if defined (FEATURE_SUPPORT_WEBCONFIG)
     register_with_webconfig_framework();

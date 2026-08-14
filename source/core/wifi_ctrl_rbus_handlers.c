@@ -1418,40 +1418,6 @@ static void wan_failover_handler(char *event_name, bus_data_prop_t *p_data, void
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: recv data:%d\r\n", __func__, __LINE__, data_value);
 }
-static void hotspotTunnelHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
-{
-    (void)userData;
-    char *pTmp;
-
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n",  __func__, __LINE__);
-
-    if(strcmp(event_name, "TunnelStatus") != 0) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Not Tunnel event, %s\n", __func__, __LINE__, event_name);
-        return;
-    } else if (p_data->value.data_type != bus_data_type_string) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Received:%s data type:%x",
-                __func__, __LINE__, event_name, p_data->value.data_type);
-        return;
-    }
-
-    pTmp = (char *)p_data->value.raw_data.bytes;
-
-    if (pTmp == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: wrong bus data recived for Event %s", __func__, __LINE__, event_name);
-        return;
-    }
-
-    bool tunnel_status = false;
-    if (strcmp(pTmp, "TUNNEL_UP") == 0) {
-        tunnel_status = true;
-    }
-
-    wifi_event_subtype_t ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up :
-                                                 wifi_event_type_xfinity_tunnel_down;
-    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
-        NULL);
-}
-
 bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -2089,9 +2055,12 @@ static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void 
     (void)userData;
     char *pTmp = NULL;
 
-    wifi_util_dbg_print(WIFI_CTRL, " %s:%d Recvd Event\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d TunnelStatus callback event=%s data=%p\n", __func__,
+        __LINE__, event_name != NULL ? event_name : "NULL", (void *)p_data);
 
-    if ((strcmp(event_name, WIFI_DEVICE_TUNNEL_STATUS) == 0) && p_data->value.data_type == bus_data_type_string) {
+    if (event_name != NULL && p_data != NULL &&
+        (strcmp(event_name, WIFI_DEVICE_TUNNEL_STATUS) == 0) &&
+        p_data->value.data_type == bus_data_type_string) {
         pTmp = (char *)p_data->value.raw_data.bytes;
         if (pTmp == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to get value in event:%s\n", __func__,
@@ -2100,10 +2069,13 @@ static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void 
         }
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s:%x\n", __func__, __LINE__,
-            event_name, p_data->value.data_type);
+            event_name != NULL ? event_name : "NULL",
+            p_data != NULL ? p_data->value.data_type : 0);
         return;
     }
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d TunnelStatus callback value=%s\n", __func__, __LINE__,
+        pTmp);
     process_device_tunnel_status(pTmp);
 }
 
@@ -2114,7 +2086,11 @@ static void sync_device_tunnel_status(wifi_ctrl_t *ctrl)
     char *status = NULL;
 
     memset(&data, 0, sizeof(raw_data_t));
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Getting tunnel status path=%s\n", __func__, __LINE__,
+        WIFI_DEVICE_TUNNEL_STATUS);
     rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS, &data);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tunnel status GET rc=%d data_type=0x%x data=%p len=%u\n",
+        __func__, __LINE__, rc, data.data_type, (void *)data.raw_data.bytes, data.raw_data_len);
     if (rc != bus_error_success || data.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
@@ -2125,6 +2101,8 @@ static void sync_device_tunnel_status(wifi_ctrl_t *ctrl)
 
     status = (char *)data.raw_data.bytes;
     if (status != NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tunnel status GET value=%s\n", __func__, __LINE__,
+            status);
         process_device_tunnel_status(status);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL tunnel status value\n", __func__, __LINE__);
@@ -2140,13 +2118,17 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
     wifi_bus_desc_t *bus_desc = get_bus_descriptor();
     bus_error_t rc;
 
-    if (ctrl == NULL || bus_desc == NULL || strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
+    if (ctrl == NULL || bus_desc == NULL || event_name == NULL || p_data == NULL ||
+        strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
         p_data->value.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid hotspot status event\n", __func__, __LINE__);
         return;
     }
 
     status = (char *)p_data->value.raw_data.bytes;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Hotspot status event value=%s tunnel_subscribed=%d\n",
+        __func__, __LINE__, status != NULL ? status : "NULL",
+        ctrl->device_tunnel_status_subscribed);
     if (status == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL hotspot status\n", __func__, __LINE__);
         return;
@@ -2154,8 +2136,12 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
 
     if (strcmp(status, "Enabled") == 0) {
         if (ctrl->device_tunnel_status_subscribed == false) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Subscribing tunnel status path=%s\n", __func__,
+                __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
             rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
                 eventReceiveHandler, NULL, 0);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tunnel status subscribe rc=%d\n", __func__,
+                __LINE__, rc);
             if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
                 ctrl->device_tunnel_status_subscribed = true;
                 sync_device_tunnel_status(ctrl);
