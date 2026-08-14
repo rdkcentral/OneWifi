@@ -2658,7 +2658,6 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
                 __LINE__, WIFI_HOTSPOT_STATUS, rc);
         }
     }
-}
     if (consumer_app_file == 0 && ctrl->device_wps_test_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_WIFI_WPS_PIN_START,
                 wps_test_event_receive_handler, NULL, 0) != bus_error_success) {
