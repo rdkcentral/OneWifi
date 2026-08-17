@@ -548,7 +548,7 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
 {
     stats_arg_t *affinity_arg = NULL;
     frame_data_t *msg = (frame_data_t *)arg;
-
+     wifi_front_haul_bss_t *bss_param = NULL;
     wifi_util_info_print(WIFI_APPS, "Enter %s:%d\n",__func__,__LINE__);
     if (!arg) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL arg\n", __func__, __LINE__);
@@ -569,6 +569,13 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
     affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index,&affinity_arg->channel_utilization);
     affinity_arg->status_code = 0;
+    bss_param = Get_wifi_object_bss_parameter(affinity_arg->vap_index);
+    if (bss_param == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to get bss info for vap index %d\n", __func__,
+        __LINE__, affinity_arg->vap_index);
+        return RETURN_ERR;
+    }
+    to_mac_str(bss_param->bssid, affinity_arg->ap_mac_str);
     if (sub_event == wifi_event_hal_auth_frame && msg->frame.len >= 30) {
         struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
         uint16_t st  = le_to_host16(frame->u.auth.status_code);
@@ -576,13 +583,13 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
         if (st != 0 && st != 76 && st != 126 && st != 127) {
             affinity_arg->status_code = st;
             wifi_util_error_print(WIFI_CTRL,
-                "AUTH-ASSOC-CODE %s:%d AUTH FAILURE MAC=%s status_code=%u auth_seq=%u vap=%u radio=%u\n",
+                "AUTH-ASSOC-CODE %s:%d AUTH FAILURE MAC=%s status_code=%u auth_seq=%u vap=%u radio=%u ap_mac=%s\n",
                 __func__, __LINE__, affinity_arg->mac_str, st, seq,
-                affinity_arg->vap_index, affinity_arg->radio_index);
+                affinity_arg->vap_index, affinity_arg->radio_index,affinity_arg->ap_mac_str);
         } else {
             wifi_util_info_print(WIFI_CTRL,
-                "AUTH-ASSOC-CODE %s:%d AUTH frame MAC=%s status_code=%u auth_seq=%u (attempt/continuation)\n",
-                __func__, __LINE__, affinity_arg->mac_str, st, seq);
+                "AUTH-ASSOC-CODE %s:%d AUTH frame MAC=%s status_code=%u auth_seq=%u ap_mac_%s\n",
+                __func__, __LINE__, affinity_arg->mac_str, st, seq,affinity_arg->ap_mac_str);
         }
     }
     affinity_arg->dev.cli_SNR = msg->frame.sig_dbm - NOISE_FLOOR;
@@ -611,6 +618,7 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
         wifi_util_info_print(WIFI_APPS," %s:%d unable to alloc memry\n",__func__,__LINE__);
        return RETURN_ERR;
     }
+     wifi_front_haul_bss_t *bss_param = NULL;
     memset(affinity_arg, 0, sizeof(stats_arg_t));
     frame_data_t *msg = (frame_data_t *)arg;
     
@@ -619,6 +627,13 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
     affinity_arg->vap_index = msg->frame.ap_index;
     affinity_arg->radio_index = getRadioIndexFromAp(msg->frame.ap_index);
     get_radio_channel_utilization(affinity_arg->radio_index, &affinity_arg->channel_utilization);
+    bss_param = Get_wifi_object_bss_parameter(affinity_arg->vap_index);
+    if (bss_param == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d Failed to get bss info for vap index %d\n", __func__,
+        __LINE__, affinity_arg->vap_index);
+        return RETURN_ERR;
+    }
+    to_mac_str(bss_param->bssid, affinity_arg->ap_mac_str);
     affinity_arg->dev.cli_SNR = msg->frame.sig_dbm - NOISE_FLOOR;
     wifi_util_info_print(WIFI_APPS," %s:%d assoc client snr =%d\n",__func__,__LINE__,affinity_arg->dev.cli_SNR);
     
@@ -637,12 +652,12 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
             }
             struct ieee80211_mgmt *frame = (struct ieee80211_mgmt *)&msg->data;
             uint16_t status = le_to_host16(frame->u.assoc_resp.status_code);
-	    wifi_util_info_print(WIFI_CTRL,"AUTH-ASSOC-CODE %s:%d ASSOC RESP MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n", __func__, __LINE__, affinity_arg->mac_str, sub_event, status, affinity_arg->vap_index, affinity_arg->radio_index);
+	    wifi_util_info_print(WIFI_CTRL," %s:%d ASSOC RESP MAC=%s sub_event=%d status_code=%u vap=%u radio=%u ap_mac=%s\n", __func__, __LINE__, affinity_arg->mac_str, sub_event, status, affinity_arg->vap_index, affinity_arg->radio_index,affinity_arg->ap_mac_str);
             if (status != 0) {
                 wifi_util_error_print(WIFI_CTRL,
-		    "AUTH-ASSOC-CODE %s:%d ASSOC FAILURE MAC=%s sub_event=%d status_code=%u vap=%u radio=%u\n",
+		    "%s:%d ASSOC FAILURE MAC=%s sub_event=%d status_code=%u vap=%u radio=%u ap_mac=%s\n",
                     __func__, __LINE__, affinity_arg->mac_str, sub_event, status,
-                    affinity_arg->vap_index, affinity_arg->radio_index);
+                    affinity_arg->vap_index, affinity_arg->radio_index,affinity_arg->ap_mac_str);
             }
             affinity_arg->event = sub_event;
             affinity_arg->status_code = status;
