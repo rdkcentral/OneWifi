@@ -1075,7 +1075,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         wifi_util_error_print(WIFI_APPS, "%s-%d Failed to get band for radio Index %d\n", __func__,
             __LINE__, radioIndex);
     }
-   
     /* If number of device connected is 0, then dont print the markers */
     if (0 == active_num_dev) {
         return RETURN_OK;
