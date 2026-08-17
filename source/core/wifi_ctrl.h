@@ -252,6 +252,7 @@ typedef struct wifi_ctrl {
     bool                test_device_mode_subscribed;
     bool                device_tunnel_status_subscribed;
     bool                hotspot_status_subscribed;
+    bool                hotspot_enabled;
     bool                device_wps_test_subscribed;
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;

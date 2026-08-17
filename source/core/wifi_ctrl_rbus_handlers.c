@@ -2111,6 +2111,29 @@ static void sync_device_tunnel_status(wifi_ctrl_t *ctrl)
     get_bus_descriptor()->bus_data_free_fn(&data);
 }
 
+static void subscribe_device_tunnel_status(wifi_ctrl_t *ctrl)
+{
+    wifi_bus_desc_t *bus_desc = get_bus_descriptor();
+    bus_error_t rc;
+
+    if (ctrl == NULL || bus_desc == NULL || ctrl->hotspot_enabled == false ||
+        ctrl->device_tunnel_status_subscribed) {
+        return;
+    }
+
+    rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
+        eventReceiveHandler, NULL, 0);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tunnel status subscribe rc=%d\n", __func__, __LINE__,
+        rc);
+    if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
+        ctrl->device_tunnel_status_subscribed = true;
+        sync_device_tunnel_status(ctrl);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to subscribe to %s, rc:%d\n", __func__,
+            __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
+    }
+}
+
 static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
@@ -2136,22 +2159,10 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
     }
 
     if (strcmp(status, "Enabled") == 0) {
-        if (ctrl->device_tunnel_status_subscribed == false) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Subscribing tunnel status path=%s\n", __func__,
-                __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
-            rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
-                eventReceiveHandler, NULL, 0);
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tunnel status subscribe rc=%d\n", __func__,
-                __LINE__, rc);
-            if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
-                ctrl->device_tunnel_status_subscribed = true;
-                sync_device_tunnel_status(ctrl);
-            } else {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to subscribe to %s, rc:%d\n",
-                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
-            }
-        }
+        ctrl->hotspot_enabled = true;
+    subscribe_device_tunnel_status(ctrl);
     } else if (strcmp(status, "Disabled") == 0) {
+        ctrl->hotspot_enabled = false;
         if (ctrl->device_tunnel_status_subscribed == true) {
             rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS);
             if (rc == bus_error_success) {
@@ -2590,6 +2601,8 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
                 __LINE__, WIFI_HOTSPOT_STATUS, rc);
         }
     }
+
+        subscribe_device_tunnel_status(ctrl);
 
     if (consumer_app_file == 0 && ctrl->device_wps_test_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_WIFI_WPS_PIN_START,
