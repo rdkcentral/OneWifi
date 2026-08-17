@@ -2160,14 +2160,13 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
 
     if (strcmp(status, "Enabled") == 0) {
         ctrl->hotspot_enabled = true;
-    subscribe_device_tunnel_status(ctrl);
+        subscribe_device_tunnel_status(ctrl);
     } else if (strcmp(status, "Disabled") == 0) {
         ctrl->hotspot_enabled = false;
         if (ctrl->device_tunnel_status_subscribed == true) {
             rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS);
-            if (rc == bus_error_success) {
-                ctrl->device_tunnel_status_subscribed = false;
-            } else {
+            ctrl->device_tunnel_status_subscribed = false;
+            if (rc != bus_error_success) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to unsubscribe from %s, rc:%d\n",
                     __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
             }
@@ -2596,13 +2595,26 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             hotspotStatusHandler, NULL, 0);
         if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
             ctrl->hotspot_status_subscribed = true;
+            // GET current hotspot state in case Enabled was published before subscription
+            raw_data_t hs_data;
+            memset(&hs_data, 0, sizeof(raw_data_t));
+            rc = bus_desc->bus_data_get_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS, &hs_data);
+            if (rc == bus_error_success && hs_data.data_type == bus_data_type_string) {
+                char *hs_val = (char *)hs_data.raw_data.bytes;
+                if (hs_val != NULL && strcmp(hs_val, "Enabled") == 0) {
+                    ctrl->hotspot_enabled = true;
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d Hotspot already Enabled at startup\n",
+                        __func__, __LINE__);
+                }
+            }
+            bus_desc->bus_data_free_fn(&hs_data);
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d %s subscription failed, rc:%d\n", __func__,
                 __LINE__, WIFI_HOTSPOT_STATUS, rc);
         }
     }
 
-        subscribe_device_tunnel_status(ctrl);
+    subscribe_device_tunnel_status(ctrl);
 
     if (consumer_app_file == 0 && ctrl->device_wps_test_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_WIFI_WPS_PIN_START,
@@ -2695,7 +2707,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 #endif
-    if(!ctrl->hotspot_client_dhcp_failure_subscribed) {
+    if(!ctrl->hotspot_client_dhcp_failure_subscribed && ctrl->hotspot_enabled) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED, hotspot_client_dhcp_failure_disconnect, NULL, 
             0) != bus_error_success) {
             // wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe fail\n",
