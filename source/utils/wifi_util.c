@@ -4959,19 +4959,42 @@ bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t
     return (valid_mask & (1u << encr)) != 0;
 }
 
-void wpa2_personal_gcmp_fallback_to_aes(wifi_vap_security_t *security_info)
+void apply_wpa2_personal_encr_policy(wifi_vap_security_t *security_info)
 {
-    if (security_info == NULL) {
+    if (security_info == NULL || security_info->mode != wifi_security_mode_wpa2_personal) {
         return;
     }
 
-    if (security_info->mode == wifi_security_mode_wpa2_personal &&
-        security_info->encr == wifi_encryption_aes_gcmp256) {
+    if (security_info->encr == wifi_encryption_aes_gcmp256) {
         wifi_util_info_print(WIFI_WEBCONFIG,
-            "%s:%d enforcing WPA2-Personal encryption fallback AES+GCMP(%d)->AES(%d)\n",
-            __func__, __LINE__, wifi_encryption_aes_gcmp256, wifi_encryption_aes);
+            "%s:%d enforcing WPA2-Personal encryption fallback AES+GCMP(%d)->AES(%d)\n", __func__,
+            __LINE__, wifi_encryption_aes_gcmp256, wifi_encryption_aes);
+        security_info->encr = wifi_encryption_aes;
+        return;
+    }
+
+    /* Preserve valid WPA2 encryptions (AES, AES+TKIP); normalize anything else to AES. */
+    if (security_info->encr != wifi_encryption_aes &&
+        security_info->encr != wifi_encryption_aes_tkip) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d enforcing WPA2-Personal encryption fallback invalid(%d)->AES(%d)\n", __func__,
+            __LINE__, security_info->encr, wifi_encryption_aes);
         security_info->encr = wifi_encryption_aes;
     }
+}
+
+void apply_wpa3_transition_encr_policy(wifi_vap_security_t *security_info)
+{
+    if (security_info == NULL || security_info->mode != wifi_security_mode_wpa3_transition) {
+        return;
+    }
+
+#ifdef CONFIG_IEEE80211BE
+    /* 11be builds use AES+GCMP as the policy default for WPA3-Transition. */
+    security_info->encr = wifi_encryption_aes_gcmp256;
+#else
+    security_info->encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 }
 
 int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)
