@@ -246,7 +246,6 @@ typedef struct wifi_ctrl {
     bus_handle_t        handle;
     bool                bus_events_subscribed;
     bool                active_gateway_check_subscribed;
-    bool                tunnel_events_subscribed;
     bool                mesh_status_subscribed;
     bool                device_mode_subscribed;
     bool                test_device_mode_subscribed;
