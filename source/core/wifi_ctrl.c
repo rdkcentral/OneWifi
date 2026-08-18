@@ -1794,21 +1794,76 @@ int init_wireless_interface_mac()
  */
 void init_wifi_mld_groups(void)
 {
-    unsigned int r_idx;
-    unsigned int radio_bitmap = 0;
-    wifi_vap_info_map_t *mgr_vap_info_map;
-
-    radio_bitmap = update_mld_groups(NULL, NULL, 0, WIFI_CTRL);
+    unsigned int r_idx = 0;
+    unsigned int k = 0;
+    wifi_vap_info_map_t *mgr_vap_map = NULL;
+    bool original_mld_enable[MAX_VAP] = { false };
+    unsigned int original_link_id[MAX_VAP] = { 0 };
 
     for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
-        if (!(radio_bitmap & (1u << r_idx))) {
+        mgr_vap_map = get_wifidb_vap_map(r_idx);
+        if (mgr_vap_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Failed to get mgr_vap_map for radio index %d\n", __func__, __LINE__, r_idx);
             continue;
         }
-        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
-        if (mgr_vap_info_map != NULL) {
+
+        for (k = 0; k < mgr_vap_map->num_vaps; k++) {
+            wifi_vap_info_t *vap = &mgr_vap_map->vap_array[k];
+            if (vap->vap_index >= MAX_VAP) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid vap_index %d for radio index %d\n",
+                    __func__, __LINE__, vap->vap_index, r_idx);
+                continue;
+            }
+
+            if (isVapSTAMesh(vap->vap_index)) {
+                continue;
+            }
+
+            original_mld_enable[vap->vap_index] = vap->u.bss_info.mld_info.common_info.mld_enable;
+            original_link_id[vap->vap_index] = vap->u.bss_info.mld_info.common_info.mld_link_id;
+        }
+    }
+
+    update_mld_groups(NULL, NULL, 0, WIFI_CTRL);
+
+    for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
+        bool vap_setting_changed = false;
+
+        mgr_vap_map = get_wifidb_vap_map(r_idx);
+        if (mgr_vap_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Failed to get mgr_vap_map for radio index %d\n", __func__, __LINE__, r_idx);
+            continue;
+        }
+
+        for (k = 0; k < mgr_vap_map->num_vaps; k++) {
+            wifi_vap_info_t *vap = &mgr_vap_map->vap_array[k];
+            if (vap->vap_index >= MAX_VAP) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid vap_index %d for radio index %d\n",
+                    __func__, __LINE__, vap->vap_index, r_idx);
+                continue;
+            }
+
+            if (isVapSTAMesh(vap->vap_index)) {
+                continue;
+            }
+
+            if (original_mld_enable[vap->vap_index] !=
+                    vap->u.bss_info.mld_info.common_info.mld_enable ||
+                original_link_id[vap->vap_index] !=
+                    vap->u.bss_info.mld_info.common_info.mld_link_id) {
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d: MLO VAP %d settings changed for radio index %d\n", __func__, __LINE__, vap->vap_index, r_idx);
+                vap_setting_changed = true;
+                break;
+            }
+        }
+
+        if (vap_setting_changed) {
             rdk_wifi_vap_info_t *rdk_vaps = get_wifidb_rdk_vaps(r_idx);
             if (rdk_vaps != NULL) {
-                wifidb_update_wifi_vap_config(r_idx, mgr_vap_info_map, rdk_vaps);
+                wifidb_update_wifi_vap_config(r_idx, mgr_vap_map, rdk_vaps);
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Updated MLD group info for radio index %d\n", __func__, __LINE__, r_idx);
             }
         }
@@ -3400,7 +3455,7 @@ static wifi_vap_info_t *webconfig_find_vap_by_name(webconfig_subdoc_decoded_data
 typedef struct {
     wifi_mld_common_info_t *mld_conf;
     wifi_vap_info_t        *vap_info;
-    bool                    is_compatible;
+    bool                   is_compatible;
 } mld_group_entry_t;
 
 /**
@@ -3462,15 +3517,13 @@ static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_m
  * @param vap_names      Array of VAP names to filter (ignored if data == NULL)
  * @param vap_names_size Number of entries in vap_names (ignored if data == NULL)
  * @param log_type       Log module (WIFI_MGR, WIFI_DB, etc.)
- * @return Bitmask of radio indices where mld_enable was changed
  */
-unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
-    char **vap_names, unsigned int vap_names_size, wifi_dbg_type_t log_type)
+void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
+    unsigned int vap_names_size, wifi_dbg_type_t log_type)
 {
     const mac_address_t zero_mac = { 0 };
     mac_address_t mlo_mac = { 0 };
     mac_addr_str_t mac_str = { 0 };
-    unsigned int radio_bitmap = 0;
     unsigned int i;
 
     for (i = 0; i < MLD_UNIT_COUNT; i++) {
@@ -3530,20 +3583,16 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 if (mld_conf->mld_link_id != radio_mld_link_id) {
                     wifi_util_dbg_print(log_type,
                         "%s:%d: vap_index=%d mld_link_id=%u overridden by private VAP value %u\n",
-                        __func__, __LINE__, mgr_vap->vap_index, mld_conf->mld_link_id, radio_mld_link_id);
-
-                    radio_bitmap |= (1u << mgr_vap->radio_index);
+                        __func__, __LINE__, mgr_vap->vap_index, mld_conf->mld_link_id,
+                        radio_mld_link_id);
                     mld_conf->mld_link_id = radio_mld_link_id;
                 }
 
                 /* Seed mld_addr and disable MLD on first pass only.
                  * Subsequent group iterations must not overwrite values
-                 * already propagated by an earlier group. */
+                 * already propagated by an earlier group.*/
                 if (i == 0) {
                     memcpy(mld_conf->mld_addr, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
-                    if (mld_conf->mld_enable) {
-                        radio_bitmap |= (1u << mgr_vap->radio_index);
-                    }
                     mld_conf->mld_enable = false;
                 }
 
@@ -3611,9 +3660,8 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
                 memcmp(mlo_mac, zero_mac, sizeof(mac_address_t)) == 0) {
             if (total_candidates > 0) {
                 wifi_util_info_print(log_type,
-                    "%s:%d: MLO group %d disabled (compatible_count=%u, main_link=%s)\n",
-                    __func__, __LINE__, i, compatible_count,
-                    main_link_vap ? "Found" : "Missing");
+                    "%s:%d: MLO group %d disabled (compatible_count=%u, main_link=%s)\n", __func__,
+                    __LINE__, i, compatible_count, main_link_vap ? "Found" : "Missing");
             }
             continue;
         }
@@ -3630,7 +3678,6 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
 
                 entry->mld_conf->mld_enable = true;
                 memcpy(entry->mld_conf->mld_addr, mlo_mac, sizeof(mac_address_t));
-                radio_bitmap |= (1u << entry->vap_info->radio_index);
 
                 wifi_util_info_print(log_type,
                     "%s:%d: MLO Enabled! mld_addr=%s for vap_index=%d (link_id=%d, mld_id=%d)\n",
@@ -3639,8 +3686,6 @@ unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
             }
         }
     }
-
-    return radio_bitmap;
 }
 
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
