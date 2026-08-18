@@ -1,0 +1,137 @@
+name: 'Establish trusted PR context'
+description: >
+  Stage-2 helper for the build-check workflow_run (adding comments part). Downloads a
+  named artifact produced by the triggering stage-1 run, STRICTLY validates its
+  pr-meta.env, binds the recorded PR number back to the triggering run's head
+  repo/branch (values a fork cannot forge), and re-checks head-sha freshness.
+  No check-out or executing PR code. It only reads the artifact as passive
+  data. Every stage-2 posting job (clang-format / build / clang-tidy) pipes its
+  trust decision through this one action, so the security-critical logic lives in
+  one place only.
+
+inputs:
+  artifact-name:
+    description: 'Name of the stage-1 artifact to download (must contain pr-meta.env).'
+    required: true
+  run-id:
+    description: 'github.event.workflow_run.id — the run that produced the artifact.'
+    required: true
+  github-token:
+    description: 'Token with actions:read (download) + pull-requests:read (identity/freshness).'
+    required: true
+  repository:
+    description: 'github.repository — owner/name of the BASE repo the comment posts to.'
+    required: true
+  expected-repo:
+    description: 'github.event.workflow_run.head_repository.full_name (the fork/branch source).'
+    required: true
+  expected-branch:
+    description: 'github.event.workflow_run.head_branch.'
+    required: true
+
+outputs:
+  found:
+    description: '"true" only if the artifact was present AND fully validated.'
+    value: ${{ steps.gate.outputs.found }}
+  fresh:
+    description: '"true" if the PR head still points at the recorded head_sha.'
+    value: ${{ steps.gate.outputs.fresh }}
+  pr_number:
+    description: 'Validated PR number (bare integer). Empty when found=false.'
+    value: ${{ steps.gate.outputs.pr_number }}
+  head_sha:
+    description: 'Validated PR head sha (40-hex) recorded by stage 1. Empty when found=false.'
+    value: ${{ steps.gate.outputs.head_sha }}
+  dir:
+    description: 'Directory the artifact was extracted into (== artifact-name).'
+    value: ${{ inputs.artifact-name }}
+
+runs:
+  using: composite
+  steps:
+    # Each artifact lands in its own directory (path: == name) so multiple
+    # pr-context calls in one job never clobber each other's files.
+    - name: Download stage-1 artifact (${{ inputs.artifact-name }})
+      id: dl
+      continue-on-error: true            # a missing artifact is normal → found=false
+      uses: actions/download-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.artifact-name }}
+        run-id: ${{ inputs.run-id }}
+        github-token: ${{ inputs.github-token }}
+
+    - name: Validate metadata, identity, and freshness
+      id: gate
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        DL_OUTCOME: ${{ steps.dl.outcome }}
+        ART_DIR: ${{ inputs.artifact-name }}
+        REPO: ${{ inputs.repository }}
+        EXPECTED_REPO: ${{ inputs.expected-repo }}
+        EXPECTED_BRANCH: ${{ inputs.expected-branch }}
+      run: |
+        # No `-e`: this script drives its own control flow and fails CLOSED with
+        # explicit exits. Pipefail so a failed producer in a pipe is not masked.
+        set -uo pipefail
+        found=false; fresh=false; pr_number=; head_sha=
+
+        if [ "$DL_OUTCOME" != "success" ]; then
+          echo "No '$ART_DIR' artifact on the triggering run — nothing to post for this job."
+        else
+          META="$ART_DIR/pr-meta.env"
+          if [ ! -f "$META" ]; then
+            echo "::error::Artifact '$ART_DIR' present but pr-meta.env is missing — refusing."
+            exit 1
+          fi
+
+          # 1. FORMAT : accept only a bare integer (PR no.) and a sha. The file
+          #    came from a job that may have run fork code, so it is attacker-
+          #    controlled: never `source` it (env injection)! Parse each field instead.
+          pr_number="$(grep -oP '^pr_number=\K[0-9]+$' "$META" | head -1 || true)"
+          head_sha="$(grep -oP '^head_sha=\K[0-9a-f]{40}$' "$META" | head -1 || true)"
+          if [ -z "$pr_number" ] || [ -z "$head_sha" ]; then
+            echo "::error::Malformed pr-meta.env in '$ART_DIR'; refusing to continue."
+            exit 1
+          fi
+
+          # 2. IDENTITY : a valid-looking number could still be a different PR,
+          #    letting a fork post onto some unrelated PR. Bind pr_number back to the
+          #    head repo+branch GitHub recorded for this workflow_run, as this can't be
+          #    forged. (Whether head_sha is fresh is checked below.)
+          if ! gh api "/repos/$REPO/pulls/$pr_number" > "$ART_DIR/pr.json"; then
+            echo "::error::Could not read PR #$pr_number from the API."
+            exit 1
+          fi
+          pr_repo="$(jq -r '.head.repo.full_name' "$ART_DIR/pr.json")"
+          pr_branch="$(jq -r '.head.ref' "$ART_DIR/pr.json")"
+          if [ "$pr_repo" != "$EXPECTED_REPO" ] || [ "$pr_branch" != "$EXPECTED_BRANCH" ]; then
+            echo "::error::PR #$pr_number ($pr_repo:$pr_branch) does not belong to the triggering run ($EXPECTED_REPO:$EXPECTED_BRANCH); refusing."
+            exit 1
+          fi
+          found=true
+
+          # 3. FRESHNESS : concurrency only cancels an inflight run. Run that
+          #    already moved past, can still post outdated content. Fail
+          #    on an empty read (which means transient API failure), and mark
+          #    stale only on if different sha is observed. Callers decide
+          #    whether to skip a stale post.
+          current_sha="$(jq -r '.head.sha' "$ART_DIR/pr.json")"
+          if [ -z "$current_sha" ] || [ "$current_sha" = "null" ]; then
+            echo "::error::Could not read current PR head sha."
+            exit 1
+          fi
+          if [ "$current_sha" = "$head_sha" ]; then
+            fresh=true
+          else
+            echo "PR #$pr_number moved past $head_sha (now $current_sha) — callers should skip stale posts."
+          fi
+        fi
+
+        {
+          echo "found=$found"
+          echo "fresh=$fresh"
+          echo "pr_number=$pr_number"
+          echo "head_sha=$head_sha"
+        } >> "$GITHUB_OUTPUT"

@@ -478,7 +478,9 @@ $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 # executing its link command.
 #
 
-$(PROGRAM): $(ALLOBJECTS)
+# PROGRAM links -lwifihal, so libwifihal.a must exist first; naming it as a
+# prerequisite makes `make -j` safe (objects alone don't order the archive).
+$(PROGRAM): $(HAL_LIBRARY) $(ALLOBJECTS)
 	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
 #
