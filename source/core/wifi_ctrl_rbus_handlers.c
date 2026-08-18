@@ -2125,10 +2125,12 @@ static void subscribe_device_tunnel_status(wifi_ctrl_t *ctrl)
         eventReceiveHandler, NULL, 0);
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tunnel status subscribe rc=%d\n", __func__, __LINE__,
         rc);
-    if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
-        ctrl->device_tunnel_status_subscribed = true;
+    if (rc == bus_error_success ||rc == bus_error_subscription_already_exist) {
+		ctrl->device_tunnel_status_subscribed = true;
+		if (rc == bus_error_success) {
         sync_device_tunnel_status(ctrl);
-    } else {
+		}
+	} else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to subscribe to %s, rc:%d\n", __func__,
             __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
     }
