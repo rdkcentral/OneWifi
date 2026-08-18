@@ -200,16 +200,23 @@ unsigned int selfheal_event_publish_time(void)
      return atoi(buff) ? atoi(buff) : 1;
 }
 
-int reboot_device(wifi_ctrl_t *ctrl)
+int reboot_device(void* arg)
 {
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)arg;
     bus_error_t rc;
 
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        return TIMER_TASK_ERROR;
+    }
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s : Setting the reboot reason as ECO Mode Reboot and rebooting the device\n", __FUNCTION__);
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
         "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason", "ECO Mode Reboot");
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
             __LINE__, rc);
-        return RETURN_ERR;
+        return TIMER_TASK_ERROR;
     }
 
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
@@ -217,10 +224,10 @@ int reboot_device(wifi_ctrl_t *ctrl)
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
             __LINE__, rc);
-        return RETURN_ERR;
+        return TIMER_TASK_ERROR;
     }
 
-    return RETURN_OK;
+    return TIMER_TASK_COMPLETE;
 }
 
 void selfheal_event_publish(wifi_ctrl_t *ctrl)
@@ -636,6 +643,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 
     int rc = bus_error_success;
     unsigned int total_slept = 0;
+    unsigned int max_retries = 5;
     char *pTmp = NULL;
     // rdk_dev_mode_type_t mode;
     wifi_global_param_t global_param = { 0 };
@@ -699,6 +707,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #endif
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
+        max_retries = 0; // don't wait for tunnel status to be up at boot
     }
 
 #if defined EASY_MESH_NODE
@@ -711,16 +720,17 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 
    while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
         bus_error_success) {
-        sleep(1);
-        total_slept++;
-        if (total_slept >= 5) {
+        if (total_slept >= max_retries) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: Giving up on bus_data_get_fn for %s\n",
                 __func__, __LINE__, name);
+            get_bus_descriptor()->bus_data_free_fn(&data);
             return;
         }
 
-        get_bus_descriptor()->bus_data_free_fn(&data);
+        sleep(1);
+        total_slept++;
 
+        get_bus_descriptor()->bus_data_free_fn(&data);
         memset(&data, 0, sizeof(raw_data_t));
     }
 
@@ -4057,3 +4067,70 @@ int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_updat
     return ret;
 }
 #endif
+
+
+void update_apmld_map(apmld_map_t *apmld_map)
+{
+    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
+    unsigned int num_radios = getNumberRadios();
+    int mld_id_to_idx[MLD_UNIT_COUNT];
+
+    apmld_map->mld_group_count = 0;
+    memset(apmld_map->mld_groups, 0, sizeof(apmld_map->mld_groups));
+    memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
+
+    for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
+        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
+        if (mgr_vap_info_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
+            apmld_map->mld_group_count = 0;
+            return;
+        }
+
+        for (unsigned int k = 0; k < mgr_vap_info_map->num_vaps; k++) {
+            wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
+            wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
+            unsigned int id = mld_info->mld_id;
+            unsigned int mld_idx;
+
+            if (isVapSTAMesh(vap_config->vap_index)) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d VAP %s is a STA mesh, skip\n", __func__, __LINE__, vap_config->vap_name);
+                continue;
+            }
+
+            if (!mld_info->mld_enable) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            if (id >= MLD_UNIT_COUNT) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid MLD ID: %u\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            // Check if MLD ID already has an index
+            if (mld_id_to_idx[id] == -1) {
+                // New MLD ID
+                if (apmld_map->mld_group_count >= MLD_UNIT_COUNT) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d MLD count exceeds maximum\n", __func__, __LINE__);
+                    continue;
+                }
+                mld_idx = apmld_map->mld_group_count;
+                mld_id_to_idx[id] = mld_idx;
+                apmld_map->mld_group_count++;
+            } else {
+                // Existing MLD ID
+                mld_idx = mld_id_to_idx[id];
+            }
+
+            // Store VAP in MLD group
+            mld_group_t *mld_group = &apmld_map->mld_groups[mld_idx];
+            if (mld_group->mld_vap_count < MAX_NUM_RADIOS) {
+                mld_group->mld_vaps[mld_group->mld_vap_count] = vap_config;
+                mld_group->mld_vap_count++;
+            }
+        }
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Total MLD count = %d\n", __func__, __LINE__, apmld_map->mld_group_count);
+}
