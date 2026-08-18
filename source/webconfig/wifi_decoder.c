@@ -6664,7 +6664,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     // Default 802.1Q Settings Policy
     def_8021q_policy = cJSON_GetObjectItem(policy_obj, "Default 802.1Q Settings Policy");
     if (def_8021q_policy != NULL) {
-        decode_param_integer(def_8021q_policy, "Primay VLAN ID", param);
+        decode_param_integer(def_8021q_policy, "Primary VLAN ID", param);
         em_config->default_8021q_policy.primary_vid = (unsigned short)param->valuedouble;
         decode_param_integer(def_8021q_policy, "Default PCP", param);
         em_config->default_8021q_policy.default_pcp = (unsigned char)param->valuedouble;
