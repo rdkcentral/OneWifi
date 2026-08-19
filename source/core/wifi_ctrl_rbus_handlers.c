@@ -1418,6 +1418,39 @@ static void wan_failover_handler(char *event_name, bus_data_prop_t *p_data, void
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: recv data:%d\r\n", __func__, __LINE__, data_value);
 }
+static void hotspotTunnelHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
+{
+    (void)userData;
+    char *pTmp;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n",  __func__, __LINE__);
+
+    if(strcmp(event_name, "TunnelStatus") != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Not Tunnel event, %s\n", __func__, __LINE__, event_name);
+        return;
+    } else if (p_data->value.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Received:%s data type:%x",
+                __func__, __LINE__, event_name, p_data->value.data_type);
+        return;
+    }
+
+    pTmp = (char *)p_data->value.raw_data.bytes;
+
+    if (pTmp == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: wrong bus data recived for Event %s", __func__, __LINE__, event_name);
+        return;
+    }
+
+    bool tunnel_status = false;
+    if (strcmp(pTmp, "TUNNEL_UP") == 0) {
+        tunnel_status = true;
+    }
+
+    wifi_event_subtype_t ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up :
+                                                 wifi_event_type_xfinity_tunnel_down;
+    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
+        NULL);
+}
 
 bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
@@ -2525,7 +2558,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
-	    if (consumer_app_file == 0 && ctrl->tunnel_events_subscribed == false) {
+    if (consumer_app_file == 0 && ctrl->tunnel_events_subscribed == false) {
         // TODO - what's the namespace for the event
         int rc = bus_desc->bus_event_subs_fn(&ctrl->handle, "TunnelStatus", hotspotTunnelHandler,
             NULL, 0);
@@ -2538,7 +2571,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
                 __FUNCTION__, __LINE__, rc);
         }
     }
-	
+
     if (ctrl->mesh_status_subscribed == false) {
         int rc = bus_desc->bus_event_subs_fn(&ctrl->handle, MESH_STATUS, meshStatusHandler, NULL,
             0);
