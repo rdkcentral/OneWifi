@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -29,6 +30,29 @@
 #include "wifi_util.h"
 
 extern bool monitor_initialization_done;
+
+static unsigned int monitor_event_payload_size(wifi_event_subtype_t sub_type)
+{
+    switch (sub_type) {
+    case wifi_event_monitor_csi_pinger:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(csi_mon_t);
+    case wifi_event_monitor_stats_flag_change:
+    case wifi_event_monitor_radio_stats_flag_change:
+    case wifi_event_monitor_vap_stats_flag_change:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(client_stats_enable_t);
+    case wifi_event_monitor_connect:
+    case wifi_event_monitor_disconnect:
+    case wifi_event_monitor_deauthenticate:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(auth_deauth_dev_t);
+    case wifi_event_monitor_auth_req:
+    case wifi_event_monitor_assoc_req:
+    case wifi_event_monitor_reassoc_req:
+    case wifi_event_monitor_action_frame:
+        return offsetof(wifi_monitor_data_t, u) + sizeof(frame_data_t);
+    default:
+        return sizeof(wifi_monitor_data_t);
+    }
+}
 
 const char *wifi_event_type_to_string(wifi_event_type_t type)
 {
@@ -262,7 +286,7 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
             msg_len = sizeof(wifi_provider_response_t);
         } else {
             msg = event->u.mon_data;
-            msg_len = sizeof(wifi_monitor_data_t);
+            msg_len = event->mon_data_len ? event->mon_data_len : sizeof(wifi_monitor_data_t);
         }
         break;
     case wifi_event_type_analytic:
@@ -358,6 +382,7 @@ wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type,
                 event = NULL;
                 return NULL;
             }
+            event->mon_data_len = msg_len;
         }
         break;
     case wifi_event_type_csi:
@@ -705,7 +730,8 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
                 sizeof(wifi_mon_stats_args_t));
             event->u.provider_response->stat_array_size = response->stat_array_size;
         } else {
-            memcpy(event->u.mon_data, data, sizeof(wifi_monitor_data_t));
+            memcpy(event->u.mon_data, data, msg_len);
+            event->mon_data_len = msg_len;
         }
         break;
     case wifi_event_type_analytic:
@@ -837,6 +863,7 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
 {
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     wifi_event_t *event;
+    unsigned int mon_data_len;
     bool is_limit_reached;
 
     /* Check if monitor queue is initialized */
@@ -851,13 +878,14 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
         return RETURN_ERR;
     }
 
-    event = create_wifi_event(sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type);
+    mon_data_len = monitor_event_payload_size(sub_type);
+    event = create_wifi_event(mon_data_len, wifi_event_type_monitor, sub_type);
     if (event == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s %d data malloc null\n", __FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
-    if (copy_msg_to_event(mon_data, sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type,
+    if (copy_msg_to_event(mon_data, mon_data_len, wifi_event_type_monitor, sub_type,
             rt, event) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s %d unable to copy msg to event for sub_type : %s\n",
             __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
