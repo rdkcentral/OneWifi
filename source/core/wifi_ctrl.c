@@ -1459,7 +1459,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     bus_register_handlers(ctrl);
 
     ctrl->bus_events_subscribed = false;
-    ctrl->tunnel_events_subscribed = false;
     ctrl->device_tunnel_status_subscribed = false;
     ctrl->hotspot_status_subscribed = false;
     ctrl->hotspot_enabled = false;
@@ -2348,7 +2347,7 @@ static int bus_check_and_subscribe_events(void* arg)
 
     if ((ctrl->bus_events_subscribed == false) ||
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
-        (ctrl->hotspot_enabled && ctrl->device_tunnel_status_subscribed == false) ||
+        (ctrl->hotspot_status_subscribed && ctrl->device_tunnel_status_subscribed == false) ||
         (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
