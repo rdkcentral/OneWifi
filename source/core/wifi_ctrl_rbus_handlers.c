@@ -2106,33 +2106,26 @@ static void subscribe_device_tunnel_status(wifi_ctrl_t *ctrl)
 static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
-    char *status = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_bus_desc_t *bus_desc = get_bus_descriptor();
     bus_error_t rc;
 
     if (ctrl == NULL || bus_desc == NULL || event_name == NULL || p_data == NULL ||
         strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
-        p_data->value.data_type != bus_data_type_string) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid hotspot status event\n", __func__,
+        p_data->value.data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid hotspot enable event\n", __func__,
             __LINE__);
         return;
     }
 
-    status = (char *)p_data->value.raw_data.bytes;
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Hotspot status event value=%s tunnel_subscribed=%d\n",
-        __func__, __LINE__, status != NULL ? status : "NULL",
+    ctrl->hotspot_enabled = p_data->value.raw_data.b;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Hotspot enable event value=%d tunnel_subscribed=%d\n",
+        __func__, __LINE__, ctrl->hotspot_enabled,
         ctrl->device_tunnel_status_subscribed);
-    if (status == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL hotspot status\n", __func__, __LINE__);
-        return;
-    }
 
-    if (strcmp(status, "Enabled") == 0) {
-        ctrl->hotspot_enabled = true;
+    if (ctrl->hotspot_enabled) {
         subscribe_device_tunnel_status(ctrl);
-    } else if (strcmp(status, "Disabled") == 0) {
-        ctrl->hotspot_enabled = false;
+    } else {
         if (ctrl->device_tunnel_status_subscribed) {
             rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS);
             if (rc == bus_error_success) {
@@ -2143,9 +2136,6 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
                     __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
             }
         }
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Unsupported hotspot status:%s\n", __func__,
-            __LINE__, status);
     }
 }
 
@@ -2584,10 +2574,9 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             raw_data_t hs_data;
             memset(&hs_data, 0, sizeof(raw_data_t));
             rc = bus_desc->bus_data_get_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS, &hs_data);
-            if (rc == bus_error_success && hs_data.data_type == bus_data_type_string) {
-                char *hs_val = (char *)hs_data.raw_data.bytes;
-                if (hs_val != NULL && strcmp(hs_val, "Enabled") == 0) {
-                    ctrl->hotspot_enabled = true;
+            if (rc == bus_error_success && hs_data.data_type == bus_data_type_boolean) {
+                ctrl->hotspot_enabled = hs_data.raw_data.b;
+                if (ctrl->hotspot_enabled) {
                     wifi_util_info_print(WIFI_CTRL, "%s:%d Hotspot already Enabled at startup\n",
                         __func__, __LINE__);
                 }
