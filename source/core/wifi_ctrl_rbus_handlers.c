@@ -2535,6 +2535,20 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
+	    if (consumer_app_file == 0 && ctrl->tunnel_events_subscribed == false) {
+        // TODO - what's the namespace for the event
+        int rc = bus_desc->bus_event_subs_fn(&ctrl->handle, "TunnelStatus", hotspotTunnelHandler,
+            NULL, 0);
+        if (rc != bus_error_success) {
+            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d TunnelStatus subscribe Failed, rc:
+            // %d\n",__FUNCTION__, __LINE__, rc);
+        } else {
+            ctrl->tunnel_events_subscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d TunnelStatus subscribe success, rc: %d\n",
+                __FUNCTION__, __LINE__, rc);
+        }
+    }
+	
     if (ctrl->mesh_status_subscribed == false) {
         int rc = bus_desc->bus_event_subs_fn(&ctrl->handle, MESH_STATUS, meshStatusHandler, NULL,
             0);
