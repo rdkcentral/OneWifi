@@ -93,6 +93,9 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
 unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
 {
     switch (authtype) {
+        case EM_AUTH_OPEN:
+            return wifi_security_mode_none;
+
         case EM_AUTH_WPAPSK:
             return wifi_security_mode_wpa_personal;
 
@@ -102,6 +105,12 @@ unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
         case EM_AUTH_WPA:
             return wifi_security_mode_wpa_enterprise;
 
+        case EM_AUTH_WPA2:
+            return wifi_security_mode_wpa2_enterprise;
+
+        case EM_AUTH_ENHANCED_OPEN:
+            return wifi_security_mode_enhanced_open;
+
         case EM_AUTH_WPA3_PERSONAL:
             return wifi_security_mode_wpa3_personal;
 
@@ -110,6 +119,51 @@ unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
 
         default:
             return wifi_security_mode_wpa3_personal;
+    }
+}
+
+/* Apply the M2 derived security settings shared by the AP and mesh STA
+   branches. The union is read as RADIUS settings for the open modes (None,
+   Enhanced Open) and the enterprise modes, and as the key otherwise. */
+static void update_security_from_easymesh(wifi_vap_security_t *security, const char *password)
+{
+    switch (security->mode) {
+        case wifi_security_mode_none:
+            memset(&security->u, 0, sizeof(security->u));
+            security->encr = wifi_encryption_none;
+            break;
+        case wifi_security_mode_enhanced_open:
+            /* OWE encrypts with AES and requires PMF. */
+            memset(&security->u, 0, sizeof(security->u));
+            security->encr = wifi_encryption_aes;
+            security->mfp = wifi_mfp_cfg_required;
+            break;
+        case wifi_security_mode_wpa_enterprise:
+        case wifi_security_mode_wpa_wpa2_enterprise:
+        case wifi_security_mode_wpa2_enterprise:
+        case wifi_security_mode_wpa3_enterprise:
+            /* RADIUS settings live in the union and M2 carries none; keep them. */
+            if (!is_valid_encr_for_mode(security->mode, security->encr)) {
+                security->encr = wifi_encryption_aes;
+            }
+            break;
+        default:
+            memset(&security->u, 0, sizeof(security->u));
+            snprintf(security->u.key.key, sizeof(security->u.key.key), "%s", password);
+            if (!is_valid_encr_for_mode(security->mode, security->encr)) {
+                security->encr = wifi_encryption_aes;
+            }
+            /* Clear a PMF requirement left over from a previous WPA3 mode. */
+            security->mfp = wifi_mfp_cfg_disabled;
+            break;
+    }
+    /* PMF is required in the pure WPA3 modes but stays optional in transition
+       mode so that WPA2 clients can still associate. */
+    if (security->mode == wifi_security_mode_wpa3_transition) {
+        security->mfp = wifi_mfp_cfg_optional;
+    } else if (security->mode == wifi_security_mode_wpa3_personal ||
+               security->mode == wifi_security_mode_wpa3_enterprise) {
+        security->mfp = wifi_mfp_cfg_required;
     }
 }
 
@@ -2583,6 +2637,11 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            /* Hotspot vaps have no dispatch branch below and would abort the
+               whole subdoc; skip them like the DML loop does. */
+            if (is_vap_hotspot(wifi_prop, vap->vap_index) == TRUE) {
+                continue;
+            }
             iface_map = NULL;
             for (k = 0; k < (sizeof(wifi_prop->interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
                 if (wifi_prop->interface_map[k].index == vap->vap_index) {
@@ -3119,21 +3178,13 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                         vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
                     if (vap->vap_mode == wifi_vap_mode_ap) {
                         vap->u.bss_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
-                        if(vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
-                            vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                        }
                         snprintf(vap->u.bss_info.ssid, sizeof(vap->u.bss_info.ssid), "%s", radio_config->ssid[k]);
-                        snprintf(vap->u.bss_info.security.u.key.key,
-                            sizeof(vap->u.bss_info.security.u.key.key), "%s", radio_config->password[k]);
+                        update_security_from_easymesh(&vap->u.bss_info.security, radio_config->password[k]);
                         vap->u.bss_info.enabled = radio_config->enable[k];
                     } else if (vap->vap_mode == wifi_vap_mode_sta) {
                         vap->u.sta_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
-                        if(vap->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) {
-                            vap->u.sta_info.security.mfp = wifi_mfp_cfg_optional;
-                        }
                         snprintf(vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid), "%s", radio_config->ssid[k]);
-                        snprintf(vap->u.sta_info.security.u.key.key,
-                            sizeof(vap->u.sta_info.security.u.key.key), "%s", radio_config->password[k]);
+                        update_security_from_easymesh(&vap->u.sta_info.security, radio_config->password[k]);
                         vap->u.sta_info.enabled = radio_config->enable[k];
                     } else {
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: unhandled vap_mode:%d\n",
