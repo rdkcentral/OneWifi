@@ -25,9 +25,9 @@ export GIT_HTTP_LOW_SPEED_TIME=999999
 
 #git clone other wifi related components
 cd ..
-git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
-git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
-git clone https://github.com/xmidt-org/trower-base64.git trower-base64
+[ ! -d rdk-wifi-hal ] && git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
+[ ! -d halinterface ] && git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
+[ ! -d trower-base64 ] && git clone https://github.com/xmidt-org/trower-base64.git trower-base64
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
