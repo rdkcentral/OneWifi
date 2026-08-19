@@ -64,7 +64,7 @@ extern "C" {
 #define WIFI_TxRx_RATE_LIST                "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.TxRxRateList"
 #define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
 #define WIFI_DEVICE_TUNNEL_STATUS          "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus"
-#define WIFI_HOTSPOT_STATUS                "Device.X_COMCAST-COM_GRE.Tunnel.1.Status"
+#define WIFI_HOTSPOT_STATUS                "Device.X_COMCAST-COM_GRE.Tunnel.1.Enable"
 #define SPEEDTEST_STATUS                   "Device.IP.Diagnostics.X_RDKCENTRAL-COM_SpeedTest.Status"
 #define SPEEDTEST_SUBSCRIBE                "Device.IP.Diagnostics.X_RDK_SpeedTest.SubscriberUnPauseTimeOut"
 
