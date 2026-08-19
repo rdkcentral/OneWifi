@@ -94,7 +94,11 @@
 #define ONEWIFI_DB_VERSION_ENCR_NEW_FLAG 100049
 #define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100050
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100051
+#if defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#define ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG 100053
+#else
 #define ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG 100052
+#endif
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -5073,7 +5077,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
 
 int wifidb_get_default_mld_link_id(int band)
 {
-#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+#if defined(CONFIG_IEEE80211BE) && (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
     switch (band) {
     case WIFI_FREQUENCY_2_4_BAND: return 2;
     case WIFI_FREQUENCY_5_BAND:   return 1;
@@ -5299,7 +5303,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     __func__, __LINE__, config->vap_array[i].vap_name);
             }
         }
-#ifdef _XB10_PRODUCT_REQ_
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG) {
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
                 __func__, __LINE__, g_wifidb->db_version);
@@ -5321,7 +5325,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 }
             }
         }
-#endif /* _XB10_PRODUCT_REQ_ */
+#endif /* _XB10_PRODUCT_REQ_ || _SCER11BEL_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_ */
 #endif /* CONFIG_IEEE80211BE */
         if (is_vap_info_upgrade_needed) {
             int ret = wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
