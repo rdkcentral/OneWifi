@@ -1462,6 +1462,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     ctrl->device_tunnel_status_subscribed = false;
     ctrl->hotspot_status_subscribed = false;
     ctrl->hotspot_enabled = false;
+    ctrl->tunnel_events_subscribed = false;
 
     // subscribe for BUS events
     bus_subscribe_events(ctrl);
