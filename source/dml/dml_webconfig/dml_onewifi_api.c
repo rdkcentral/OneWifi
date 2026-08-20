@@ -1472,6 +1472,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
     webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
+    int ret;
 
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
@@ -1487,10 +1488,15 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     if (webconfig_encode(&webconfig_dml.webconfig, data, subdoc) == webconfig_error_none) {
         str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
+        ret = push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+            wifi_event_webconfig_set_data_dml, NULL);
+        wifi_util_info_print(WIFI_DMCLI,
+            "[RDKB-66453][CAC_TRACE] dml_subdoc_queue subdoc=%u ret=%d\n",
+            subdoc, ret);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();
+        ret = RETURN_ERR;
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
@@ -1499,7 +1505,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     free(data);
     data = NULL;
 
-    return RETURN_OK;
+    return ret;
 }
 int push_factory_reset_to_ctrl_queue()
 {
@@ -1541,6 +1547,7 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 
 int push_vap_dml_cache_to_one_wifidb()
 {
+    int ret;
 
     if(is_vap_config_changed == FALSE)
     {
@@ -1578,6 +1585,9 @@ int push_vap_dml_cache_to_one_wifidb()
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
+    wifi_util_info_print(WIFI_DMCLI,
+        "[RDKB-66453][CAC_TRACE] dml_vap_subdocs_pushed mask=0x%x\n",
+        is_vap_config_changed);
     is_vap_config_changed = FALSE;
     return RETURN_OK;
 }
