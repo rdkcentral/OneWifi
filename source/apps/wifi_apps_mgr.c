@@ -250,6 +250,9 @@ int app_init(wifi_app_t *app, unsigned int create_flag)
 
     if (app->desc.mgmt_frame_hook_fn != NULL) {
         wifi_hal_register_frame_hook(app->desc.mgmt_frame_hook_fn);
+        wifi_util_info_print(WIFI_APPS,
+            "[RDKB-66453][CAC_TRACE] frame_hook_registered app=%d\n",
+            app->desc.inst);
     }
 
     return RETURN_OK;

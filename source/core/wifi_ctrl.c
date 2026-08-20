@@ -1171,6 +1171,11 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         return RETURN_ERR;
     }
 
+    wifi_util_info_print(WIFI_CTRL,
+        "[RDKB-66453][CAC_TRACE] frame_received ap_index=%d type=%d len=%u "
+        "dir=%d recv_freq=%u\n",
+        ap_index, type, len, dir, recv_freq);
+
     memset(&mgmt_frame, 0, sizeof(mgmt_frame));
     mgmt_frame.frame.ap_index = ap_index;
     memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
@@ -1248,7 +1253,17 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         evt_subtype = wifi_event_hal_csa_beacon_frame;
     }
     if (evt_subtype != wifi_event_hal_unknown_frame) {
-        push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
+        wifi_util_info_print(WIFI_CTRL,
+            "[RDKB-66453][CAC_TRACE] frame_queued ap_index=%d type=%d event=%d len=%u\n",
+            ap_index, type, evt_subtype, mgmt_frame.frame.len);
+        int ret = push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame),
+            wifi_event_type_hal_ind, evt_subtype, NULL);
+        wifi_util_info_print(WIFI_CTRL,
+            "[RDKB-66453][CAC_TRACE] frame_queue_result ap_index=%d type=%d event=%d ret=%d\n",
+            ap_index, type, evt_subtype, ret);
+        if (ret != RETURN_OK) {
+            return ret;
+        }
     } else {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Unknown frame type received! skipped push_event_to_ctrl_queue, ap_index:%d, type:%d\n", __func__, __LINE__, ap_index, type);
     }

@@ -271,6 +271,11 @@ int notify_force_disassociation(wifi_ctrl_t *ctrl, int ap_index, char *threshold
     snprintf(str, sizeof(str), "%d,%s,%s,%d,%d", (ap_index + 1), threshold, mac, threshold_val,
         client_val);
 
+    wifi_util_info_print(WIFI_CTRL,
+        "[RDKB-66453][CAC_TRACE] deny_notify ap_index=%d threshold=%s mac=%s "
+        "threshold_val=%d client_val=%d\n",
+        ap_index, threshold, mac, threshold_val, client_val);
+
     if (vap_info != NULL) {
         strncpy(vap_info->u.bss_info.postassoc.client_force_disassoc_info, str,
             sizeof(vap_info->u.bss_info.postassoc.client_force_disassoc_info));
@@ -311,6 +316,9 @@ int notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, char *threshold, ma
     }
 
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_DENY_ASSOCIATION, str);
+    wifi_util_info_print(WIFI_CTRL,
+        "[RDKB-66453][CAC_TRACE] deny_notify_result ap_index=%d threshold=%s ret=%d\n",
+        ap_index, threshold, rc);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
             __LINE__, rc);

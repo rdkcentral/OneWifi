@@ -5262,6 +5262,9 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
                 p_input_str);
             return false;
         }
+        wifi_util_info_print(WIFI_DMCLI,
+            "[RDKB-66453][CAC_TRACE] dml_preassoc_set vap=%s param=%s value=%s\n",
+            vap_pcfg->vap_name, param_name, p_input_str);
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "OperationalDataTransmitRates")) {
@@ -5287,6 +5290,9 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
                 p_input_str);
             return false;
         }
+        wifi_util_info_print(WIFI_DMCLI,
+            "[RDKB-66453][CAC_TRACE] dml_preassoc_set vap=%s param=%s value=%s\n",
+            vap_pcfg->vap_name, param_name, p_input_str);
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "SupportedDataTransmitRates")) {
@@ -5312,6 +5318,9 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
                 p_input_str);
             return false;
         }
+        wifi_util_info_print(WIFI_DMCLI,
+            "[RDKB-66453][CAC_TRACE] dml_preassoc_set vap=%s param=%s value=%s\n",
+            vap_pcfg->vap_name, param_name, p_input_str);
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "MinimumAdvertisedMCS")) {

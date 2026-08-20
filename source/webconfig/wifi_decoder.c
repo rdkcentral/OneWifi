@@ -3970,7 +3970,16 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
             strcpy((char *)preassoc_info->sixGOpInfoMinRate, "disabled");
    }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoding preassoc settings passed\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG,
+        "[RDKB-66453][CAC_TRACE] decode_preassoc basic=%s operational=%s "
+        "supported=%s mcs=%s rssi=%s snr=%s cu=%s\n",
+        preassoc_info->basic_data_transmit_rates,
+        preassoc_info->operational_data_transmit_rates,
+        preassoc_info->supported_data_transmit_rates,
+        preassoc_info->minimum_advertised_mcs,
+        preassoc_info->rssi_up_threshold,
+        preassoc_info->snr_threshold,
+        preassoc_info->cu_threshold);
 
     return webconfig_error_none;
 }

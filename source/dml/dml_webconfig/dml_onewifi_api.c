@@ -1249,6 +1249,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
     webconfig_subdoc_data_t data;
     char *str = NULL;
+    int ret;
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
@@ -1258,17 +1259,22 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     if (webconfig_encode(&webconfig_dml.webconfig, &data, subdoc) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
+        ret = push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+            wifi_event_webconfig_set_data_dml, NULL);
+        wifi_util_info_print(WIFI_DMCLI,
+            "[RDKB-66453][CAC_TRACE] dml_subdoc_queue subdoc=%u ret=%d\n",
+            subdoc, ret);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();
+        ret = RETURN_ERR;
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
 
     webconfig_data_free(&data);
 
-    return RETURN_OK;
+    return ret;
 }
 int push_factory_reset_to_ctrl_queue()
 {
@@ -1310,6 +1316,7 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 
 int push_vap_dml_cache_to_one_wifidb()
 {
+    int ret;
 
     if(is_vap_config_changed == FALSE && is_vap_cac_config_changed == FALSE)
     {
@@ -1347,7 +1354,12 @@ int push_vap_dml_cache_to_one_wifidb()
     }
     if(is_vap_cac_config_changed) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_cac DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_cac);
+        ret = push_subdoc_to_one_wifidb(webconfig_subdoc_type_cac);
+        wifi_util_info_print(WIFI_DMCLI,
+            "[RDKB-66453][CAC_TRACE] dml_cac_subdoc_pushed ret=%d\n", ret);
+        if (ret != RETURN_OK) {
+            return ret;
+        }
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);

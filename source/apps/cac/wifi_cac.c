@@ -54,6 +54,40 @@ void cac_print(char *format, ...)
     fclose(fpg);
 }
 
+static int cac_send_mgmt_frame_response(frame_data_t *msg, int response_type,
+    int status, int status_code, const char *reason)
+{
+    int ret;
+
+    wifi_util_info_print(WIFI_APPS,
+        "[RDKB-66453][CAC_TRACE] response_request ap_index=%d input_type=%d "
+        "response_type=%d status=%d status_code=%d reason=%s len=%d rssi=%d phy_rate=%d\n",
+        msg->frame.ap_index, msg->frame.type, response_type, status, status_code,
+        reason, msg->frame.len, msg->frame.sig_dbm, msg->frame.phy_rate);
+
+    ret = wifi_hal_send_mgmt_frame_response(msg->frame.ap_index, response_type, status,
+        status_code, msg->data, msg->frame.sta_mac, msg->frame.len, msg->frame.sig_dbm);
+
+    wifi_util_info_print(WIFI_APPS,
+        "[RDKB-66453][CAC_TRACE] response_result ap_index=%d input_type=%d "
+        "response_type=%d status_code=%d reason=%s ret=%d\n",
+        msg->frame.ap_index, msg->frame.type, response_type, status_code, reason, ret);
+    return ret;
+}
+
+static void cac_log_preassoc_config(int ap_index, const char *vap_name,
+    const wifi_preassoc_control_t *config, const char *source)
+{
+    wifi_util_info_print(WIFI_APPS,
+        "[RDKB-66453][CAC_TRACE] config source=%s ap_index=%d vap=%s "
+        "basic=%s operational=%s supported=%s mcs=%s rssi=%s snr=%s cu=%s\n",
+        source, ap_index, vap_name, config->basic_data_transmit_rates,
+        config->operational_data_transmit_rates,
+        config->supported_data_transmit_rates,
+        config->minimum_advertised_mcs, config->rssi_up_threshold,
+        config->snr_threshold, config->cu_threshold);
+}
+
 void telemetry_event_cac(char *deny_type,int index, char *deny_reason,char *mac,int threshold ,int value)
 {
     char telemetry_buff[64] = {0};
@@ -595,6 +629,9 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
         return;
     }
 
+    cac_log_preassoc_config(msg->frame.ap_index, vap_name, &wifidb_preassoc_conf,
+        "mgmt_frame");
+
     if (strcmp(wifidb_preassoc_conf.rssi_up_threshold, "disabled") == 0) {
         rssi_enabled = false;
         rssi_status = status_ok;
@@ -631,6 +668,20 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
         free(preassoc_basic_rates);
         preassoc_basic_rates = NULL;
     }
+
+    wifi_util_info_print(WIFI_APPS,
+        "[RDKB-66453][CAC_TRACE] evaluate ap_index=%d vap=%s type=%d mac=%s "
+        "mbr_enabled=%d min_mbr_rate=%.1f basic=%s operational=%s supported=%s "
+        "mcs=%s rssi=%s snr=%s cu=%s\n",
+        msg->frame.ap_index, vap_name, msg->frame.type, str, mbr_enabled,
+        min_mbr_rate, wifidb_preassoc_conf.basic_data_transmit_rates,
+        wifidb_preassoc_conf.operational_data_transmit_rates,
+        wifidb_preassoc_conf.supported_data_transmit_rates,
+        wifidb_preassoc_conf.minimum_advertised_mcs,
+        wifidb_preassoc_conf.rssi_up_threshold,
+        wifidb_preassoc_conf.snr_threshold,
+        wifidb_preassoc_conf.cu_threshold);
+
     if (!rssi_enabled && !snr_enabled && !chan_util_enabled && !mbr_enabled) {
         return;
     }
@@ -658,10 +709,8 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
             }
         }
         if (mbr_status == status_ok && msg->frame.type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index,
-              type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
-              msg->data, msg->frame.sta_mac,
-              msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
+                "probe_mbr_ok");
             return;
         }
 
@@ -711,10 +760,8 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
              mbr_status == status_ok) {
             wifi_util_info_print(WIFI_APPS,"%s:%d: send status ok\n",__func__, __LINE__);
             cac_print("%s:%d, ASSOC ACCEPT\n", __func__, __LINE__);
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index,
-                            type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
-                            msg->data, msg->frame.sta_mac,
-                            msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
+                "all_thresholds_ok");
             return;
         }
 
@@ -722,21 +769,15 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
              snr_status == status_deny ||
              mbr_status == status_deny) {
             wifi_util_info_print(WIFI_APPS,"%s:%d: send status failure\n",__func__, __LINE__);
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index, 
-                            type, CAC_STATUS_DENY, 
-                            WLAN_STATUS_DENIED_POOR_CHANNEL_CONDITIONS, 
-                            msg->data, msg->frame.sta_mac, 
-                            msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_DENY,
+                WLAN_STATUS_DENIED_POOR_CHANNEL_CONDITIONS, "threshold");
             return;
         }
 
         if (chan_util_status == status_deny) {
             wifi_util_info_print(WIFI_APPS,"%s:%d: send status failure\n",__func__, __LINE__);
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index, 
-                            type, CAC_STATUS_DENY, 
-                            WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA, 
-                            msg->data, msg->frame.sta_mac, 
-                            msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_DENY,
+                WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA, "channel_utilization");
             return;
         }
 
@@ -867,10 +908,8 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
         }
 
         if (mbr_status == status_ok && msg->frame.type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index,
-                    type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
-                    msg->data, msg->frame.sta_mac,
-                    msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
+                "probe_mbr_ok");
             return;
         }
 
@@ -880,10 +919,8 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
              mbr_status == status_ok) {
             wifi_util_info_print(WIFI_APPS,"%s:%d: send status ok\n",__func__, __LINE__);
             cac_print("%s:%d, ASSOC ACCEPT %s\n", __func__, __LINE__, str);
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index, 
-                            type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
-                            msg->data, msg->frame.sta_mac, 
-                            msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_OK, WLAN_STATUS_SUCCESS,
+                "all_thresholds_ok");
             elem = hash_map_remove(req_map, mac_str);
 
             if (elem != NULL) {
@@ -896,11 +933,8 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
              snr_status == status_deny ||
              mbr_status == status_deny) {
             wifi_util_info_print(WIFI_APPS,"%s:%d: send status failure\n",__func__, __LINE__);
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index, 
-                            type, CAC_STATUS_DENY, 
-                            WLAN_STATUS_DENIED_POOR_CHANNEL_CONDITIONS, 
-                            msg->data, msg->frame.sta_mac,
-                            msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_DENY,
+                WLAN_STATUS_DENIED_POOR_CHANNEL_CONDITIONS, "threshold");
             elem = hash_map_remove(req_map, mac_str);
 
             if (elem != NULL) {
@@ -911,11 +945,8 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
 
         if (chan_util_status == status_deny) {
             wifi_util_info_print(WIFI_APPS,"%s:%d: send status failure\n",__func__, __LINE__);
-            wifi_hal_send_mgmt_frame_response(msg->frame.ap_index, 
-                            type, CAC_STATUS_DENY, 
-                            WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA, 
-                            msg->data, msg->frame.sta_mac,
-                            msg->frame.len, msg->frame.sig_dbm);
+            cac_send_mgmt_frame_response(msg, type, CAC_STATUS_DENY,
+                WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA, "channel_utilization");
             elem = hash_map_remove(req_map, mac_str);
 
             if (elem != NULL) {
@@ -1044,6 +1075,14 @@ int cac_event_hal_assoc_device(wifi_app_t *apps, void *arg)
 
     snprintf(temp_str, sizeof(temp_str), "\"%s\" vap index:%d", client_mac, (assoc_data->ap_index + 1));
 
+    wifi_util_info_print(WIFI_APPS,
+        "[RDKB-66453][CAC_TRACE] assoc_callback ap_index=%d mac=%s rssi=%d snr=%d "
+        "uplink_rate=%d operating_standard=%s channel_bandwidth=%s\n",
+        assoc_data->ap_index, client_mac, assoc_data->dev_stats.cli_RSSI,
+        assoc_data->dev_stats.cli_SNR, assoc_data->dev_stats.cli_LastDataUplinkRate,
+        assoc_data->dev_stats.cli_OperatingStandard,
+        assoc_data->dev_stats.cli_OperatingChannelBandwidth);
+
     cac_print("%s:%d connected %s\n", __func__, __LINE__, temp_str);
 
     sta_map = apps->data.u.cac.sta_map;
@@ -1081,6 +1120,9 @@ int cac_event_hal_disassoc_device(wifi_app_t *apps, void *arg)
 
     (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
     str_tolower(client_mac);
+    wifi_util_info_print(WIFI_APPS,
+        "[RDKB-66453][CAC_TRACE] disassoc_callback ap_index=%d mac=%s reason=%d\n",
+        assoc_data->ap_index, client_mac, assoc_data->reason);
     snprintf(temp_str, sizeof(temp_str), "\"%s\" vap index:%d reason:%d", client_mac, (assoc_data->ap_index + 1), assoc_data->reason);
     cac_print("%s:%d disconnected %s\n", __func__, __LINE__, temp_str);
 
@@ -1201,7 +1243,12 @@ int cac_mgmt_frame_hook(int ap_index, wifi_mgmtFrameType_t type)
         return NL_OK;
     }
 
+    cac_log_preassoc_config(ap_index, vap_name, &wifidb_preassoc_conf, "frame_hook");
+
     if((type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) && (strlen (wifidb_preassoc_conf.basic_data_transmit_rates) <= 0) && (strcmp(wifidb_preassoc_conf.basic_data_transmit_rates, "disabled") == 0)) {
+        wifi_util_info_print(WIFI_APPS,
+            "[RDKB-66453][CAC_TRACE] hook_decision ap_index=%d type=%d decision=allow "
+            "reason=probe_mbr_disabled\n", ap_index, type);
         return NL_OK;
     }
 
@@ -1209,8 +1256,14 @@ int cac_mgmt_frame_hook(int ap_index, wifi_mgmtFrameType_t type)
          (strcmp(wifidb_preassoc_conf.snr_threshold, "disabled") != 0) ||
          (strcmp(wifidb_preassoc_conf.cu_threshold, "disabled") != 0) ||
          ((strlen (wifidb_preassoc_conf.basic_data_transmit_rates) > 0) && (strcmp(wifidb_preassoc_conf.basic_data_transmit_rates, "disabled") != 0))) {
+        wifi_util_info_print(WIFI_APPS,
+            "[RDKB-66453][CAC_TRACE] hook_decision ap_index=%d type=%d decision=skip "
+            "reason=cac_enabled\n", ap_index, type);
         return NL_SKIP;
     }
+    wifi_util_info_print(WIFI_APPS,
+        "[RDKB-66453][CAC_TRACE] hook_decision ap_index=%d type=%d decision=allow "
+        "reason=cac_disabled\n", ap_index, type);
     return NL_OK;
 }
 

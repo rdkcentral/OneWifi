@@ -1688,9 +1688,16 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
             if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
                 || is_postassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])) {
                 // cac or tcm data changed apply
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received cac config, applying new configuration for vap: %d\n",
-                                    __func__, __LINE__, vap_index);
-                wifidb_update_wifi_cac_config(&data->radios[radio_index].vaps.vap_map);
+                int ret = wifidb_update_wifi_cac_config(&data->radios[radio_index].vaps.vap_map);
+                wifi_util_info_print(WIFI_CTRL,
+                    "[RDKB-66453][CAC_TRACE] webconfig_apply radio=%u array_vap=%u "
+                    "ap_index=%u vap=%s ret=%d basic=%s operational=%s supported=%s\n",
+                    radio_index, vap_index, tgt_vap_index,
+                    data->radios[radio_index].vaps.vap_map.vap_array[vap_index].vap_name,
+                    ret,
+                    data->radios[radio_index].vaps.vap_map.vap_array[vap_index].u.bss_info.preassoc.basic_data_transmit_rates,
+                    data->radios[radio_index].vaps.vap_map.vap_array[vap_index].u.bss_info.preassoc.operational_data_transmit_rates,
+                    data->radios[radio_index].vaps.vap_map.vap_array[vap_index].u.bss_info.preassoc.supported_data_transmit_rates);
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: Received vap config is same for %d, not applying\n",
                             __func__, __LINE__, vap_index);
