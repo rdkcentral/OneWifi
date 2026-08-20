@@ -433,8 +433,9 @@ void hotspot_timing_start(void);
 void hotspot_timing_stop(void);
 int reboot_device(void* arg);
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
-unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
-    char **vap_names, unsigned int vap_names_size, wifi_dbg_type_t log_type);
+void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
+    unsigned int vap_names_size, wifi_dbg_type_t log_type);
+void update_mlo_rfc_enable(bool init);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
 int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info);
 #if defined(_PLATFORM_BANANAPI_R4_)
