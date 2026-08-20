@@ -3650,12 +3650,37 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     wifi_radio_feature_param_t *radio_feat = NULL;
     wifi_radio_operationParam_t *temp_radio_params = NULL;
     wifi_mgr_t *g_wifidb;
+    unsigned int num_of_radios;
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
     wifi_monitor_data_t *data = NULL;
+
+    if (ch_chg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL channel-change event\n", __func__, __LINE__);
+        return;
+    }
+
+    if (g_wifidb == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_mgr_t is NULL radio:%d\n", __func__, __LINE__,
+            ch_chg->radioIndex);
+        return;
+    }
+
+    if (ch_chg->radioIndex >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d invalid radio index:%d max:%d\n", __func__,
+            __LINE__, ch_chg->radioIndex, MAX_NUM_RADIOS);
+        return;
+    }
+
+    num_of_radios = getNumberRadios();
+    if (num_of_radios > MAX_NUM_RADIOS || ch_chg->radioIndex >= num_of_radios) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d radio index:%d outside configured radios:%u max:%d\n", __func__, __LINE__,
+            ch_chg->radioIndex, num_of_radios, MAX_NUM_RADIOS);
+        return;
+    }
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
@@ -3682,7 +3707,9 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         temp_radio_params->channelWidth = ch_chg->channelWidth;
         temp_radio_params->DfsEnabled = radio_params->DfsEnabled;
         // Channel change completed flag
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
         g_wifidb->channel_change_in_progress[ch_chg->radioIndex] = false;
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         wifi_util_dbg_print(WIFI_CTRL,
             "%s:%d Channel change is completed, setting channel change progress to false\n",
             __func__, __LINE__);
