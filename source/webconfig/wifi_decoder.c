@@ -6721,7 +6721,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
         str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].sta_mac);
 
         decode_param_allow_empty_string(array_item, "Client Type", param);
-        strncpy(sta_link_metrics->per_sta_metrics[i].client_type, param->valuestring, strlen(param->valuestring));
+        strncpy(sta_link_metrics->per_sta_metrics[i].client_type, param->valuestring, sizeof(sta_link_metrics->per_sta_metrics[i].client_type) - 1);
         sta_link_metrics->per_sta_metrics[i].client_type[strlen(param->valuestring)] = '\0';
 
         // Associated STA Link Metrics
@@ -6732,6 +6732,11 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
         }else {
             decode_param_integer(sta_link_metrics_obj, "Number of BSSIDs", param);
             sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid = param->valuedouble;
+
+            if (param->valuedouble < 0 || param->valuedouble > STA_MAX_BSS_ASSOCIATIONS) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid number of BSSID\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
 
             per_bssid_metrics = cJSON_GetObjectItem(sta_link_metrics_obj, "Per BSSID Metrics");
             if (per_bssid_metrics == NULL) {
@@ -6973,7 +6978,10 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
             radio_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)malloc(
                 radio_report->vap_reports[j].sta_cnt * sizeof(per_sta_metrics_t));
-            for (sta_cnt = 0; sta_cnt < cJSON_GetArraySize(assoc_sta_arr); sta_cnt++) {
+            int arr_sz = cJSON_GetArraySize(assoc_sta_arr);
+            if (arr_sz > radio_report->vap_reports[j].sta_cnt)
+                arr_sz = radio_report->vap_reports[j].sta_cnt;
+            for (sta_cnt = 0; sta_cnt < arr_sz; sta_cnt++) {
                 link_metrics_obj = cJSON_GetArrayItem(assoc_sta_arr, sta_cnt);
                 if (link_metrics_obj == NULL) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Null array item\n", __func__,
@@ -6991,9 +6999,14 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     radio_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
 
                 decode_param_allow_optional_string(link_metrics_obj, "Client Type", value_object);
-                strncpy(radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
-                    value_object->valuestring, strlen(value_object->valuestring));
-                radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
+                per_sta_metrics_t *psm = &radio_report->vap_reports[j].sta_link_metrics[sta_cnt];
+                if (value_object != NULL && value_object->valuestring != NULL) {
+                    strncpy(psm->client_type, value_object->valuestring,
+                        sizeof(psm->client_type) - 1);
+                    psm->client_type[sizeof(psm->client_type) - 1] = '\0';
+                } else {
+                    psm->client_type[0] = '\0';
+                }
 
                 param_obj = cJSON_GetObjectItem(link_metrics_obj, "Associated STA Link Metrics");
                 if (param_obj == NULL) {
@@ -7005,6 +7018,10 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                 radio_report->vap_reports[j]
                     .sta_link_metrics[sta_cnt]
                     .assoc_sta_link_metrics.num_bssid = value_object->valuedouble;
+                if (value_object->valuedouble < 0 || value_object->valuedouble > STA_MAX_BSS_ASSOCIATIONS) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Number of BSSIDs: %f\n", __func__, __LINE__, value_object->valuedouble);
+                    return webconfig_error_decode;
+                }
 
                 bssid_arr = cJSON_GetObjectItem(param_obj, "Per BSSID Metrics");
                 if (bssid_arr != NULL && cJSON_IsArray(bssid_arr)) {
@@ -7050,6 +7067,10 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                 radio_report->vap_reports[j]
                     .sta_link_metrics[sta_cnt]
                     .assoc_sta_ext_link_metrics.num_bssid = value_object->valuedouble;
+                if (value_object->valuedouble < 0 || value_object->valuedouble > STA_MAX_BSS_ASSOCIATIONS) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Number of BSSIDs: %f\n", __func__, __LINE__, value_object->valuedouble);
+                    return webconfig_error_decode;
+                }
 
                 bssid_arr = cJSON_GetObjectItem(param_obj, "Per BSSID Metrics");
                 if (bssid_arr != NULL && cJSON_IsArray(bssid_arr)) {

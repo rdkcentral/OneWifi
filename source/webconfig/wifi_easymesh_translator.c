@@ -1655,6 +1655,25 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
     return webconfig_error_none ;
 }
 
+static void em_free_assoc_client_diff_entries(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *d = &data->u.decoded;
+
+    if (data == NULL) {
+        return;
+    }
+
+    for (unsigned i = 0; i < d->num_radios; i++) {
+        for (unsigned j = 0; j < d->radios[i].vaps.num_vaps; j++) {
+            rdk_wifi_vap_info_t *r = &d->radios[i].vaps.rdk_vap_array[j];
+            if (r->associated_devices_diff_map) {
+                hash_map_destroy(r->associated_devices_diff_map); /* frees keys+values; assoc_dev_data_t is flat */
+                r->associated_devices_diff_map = NULL;
+            }
+        }
+    }
+}
+
 //Converting data elements of assoc dev stats to em_sta_info_t of easymesh
 webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_subdoc_data_t *data)
 {
@@ -1731,6 +1750,10 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
             em_sta_dev_info->errors_tx                = client_stats[count].cli_ErrorsSent;
         }
     }
+    free((*assoc_device_stats)->stat_pointer);
+    (*assoc_device_stats)->stat_pointer = NULL;
+    free(*assoc_device_stats);
+    *assoc_device_stats = NULL;
     return webconfig_error_none;
 }
 
@@ -1804,6 +1827,8 @@ webconfig_error_t translate_sta_link_metrics_object_to_easy_mesh_sta_info(webcon
             proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_assoc);
         }
     }
+    free(params->em_sta_link_metrics_rsp.per_sta_metrics);
+    params->em_sta_link_metrics_rsp.per_sta_metrics = NULL;
     return webconfig_error_none;
 }
 
@@ -3236,6 +3261,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
     proto = (webconfig_external_easymesh_t *)params->external_protos;
     if (proto == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external proto is NULL\n", __func__, __LINE__);
+        free(channel_st);
+        params->collect_stats.stats = NULL;
         return webconfig_error_translate_to_easymesh;
     }
 
@@ -3297,6 +3324,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No of scan results : %d \n", __func__, __LINE__,
         count);
 
+    free(channel_st);
+    params->collect_stats.stats = NULL;
     return webconfig_error_none;
 }
 #endif
@@ -3917,8 +3946,10 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
         case webconfig_subdoc_type_associated_clients:
             if (translate_associated_clients_to_easymesh_sta_info(data) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_associated_clients translation to easymesh failed\n", __func__, __LINE__);
+                em_free_assoc_client_diff_entries(data);
                 return webconfig_error_translate_to_easymesh;
             }
+            em_free_assoc_client_diff_entries(data);
             break;
 
         case webconfig_subdoc_type_radio:
