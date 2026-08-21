@@ -2773,7 +2773,7 @@ static int update_pinger_map(int ap_index, mac_addr_t mac_addr, bool remove)
     if (remove) {
         pinger_data = (csi_pinger_data_t *)hash_map_get(g_events_monitor.csi_pinger_map, mac_str);
         if (pinger_data != NULL) {
-            wifi_util_info_print(WIFI_MON, "%s %d: Disabling Pinger for mac %s\n", __func__, __LINE__, mac_str);
+            wifi_util_info_print(WIFI_MON, "TXB7-7233 CSIMON %s %d: Disabling Pinger for mac %s\n", __func__, __LINE__, mac_str);
             pinger_data = hash_map_remove(g_events_monitor.csi_pinger_map, mac_str);
             if (pinger_data != NULL) {
                 free(pinger_data);
@@ -2785,7 +2785,7 @@ static int update_pinger_map(int ap_index, mac_addr_t mac_addr, bool remove)
         memset(pinger_data, 0, sizeof(csi_pinger_data_t));
         pinger_data->ap_index = ap_index;
         memcpy(pinger_data->mac_addr, mac_addr, sizeof(mac_addr_t));
-        wifi_util_info_print(WIFI_MON, "%s %d: Enabling Pinger for mac %s\n", __func__, __LINE__, mac_str);
+        wifi_util_info_print(WIFI_MON, "TXB7-7233 CSIMON %s %d: Enabling Pinger for mac %s\n", __func__, __LINE__, mac_str);
         hash_map_put(g_events_monitor.csi_pinger_map, strdup(mac_str), pinger_data);
     }
 
@@ -2805,7 +2805,7 @@ static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinge
         g_monitor_module.csi_sched_id = 0;
         return 0;
     } else if (g_monitor_module.csi_sched_id == 0) {
-        wifi_util_info_print(WIFI_MON, "%s %d: Scheduling Pinger\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_MON, "TXB7-7233 CSIMON %s %d: Scheduling Pinger\n", __func__, __LINE__);
         scheduler_add_timer_task(g_monitor_module.sched, TRUE,
                 &(g_monitor_module.csi_sched_id), csi_sendPingData,
                 NULL, csi_time_interval, 0, FALSE);
@@ -2825,7 +2825,7 @@ int csi_sendPingData(void *arg)
     }
     pinger_data  = (csi_pinger_data_t *)hash_map_get_first(g_events_monitor.csi_pinger_map);
     while(pinger_data != NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Adding Mac for csi collection %02x..%02x ap_idx %d\n",__func__, pinger_data->mac_addr[0], pinger_data->mac_addr[5], pinger_data->ap_index);
+        wifi_util_dbg_print(WIFI_MON, "TXB7-7233 CSIMON %s: Adding Mac for csi collection %02x..%02x ap_idx %d\n",__func__, pinger_data->mac_addr[0], pinger_data->mac_addr[5], pinger_data->ap_index);
         if((pinger_data->client_ip[0] != '\0') && ((pinger_data->client_ip_age*CSI_PING_INTERVAL)  <= IPREFRESH_PERIOD_IN_MILLISECONDS) && (pinger_data->vap_ip[0] != '\0')) {
             refresh  = FALSE;
         } else {
@@ -4502,9 +4502,14 @@ int collector_postpone_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
+    bool channel_change_in_progress = false;
+
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    channel_change_in_progress = mgr->channel_change_in_progress[elem->args->radio_index];
+    pthread_mutex_unlock(&mgr->data_cache_lock);
 
     if ((mon_data->scan_status[elem->args->radio_index] == 1 ||
-            mgr->channel_change_in_progress[elem->args->radio_index] == true) &&
+            channel_change_in_progress == true) &&
         (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
         wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n", __func__,
             __LINE__, elem->key);
@@ -4531,10 +4536,16 @@ int collector_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
+    bool channel_change_in_progress = false;
+
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    channel_change_in_progress = mgr->channel_change_in_progress[elem->args->radio_index];
+    pthread_mutex_unlock(&mgr->data_cache_lock);
 
     if (elem->stat_desc->stats_type == mon_stats_type_radio_channel_stats || 
             elem->stat_desc->stats_type == mon_stats_type_neighbor_stats) {
-        if (mon_data->scan_status[elem->args->radio_index] == 1 || mgr->channel_change_in_progress[elem->args->radio_index] == true) {
+        if (mon_data->scan_status[elem->args->radio_index] == 1 ||
+            channel_change_in_progress == true) {
             if (elem->collector_postpone_task_sched_id == 0) {
                 wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
                 scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
