@@ -2834,6 +2834,21 @@ Radio_GetParamStringValue
                 }
         }
 #endif /* CONFIG_IEEE80211BE */
+
+#ifdef CONFIG_IEEE80211BN
+        if ( pcfg->variant & WIFI_80211_VARIANT_BN )
+        {
+                if (AnscSizeOfString(buf) != 0)
+                {
+                    strcat(buf, ",bn");
+                }
+                else
+                {
+                    strcat(buf, "bn");
+                }
+        }
+#endif /* CONFIG_IEEE80211BN */
+
         if ( AnscSizeOfString(buf) < *pUlSize)
         {
             AnscCopyString(pValue, buf);
@@ -4301,6 +4316,9 @@ Radio_SetParamStringValue
 #ifdef CONFIG_IEEE80211BE
             "WIFI_80211_VARIANT_BE",
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            "WIFI_80211_VARIANT_BN",
+#endif /* CONFIG_IEEE80211BN */
         };
 
         for (size_t i = 0; i < (sizeof(wifi_mode_strings) / sizeof(wifi_mode_strings[0])); i++) {

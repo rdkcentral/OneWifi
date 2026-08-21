@@ -1164,6 +1164,9 @@ static void convert_variant_to_str(wifi_ieee80211Variant_t variant, char *str, s
 #ifdef CONFIG_IEEE80211BE
         "be",
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        "bn",
+#endif /* CONFIG_IEEE80211BN */
     };
     static const wifi_ieee80211Variant_t arr_enum[] =
     {
@@ -1176,6 +1179,9 @@ static void convert_variant_to_str(wifi_ieee80211Variant_t variant, char *str, s
 #ifdef CONFIG_IEEE80211BE
         WIFI_80211_VARIANT_BE,
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        WIFI_80211_VARIANT_BN,
+#endif /* CONFIG_IEEE80211BN */
     };
 
     for (size_t i = 0; i < ARRAY_SIZE(arr_enum); i++) {

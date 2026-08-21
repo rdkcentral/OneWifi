@@ -1605,6 +1605,9 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 #ifdef CONFIG_IEEE80211BE
         "11be",
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        "11bn",
+#endif /* CONFIG_IEEE80211BN */
     };
 
     static const wifi_ieee80211Variant_t arr_enum[] =
@@ -1618,6 +1621,10 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 #ifdef CONFIG_IEEE80211BE
         WIFI_80211_VARIANT_BE,
 #endif /* CONFIG_IEEE80211BE */
+
+#ifdef CONFIG_IEEE80211BN
+        WIFI_80211_VARIANT_BN,
+#endif /* CONFIG_IEEE80211BN */
     };
     bool is_mode_valid = false;
 
@@ -3068,8 +3075,11 @@ struct  wifiStdHalMap wifiStdMap[] =
     {WIFI_80211_VARIANT_AD, "ad"},
     {WIFI_80211_VARIANT_AX, "ax"},
 #ifdef CONFIG_IEEE80211BE
-    {WIFI_80211_VARIANT_BE, "be"}
+    {WIFI_80211_VARIANT_BE, "be"},
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    {WIFI_80211_VARIANT_BN, "bn"}
+#endif /* CONFIG_IEEE80211BN */
 };
 
 bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number, bool twoG80211axEnable)
@@ -3653,6 +3663,13 @@ bool is_bandwidth_and_hw_variant_compatible(uint32_t variant, wifi_channelBandwi
         }
     }
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    if ( variant & WIFI_80211_VARIANT_BN ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_320MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_320MHZ;
+        }
+    }
+#endif /* CONFIG_IEEE80211BN */
     if (supported_bw < current_bw) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d variant:%d supported bandwidth:%d current_bw:%d \r\n", __func__, __LINE__, variant, supported_bw, current_bw);
         return false;

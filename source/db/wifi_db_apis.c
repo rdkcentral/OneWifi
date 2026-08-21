@@ -96,6 +96,7 @@
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100051
 #define ONEWIFI_DB_VERSION_2G11AXENABLE_RFC_FLAG 100053
 #define ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG 100052
+#define ONEWIFI_DB_VERSION_IEEE80211BN_FLAG 100053
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -5063,6 +5064,19 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
         }
     }
 #endif /* CONFIG_IEEE80211BE */
+
+#ifdef CONFIG_IEEE80211BN
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BN_FLAG) {
+        wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config for 11bn, old db version: %d total radios: %u\n",
+            __func__, __LINE__, index, g_wifidb->db_version, total_radios);
+        if (config->band != WIFI_FREQUENCY_2_4_BAND)
+            config->variant |= WIFI_80211_VARIANT_BN;
+        if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
+            return;
+        }
+    }
+#endif /* CONFIG_IEEE80211BN */
 }
 
 int wifidb_get_default_mld_link_id(int band)
@@ -7364,7 +7378,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
 #endif  /* defined(_PLATFORM_BANANAPI_R4_) */
 #endif /* defined(CONFIG_IEEE80211BE) */
-
+#if defined(CONFIG_IEEE80211BN)
+            cfg->variant |= WIFI_80211_VARIANT_BN;
+#endif /* defined(CONFIG_IEEE80211BN) */
 
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
@@ -7395,6 +7411,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef CONFIG_IEEE80211BE
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            cfg->variant |= WIFI_80211_VARIANT_BN;
+#endif /* CONFIG_IEEE80211BN */
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg->operatingClass = 128;
@@ -7411,6 +7430,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef CONFIG_IEEE80211BE
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            cfg->variant |= WIFI_80211_VARIANT_BN;
+#endif /* CONFIG_IEEE80211BN */
             break;
         case WIFI_FREQUENCY_6_BAND:
             cfg->operatingClass = 134;
@@ -7429,6 +7451,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
 #endif /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            cfg->variant |= WIFI_80211_VARIANT_BN;
+#endif /* CONFIG_IEEE80211BN */
             break;
         default:
             wifi_util_error_print(WIFI_DB,"%s:%d radio index %d, invalid band %d\n", __func__,
