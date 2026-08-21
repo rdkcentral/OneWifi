@@ -3866,7 +3866,7 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                 mld_group_entry_t *entry = &entries[j];
 
                 if (entry->vap_info == main_link_vap ||
-                        is_mlo_config_matching(main_link_vap, entry->vap_info, log_type)) {
+                    is_mlo_config_matching(main_link_vap, entry->vap_info, log_type)) {
                     entry->is_compatible = true;
                     compatible_count++;
                 } else {
