@@ -10501,7 +10501,7 @@ PreAssocDeny_GetParamStringValue
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
     {
-        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        snprintf(pValue,*pUlSize,"disabled, -50 to -95");
         return 0;
     }
 
