@@ -24,7 +24,7 @@ else
         mkdir -p $HOSTAP_DIR
 fi
 
-if [ -f "$HOSTAP_PATCH_FLAG" ]; then
+if [ -f "$HOSTAP_PATCH_FLAG" ] && [ -d "$HOSTAP_DIR/hostap-2.10" ]; then
     echo "Hostap patches are already applied. Retry after deleting $(dirname "$HOSTAP_PATCH_FLAG")"
 else
     #clone the upstream hostap in HOSTAP_DIR as hostap-x.xx

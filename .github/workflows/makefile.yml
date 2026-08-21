@@ -146,9 +146,9 @@ jobs:
         setup="easymesh_project/OneWifi/build/linux/${{ matrix.platform.id }}/setup.sh"
         patchlist="easymesh_project/OneWifi/build/openwrt/hostap_patch_list.txt"
         if [ "${{ matrix.platform.id }}" = "bpi" ]; then
-          hash="$(cat "$setup" "$patchlist" | sha256sum | cut -c1-16)"
+          hash="$(cat "$setup" "$patchlist" | sha256sum | cut -c1-32)"
         else
-          hash="$(sha256sum < "$setup" | cut -c1-16)"
+          hash="$(sha256sum < "$setup" | cut -c1-32)"
         fi
         echo "files_hash=$hash" >> "$GITHUB_OUTPUT"
 

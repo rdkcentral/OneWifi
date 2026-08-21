@@ -55,7 +55,7 @@ else
     cd $HOSTAP_DIR
 fi
 
-if [ -f "$HOSTAP_PATCH_FLAG" ]; then
+if [ -f "$HOSTAP_PATCH_FLAG" ] && [ -d "$HOSTAP_SRC_DIR/hostap-2.11" ]; then
     echo "Hostap patches are already applied. Retry after deleting $HOSTAP_DIR"
 else
     #Clone meta-cmf-bananapi, meta-filogic and  apply hostap patches
