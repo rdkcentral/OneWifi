@@ -139,6 +139,9 @@ jobs:
           # hostap-patches repo IS the payload — any commit is a patch change.
           upstream="$(git ls-remote https://github.com/rdkcentral/hostap-patches.git HEAD | cut -f1)"
         fi
+        if [ -z "$upstream" ]; then
+          echo "::warning::Could not resolve upstream patch hash (API/network failure). Cache key falls back to 'unresolved' — a hit may serve a stale tree if patches changed during the outage. Purge with: gh cache delete --all"
+        fi
         echo "upstream=${upstream:-unresolved}" >> "$GITHUB_OUTPUT"
 
         # Hash the setup script + any supplementary patch-list file. rpi's
@@ -146,9 +149,9 @@ jobs:
         setup="easymesh_project/OneWifi/build/linux/${{ matrix.platform.id }}/setup.sh"
         patchlist="easymesh_project/OneWifi/build/openwrt/hostap_patch_list.txt"
         if [ "${{ matrix.platform.id }}" = "bpi" ]; then
-          hash="$(cat "$setup" "$patchlist" | sha256sum | cut -c1-32)"
+          hash="$(cat "$setup" "$patchlist" | sha256sum | cut -c1-16)"
         else
-          hash="$(sha256sum < "$setup" | cut -c1-32)"
+          hash="$(sha256sum < "$setup" | cut -c1-16)"
         fi
         echo "files_hash=$hash" >> "$GITHUB_OUTPUT"
 

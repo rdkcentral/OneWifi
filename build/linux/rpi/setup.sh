@@ -31,12 +31,12 @@ else
     #and move to the relevant commit
     cd $HOSTAP_DIR
     echo "Cloning hostap in $HOSTAP_DIR"
-    git clone $UPSTREAM_HOSTAP_URL hostap-2.10
+    git clone $UPSTREAM_HOSTAP_URL hostap-2.10 || exit 1
     cd hostap-2.10
-    git reset --hard $SRCREV_2_10
+    git reset --hard $SRCREV_2_10 || exit 1
 
     #clone the hostap-patches and apply
-    git clone https://github.com/rdkcentral/hostap-patches.git hostap-patches
+    git clone https://github.com/rdkcentral/hostap-patches.git hostap-patches || exit 1
 
     #Apply the patch
     patch_filenames="hostap-patches/0001-OneWifi-related-hostap-patch-for-2.10-based-hostap.patch \
@@ -47,10 +47,10 @@ else
         hostap-patches/0006-RDKB-59523-connectivity-via-supplicant.patch \
 	hostap-patches/mdu_radius_psk_auth_2_10.patch"
     echo "Applying patches ..."
-    git am $patch_filenames
+    git am $patch_filenames || exit 1
 
     #Apply additional patches
-    patch -p3 --no-backup-if-mismatch < hostap-patches/xfi-tel-complete_2_10.patch
+    patch -p3 --no-backup-if-mismatch < hostap-patches/xfi-tel-complete_2_10.patch || exit 1
 
     #Delete the hostap-patches directory after applying
     rm -rf hostap-patches

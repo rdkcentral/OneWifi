@@ -49,9 +49,9 @@ else
     #and move to the relevant commit
     cd $HOSTAP_SRC_DIR
     echo "Cloning hostap in $HOSTAP_SRC_DIR"
-    git clone $UPSTREAM_HOSTAP_URL hostap-2.11
+    git clone $UPSTREAM_HOSTAP_URL hostap-2.11 || exit 1
     cd hostap-2.11
-    git reset --hard $SRCREV_2_11
+    git reset --hard $SRCREV_2_11 || exit 1
     cd $HOSTAP_DIR
 fi
 
@@ -67,8 +67,8 @@ else
         git remote add origin "$META_FILOGIC_URL"
         #Increased HTTP post buffer to 1GB to prevent "RPC failed" or "Broken pipe" errors.
         git config http.postBuffer 1048576000
-        git fetch --depth 1 origin "$SRCREV_META_FILOGIC"
-        git reset --hard FETCH_HEAD
+        git fetch --depth 1 origin "$SRCREV_META_FILOGIC" || exit 1
+        git reset --hard FETCH_HEAD || exit 1
         cd "$HOSTAP_DIR"
     fi
 
