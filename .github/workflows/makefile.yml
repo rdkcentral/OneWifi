@@ -57,14 +57,6 @@ jobs:
         git clone https://github.com/rdkcentral/unified-wifi-mesh.git easymesh_project/unified-wifi-mesh
         mv OneWifi easymesh_project/OneWifi
 
-    - name: Cache dependencies
-      uses: actions/cache@v5
-      with:
-        path: /var/cache/apt
-        key: ${{ runner.os }}-apt-${{ hashFiles('**/apt-packages') }}
-        restore-keys: |
-          ${{ runner.os }}-apt-
-
     - name: Set up dependencies
       run: |
         sudo apt-get update
@@ -108,6 +100,67 @@ jobs:
         make -j"$(nproc)"
         sudo make install
         sudo ldconfig
+
+    # Perf: each device leg (bpi, rpi) clones + patches hostap from upstream
+    # (git.w1.fi for rpi, git.w1.fi + GitHub layers for bpi). The patched tree
+    # is a pure function of the pins in setup.sh plus the patch inputs, so
+    # cache it keyed on those files. On a hit, setup.sh's .hostap_patched flag
+    # skips the clone AND patching entirely. A miss falls back to the normal
+    # clone, so this can never be slower than today.
+    #
+    # Exact-key-only (NO restore-keys): a pin bump edits setup.sh -> key
+    # changes -> miss -> full re-clone at new pins. restore-keys would
+    # resurrect a stale patched tree and silently build the wrong hostap.
+    #
+    # Each leg has one UNPINNED patch source whose changes must invalidate
+    # the cache:
+    #   bpi: meta-cmf-bananapi — only the kernel_6_6 patch subdir matters;
+    #        the repo gets daily unrelated commits, so we key on the GitHub
+    #        API tree SHA of that directory (changes only when a patch file
+    #        changes), NOT the whole-repo tip.
+    #   rpi: hostap-patches — the entire repo IS patches, so ls-remote tip
+    #        is appropriate.
+    # mock never clones hostap -> no cache needed.
+    - name: Resolve hostap cache key inputs
+      if: matrix.platform.id != 'mock'
+      id: hostap_key
+      run: |
+        if [ "${{ matrix.platform.id }}" = "bpi" ]; then
+          # meta-cmf-bananapi is a large Yocto layer repo that gets daily
+          # commits unrelated to hostap patches. Only one subdirectory
+          # matters: the kernel_6_6 patch dir. Query its git tree SHA via
+          # the GitHub API — it changes only when an actual patch file is
+          # added, removed, renamed, or modified.
+          api_url="https://api.github.com/repos/rdkcentral/meta-cmf-bananapi/contents"
+          api_url="$api_url/meta-rdk-mtk-bpir4/recipes-ccsp/rdk-wifi-libhostap/files/2.11"
+          upstream="$(curl -sfL -H "Authorization: Bearer ${{ github.token }}" "$api_url" \
+            | python3 -c "import sys,json; entries=json.load(sys.stdin); print(next(e['sha'] for e in entries if e['name']=='kernel_6_6'))" 2>/dev/null || true)"
+        else
+          # hostap-patches repo IS the payload — any commit is a patch change.
+          upstream="$(git ls-remote https://github.com/rdkcentral/hostap-patches.git HEAD | cut -f1)"
+        fi
+        if [ -z "$upstream" ]; then
+          echo "::warning::Could not resolve upstream patch hash (API/network failure). Cache key falls back to 'unresolved' — a hit may serve a stale tree if patches changed during the outage. Purge with: gh cache delete --all"
+        fi
+        echo "upstream=${upstream:-unresolved}" >> "$GITHUB_OUTPUT"
+
+        # Hash the setup script + any supplementary patch-list file. rpi's
+        # patches are inline in setup.sh; bpi's are in hostap_patch_list.txt.
+        setup="easymesh_project/OneWifi/build/linux/${{ matrix.platform.id }}/setup.sh"
+        patchlist="easymesh_project/OneWifi/build/openwrt/hostap_patch_list.txt"
+        if [ "${{ matrix.platform.id }}" = "bpi" ]; then
+          hash="$(cat "$setup" "$patchlist" | sha256sum | cut -c1-16)"
+        else
+          hash="$(sha256sum < "$setup" | cut -c1-16)"
+        fi
+        echo "files_hash=$hash" >> "$GITHUB_OUTPUT"
+
+    - name: Cache patched hostap
+      if: matrix.platform.id != 'mock'
+      uses: actions/cache@v5
+      with:
+        path: easymesh_project/rdk-wifi-libhostap
+        key: hostap-${{ matrix.platform.id }}-${{ steps.hostap_key.outputs.files_hash }}-${{ steps.hostap_key.outputs.upstream }}
 
     - name: Setup OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
