@@ -175,7 +175,7 @@ def main():
         print("```")
         print("\n".join(gated[:100]))
         print("```")
-        print("_Fix the finding, or waive it inline with a `// NOLINT`-style guard / refactor._")
+        print("_Fix the finding, or suppress it with a GCC diagnostic pragma where intentional / refactor._")
     if advis:
         print(f"### 🚦 gcc diff-gate advisory — {len(advis)} findings")
         print("```")
