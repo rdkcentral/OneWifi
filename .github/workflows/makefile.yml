@@ -303,7 +303,7 @@ jobs:
       # PR's changed LINES only, without promoting them tree-wide (the tree still carries a
       # backlog: -Wvla 18, -Wreturn-type 11, dead-code family). The script recompiles each changed
       # .c/.cpp from compile_commands.json with the candidate warnings enabled (non-fatal) and keeps
-      # only findings on lines the PR touched -> a PR can only fail on a class it newly introduced.
+      # only findings on lines the PR touched -> a PR can only fail on a class that fires on a changed line.
       # The silent baseline (and the build-summary that relies on it) is unaffected. bpi leg only
       # (it owns the compile DB). Runs AFTER clang-tidy so both gate independently.
       if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
@@ -340,6 +340,12 @@ jobs:
         git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
         # The script prints a markdown summary to stdout and ::error::/::warning:: to stderr;
         # it exits 1 iff a GATE class fired on a changed line.
+        # A missing script (partial cherry-pick / not yet on this branch) must skip,
+        # not red the job: python3 on an absent file exits 2 and would fail the matrix.
+        if [ ! -f .github/scripts/gcc_diff_gate.py ]; then
+          echo "### 🚦 gcc diff-gate: script not present — skipped" | tee -a ci-out/gcc-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
         set +e
         python3 .github/scripts/gcc_diff_gate.py > gcc-gate.md
         rc=$?

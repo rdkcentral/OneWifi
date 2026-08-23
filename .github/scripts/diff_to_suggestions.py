@@ -98,6 +98,12 @@ def load_changed_lines(path):
 
 
 def parse(diff_text):
+    # diff_text is the git-clang-format diff (HEAD vs its reformatted copy), NOT the
+    # PR diff. So the '-' side is the current PR HEAD file: old_ln (the '-' line
+    # number) is already in HEAD coordinates — exactly what a GitHub side:RIGHT
+    # suggestion anchors on, and the same coordinate system as CHANGED_LINES_FILE
+    # (git diff -U0 BASE HEAD, new-side). Do NOT "fix" this to the '+' range: those
+    # are the reformatted-file line numbers, which match neither GitHub nor the filter.
     comments, path, old_ln = [], None, 0
     removed, added, start = [], [], None
 

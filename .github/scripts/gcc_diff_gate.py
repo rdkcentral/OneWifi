@@ -24,10 +24,13 @@ promoting them tree-wide. The OneWifi tree still carries backlogs for these clas
 (e.g. -Wvla: 18 sites, -Wreturn-type: 11), so a whole-file/tree -Werror would red every
 PR. Instead lets recompile each changed .c/.cpp from compile_commands.json with the candidate
 warnings enabled, then keep only findings whose line the PR actually changed.
-A PR can then fail on a class it newly introduced on a line it touched.
+A PR can then fail on a class that fires on a line it changed. NB this is
+line-scoped, not base-compared: a warning already present on a line the PR
+edits for an unrelated reason also counts (accepted trade-off, not literally
+"newly introduced").
 The silent baseline (and the build-summary that relies on it) remains unaffected.
 
-This is the gcc analogue of the clang-tidy changed-lines gate already in makefile.yml.
+This is the gcc analogue of the clang-tidy changed-files gate already in makefile.yml.
 Because each file is recompiled on its own, every warning in that compile belongs to that
 file, so filtering on the line number alone is sufficient (same reasoning as clang-tidy).
 No need to filter on file:line pairs as analyzing full build.log would require
@@ -72,9 +75,14 @@ TAG_RE = re.compile(r"\[-W[a-z0-9-]+\]")
 
 
 def changed_files():
+    # check=True: 'git diff' returns non-zero only on error (a bad/unfetched BASE),
+    # never merely because a diff exists. Without it an unresolvable BASE yields
+    # empty stdout and we'd report the PR "clean" instead of surfacing the
+    # mechanism error. On failure the raise propagates to main()'s top-level
+    # except, which prints the skip summary and fails open.
     out = subprocess.run(
         ["git", "-C", REPO_DIR, "diff", "--name-only", "--diff-filter=ACM", BASE, "HEAD", "--", "*.c", "*.cpp"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, check=True,
     ).stdout.splitlines()
     return [f for f in out if not f.startswith("build/") and "hostap" not in f]
 
@@ -83,7 +91,7 @@ def changed_lines(f):
     """New-side line numbers this PR changed in f (zero-context hunks)."""
     diff = subprocess.run(
         ["git", "-C", REPO_DIR, "diff", "-U0", "--diff-filter=ACM", BASE, "HEAD", "--", f],
-        capture_output=True, text=True,
+        capture_output=True, text=True, check=True,
     ).stdout
     lines = set()
     for m in re.finditer(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", diff, re.M):
@@ -138,7 +146,13 @@ def main():
             if int(m.group(1)) not in want:
                 continue
             tag = t.group(0)
-            disp = re.sub(r"^.*?/(?:OneWifi|rdk-wifi-hal)/+", "", line)
+            # Strip to the LAST repo dir in the path token: the runner checks out to
+            # .../work/OneWifi/OneWifi/easymesh_project/OneWifi/source/..., so a
+            # non-greedy '.*?' would stop at the first 'OneWifi/' and leave a broken,
+            # non-repo-relative path. '[^ ]*' stays within the path token (can't eat
+            # into the message text) yet backtracks to the last match. Mirrors the
+            # sed idiom in makefile.yml's build/tidy summaries.
+            disp = re.sub(r"^[^ ]*/(?:OneWifi|rdk-wifi-hal)/+", "", line)
             if tag in GATE_TAGS:
                 gated.append(disp)
             elif tag in ADVISORY_TAGS:
@@ -156,7 +170,7 @@ def main():
         print("### 🚦 gcc diff-gate: clean on changed lines")
         return 0
     if gated:
-        verb = "newly-introduced on changed lines" if ENFORCE else "would fail the job (advisory: ENFORCE=false)"
+        verb = "on lines this PR changed" if ENFORCE else "would fail the job (advisory: ENFORCE=false)"
         print(f"### ❌ gcc diff-gate — {len(gated)} {verb}")
         print("```")
         print("\n".join(gated[:100]))
