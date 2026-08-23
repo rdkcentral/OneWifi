@@ -68,15 +68,30 @@ HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 # tail backtracks to the right delimiter; '[^:]+' would drop colon-in-path files.
 CHANGED_LINE = re.compile(r"^(.+):(\d+)-(\d+)$")
 
+# Upper bound on records loaded from CHANGED_LINES_FILE. That file is a stage-1
+# artifact built over untrusted fork PR code (clang-format.yml runs on
+# `pull_request`, whose workflow the PR author can modify), yet it is consumed
+# here in the trusted `pull-requests: write` comment job — so it is
+# attacker-influenced input. Ranges are kept as (start, end) intervals and NEVER
+# expanded into per-line sets, so a compact hostile record like "x.c:1-1000000000"
+# costs one tuple, not a billion-element set that would OOM-kill this job (and
+# MemoryError is not an OSError/ValueError — it would escape the handler below and
+# crash the step). This cap additionally bounds a pathological many-record file;
+# beyond it we fail open (post unfiltered, still capped by MAX_COMMENTS).
+MAX_CHANGED_RECORDS = 1_000_000
+
 
 def load_changed_lines(path):
-    """Load {file: set_of_changed_line_numbers} from a changed-lines file.
+    """Load {file: [(start, end), ...]} changed-line intervals from a changed-lines file.
 
     Each line is "path:start-end" (inclusive, new-side line numbers from
-    git diff -U0). Returns None on any I/O or parse error (fail-open).
+    git diff -U0). Ranges are stored as intervals, NOT expanded into sets, so a
+    hostile range cannot exhaust memory (see MAX_CHANGED_RECORDS). Returns None on
+    any I/O or parse error, or if the record cap is exceeded (fail-open).
     """
     try:
         changed = {}
+        records = 0
         with open(path) as fh:
             for raw in fh:
                 line = raw.strip()
@@ -89,7 +104,17 @@ def load_changed_lines(path):
                     # so the handler below returns None and all suggestions are kept.
                     raise ValueError(f"unparseable changed-lines record: {line!r}")
                 f, s, e = m.group(1), int(m.group(2)), int(m.group(3))
-                changed.setdefault(f, set()).update(range(s, e + 1))
+                if s > e:
+                    # Reversed range. With sets, range(5,3) was silently empty; with
+                    # intervals a (5,2) tuple would spuriously overlap-match, so treat
+                    # it as malformed and fail open rather than change matching
+                    # behavior. Well-formed git-diff -U0 records always have s <= e.
+                    raise ValueError(f"reversed changed-lines record: {line!r}")
+                records += 1
+                if records > MAX_CHANGED_RECORDS:
+                    raise ValueError(
+                        f"changed-lines file exceeds {MAX_CHANGED_RECORDS} records")
+                changed.setdefault(f, []).append((s, e))
         return changed
     except (OSError, ValueError) as exc:
         print(f"::warning::Could not load changed-lines file {path}: {exc} "
@@ -172,11 +197,17 @@ def main():
     changed = load_changed_lines(cl_path) if cl_path else None
     if changed is not None:
         def overlaps(c):
-            lines = changed.get(c["path"])
-            if lines is None:
+            intervals = changed.get(c["path"])
+            if not intervals:                     # None (file untouched) or empty
                 return False
-            start = c.get("start_line", c["line"])
-            return any(ln in lines for ln in range(start, c["line"] + 1))
+            cstart = c.get("start_line", c["line"])
+            cend = c["line"]
+            # The comment spans the contiguous range [cstart, cend]; keep it if
+            # that interval intersects any changed interval for this file. Because
+            # every changed interval [s, e] is itself contiguous, an intersection
+            # guarantees a shared line — exactly equivalent to the old per-line set
+            # membership test, without materializing (and bounding) the lines.
+            return any(s <= cend and cstart <= e for (s, e) in intervals)
         before = len(comments)
         comments = [c for c in comments if overlaps(c)]
         dropped = before - len(comments)

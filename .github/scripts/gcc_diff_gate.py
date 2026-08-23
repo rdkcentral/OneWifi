@@ -74,23 +74,66 @@ LINE_RE = re.compile(r"\.(?:c|cpp):(\d+):")
 TAG_RE = re.compile(r"\[-W[a-z0-9-]+\]")
 
 
-def changed_files():
-    # check=True: 'git diff' returns non-zero only on error (a bad/unfetched BASE),
-    # never merely because a diff exists. Without it an unresolvable BASE yields
+def effective_base():
+    """Diff base for line attribution — HEAD^1 when it is the trustworthy base.
+
+    On a `pull_request` event checked out with no explicit `ref:` (as makefile.yml
+    does), HEAD is the merge ref refs/pull/N/merge: HEAD^1 is the CURRENT base tip,
+    HEAD^2 the PR head. The frozen event-payload BASE
+    (github.event.pull_request.base.sha) can drift from that fresh base parent —
+    most visibly on a re-run of an OLD workflow run, where the merge ref
+    re-resolves to today's base but BASE stays pinned. A two-dot
+    `git diff BASE HEAD` then attributes post-fork base-branch changes to the PR
+    and can fire the gate on lines the author never touched (poisoning exactly the
+    'zero false positives on GATE classes' evidence the ENFORCE rollout waits on).
+
+    Prefer HEAD^1 when (a) HEAD is a merge commit (HEAD^2 exists) AND (b) the
+    payload BASE is an ancestor of HEAD^1 (a fast-forward base advance — the normal
+    case). Probe (b) makes the merge-ref parent-order assumption self-verifying: if
+    HEAD is not a merge commit, or the base was rewritten so BASE no longer leads
+    into HEAD^1, fall back to BASE (today's exact two-dot behavior). Never raises;
+    worst case it returns BASE. The HAL leg runs this same file against
+    REPO_DIR=../rdk-wifi-hal, which is likewise checked out with no `ref:` (the
+    default merge ref) — so HEAD^1 is its current base too and the same path
+    applies; the is-ancestor probe still guards the fork / base-rewrite cases.
+    """
+    def git_rc(*args):
+        return subprocess.run(
+            ["git", "-C", REPO_DIR, *args],
+            capture_output=True, text=True,
+        ).returncode
+    if git_rc("rev-parse", "--verify", "--quiet", "HEAD^2") != 0:
+        return BASE                               # not a merge ref -> can't trust HEAD^1
+    if git_rc("merge-base", "--is-ancestor", BASE, "HEAD^1") != 0:
+        return BASE                               # base rewritten / BASE unfetched -> stay with BASE
+    return "HEAD^1"
+
+
+def changed_files(base):
+    # --diff-filter=ACM intentionally omits renames (R): line-scoping a renamed
+    # path via `git diff -U0 -- <newpath>` (changed_lines below) can't pair the old
+    # path (pathspec-limited), so git reports the file as wholly ADDED -> every
+    # line counts as "changed" -> the gate would fire on moved-but-unedited code.
+    # For an advisory line gate, skipping renamed files is a safe false-negative;
+    # catching their real edits would need full rename-aware line mapping. (Kept
+    # deliberately — a naive ACMR would make attribution worse, not better.)
+    #
+    # check=True: 'git diff' returns non-zero only on error (a bad/unfetched base),
+    # never merely because a diff exists. Without it an unresolvable base yields
     # empty stdout and we'd report the PR "clean" instead of surfacing the
     # mechanism error. On failure the raise propagates to main()'s top-level
     # except, which prints the skip summary and fails open.
     out = subprocess.run(
-        ["git", "-C", REPO_DIR, "diff", "--name-only", "--diff-filter=ACM", BASE, "HEAD", "--", "*.c", "*.cpp"],
+        ["git", "-C", REPO_DIR, "diff", "--name-only", "--diff-filter=ACM", base, "HEAD", "--", "*.c", "*.cpp"],
         capture_output=True, text=True, check=True,
     ).stdout.splitlines()
     return [f for f in out if not f.startswith("build/") and "hostap" not in f]
 
 
-def changed_lines(f):
+def changed_lines(base, f):
     """New-side line numbers this PR changed in f (zero-context hunks)."""
     diff = subprocess.run(
-        ["git", "-C", REPO_DIR, "diff", "-U0", "--diff-filter=ACM", BASE, "HEAD", "--", f],
+        ["git", "-C", REPO_DIR, "diff", "-U0", "--diff-filter=ACM", base, "HEAD", "--", f],
         capture_output=True, text=True, check=True,
     ).stdout
     lines = set()
@@ -124,14 +167,15 @@ def main():
     if not BASE or not os.path.exists(DB):
         print("### 🚦 gcc diff-gate: no compile DB or PR base — skipped")
         return 0
+    base = effective_base()
     db = json.load(open(DB))
-    gated, advis = [], []
-    for f in changed_files():
+    gated, advis, failed = [], [], []
+    for f in changed_files(base):
         info = db_args(db, f)
         if not info:
             continue  # not built (not in DB) -> can't judge, skip (same as clang-tidy)
         cwd, args = info
-        want = changed_lines(f)
+        want = changed_lines(base, f)
         if not want:
             continue
         cmd = args + ["-c", "-o", os.devnull] + ALL_FLAGS + NO_ERROR
@@ -157,16 +201,35 @@ def main():
                 gated.append(disp)
             elif tag in ADVISORY_TAGS:
                 advis.append(disp)
+        if r.returncode != 0:
+            # Every candidate class is demoted with -Wno-error=, so a well-formed
+            # recompile of an already-built file exits 0. A nonzero code is a
+            # MECHANISM failure, not a clean file: gcc aborts with "unrecognized
+            # command-line option" for a clang-only/mistyped GATE/ADVISORY entry
+            # (which would otherwise silently disable the gate for EVERY file), or
+            # the file hit a missing generated header / a killed-or-OOM compiler.
+            # Verified on gcc 13.3.0: these aborts print no source-line [-Wflag]
+            # tag, so the loop above finds nothing and the file would otherwise be
+            # reported "clean". Record it so the summary shows incomplete coverage
+            # instead. Any findings parsed above this point still count.
+            reason = next((ln.strip() for ln in r.stderr.splitlines()
+                           if ": error:" in ln), f"compiler exit {r.returncode}")
+            reason = re.sub(r"^[^ ]*/(?:OneWifi|rdk-wifi-hal)/+", "", reason)  # same path-strip as disp
+            failed.append(f"{f}: {reason}")
     gated = sorted(set(gated))
     advis = sorted(set(advis))
+    failed = sorted(set(failed))
 
     # GitHub annotations (top-of-check box).
     for l in gated[:10]:
         print(f"::error::{l}".replace("%", "%25").replace("\r", "%0D"), file=sys.stderr)
     for l in advis[:10]:
         print(f"::warning::{l}".replace("%", "%25").replace("\r", "%0D"), file=sys.stderr)
+    for l in failed[:10]:
+        print(f"::warning::gcc diff-gate could not recompile — {l}"
+              .replace("%", "%25").replace("\r", "%0D"), file=sys.stderr)
 
-    if not gated and not advis:
+    if not gated and not advis and not failed:
         print("### 🚦 gcc diff-gate: clean on changed lines")
         return 0
     if gated:
@@ -181,7 +244,16 @@ def main():
         print("```")
         print("\n".join(advis[:100]))
         print("```")
+    if failed:
+        print(f"### ⚠️ gcc diff-gate: {len(failed)} file(s) failed to recompile — coverage incomplete")
+        print("```")
+        print("\n".join(failed[:100]))
+        print("```")
+        print("_A nonzero compiler exit means these files were NOT analyzed (an unrecognized -W flag, "
+              "a missing generated header, or a killed compiler) — the result above is partial. This is "
+              "a mechanism warning, not a code finding, so it never reds the job on its own._")
     # In advisory mode the ❌ block above still renders, but we never red the job.
+    # `failed` alone never fails the gate (fail-open) — only a GATE finding under ENFORCE does.
     return 1 if (gated and ENFORCE) else 0
 
 
