@@ -145,8 +145,11 @@ def changed_lines(base, f):
 
 
 def db_args(db, f):
-    """arguments for the DB entry whose file ends with /f, minus -c and -o <out>."""
-    entry = next((e for e in db if e["file"].endswith("/" + f) or e["file"].endswith(f)), None)
+    """arguments for the DB entry whose file is f (exact) or ends with /f, minus -c and -o <out>."""
+    # Match on a path boundary: exact relative path, or a suffix that begins at a '/'. A bare
+    # endswith(f) would let a root-level 'foo.c' match an unrelated '/src/notfoo.c' (or 'x/foo.c'
+    # match 'x/notfoo.c') -> next() recompiles the wrong TU and misattributes the gate result.
+    entry = next((e for e in db if e["file"] == f or e["file"].endswith("/" + f)), None)
     if not entry:
         return None
     out, skip = [], False
