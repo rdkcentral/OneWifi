@@ -63,7 +63,10 @@ import re
 import sys
 
 HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-CHANGED_LINE = re.compile(r"^([^:]+):(\d+)-(\d+)$")
+# Split on the LAST ':' — the range is always the final field, and a path may
+# itself contain ':' (legal on POSIX). A greedy '.+' with the anchored numeric
+# tail backtracks to the right delimiter; '[^:]+' would drop colon-in-path files.
+CHANGED_LINE = re.compile(r"^(.+):(\d+)-(\d+)$")
 
 
 def load_changed_lines(path):
