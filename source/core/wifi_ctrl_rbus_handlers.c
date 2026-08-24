@@ -1999,7 +1999,7 @@ bus_error_t set_ignite_link_quality_threshold(char *event_name, raw_data_t *p_da
         return bus_error_out_of_resources;
     }
 
-    webconfig_init_subdoc_data(data);
+    webconfig_init_subdoc_data_min(data);
     data->u.decoded.config.global_parameters.ignite_link_quality_threshold = threshold;
 
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_wifi_config) !=
