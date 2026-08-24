@@ -611,6 +611,9 @@ typedef struct {
     unsigned int eapol_m4_count;
     unsigned int eapol_attempts;
     unsigned int eapol_failures;
+    /* True only when STA_CONN (4WAY complete) has fired for this session.
+     * Populated by wifi_stats_assoc_client from sta_data_t::connection_authorized. */
+    bool connection_authorized;
 } stats_arg_t;
 
 typedef struct {

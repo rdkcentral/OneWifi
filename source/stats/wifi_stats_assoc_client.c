@@ -471,6 +471,14 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 link_data[i].stats.eapol_m4_count = sta->eapol_m4_count;
                 link_data[i].stats.eapol_failures = eap_failures;
                 link_data[i].stats.eapol_attempts = eap_failures + sta->eapol_m4_count;
+                /* Reflects STA_CONN completion: false for 4WAY-fail clients even if conn_time > 0. */
+                link_data[i].stats.connection_authorized = sta->connection_authorized;
+                wifi_util_info_print(WIFI_MON,
+                    "%s:%d PERIODIC_STATS MAC=%s conn_time=%llds authorized=%d\n",
+                    __func__, __LINE__,
+                    link_data[i].stats.mac_str,
+                    (long long)sta->total_connected_time.tv_sec,
+                    sta->connection_authorized);
             }
 
             wifi_util_dbg_print(WIFI_MON,
