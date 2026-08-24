@@ -168,6 +168,11 @@ void update_apmld_map()
             unsigned int id = mld_info->mld_id;
             unsigned int mld_idx;
 
+            if (isVapSTAMesh(vap_config->vap_index)) {
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d VAP %s is a STA mesh, skip\n", __func__, __LINE__, vap_config->vap_name);
+                continue;
+            }
+
             if (!mld_info->mld_enable) {
                 wifi_util_dbg_print(WIFI_DMCLI, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
                 continue;
@@ -555,16 +560,16 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
+void set_webconfig_dml_data(char *eventName, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
     webconfig_subdoc_data_t *data = NULL;
 
     wifi_util_dbg_print(WIFI_DMCLI,"bus event callback Event is %s\r\n",eventName);
-    pTmp = p_data->raw_data.bytes;
-    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->data_type);
+    pTmp = p_data->value.raw_data.bytes;
+    if ((p_data->value.data_type != bus_data_type_string) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->value.data_type);
         return;
     }
 
@@ -1745,7 +1750,6 @@ int push_harvester_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache pushed to queue \n", __FUNCTION__);
 
         //Rest to default value since instant measurement enable is triggered successfully
-        webconfig_dml.harvester.b_inst_client_enabled = webconfig_dml.config.global_parameters.inst_wifi_client_enabled;
         webconfig_dml.harvester.u_inst_client_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_def_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_override_ttl = 0;
@@ -2057,9 +2061,14 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         wifidb_init_radio_config_default(i,rcfg,&fcfg);
 
         wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
-        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
-            wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+        if ((rfc_param == NULL) || wifidb_get_rfc_config(0, rfc_param) != 0) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n", __func__, __LINE__);
+			goto cleanup;
         }
+
+        //clearing wpa3_personal_compatibility mode after wifi restore
+        rfc_param->wpa3_compatibility_enable = FALSE;
+        get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
         //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
         if (WIFI_FREQUENCY_2_4_BAND == rcfg->band) {

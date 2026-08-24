@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.050",
+  "version": "1.00.053",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1210,24 +1210,6 @@
             "min": 0,
             "max": 1
           }
-        },
-        "mld_addr": {
-          "type": {
-            "key": {
-              "type": "string"
-            },
-            "min": 0,
-            "max": 1
-          }
-        },
-        "mld_apply": {
-          "type": {
-            "key": {
-              "type": "boolean"
-            },
-            "min": 0,
-            "max": 1
-          }
         }
       },
     "isRoot": true
@@ -1942,7 +1924,16 @@
             "min": 0,
             "max": 1
           }
-        }, 
+        },
+        "multiap_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
       "rfc_id": {
           "type": "string"
         }

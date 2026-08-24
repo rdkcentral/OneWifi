@@ -28,7 +28,7 @@ jobs:
     - name: Clone unified-wifi-mesh repository
       run: |
         mkdir -p easymesh_project
-        git clone https://github.com/rdkcentral/unified-wifi-mesh.git easymesh_project/unified-wifi-mesh
+        git clone -b main --single-branch https://github.com/rdkcentral/unified-wifi-mesh.git easymesh_project/unified-wifi-mesh
         mv OneWifi easymesh_project/OneWifi
 
     - name: Cache dependencies

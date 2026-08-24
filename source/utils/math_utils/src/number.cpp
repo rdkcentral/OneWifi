@@ -65,9 +65,14 @@ bool number_t::is_zero(int n)
     return (is_zero(m_re, n)) && (is_zero(m_im, n));
 }
 
-bool number_t::operator==(number_t n)
+bool number_t::operator==(const number_t &other) const
 {
-    return (m_re == n.m_re) && (m_im == n.m_im);
+    return ((m_re == other.m_re) && (m_im == other.m_im));
+}
+
+bool number_t::operator!=(const number_t &other) const
+{
+    return !(*this == other);
 }
 
 number_t number_t::operator*(number_t n)
@@ -86,19 +91,19 @@ number_t number_t::operator+(number_t n)
     return number_t(m_re + n.m_re, m_im + n.m_im);
 }
 
-number_t number_t::operator -(number_t n)
+number_t number_t::operator-(number_t n)
 {
-    return number_t(m_re - n.m_re, m_im - n.m_im);;
+    return number_t(m_re - n.m_re, m_im - n.m_im);
 }
 
-number_t number_t::operator *(unsigned int n)
+number_t number_t::operator*(unsigned int n)
 {
-    return number_t(m_re*n, m_im*n);
+    return number_t(m_re * n, m_im * n);
 }
 
-number_t number_t::operator /(unsigned int n)
+number_t number_t::operator/(unsigned int n)
 {
-    return number_t(m_re/n, m_im/n);
+    return number_t(m_re / n, m_im / n);
 }
 
 matrix_t number_t::operator*(matrix_t m)
@@ -117,10 +122,10 @@ matrix_t number_t::operator*(matrix_t m)
 }
 number_t number_t::operator-(void)
 {
- number_t out;
+    number_t out;
     out.m_re = -m_re;
     out.m_im = -m_im;
-   return out;
+    return out;
 }
 number_t number_t::sqrt_val(void)
 {
@@ -137,7 +142,6 @@ double number_t::abs_val() const
 {
     return sqrt(m_re * m_re + m_im * m_im);
 }
-
 
 number_t number_t::exponential()
 {
@@ -184,7 +188,6 @@ void number_t::sqroot(number_t n[])
         n[1].m_im = 0.0 - sqrt((d - m_re) / 2);
     }
 }
-
 
 number_t::number_t(double r, double i)
 {

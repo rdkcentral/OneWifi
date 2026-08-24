@@ -204,7 +204,7 @@ static void de_sync_rows(char const* tableName, uint32_t old_cnt, uint32_t new_c
     free(rowPath);
 }
 
-bus_error_t de_apmld_sync_handler(char const* tableName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
+bus_error_t de_apmld_sync_handler(char const* tableName, bus_data_prop_t *inParams, bus_data_prop_t *outParams, void *asyncHandle)
 {
     (void)inParams;
     (void)outParams;
@@ -220,7 +220,7 @@ bus_error_t de_apmld_sync_handler(char const* tableName, raw_data_t *inParams, r
     return bus_error_success;
 }
 
-bus_error_t de_affap_sync_handler(char const* tableName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
+bus_error_t de_affap_sync_handler(char const* tableName, bus_data_prop_t *inParams, bus_data_prop_t *outParams, void *asyncHandle)
 {
     (void)inParams;
     (void)outParams;
@@ -269,7 +269,7 @@ static bus_error_t de_stamld_get(char *event_name, raw_data_t *p_data, struct bu
     return status;
 }
 
-bus_error_t de_stamld_sync_handler(char const* tableName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
+bus_error_t de_stamld_sync_handler(char const* tableName, bus_data_prop_t *inParams, bus_data_prop_t *outParams, void *asyncHandle)
 {
     (void)inParams;
     (void)outParams;
@@ -335,7 +335,7 @@ static bus_error_t de_affsta_get(char *event_name, raw_data_t *p_data, struct bu
     return status;
 }
 
-bus_error_t de_affsta_sync_handler(char const* tableName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle)
+bus_error_t de_affsta_sync_handler(char const* tableName, bus_data_prop_t *inParams, bus_data_prop_t *outParams, void *asyncHandle)
 {
     (void)inParams;
     (void)outParams;

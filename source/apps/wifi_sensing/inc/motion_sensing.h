@@ -17,36 +17,30 @@
   limitations under the License.
  **************************************************************************/
 
-#ifndef WIFI_LINKQUALITY_H
-#define WIFI_LINKQUALITY_H
+#ifndef MOTION_SENSING_H
+#define MOTION_SENSING_H
 
-#define MAX_IGNITE_STR_LEN 32
+#include <stdbool.h>
+#include "wifi_base.h"
+#include "wifi_events.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "run_qmgr.h"
-#include "wifi_base.h"
-#include "wifi_webconfig.h"
 
-typedef struct {
-    double last_score;
-    double last_threshold;
-    int score_log_timer_id;
-    int last_service_state;
-    int iteration_count;
-    char ignite_service_status[MAX_IGNITE_STR_LEN];
-} ignite_lq_state_t;
+typedef struct wifi_app wifi_app_t;
 
-typedef struct {
-    stats_arg_t stats;
-    server_arg_t server_arg;
-    int size;
-    ignite_lq_state_t ignite;
-} linkquality_data_t;
+typedef struct sensing_app_obj {
+    bool sensing_enabled;
+} sensing_app_obj_t;
+
+
+int sensing_app_init(wifi_app_t *app, unsigned int create_flag);
+int sensing_app_deinit(wifi_app_t *app);
+int sensing_app_event(wifi_app_t *app, wifi_event_t *event);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // WIFI_LINKQUALITY_H
+#endif//MOTION_SENSING_H

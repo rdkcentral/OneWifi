@@ -119,13 +119,25 @@ he_bus_error_t radio_event_sub_handler(char *eventName, he_bus_event_sub_action_
     return he_bus_error_success;
 }
 
-he_bus_error_t radio_method_handler(char const *methodName, he_bus_raw_data_t *inParams,
-    he_bus_raw_data_t *outParams, void *asyncHandle)
+he_bus_error_t radio_method_handler(char const *methodName, he_bus_data_object_t *inParams,
+    he_bus_data_object_t *outParams, void *asyncHandle)
 {
     (void)inParams;
     (void)outParams;
     (void)asyncHandle;
     he_bus_dml_dbg_print("%s:%d enter:%s\r\n", __func__, __LINE__, methodName);
+    he_bus_dml_dbg_print("%s:%d =====>recv data name:%s\r\n", __func__, __LINE__, inParams->name);
+
+    int index = 0;
+    he_bus_raw_data_t payload_data = { 0 };
+
+    while(index < 3) {
+        payload_data.data_type = he_bus_data_type_uint32;
+        payload_data.raw_data.u32 = index;
+        payload_data.raw_data_len = sizeof(unsigned int);
+        set_bus_object_data("device.wifi.aniket.output.enter", outParams, 0, payload_data, 0);
+        index++;
+    }
     return he_bus_error_success;
 }
 

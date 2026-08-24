@@ -117,6 +117,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_dfs_atbootup_rfc)
         DOC2S(wifi_event_type_command_kickmac)
         DOC2S(wifi_event_type_command_kick_assoc_devices)
+        DOC2S(wifi_event_type_command_frame_drop_unenc)
         DOC2S(wifi_event_type_command_wps)
         DOC2S(wifi_event_type_command_wps_pin)
         DOC2S(wifi_event_type_command_wps_cancel)
@@ -140,6 +141,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_wifi_offchannelscan_app_rfc)
         DOC2S(wifi_event_type_wifi_offchannelscan_sm_rfc)
         DOC2S(wifi_event_type_levl_rfc)
+        DOC2S(wifi_event_type_multiap_rfc)
         DOC2S(wifi_event_type_eth_bh_status)
         DOC2S(wifi_event_type_managed_wifi_disable)
         DOC2S(wifi_event_type_notify_monitor_done)
@@ -172,6 +174,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_monitor_provider_response)
         DOC2S(wifi_event_monitor_auth_req)
         DOC2S(wifi_event_monitor_assoc_req)
+        DOC2S(wifi_event_monitor_reassoc_req)
         DOC2S(wifi_event_monitor_clear_sta_counters)
         DOC2S(wifi_event_monitor_get_radiostats_onchan)
         DOC2S(wifi_event_monitor_get_radiostats_offchan)
@@ -206,6 +209,7 @@ bool is_high_priority_event(wifi_event_subtype_t sub_type)
     switch (sub_type) {
     case wifi_event_type_notify_monitor_done:
     case wifi_event_type_command_factory_reset:
+    case wifi_event_type_command_frame_drop_unenc:
     case wifi_event_type_eth_bh_status:
     case wifi_event_type_xfinity_enable:
     case wifi_event_type_prefer_private_rfc:
