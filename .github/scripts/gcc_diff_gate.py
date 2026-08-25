@@ -127,7 +127,17 @@ def changed_files(base):
         ["git", "-C", REPO_DIR, "diff", "--name-only", "--diff-filter=ACM", base, "HEAD", "--", "*.c", "*.cpp"],
         capture_output=True, text=True, check=True,
     ).stdout.splitlines()
-    return [f for f in out if not f.startswith("build/") and "hostap" not in f]
+    # Keep every changed tracked source; db_args() in main() already skips anything the
+    # compile DB didn't build. `git diff` only ever returns TRACKED files, so generated
+    # build outputs (.o, libs) never appear here -- the old `not startswith("build/")`
+    # dropped nothing but the one tracked source under build/:
+    # build/linux/compat/coverage_stubs.c, a first-party file the bpi makefile compiles
+    # (makefile:478, real DB entry). Likewise the old bare `"hostap" not in f` dropped
+    # first-party sources (the HAL's wifi_hal_hostapd.c, OneWifi's wifi_hostapd_glue.c)
+    # while its intended target -- the vendored hostap tree -- lives in the sibling
+    # rdk-wifi-libhostap/ clone a diff can't surface. Exclude only that vendored tree,
+    # by its path marker (documented intent; a diff never reaches it in practice).
+    return [f for f in out if "rdk-wifi-libhostap/" not in f]
 
 
 def changed_lines(base, f):

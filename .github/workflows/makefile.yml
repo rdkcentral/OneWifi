@@ -256,8 +256,13 @@ jobs:
           # flags. A real source then can't resolve its includes -> a fatal clang-diagnostic
           # aborts file parsing before any check run on it -> that output is dropped by the
           # clang-diagnostic filter below -> file can't fail. Thus, only built files are judged.
+          # Exclude only the vendored hostap tree (sibling clone rdk-wifi-libhostap/), never
+          # first-party sources: '^build/' wrongly dropped build/linux/compat/coverage_stubs.c
+          # (compiled by the makefile, real DB entry) and bare 'hostap' dropped e.g.
+          # wifi_hostapd_glue.c. A changed file not in the DB self-skips (default-flags fallback
+          # -> fatal clang-diagnostic -> filtered below), so DB membership is the real gate.
           CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
-                    | grep -vE '^build/|hostap' || true)
+                    | grep -vE 'rdk-wifi-libhostap/' || true)
         fi
         : > tidy.log
         for f in $CHANGED; do
