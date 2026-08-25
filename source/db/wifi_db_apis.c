@@ -1767,7 +1767,7 @@ void callback_Wifi_Postassoc_Control_Config(ovsdb_update_monitor_t *mon,
 int wifidb_update_interworking_config(char *vap_name, wifi_InterworkingElement_t *interworking)
 {
     struct schema_Wifi_Interworking_Config cfg, *pcfg;
-
+    memset(&cfg, 0, sizeof(cfg));
     json_t *where;
     bool update = false;
     int count;

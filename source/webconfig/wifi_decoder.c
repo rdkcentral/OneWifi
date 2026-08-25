@@ -4053,11 +4053,20 @@ webconfig_error_t decode_link_report(cJSON *json,report_batch_t **out_report)
 
             size_t sample_count = cJSON_GetArraySize(samples_array);
             lr->sample_count = sample_count;
+            if (sample_count == 0) {
+                lr->samples = NULL;
+                continue;
+            }
             lr->samples = calloc(sample_count, sizeof(sample_t));
             if (lr->samples == NULL) {
                 // Allocation failed – handle early exit
                 wifi_util_error_print(WIFI_WEBCONFIG,"Failed to allocate memory for %zu samples\n", sample_count);
                 lr->sample_count = 0;
+                for(size_t k = 0; k < i; k++)
+                    free(report->links[k].samples);
+                free(report->links);
+                free(report);
+                *out_report = NULL;
                 return webconfig_error_decode;
             }
             for (size_t j = 0; j < sample_count; j++) {
