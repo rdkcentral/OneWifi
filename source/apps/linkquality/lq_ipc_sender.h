@@ -35,6 +35,7 @@
  * REGISTER_STA     → register_station_mac() [ignite]
  * UNREGISTER_STA   → unregister_station_mac() [ignite]
  * REINIT_METRICS   → reinit_link_metrics() [server_arg_t payload]
+ * VAP_DOWN         → vap_down_purge() [VAP settings changed, per-VAP purge]
  */
 #define LQ_IPC_MSG_PERIODIC_STATS    1
 #define LQ_IPC_MSG_DISCONNECT        2
@@ -43,6 +44,7 @@
 #define LQ_IPC_MSG_REGISTER_STA      5
 #define LQ_IPC_MSG_UNREGISTER_STA    6
 #define LQ_IPC_MSG_REINIT_METRICS    7
+#define LQ_IPC_MSG_VAP_DOWN          8
 
 /*
  * LQ TLV — the entire datagram is a single TLV, no wrapper header.

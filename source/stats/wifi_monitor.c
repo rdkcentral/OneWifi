@@ -4265,11 +4265,17 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
     bool link_quality_measurement = false;
+    int vap_down_sent = 0, sta_total = 0;
 
     wifi_util_dbg_print(WIFI_MON,"%s called for %d and status %d \n",__func__, apIndex, status);
     g_monitor_module.bssid_data[apIndex].ap_params.ap_status = status;
 
+    wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d ENTER apIndex=%d status=%d ctrl=%s rfc_param=%s\n",
+        __func__, __LINE__, apIndex, status, ctrl ? "ok" : "NULL", rfc_param ? "ok" : "NULL");
+
     if (status != wifi_vapstatus_down) {
+        wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d EXIT apIndex=%d status=%d is not vapstatus_down\n",
+            __func__, __LINE__, apIndex, status);
         return 0;
     }
 
@@ -4279,11 +4285,18 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
         link_quality_measurement = true;
     }
 
+    wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d apIndex=%d lq_measurement=%d wei_rfc_mask=0x%x network_mode=%d\n",
+        __func__, __LINE__, apIndex, link_quality_measurement,
+        rfc_param ? (unsigned int)rfc_param->wei_rfc_mask : 0u,
+        ctrl ? (int)ctrl->network_mode : -1);
+
     pthread_mutex_lock(&g_monitor_module.data_lock);
 
     sta_map = g_monitor_module.bssid_data[apIndex].sta_map;
     if (sta_map == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d sta_map is NULL for apIndex %d\n", __func__, __LINE__, apIndex);
+        wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d EXIT apIndex=%d sta_map is NULL, no clients to purge\n",
+            __func__, __LINE__, apIndex);
         pthread_mutex_unlock(&g_monitor_module.data_lock);
         return 0;
     }
@@ -4291,6 +4304,9 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
     temp_sta_map = hash_map_clone(sta_map, sizeof(sta_data_t));
     if (temp_sta_map == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d Failed to clone hash map\n", __func__, __LINE__);
+        /* NULL is also returned for an empty sta_map, i.e. a VAP with no clients. */
+        wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d EXIT apIndex=%d sta_map clone returned NULL (no clients or clone failure)\n",
+            __func__, __LINE__, apIndex);
         pthread_mutex_unlock(&g_monitor_module.data_lock);
         return -1;
     }
@@ -4302,8 +4318,34 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
     if (temp_sta_map != NULL) {
         sta = hash_map_get_first(temp_sta_map);
         while (sta != NULL) {
+            sta_total++;
             to_sta_key(sta->sta_mac, sta_key);
             send_wifi_disconnect_event_to_ctrl(sta->sta_mac, apIndex);
+            /* VAP settings changed: ask WEI to purge this STA. Sent before the
+             * exec_stop path below so it is not skipped on early return.
+             * Deliberately not gated on wei_rfc_mask: it is never populated on this
+             * platform, and wifi_stats_assoc_client force-enables the periodic path
+             * regardless, so gating here would leave WEI holding stale clients. */
+            if (!is_zero_mac(sta->sta_mac)) {
+                wifi_lq_descriptor_t *lq_desc = get_lq_descriptor();
+                if (lq_desc != NULL && lq_desc->vap_down_link_stats_fn != NULL) {
+                    stats_arg_t vap_down_stats;
+                    memset(&vap_down_stats, 0, sizeof(vap_down_stats));
+                    to_sta_key(sta->sta_mac, vap_down_stats.mac_str);
+                    vap_down_stats.vap_index = apIndex;
+                    wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d SEND [%d] mac=%s vap=%d lq_measurement=%d\n",
+                        __func__, __LINE__, sta_total, vap_down_stats.mac_str, apIndex, link_quality_measurement);
+                    lq_desc->vap_down_link_stats_fn(&vap_down_stats);
+                    vap_down_sent++;
+                } else {
+                    wifi_util_error_print(WIFI_MON, "VAP-DOWN-DBG %s:%d SKIP mac=%s vap=%d descriptor=%s fn=%s\n",
+                        __func__, __LINE__, sta_key, apIndex,
+                        lq_desc ? "ok" : "NULL", (lq_desc && lq_desc->vap_down_link_stats_fn) ? "ok" : "NULL");
+                }
+            } else {
+                wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d SKIP mac=%s vap=%d zero_mac=1\n",
+                    __func__, __LINE__, sta_key, apIndex);
+            }
             if (ctrl != NULL && link_quality_measurement && !is_zero_mac(sta->sta_mac)) {
                 wifi_front_haul_bss_t *bss_param = NULL;
                 linkquality_data_t *remove_link_data = (linkquality_data_t *) malloc (sizeof(linkquality_data_t));
@@ -4314,6 +4356,8 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
                     if (bss_param == NULL) {
                         wifi_util_error_print(WIFI_MON, "%s:%d Failed to get bss info for vap index %d\n", __func__,
                          __LINE__, apIndex);
+                        wifi_util_error_print(WIFI_MON, "VAP-DOWN-DBG %s:%d ABORT apIndex=%d bss_param NULL, loop stopped early sta_total=%d vap_down_sent=%d\n",
+                            __func__, __LINE__, apIndex, sta_total, vap_down_sent);
                         return RETURN_ERR;
                     }
                     to_mac_str(bss_param->bssid, remove_link_data->stats.ap_mac_str);
@@ -4327,6 +4371,9 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
         }
         hash_map_destroy(temp_sta_map);
     }
+
+    wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d EXIT apIndex=%d sta_total=%d vap_down_sent=%d\n",
+        __func__, __LINE__, apIndex, sta_total, vap_down_sent);
 
     return 0;
 }

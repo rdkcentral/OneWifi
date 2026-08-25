@@ -104,6 +104,16 @@ static int remove_link_stats_impl(stats_arg_t *stats)
     return rc;
 }
 
+/* VAP_DOWN (msg_type 8) – VAP settings changed; WEI purges only the clients
+ * it still tracks on this vap_index. */
+static int vap_down_link_stats_impl(stats_arg_t *stats)
+{
+    int rc = lq_ipc_send(LQ_IPC_MSG_VAP_DOWN, stats, 1, sizeof(stats_arg_t));
+    wifi_util_info_print(WIFI_APPS,"VAP-DOWN-DBG %s:%d [IPC->VAP_DOWN] mac=%s vap=%u rc=%d\n",
+        __func__, __LINE__, stats->mac_str, stats->vap_index, rc);
+    return rc;
+}
+
 /* PERIODIC_STATS (msg_type 1) – periodic monitor poll batch */
 static int process_lq_stats_impl(stats_arg_t *stats, int len)
 {
@@ -183,6 +193,7 @@ wifi_lq_descriptor_t* get_lq_descriptor()
         desc.set_quality_flags_fn               = set_quality_flags_impl;
         desc.get_quality_flags_fn               = get_quality_flags_impl;
         desc.process_lq_stats_fn                = process_lq_stats_impl;
+        desc.vap_down_link_stats_fn             = vap_down_link_stats_impl;
 #else 
         desc.register_station_mac_fn            = register_station_mac;
         desc.unregister_station_mac_fn          = unregister_station_mac;

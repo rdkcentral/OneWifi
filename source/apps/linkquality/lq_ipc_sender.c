@@ -66,6 +66,7 @@ static const char *lq_msg_type_str(uint32_t type)
     case LQ_IPC_MSG_REGISTER_STA:     return "REGISTER_STA";
     case LQ_IPC_MSG_UNREGISTER_STA:   return "UNREGISTER_STA";
     case LQ_IPC_MSG_REINIT_METRICS:   return "REINIT_METRICS";
+    case LQ_IPC_MSG_VAP_DOWN:         return "VAP_DOWN";
     default:                          return "UNKNOWN";
     }
 }

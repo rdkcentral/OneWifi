@@ -43,6 +43,7 @@ typedef char* (* get_link_metrics_t) ();
 typedef int (* set_quality_flags_t) (quality_flags_t *flag);
 typedef int (* get_quality_flags_t) (quality_flags_t *flag);
 typedef int (* process_lq_stats_t)(stats_arg_t *stats, int len);
+typedef int (* vap_down_link_stats_t)(stats_arg_t *stats);
 
 
 typedef struct {
@@ -58,6 +59,7 @@ typedef struct {
     set_quality_flags_t set_quality_flags_fn;
     get_quality_flags_t get_quality_flags_fn;
     process_lq_stats_t process_lq_stats_fn;
+    vap_down_link_stats_t vap_down_link_stats_fn;
 
 } wifi_lq_descriptor_t;
 
