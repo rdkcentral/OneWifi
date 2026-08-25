@@ -136,8 +136,10 @@ def changed_files(base):
     # first-party sources (the HAL's wifi_hal_hostapd.c, OneWifi's wifi_hostapd_glue.c)
     # while its intended target -- the vendored hostap tree -- lives in the sibling
     # rdk-wifi-libhostap/ clone a diff can't surface. Exclude only that vendored tree,
-    # by its path marker (documented intent; a diff never reaches it in practice).
-    return [f for f in out if "rdk-wifi-libhostap/" not in f]
+    # by its path prefix (anchored startswith: git diff paths are repo-relative and the
+    # vendored tree sits at the repo root, so a first-party path merely *containing* the
+    # name is never dropped; documented intent -- a diff never reaches it in practice).
+    return [f for f in out if not f.startswith("rdk-wifi-libhostap/")]
 
 
 def changed_lines(base, f):

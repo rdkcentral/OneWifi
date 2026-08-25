@@ -41,9 +41,15 @@ extract_lines_from_patch): when a hunk is a pure deletion (+C,0 — zero
 new-side lines), the script forces line_count to 1 and formats the line at
 the deletion site. ColumnLimit / SortIncludes can also cascade beyond changed
 lines. Without this filter, the PR review would contain suggestions on lines
-the author never touched — confusing and noisy. A suggestion is kept if ANY
-of its target lines overlaps a PR-changed line (so a multi-line reformat
-triggered by one changed line still posts).
+the author never touched — confusing and noisy. A suggestion is kept only if it
+is BOTH (a) *relevant* — it overlaps at least one line the PR actually changed —
+and (b) *postable* — its whole line range lies inside the region GitHub will accept
+a comment on: the changed lines PLUS the diff context rendered around them. Neither
+half suffices alone: mere overlap risks a 422 (GitHub anchors a multi-line review
+comment on both endpoints and rejects the ENTIRE review if either is outside the
+rendered diff, so one out-of-range suggestion drops them all); containment in the
+changed lines alone was the opposite error, dropping a reformat that cascades a line
+or two into commentable context. See relevant_and_postable() below.
 
 Note: a deletions-only PR produces an empty changed-lines file (no new-side
 lines) → filter active with zero lines → all suggestions dropped. This is
@@ -80,6 +86,24 @@ CHANGED_LINE = re.compile(r"^(.+):(\d+)-(\d+)$")
 # beyond it we fail open (post unfiltered, still capped by MAX_COMMENTS).
 MAX_CHANGED_RECORDS = 1_000_000
 
+# Total-byte guard on the same attacker-influenced file. The record cap above counts
+# newline-delimited records, but `for raw in fh` materializes one physical line at a time,
+# so a single newline-free multi-GB line would OOM-kill this job before any record is seen
+# (and MemoryError escapes the OSError/ValueError handler below). An fstat on the open
+# handle bounds total bytes up front -- no line can exceed the file -- closing both the
+# single-huge-line case and a flood of blank lines (which `continue` before the counter).
+# 64 MiB is generous next to the ~20 B/record minimum implied by the 1M-record cap.
+MAX_FILE_BYTES = 64 * 1024 * 1024
+
+# GitHub renders a PR diff with a few lines of CONTEXT around each change, and those context
+# lines are commentable too — so the region a review comment may anchor in is the changed
+# lines GROWN by this margin (then merged where two hunks sit close enough to render as one).
+# 3 is GitHub's default rendered context. This is the one value here NOT backed by a documented
+# API contract: too small over-drops valid suggestions (safe); too large risks a residual 422,
+# which the pr-comments.yml handler absorbs as an advisory. Set to 0 to recover strict
+# containment-in-changed-lines.
+DIFF_CONTEXT = 3
+
 
 def load_changed_lines(path):
     """Load {file: [(start, end), ...]} changed-line intervals from a changed-lines file.
@@ -93,6 +117,10 @@ def load_changed_lines(path):
         changed = {}
         records = 0
         with open(path) as fh:
+            if os.fstat(fh.fileno()).st_size > MAX_FILE_BYTES:
+                # Reject before reading: bounds memory regardless of how the bytes are
+                # split into lines. Raise so the handler below fails open (post unfiltered).
+                raise ValueError(f"changed-lines file exceeds {MAX_FILE_BYTES} bytes")
             for raw in fh:
                 line = raw.strip()
                 if not line:
@@ -120,6 +148,21 @@ def load_changed_lines(path):
         print(f"::warning::Could not load changed-lines file {path}: {exc} "
               "(posting unfiltered)", file=sys.stderr)
         return None
+
+
+def _commentable_intervals(intervals, ctx):
+    """Changed intervals grown by `ctx` and merged — the line ranges GitHub will accept a
+    review comment on (a hunk's changed lines plus the context lines rendered around them).
+    Two grown intervals that touch/overlap (i.e. the original change gap is <= 2*ctx, which
+    is exactly when git renders one contiguous hunk) merge into one region."""
+    grown = sorted((max(1, s - ctx), e + ctx) for (s, e) in intervals)
+    merged = []
+    for s, e in grown:
+        if merged and s <= merged[-1][1] + 1:     # overlaps or adjoins the previous region
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([s, e])
+    return merged
 
 
 def parse(diff_text):
@@ -196,23 +239,31 @@ def main():
     cl_path = os.environ.get("CHANGED_LINES_FILE", "")
     changed = load_changed_lines(cl_path) if cl_path else None
     if changed is not None:
-        def overlaps(c):
-            intervals = changed.get(c["path"])
-            if not intervals:                     # None (file untouched) or empty
+        # Precompute the commentable region (changed lines grown by DIFF_CONTEXT, merged)
+        # once per file; the raw changed intervals stay for the relevance test below.
+        commentable = {f: _commentable_intervals(ivs, DIFF_CONTEXT)
+                       for f, ivs in changed.items()}
+
+        def relevant_and_postable(c):
+            raw = changed.get(c["path"])
+            if not raw:                           # file untouched by the PR
                 return False
             cstart = c.get("start_line", c["line"])
             cend = c["line"]
-            # The comment spans the contiguous range [cstart, cend]; keep it if
-            # that interval intersects any changed interval for this file. Because
-            # every changed interval [s, e] is itself contiguous, an intersection
-            # guarantees a shared line — exactly equivalent to the old per-line set
-            # membership test, without materializing (and bounding) the lines.
-            return any(s <= cend and cstart <= e for (s, e) in intervals)
+            # (a) relevant: the comment range overlaps >=1 line the PR actually changed.
+            #     Drops a reformat sitting wholly on context lines the author never touched.
+            touches = any(s <= cend and cstart <= e for (s, e) in raw)
+            # (b) postable: its whole range lies inside the commentable region, so GitHub
+            #     accepts the anchor and does not 422 the review. Overlap alone risked that
+            #     422; containment-in-changed alone over-dropped a reformat cascading a line
+            #     or two into commentable context. Keep only what is both.
+            postable = any(s <= cstart and cend <= e for (s, e) in commentable[c["path"]])
+            return touches and postable
         before = len(comments)
-        comments = [c for c in comments if overlaps(c)]
+        comments = [c for c in comments if relevant_and_postable(c)]
         dropped = before - len(comments)
         if dropped:
-            print(f"Line-scoping: dropped {dropped} suggestion(s) on untouched lines")
+            print(f"Line-scoping: dropped {dropped} suggestion(s) off the PR's changed/commentable lines")
 
     total = len(comments)
     cap = int(os.environ.get("MAX_COMMENTS", "25"))

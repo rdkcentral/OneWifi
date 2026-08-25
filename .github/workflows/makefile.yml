@@ -261,8 +261,11 @@ jobs:
           # (compiled by the makefile, real DB entry) and bare 'hostap' dropped e.g.
           # wifi_hostapd_glue.c. A changed file not in the DB self-skips (default-flags fallback
           # -> fatal clang-diagnostic -> filtered below), so DB membership is the real gate.
+          # Anchored '^': git diff paths are repo-relative and the vendored tree, if ever
+          # surfaced, sits at the repo root -- so a first-party path that merely *contains*
+          # the name (e.g. source/.../rdk-wifi-libhostap-notes.c) is never dropped.
           CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
-                    | grep -vE 'rdk-wifi-libhostap/' || true)
+                    | grep -vE '^rdk-wifi-libhostap/' || true)
         fi
         : > tidy.log
         for f in $CHANGED; do
