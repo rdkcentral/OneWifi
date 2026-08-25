@@ -466,14 +466,16 @@ static int process_levl_sounding_timeout(timeout_data_t *t_data)
         stop_ap_index = levl_sc_data->ap_index;
         removed_data = (levl_sched_data_t *)hash_map_remove(curr_map, mac_str);
     }
-    pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
-
     if (removed_data != NULL) {
         wifi_util_dbg_print(WIFI_APPS,
             "timeout detached mac:%02x..%02x\n",
             stop_mac[0], stop_mac[5]);
         wifi_util_error_print(WIFI_APPS,"%s:%d Disable CSI Sounding for %02x:...%02x\n", __func__, __LINE__, stop_mac[0], stop_mac[5]);
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, stop_ap_index, stop_mac, wifi_app_inst_levl);
+    }
+    pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+
+    if (removed_data != NULL) {
         levl_csi_status_publish(&wifi_app->handle, stop_mac, 0);
         free(removed_data);
     }
