@@ -3142,20 +3142,20 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
 
     if (ch_chg == NULL) {
         wifi_util_error_print(WIFI_CTRL,
-            "TXB7-7233 %s:%d NULL channel-change event\n", __func__, __LINE__);
+            "%s:%d NULL channel-change event\n", __func__, __LINE__);
         return;
     }
 
     if (g_wifidb == NULL) {
         wifi_util_error_print(WIFI_CTRL,
-            "TXB7-7233 %s:%d wifi_mgr_t is NULL radio:%d\n",
+            "%s:%d wifi_mgr_t is NULL radio:%d\n",
             __func__, __LINE__, ch_chg->radioIndex);
         return;
     }
 
     if (ch_chg->radioIndex >= MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_CTRL,
-            "TXB7-7233 %s:%d invalid radio index:%d max:%d\n",
+            "%s:%d invalid radio index:%d max:%d\n",
             __func__, __LINE__, ch_chg->radioIndex, MAX_NUM_RADIOS);
         return;
     }
@@ -3163,20 +3163,20 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     num_of_radios = getNumberRadios();
     if (num_of_radios > MAX_NUM_RADIOS || ch_chg->radioIndex >= num_of_radios) {
         wifi_util_error_print(WIFI_CTRL,
-            "TXB7-7233 %s:%d radio index:%d outside configured radios:%u max:%d\n",
+            "%s:%d radio index:%d outside configured radios:%u max:%d\n",
             __func__, __LINE__, ch_chg->radioIndex, num_of_radios, MAX_NUM_RADIOS);
         return;
     }
 
     wifi_util_dbg_print(WIFI_CTRL,
-        "TXB7-7233 %s:%d entry radio:%d event:%d sub_event:%d channel:%d bw:%d\n",
+        "%s:%d entry radio:%d event:%d sub_event:%d channel:%d bw:%d\n",
         __func__, __LINE__, ch_chg->radioIndex, ch_chg->event, ch_chg->sub_event,
         ch_chg->channel, ch_chg->channelWidth);
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,
-            "TXB7-7233 %s:%d radio map unavailable for index:%d\n",
+            "%s:%d radio map unavailable for index:%d\n",
             __func__, __LINE__, ch_chg->radioIndex);
         return;
     }
@@ -3184,7 +3184,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(ch_chg->radioIndex);
     if (radio_feat == NULL) {
         wifi_util_error_print(WIFI_CTRL,
-            "TXB7-7233 %s:%d radio feature map unavailable for index:%d\n",
+            "%s:%d radio feature map unavailable for index:%d\n",
             __func__, __LINE__, ch_chg->radioIndex);
         return;
     }
@@ -3200,7 +3200,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         g_wifidb->channel_change_in_progress[ch_chg->radioIndex] = false;
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         wifi_util_dbg_print(WIFI_CTRL,
-            "TXB7-7233 %s:%d channel change complete; progress=false radio:%d\n",
+            "%s:%d channel change complete; progress=false radio:%d\n",
             __func__, __LINE__, ch_chg->radioIndex);
     }
 
