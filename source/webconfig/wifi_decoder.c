@@ -2938,6 +2938,7 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
                     wifi_util_error_print(WIFI_CTRL,
                         "%s:%d decode_bandwidth_from_json returned error\n", __FUNCTION__,
                         __LINE__);
+                    cJSON_Delete(json);
                     return;
                 }
             } else {
@@ -4141,9 +4142,20 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
             return webconfig_error_decode;
         }
         strncpy(acl_entry->device_name, tmp_device_name, sizeof(acl_entry->device_name)-1);
-        decode_param_integer(mac_object, "reason", param);
+        param = cJSON_GetObjectItem(mac_object, "reason");
+        if ((param == NULL) || (cJSON_IsNumber(param) == false)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation failed for key:reason\n", __func__, __LINE__);
+            free(acl_entry);
+            return webconfig_error_decode;
+        }
         acl_entry->reason = param->valuedouble;
-        decode_param_integer(mac_object, "expiry_time", param);
+
+        param = cJSON_GetObjectItem(mac_object, "expiry_time");
+        if ((param == NULL) || (cJSON_IsNumber(param) == false)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation failed for key:reason\n", __func__, __LINE__);
+            free(acl_entry);
+            return webconfig_error_decode;
+        }
         acl_entry->expiry_time = param->valuedouble;
 
         str_tolower(tmp_mac);
