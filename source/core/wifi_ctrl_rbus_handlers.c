@@ -2164,6 +2164,10 @@ static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void
             rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS);
             if (rc == bus_error_success) {
                 ctrl->device_tunnel_status_subscribed = false;
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Failed to unsubscribe from %s, rc:%d\n",
+                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
             }
         }
     }
@@ -2606,6 +2610,10 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             rc = bus_desc->bus_data_get_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS, &hs_data);
             if (rc == bus_error_success && hs_data.data_type == bus_data_type_boolean) {
                 ctrl->hotspot_enabled = hs_data.raw_data.b;
+                if (ctrl->hotspot_enabled) {
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d Hotspot already Enabled at startup\n",
+                        __func__, __LINE__);
+                }
                 subscribe_device_tunnel_status(ctrl);
             }
             bus_desc->bus_data_free_fn(&hs_data);
