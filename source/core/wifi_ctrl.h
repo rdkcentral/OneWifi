@@ -64,6 +64,7 @@ extern "C" {
 #define WIFI_TxRx_RATE_LIST                "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.TxRxRateList"
 #define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
 #define WIFI_DEVICE_TUNNEL_STATUS          "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus"
+#define WIFI_HOTSPOT_STATUS                "Device.X_COMCAST-COM_GRE.Tunnel.1.Enable"
 #define SPEEDTEST_STATUS                   "Device.IP.Diagnostics.X_RDKCENTRAL-COM_SpeedTest.Status"
 #define SPEEDTEST_SUBSCRIBE                "Device.IP.Diagnostics.X_RDK_SpeedTest.SubscriberUnPauseTimeOut"
 
@@ -250,6 +251,8 @@ typedef struct wifi_ctrl {
     bool                device_mode_subscribed;
     bool                test_device_mode_subscribed;
     bool                device_tunnel_status_subscribed;
+    bool                hotspot_status_subscribed;
+    bool                hotspot_enabled;
     bool                device_wps_test_subscribed;
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
