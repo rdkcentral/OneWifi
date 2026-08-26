@@ -531,7 +531,7 @@ typedef struct {
     double snr;
     double per;
     double phy;
-    char time[1024];
+    char time[32];
 } sample_t;
 
 typedef struct {
