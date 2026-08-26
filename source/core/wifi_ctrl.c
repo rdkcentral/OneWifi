@@ -1462,6 +1462,12 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     //Register to BUS for webconfig interactions
     bus_register_handlers(ctrl);
 
+    ctrl->bus_events_subscribed = false;
+    ctrl->device_tunnel_status_subscribed = false;
+    ctrl->hotspot_status_subscribed = false;
+    ctrl->hotspot_enabled = false;
+    ctrl->tunnel_events_subscribed = false;
+
     // subscribe for BUS events
     bus_subscribe_events(ctrl);
 
@@ -1478,9 +1484,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     wifi_chan_event_register(channel_change_callback);
 
     wifi_wpsEvent_callback_register(wps_event_callback);
-
-    ctrl->bus_events_subscribed = false;
-    ctrl->tunnel_events_subscribed = false;
 
 #if defined (FEATURE_SUPPORT_WEBCONFIG)
     register_with_webconfig_framework();
@@ -2343,14 +2346,14 @@ static int bus_check_and_subscribe_events(void* arg)
 
 #if defined (ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
     ctrl->mesh_status_subscribed = true;
-    ctrl->device_tunnel_status_subscribed = true;
     ctrl->device_mode_subscribed = true;
     ctrl->mesh_keep_out_chans_subscribed = true;
 #endif
 
-    if ((ctrl->bus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
+    if ((ctrl->bus_events_subscribed == false) ||
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
-        (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
+        (ctrl->hotspot_status_subscribed && ctrl->device_tunnel_status_subscribed == false) ||
+        (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
         (ctrl->hotspot_client_dhcp_failure_subscribed == false)
