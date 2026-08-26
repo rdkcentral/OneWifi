@@ -299,7 +299,7 @@ static int init_interworking_config_default(int vapIndex,
 
 int wifidb_get_default_mld_link_id(int band)
 {
-#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+#if defined(CONFIG_IEEE80211BE) && (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
     switch (band) {
     case WIFI_FREQUENCY_2_4_BAND: return 2;
     case WIFI_FREQUENCY_5_BAND:   return 1;

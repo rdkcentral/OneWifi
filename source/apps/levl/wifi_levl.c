@@ -1047,6 +1047,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         //Cancel scheduler Task
         if (levl_sc_data->sched_handler_id != 0) {
             scheduler_cancel_timer_task(ctrl->sched, levl_sc_data->sched_handler_id);
+            scheduler_free_timer_task_arg(ctrl->sched, levl_sc_data->sched_handler_id);
             levl_sc_data->sched_handler_id = 0;
         }
         //Disable CSI Sounding
@@ -1243,6 +1244,7 @@ int process_csi_stop_levl(wifi_app_t *app)
         to_mac_str((unsigned char *)levl_sched_data->mac_addr, mac_str);
         if (levl_sched_data->sched_handler_id != 0) {
             scheduler_cancel_timer_task(ctrl->sched, levl_sched_data->sched_handler_id);
+            scheduler_free_timer_task_arg(ctrl->sched, levl_sched_data->sched_handler_id);
             levl_sched_data->sched_handler_id = 0;
         }
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, levl_sched_data->ap_index, levl_sched_data->mac_addr, wifi_app_inst_levl);
@@ -1575,6 +1577,8 @@ int levl_deinit(wifi_app_t *app)
         to_mac_str((unsigned char *)levl_sched_data->mac_addr, mac_str);
         if (levl_sched_data->sched_handler_id != 0) {
             scheduler_cancel_timer_task(ctrl->sched, levl_sched_data->sched_handler_id);
+            scheduler_free_timer_task_arg(ctrl->sched, levl_sched_data->sched_handler_id);
+            levl_sched_data->sched_handler_id = 0;
         }
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, levl_sched_data->ap_index, levl_sched_data->mac_addr, wifi_app_inst_levl);
         levl_csi_status_publish(&app->handle, levl_sched_data->mac_addr, 0);
