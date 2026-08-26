@@ -94,6 +94,10 @@ extern "C" {
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 #define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
 #define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
+#define WIFI_NETWORKDEVICESSTATUS_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.NetworkDevicesStatus.MloRfcEnable"
+#define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -1320,6 +1324,22 @@ typedef struct {
     ULONG                   radio_StatisticsStartTime;
     unsigned int            radio_Temperature;
 } radio_data_t;
+
+typedef struct {
+    assoc_dev_data_t *affiliated_sta[MAX_NUM_RADIOS];
+    UINT affiliated_sta_count;
+} stamld_data_t;
+
+typedef struct {
+    wifi_vap_info_t *mld_vaps[MAX_NUM_RADIOS];
+    UINT mld_vap_count;
+} mld_group_t;
+
+typedef struct {
+    mld_group_t mld_groups[MLD_UNIT_COUNT];
+    UINT mld_group_count;
+    hash_map_t *stamld[MLD_UNIT_COUNT]; /* Hash map keyed by MLD MAC address, contains stamld_data_t */
+} apmld_map_t;
 
 #ifdef EM_APP
 
