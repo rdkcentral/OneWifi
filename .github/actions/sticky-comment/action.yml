@@ -26,6 +26,16 @@ inputs:
     description: 'Login of the identity that owns our comments (for the ownership match). Change this if you switch to a GitHub App token.'
     required: false
     default: 'github-actions[bot]'
+  recreate:
+    description: >
+      'true' = delete the previous comment and repost, so the single sticky comment always lands
+      at the bottom of the PR timeline (and fires a fresh notification!). Edit-in-place results
+      in the comment staying at its original position, which quickly disappears out of sight on most PRs.
+      'false' = do edit in place (stable permalink, no notification, but can get
+      buried). If the token cannot delete the comment it emits a ::warning:: and falls back to
+      edit-in-place (deletion needs issues: write on the calling workflow's token).
+    required: false
+    default: 'true'
 
 runs:
   using: composite
@@ -39,6 +49,7 @@ runs:
         MARKER: ${{ inputs.marker }}
         BODY_FILE: ${{ inputs.body-file }}
         BOT_LOGIN: ${{ inputs.bot-login }}
+        RECREATE: ${{ inputs.recreate }}
       run: |
         set -uo pipefail
         if [ ! -f "$BODY_FILE" ]; then
@@ -79,15 +90,49 @@ runs:
         # no dependence on the '@file' loader. Bodies are small (capped upstream),
         # so passing via one argv is safe.
         body="$(cat sticky-body.md)"
+        # Recreate mode: delete the old comment so the repost below lands at the
+        # bottom of the PR timeline (edit-in-place stays put and gets buried after
+        # later commits/comments). issues:write IS granted by pr-comments.yml, so
+        # DELETE normally succeeds; if it fails anyway, react on the reason rather
+        # than assume a permission gap:
+        #   404 -> the comment is already gone -> create a fresh one. CAVEAT: if a
+        #          *concurrent* stage-2 run deleted it (cancel-in-progress only
+        #          requests, doesn't guarantee, the old run stops), both runs fall
+        #          through to POST -> duplicate marker comments that the head -1
+        #          lookup never reconciles. Extremely unlikely; not self-healing.
+        #          See roadmap "recreate isn't atomic" (P4) before relying on this.
+        #   other -> keep it and edit in place (beats erroring or duplicating).
+        #   A 403 here would mean the issues:write grant regressed -- surfaced by
+        #   the warning + the echoed error body.
+        if [ -n "$existing" ] && [ "$RECREATE" = "true" ]; then
+          if gh api --method DELETE "/repos/$REPO/issues/comments/$existing" >/dev/null 2>/tmp/sticky_err; then
+            existing=""
+          elif grep -q 'HTTP 404' /tmp/sticky_err; then
+            existing=""                       # already deleted -> fall through to POST
+          else
+            echo "::warning::Could not delete sticky '$MARKER' comment $existing; editing in place instead."
+            cat /tmp/sticky_err
+          fi
+        fi
+        # Edit in place if we still have one. A 404 here means it vanished between
+        # the lookup and now (delete race, or someone removed it) -> fall through
+        # to POST a fresh one rather than hard-fail on a PATCH that can't succeed.
         if [ -n "$existing" ]; then
           if gh api --method PATCH "/repos/$REPO/issues/comments/$existing" \
-               -f body="$body" >/dev/null; then
+               -f body="$body" >/dev/null 2>/tmp/sticky_err; then
             echo "Updated sticky '$MARKER' comment ($existing) on PR #$PR."
+          elif grep -q 'HTTP 404' /tmp/sticky_err; then
+            echo "::warning::Sticky '$MARKER' comment $existing vanished; creating a fresh one."
+            existing=""
           else
             echo "::error::Failed to update sticky '$MARKER' comment $existing."
+            cat /tmp/sticky_err
             exit 1
           fi
-        else
+        fi
+        # Create when there is no comment to edit (first run, recreate deleted it,
+        # or a 404 above cleared it).
+        if [ -z "$existing" ]; then
           if gh api --method POST "/repos/$REPO/issues/$PR/comments" \
                -f body="$body" >/dev/null; then
             echo "Created sticky '$MARKER' comment on PR #$PR."

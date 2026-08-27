@@ -2,10 +2,11 @@ name: PR comments
 
 # unified stage 2/2 for every PR-comment payload.
 #
-# One trusted workflow_run flow that posts all three CI artifacts back to the PR:
-#   - clang-format  -> inline review suggestions   (job: format, bespoke)
-#   - gcc build     -> one sticky summary comment  (job: build)
-#   - clang-tidy    -> one sticky summary comment  (job: tidy)
+# One trusted workflow_run flow that posts the CI artifacts back to the PR:
+#   - clang-format          -> inline review suggestions  (job: format, bespoke)
+#   - gcc build summary     -> one sticky comment         (job: build)
+#   - clang-tidy + gcc gate -> one sticky comment         (job: tidy, both
+#                              diff-scoped checks folded together)
 #
 # Why workflow_run (and why two stages at all): posting to a PR needs
 # `pull-requests: write`. Doing that in a job that has checked out and built
@@ -42,7 +43,10 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write        # the only write scope required (posting)
+  pull-requests: write        # post/PATCH the sticky comment + review suggestions
+  issues: write               # sticky-comment recreate mode DELETEs the old comment
+                              # (PR comments are issue comments); without this the DELETE
+                              # 403s and it falls back to edit-in-place (with a ::warning::).
   actions: read               # to download stage-1 artifacts from the triggering run
 
 # Separate group per triggering workflow + head, so a Build-Check-triggered run
@@ -146,14 +150,32 @@ jobs:
             exit 0
           fi
 
-          if ! gh api --method POST "/repos/$REPO/pulls/$PR/reviews" \
-                 --input /tmp/review.json > /tmp/resp.json; then
-            echo "::error::Failed to post review (see log above)."
-            # 422 = a suggestion targeted a line outside the PR diff.
-            # 404 = usually rate limit from too many comments (lower MAX_COMMENTS).
+          # A 422 has two flavours. The benign one (rebase / squash-merge race): a
+          # stale-payload workflow_run posts suggestions computed against the
+          # pre-rebase diff, so some lines no longer exist -> GitHub rejects them as
+          # "not part of the diff". But GitHub also returns 422 for genuinely bad
+          # payloads (invalid position, closed/invalid review, a converter bug), and
+          # blindly soft-skipping every 422 would mask those. Since posting
+          # suggestions is advisory, we never red a PR over it (exit 0 either way),
+          # but we distinguish the two so a real bug stays visible in the logs.
+          # Other failures stay fatal (404 = usually a rate limit from too many
+          # comments -> lower MAX_COMMENTS).
+          if gh api --method POST "/repos/$REPO/pulls/$PR/reviews" \
+                 --input /tmp/review.json > /tmp/resp.json 2> /tmp/review_err.txt; then
+            echo "Review posted: $(python3 -c 'import json;print(json.load(open("/tmp/resp.json")).get("html_url",""))')"
+          elif grep -q 'HTTP 422' /tmp/review_err.txt; then
+            if grep -qiE 'part of the diff|pull_request_review_thread' /tmp/review_err.txt; then
+              echo "::warning::Review POST 422 — suggestions no longer match the PR diff (likely a rebase/merge race). Skipping; a fresh run will supersede."
+            else
+              echo "::warning::Review POST 422 did NOT look like an out-of-diff race — possible invalid payload or converter/API bug; suggestions were dropped this run. Inspect the response below."
+            fi
+            cat /tmp/review_err.txt
+            exit 0
+          else
+            echo "::error::Failed to post review:"
+            cat /tmp/review_err.txt
             exit 1
           fi
-          echo "Review posted: $(python3 -c 'import json;print(json.load(open("/tmp/resp.json")).get("html_url",""))')"
 
   # ---------------------------------------------------------------------------
   # gcc build -> one sticky summary comment, aggregating every matrix leg.
@@ -236,7 +258,7 @@ jobs:
   # clang-tidy -> one sticky summary comment (for now only bpi leg produces it).
   # ---------------------------------------------------------------------------
   tidy:
-    name: clang-tidy summary comment
+    name: diff-scoped findings comment
     runs-on: ubuntu-24.04
     if: >-
       github.event.workflow_run.name == 'Build Check'
@@ -257,21 +279,39 @@ jobs:
           expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
           expected-branch: ${{ github.event.workflow_run.head_branch }}
 
-      - name: Prepare clang-tidy comment
+      # Both changed-lines checks live in the SAME ci-summary-bpi artifact, so we
+      # compose them into ONE sticky comment (clang-tidy + the gcc diff-gate /
+      # "don't-add-crap gate"). The build summary stays its own comment for now;
+      # merging that in too is the endgame (see design note in the PR).
+      - name: Prepare diff-scoped findings comment
         id: prep
         if: steps.ctx.outputs.found == 'true'
         run: |
           set -uo pipefail
-          f="ci-summary-bpi/tidy-summary.md"
-          if [ -f "$f" ] && [ -s "$f" ]; then
-            { echo "## 🔎 clang-tidy (advisory)"; echo; cat "$f"; } > tidy-comment.md
-            echo "post=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No clang-tidy summary in the artifact, skipping."
+          tidy="ci-summary-bpi/tidy-summary.md"
+          gcc="ci-summary-bpi/gcc-gate-summary.md"
+          if [ ! -s "$tidy" ] && [ ! -s "$gcc" ]; then
+            echo "No diff-scoped findings in the artifact, skipping."
             echo "post=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          {
+            echo "## 🔬 Diff-scoped checks (changed lines only)"
+            echo
+            if [ -s "$tidy" ]; then
+              echo "### 🔎 clang-tidy (advisory)"; echo; cat "$tidy"; echo
+            fi
+            # gcc-gate-summary.md already carries its own ###-level heading(s).
+            if [ -s "$gcc" ]; then
+              cat "$gcc"; echo
+            fi
+          } > diff-findings-comment.md
+          echo "post=true" >> "$GITHUB_OUTPUT"
 
-      - name: Post sticky clang-tidy summary
+      # Marker kept as 'clang-tidy' (not renamed) so this UPSERTS the existing
+      # sticky comment when it merges over develop, rather than orphaning the old
+      # one and posting a second.
+      - name: Post sticky diff-scoped findings summary
         if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true' && steps.prep.outputs.post == 'true'
         uses: ./.github/actions/sticky-comment
         with:
@@ -279,5 +319,5 @@ jobs:
           repository: ${{ github.repository }}
           pr-number: ${{ steps.ctx.outputs.pr_number }}
           marker: clang-tidy
-          body-file: tidy-comment.md
+          body-file: diff-findings-comment.md
           bot-login: ${{ env.BOT_LOGIN }}

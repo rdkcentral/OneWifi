@@ -231,8 +231,12 @@ jobs:
           # HAL/hostapd/mesh errors still break the build, so will be shown too.
           # OneWifi runs a Yocto-style clean baseline, so anything here
           # is a newly-surfaced bug to triage.
+          # The leading 'easymesh_project/' gate keeps only in-tree sources; without it the
+          # sibling-exclusion below would still admit system/toolchain warnings (/usr/include,
+          # /usr/lib/gcc). Mirrors rdk-wifi-hal's makefile.yml so the two stay in sync.
           warns=$(grep -hE ': warning:' "$LOG" \
-                  | grep -vE 'rdk-wifi-hal|rdk-wifi-libhostap|unified-wifi-mesh' \
+                  | grep -E 'easymesh_project/' \
+                  | grep -vE 'rdk-wifi-hal|rdk-wifi-libhostap|unified-wifi-mesh|halinterface|trower-base64' \
                   | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' \
                   | sort -u || true)
           if [ -n "$warns" ]; then
@@ -253,13 +257,27 @@ jobs:
         #   * WarningsAsErrors checks    -> `error:`   -> FATAL (this step fails the job)
         #   * rest of enabled bugprone-* -> `warning:` -> advisory only
         # clang-diagnostic-* (most false positives and most noisy) is filtered out so it can NEVER
-        # gate. The gate is changed-files-only: a PR can only fail on a .c/.cpp it touched.
+        # gate. The gate is changed-LINES-scoped: a PR can only fail on a .c/.cpp LINE it touched
+        # (the per-file `lines=` filter below), so pre-existing findings on untouched lines never red it.
         mkdir -p ci-out
         [ -f compile_commands.json ] || { echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
         BASE='${{ github.event.pull_request.base.sha }}'
         CHANGED=''
+        DIFF_BASE="$BASE"
         if [ -n "$BASE" ]; then
           git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+          # Diff against the merge ref's real base parent (HEAD^1), not the frozen payload
+          # BASE: this step's checkout has no `ref:`, so HEAD is refs/pull/N/merge and HEAD^1
+          # is the CURRENT base. On a RE-RUN of an old run the merge ref re-resolves to today's
+          # base while $BASE stays pinned, so a two-dot $BASE..HEAD would blame post-fork
+          # base-branch changes on the PR (gate/line-scope fires on lines the author never
+          # touched). Use HEAD^1 when HEAD is a merge commit AND $BASE is its ancestor (the
+          # is-ancestor probe makes the parent-order assumption self-verifying); else keep
+          # $BASE. Mirrors gcc_diff_gate.py effective_base().
+          if git rev-parse --verify --quiet HEAD^2 >/dev/null \
+             && git merge-base --is-ancestor "$BASE" HEAD^1 2>/dev/null; then
+            DIFF_BASE=HEAD^1
+          fi
           # Changed file not present in compile_commands.json (not built) falls back to default
           # flags. A real source then can't resolve its includes -> a fatal clang-diagnostic
           # aborts file parsing before any check run on it -> that output is dropped by the
@@ -272,15 +290,24 @@ jobs:
           # Anchored '^': git diff paths are repo-relative and the vendored tree, if ever
           # surfaced, sits at the repo root -- so a first-party path that merely *contains*
           # the name (e.g. source/.../rdk-wifi-libhostap-notes.c) is never dropped.
-          CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
+          CHANGED=$(git diff --name-only --diff-filter=ACM "$DIFF_BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
                     | grep -vE '^rdk-wifi-libhostap/' || true)
         fi
         : > tidy.log
         for f in $CHANGED; do
           [ -f "$f" ] || continue
+          # new-side line numbers this PR changed in *this* file (zero-context hunks)
+          lines=$(git diff -U0 --diff-filter=ACM "$DIFF_BASE" HEAD -- "$f" 2>/dev/null \
+                  | awk '/^@@ /{c=$3;sub(/^\+/,"",c);n=1;if(c~/,/){split(c,a,",");c=a[1];n=a[2]}
+                         for(i=0;i<n;i++)if(n>0)print c+i}' | sort -un | paste -sd' ' -)
+          [ -n "$lines" ] || continue
           # || true: a no-match grep (exit 1) or a clang-tidy hiccup must not abort the loop.
+          # clang-tidy runs one file at a time -> every finding is this file's, so keep only the
+          # ones whose LINE the PR changed. Filter on the line number alone: matching the
+          # sed-normalized display path against git-diff paths is fragile (silently drops all).
           clang-tidy-18 -p . --quiet "$f" 2>/dev/null \
-            | grep -E ': (warning|error):' | grep -v clang-diagnostic >> tidy.log || true
+            | grep -E ': (warning|error):' | grep -v clang-diagnostic \
+            | awk -F: -v L="$lines" 'BEGIN{split(L,a," ");for(i in a)k[a[i]]} ($2 in k)' >> tidy.log || true
         done
         # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`.
         gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
@@ -294,8 +321,8 @@ jobs:
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
         {
-          if   [ -z "$CHANGED" ];     then echo "### 🔎 clang-tidy: no changed .c to scan"
-          elif [ -z "$gated$advis" ]; then echo "### 🔎 clang-tidy: clean on changed files"
+          if   [ -z "$CHANGED" ];     then echo "### 🔎 clang-tidy: no changed .c/.cpp to scan"
+          elif [ -z "$gated$advis" ]; then echo "### 🔎 clang-tidy: clean on changed lines"
           else
             if [ -n "$gated" ]; then
               echo "### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
@@ -310,7 +337,7 @@ jobs:
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
         # Gate AFTER the summary + artifact are written, on promoted checks only.
         if [ -n "$gated" ]; then
-          echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed files" >&2
+          echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed lines" >&2
           exit 1
         fi
 
