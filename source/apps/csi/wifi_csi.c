@@ -117,6 +117,7 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
     mac_addr_str_t mac_str = { 0 };
     mac_addr_str_t evicted_mac_str = { 0 };
     csi_mac_data_t *to_hash_map = NULL;
+    char *map_key = NULL;
     bool enable_sounding = false;
     assoc_dev_data_t *assoc_dev_data = NULL;
     mac_addr_t link_addr = { 0 };
@@ -227,7 +228,17 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
             to_hash_map->subscribed_apps |= sounding_app;
             wifi_util_info_print(WIFI_APPS, "%s:%d Enabling CSI for mac %02x..%02x\n", __func__, __LINE__, to_hash_map->mac_addr[0], to_hash_map->mac_addr[5]);
             wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, TRUE);
-            if (hash_map_put(app->data.u.csi.csi_sounding_mac_map, strdup(mac_str), to_hash_map) != 0) {
+            map_key = strdup(mac_str);
+            if (map_key == NULL) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d CSI map key allocation failed for mac %s\n",
+                    __func__, __LINE__, mac_str);
+                wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, FALSE);
+                free(to_hash_map);
+                pthread_mutex_unlock(&g_csi_map_lock);
+                update_pinger_config(ap_index, mac_addr, true);
+                return -1;
+            }
+            if (hash_map_put(app->data.u.csi.csi_sounding_mac_map, map_key, to_hash_map) != 0) {
                 wifi_util_error_print(WIFI_APPS, "%s:%d CSI map insert failed for mac %s\n",
                     __func__, __LINE__, mac_str);
                 wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, FALSE);
