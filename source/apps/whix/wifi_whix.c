@@ -1117,6 +1117,23 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     wifi_util_dbg_print(WIFI_APPS, "%s", buff);
     get_formatted_time(tmp);
     memset(buff, 0, MAX_BUFF_SIZE);
+    snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_CAPSS_%d:", tmp, vap_index + 1);
+    for (i = 0; i < num_devs; i++) {
+        if (sta[i].dev_stats.cli_Active == true) {
+            snprintf(tmp, 32, "%d/%d,", sta[i].dev_stats.cli_capableNumSpatialStreams,
+                    sta[i].dev_stats.cli_activeNumSpatialStreams);
+            strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+            strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+        }
+    }
+    strncat(buff, "\n", 2);
+    write_to_file(wifi_health_log, buff);
+    snprintf(eventName, sizeof(eventName), "WIFI_CAPSS_%d_split", vap_index + 1);
+    get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
+
+    wifi_util_dbg_print(WIFI_APPS, "%s", buff);
+    get_formatted_time(tmp);
+    memset(buff, 0, MAX_BUFF_SIZE);
     memset(telemetryBuff, 0, MAX_BUFF_SIZE);
     snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_CHANNEL_WIDTH_%d:", tmp, vap_index + 1);
     for (i = 0; i < num_devs; i++) {

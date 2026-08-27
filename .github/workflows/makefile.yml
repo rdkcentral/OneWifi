@@ -95,6 +95,14 @@ jobs:
         # Steps for ucode installation required for hostapd compilation
         git clone https://github.com/jow-/ucode.git ucode
         cd ucode
+        # Pin ucode: PR#398 (LibFFI module) merged to master 2026-08-27 and broke the bpi
+        # build (ucode's `unused` macro collides with OpenSSL's ossl_unused in HAL TUs).
+        # 655ca6d = a0ca7b1^1 = last master BEFORE the FFI merge = last known-good state
+        # (it is literally what the last green build cloned). The colliding `unused` macro
+        # was added by abb80c6 ON the PR#398 branch, so any commit on that branch -- incl.
+        # 19ffa8a, the earlier (wrong) pin -- still ships the poisoned util.h. Use first-
+        # parent (a0ca7b1^1), NOT plain `git log`, when moving this pin; bump deliberately.
+        git checkout 655ca6d
         mkdir build && cd build
         cmake -DUBUS_SUPPORT=OFF -DUCI_SUPPORT=OFF -DULOOP_SUPPORT=OFF ..
         make -j"$(nproc)"
@@ -256,8 +264,16 @@ jobs:
           # flags. A real source then can't resolve its includes -> a fatal clang-diagnostic
           # aborts file parsing before any check run on it -> that output is dropped by the
           # clang-diagnostic filter below -> file can't fail. Thus, only built files are judged.
+          # Exclude only the vendored hostap tree (sibling clone rdk-wifi-libhostap/), never
+          # first-party sources: '^build/' wrongly dropped build/linux/compat/coverage_stubs.c
+          # (compiled by the makefile, real DB entry) and bare 'hostap' dropped e.g.
+          # wifi_hostapd_glue.c. A changed file not in the DB self-skips (default-flags fallback
+          # -> fatal clang-diagnostic -> filtered below), so DB membership is the real gate.
+          # Anchored '^': git diff paths are repo-relative and the vendored tree, if ever
+          # surfaced, sits at the repo root -- so a first-party path that merely *contains*
+          # the name (e.g. source/.../rdk-wifi-libhostap-notes.c) is never dropped.
           CHANGED=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
-                    | grep -vE '^build/|hostap' || true)
+                    | grep -vE '^rdk-wifi-libhostap/' || true)
         fi
         : > tidy.log
         for f in $CHANGED; do
@@ -297,6 +313,61 @@ jobs:
           echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed files" >&2
           exit 1
         fi
+
+    - name: gcc diff-scoped warning gate for ${{ matrix.platform.name }}
+      # PROPOSAL (branch ci/gcc-diff-gate). Gate not-yet-promoted gcc classes on the
+      # PR's changed LINES only, without promoting them tree-wide (the tree still carries a
+      # backlog: -Wvla 18, -Wreturn-type 11, dead-code family). The script recompiles each changed
+      # .c/.cpp from compile_commands.json with the candidate warnings enabled (non-fatal) and keeps
+      # only findings on lines the PR touched -> a PR can only fail on a class that fires on a changed line.
+      # The silent baseline (and the build-summary that relies on it) is unaffected. bpi leg only
+      # (it owns the compile DB). Runs AFTER clang-tidy so both gate independently.
+      if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        # ROLLOUT: start in advisory mode. ENFORCE=false renders the ❌ "would fail"
+        # block but never reds the job, so the mechanism runs on real PRs first.
+        # FLIP to 'true' (one-word change) once ALL of these hold on the live runner:
+        #   1. >= a handful of real PRs touching .c/.cpp have processed end-to-end
+        #      with NO "mechanism error" summary line (the try/except fail-open);
+        #   2. >= 1 advisory finding (the -Wunused-* classes fire on ordinary
+        #      refactors) hand-checked against the diff -> line attribution correct;
+        #   3. zero false positives on the GATE classes.
+        # Gate on that evidence, not the calendar. Silence of the GATE classes alone
+        # proves nothing (they're rarely introduced) -- the advisory classes are what
+        # exercise the recompile + line-scoping machinery.
+        ENFORCE: 'false'
+        # GATE = fail the job (when ENFORCE=true) if introduced on a changed line.
+        # ADVISORY = report only. -Wvla (stack-overflow) + -Wreturn-type (UB) are
+        # high-impact + reliable -> first to gate. The dead-code family is
+        # diff-scope-reliable but kept ADVISORY (promote a class into GATE_WARNINGS
+        # once quiet on real PRs). (-Wunreachable-code-* are clang-only; the "moved
+        # code left set-but-unused vars" case is -Wunused-but-set-variable.)
+        GATE_WARNINGS: "-Wvla -Wreturn-type"
+        ADVISORY_WARNINGS: "-Wunused-but-set-variable -Wunused-value -Wunused-label"
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        if [ ! -f compile_commands.json ] || [ -z "$BASE" ]; then
+          echo "### 🚦 gcc diff-gate: no compile DB or PR base — skipped" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        # The script prints a markdown summary to stdout and ::error::/::warning:: to stderr;
+        # it exits 1 iff a GATE class fired on a changed line.
+        # A missing script (partial cherry-pick / not yet on this branch) must skip,
+        # not red the job: python3 on an absent file exits 2 and would fail the matrix.
+        if [ ! -f .github/scripts/gcc_diff_gate.py ]; then
+          echo "### 🚦 gcc diff-gate: script not present — skipped" | tee -a ci-out/gcc-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        set +e
+        python3 .github/scripts/gcc_diff_gate.py > gcc-gate.md
+        rc=$?
+        set -e
+        tee -a ci-out/gcc-gate-summary.md < gcc-gate.md >> "$GITHUB_STEP_SUMMARY"
+        exit "$rc"
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
     # Record the PR identity as passive data for the workflow_run poster to
