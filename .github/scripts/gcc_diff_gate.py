@@ -143,17 +143,26 @@ def changed_files(base):
 
 
 def changed_lines(base, f):
-    """New-side line numbers this PR changed in f (zero-context hunks)."""
+    """New-side line ranges this PR changed in f (zero-context hunks).
+
+    Returns a list of (start, end) inclusive intervals instead of a per-line
+    set, so memory is bounded by hunk count, not total changed-line count.
+    """
     diff = subprocess.run(
         ["git", "-C", REPO_DIR, "diff", "-U0", "--diff-filter=ACM", base, "HEAD", "--", f],
         capture_output=True, text=True, check=True,
     ).stdout
-    lines = set()
+    intervals = []
     for m in re.finditer(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", diff, re.M):
         start = int(m.group(1))
         count = int(m.group(2)) if m.group(2) else 1
-        lines.update(range(start, start + count))
-    return lines
+        if count > 0:
+            intervals.append((start, start + count - 1))
+    return intervals
+
+
+def _in_intervals(line, intervals):
+    return any(s <= line <= e for s, e in intervals)
 
 
 def db_args(db, f):
@@ -202,7 +211,7 @@ def main():
             t = TAG_RE.search(line)
             if not m or not t:
                 continue
-            if int(m.group(1)) not in want:
+            if not _in_intervals(int(m.group(1)), want):
                 continue
             tag = t.group(0)
             # Strip to the LAST repo dir in the path token: the runner checks out to
