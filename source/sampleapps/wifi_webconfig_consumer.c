@@ -379,7 +379,7 @@ void sig_handler(int sig)
 }
 void cleanup_function()
 {
-    remove(CONSUMER_APP_FILE);
+    (void)remove(CONSUMER_APP_FILE);
 }
 int main (int argc, char *argv[])
 {

@@ -142,6 +142,33 @@ UINT get_num_radio_dml()
     }
 }
 
+UINT get_num_apmld_dml()
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    return dml->apmld_map.mld_group_count;
+}
+
+mld_group_t* get_dml_apmld_group(uint8_t index)
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    if (index >= dml->apmld_map.mld_group_count) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index %u\n", __func__, __LINE__, index);
+        return NULL;
+    }
+
+    return &dml->apmld_map.mld_groups[index];
+}
+
+UINT get_total_num_affiliated_ap_dml(mld_group_t *mld_group)
+{
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d get_total_num_affiliated_ap_dml called. Number:%u\n",
+        __func__, __LINE__, mld_group->mld_vap_count);
+
+    return mld_group->mld_vap_count;
+}
+
 UINT get_total_num_vap_dml()
 {
     webconfig_dml_t* pwebconfig = get_webconfig_dml();
@@ -468,46 +495,55 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
+void set_webconfig_dml_data(char *eventName, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
     char *pTmp = NULL;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
 
     wifi_util_dbg_print(WIFI_DMCLI,"bus event callback Event is %s\r\n",eventName);
-    pTmp = p_data->raw_data.bytes;
-    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->data_type);
+    pTmp = p_data->value.raw_data.bytes;
+    if ((p_data->value.data_type != bus_data_type_string) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d:[%s]wrong bus object data:%02x\r\n", __func__, __LINE__, eventName, p_data->value.data_type);
+        return;
+    }
+
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
         return;
     }
 
     // setup the raw data
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.descriptor = 0;
-    data.descriptor = webconfig_data_descriptor_encoded |
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    data->descriptor = 0;
+    data->descriptor = webconfig_data_descriptor_encoded |
         webconfig_data_descriptor_translate_to_tr181;
 
     // wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__,
-    // data.u.encoded.raw);
+    // data->u.encoded.raw);
     wifi_util_info_print(WIFI_DMCLI, "%s:%d: hal capability update\r\n", __func__, __LINE__);
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap,
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap,
         sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
+    data->u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
 
     // tell webconfig to decode
-    if (webconfig_decode(&webconfig_dml.webconfig, &data, pTmp) == webconfig_error_none) {
+    if (webconfig_decode(&webconfig_dml.webconfig, data, pTmp) == webconfig_error_none) {
         wifi_util_info_print(WIFI_DMCLI, "%s %d webconfig_decode success \n", __FUNCTION__,
             __LINE__);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s %d webconfig_decode fail \n", __FUNCTION__, __LINE__);
+        free(data);
+        data = NULL;
         return;
     }
 
-    dml_cache_update(&data);
+    dml_cache_update(data);
 
-    webconfig_data_free(&data);
-
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
     return;
 }
 
@@ -554,7 +590,7 @@ webconfig_error_t webconfig_dml_apply(webconfig_dml_t *consumer, webconfig_subdo
 void get_associated_devices_data(unsigned int radio_index)
 {
     int itr=0, itrj=0;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
     assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
     char key[64] = {0};
@@ -564,15 +600,25 @@ void get_associated_devices_data(unsigned int radio_index)
         wifi_util_error_print(WIFI_DMCLI,"%s %d Null pointer get_assoc_devices_blob string\n", __func__, __LINE__);
         return;
     }
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&webconfig_dml.config,  sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap,(unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-    data.u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        free(str);
+        str = NULL;
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&webconfig_dml.config,  sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap,(unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data->u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
 
-    if (webconfig_decode(&webconfig_dml.webconfig, &data, str) != webconfig_error_none) {
+    if (webconfig_decode(&webconfig_dml.webconfig, data, str) != webconfig_error_none) {
         wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_decode returned error\n", __func__, __LINE__);
         free(str);
+        str = NULL;
+        free(data);
+        data = NULL;
         return;
     }
     pthread_mutex_lock(&webconfig_dml.assoc_dev_lock);
@@ -593,13 +639,220 @@ void get_associated_devices_data(unsigned int radio_index)
                 }
                 hash_map_destroy(*assoc_dev_map);
             }
-            *assoc_dev_map = data.u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_map;
+            *assoc_dev_map = data->u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_map;
         }
     }
     pthread_mutex_unlock(&webconfig_dml.assoc_dev_lock);
 
     free(str);
-    webconfig_data_free(&data);
+    str = NULL;
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
+}
+
+/* Get APMLD index from mld_group pointer */
+uint8_t get_apmld_index_from_mld_group(mld_group_t *mld_group)
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    /* Validate that the mld_group pointer is within the bounds of the apmld_map's mld_groups array */
+    if (mld_group < dml->apmld_map.mld_groups || mld_group >= dml->apmld_map.mld_groups + MLD_UNIT_COUNT) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid mld_group pointer\n", __func__, __LINE__);
+        return 0xFF; // Return an invalid index
+    }
+
+    return mld_group - dml->apmld_map.mld_groups;
+}
+
+hash_map_t* get_dml_stamld_hash_map(uint8_t apmld_index)
+{
+    webconfig_dml_t* dml = get_webconfig_dml();
+
+    if (apmld_index >= dml->apmld_map.mld_group_count) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index %u\n", __func__, __LINE__, apmld_index);
+        return NULL;
+    }
+
+    return dml->apmld_map.stamld[apmld_index];
+}
+
+void update_dml_stamld_list(uint8_t apmld_index)
+{
+    webconfig_dml_t *dml = get_webconfig_dml();
+    apmld_map_t *apmld_map = &dml->apmld_map;
+    stamld_data_t *stamld_entry = NULL;
+    hash_map_t **stamld_map = NULL;
+    mld_group_t *mld_group = NULL;
+    unsigned int vap_idx;
+    int i = 0;
+
+    if (apmld_index >= apmld_map->mld_group_count) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index: %d\n", __func__, __LINE__,
+            apmld_index);
+        return;
+    }
+
+    get_associated_devices_data(0);
+
+    mld_group = &apmld_map->mld_groups[apmld_index];
+    stamld_map = &apmld_map->stamld[apmld_index];
+
+    /* Clear existing STAMLD hash map for this APMLD */
+    if (*stamld_map != NULL) {
+        hash_map_destroy(*stamld_map);
+        *stamld_map = NULL;
+    }
+
+    /* Create new hash map for this APMLD's STAMLDs */
+    *stamld_map = hash_map_create();
+    if (*stamld_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to create STAMLD hash map\n", __func__,
+            __LINE__);
+        return;
+    }
+
+    pthread_mutex_lock(&dml->assoc_dev_lock);
+
+    for (vap_idx = 0; vap_idx < mld_group->mld_vap_count; vap_idx++) {
+        hash_map_t *assoc_vap_info_map = NULL;
+        assoc_dev_data_t *assoc_dev_temp = NULL;
+        wifi_vap_info_t *vap_info = mld_group->mld_vaps[vap_idx];
+
+        if (vap_info == NULL) {
+            continue;
+        }
+
+        assoc_vap_info_map = get_associated_devices_hash_map(vap_info->vap_index);
+        if (assoc_vap_info_map == NULL) {
+            wifi_util_info_print(WIFI_DMCLI, "%s:%d No assoc_vap_info_map for vap_index %d\n",
+                __func__, __LINE__, vap_info->vap_index);
+            continue;
+        }
+
+        /* Iterate through associated devices for this VAP */
+        assoc_dev_temp = hash_map_get_first(assoc_vap_info_map);
+        while (assoc_dev_temp != NULL) {
+            if (assoc_dev_temp->dev_stats.cli_MLDEnable && assoc_dev_temp->dev_stats.cli_Active == true) {
+                mac_addr_str_t stamld_addr;
+
+                to_mac_str(assoc_dev_temp->dev_stats.cli_MLDAddr, stamld_addr);
+                str_tolower(stamld_addr);
+                /* Find which unique STAMLD index this device belongs to */
+                stamld_entry = hash_map_get(*stamld_map, stamld_addr);
+
+                /* Store this link for the STAMLD */
+                if (stamld_entry == NULL) {
+                    stamld_entry = (stamld_data_t *)malloc(sizeof(stamld_data_t));
+                    if (stamld_entry == NULL) {
+                        wifi_util_error_print(WIFI_DMCLI,
+                            "%s:%d Failed to allocate STAMLD entry for index %d\n", __func__,
+                            __LINE__, i);
+                        continue;
+                    }
+                    memset(stamld_entry, 0, sizeof(stamld_data_t));
+
+                    stamld_entry->affiliated_sta_count = 0;
+                    stamld_entry->affiliated_sta[stamld_entry->affiliated_sta_count] =
+                        assoc_dev_temp;
+                    stamld_entry->affiliated_sta_count++;
+
+                    hash_map_put(*stamld_map, strdup(stamld_addr), stamld_entry);
+
+                    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Added new STAMLD: %s\n", __func__, __LINE__, stamld_addr);
+                } else {
+                    stamld_entry->affiliated_sta[stamld_entry->affiliated_sta_count] = assoc_dev_temp;
+                    stamld_entry->affiliated_sta_count++;
+                    wifi_util_dbg_print(WIFI_DMCLI,
+                        "%s:%d Added affiliated sta for STAMLD[%s], link count: %d\n", __func__,
+                        __LINE__, stamld_addr, stamld_entry->affiliated_sta_count);
+                }
+            }
+            assoc_dev_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_temp);
+        }
+    }
+
+    pthread_mutex_unlock(&dml->assoc_dev_lock);
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d STAMLD hash map updated for APMLD[%d]\n", __func__,
+        __LINE__, apmld_index);
+}
+
+UINT get_total_num_stamld_dml(uint8_t apmld_index)
+{
+    hash_map_t *stamld_map = get_dml_stamld_hash_map(apmld_index);
+    
+    if (stamld_map == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d No STAMLD hash map for APMLD index %d\n", __func__, __LINE__, apmld_index);
+        return 0;
+    }
+
+    return hash_map_count(stamld_map);
+}
+
+assoc_dev_data_t* create_copy_assoc_dev_data(assoc_dev_data_t* src_assoc_dev_data)
+{
+    assoc_dev_data_t *assoc_dev_data = NULL;
+
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+    if (NULL == assoc_dev_data) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d assoc_dev_data - allocation failed!\n", __func__, __LINE__);
+        return NULL;
+    }
+    memcpy(assoc_dev_data, src_assoc_dev_data, sizeof(assoc_dev_data_t));
+
+    return assoc_dev_data;
+}
+
+stamld_data_t *get_stamld_entry(uint8_t apmld_index, uint32_t stamld_index)
+{
+    hash_map_t *stamld_map = NULL;
+    stamld_data_t *stamld_entry = NULL;
+
+    if (apmld_index >= get_num_apmld_dml()) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid APMLD index: %d\n", __func__, __LINE__, apmld_index);
+        return NULL;
+    }
+
+    if (stamld_index >= get_total_num_stamld_dml(apmld_index)) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid STAMLD index: %d\n", __func__, __LINE__, stamld_index);
+        return NULL;
+    }
+
+    stamld_map = get_dml_stamld_hash_map(apmld_index);
+    if (stamld_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d No STAMLD hash map for APMLD index %d\n", __func__, __LINE__, apmld_index);
+        return NULL;
+    }
+
+    stamld_entry = hash_map_get_first(stamld_map);
+    for (uint32_t itr = 0; itr < stamld_index && stamld_entry != NULL; itr++) {
+        stamld_entry = hash_map_get_next(stamld_map, stamld_entry);
+    }
+
+    return stamld_entry;
+}
+
+/* Get AffiliatedSTA info - returns assoc_dev_data_t pointer directly from hash map */
+assoc_dev_data_t* get_dml_apmld_stamld_affiliated_sta(uint8_t apmld_index, uint32_t stamld_index, unsigned int affiliated_sta_index)
+{
+    stamld_data_t *stamld_entry = NULL;
+
+    if (affiliated_sta_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid AffiliatedSTA index: %d\n", __func__, __LINE__, affiliated_sta_index);
+        return NULL;
+    }
+
+    /* Get the STAMLD entry from hash map */
+    stamld_entry = get_stamld_entry(apmld_index, stamld_index);
+    if (stamld_entry == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to get STAMLD entry for APMLD[%d] STAMLD[%d]\n", 
+            __func__, __LINE__, apmld_index, stamld_index);
+        return NULL;
+    }
+
+    /* Return the associated device pointer directly from the link */
+    return stamld_entry->affiliated_sta[affiliated_sta_index];
 }
 
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
@@ -714,7 +967,7 @@ int init(webconfig_dml_t *consumer)
     const char *paramNames[] = { WIFI_WEBCONFIG_INIT_DML_DATA }, *str;
     bus_error_t rc = bus_error_success;
     unsigned int len, itr = 0, itrj = 0;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *dbg_str;
     raw_data_t raw_data;
 
@@ -789,25 +1042,34 @@ int init(webconfig_dml_t *consumer)
     }
 
     // setup the raw data
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.descriptor = 0;
-    data.descriptor |= webconfig_data_descriptor_encoded;
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        if (raw_data.raw_data.bytes) {
+            get_bus_descriptor()->bus_data_free_fn(&raw_data);
+        }
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    data->descriptor = 0;
+    data->descriptor |= webconfig_data_descriptor_encoded;
 
     // tell webconfig to decode
-    if (webconfig_decode(&consumer->webconfig, &data, str) == webconfig_error_none) {
+    if (webconfig_decode(&consumer->webconfig, data, str) == webconfig_error_none) {
         wifi_util_info_print(WIFI_DMCLI, "%s %d webconfig_decode success \n", __FUNCTION__,
             __LINE__);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s %d webconfig_decode fail \n", __FUNCTION__, __LINE__);
         get_bus_descriptor()->bus_data_free_fn(&raw_data);
-
+        free(data);
+        data = NULL;
         return 0;
     }
 
-    memcpy((unsigned char *)&consumer->radios, (unsigned char *)&data.u.decoded.radios, data.u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&consumer->config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&consumer->hal_cap, (unsigned char *)&data.u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
-    consumer->hal_cap.wifi_prop.numRadios = data.u.decoded.num_radios;
+    memcpy((unsigned char *)&consumer->radios, (unsigned char *)&data->u.decoded.radios, data->u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&consumer->config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&consumer->hal_cap, (unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
+    consumer->hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
     consumer->harvester.b_inst_client_enabled=consumer->config.global_parameters.inst_wifi_client_enabled;
     consumer->harvester.u_inst_client_reporting_period=consumer->config.global_parameters.inst_wifi_client_reporting_period;
     consumer->harvester.u_inst_client_def_reporting_period=consumer->config.global_parameters.inst_wifi_client_def_reporting_period;
@@ -829,7 +1091,9 @@ int init(webconfig_dml_t *consumer)
     sync_dml_sta_assoc_table_entries();
 #endif
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     get_bus_descriptor()->bus_data_free_fn(&raw_data);
 
@@ -1012,14 +1276,19 @@ int get_radioIndex_from_vapIndex(unsigned int vap_index, unsigned int *radio_ind
 int push_global_config_dml_cache_to_one_wifidb()
 {
     wifi_util_dbg_print(WIFI_DMCLI, "%s:  Need to implement \n", __FUNCTION__);
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&webconfig_dml.config, sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&webconfig_dml.config, sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_wifi_config) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_wifi_config) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_dbg_print(WIFI_DMCLI, "%s:  GlobalConfig DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1030,7 +1299,9 @@ int push_global_config_dml_cache_to_one_wifidb()
     wifi_util_dbg_print(WIFI_DMCLI, "%s:  Global DML cache pushed to queue \n", __FUNCTION__);
     g_update_wifi_region = FALSE;
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1066,7 +1337,7 @@ int push_kick_assoc_to_ctrl_queue(int vap_index)
 
 int push_radio_dml_cache_to_one_wifidb()
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
 
     if(is_radio_config_changed == FALSE)
@@ -1074,14 +1345,20 @@ int push_radio_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s: No Radio DML Modified Return success  \n", __FUNCTION__);
         return RETURN_OK;
     }
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = get_num_radio_dml();
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_radio) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    data->u.decoded.num_radios = get_num_radio_dml();
+
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_radio) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Radio DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1092,25 +1369,31 @@ int push_radio_dml_cache_to_one_wifidb()
     wifi_util_error_print(WIFI_DMCLI, "%s:  Radio DML cache pushed to queue \n", __FUNCTION__);
     is_radio_config_changed = FALSE;
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
 
 int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
+    data->u.decoded.num_radios = get_num_radio_dml();
 
-    data.u.decoded.num_radios = get_num_radio_dml();
-
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_mac_filter) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_mac_filter) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1119,8 +1402,9 @@ int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  ACL DML cache pushed to queue \n", __FUNCTION__);
-
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1168,7 +1452,6 @@ wifi_GASConfiguration_t* get_dml_wifi_gas_config(void)
 }
 
 int is_vap_config_changed;
-int is_vap_cac_config_changed;
 
 void set_dml_cache_vap_config_changed(uint8_t vap_index)
 {
@@ -1185,31 +1468,24 @@ void set_dml_cache_vap_config_changed(uint8_t vap_index)
     }
 }
 
-void set_cac_cache_changed(uint8_t vap_index)
-{
-    unsigned int num_radios = get_num_radio_dml();
-
-    if (vap_index <  (num_radios * MAX_NUM_VAP_PER_RADIO)) {
-        is_vap_cac_config_changed = 1;
-        return;
-    } else {
-        wifi_util_error_print(WIFI_DMCLI, "%s: wrong vap_index %d\n", __FUNCTION__, vap_index);
-        return;
-    }
-}
-
 int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
 
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-    data.u.decoded.num_radios = get_num_radio_dml();
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, subdoc) == webconfig_error_none) {
-        str = data.u.encoded.raw;
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    data->u.decoded.num_radios = get_num_radio_dml();
+
+    if (webconfig_encode(&webconfig_dml.webconfig, data, subdoc) == webconfig_error_none) {
+        str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
@@ -1219,7 +1495,9 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1249,7 +1527,7 @@ int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin)
 
     wifi_util_dbg_print(WIFI_DMCLI, "Inside :%s:%d vap_index:%d wps_pin:%s\r\n", __func__, __LINE__, vap_index, wps_pin);
     wps_config.vap_index = vap_index;
-    strncpy(wps_config.wps_pin, wps_pin, strlen(wps_pin));
+    snprintf(wps_config.wps_pin, sizeof(wps_config.wps_pin), "%s", wps_pin);
     push_event_to_ctrl_queue(&wps_config, sizeof(wps_config), wifi_event_type_command, wifi_event_type_command_wps_pin, NULL);
     return RETURN_OK;
 }
@@ -1264,7 +1542,7 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 int push_vap_dml_cache_to_one_wifidb()
 {
 
-    if(is_vap_config_changed == FALSE && is_vap_cac_config_changed == FALSE)
+    if(is_vap_config_changed == FALSE)
     {
         wifi_util_info_print(WIFI_DMCLI, "%s: No vap DML Modified Return success  \n", __FUNCTION__);
         return RETURN_OK;
@@ -1298,20 +1576,15 @@ int push_vap_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_lnf DML Modified  \n", __FUNCTION__);
         push_subdoc_to_one_wifidb(webconfig_subdoc_type_lnf);
     }
-    if(is_vap_cac_config_changed) {
-        wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_cac DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_cac);
-    }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
     is_vap_config_changed = FALSE;
-    is_vap_cac_config_changed = FALSE;
     return RETURN_OK;
 }
 
 int push_blaster_config_dml_to_ctrl_queue()
 {
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
     int ret = 0;
     bus_handle_t handle;
@@ -1343,23 +1616,30 @@ int push_blaster_config_dml_to_ctrl_queue()
             telemetry_buf = NULL;
         }
     }
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    data = malloc(sizeof(webconfig_subdoc_data_t));
+    if (!data) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
     snprintf((char *)&webconfig_dml.blaster.t_header.traceParent, sizeof(webconfig_dml.blaster.t_header.traceParent), "%s", traceParent);
     snprintf((char *)&webconfig_dml.blaster.t_header.traceState, sizeof(webconfig_dml.blaster.t_header.traceState), "%s", traceState);
-    memcpy((unsigned char *)&data.u.decoded.blaster, (unsigned char *)&webconfig_dml.blaster, sizeof(active_msmt_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: After getting the trace context in data_u_decoded_blaster traceparent:%s, tracestate:%s\n", __func__, __LINE__,data.u.decoded.blaster.t_header.traceParent, data.u.decoded.blaster.t_header.traceState);
-    data.u.decoded.num_radios = get_num_radio_dml();
+    memcpy((unsigned char *)&data->u.decoded.blaster, (unsigned char *)&webconfig_dml.blaster, sizeof(active_msmt_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:After getting the trace context in data_u_decoded_blaster traceparent:%s, tracestate:%s\n", __func__, __LINE__,data->u.decoded.blaster.t_header.traceParent, data->u.decoded.blaster.t_header.traceState);
+    data->u.decoded.num_radios = get_num_radio_dml();
 
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_blaster) == webconfig_error_none) {
-        str = data.u.encoded.raw;
-        wifi_util_info_print(WIFI_DMCLI, "%s:  Blaster subdoc encoded successfully  \n", __FUNCTION__);
+    if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_blaster) == webconfig_error_none) {
+        str = data->u.encoded.raw;
+        wifi_util_info_print(WIFI_DMCLI, "%s:Blaster subdoc encoded successfully\n", __FUNCTION__);
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
-    webconfig_data_free(&data);
+    webconfig_data_free(data);
+    free(data);
+    data = NULL;
 
     return RETURN_OK;
 }
@@ -1386,14 +1666,19 @@ instant_measurement_config_t* get_dml_harvester(void)
 int push_harvester_dml_cache_to_one_wifidb()
 {
     if(webconfig_dml.harvester.b_inst_client_enabled == true){
-        webconfig_subdoc_data_t data;
+        webconfig_subdoc_data_t *data = NULL;
         char *str = NULL;
-        memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-        memcpy((unsigned char *)&data.u.decoded.harvester, (unsigned char *)&webconfig_dml.harvester, sizeof(instant_measurement_config_t));
-        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+        data = malloc(sizeof(webconfig_subdoc_data_t));
+        if (!data) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d:Failed to allocate memory\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        memset(data, 0, sizeof(webconfig_subdoc_data_t));
+        memcpy((unsigned char *)&data->u.decoded.harvester, (unsigned char *)&webconfig_dml.harvester, sizeof(instant_measurement_config_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
 
-        if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
-            str = data.u.encoded.raw;
+        if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
+            str = data->u.encoded.raw;
             wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache encoded successfully  \n", __FUNCTION__);
             push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
         } else {
@@ -1403,7 +1688,6 @@ int push_harvester_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache pushed to queue \n", __FUNCTION__);
 
         //Rest to default value since instant measurement enable is triggered successfully
-        webconfig_dml.harvester.b_inst_client_enabled = webconfig_dml.config.global_parameters.inst_wifi_client_enabled;
         webconfig_dml.harvester.u_inst_client_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_def_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_override_ttl = 0;
@@ -1412,7 +1696,9 @@ int push_harvester_dml_cache_to_one_wifidb()
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[2], webconfig_dml.config.global_parameters.inst_wifi_client_mac[3], 
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[4], webconfig_dml.config.global_parameters.inst_wifi_client_mac[5]);
 
-        webconfig_data_free(&data);
+        webconfig_data_free(data);
+        free(data);
+        data = NULL;
     }
     return RETURN_OK;
 }
@@ -1470,6 +1756,7 @@ void update_dml_radio_default() {
         radio_cfg[i].DCSSupported = TRUE;
         radio_cfg[i].ExtensionChannel = 3;
         radio_cfg[i].BasicRate = WIFI_BITRATE_DEFAULT;
+        radio_cfg[i].TxRate = WIFI_TXRATE_Auto;
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;
@@ -1500,7 +1787,7 @@ void update_dml_radio_default() {
             radio_cfg[i].MaxBitRate = 1147;
 #endif /* CONFIG_IEEE80211BE */
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1514,7 +1801,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1528,7 +1815,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1542,7 +1829,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1556,7 +1843,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 9608;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, (BOOL)1, sizeof(BOOL) * 5);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1666,7 +1953,7 @@ wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_cha
 
 bool wifi_factory_reset(bool factory_reset_all_vaps)
 {
-    wifi_vap_info_t default_vap;
+    wifi_vap_info_t *default_vap = NULL;
     wifi_vap_info_t *p_vapInfo = NULL;
     rdk_wifi_vap_info_t rdk_default_vap;
     rdk_wifi_vap_info_t *rdk_vap_info;
@@ -1676,15 +1963,31 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
     unsigned int vap_index;
-    wifi_radio_operationParam_t rcfg;
+    wifi_radio_operationParam_t *rcfg = NULL;
     wifi_radio_feature_param_t *wifiRadioFeatParam = NULL;
     wifi_radio_feature_param_t fcfg;
+    bool retval = FALSE;
 
-    wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d\n",__func__, __LINE__);
     if (global_wifi_config == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
-        return FALSE;
+        goto cleanup;
     }
+
+    rcfg = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+    if (rcfg == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        goto cleanup;
+    }
+    memset(rcfg, 0, sizeof(wifi_radio_operationParam_t));
+
+    default_vap = (wifi_vap_info_t *)malloc(sizeof(wifi_vap_info_t));
+    if (default_vap == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        goto cleanup;
+    }
+    memset(default_vap, 0, sizeof(wifi_vap_info_t));
+
 
     //Reset to all radios params to default
     for (UINT i= 0; i < getNumberRadios(); i++) {
@@ -1692,31 +1995,36 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         wifiRadioFeatParam = (wifi_radio_feature_param_t *) get_dml_cache_radio_feat_map(i);
         if (wifiRadioOperParam == NULL || wifiRadioFeatParam == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param and Radio Feat Param for instance_number:%d\n", __FUNCTION__,__LINE__,i);
-            return FALSE;
+            goto cleanup;
         }
-        wifidb_init_radio_config_default(i,&rcfg,&fcfg);
+        wifidb_init_radio_config_default(i,rcfg,&fcfg);
 
         wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
-        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+        if ((rfc_param == NULL) || wifidb_get_rfc_config(0,rfc_param) != 0) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+			goto cleanup;
         }
 
+        //clearing wpa3_personal_compatibility mode after wifi restore
+        rfc_param->wpa3_compatibility_enable = FALSE;
+        get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+
         //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
-        if (WIFI_FREQUENCY_2_4_BAND == rcfg.band) {
+        if (WIFI_FREQUENCY_2_4_BAND == rcfg->band) {
             if(rfc_param->twoG80211axEnable_rfc) {
-                rcfg.variant = rcfg.variant | WIFI_80211_VARIANT_AX;
+                rcfg->variant = rcfg->variant | WIFI_80211_VARIANT_AX;
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated default config with twoG80211axEnable_rfc\n",__func__, __LINE__);
             }
         }
 
         //Update DFS RFC as disabled for 5GHz radio
-        if( (WIFI_FREQUENCY_5_BAND == rcfg.band) || (WIFI_FREQUENCY_5L_BAND == rcfg.band) || (WIFI_FREQUENCY_5H_BAND == rcfg.band) ) {
+        if( (WIFI_FREQUENCY_5_BAND == rcfg->band) || (WIFI_FREQUENCY_5L_BAND == rcfg->band) || (WIFI_FREQUENCY_5H_BAND == rcfg->band) ) {
             wifi_mgr_t *g_wifidb;
             g_wifidb = get_wifimgr_obj();
             rdk_wifi_radio_t *l_radio = NULL;
 
             // Disable DFS and update rfc Config
-            rcfg.DfsEnabled = FALSE;
+            rcfg->DfsEnabled = FALSE;
             rfc_param->dfs_rfc = FALSE;
             get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
@@ -1728,7 +2036,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                     wifi_util_error_print(WIFI_DMCLI,"%s:%d radio strucutre is not present for radio %d\n",
                                     __FUNCTION__, __LINE__, i);
                     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
-                    return FALSE;
+                    goto cleanup;
             }
             l_radio->radarInfo.last_channel = 0;
             l_radio->radarInfo.num_detected = 0;
@@ -1741,12 +2049,12 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated DFS RFC as %d\n",__func__, __LINE__, rfc_param->dfs_rfc);
         }
 
-        memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)&rcfg,sizeof(wifi_radio_operationParam_t));
+        memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)rcfg,sizeof(wifi_radio_operationParam_t));
         memcpy((unsigned char *)wifiRadioFeatParam, (unsigned char *)&fcfg, sizeof(wifi_radio_feature_param_t));
         is_radio_config_changed = TRUE;
     }
 
-    remove(WIFI_STUCK_DETECT_FILE_NAME);
+    (void)remove(WIFI_STUCK_DETECT_FILE_NAME);
     wifi_util_info_print(WIFI_MGR,"%s:%d removed selfHeal wifi stuck file:%s\n", __FUNCTION__,__LINE__, WIFI_STUCK_DETECT_FILE_NAME);
 
     if (factory_reset_all_vaps) {
@@ -1784,9 +2092,9 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                 *acl_dev_map = NULL;
             }
 
-            wifidb_init_vap_config_default(vap_index,&default_vap,&rdk_default_vap);
-            wifidb_init_interworking_config_default(vap_index,&default_vap.u.bss_info.interworking);
-            memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
+            wifidb_init_vap_config_default(vap_index,default_vap,&rdk_default_vap);
+            wifidb_init_interworking_config_default(vap_index,&default_vap->u.bss_info.interworking);
+            memcpy((unsigned char *)p_vapInfo,(unsigned char *)default_vap,sizeof(wifi_vap_info_t));
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
             if(rdk_default_vap.exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
@@ -1807,13 +2115,13 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
     if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed in setting Radios to default\n",__func__, __LINE__);
-        return FALSE;
+        goto cleanup;
     }
 
     wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
     if (push_acl_list_dml_cache_to_one_wifidb(p_vapInfo) != RETURN_OK) {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
-        return FALSE;
+        goto cleanup;
     }
 
     create_onewifi_factory_reset_flag();
@@ -1827,8 +2135,19 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
     {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
-        return FALSE;
+        goto cleanup;
     }
     wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
-    return TRUE;
+    retval = TRUE;
+
+cleanup:
+    if (default_vap != NULL) {
+        free(default_vap);
+        default_vap = NULL;
+    }
+    if (rcfg != NULL) {
+        free(rcfg);
+        rcfg = NULL;
+    }
+    return retval;
 }

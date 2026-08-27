@@ -54,6 +54,12 @@ extern "C" {
 #ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 #include "wifi_easyconnect.h"
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+#include "wifi_linkquality.h"
+
+#ifdef WIFI_SENSING_APP_SUPPORT
+#include "motion_sensing.h"
+#endif
+#include "wifi_multiap.h"
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
@@ -101,7 +107,14 @@ typedef struct {
 #ifdef EM_APP
         em_data_t            em_data;
 #endif //EM_APP
+        linkquality_data_t linkquality;
+#ifdef ONEWIFI_MULTIAP_APP_SUPPORT
+        multiap_data_t multi_ap;
+#endif
         memwraptool_config_t memwraptool;
+#ifdef WIFI_SENSING_APP_SUPPORT
+        sensing_app_obj_t sensing_obj;
+#endif
     } u;
 } wifi_app_data_t;
 

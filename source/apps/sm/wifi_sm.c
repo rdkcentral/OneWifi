@@ -49,7 +49,7 @@ typedef struct {
 static int sm_stats_to_monitor_set(wifi_app_t *app, bool enable);
 static void sm_events_subscribe(wifi_app_t *app);
 
-client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS];
+client_assoc_stats_t *client_assoc_stats = NULL; //allocate during app init
 
 int sm_survey_type_conversion(wifi_neighborScanMode_t *halw_scan_type, survey_type_t *app_stat_type, unsigned int conv_type)
 {
@@ -822,20 +822,20 @@ int sm_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
-static void sm_app_enable_handler(char *event_name, raw_data_t *p_data)
+static void sm_app_enable_handler(char *event_name, bus_data_prop_t *p_data)
 {
     bool sm_app_enable;
 
     wifi_util_dbg_print(WIFI_SM, "%s:%d recvd event\n", __func__, __LINE__);
 
     if ((strcmp(event_name, BUS_SM_APP_ENABLE) != 0) ||
-        (p_data->data_type != bus_data_type_boolean)) {
+        (p_data->value.data_type != bus_data_type_boolean)) {
         wifi_util_error_print(WIFI_SM, "%s:%d invalid event received,%s:%x\n", __func__, __LINE__,
-            event_name, p_data->data_type);
+            event_name, p_data->value.data_type);
         return;
     }
 
-    sm_app_enable = p_data->raw_data.b;
+    sm_app_enable = p_data->value.raw_data.b;
 
     push_event_to_ctrl_queue(&sm_app_enable, sizeof(sm_app_enable), wifi_event_type_command,
         wifi_event_type_sm_app_enable, NULL);
@@ -878,6 +878,7 @@ static void sm_events_subscribe(wifi_app_t *app)
 int sm_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RETURN_OK;
+    int radios_count = getNumberRadios();
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
@@ -888,8 +889,22 @@ int sm_init(wifi_app_t *app, unsigned int create_flag)
     app->data.u.sm_data.sm_stats_config_map = hash_map_create();
     app->data.u.sm_data.report_tasks_map = hash_map_create();
 
-    memset(client_assoc_stats, 0, sizeof(client_assoc_stats));
+    client_assoc_stats = calloc(radios_count, sizeof(client_assoc_stats_t));
+    if (client_assoc_stats == NULL) {
+        wifi_util_error_print(WIFI_SM, "%s:%d: calloc failed for client_assoc_stats\n", __func__, __LINE__);
+        hash_map_destroy(app->data.u.sm_data.report_tasks_map);
+        app->data.u.sm_data.report_tasks_map = NULL;
+        free_sm_stats_config_map(app);
+        return RETURN_ERR;
+    }
     rc = sm_report_init(app);
+    if (rc != RETURN_OK) {
+        free(client_assoc_stats);
+        client_assoc_stats = NULL;
+        hash_map_destroy(app->data.u.sm_data.report_tasks_map);
+        app->data.u.sm_data.report_tasks_map = NULL;
+        free_sm_stats_config_map(app);
+    }
 
     wifi_util_info_print(WIFI_SM, "%s:%d: Init SM app %s\n", __func__, __LINE__,
         rc ? "failure" : "success");
@@ -923,6 +938,10 @@ int sm_deinit(wifi_app_t *app)
 {
     sm_stats_to_monitor_set(app, false);
     free_sm_stats_config_map(app);
+    if (client_assoc_stats != NULL) {
+        free(client_assoc_stats);
+        client_assoc_stats = NULL;
+    }
     sm_report_deinit(app);
     return RETURN_OK;
 }

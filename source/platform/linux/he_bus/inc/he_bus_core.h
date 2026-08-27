@@ -93,7 +93,7 @@ typedef he_bus_error_t (*he_bus_event_sub_handler_t)(char *eventName,
     he_bus_event_sub_action_t action, int32_t interval, bool *autoPublish);
 
 typedef he_bus_error_t (
-    *he_bus_event_consumer_sub_handler_t)(char *event_name, he_bus_raw_data_t *p_data, void *userData);
+    *he_bus_event_consumer_sub_handler_t)(char *event_name, he_bus_data_object_t *p_data, void *userData);
 typedef he_bus_error_t (*he_bus_event_sub_ex_async_handler_t)(char *event_name, he_bus_error_t ret, void *userData);
 
 typedef void (*he_bus_method_async_resp_handler_t) (char const* methodName, he_bus_error_t ret,

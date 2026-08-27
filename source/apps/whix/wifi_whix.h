@@ -39,4 +39,5 @@ typedef struct {
     hash_map_t *last_stats_map; //wifi_associated_dev3_t
 } whix_data_t;
 
+
 #endif //_WIFI_WHIX_H_

@@ -39,7 +39,6 @@ number_t statistics_t::stddev()
 number_t statistics_t::pdf(number_t x)
 {
     number_t exponent, coeff, mean, std;
-    vector_t v(0);
 
     mean = m_data.mean();
     std = m_data.stddev();

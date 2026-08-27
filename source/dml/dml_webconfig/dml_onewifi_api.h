@@ -29,6 +29,21 @@ extern "C" {
 
 #define WIFI_XHS_LNF_FLAG_FILE_NAME "/nvram/.bcmwifi_xhs_lnf_enabled"
 
+typedef  enum
+_WIFI_TXRATE
+{
+    WIFI_TXRATE_Auto               = 1,
+    WIFI_TXRATE_6M,
+    WIFI_TXRATE_9M,
+    WIFI_TXRATE_12M,
+    WIFI_TXRATE_18M,
+    WIFI_TXRATE_24M,
+    WIFI_TXRATE_36M,
+    WIFI_TXRATE_48M,
+    WIFI_TXRATE_54M
+}
+WIFI_TXRATE, *PWIFI_TXRATE;
+
 typedef struct {
     void    *acl_vap_context;
     queue_t* new_entry_queue[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
@@ -46,6 +61,7 @@ typedef struct {
     bus_handle_t         handle;
     instant_measurement_config_t harvester;
     queue_t    *csi_data_queue;
+    apmld_map_t apmld_map;
 } webconfig_dml_t;
 
 typedef struct {
@@ -90,6 +106,7 @@ typedef struct {
     INT     MulticastRate;
     INT     MCS;
     ULONG   DFSTimer;
+    WIFI_TXRATE   TxRate;
 } dml_radio_default;
 
 typedef struct {
@@ -121,6 +138,16 @@ hash_map_t** get_dml_acl_hash_map(unsigned int radio_index, unsigned int vap_ind
 queue_t** get_dml_acl_new_entry_queue(unsigned int radio_index, unsigned int vap_index);
 void** get_acl_vap_context();
 UINT get_num_radio_dml();
+/* Update STAMLD list for a specific APMLD index by iterating through VAPs and associated devices */
+UINT get_num_apmld_dml();
+mld_group_t* get_dml_apmld_group(uint8_t apmld_index);
+/* Get APMLD index from mld_group pointer */
+uint8_t get_apmld_index_from_mld_group(mld_group_t *mld_group);
+UINT get_total_num_affiliated_ap_dml(mld_group_t *mld_group);
+UINT get_total_num_stamld_dml(uint8_t apmld_index);
+void update_dml_stamld_list(uint8_t apmld_index);
+stamld_data_t *get_stamld_entry(uint8_t apmld_index, uint32_t stamld_index);
+assoc_dev_data_t* get_dml_apmld_stamld_affiliated_sta(uint8_t apmld_index, uint32_t stamld_index, unsigned int affiliated_sta_index);
 UINT get_total_num_vap_dml();
 void get_associated_devices_data(unsigned int radio_index);
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info);

@@ -64,6 +64,7 @@ extern "C" {
 #define WIFI_TxRx_RATE_LIST                "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.TxRxRateList"
 #define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
 #define WIFI_DEVICE_TUNNEL_STATUS          "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus"
+#define WIFI_HOTSPOT_STATUS                "Device.X_COMCAST-COM_GRE.Tunnel.1.Enable"
 #define SPEEDTEST_STATUS                   "Device.IP.Diagnostics.X_RDKCENTRAL-COM_SpeedTest.Status"
 #define SPEEDTEST_SUBSCRIBE                "Device.IP.Diagnostics.X_RDK_SpeedTest.SubscriberUnPauseTimeOut"
 
@@ -115,6 +116,7 @@ extern "C" {
 #define LNF 0b1000000
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
+#define BUS_WFA_DML_CONFIG_FILE "Data_Elements_JSON_Schema_v3.0.json"
 
 #define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
@@ -149,7 +151,8 @@ typedef enum {
     ctrl_webconfig_state_radio_24G_rsp_pending = 0x1000000,
     ctrl_webconfig_state_radio_5G_rsp_pending = 0x2000000,
     ctrl_webconfig_state_radio_6G_rsp_pending = 0x4000000,
-    ctrl_webconfig_state_max = 0x8000000
+    ctrl_webconfig_state_cac_cfg_rsp_pending = 0x8000000,
+    ctrl_webconfig_state_max = 0x10000000
 } wifi_ctrl_webconfig_state_t;
 
 #define CTRL_WEBCONFIG_STATE_MASK 0xfffffff
@@ -171,7 +174,18 @@ typedef struct {
 typedef struct kick_details {
     char *kick_list;
     int vap_index;
+    int original_filter_mode;
+    bool filter_mode_changed;
 }kick_details_t;
+
+typedef struct {
+    struct timespec start_time;
+    struct timespec target_detection_time;
+    struct timespec end_time;
+    struct timespec disconnection_time;
+} hotspot_timing_t;
+
+extern hotspot_timing_t g_hotspot_timing;
 
 typedef struct {
     wifi_connection_status_t    connect_status;
@@ -239,6 +253,8 @@ typedef struct wifi_ctrl {
     bool                device_mode_subscribed;
     bool                test_device_mode_subscribed;
     bool                device_tunnel_status_subscribed;
+    bool                hotspot_status_subscribed;
+    bool                hotspot_enabled;
     bool                device_wps_test_subscribed;
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
@@ -250,6 +266,7 @@ typedef struct wifi_ctrl {
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
     unsigned int        sta_tree_instance_num;
+    unsigned int        ignite_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
     wifi_apps_mgr_t      apps_mgr;
     rdk_dev_mode_type_t  network_mode; /* 0 - gateway, 1 - extender */
@@ -267,6 +284,9 @@ typedef struct wifi_ctrl {
     events_bus_data_t   events_bus_data;
     hotspot_cfg_sem_param_t hotspot_sem_param;
     bool                rf_status_down;
+    bool                hotspot_client_dhcp_failure_subscribed;
+    bool                multiap_sta_enabled;
+    int                 multiap_timer_id;
 } wifi_ctrl_t;
 
 
@@ -370,6 +390,7 @@ wifi_global_config_t* get_wifidb_wifi_global_config(void);
 wifi_radio_operationParam_t* get_wifidb_radio_map(uint8_t radio_index);
 wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index);
 wifi_vap_info_map_t* get_wifidb_vap_map(uint8_t radio_index);
+ignite_config_t* get_wifidb_ignite_config(uint8_t radio_index);
 wifi_GASConfiguration_t* get_wifidb_gas_config(void);
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex);
 wifi_preassoc_control_t * Get_wifi_object_preassoc_ctrl_parameter(uint8_t vapIndex);
@@ -378,6 +399,7 @@ wifi_front_haul_bss_t * Get_wifi_object_bss_parameter(uint8_t vapIndex);
 wifi_vap_security_t * Get_wifi_object_security_parameter(uint8_t vapIndex);
 wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void);
+ignite_config_t* get_ignite_config_by_name(char *name);
 wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void);
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t r_index);
 int get_device_config_list(char *d_list, int size, char *str);
@@ -404,11 +426,27 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int* subdoc);
 
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
-void start_station_vaps(bool enable);
+void start_station_vaps(bool is_private, bool enable);
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
-int publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
+bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
 int publish_endpoint_enable(void);
+int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
+void hotspot_timing_start(void);
+void hotspot_timing_stop(void);
+int reboot_device(void* arg);
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
+    unsigned int vap_names_size, wifi_dbg_type_t log_type);
+void update_mlo_rfc_enable(bool init);
+#endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
+int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info);
+#if defined(_PLATFORM_BANANAPI_R4_)
+int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc);
+#endif
+wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
+wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
+void update_apmld_map(apmld_map_t *apmld_map);
 
 #ifdef __cplusplus
 }

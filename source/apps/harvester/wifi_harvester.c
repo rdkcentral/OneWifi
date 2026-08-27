@@ -745,6 +745,7 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
                 g_harvester_module.instantDefOverrideTTL = DEFAULT_INSTANT_REPORT_TIME;
                 pthread_mutex_unlock(&g_harvester_module.queue_lock);
                 process_instant_msmt_stop();
+                return;
             }
         } else {
             // must return
@@ -769,6 +770,7 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
             return;
         }
     }
+    pthread_mutex_unlock(&g_harvester_module.queue_lock);
 }
 
 void harvester_str_to_mac_bytes (char *key, mac_addr_t bmac) {

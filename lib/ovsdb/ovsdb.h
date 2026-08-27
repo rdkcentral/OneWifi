@@ -94,6 +94,7 @@ extern "C" {
         if (argc >= ARRAY_LEN(argv))                                            \
         {                                                                       \
             LOG(ERR, "ovsdb_ ## method ## _call_va() too many arguments.");     \
+            va_end(va);                                                         \
             return false;                                                       \
         }                                                                       \
                                                                                 \
@@ -118,12 +119,14 @@ extern "C" {
         if (argc >= ARRAY_LEN(argv))                                            \
         {                                                                       \
             LOG(ERR, "ovsdb_ ## method ## _call_va() too many arguments.");     \
+            va_end(va);                                                         \
             return false;                                                       \
         }                                                                       \
                                                                                 \
         argv[argc++] = parg;                                                    \
     }                                                                           \
                                                                                 \
+    va_end(va);                                                                 \
     return method  ## _argv(__VA_ARGS__, argc, argv);                           \
 }
 

@@ -20,23 +20,49 @@
 #ifndef WIFI_DATA_MODEL_H
 #define WIFI_DATA_MODEL_H
 
+#include "bus.h"
+#include "wifi_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bus.h"
-#include "wifi_util.h"
 
-#define DM_CHECK_NULL_WITH_RC(ptr, rc) \
-    do { \
-        if ((ptr) == NULL) { \
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d Parameter '%s' is NULL\n", \
-                   __func__, __LINE__, #ptr); \
-            return (rc); \
-        } \
+#define DM_CHECK_NULL_WITH_RC(ptr, rc)                                                    \
+    do {                                                                                  \
+        if ((ptr) == NULL) {                                                              \
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d Parameter '%s' is NULL\n", __func__, \
+                __LINE__, #ptr);                                                          \
+            return (rc);                                                                  \
+        }                                                                                 \
     } while (0)
 
+#define WIFI_OBJ_TREE_NAME                  "Device.WiFi"
+#define NEIG_WIFI_DIAG_OBJ_NAME             "Device.WiFi.NeighboringWiFiDiagnostic"
+#define NEIG_DIAG_RESULT_OBJ_NAME           "Device.WiFi.NeighboringWiFiDiagnostic.Result"
+#define WIFI_REGION_OBJ_NAME                "Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion"
+#define WIFI_CLIENT_REPORT_OBJ_NAME         "Device.WiFi.X_RDKCENTRAL-COM_Report.WifiClient"
+#define WIFI_CLIENT_DEF_REPORT_OBJ_NAME     "Device.WiFi.X_RDKCENTRAL-COM_Report.WifiClient.Default"
+#define RADIO_OBJ_TREE_NAME                 "Device.WiFi.Radio.{i}"
+#define ACCESSPOINT_OBJ_TREE_NAME           "Device.WiFi.AccessPoint.{i}"
+#define SECURITY_OBJ_TREE_NAME              "Device.WiFi.AccessPoint.{i}.Security"
+#define RADIUS_SEC_OBJ_TREE_NAME            "Device.WiFi.AccessPoint.{i}.Security.X_COMCAST-COM_RadiusSettings"
+#define AUTH_SEC_OBJ_TREE_NAME              "Device.WiFi.AccessPoint.{i}.Security.X_RDKCENTRAL-COM_Authenticator"
+#define AP_MACFILTER_TREE_NAME              "Device.WiFi.AccessPoint.{i}.X_CISCO_COM_MACFilter"
+#define MACFILTER_OBJ_TREE_NAME             "Device.WiFi.AccessPoint.{i}.X_CISCO_COM_MacFilterTable.{i}"
+#define ASSOCIATED_STA_OBJ_TREE_NAME        "Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}"
+#define INTERWORKING_OBJ_TREE_NAME          "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_InterworkingElement"
+#define CONN_CTRL_OBJ_TREE_NAME             "Device.WiFi.AccessPoint.{i}.ConnectionControl"
+#define PRE_CONN_CTRL_OBJ_TREE_NAME         "Device.WiFi.AccessPoint.{i}.ConnectionControl.PreAssocDeny"
+#define POST_CONN_CTRL_OBJ_TREE_NAME        "Device.WiFi.AccessPoint.{i}.ConnectionControl.PostAssocDisc"
+#define WPS_OBJ_TREE_NAME                   "Device.WiFi.AccessPoint.{i}.WPS"
+#define INTERWORKING_SERV_OBJ_NAME          "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_InterworkingService"
+#define PASSPOINT_OBJ_TREE_NAME             "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_Passpoint"
+#define SSID_OBJ_TREE_NAME                  "Device.WiFi.SSID.{i}"
+
+#define DML_GET_CB                 1
+#define DML_SET_CB                 2
+
 typedef struct scratch_data_buff {
-    void     *buff;
+    void *buff;
     uint32_t buff_len;
 } scratch_data_buff_t;
 
@@ -47,28 +73,32 @@ typedef struct wifi_dml_data_model {
     uint32_t table_macfilter_index[MAX_VAP];
     uint32_t table_sta_assoc_index[MAX_VAP];
     uint32_t table_neig_diag_result_index;
-    char     str_wifi_region_update_source[16];
+    char str_wifi_region_update_source[16];
 } wifi_dml_data_model_t;
 
-typedef bool (*dml_get_bool_cb_t)    (void *obj_ins_context, char *param_name, bool *value);
-typedef bool (*dml_set_bool_cb_t)    (void *obj_ins_context, char *param_name, bool value);
-typedef bool (*dml_get_int_cb_t)     (void *obj_ins_context, char *param_name, int *value);
-typedef bool (*dml_set_int_cb_t)     (void *obj_ins_context, char *param_name, int value);
-typedef bool (*dml_get_uint_cb_t)    (void *obj_ins_context, char *param_name, uint32_t *value);
-typedef bool (*dml_set_uint_cb_t)    (void *obj_ins_context, char *param_name, uint32_t value);
-typedef bool (*dml_get_string_cb_t)  (void *obj_ins_context, char *param_name, scratch_data_buff_t *value);
-typedef bool (*dml_set_string_cb_t)  (void *obj_ins_context, char *param_name, scratch_data_buff_t *value);
+typedef bool (*dml_get_bool_cb_t)(void *obj_ins_context, char *param_name, bool *value);
+typedef bool (*dml_set_bool_cb_t)(void *obj_ins_context, char *param_name, bool value);
+typedef bool (*dml_get_int_cb_t)(void *obj_ins_context, char *param_name, int *value);
+typedef bool (*dml_set_int_cb_t)(void *obj_ins_context, char *param_name, int value);
+typedef bool (*dml_get_uint_cb_t)(void *obj_ins_context, char *param_name, uint32_t *value);
+typedef bool (*dml_set_uint_cb_t)(void *obj_ins_context, char *param_name, uint32_t value);
+typedef bool (
+    *dml_get_string_cb_t)(void *obj_ins_context, char *param_name, scratch_data_buff_t *value);
+typedef bool (
+    *dml_set_string_cb_t)(void *obj_ins_context, char *param_name, scratch_data_buff_t *value);
 
 typedef struct dml_callback_table {
-    dml_get_bool_cb_t    get_bool_value;
-    dml_get_int_cb_t     get_int_value;
-    dml_get_uint_cb_t    get_uint_value;
-    dml_get_string_cb_t  get_string_value;
-    dml_set_bool_cb_t    set_bool_value;
-    dml_set_int_cb_t     set_int_value;
-    dml_set_uint_cb_t    set_uint_value;
-    dml_set_string_cb_t  set_string_value;
+    dml_get_bool_cb_t get_bool_value;
+    dml_get_int_cb_t get_int_value;
+    dml_get_uint_cb_t get_uint_value;
+    dml_get_string_cb_t get_string_value;
+    dml_set_bool_cb_t set_bool_value;
+    dml_set_int_cb_t set_int_value;
+    dml_set_uint_cb_t set_uint_value;
+    dml_set_string_cb_t set_string_value;
 } dml_callback_table_t;
+
+int wifi_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_table_t *cb_table);
 
 bus_error_t wifi_elem_num_of_table_row(char *event_name, uint32_t *table_row_size);
 
@@ -165,12 +195,6 @@ bus_error_t wifi_client_report_event_sub_handler(char *eventName, bus_event_sub_
 bus_error_t wifi_client_def_report_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
 bus_error_t wifi_client_def_report_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
 bus_error_t wifi_client_def_report_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
-
-bus_error_t default_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
-bus_error_t default_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
-bus_error_t default_table_add_row_handler(char const* tableName, char const* aliasName, uint32_t* instNum);
-bus_error_t default_table_remove_row_handler(char const* rowName);
-bus_error_t default_event_sub_handler(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
 
 bus_error_t wifi_region_code_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
 bus_error_t wifi_region_code_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);

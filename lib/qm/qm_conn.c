@@ -51,9 +51,12 @@ bool qm_conn_server(int *pfd)
 {
     struct sockaddr_un addr;
     char *path = QM_SOCK_FILENAME;
-    int fd;
-
-    mkdir(QM_SOCK_DIR, 0755);
+    int fd,ret;
+    ret = mkdir(QM_SOCK_DIR, 0755);
+    if ((0 != ret) && (errno != EEXIST)) {
+        LOG(ERR, "failed to create dir %s err %d", QM_SOCK_DIR, errno);
+        return false;
+    }
     errno = 0; // ignore dir exist error
 
     *pfd = -1;
@@ -104,8 +107,12 @@ bool qm_conn_client(int *pfd)
 {
     struct sockaddr_un addr;
     char *path = QM_SOCK_FILENAME;
-    int fd;
-    mkdir(QM_SOCK_DIR, 0755);
+    int fd,ret;
+    ret = mkdir(QM_SOCK_DIR, 0755);
+    if ((ret != 0) && (errno != EEXIST)) {
+        LOG(ERR, "failed to create dir %s err %d", QM_SOCK_DIR, errno);
+        return false;
+    }
 
     *pfd = -1;
 
@@ -251,6 +258,7 @@ bool qm_conn_read_req(int fd, qm_request_t *req, char **topic, void **data)
         if (!*topic) goto alloc_err;
         ret = read(fd, *topic, size);
         if (ret != size) goto read_err;
+        (*topic)[size] = '\0';
     }
     total += size;
 
@@ -264,7 +272,7 @@ bool qm_conn_read_req(int fd, qm_request_t *req, char **topic, void **data)
     }
     total += size;
 
-    LOG(TRACE, "%s: t:%s ds:%d b:%d", __FUNCTION__, *topic, size, total);
+    LOG(TRACE, "%s: t:%s ds:%d b:%d", __FUNCTION__, *topic ? *topic : "", size, total);
 
     return true;
 

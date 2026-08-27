@@ -38,6 +38,15 @@ typedef struct {
 } ap_params_t;
 
 typedef struct {
+    ULONG ssid_UnicastBytesSent;
+    ULONG ssid_UnicastBytesReceived;
+    ULONG ssid_MulticastBytesSent;
+    ULONG ssid_MulticastBytesReceived;
+    ULONG ssid_BroadcastBytesSent;
+    ULONG ssid_BroadcastBytesReceived;
+} vap_traffic_stats_t;
+
+typedef struct {
     unsigned char bssid[32];
     hash_map_t *sta_map; //of type sta_data_t
     hash_map_t *interop_sta_map;
@@ -45,6 +54,7 @@ typedef struct {
     struct timespec last_sta_update_time;
     ap_params_t ap_params;
     ssid_t                  ssid;
+    vap_traffic_stats_t vap_traffic;
 } bssid_data_t;
 
 #define WPA2_PSK 2
@@ -373,5 +383,13 @@ int generate_radio_temperature_clctr_stats_key(wifi_mon_stats_args_t *args, char
 int generate_radio_temperature_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
 int execute_radio_temperature_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 int copy_radio_temperature_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
+/*Vap stats*/
+int validate_vap_args(wifi_mon_stats_args_t *args);
+int generate_vap_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
+int generate_vap_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
+int execute_vap_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data,  unsigned long task_interval_ms);
+int copy_vap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
 
 #endif	//_WIFI_MON_H_

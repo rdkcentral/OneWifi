@@ -74,6 +74,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_beacon_report)
         DOC2S(webconfig_subdoc_type_em_channel_stats)
 #endif
+        DOC2S(webconfig_subdoc_type_link_report)
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             type);
@@ -101,7 +102,7 @@ void device_statistics_info(analytics_data_t *data)
     char         temp_str[128];
     unsigned int radio_index = 0;
     radio_data_t radio_stats;
-    char   client_mac[32], sta_stats_str[256], tm_str[64];
+    char   client_mac[32], sta_stats_str[256], tm_str[128];
     analytics_sta_info_t    *sta_info;
     wifi_associated_dev3_t  *dev_stats;
     sta_data_t *sta_data;
@@ -118,9 +119,9 @@ void device_statistics_info(analytics_data_t *data)
     if ((data->minutes_alive % 60) == 0) {
         // print time of day every hour
         get_formatted_time(tm_str);
-        sprintf(temp_str, "utc:%s user:%f system:%f", tm_str, user, system);
+        snprintf(temp_str, sizeof(temp_str), "utc:%s user:%f system:%f", tm_str, user, system);
     } else {
-        sprintf(temp_str, "minutes:%d user:%f system:%f", data->minutes_alive, user, system);
+        snprintf(temp_str, sizeof(temp_str), "minutes:%u user:%f system:%f", data->minutes_alive, user, system);
     }
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, "keep-alive", temp_str);
 
@@ -133,7 +134,7 @@ void device_statistics_info(analytics_data_t *data)
         memset(&radio_stats, 0, sizeof(radio_stats));
         memset(temp_str, 0, sizeof(temp_str));
         if (get_dev_stats_for_radio(radio_index, (radio_data_t *)&radio_stats) == RETURN_OK) {
-            sprintf(temp_str, "Radio%d_Stats channel: %d bw:%s noise_floor:%d channel_util:%d channel_interference:%d", radio_index,
+            snprintf(temp_str, sizeof(temp_str), "Radio%u_Stats channel:%d bw:%s noise_floor:%d channel_util:%d channel_interference:%d", radio_index,
                        radio_stats.primary_radio_channel, radio_stats.channel_bandwidth, radio_stats.NoiseFloor, radio_stats.channelUtil, radio_stats.channelInterference);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "radio_stats", temp_str);
         }
@@ -149,10 +150,10 @@ void device_statistics_info(analytics_data_t *data)
         if (sta_data != NULL) {
             dev_stats = &sta_data->dev_stats;
             to_mac_str(sta_info->sta_mac, client_mac);
-            sprintf(sta_stats_str, "rssi:%ddbm good/bad rssi:%d/%d rapid reconnects:%d vap index:%d",
+            snprintf(sta_stats_str, sizeof(sta_stats_str), "rssi:%ddbm good/bad rssi:%d/%d rapid reconnects:%d vap index:%u",
                                dev_stats->cli_RSSI, sta_data->good_rssi_time, sta_data->bad_rssi_time,
                                sta_data->rapid_reconnects, sta_info->ap_index);
-            sprintf(temp_str, "\"%s\"", client_mac);
+            snprintf(temp_str, sizeof(temp_str), "\"%s\"", client_mac);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_generic, temp_str, "CORE", "stats", sta_stats_str);
         }
         sta_info = hash_map_get_next(sta_map, sta_info);
@@ -224,6 +225,11 @@ int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_s
         * is received by the handle_webconfig_event() function and decode is not happened yet
         * to determine the subdoc type.
         */
+        if (analytics_format == NULL) {
+            wifi_util_error_print(WIFI_ANALYTICS, "%s:%d: Unknown sub_type(0x%x) and doc is NULL\n", __func__, __LINE__, sub_type);
+            return RETURN_ERR;
+        }
+
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format, "set", "webconfig");
         return RETURN_OK;
     }
@@ -266,7 +272,7 @@ int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_s
 
                     if(vap->vap_name[0] != '\0') {
                         out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes),"\\n%d,%s,%s,%s",
-                                vap->vap_index, vap->u.sta_info.ssid, (vap->u.sta_info.enabled==TRUE)?"enb":"dis",
+                                vap->vap_index, get_vap_bridge_name(vap), ((vap->u.sta_info.enabled==TRUE) || (vap->u.sta_info.ignite_enabled==TRUE))?"enb":"dis",
                                 (vap->u.sta_info.conn_status==wifi_connection_status_connected)?"con":"discon");
                     }
                 }
@@ -317,6 +323,12 @@ int analytics_event_webconfig_set_status(wifi_app_t *apps, void *arg)
 
 int analytics_event_webconfig_get_data(wifi_app_t *apps, void *arg)
 {
+    return RETURN_OK;
+}
+
+int analytics_event_webconfig_set_ignite_data(wifi_app_t *apps, void *arg)
+{
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_webconfig_core, "set", "ignite data");
     return RETURN_OK;
 }
 
@@ -554,7 +566,7 @@ int analytics_event_wpa3_rfc(wifi_app_t *apps, void *arg)
     char str[32];
     memset(&str, 0, sizeof(str));
 
-    sprintf(str, "%s", (*rfc == 1)?"True":"False");
+    snprintf(str, sizeof(str), "%s", (*rfc == 1)?"True":"False");
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "wpa3_rfc", str);
     return RETURN_OK;
 }
@@ -693,6 +705,9 @@ int webconfig_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
     case wifi_event_webconfig_data_req_from_dml:
         analytics_event_webconfig_get_data_for_dmlthread(apps, arg, sub_type);
         break;
+    case wifi_event_webconfig_set_ignite_data:
+        analytics_event_webconfig_set_ignite_data(apps,arg);
+	break;
     default:
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
@@ -872,7 +887,8 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         break;
 
     case wifi_event_type_rsn_override_rfc:
-        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d \r\n", __func__, __LINE__, (bool *)arg);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d\r\n",
+            __func__, __LINE__, *(int *)arg);
         break;
 
     default:

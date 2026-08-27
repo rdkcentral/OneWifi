@@ -341,6 +341,12 @@ struct wifiEnvironmentEnumStrMap wifiEnviromentMap[] =
     {wifi_operating_env_non_country, "X"}
 };
 
+bool is_zero_mac(const uint8_t *mac)
+{
+    static const uint8_t zero[6] = {0};
+    return memcmp(mac, zero, 6) == 0;
+}
+
 void write_to_file(const char *file_name, char *fmt, ...)
 {
     FILE *fp = NULL;
@@ -711,7 +717,7 @@ char *get_formatted_time(char *time)
     return time;
 }
 
-void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...)
 {
     char buff[256] = { 0 };
     va_list list;
@@ -841,6 +847,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
     case WIFI_CSI: {
         snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCsi");
         snprintf(module_filename, sizeof(module_filename), "wifiCsi");
+        break;
+    }
+    case WIFI_SENSING: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSensing");
+        snprintf(module_filename, sizeof(module_filename), "wifiSensing");
         break;
     }
     default:
@@ -1006,13 +1017,13 @@ int convert_radio_name_to_radio_index(char *name)
 int convert_radio_index_to_radio_name(int index, char *name)
 {
     if (index == 0) {
-        strncpy(name,"radio1",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio1",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 1) {
-        strncpy(name,"radio2",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio2",RADIO_NAME_LENGTH);
         return 0;
     } else if (index == 2) {
-        strncpy(name,"radio3",BUFFER_LENGTH_WIFIDB);
+        strncpy(name,"radio3",RADIO_NAME_LENGTH);
         return 0;
     }
 
@@ -1543,9 +1554,6 @@ int country_code_conversion(wifi_countrycode_type_t *country_code, char *country
         }
 
     } else if (conv_type == ENUM_TO_STRING) {
-        if ( i >= MAX_WIFI_COUNTRYCODE) {
-            return RETURN_ERR;
-        }
         snprintf(country, country_len, "%s", wifiCountryMapMembers[*country_code].countryStr);
         return RETURN_OK;
     }
@@ -1716,11 +1724,13 @@ int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, 
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        if ((strcmp(auto_channel_string, "auto")) || (strcmp(auto_channel_string, "cloud")) || (strcmp(auto_channel_string, "acs"))) {
+        if ((strcmp(auto_channel_string, "auto") == 0) || (strcmp(auto_channel_string, "cloud") == 0) || (strcmp(auto_channel_string, "acs") == 0)) {
             *auto_channel_bool = true;
             return RETURN_OK;
-        } else if (strcmp(auto_channel_string, "manual")) {
+        } else if (strcmp(auto_channel_string, "manual") == 0) {
             *auto_channel_bool = false;
+            return RETURN_OK;
+        } else if (strcmp(auto_channel_string, "") == 0) {
             return RETURN_OK;
         }
     } else if (conv_type == ENUM_TO_STRING) {
@@ -1793,6 +1803,63 @@ int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t
     }
 
     return RETURN_ERR;
+}
+
+/*
+ * The three helpers below replicate the lookup-table logic of
+ * get_bw80_center_freq(), get_bw160_center_freq(), get_bw320_center_freq()
+ * from rdk-wifi-hal/src/wifi_hal_nl80211_utils.c, but:
+ *   - use distinct names to avoid colliding with the HAL at link time
+ *     (OneWifi links both this lib and rdk-wifi-hal)
+ *   - return the center channel index directly (unsigned char) instead of a
+ *     frequency in MHz, skipping the ieee80211_chan_to_freq round-trip
+ *     that update_hostap_iface() immediately undoes via ieee80211_freq_to_chan
+ */
+unsigned char wifi_get_bw80_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {42, 58, 106, 122, 138, 155};
+    static const unsigned char centers_6g[] = {7, 23, 39, 55, 71, 87, 103, 119, 135, 151, 167, 183, 199, 215};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 6)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 6)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw160_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {50, 114, 163};
+    static const unsigned char centers_6g[] = {15, 47, 79, 111, 143, 175, 207};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 14)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 14)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw320_center_ch(unsigned int ch)
+{
+    unsigned int i;
+    static const unsigned char centers_6g[] = {31, 63, 95, 127, 159, 191};
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    for (i = 0; i < n_6g; i++)
+        if (ch <= (unsigned int)(centers_6g[i] + 30)) return centers_6g[i];
+    return centers_6g[n_6g - 1];
 }
 
 int is_ssid_name_valid(char *ssid_name)
@@ -2016,24 +2083,33 @@ typedef struct {
     const char keys[16][MAX_SEC_LEN];
     int len;
     wifi_security_modes_t mode;
+    wifi_encryption_method_t encryption;
 } security_mapping_table_t;
 
 static const security_mapping_table_t security_map[] = {
-    { .keys = { "wpa-psk" },        .len = 1, .mode = wifi_security_mode_wpa_personal },
-    { .keys = { "wpa2-psk" },       .len = 1, .mode = wifi_security_mode_wpa2_personal },
-    { .keys = { "wpa2-eap" },       .len = 1, .mode = wifi_security_mode_wpa2_enterprise },
-    { .keys = { "sae" },            .len = 1, .mode = wifi_security_mode_wpa3_personal },
-    { .keys = { "aes" },            .len = 1, .mode = wifi_security_mode_wpa3_enterprise },
-    { .keys = { "enhanced-open" },  .len = 1, .mode = wifi_security_mode_enhanced_open },
-    { .keys = { "wpa-eap" },        .len = 1, .mode = wifi_security_mode_wpa_enterprise },
-    { .keys = { "wpa-eap", "wpa2-eap" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_enterprise },
-    { .keys = { "wpa2-psk", "sae" },        .len = 2, .mode = wifi_security_mode_wpa3_transition },
-    { .keys = { "wpa-psk", "wpa2-psk" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_personal },
-    { .keys = { "wpa2-psk", "sae", "rsno" },    .len = 3, .mode = wifi_security_mode_wpa3_compatibility }
+    { .keys = { "wpa-psk" },                 .len = 1, .mode = wifi_security_mode_wpa_personal,         .encryption = wifi_encryption_tkip },
+    { .keys = { "wpa-eap" },                 .len = 1, .mode = wifi_security_mode_wpa_enterprise,       .encryption = wifi_encryption_tkip },
+    { .keys = { "wpa2-psk" },                .len = 1, .mode = wifi_security_mode_wpa2_personal,        .encryption = wifi_encryption_aes },
+    { .keys = { "wpa2-eap" },                .len = 1, .mode = wifi_security_mode_wpa2_enterprise,      .encryption = wifi_encryption_aes },
+#ifdef CONFIG_IEEE80211BE
+    { .keys = { "sae" },                     .len = 1, .mode = wifi_security_mode_wpa3_personal,        .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "aes" },                     .len = 1, .mode = wifi_security_mode_wpa3_enterprise,      .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "wpa2-psk", "sae" },         .len = 2, .mode = wifi_security_mode_wpa3_transition,      .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "wpa2-psk", "sae", "rsno" }, .len = 3, .mode = wifi_security_mode_wpa3_compatibility,   .encryption = wifi_encryption_aes_gcmp256 },
+    { .keys = { "enhanced-open" },           .len = 1, .mode = wifi_security_mode_enhanced_open,        .encryption = wifi_encryption_aes_gcmp256 },
+#else
+    { .keys = { "sae" },                     .len = 1, .mode = wifi_security_mode_wpa3_personal,        .encryption = wifi_encryption_aes },
+    { .keys = { "aes" },                     .len = 1, .mode = wifi_security_mode_wpa3_enterprise,      .encryption = wifi_encryption_aes },
+    { .keys = { "wpa2-psk", "sae" },         .len = 2, .mode = wifi_security_mode_wpa3_transition,      .encryption = wifi_encryption_aes },
+    { .keys = { "wpa2-psk", "sae", "rsno" }, .len = 3, .mode = wifi_security_mode_wpa3_compatibility,   .encryption = wifi_encryption_aes },
+    { .keys = { "enhanced-open" },           .len = 1, .mode = wifi_security_mode_enhanced_open,        .encryption = wifi_encryption_aes },
+#endif
+    { .keys = { "wpa-eap", "wpa2-eap" },     .len = 2, .mode = wifi_security_mode_wpa_wpa2_enterprise,  .encryption = wifi_encryption_aes_tkip },
+    { .keys = { "wpa-psk", "wpa2-psk" },     .len = 2, .mode = wifi_security_mode_wpa_wpa2_personal,    .encryption = wifi_encryption_aes_tkip }
 };
 
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
-    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN])
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN], wifi_encryption_method_t *enum_encr)
 {
     int i, j = 0;
     int num_key_found = 0;
@@ -2061,6 +2137,8 @@ int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned 
             }
             if (num_key_found == wpa_key_mgmt_len) {
                 *enum_sec = security_map[i].mode;
+                if (enum_encr)
+                    *enum_encr = security_map[i].encryption;
                 return RETURN_OK;
             }
         }
@@ -2189,7 +2267,7 @@ int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t *
 
     va_start(args, num_types);
 
-    memset(&vap_names[0], 0, list_size*sizeof(wifi_vap_name_t));
+    memset(vap_names, 0, list_size*sizeof(wifi_vap_name_t));
     TOTAL_INTERFACES(total_vaps, wifi_prop);
     for (int num = 0; num < num_types; num++) {
         vap_type = va_arg(args, char *);
@@ -2295,22 +2373,22 @@ bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info,
                                          const wifi_vap_info_t *hotspot_vap_info)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s: Entry\n", __func__);
-    
+
     if (!lnf_vap_info || !hotspot_vap_info) {
         wifi_util_error_print(WIFI_CTRL, "%s: NULL pointer check failed - lnf_vap_info=%p, hotspot_vap_info=%p\n", 
                              __func__, lnf_vap_info, hotspot_vap_info);
         return false;
     }
-    
+
     wifi_util_dbg_print(WIFI_CTRL, "%s: lnf_vap_name=%s, hotspot_vap_name=%s\n", 
                        __func__, 
                        lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
                        hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL");
-    
+
     bool is_mdu_enabled = lnf_vap_info->u.bss_info.mdu_enabled;
     wifi_util_dbg_print(WIFI_CTRL, "%s: is_mdu_enabled=%s\n", 
                        __func__, is_mdu_enabled ? "true" : "false");
-    
+
     bool is_secure_hotspot = !strncmp(hotspot_vap_info->vap_name, 
                                      VAP_PREFIX_HOTSPOT_SECURE,
                                      strlen(VAP_PREFIX_HOTSPOT_SECURE));
@@ -2319,39 +2397,28 @@ bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info,
                        is_secure_hotspot ? "true" : "false",
                        hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
                        VAP_PREFIX_HOTSPOT_SECURE);
-    
-    bool lnf_enabled = lnf_vap_info->u.bss_info.enabled;
-    bool hotspot_enabled = hotspot_vap_info->u.bss_info.enabled;
-    bool vap_enabled_changed = (lnf_enabled != hotspot_enabled);
-    wifi_util_dbg_print(WIFI_CTRL, "%s: vap_enabled_changed=%s (lnf_enabled=%s, hotspot_enabled=%s)\n", 
-                       __func__, 
-                       vap_enabled_changed ? "true" : "false",
-                       lnf_enabled ? "true" : "false",
-                       hotspot_enabled ? "true" : "false");
-    
+
     bool radius_config_changed = wifi_radius_config_changed(
         &lnf_vap_info->u.bss_info.security.repurposed_radius,
         &hotspot_vap_info->u.bss_info.security.u.radius);
     wifi_util_dbg_print(WIFI_CTRL, "%s: radius_config_changed=%s\n", 
                        __func__, radius_config_changed ? "true" : "false");
-    
+
     bool result = (is_mdu_enabled &&
                   is_secure_hotspot &&
-                  (vap_enabled_changed || radius_config_changed));
-    
-    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d:%d:%d - result=%s\n", 
+                  radius_config_changed);
+
+    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d - result=%s\n", 
                         __func__,
                         hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
                         lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
                         is_mdu_enabled ? 1 : 0,
                         is_secure_hotspot ? 1 : 0,
-                        vap_enabled_changed ? 1 : 0,
                         radius_config_changed ? 1 : 0,
-                        (vap_enabled_changed || radius_config_changed) ? 1 : 0,
                         result ? "true" : "false");
-    
+
     wifi_util_dbg_print(WIFI_CTRL, "%s: Exit - returning %s\n", __func__, result ? "true" : "false");
-    
+
     return result;
 }
 
@@ -2470,17 +2537,17 @@ wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_st
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num)
 {
     int channels_2g_40_mhz[11][2] = {
-        {1, 3},
-        {2, 4},
-        {3, 5},
-        {4, 6},
-        {5, 7},
-        {6, 8},
-        {7, 9},
-        {8, 6},
-        {9, 7},
-        {10, 8},
-        {11, 9}
+        {1, 5},
+        {2, 6},
+        {3, 7},
+        {4, 8},
+        {5, 9},
+        {6, 10},
+        {7, 11},
+        {8, 4},
+        {9, 5},
+        {10, 6},
+        {11, 7}
     };
     int channels_5g_40_mhz[12][2] = {
         {36, 40},
@@ -2894,6 +2961,96 @@ int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsign
     return RETURN_ERR;
 }
 
+typedef struct {
+    wifi_freq_bands_t band;
+    const char *band_str;
+} freq_band_str_map_t;
+
+static const freq_band_str_map_t freq_band_str_map[] = {
+    { WIFI_FREQUENCY_2_4_BAND, NAME_FREQUENCY_2_4_G },
+    { WIFI_FREQUENCY_5_BAND,   NAME_FREQUENCY_5_G },
+    { WIFI_FREQUENCY_5L_BAND,  NAME_FREQUENCY_5L_G },
+    { WIFI_FREQUENCY_5H_BAND,  NAME_FREQUENCY_5H_G },
+    { WIFI_FREQUENCY_6_BAND,   NAME_FREQUENCY_6_G },
+};
+
+const char *convert_freq_band_to_band_str_g(int freq_band)
+{
+    unsigned int i = 0;
+
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (freq_band_str_map[i].band == (wifi_freq_bands_t)freq_band) {
+            return freq_band_str_map[i].band_str;
+        }
+    }
+    return NULL;
+}
+
+#if defined(CONFIG_IEEE80211BE)
+#define MLO_SUFFIX "_mlo"
+#define MLO_SUFFIX_LEN 4
+bool is_mlo_vap_name(const char *name)
+{
+    size_t len = 0;
+
+    if (name == NULL) {
+        return false;
+    }
+    len = strlen(name);
+    return (len > MLO_SUFFIX_LEN && strncmp(name + len - MLO_SUFFIX_LEN, MLO_SUFFIX, MLO_SUFFIX_LEN) == 0);
+}
+
+static bool get_mlo_base_name(const char *mlo_vap_name, char *base, size_t base_size)
+{
+    size_t base_len = 0;
+
+    if (base == NULL || !is_mlo_vap_name(mlo_vap_name)) {
+        return false;
+    }
+    base_len = strlen(mlo_vap_name) - MLO_SUFFIX_LEN;
+    if (base_len >= base_size) {
+        return false;
+    }
+    memcpy(base, mlo_vap_name, base_len);
+    base[base_len] = '\0';
+    return true;
+}
+
+bool get_per_radio_vap_name_from_mlo(const char *mlo_vap_name, const char *band_str, char *out, size_t out_size)
+{
+    wifi_vap_name_t base = { 0 };
+
+    if (!get_mlo_base_name(mlo_vap_name, base, sizeof(base))) {
+        return false;
+    }
+    snprintf(out, out_size, "%s_%s", base, band_str);
+    return true;
+}
+
+bool get_mlo_vap_name_from_per_radio(const char *vap_name, char *out, size_t out_size)
+{
+    int len = 0;
+    unsigned int i = 0;
+    const char *last_underscore = NULL;
+
+    if (vap_name == NULL || out == NULL) {
+        return false;
+    }
+    last_underscore = strrchr(vap_name, '_');
+    if (last_underscore == NULL) {
+        return false;
+    }
+    for (i = 0; i < ARRAY_SIZE(freq_band_str_map); i++) {
+        if (strcmp(last_underscore + 1, freq_band_str_map[i].band_str) == 0) {
+            len = last_underscore - vap_name;
+            snprintf(out, out_size, "%.*s" MLO_SUFFIX, len, vap_name);
+            return true;
+        }
+    }
+    return false;
+}
+#endif /* CONFIG_IEEE80211BE */
+
 struct wifiStdHalMap
 {
     wifi_ieee80211Variant_t halWifiStd;
@@ -3034,7 +3191,7 @@ int get_steering_cfg_id(char *key, int key_len, unsigned char * id, int id_len, 
     }
 
     for (i=0; i < st_cfg->vap_name_list_len; i++) {
-        if ((st_cfg->vap_name_list[i] == NULL) || (strlen(st_cfg->vap_name_list[i]) == 0)) {
+        if (strlen(st_cfg->vap_name_list[i]) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap_name_list failed!!!\n", __func__, __LINE__);
             return RETURN_ERR;
 
@@ -3876,6 +4033,34 @@ static bool is_vap_preassoc_cac_config_changed(char *vap_name,
     }
 }
 
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+static bool is_mld_addr_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new)
+{
+    if ((vap_info_old == NULL) || (vap_info_new == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: input args are NULL vap_info_old : %p vap_info_new : %p\n", __func__, __LINE__,
+            vap_info_old, vap_info_new);
+        return false;
+    }
+    if (vap_info_old->u.bss_info.mld_info.common_info.mld_enable ||
+        vap_info_new->u.bss_info.mld_info.common_info.mld_enable) {
+        if (IS_BIN_CHANGED(&vap_info_old->u.bss_info.mld_info.common_info.mld_addr,
+                &vap_info_new->u.bss_info.mld_info.common_info.mld_addr,
+                sizeof(vap_info_old->u.bss_info.mld_info.common_info.mld_addr))) {
+            mac_addr_str_t old_mld_mac_str = { 0 };
+            mac_addr_str_t new_mld_mac_str = { 0 };
+
+            to_mac_str(vap_info_old->u.bss_info.mld_info.common_info.mld_addr, old_mld_mac_str);
+            to_mac_str(vap_info_new->u.bss_info.mld_info.common_info.mld_addr, new_mld_mac_str);
+            wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: MLD address changed old: %s ,new: %s\n",
+                __func__, __LINE__, old_mld_mac_str, new_mld_mac_str);
+            return true;
+        }
+    }
+    return false;
+}
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
+
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3903,15 +4088,42 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         IS_CHANGED(vap_info_old->vap_mode, vap_info_new->vap_mode)) {
         return true;
     }
-
     if (isSta) {
         // Ignore change of conn_status, scan_params, mac to avoid reconfiguration and disconnection
         // BSSID change is handled by event.
         if (IS_STR_CHANGED(vap_info_old->u.sta_info.ssid, vap_info_new->u.sta_info.ssid,
-                sizeof(ssid_t)) ||
+              sizeof(ssid_t)) ||
             IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
-            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
-                sizeof(wifi_vap_security_t))) {
+            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) ||
+            IS_CHANGED(vap_info_old->u.sta_info.security.mode, vap_info_new->u.sta_info.security.mode)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.repurposed_mode, vap_info_new->u.sta_info.security.repurposed_mode)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.encr, vap_info_new->u.sta_info.security.encr)||
+#if defined(WIFI_HAL_VERSION_3)
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.mfp, &vap_info_new->u.sta_info.security.mfp, sizeof(wifi_mfp_cfg_t))||
+#else
+            IS_STR_CHANGED(vap_info_old->u.sta_info.security.mfpConfig, vap_info_new->u.sta_info.security.mfpConfig, sizeof(vap_info_new->u.sta_info.security.mfpConfig))||
+#endif
+            IS_CHANGED(vap_info_old->u.sta_info.security.wpa3_transition_disable, vap_info_new->u.sta_info.security.wpa3_transition_disable)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.rekey_interval, vap_info_new->u.sta_info.security.rekey_interval)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.strict_rekey, vap_info_new->u.sta_info.security.strict_rekey)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eapol_key_timeout, vap_info_new->u.sta_info.security.eapol_key_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eapol_key_retries, vap_info_new->u.sta_info.security.eapol_key_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_identity_req_timeout, vap_info_new->u.sta_info.security.eap_identity_req_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_identity_req_retries, vap_info_new->u.sta_info.security.eap_identity_req_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_req_timeout, vap_info_new->u.sta_info.security.eap_req_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_req_retries, vap_info_new->u.sta_info.security.eap_req_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.disable_pmksa_caching, vap_info_new->u.sta_info.security.disable_pmksa_caching)||
+            IS_STR_CHANGED(vap_info_old->u.sta_info.security.key_id, vap_info_new->u.sta_info.security.key_id, sizeof(vap_info_new->u.sta_info.security.key_id))||
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.repurposed_radius, &vap_info_new->u.sta_info.security.repurposed_radius, sizeof(wifi_radius_settings_t))) {
+            return true;
+        }
+
+        if((vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa2_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa_wpa2_enterprise)) {
+            if(IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.u.radius, &vap_info_new->u.sta_info.security.u.radius, sizeof(vap_info_old->u.sta_info.security.u.radius))) {
+            return true;
+            }
+        }
+        else if(IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.u.key, &vap_info_new->u.sta_info.security.u.key, sizeof(vap_info_old->u.sta_info.security.u.key))) {
             return true;
         }
     } else {
@@ -3977,13 +4189,12 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+            //should not be executed for BPi
             IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
                 vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
-            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
-                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
-            IS_BIN_CHANGED(&vap_info_old->u.bss_info.mld_info.common_info.mld_addr,
-                &vap_info_new->u.bss_info.mld_info.common_info.mld_addr,
-                sizeof(vap_info_old->u.bss_info.mld_info.common_info.mld_addr)) ||
+            is_mld_addr_changed(vap_info_old, vap_info_new) ||
+#endif // CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.interop_ctrl,
@@ -4008,30 +4219,30 @@ static const wifi_operating_classes_t us_24G[] = {
 
 // Countrycode: US, Band 5G
 static const wifi_operating_classes_t us_5G[] = {
-    { 115, -30, 0, {}           },
-    { 116, -30, 0, {}           },
-    { 117, -30, 0, {}           },
-    { 118, -30, 0, {}           },
-    { 119, -30, 0, {}           },
-    { 120, -30, 0, {}           },
-    { 121, -30, 0, {}           },
-    { 122, -30, 0, {}           },
-    { 123, -30, 0, {}           },
-    { 124, -30, 0, {}           },
-    { 125, -30, 2, { 169, 173 } },
-    { 126, -30, 0, {}           },
-    { 127, -30, 1, { 169 }      },
+    { 115, -30, 0, {}      	     },
+    { 116, -30, 0, {}                },
+    { 117, -30, 0, {}                },
+    { 118, -30, 0, {}                },
+    { 119, -30, 0, {}                },
+    { 120, -30, 0, {}                },
+    { 121, -30, 0, {}                },
+    { 122, -30, 0, {}                },
+    { 123, -30, 0, {}                },
+    { 124, -30, 0, {}                },
+    { 125, -30, 3, { 169, 173, 177 } },
+    { 126, -30, 2, { 165, 173 }      },
+    { 127, -30, 2, { 169, 177 }      },
     // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
     // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
     // are operable.
-    { 128, -30, 0, {}           },
+    { 128, -30, 1, { 171 }           }, 
     // Revisit Below Operating Class as singleAP.json example indicates nonOperable as
     // [50] but as per Table E-1 the channel is operable.
-    { 129, -30, 0, {}           },
+    { 129, -30, 1, { 163 }           },
     // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
     // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
     // are operable.
-    { 130, -30, 0, {}           },
+    { 130, -30, 7, { 42, 58, 106, 122, 138, 155, 171 }           },
 };
 
 // Countrycode: US, Band 6G
@@ -4039,7 +4250,7 @@ static const wifi_operating_classes_t us_6G[] = {
     { 131, 23,  0, {}      },
     { 132, 23,  0, {}      },
     { 133, 23,  0, {}      },
-    { 134, 23,  1, { 169 } },
+    { 134, 23,  0, {} 	   },
     { 135, -30, 0, {}      },
     { 136, 23,  0, {}      },
 };
@@ -4690,7 +4901,7 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
 
     memset(&ifr, 0, sizeof(struct ifreq));
     ifr.ifr_addr.sa_family = AF_INET;
-    strcpy(ifr.ifr_name, ifname);
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
     if (ioctl(sock, SIOCGIFHWADDR, &ifr) != 0) {
         close(sock);
         wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: ioctl failed to get hardware address for interface:%s\n", __func__, __LINE__, ifname);
@@ -4702,4 +4913,117 @@ int mac_address_from_name(const char *ifname, mac_address_t mac)
     close(sock);
 
     return 0;
+}
+
+bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr)
+{
+    uint32_t valid_mask = 0;
+
+    switch (mode) {
+    case wifi_security_mode_enhanced_open:
+        valid_mask = (1u << wifi_encryption_none) | (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa3_enterprise:
+    case wifi_security_mode_wpa3_personal:
+    case wifi_security_mode_wpa3_compatibility:
+    case wifi_security_mode_wpa3_transition:
+        valid_mask = (1u << wifi_encryption_aes);
+#ifdef CONFIG_IEEE80211BE
+        valid_mask |= (1u << wifi_encryption_aes_gcmp256);
+#endif /* CONFIG_IEEE80211BE */
+        break;
+
+    case wifi_security_mode_wpa2_personal:
+    case wifi_security_mode_wpa2_enterprise:
+    case wifi_security_mode_wpa_wpa2_personal:
+    case wifi_security_mode_wpa_wpa2_enterprise:
+        valid_mask = (1u << wifi_encryption_aes) | (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_wpa_personal:
+    case wifi_security_mode_wpa_enterprise:
+        valid_mask = (1u << wifi_encryption_tkip) | (1u << wifi_encryption_aes) |
+                     (1u << wifi_encryption_aes_tkip);
+        break;
+
+    case wifi_security_mode_none:
+        return true; /* no encryption required */
+    default:
+        return false; /* unknown mode: reject */
+    }
+
+    return (valid_mask & (1u << encr)) != 0;
+}
+
+void apply_wpa2_personal_encr_policy(wifi_vap_security_t *security_info)
+{
+    if (security_info == NULL || security_info->mode != wifi_security_mode_wpa2_personal) {
+        return;
+    }
+
+    if (security_info->encr == wifi_encryption_aes_gcmp256) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d enforcing WPA2-Personal encryption fallback AES+GCMP(%d)->AES(%d)\n", __func__,
+            __LINE__, wifi_encryption_aes_gcmp256, wifi_encryption_aes);
+        security_info->encr = wifi_encryption_aes;
+        return;
+    }
+
+    /* Preserve valid WPA2 encryptions (AES, AES+TKIP); normalize anything else to AES. */
+    if (security_info->encr != wifi_encryption_aes &&
+        security_info->encr != wifi_encryption_aes_tkip) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d enforcing WPA2-Personal encryption fallback invalid(%d)->AES(%d)\n", __func__,
+            __LINE__, security_info->encr, wifi_encryption_aes);
+        security_info->encr = wifi_encryption_aes;
+    }
+}
+
+void apply_wpa3_transition_encr_policy(wifi_vap_security_t *security_info)
+{
+    if (security_info == NULL || security_info->mode != wifi_security_mode_wpa3_transition) {
+        return;
+    }
+
+#ifdef CONFIG_IEEE80211BE
+    /* 11be builds use AES+GCMP as the policy default for WPA3-Transition. */
+    security_info->encr = wifi_encryption_aes_gcmp256;
+#else
+    security_info->encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
+}
+
+int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)
+{
+    int index;
+    int num_vaps;
+    wifi_interface_name_idex_map_t *if_prop;
+    char st[64] = "";
+
+    if ((wifi_prop == NULL) || (wifi_prop->interface_map == NULL) || (mac == NULL)) {
+         return -1;
+    }
+
+    memset(mac, 0, sizeof(mac_address_t));
+    TOTAL_INTERFACES(num_vaps, wifi_prop);
+    if_prop = wifi_prop->interface_map;
+
+    for (index = 0; index < num_vaps; ++index) {
+        if (if_prop->rdk_radio_index == radio_index) {
+            if (!strncmp(if_prop->vap_name, "mesh_sta", strlen("mesh_sta"))) {
+                mac_address_from_name(if_prop->interface_name, mac);
+                uint8_mac_to_string_mac(mac, st);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d interface_name=%s and mac address=%s\n",
+                    __func__, __LINE__, if_prop->interface_name, st);
+                return 0;
+            }
+        }
+        if_prop++;
+    }
+
+    return -1;
 }

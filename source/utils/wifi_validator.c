@@ -721,11 +721,6 @@ static void validation_error_msg(const uint8_t group, const uint8_t type, pErr e
 
 static int checkVenueParams(const uint8_t venueGroup, const uint8_t venueType, pErr execRetVal)
 {
-    if (venueType > 15) {
-        validation_error_msg(venueGroup, venueType, execRetVal);
-        return RETURN_ERR;
-    }
-
     switch (venueGroup) {
     case 0:
        if (venueType > 0) {
@@ -910,7 +905,7 @@ int early_validate_interworking(const cJSON *interworking, pErr execRetVal)
     validate_param_bool(interworking, "InterworkingEnable", param);
     validate_param_integer(interworking, "AccessNetworkType", param);
     if (param->valuedouble > 5) {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for AccessNetworkType=%d\n",
+        wifi_util_error_print(WIFI_PASSPOINT, "%s:%d: Validation failed for AccessNetworkType=%f\n",
             __func__, __LINE__, param->valuedouble);
         strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
@@ -1106,7 +1101,11 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
             return RETURN_ERR;
         }
         if (strcmp(param->valuestring, "AES") == 0) {
-            vap_info->u.bss_info.security.encr = wifi_encryption_aes;	
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#ifdef CONFIG_IEEE80211BE
+        } else if (strcmp(param->valuestring, "AES+GCMP") == 0) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#endif /* CONFIG_IEEE80211BE */
         } else {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
         }
@@ -1167,8 +1166,10 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;
         } else if (strcmp(param->valuestring, "AES+TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+#ifdef CONFIG_IEEE80211BE
         } else if (strcmp(param->valuestring, "AES+GCMP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#endif /* CONFIG_IEEE80211BE */
         } else {
             get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, %s: Invalid Encryption method for private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
@@ -1266,7 +1267,11 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
         }
         if (strcmp(param->valuestring, "Enhanced-Open") == 0) {
             vap_info->u.bss_info.security.mode = wifi_security_mode_enhanced_open;
+#ifdef CONFIG_IEEE80211BE
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
         }
         
         // MFPConfig
@@ -1493,7 +1498,7 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 
         //VAP Name
 	validate_param_string(vap, "VapName",param);
-	strcpy(vap_info->vap_name, param->valuestring);
+	snprintf(vap_info->vap_name, sizeof(vap_info->vap_name), "%s", param->valuestring);
 
         //Bridge Name
         validate_param_string(vap, "BridgeName", param);
@@ -1501,7 +1506,7 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 
 	// SSID
 	validate_param_string(vap, "SSID", param);
-	strcpy(vap_info->u.bss_info.ssid, param->valuestring);
+	snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s", param->valuestring);
 
         if (validate_ssid_name(vap_info->u.bss_info.ssid, execRetVal) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s %d : Ssid name validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
@@ -1518,10 +1523,6 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
     // MLD Enable
     validate_param_bool(vap, "MLD_Enable", param);
 	vap_info->u.bss_info.mld_info.common_info.mld_enable = (param->type & cJSON_True) ? true:false;
-
-    // MLD Apply
-	validate_param_bool(vap, "MLD_Apply", param);
-	vap_info->u.bss_info.mld_info.common_info.mld_apply = (param->type & cJSON_True) ? true:false;
 
     // MLD ID
 	validate_param_integer(vap, "MLD_ID", param);
@@ -1612,7 +1613,7 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 
         // BeaconRateCtl
         validate_param_string(vap, "BeaconRateCtl", param);
-        strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
+        snprintf(vap_info->u.bss_info.beaconRateCtl, sizeof(vap_info->u.bss_info.beaconRateCtl), "%s", param->valuestring);
 
         // HostapMgtFrameCtrl
         validate_param_bool(vap, "HostapMgtFrameCtrl", param);
@@ -2058,7 +2059,7 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
 	// HwMode
 	validate_param_integer(wifi, "HwMode", param);
         if (validate_wifi_hw_variant(wifi_radio_info->band, param->valuedouble) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio hardware mode [%d] configuration\n", param->valuedouble);
+            wifi_util_dbg_print(WIFI_PASSPOINT, "Invalid wifi radio hardware mode [%f] configuration\n", param->valuedouble);
             strncpy(execRetVal->ErrorMsg, "Invalid wifi radio hardware mode config",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -2183,7 +2184,8 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
 
         //RadarDetected
         validate_param_string(wifi, "RadarDetected", param);
-        copy_string(wifi_radio_info->radarDetected, param->valuestring );
+        snprintf(wifi_radio_info->radarDetected, sizeof(wifi_radio_info->radarDetected), "%s",
+            param->valuestring ? param->valuestring : "");
 
         // Amsdu_Tid
         validate_param_string(wifi, "Amsdu_Tid", param);
@@ -2191,17 +2193,18 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
         tmp = param->valuestring;
 
         uint8_t tid_idx = 0;
+        int tid_val = 0;
         while ((ptr = strchr(tmp, ',')) != NULL) {
             ptr++;
-            wifi_radio_info->amsduTid[tid_idx] = atoi(tmp);
-            if ((wifi_radio_info->amsduTid[tid_idx] != FALSE ||
-                    wifi_radio_info->amsduTid[tid_idx] != TRUE)) {
+            tid_val = atoi(tmp);
+            if (tid_val != FALSE && tid_val != TRUE) {
                 wifi_util_dbg_print(WIFI_PASSPOINT, "Invalid value when parsing AMSDU TID: %d\n",
-                    wifi_radio_info->amsduTid[tid_idx]);
+                    tid_val);
                 strncpy(execRetVal->ErrorMsg, "Invalid AMSDU TID list",
                     sizeof(execRetVal->ErrorMsg) - 1);
                 return RETURN_ERR;
             }
+            wifi_radio_info->amsduTid[tid_idx] = tid_val;
             tmp = ptr;
             tid_idx++;
         }

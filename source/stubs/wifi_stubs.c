@@ -36,7 +36,9 @@ extern void gain_root_privilege();
 extern char * getDeviceMac();
 extern int onewifi_pktgen_uninit();
 static int strcpy_func(char *dst, size_t max, const char *src) {
-    strcpy_s(dst, max, src);
+    int rc;
+    rc = strcpy_s(dst, max, src);
+    ERR_CHK(rc);
     return 0;
 }
 #else

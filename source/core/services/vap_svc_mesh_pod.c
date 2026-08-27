@@ -93,6 +93,10 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     ext = &svc->u.ext;
     ext->conn_state = connection_state_connection_in_progress;
     for (i = num_of_radios-1; i >= 0; i--) {
+        if (radio_index != WIFI_ALL_RADIO_INDICES && i != radio_index) {
+            continue;
+        }
+
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         if (vap_map == NULL) {
             wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
@@ -174,6 +178,9 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     memset(&vif_config,0,sizeof(vif_config));
 
     for (j = 0; j < vap_map->num_vaps; j++) {
+        if (radio_index != WIFI_ALL_RADIO_INDICES && j != radio_index) {
+            continue;
+        }
 
         if (svc->is_my_fn(vap_map->vap_array[j].vap_index) == false) {
             continue;
@@ -552,6 +559,12 @@ int process_ext_hal_ind(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg
         break;
 
     case wifi_event_hal_channel_change:
+        break;
+
+    case wifi_event_hal_pre_assoc_fail:
+    case wifi_event_hal_post_assoc_fail:
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Ignored HAL event: %s\r\n",__func__, __LINE__,
+		      wifi_event_subtype_to_string(sub_type));
         break;
 
     default:

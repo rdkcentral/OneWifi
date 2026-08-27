@@ -33,19 +33,12 @@ bool vap_svc_is_mesh_gw(unsigned int vap_index)
 int vap_svc_mesh_gw_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     // for backhaul just create vaps and install acl filters
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_start(svc);
-    }
-
-    return 0;
+    return vap_svc_start(svc, radio_index);
 }
 
 int vap_svc_mesh_gw_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-    if (radio_index == WIFI_ALL_RADIO_INDICES) {
-        return vap_svc_stop(svc);
-    }
-    return 0;
+    return vap_svc_stop(svc, radio_index);
 }
 
 int vap_svc_mesh_gw_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,

@@ -80,6 +80,10 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_webconfig_set_data_sta_bssid)
         DOC2S(wifi_event_webconfig_data_req_from_dml)
         DOC2S(wifi_event_webconfig_set_data_force_apply)
+        DOC2S(wifi_event_webconfig_em_config)
+        DOC2S(wifi_event_webconfig_br_report)
+        DOC2S(wifi_event_webconfig_set_ignite_data)
+        DOC2S(wifi_event_webconfig_set_data_nasta)
         DOC2S(wifi_event_webconfig_max)
         DOC2S(wifi_event_hal_unknown_frame)
         DOC2S(wifi_event_hal_mgmt_frames)
@@ -97,6 +101,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_hal_sta_conn_status)
         DOC2S(wifi_event_hal_assoc_device)
         DOC2S(wifi_event_hal_disassoc_device)
+        DOC2S(wifi_event_hal_report_connection_status)
         DOC2S(wifi_event_scan_results)
         DOC2S(wifi_event_hal_channel_change)
         DOC2S(wifi_event_radius_greylist)
@@ -106,6 +111,9 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_radius_fallback_and_failover)
         DOC2S(wifi_event_type_csi_data)
         DOC2S(wifi_event_hal_wps_results)
+        DOC2S(wifi_event_hal_wnm_action_frame)
+        DOC2S(wifi_event_hal_pre_assoc_fail)
+        DOC2S(wifi_event_hal_post_assoc_fail)
         DOC2S(wifi_event_hal_max)
         DOC2S(wifi_event_type_active_gw_check)
         DOC2S(wifi_event_type_command_factory_reset)
@@ -117,6 +125,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_dfs_atbootup_rfc)
         DOC2S(wifi_event_type_command_kickmac)
         DOC2S(wifi_event_type_command_kick_assoc_devices)
+        DOC2S(wifi_event_type_command_frame_drop_unenc)
         DOC2S(wifi_event_type_command_wps)
         DOC2S(wifi_event_type_command_wps_pin)
         DOC2S(wifi_event_type_command_wps_cancel)
@@ -141,6 +150,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_wifi_offchannelscan_sm_rfc)
         DOC2S(wifi_event_type_levl_rfc)
         DOC2S(wifi_event_type_csi_analytics_rfc)
+        DOC2S(wifi_event_type_multiap_rfc)
         DOC2S(wifi_event_type_eth_bh_status)
         DOC2S(wifi_event_type_managed_wifi_disable)
         DOC2S(wifi_event_type_notify_monitor_done)
@@ -153,6 +163,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_rsn_override_rfc)
         DOC2S(wifi_event_type_sta_client_info)
         DOC2S(wifi_event_type_sm_app_enable)
+        DOC2S(wifi_event_type_send_btm_req)
         DOC2S(wifi_event_command_max)
         DOC2S(wifi_event_monitor_diagnostics)
         DOC2S(wifi_event_monitor_connect)
@@ -174,6 +185,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_monitor_provider_response)
         DOC2S(wifi_event_monitor_auth_req)
         DOC2S(wifi_event_monitor_assoc_req)
+        DOC2S(wifi_event_monitor_reassoc_req)
         DOC2S(wifi_event_monitor_clear_sta_counters)
         DOC2S(wifi_event_monitor_get_radiostats_onchan)
         DOC2S(wifi_event_monitor_get_radiostats_offchan)
@@ -186,13 +198,14 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_monitor_get_radio_temperature)
         DOC2S(wifi_event_monitor_set_subscribe)
         DOC2S(wifi_event_monitor_action_frame)
+        DOC2S(wifi_event_monitor_channel_status)
+        DOC2S(wifi_event_monitor_eap_status)
         DOC2S(wifi_event_monitor_max)
         DOC2S(wifi_event_type_xfinity_tunnel_up)
         DOC2S(wifi_event_type_xfinity_tunnel_down)
         DOC2S(wifi_event_type_xfinity_tunnel_max)
         DOC2S(wifi_event_type_wifiapi_execution)
         DOC2S(wifi_event_type_wifiapi_max)
-        DOC2S(wifi_event_webconfig_br_report)
         DOC2S(wifi_event_br_report)
     default:
         wifi_util_error_print(WIFI_CTRL, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
@@ -207,6 +220,7 @@ bool is_high_priority_event(wifi_event_subtype_t sub_type)
     switch (sub_type) {
     case wifi_event_type_notify_monitor_done:
     case wifi_event_type_command_factory_reset:
+    case wifi_event_type_command_frame_drop_unenc:
     case wifi_event_type_eth_bh_status:
     case wifi_event_type_xfinity_enable:
     case wifi_event_type_prefer_private_rfc:
@@ -491,6 +505,21 @@ wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int m
             }
         }
         break;
+    case mon_stats_type_vap_stats:
+        if (response->stat_array_size > 0) {
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size,
+                sizeof(vap_traffic_stats_t));
+            if (event->u.provider_response->stat_pointer == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d response allocation failed for %d\n",
+                    __FUNCTION__, __LINE__, response->data_type);
+                free(event->u.provider_response);
+                event->u.provider_response = NULL;
+                free(event);
+                event = NULL;
+                return NULL;
+            }
+        }
+    break;
     default:
         wifi_util_error_print(WIFI_CTRL, "%s %d default response type : %d\n", __FUNCTION__,
             __LINE__, response->data_type);
@@ -657,6 +686,18 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
                 memcpy(event->u.provider_response->stat_pointer, response->stat_pointer,
                     (response->stat_array_size * sizeof(radio_data_t)));
                 break;
+            case mon_stats_type_vap_stats:
+                if ((event->u.provider_response->stat_pointer == NULL) ||
+                    (response->stat_pointer == NULL)) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s %d data_type %d stat_pointer is NULL : %p, %p\n", __FUNCTION__,
+                        __LINE__, response->data_type, event->u.provider_response->stat_pointer,
+                        response->stat_pointer);
+                    return RETURN_ERR;
+                }
+                memcpy(event->u.provider_response->stat_pointer, response->stat_pointer,
+                    (response->stat_array_size * sizeof(vap_traffic_stats_t)));
+                break;
             default:
                 wifi_util_error_print(WIFI_CTRL, "%s %d default response type : %d\n", __FUNCTION__,
                     __LINE__, response->data_type);
@@ -770,14 +811,9 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
         event->route = *rt;
     }
 
-    if (msg != NULL) {
         /* copy msg to data */
         memcpy(event->u.core_data.msg, msg, len);
         event->u.core_data.len = len;
-    } else {
-        event->u.core_data.msg = NULL;
-        event->u.core_data.len = 0;
-    }
 
     pthread_mutex_lock(&ctrl->queue_lock);
     is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;

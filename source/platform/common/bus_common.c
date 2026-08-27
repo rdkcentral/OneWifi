@@ -122,7 +122,7 @@ static elem_node_map_t *insert_table_row(elem_node_map_t *table_root, char *node
                     snprintf(buff, sizeof(buff), "%s", node_name);
                 }
                 wifi_util_dbg_print(WIFI_BUS,"Full name [%s]\r\n", buff);
-                strncpy(temp_node->full_name, buff, strlen(buff) + 1);
+                snprintf(temp_node->full_name, sizeof(temp_node->full_name), "%s", buff);
                 strncpy(temp_node->name, node_name, strlen(node_name) + 1);
                 current_node->nextSibling = temp_node;
                 current_node = temp_node;
@@ -231,7 +231,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     elem_node_map_t* current_node = root;
     elem_node_map_t* temp_node    = NULL;
     elem_node_map_t* next_node    = NULL;
-    int  ret = 0, create_child   = 0;
+    int  create_child             = 0;
     char buff[256];
 
     if(current_node == NULL || elem == NULL)
@@ -242,7 +242,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
     next_node = current_node->child;
     create_child = 1;
 
-    wifi_util_info_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
+    wifi_util_dbg_print(WIFI_BUS,"Request to insert element [%s]!!\r\n", elem->full_name);
 
     strncpy(name, elem->full_name, strlen(elem->full_name) + 1);
 
@@ -272,7 +272,13 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
             {
                 wifi_util_dbg_print(WIFI_BUS,"Create child [%s]\n", token);
                 temp_node = get_empty_elem_node();
-                BUS_CHECK_NULL_WITH_RC(temp_node, NULL);
+                if(temp_node == NULL)
+                {
+                    wifi_util_error_print(WIFI_BUS, "Failed to create child node [%s] for element [%s]\n",
+                         token, elem->full_name);
+                    BUS_MUX_UNLOCK(get_bus_mux_mutex());
+                    return NULL;
+                }
                 temp_node->parent = current_node;
                 if(current_node == root)
                 {
@@ -281,7 +287,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
                 else
                 {
                     snprintf(buff, sizeof(buff), "%s.%s", current_node->full_name, token);
-                    strncpy(temp_node->full_name, buff, strlen(buff) + 1);
+                    snprintf(temp_node->full_name, sizeof(temp_node->full_name), "%s", buff);
                 }
                 strncpy(temp_node->name, token, strlen(token) + 1);
                 current_node->child = temp_node;
@@ -313,7 +319,13 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
                 {
                     wifi_util_dbg_print(WIFI_BUS,"Create Sibling [%s]\n", token);
                     temp_node = get_empty_elem_node();
-                    BUS_CHECK_NULL_WITH_RC(temp_node, NULL);
+                    if(temp_node == NULL)
+                    {
+                        wifi_util_error_print(WIFI_BUS, "Failed to create sibling node [%s] for element [%s]\n",
+                             token, elem->full_name);
+                        BUS_MUX_UNLOCK(get_bus_mux_mutex());
+                        return NULL;
+                    }
                     temp_node->parent = current_node->parent;
                     if(strlen(current_node->parent->full_name) != 0) {
                         snprintf(buff, sizeof(buff), "%s.%s", current_node->parent->full_name, token);
@@ -321,7 +333,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
                         snprintf(buff, sizeof(buff), "%s", token);
                     }
                     wifi_util_dbg_print(WIFI_BUS,"Full name [%s]\n", buff);
-                    strncpy(temp_node->full_name, buff, strlen(buff) + 1);
+                    snprintf(temp_node->full_name, sizeof(temp_node->full_name), "%s", buff);
                     strncpy(temp_node->name, token, strlen(token) + 1);
                     current_node->nextSibling = temp_node;
                     current_node = temp_node;
@@ -331,38 +343,52 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
         }
         token = strtok_r(NULL, ".", &saveptr);
     }
-    if(ret == 0)
-    {
-        current_node->type           = elem->type;
-        current_node->node_data_type = elem->node_data_type;
-        current_node->node_elem_data = malloc(elem->cfg_data_len);
-        BUS_CHECK_NULL_WITH_RC(current_node->node_elem_data, NULL);
-        memcpy(current_node->node_elem_data, elem->cfg_data, elem->cfg_data_len);
-        current_node->node_elem_data_len = elem->cfg_data_len;
 
-        if(elem->type == bus_element_type_table)
-        {
-            elem_node_map_t* rowTemplate = get_empty_elem_node();
-            BUS_CHECK_NULL_WITH_RC(rowTemplate, NULL);
-            rowTemplate->parent = current_node;
-            strncpy(rowTemplate->name, "{i}", strlen("{i}") + 1);
-            snprintf(buff, sizeof(buff), "%s.%s", current_node->full_name, rowTemplate->name);
-            strncpy(rowTemplate->full_name, buff, strlen(buff) + 1);
-            current_node->child = rowTemplate;
+    current_node->type           = elem->type;
+    current_node->node_data_type = elem->node_data_type;
 
-            //bus_add_table_row(current_node, elem->num_of_table_row);
+    if (current_node->node_elem_data_len != elem->cfg_data_len) {
+        if (current_node->node_elem_data != NULL) {
+            wifi_util_info_print(WIFI_BUS, "%s:%d Updated node [%s] data len from %d to %d\n",
+                __func__, __LINE__, current_node->full_name, current_node->node_elem_data_len,
+                elem->cfg_data_len);
+            free(current_node->node_elem_data);
+            current_node->node_elem_data = NULL;
+            current_node->node_elem_data_len = 0;
         }
+        current_node->node_elem_data = malloc(elem->cfg_data_len);
     }
-    BUS_MUX_UNLOCK(get_bus_mux_mutex());
-
-    if(ret == 0)
+    if(current_node->node_elem_data == NULL)
     {
-        return current_node;
-    }
-    else
-    {
+        wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n", elem->full_name);
+        BUS_MUX_UNLOCK(get_bus_mux_mutex());
         return NULL;
     }
+    memcpy(current_node->node_elem_data, elem->cfg_data, elem->cfg_data_len);
+    current_node->node_elem_data_len = elem->cfg_data_len;
+
+    if(elem->type == bus_element_type_table && current_node->child == NULL)
+    {
+        elem_node_map_t* rowTemplate = get_empty_elem_node();
+        if(rowTemplate == NULL)
+        {
+            wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n",
+                 elem->full_name);
+            BUS_MUX_UNLOCK(get_bus_mux_mutex());
+            return NULL;
+        }
+        rowTemplate->parent = current_node;
+        strncpy(rowTemplate->name, "{i}", strlen("{i}") + 1);
+        snprintf(buff, sizeof(buff), "%s.%s", current_node->full_name, rowTemplate->name);
+        snprintf(rowTemplate->full_name, sizeof(rowTemplate->full_name), "%s", buff);
+        current_node->child = rowTemplate;
+
+        //bus_add_table_row(current_node, elem->num_of_table_row);
+    }
+
+    BUS_MUX_UNLOCK(get_bus_mux_mutex());
+    return current_node;
+
 }
 
 elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* elmentName)
@@ -432,13 +458,18 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
 
         if(token && next_node && next_node->parent && next_node->parent->type == bus_element_type_table)
         {
-            if(!isWildcard && !strcmp(token,"*"))
-            {
+            bus_callback_table_t *user_cb = NULL;
+            bus_mux_reg_node_data_t *reg_node_data = next_node->parent->node_elem_data;
+
+            if (reg_node_data != NULL) {
+                user_cb = &reg_node_data->cb_table;
+            }
+
+            if (!isWildcard && !strcmp(token,"*")) {
                 isWildcard = true;
             }
 
-            if(isWildcard)
-            {
+            if (isWildcard || (user_cb && user_cb->get_handler)) {
                 token = "{i}";
             }
         }
@@ -467,7 +498,7 @@ elem_node_map_t *get_bus_node_info(elem_node_map_t *cb_root, char *name)
         return NULL;
     }
 
-    strcpy(recv_name, name);
+    snprintf(recv_name, sizeof(recv_name), "%s", name);
 
     node_elem = retrieve_instance_elem_node(cb_root, recv_name);
     if (node_elem != NULL) {
@@ -700,11 +731,13 @@ bus_error_t bus_table_remove_row(elem_node_map_t *p_root_node, char *p_name_spac
 int check_dm_min_max_data_range(long int min_data, long int max_data, raw_data_t *bus_set_data)
 {
     if (min_data == 0 && max_data == 0) {
-        wifi_util_info_print(WIFI_BUS,"%s:%d: int range validation is not needed\n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_BUS, "%s:%d: int range validation is not needed\n", __func__,
+            __LINE__);
         return RETURN_OK;
     }
 
-    wifi_util_info_print(WIFI_BUS,"%s:%d: set data type:%d\n",__func__, __LINE__, bus_set_data->data_type);
+    wifi_util_info_print(WIFI_BUS, "%s:%d: set data type:%d\n", __func__, __LINE__,
+        bus_set_data->data_type);
     if (bus_set_data->data_type == bus_data_type_boolean) {
         COMPARE_INT_RANGE((bool)min_data, (bool)max_data, bus_set_data->raw_data.b);
     } else if (bus_set_data->data_type == bus_data_type_int8) {
@@ -727,24 +760,25 @@ int check_dm_min_max_data_range(long int min_data, long int max_data, raw_data_t
 int validate_dm_string_param(uint32_t num_of_str, char **str, char *set_str)
 {
     if (num_of_str == 0) {
-        wifi_util_info_print(WIFI_BUS,"%s:%d: string validation is not set\n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_BUS, "%s:%d: string validation is not set\n", __func__, __LINE__);
     } else if (str == NULL || set_str == NULL) {
-        wifi_util_info_print(WIFI_BUS,"%s:%d: input string is NULL:%p:%p\n", __func__, __LINE__, str, set_str);
+        wifi_util_info_print(WIFI_BUS, "%s:%d: input string is NULL:%p:%p\n", __func__, __LINE__,
+            str, set_str);
     } else {
         uint32_t index;
         bool str_found = false;
 
-        for(index = 0; index < num_of_str; index++) {
+        for (index = 0; index < num_of_str; index++) {
             if (str[index] && (strncmp(str[index], set_str, strlen(set_str) + 1) == 0)) {
                 str_found = true;
                 break;
-	    }
+            }
         }
         if (str_found == false) {
-            wifi_util_info_print(WIFI_BUS,"%s:%d: string:%s validation is failed:%d\n",__func__,
+            wifi_util_info_print(WIFI_BUS, "%s:%d: string:%s validation is failed:%d\n", __func__,
                 __LINE__, set_str, num_of_str);
             return RETURN_ERR;
-	}
+        }
     }
 
     return RETURN_OK;
@@ -757,17 +791,19 @@ int validate_dm_set_parameters(data_model_properties_t *data_model_prop, raw_dat
     BUS_CHECK_NULL_WITH_RC(data_model_prop, ret);
 
     if (data_model_prop->data_permission == false) {
-        wifi_util_error_print(WIFI_BUS,"%s:%d: data is not permit to set\n",__func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d: data is not permit to set\n", __func__, __LINE__);
         return ret;
     }
 
-    ret = check_dm_min_max_data_range(data_model_prop->min_data_range, data_model_prop->max_data_range, bus_set_data);
+    ret = check_dm_min_max_data_range(data_model_prop->min_data_range,
+        data_model_prop->max_data_range, bus_set_data);
     if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_BUS,"%s:%d: set data min/max data range is not propered\n",__func__, __LINE__);
+        wifi_util_error_print(WIFI_BUS, "%s:%d: set data min/max data range is not propered\n",
+            __func__, __LINE__);
         return ret;
     } else if (bus_set_data->data_type == bus_data_type_string) {
-        ret = validate_dm_string_param(data_model_prop->num_of_str_validation, data_model_prop->str_validation,
-            (char *)bus_set_data->raw_data.bytes);
+        ret = validate_dm_string_param(data_model_prop->num_of_str_validation,
+            data_model_prop->str_validation, (char *)bus_set_data->raw_data.bytes);
     }
 
     return ret;
@@ -801,11 +837,17 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
 {
     bus_data_prop_t *next, *prev, *cur;
 
+    if (p_data_prop == NULL) {
+        return;
+    }
+
     if (p_data_prop->ref_count == 1) {
         free_bus_raw_data(&p_data_prop->value);
         p_data_prop->is_data_set = false;
         p_data_prop->ref_count = 0;
-        (*num_prop)--;
+        if (num_prop && (*num_prop > 0)) {
+            (*num_prop)--;
+        }
     } else if (p_data_prop->ref_count > 1) {
         wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
                 __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
@@ -822,7 +864,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         if (cur->ref_count == 1) {
             free_bus_raw_data(&cur->value);
             free(cur);
-            (*num_prop)--;
+            if (num_prop && (*num_prop > 0)) {
+                (*num_prop)--;
+            }
             prev->next_data = next;
         } else if (cur->ref_count > 1) {
             wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p still have some references:%d\r\n",
@@ -837,7 +881,9 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop, uint32_t *num_prop)
         cur = next;
     }
 
-    wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    if (num_prop) {
+        wifi_util_info_print(WIFI_BUS,"%s:%d remaining num_prop:%d\r\n", __func__, __LINE__, *num_prop);
+    }
 }
 
 void bus_release_data_obj(bus_data_obj_t *p_bus_obj)

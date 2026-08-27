@@ -79,40 +79,6 @@ int svc_init(vap_svc_t *svc, vap_svc_type_t type)
     return 0;
 }
 
-int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info)
-{
-    uint8_t j = 0;
-    rdk_wifi_vap_info_t *rdk_vaps;
-    wifi_vap_info_map_t *vap_map = NULL;
-    uint8_t i = 0, vap_index = 0;
-
-    for (i = 0; i < tgt_vap_map->num_vaps; i++) {
-        vap_index = tgt_vap_map->vap_array[i].vap_index;
-        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
-        if (vap_map == NULL) {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d global vap_map null radio_index:%d\n", __func__, __LINE__,
-                tgt_vap_map->vap_array[i].radio_index);
-            return RETURN_ERR;
-        }
-        rdk_vaps = get_wifidb_rdk_vaps(tgt_vap_map->vap_array[i].radio_index);
-        if (rdk_vaps == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vaps for radio index: %d\n",
-                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index);
-            return RETURN_ERR;
-        }
-        for (j = 0; j < vap_map->num_vaps; j++) {
-            if (vap_map->vap_array[j].vap_index == vap_index) {
-                memcpy((unsigned char *)&vap_map->vap_array[j], (unsigned char *)&tgt_vap_map->vap_array[i],
-                    sizeof(wifi_vap_info_t));
-                memcpy(&rdk_vaps[j], &rdk_vap_info[i], sizeof(rdk_wifi_vap_info_t));
-                break;
-            }
-        }
-    }
-
-    return RETURN_OK;
-}
-
 int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
 {
     rdk_wifi_vap_info_t *vap_info;
@@ -136,7 +102,7 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
 
         acl_entry = hash_map_get_first(vap_info->acl_map);
         while(acl_entry != NULL) {
-            if (acl_entry->mac != NULL) {
+            if (!is_zero_mac(acl_entry->mac)) {
                 memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
                 to_mac_str(acl_device_mac, mac_str);
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
@@ -179,9 +145,10 @@ int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map
 {
     uint8_t j = 0;
     wifi_interface_name_idex_map_t *if_prop = NULL;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     for (j = 0; j < vap_map->num_vaps; j++) {
-        if (!isVapSTAMesh(vap_map->vap_array[j].vap_index) && 
+        if (!isVapSTAMesh(vap_map->vap_array[j].vap_index) &&
             !isVapLnfPsk(vap_map->vap_array[j].vap_index)) {
             continue;
         }
@@ -189,25 +156,34 @@ int update_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map
         if_prop = get_wifi_hal_capability_info(svc->prop, &vap_map->vap_array[j]);
         if (if_prop == NULL) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d: Could not find wifi hal capability info for vap_name: %s\n",
-                __func__, __LINE__, vap_map->vap_array[j].vap_name);
+                "%s:%d: Could not find wifi hal capability info for vap_name: %s\n", __func__,
+                __LINE__, vap_map->vap_array[j].vap_name);
             return RETURN_ERR;
         }
 
-        if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
-                strlen(vap_map->vap_array[j].bridge_name)) != 0) {
-            wifi_util_info_print(WIFI_CTRL,
-                "%s:%d: changed bridge name from :%s to %s\n",
-                __func__, __LINE__, if_prop->bridge_name,
-                vap_map->vap_array[j].bridge_name);
-            strncpy(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
-                sizeof(vap_map->vap_array[j].bridge_name));
+        if ((isVapSTAMesh(vap_map->vap_array[j].vap_index)) && (ctrl->rf_status_down == true)) {
+            if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].repurposed_bridge_name,
+                    strlen(vap_map->vap_array[j].repurposed_bridge_name)) != 0) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: changed bridge name from :%s to %s\n",
+                    __func__, __LINE__, if_prop->bridge_name,
+                    vap_map->vap_array[j].repurposed_bridge_name);
+                snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s",
+                    vap_map->vap_array[j].repurposed_bridge_name);
+            }
+        } else {
+            if (strncmp(if_prop->bridge_name, vap_map->vap_array[j].bridge_name,
+                    strlen(vap_map->vap_array[j].bridge_name)) != 0) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: changed bridge name from :%s to %s\n",
+                    __func__, __LINE__, if_prop->bridge_name, vap_map->vap_array[j].bridge_name);
+                snprintf(if_prop->bridge_name, sizeof(if_prop->bridge_name), "%s",
+                    vap_map->vap_array[j].bridge_name);
+            }
         }
     }
     return RETURN_OK;
 }
 
-int vap_svc_start_stop(vap_svc_t *svc, bool enable)
+int vap_svc_start_stop(vap_svc_t *svc, unsigned int radio_index, bool enable)
 {
     uint8_t num_of_radios;
     uint8_t i, j;
@@ -215,6 +191,10 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
     rdk_wifi_vap_info_t tgt_rdk_vaps[MAX_NUM_VAP_PER_RADIO], *rdk_vaps;
     wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_map_t *tgt_vap_map = (wifi_vap_info_map_t*)calloc(1, sizeof(wifi_vap_info_map_t));
+#if defined(_PLATFORM_BANANAPI_R4_)
+    bool dml_cache_update_needed = false;
+    webconfig_subdoc_data_t *dml_cache_update_subdoc = NULL;
+#endif
 
     if (!tgt_vap_map)
     {
@@ -231,9 +211,13 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
     memset(tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
 
     for (i = 0; i < num_of_radios; i++) {
+        if (radio_index != WIFI_ALL_RADIO_INDICES && i != radio_index) {
+            continue;
+        }
+
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         rdk_vaps = get_wifidb_rdk_vaps(i);
-        if (vap_map == NULL) {
+        if ((vap_map == NULL) || (rdk_vaps == NULL)) {
             wifi_util_error_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
             free(tgt_vap_map);
             return -1;
@@ -296,11 +280,58 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d wifi vaps create success for radio index: %d\n",
             __func__, __LINE__, i);
+#if defined(_PLATFORM_BANANAPI_R4_)
+        uint8_t vap_index = 0;
+        for (int idx = 0; idx < tgt_vap_map->num_vaps; idx++) {
+            vap_index = tgt_vap_map->vap_array[idx].vap_index;
+            for (j = 0; j < vap_map->num_vaps; j++) {
+                if (dml_cache_update_needed == true) {
+                    break;
+                }
+
+                if (vap_map->vap_array[j].vap_index == vap_index) {
+                    if (memcmp(&vap_map->vap_array[j], &tgt_vap_map->vap_array[idx],
+                            sizeof(wifi_vap_info_t)) != 0) {
+                        wifi_util_info_print(WIFI_CTRL,
+                            "%s:%d: VAP config changed for vap_index %d\n", __func__, __LINE__,
+                            vap_index);
+                        dml_cache_update_needed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (dml_cache_update_needed == true) {
+                break;
+            }
+        }
+#endif
         update_global_cache(tgt_vap_map, tgt_rdk_vaps);
         update_acl_entries(tgt_vap_map);
 
         update_vap_hal_prop_bridge_name(svc, tgt_vap_map);
     }
+
+#if defined(_PLATFORM_BANANAPI_R4_)
+    if (dml_cache_update_needed) {
+        dml_cache_update_subdoc = (webconfig_subdoc_data_t *)malloc(
+            sizeof(webconfig_subdoc_data_t));
+        if (dml_cache_update_subdoc == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: malloc failed to allocate webconfig_subdoc_data_t, size %zu\n", __func__,
+                __LINE__, sizeof(webconfig_subdoc_data_t));
+            free(tgt_vap_map);
+            return -1;
+        }
+        webconfig_init_subdoc_data(dml_cache_update_subdoc);
+        if (update_dml_cache((wifi_ctrl_t *)svc->ctrl, dml_cache_update_subdoc) == RETURN_ERR) {
+            free(dml_cache_update_subdoc);
+            free(tgt_vap_map);
+            return -1;
+        }
+    }
+    free(dml_cache_update_subdoc);
+#endif
 
     free(tgt_vap_map);
 
@@ -308,14 +339,14 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
 
 }
 
-int vap_svc_stop(vap_svc_t *svc)
+int vap_svc_stop(vap_svc_t *svc, unsigned int radio_index)
 {
-    return vap_svc_start_stop(svc, false);
+    return vap_svc_start_stop(svc, radio_index, false);
 }
 
-int vap_svc_start(vap_svc_t *svc)
+int vap_svc_start(vap_svc_t *svc, unsigned int radio_index)
 {
-    return vap_svc_start_stop(svc, true);
+    return vap_svc_start_stop(svc, radio_index, true);
 }
 
 vap_svc_t *get_svc_by_type(wifi_ctrl_t *ct, vap_svc_type_t type)

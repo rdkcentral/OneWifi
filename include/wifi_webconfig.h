@@ -40,6 +40,8 @@ extern "C" {
 #define WIFI_WEBCONFIG_PRIVATE_VAP      "Device.WiFi.Private"
 #define WIFI_WEBCONFIG_HOME_VAP         "Device.WiFi.Home"
 #define WIFI_WEBCONFIG_GET_NULL_SUBDOC  "Device.WiFi.Null"
+#define WIFI_WEBCONFIG_IGNITEWIFI "Device.WiFi.Ignite.SubdocData"
+#define WIFI_WEBCONFIG_IGNITE_LQ_THRESHOLD "Device.WiFi.Ignite.LinkQualityThreshold"
 
 #define DEVICE_WIFI_SSID                "Device.WiFi.SSID.%d.SSID"
 #define DEVICE_WIFI_KEYPASSPHRASE       "Device.WiFi.AccessPoint.%d.Security.X_COMCAST-COM_KeyPassphrase"
@@ -142,6 +144,9 @@ typedef enum {
     webconfig_subdoc_type_em_ap_metrics_report,
 #endif
     webconfig_subdoc_type_memwraptool,
+    webconfig_subdoc_type_link_report,
+    webconfig_subdoc_type_ignite,
+    webconfig_subdoc_type_nasta_query,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -169,6 +174,8 @@ typedef enum {
     webconfig_subdoc_object_type_beacon_report,
     webconfig_subdoc_object_type_em_sta_link_metrics,
     webconfig_subdoc_object_type_em_ap_metrics_report,
+    webconfig_subdoc_object_type_link_report,
+    webconfig_subdoc_object_type_nasta_query,
 
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
@@ -211,6 +218,7 @@ typedef struct {
     active_msmt_t blaster;
     instant_measurement_config_t  harvester;
     levl_config_t levl;
+    ignite_config_t ignite_config[MAX_NUM_RADIOS];
     hash_map_t  *stats_config_map;
     hash_map_t  *steering_config_map;
     hash_map_t  *steering_client_map;
@@ -226,6 +234,9 @@ typedef struct {
     em_assoc_sta_link_metrics_rsp_t em_sta_link_metrics_rsp;
     em_ap_metrics_report_t em_ap_metrics_report;
 #endif
+    report_batch_t *qmgr_report;
+    nasta_query_t nasta_query;
+    nasta_response_t *nasta_response;
 } webconfig_subdoc_decoded_data_t;
 
 typedef char  * webconfig_subdoc_encoded_raw_t;
@@ -492,6 +503,15 @@ webconfig_error_t       encode_blaster_subdoc(webconfig_t *config, webconfig_sub
 webconfig_error_t       translate_to_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+//Ignite config
+
+webconfig_error_t       init_ignite_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_ignite_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 //harvester
 
 webconfig_error_t       init_harvester_subdoc(webconfig_subdoc_t *doc);
@@ -586,6 +606,14 @@ webconfig_error_t       encode_cac_config_subdoc(webconfig_t *config, webconfig_
 webconfig_error_t       translate_to_cac_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_cac_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+//  nasta query
+webconfig_error_t       init_nasta_query_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 // radio channel stats
 webconfig_error_t       init_radio_channel_stats_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_radio_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -673,6 +701,14 @@ webconfig_error_t       decode_em_ap_metrics_report_subdoc(webconfig_t *config, 
 webconfig_error_t       encode_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Qmgr Link Report
+webconfig_error_t       init_link_report_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_link_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 #ifdef __cplusplus
 }

@@ -25,7 +25,6 @@
 
 #ifdef ONEWIFI_DB_SUPPORT
 extern void init_wifidb(void);
-extern void init_wifidb_data(void);
 extern int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int start_wifidb();
 extern void wifidb_print(char *format, ...);
@@ -103,6 +102,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
             cfg.variant |= WIFI_80211_VARIANT_BE;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
 #endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
             break;
         case WIFI_FREQUENCY_5_BAND:
@@ -219,7 +219,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         cfg.amsduTid[j] = FALSE;
     }
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     if (cfg.band == WIFI_FREQUENCY_6_BAND) {
         for (int j = 0; j < 5; j++) {
             cfg.amsduTid[j] = TRUE;
@@ -297,6 +297,21 @@ static int init_interworking_config_default(int vapIndex,
     return 0;
 }
 
+int wifidb_get_default_mld_link_id(int band)
+{
+#if defined(CONFIG_IEEE80211BE) && (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
+    switch (band) {
+    case WIFI_FREQUENCY_2_4_BAND: return 2;
+    case WIFI_FREQUENCY_5_BAND:   return 1;
+    case WIFI_FREQUENCY_6_BAND:   return 0;
+    default:                      return UNDEFINED_MLD_LINK_ID;
+    }
+#else
+    (void)band;
+    return UNDEFINED_MLD_LINK_ID;
+#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
+}
+
 static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config)
 {
@@ -313,7 +328,6 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     char ssid[128] = {0};
     int band;
     bool exists = true;
-
     memset(&cfg,0,sizeof(cfg));
 
     for (vap_array_index = 0; vap_array_index < getTotalNumberVAPs(); vap_array_index++)
@@ -344,18 +358,28 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.sta_info.security.wpa3_transition_disable = false;
             cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
             cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+            cfg.u.sta_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+            cfg.u.sta_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
         } else {
 #if defined(_PLATFORM_BANANAPI_R4_)
-                cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_transition;
-                cfg.u.sta_info.security.wpa3_transition_disable = false;
-                cfg.u.sta_info.security.mfp = wifi_mfp_cfg_optional;
-                cfg.u.sta_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+            cfg.u.sta_info.security.wpa3_transition_disable = false;
+            cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
+            cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+            cfg.u.sta_info.security.encr = wifi_encryption_aes_gcmp256;
 #else
-                cfg.u.sta_info.security.mfp = wifi_mfp_cfg_disabled;
-                cfg.u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+            cfg.u.sta_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
+#else
+            cfg.u.sta_info.security.mfp = wifi_mfp_cfg_disabled;
+            cfg.u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+            cfg.u.sta_info.security.encr = wifi_encryption_aes;
 #endif // _PLATFORM_BANANAPI_R4_
         }
-        cfg.u.sta_info.security.encr = wifi_encryption_aes;
         cfg.u.sta_info.enabled = false;
         cfg.u.sta_info.scan_params.period = 10;
         memset(ssid, 0, sizeof(ssid));
@@ -374,11 +398,25 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(cfg.u.sta_info.security.u.key.key), vap_name);
             strncpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.u.key.key));
         }
-
         cfg.u.sta_info.scan_params.channel.band = band;
         cfg.u.sta_info.scan_params.channel.channel = 0;
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
+        strncpy(cfg.u.sta_info.repurposed_ssid, "Xfinity Mobile", sizeof(ssid_t)-1);
+        cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
+        cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
+        strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.identity, "username_empty", sizeof(cfg.u.sta_info.security.repurposed_radius.identity)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.repurposed_radius.key));
+        if (band == WIFI_FREQUENCY_6_BAND) {
+            cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
+        } else {
+            cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa2_enterprise;
+        }
+        memset(&cfg.u.sta_info.security.repurposed_radius.ip, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.ip));
+        memset(&cfg.u.sta_info.security.repurposed_radius.s_ip, '\0', sizeof(cfg.u.sta_info.security.repurposed_radius.s_ip));
+        wifi_util_dbg_print(WIFI_CTRL, "Ignite-ssid: %s mode: %d eap-type: %d phase: %d\n", cfg.u.sta_info.repurposed_ssid, cfg.u.sta_info.security.repurposed_mode, cfg.u.sta_info.security.repurposed_radius.eap_type, cfg.u.sta_info.security.repurposed_radius.phase2);
+
     } else {
         cfg.u.bss_info.wmm_enabled = true;
         cfg.u.bss_info.mbo_enabled = true;
@@ -433,7 +471,11 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg.u.bss_info.security.mode = wifi_security_mode_enhanced_open;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+#ifdef CONFIG_IEEE80211BE
+                cfg.u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
                 cfg.u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             }
             else {
                 cfg.u.bss_info.security.mode = wifi_security_mode_none;
@@ -443,11 +485,16 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_enterprise;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+#ifdef CONFIG_IEEE80211BE
+                cfg.u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             }
             else {
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
             }
-            cfg.u.bss_info.security.encr = wifi_encryption_aes;
         } else if (isVapLnfSecure (vap_index)) {
             cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
@@ -457,17 +504,27 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg.u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             } else {
 #if defined(_PLATFORM_BANANAPI_R4_)
-                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
-                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg.u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 #else
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
 #endif // _PLATFORM_BANANAPI_R4_
             }
-            cfg.u.bss_info.security.encr = wifi_encryption_aes;
             cfg.u.bss_info.bssHotspot = false;
         } else  {
             if (band == WIFI_FREQUENCY_6_BAND) {
@@ -475,29 +532,43 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg.u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
             } else {
 #if defined(_PLATFORM_BANANAPI_R4_)
-                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
-                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+#ifdef CONFIG_IEEE80211BE
+                cfg.u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+#else
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 #else
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                cfg.u.bss_info.security.encr = wifi_encryption_aes;
 #endif //_PLATFORM_BANANAPI_R4_
             }
-            cfg.u.bss_info.security.encr = wifi_encryption_aes;
             cfg.u.bss_info.bssHotspot = false;
             cfg.u.bss_info.mbo_enabled = false;
         }
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
         cfg.vap_mode = wifi_vap_mode_ap;
-        /*TODO: Are values correct?  */
+#if defined(_PLATFORM_BANANAPI_R4_)
+        if (isVapPrivate(vap_index)) {
+            cfg.u.bss_info.mld_info.common_info.mld_enable = 1;
+            cfg.u.bss_info.mld_info.common_info.mld_id = 0;
+        }
+#else
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg.u.bss_info.mld_info.common_info.mld_id = 255;
-        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
-        cfg.u.bss_info.mld_info.common_info.mld_apply = 1;
-//        strcpy(cfg.u.bss_info.mld_info.common_info.mld_addr, "11:11:11:11:11:11");
+#endif /* _PLATFORM_BANANAPI_R4_ */
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
@@ -649,6 +720,7 @@ void init_wifidb_data(void)
 	init_gas_config_default(&g_wifidb->global_config.gas_config);
 
     }
+    wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
 
 }
 
@@ -831,7 +903,18 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 {
     return 0;
 }
-
+void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
+{
+    wifi_rfc_dml_parameters_t rfc_config = {0};
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+    rfc_config.link_quality_rfc = true;
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
+    return ;
+} 
 int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 {
     return 0;
@@ -901,6 +984,11 @@ int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_Interworkin
    return 0;
 }
 
+int wifidb_update_ignite_config(ignite_config_t *ignite_cfg)
+{
+   return 0;
+}
+
 int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
    return 0;
@@ -916,6 +1004,7 @@ int get_all_param_from_psm_and_set_into_db(void)
    return 0;
 }
 #endif
+
 void wifidb_init(wifi_db_t *db)
 {
     db->desc.init_fn = init_wifidb;
@@ -934,6 +1023,7 @@ void wifidb_init(wifi_db_t *db)
     db->desc.init_global_config_default_fn = wifidb_init_global_config_default;
     db->desc.init_radio_config_default_fn = wifidb_init_radio_config_default;
     db->desc.init_vap_config_default_fn = wifidb_init_vap_config_default;
+    db->desc.init_rfc_config_default_fn = wifidb_init_rfc_config_default;
     db->desc.update_wifi_security_config_fn = wifidb_update_wifi_security_config;
     db->desc.get_gas_config_fn = wifidb_get_gas_config;
     db->desc.update_gas_config_fn = wifidb_update_gas_config;
