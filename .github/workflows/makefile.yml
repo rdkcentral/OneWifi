@@ -95,6 +95,10 @@ jobs:
         # Steps for ucode installation required for hostapd compilation
         git clone https://github.com/jow-/ucode.git ucode
         cd ucode
+        # Pin ucode: PR#398 (LibFFI module) merged to master 2026-08-27 and broke the bpi
+        # build (ucode's `unused` macro collides with OpenSSL's ossl_unused in HAL TUs).
+        # 19ffa8a = last master before that merge = last known-good; bump deliberately.
+        git checkout 19ffa8a
         mkdir build && cd build
         cmake -DUBUS_SUPPORT=OFF -DUCI_SUPPORT=OFF -DULOOP_SUPPORT=OFF ..
         make -j"$(nproc)"
