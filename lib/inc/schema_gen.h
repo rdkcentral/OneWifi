@@ -217,7 +217,7 @@
         PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
         PJS_OVS_BOOL(multiap_rfc) \
-        PJS_OVS_BOOL(wei_rfc_mask) \
+        PJS_OVS_INT(wei_rfc_mask) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \

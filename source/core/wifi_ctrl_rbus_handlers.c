@@ -2026,7 +2026,7 @@ static void wei_rfc_mask_handler(char *event_name, bus_data_prop_t *p_data, void
         return;
     }
 
-    wei_status = p_data->value.raw_data.b;
+    wei_status = (int)p_data->value.raw_data.u32;
    push_event_to_ctrl_queue(&wei_status, sizeof(wei_status), wifi_event_type_command,
          wifi_event_type_wei_rfc_mask, NULL);
 

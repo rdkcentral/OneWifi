@@ -4279,7 +4279,7 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
         return 0;
     }
 
-    if (rfc_param != NULL && ( (rfc_param->wei_rfc_mask != 0)
+    if (rfc_param != NULL && ( (rfc_param->wei_rfc_mask & (WEI_RFC_SC | WEI_RFC_LQ))
             || (ctrl != NULL && (ctrl->network_mode == rdk_dev_mode_type_em_node
             || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node)))) {
         link_quality_measurement = true;
@@ -4321,12 +4321,8 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
             sta_total++;
             to_sta_key(sta->sta_mac, sta_key);
             send_wifi_disconnect_event_to_ctrl(sta->sta_mac, apIndex);
-            /* VAP settings changed: ask WEI to purge this STA. Sent before the
-             * exec_stop path below so it is not skipped on early return.
-             * Deliberately not gated on wei_rfc_mask: it is never populated on this
-             * platform, and wifi_stats_assoc_client force-enables the periodic path
-             * regardless, so gating here would leave WEI holding stale clients. */
-            if (!is_zero_mac(sta->sta_mac)) {
+            /* VAP settings changed: ask WEI to purge this STA (LQ or SC must be active). */
+            if (link_quality_measurement && !is_zero_mac(sta->sta_mac)) {
                 wifi_lq_descriptor_t *lq_desc = get_lq_descriptor();
                 if (lq_desc != NULL && lq_desc->vap_down_link_stats_fn != NULL) {
                     stats_arg_t vap_down_stats;

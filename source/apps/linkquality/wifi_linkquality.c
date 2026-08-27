@@ -812,6 +812,20 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL arg\n", __func__, __LINE__);
          return RETURN_ERR;
     }
+
+    /* All HAL sub-types here feed CAFFINITY_EVENT (GC pillar); require WEI_RFC_GC.
+     * exec_stop/exec_timeout carry DISCONNECT/PERIODIC_STATS gated upstream. */
+    if (sub_type != wifi_event_exec_start &&
+        sub_type != wifi_event_exec_stop  &&
+        sub_type != wifi_event_exec_timeout) {
+        wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
+        if (rfc_param == NULL || !(rfc_param->wei_rfc_mask & WEI_RFC_GC)) {
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d GC RFC disabled, dropping caffinity event sub_type=%d\n",
+                __func__, __LINE__, sub_type);
+            return RETURN_OK;
+        }
+    }
+
     switch (sub_type) {
         case wifi_event_exec_start:
             break;

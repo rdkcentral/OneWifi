@@ -228,12 +228,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     }
 
     rfc_param = get_ctrl_rfc_parameters();
-    if (((rfc_param->wei_rfc_mask & WEI_RFC_SC) || (rfc_param->wei_rfc_mask && WEI_RFC_LQ))
+    if (((rfc_param->wei_rfc_mask & WEI_RFC_SC) || (rfc_param->wei_rfc_mask & WEI_RFC_LQ))
          || ctrl->network_mode == rdk_dev_mode_type_em_node
         || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         link_quality_measurement = true;
     }
-        link_quality_measurement = true;
 
     if (ctrl->rf_status_down && isVapSTAMesh(args->vap_index)) {
         rf_down_mesh_sta = true;
@@ -483,6 +482,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             }
         }
     }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d periodic stats link_quality_measurement %d rf_down_mesh_sta %d\n",
+                         __func__, __LINE__, link_quality_measurement, rf_down_mesh_sta);
     // Send periodic stats update with complete data (including connected/disconnected times)
     // This triggers BOTH link_quality_event_exec_timeout (for add_stats_metrics) 
     // AND link_quality_periodic_stats_update (for caffinity timing updates)

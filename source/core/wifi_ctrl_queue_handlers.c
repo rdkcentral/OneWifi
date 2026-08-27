@@ -3106,9 +3106,13 @@ void process_link_quality_rfc(int type)
         wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
         return;
     }
+    /* Write rfc_dml_parameters directly so get_ctrl_rfc_parameters() sees the new
+     * mask immediately — before the async OVSDB callback fires. */
+    wifi_rfc_dml_parameters_t *db_rfc = get_wifi_db_rfc_parameters();
+    if (db_rfc != NULL)
+        db_rfc->wei_rfc_mask = type;
     if (rfc_param->wei_rfc_mask != type)
         rfc_param->wei_rfc_mask = type;
-    
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : rfc_name %d\n", __func__, __LINE__,
         rfc_param->wei_rfc_mask);
