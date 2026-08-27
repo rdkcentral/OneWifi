@@ -31,7 +31,22 @@ RDK_HAL_WERROR = -Wall -Wextra \
     -Werror=incompatible-pointer-types -Werror=return-type \
     -Werror=uninitialized -Werror=maybe-uninitialized \
     -Werror=format -Werror=format-security -Werror=nonnull \
-    -Werror=array-bounds -Werror=stringop-overflow
+    -Werror=array-bounds -Werror=stringop-overflow \
+    -Werror=sizeof-pointer-memaccess -Werror=vla
+# sizeof-pointer-memaccess + vla: verified 0 occurrences in rdk-wifi-hal (both are opt-in --
+# -Werror=X self-enables the underlying warning even though it is not in -Wall/-Wextra), so these
+# gate a class HAL is already clean on. -Wvla is a stack-overflow class (variable-length arrays);
+# HAL has none, OneWifi still does but its own objects are out of this HAL-scoped block.
+#
+# These four classes depend on the rdk-wifi-hal PR2 source fixes (unused-variable,
+# enum-conversion, address, float-conversion), which landed on rdk-wifi-hal/develop in
+# RDKB-66207 (#818 "BananaPI ci build check overhaul" + #821 "Missing fixes for clean CI
+# build in hal"). Both OneWifi CI and HAL CI compile HAL develop through this same gate;
+# with the fixes in place the promotion is clean on both legs (bpi + rpi) of both repos.
+# Verified: a full bpi build against HAL develop recompiles every HAL object under these
+# flags with 0 warnings. (-Werror=float-conversion self-enables the opt-in -Wfloat-conversion.)
+RDK_HAL_WERROR += \
+    -Werror=unused-variable -Werror=enum-conversion -Werror=address -Werror=float-conversion
 $(WIFI_RDK_HAL)/%.o: CFLAGS += $(RDK_HAL_WERROR)
 
 # ---------------------------------------------------------------------------
