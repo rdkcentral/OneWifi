@@ -271,7 +271,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             "cli_RetransCount: %lu\ncli_FailedRetransCount: %lu\ncli_RetryCount: %lu\n"
             "cli_MultipleRetryCount: %lu\ncli_MaxDownlinkRate: %d\ncli_MaxUplinkRate: %d\n"
             "cli_capableNumSpatialStreams: %d\ncli_activeNumSpatialStreams: %d\ncli_TxFrames: %llu\ncli_RxRetries: %llu\n"
-            "cli_RxErrors: %llu\ncli_PowerSaveMode: %lu\ncli_sleepTime: %lu\n"
+            "cli_RxErrors: %llu\ncli_PowerSaveMode: %lu\ncli_sleepTime: %lu\n",
             to_sta_key(dev_array[i].cli_MACAddress, sta_key),
             to_sta_key(dev_array[i].cli_MLDAddr, mld_sta_key), dev_array[i].cli_MLDEnable,
             dev_array[i].cli_AuthenticationState, dev_array[i].cli_LastDataDownlinkRate,
