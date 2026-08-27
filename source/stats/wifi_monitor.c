@@ -4944,9 +4944,14 @@ int collector_postpone_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
+    bool channel_change_in_progress = false;
+
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    channel_change_in_progress = mgr->channel_change_in_progress[elem->args->radio_index];
+    pthread_mutex_unlock(&mgr->data_cache_lock);
 
     if ((mon_data->scan_status[elem->args->radio_index] == 1 ||
-            mgr->channel_change_in_progress[elem->args->radio_index] == true) &&
+            channel_change_in_progress == true) &&
         (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
         wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n", __func__,
             __LINE__, elem->key);
@@ -4973,10 +4978,16 @@ int collector_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
+    bool channel_change_in_progress = false;
+
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    channel_change_in_progress = mgr->channel_change_in_progress[elem->args->radio_index];
+    pthread_mutex_unlock(&mgr->data_cache_lock);
 
     if (elem->stat_desc->stats_type == mon_stats_type_radio_channel_stats || 
             elem->stat_desc->stats_type == mon_stats_type_neighbor_stats) {
-        if (mon_data->scan_status[elem->args->radio_index] == 1 || mgr->channel_change_in_progress[elem->args->radio_index] == true) {
+        if (mon_data->scan_status[elem->args->radio_index] == 1 ||
+            channel_change_in_progress == true) {
             if (elem->collector_postpone_task_sched_id == 0) {
                 wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
                 scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
