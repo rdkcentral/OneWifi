@@ -1458,6 +1458,12 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     //Register to BUS for webconfig interactions
     bus_register_handlers(ctrl);
 
+    ctrl->bus_events_subscribed = false;
+    ctrl->device_tunnel_status_subscribed = false;
+    ctrl->hotspot_status_subscribed = false;
+    ctrl->hotspot_enabled = false;
+    ctrl->tunnel_events_subscribed = false;
+
     // subscribe for BUS events
     bus_subscribe_events(ctrl);
 
@@ -1474,9 +1480,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     wifi_chan_event_register(channel_change_callback);
 
     wifi_wpsEvent_callback_register(wps_event_callback);
-
-    ctrl->bus_events_subscribed = false;
-    ctrl->tunnel_events_subscribed = false;
 
 #if defined (FEATURE_SUPPORT_WEBCONFIG)
     register_with_webconfig_framework();
@@ -2339,14 +2342,14 @@ static int bus_check_and_subscribe_events(void* arg)
 
 #if defined (ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
     ctrl->mesh_status_subscribed = true;
-    ctrl->device_tunnel_status_subscribed = true;
     ctrl->device_mode_subscribed = true;
     ctrl->mesh_keep_out_chans_subscribed = true;
 #endif
 
-    if ((ctrl->bus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
+    if ((ctrl->bus_events_subscribed == false) ||
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
-        (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
+        (ctrl->hotspot_status_subscribed && ctrl->device_tunnel_status_subscribed == false) ||
+        (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
         (ctrl->hotspot_client_dhcp_failure_subscribed == false)
@@ -3042,7 +3045,58 @@ wifi_vap_info_t *getVapInfo(UINT apIndex)
     wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input apIndex = %d not found \n", __FUNCTION__, apIndex);
     return NULL;
 }
+wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap)
+{
+    if (vap == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input vap is NULL\n", __FUNCTION__);
+        return NULL;
+    }
 
+    if (vap->vap_mode == wifi_vap_mode_ap) {
+        return &vap->u.bss_info.mld_info.common_info;
+    } else if (vap->vap_mode == wifi_vap_mode_sta) {
+        return &vap->u.sta_info.mld_info.common_info;
+    } else {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s: vap_index=%d mode=%d not AP/STA, skip\n",
+            __FUNCTION__, vap->vap_index, vap->vap_mode);
+        return NULL;
+    }
+}
+
+wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id)
+{
+    UINT radioIndex = 0;
+    UINT vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+
+    if (vapInfo == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input vapInfo is NULL\n", __FUNCTION__);
+        return NULL;
+    }
+    wifi_mld_common_info_t *input_mld = get_mld_from_vap_info(vapInfo);
+    if (input_mld == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input vapInfo is not MLO capable\n", __FUNCTION__);
+        return NULL;
+    }
+
+    for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
+            wifi_mld_common_info_t *mld = get_mld_from_vap_info(&wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex]);
+            if (mld == NULL) {
+                continue;
+            }
+            if (link_id == mld->mld_link_id && input_mld->mld_id == mld->mld_id) {
+                return &wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex];
+            } else {
+                continue;
+            }
+        }
+    }
+
+    wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input link_id = %d not found \n", __FUNCTION__, link_id);
+    return NULL;
+}
+ 
 
 //Returns the rdk_wifi_vap_info_t, here apIndex starts with 0 i.e., (dmlInstanceNumber-1)
 rdk_wifi_vap_info_t *getRdkVapInfo(UINT apIndex)

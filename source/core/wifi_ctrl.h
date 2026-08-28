@@ -64,6 +64,7 @@ extern "C" {
 #define WIFI_TxRx_RATE_LIST                "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.TxRxRateList"
 #define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
 #define WIFI_DEVICE_TUNNEL_STATUS          "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus"
+#define WIFI_HOTSPOT_STATUS                "Device.X_COMCAST-COM_GRE.Tunnel.1.Enable"
 #define SPEEDTEST_STATUS                   "Device.IP.Diagnostics.X_RDKCENTRAL-COM_SpeedTest.Status"
 #define SPEEDTEST_SUBSCRIBE                "Device.IP.Diagnostics.X_RDK_SpeedTest.SubscriberUnPauseTimeOut"
 
@@ -250,6 +251,8 @@ typedef struct wifi_ctrl {
     bool                device_mode_subscribed;
     bool                test_device_mode_subscribed;
     bool                device_tunnel_status_subscribed;
+    bool                hotspot_status_subscribed;
+    bool                hotspot_enabled;
     bool                device_wps_test_subscribed;
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
@@ -434,6 +437,9 @@ void hotspot_timing_stop(void);
 unsigned int update_mld_groups(webconfig_subdoc_decoded_data_t *data,
     char **vap_names, unsigned int vap_names_size, wifi_dbg_type_t log_type);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
+
+wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
+wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
 
 #ifdef __cplusplus
 }
