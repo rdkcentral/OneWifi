@@ -10,6 +10,34 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ── Dependency pins ──────────────────────────────────────────────────────
+# ONE-STOP manifest: every external repo this build clones is listed here.
+# To bump a dependency, change the SHA below AND the matching fallback in
+# setup.sh (the "Verify pins" step enforces this — a mismatch errors).
+# Pinned repos get a deterministic build; unpinned repos (empty string)
+# clone the default branch tip — pin them when ready (ci-README.md §7).
+#
+# setup.sh fallbacks keep `make setup` working locally without the workflow.
+# HAL CI clones OneWifi/develop and runs its setup.sh, so the fallbacks
+# are the cross-repo truth — they MUST match.
+env:
+  # ── Pinned (SHA-locked) ──
+  # ucode: 655ca6d = a0ca7b1^1 = last master BEFORE the FFI merge (PR#398).
+  # TRAP: any commit ON the PR#398 branch (incl. 19ffa8a) still ships the
+  # poisoned `unused` macro. Use first-parent (a0ca7b1^1) when moving this
+  # pin, NOT plain `git log`.
+  PIN_UCODE:           "655ca6d55f58135b8b35bfaec77404dc551632e3"
+  PIN_HOSTAP_2_11:     "4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c"  # bpi: git.w1.fi/hostap
+  PIN_HOSTAP_2_10:     "9d07b9447e76059a2ddef2a879c57d0934634188"  # rpi: git.w1.fi/hostap
+  PIN_META_FILOGIC:    "c67a32a7c8876b328a8d1eeaca213e860d85b3ce"  # mediatek/meta-filogic
+  # ── Unpinned (clone default-branch tip — pin when ready) ──
+  # PIN_UNIFIED_MESH:  ""   # rdkcentral/unified-wifi-mesh (develop)
+  # PIN_RDK_WIFI_HAL:  ""   # rdkcentral/rdk-wifi-hal      (develop)
+  # PIN_HALINTERFACE:  ""   # rdkcentral/rdkb-halif-wifi    (develop)
+  # PIN_TROWER_BASE64: ""   # xmidt-org/trower-base64       (main)
+  # PIN_META_CMF_BPI:  ""   # rdkcentral/meta-cmf-bananapi  (default)
+  # PIN_HOSTAP_PATCHES:""   # rdkcentral/hostap-patches      (rpi, default)
+
 # Stage 1 is deliberately read-only: it builds PR-controlled makefiles, so it
 # must hold no write scope. The PR-comment posting (writes) happens only in the
 # trusted workflow_run stage (pr-comments.yml).
@@ -97,19 +125,43 @@ jobs:
         # Steps for ucode installation required for hostapd compilation
         git clone https://github.com/jow-/ucode.git ucode
         cd ucode
-        # Pin ucode: PR#398 (LibFFI module) merged to master 2026-08-27 and broke the bpi
-        # build (ucode's `unused` macro collides with OpenSSL's ossl_unused in HAL TUs).
-        # 655ca6d = a0ca7b1^1 = last master BEFORE the FFI merge = last known-good state
-        # (it is literally what the last green build cloned). The colliding `unused` macro
-        # was added by abb80c6 ON the PR#398 branch, so any commit on that branch -- incl.
-        # 19ffa8a, the earlier (wrong) pin -- still ships the poisoned util.h. Use first-
-        # parent (a0ca7b1^1), NOT plain `git log`, when moving this pin; bump deliberately.
-        git checkout 655ca6d
+        git checkout "$PIN_UCODE"
+        # Assert the tree, not just the SHA: if this pin ever lands on a commit
+        # that defines the `unused` macro, fail here instead of deep in the HAL build.
+        if git grep -q 'define unused' HEAD -- include/; then
+          echo "::error::ucode pin $PIN_UCODE leaks the 'unused' macro (collides with OpenSSL). Check the pin — see the TRAP note in the manifest."
+          exit 1
+        fi
         mkdir build && cd build
         cmake -DUBUS_SUPPORT=OFF -DUCI_SUPPORT=OFF -DULOOP_SUPPORT=OFF ..
         make -j"$(nproc)"
         sudo make install
         sudo ldconfig
+
+    # Guard: the manifest pins (env: block) MUST match the setup.sh fallbacks.
+    # A mismatch means someone bumped only the manifest → the cache key (which
+    # hashes setup.sh) won't invalidate → CI silently builds the old pinned tree.
+    # HAL CI runs setup.sh directly (no manifest env vars), so fallback drift
+    # also means cross-repo divergence. Fail loud at setup time, not deep in a build.
+    - name: Verify pin manifest matches setup.sh fallbacks
+      if: matrix.platform.id != 'mock'
+      working-directory: easymesh_project/OneWifi
+      run: |
+        ok=true
+        check() { # usage: check ENV_NAME SETUP_FILE
+          local manifest="$1" file="$2" name="$3"
+          if ! grep -qF "$manifest" "$file"; then
+            echo "::error::Pin mismatch: $name manifest='$manifest' not found in $file"
+            ok=false
+          fi
+        }
+        if [ "${{ matrix.platform.id }}" = "bpi" ]; then
+          check "$PIN_HOSTAP_2_11"  build/linux/bpi/setup.sh PIN_HOSTAP_2_11
+          check "$PIN_META_FILOGIC" build/linux/bpi/setup.sh PIN_META_FILOGIC
+        else
+          check "$PIN_HOSTAP_2_10"  build/linux/rpi/setup.sh PIN_HOSTAP_2_10
+        fi
+        $ok || exit 1
 
     # Perf: each device leg (bpi, rpi) clones + patches hostap from upstream
     # (git.w1.fi for rpi, git.w1.fi + GitHub layers for bpi). The patched tree
