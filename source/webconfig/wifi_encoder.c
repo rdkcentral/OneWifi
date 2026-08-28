@@ -1879,6 +1879,7 @@ void encode_assoc_dev_stats(cJSON *obj, const assoc_dev_data_t *dev)
     cJSON_AddNumberToObject(obj, "MaxRSSI", dev->dev_stats.cli_MaxRSSI);
     cJSON_AddNumberToObject(obj, "Disassociations", dev->dev_stats.cli_Disassociations);
     cJSON_AddNumberToObject(obj, "AuthenticationFailures", dev->dev_stats.cli_AuthenticationFailures);
+    cJSON_AddNumberToObject(obj, "CapableNumSpatialStreams", dev->dev_stats.cli_capableNumSpatialStreams);
     cJSON_AddNumberToObject(obj, "ActiveNumSpatialStreams", dev->dev_stats.cli_activeNumSpatialStreams);
     cJSON_AddNumberToObject(obj, "PacketsSent", dev->dev_stats.cli_PacketsSent);
     cJSON_AddNumberToObject(obj, "PacketsReceived", dev->dev_stats.cli_PacketsReceived);
@@ -2945,6 +2946,7 @@ webconfig_error_t encode_assocdevice_params(wifi_provider_response_t *assoc_dev_
         cJSON_AddNumberToObject(client_stats_obj, "cli_MultipleRetryCount", client_stats[count].dev_stats.cli_MultipleRetryCount);
         cJSON_AddNumberToObject(client_stats_obj, "cli_MaxDownlinkRate", client_stats[count].dev_stats.cli_MaxDownlinkRate);
         cJSON_AddNumberToObject(client_stats_obj, "cli_MaxUplinkRate", client_stats[count].dev_stats.cli_MaxUplinkRate);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_capableNumSpatialStreams", client_stats[count].dev_stats.cli_capableNumSpatialStreams);
         cJSON_AddNumberToObject(client_stats_obj, "cli_activeNumSpatialStreams", client_stats[count].dev_stats.cli_activeNumSpatialStreams);
         cJSON_AddNumberToObject(client_stats_obj, "cli_TxFrames", client_stats[count].dev_stats.cli_TxFrames);
         cJSON_AddNumberToObject(client_stats_obj, "cli_RxRetries", client_stats[count].dev_stats.cli_RxRetries);
