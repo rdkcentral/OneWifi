@@ -90,6 +90,7 @@ jobs:
         env:
           HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
           # MAX_COMMENTS comes from the workflow-level env.
+          CHANGED_LINES_FILE: clang-format-suggestions/changed-lines.txt
         run: |
           # The converter lives in a checked-out script (trusted base branch). When the
           # changed lines are already clang-format clean there is no diff file - feed /dev/null
