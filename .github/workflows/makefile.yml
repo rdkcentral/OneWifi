@@ -60,12 +60,17 @@ jobs:
     - name: Set up dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential \
+        # Pruned: removed mariadb-server (100MB, unused — OneWifi doesn't build the
+        # mesh agent that links -lmariadb), golang (runner has Go in toolcache),
+        # libmysqlcppconn-dev (0 includes/linkage), vim (CI doesn't need an editor).
+        # --no-install-recommends avoids pulling unneeded transitive packages.
+        # See ~/ci-aptCache.md for the full analysis.
+        sudo apt-get install -y --no-install-recommends \
+                                build-essential \
                                 cmake \
                                 python3 \
                                 python3-pip \
                                 git \
-                                vim \
                                 libev-dev \
                                 libjansson-dev \
                                 zlib1g-dev \
@@ -77,13 +82,10 @@ jobs:
                                 libprotobuf-c-dev \
                                 libssl-dev \
                                 uuid-dev \
-                                libmysqlcppconn-dev \
                                 libreadline-dev \
                                 iptables \
-                                mariadb-server \
                                 gnupg \
                                 file \
-                                golang \
                                 pkg-config \
                                 libperl-dev \
                                 libjson-c-dev \
@@ -293,6 +295,16 @@ jobs:
           CHANGED=$(git diff --name-only --diff-filter=ACM "$DIFF_BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
                     | grep -vE '^rdk-wifi-libhostap/' || true)
         fi
+        # Extra checks this repo wants on top of the shared .clang-tidy config.
+        # --warnings-as-errors COMBINES with the config's WAE (proven clang-tidy-18);
+        # --checks APPENDS to the config's Checks. Both auto-inherit changed-lines
+        # scope because the awk filter below runs on output, not input.
+        # See clang-tidy-hal-extra-mechanism memory for the proof + HAL usage.
+        EXTRA_WAE=''       # comma-separated bugprone checks to gate (empty = baseline only)
+        EXTRA_CHECKS=''    # checks to ENABLE that .clang-tidy doesn't (e.g. clang-analyzer-*)
+        extra=()
+        [ -n "$EXTRA_WAE" ]    && extra+=(--warnings-as-errors="$EXTRA_WAE")
+        [ -n "$EXTRA_CHECKS" ] && extra+=(--checks="$EXTRA_CHECKS")
         : > tidy.log
         for f in $CHANGED; do
           [ -f "$f" ] || continue
@@ -305,7 +317,7 @@ jobs:
           # clang-tidy runs one file at a time -> every finding is this file's, so keep only the
           # ones whose LINE the PR changed. Filter on the line number alone: matching the
           # sed-normalized display path against git-diff paths is fragile (silently drops all).
-          clang-tidy-18 -p . --quiet "$f" 2>/dev/null \
+          clang-tidy-18 -p . "${extra[@]}" --quiet "$f" 2>/dev/null \
             | grep -E ': (warning|error):' | grep -v clang-diagnostic \
             | awk -F: -v L="$lines" 'BEGIN{split(L,a," ");for(i in a)k[a[i]]} ($2 in k)' >> tidy.log || true
         done
