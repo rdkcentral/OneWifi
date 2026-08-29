@@ -49,8 +49,9 @@
 #include "webconfig_external_proto.h"
 #include "common/ieee802_11_defs.h"
 
-// static member to store the subdoc
-static webconfig_subdoc_data_t  webconfig_easymesh_data;
+/* subdoc scratch is heap-allocated per call (calloc/free) so its ~3.4MB is
+   returned to the OS (munmap, >mmap threshold) after each decode/encode instead
+   of sitting resident in .bss for the process lifetime */
 /* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to  */
 static char *webconfig_easymesh_raw_data_ptr = NULL;
 
@@ -241,22 +242,30 @@ webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str
         webconfig_external_easymesh_t *data,
         webconfig_subdoc_type_t *type)
 {
-    webconfig_easymesh_data.u.decoded.external_protos = (webconfig_external_easymesh_t *)data;
-    webconfig_easymesh_data.descriptor = webconfig_data_descriptor_translate_to_easymesh;
-
-    if (webconfig_decode(config, &webconfig_easymesh_data, str) != webconfig_error_none) {
-        //        *data = NULL;
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode failed\n", __func__, __LINE__);
-        webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
-        /* note: webconfig_data_free is called internally by webconfig_decode on error */
+    webconfig_subdoc_data_t *webconfig_easymesh_data = calloc(1, sizeof(*webconfig_easymesh_data));
+    if (webconfig_easymesh_data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh subdoc alloc failed\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
+    webconfig_easymesh_data->u.decoded.external_protos = (webconfig_external_easymesh_t *)data;
+    webconfig_easymesh_data->descriptor = webconfig_data_descriptor_translate_to_easymesh;
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh subdoc length=%zu webconfig-subdoc-size=%zu\n", __func__, __LINE__, str ? strlen(str) : 0, sizeof(*webconfig_easymesh_data));
 
-    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_easymesh_data.type);
-    *type = webconfig_easymesh_data.type;
-    //debug_external_protos(&webconfig_easymesh_data, __func__, __LINE__);
-    webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
-    webconfig_data_free(&webconfig_easymesh_data);
+    if (webconfig_decode(config, webconfig_easymesh_data, str) != webconfig_error_none) {
+	    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode failed\n", __func__, __LINE__);
+	    webconfig_easymesh_free_decoded(webconfig_easymesh_data);
+	    /* note: webconfig_data_free is called internally by webconfig_decode on error */
+	    free(webconfig_easymesh_data);
+	    return webconfig_error_decode;
+    }
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_easymesh_data->type);
+    *type = webconfig_easymesh_data->type;
+    //debug_external_protos(webconfig_easymesh_data, __func__, __LINE__);
+    webconfig_easymesh_free_decoded(webconfig_easymesh_data);
+    webconfig_data_free(webconfig_easymesh_data);
+    /* free the ~3.4MB scratch buffer; glibc munmaps it (>mmap threshold),
+       returning both virtual and resident memory to the OS */
+    free(webconfig_easymesh_data);
     return webconfig_error_none;
 }
 
@@ -268,13 +277,19 @@ webconfig_error_t webconfig_easymesh_encode(webconfig_t *config,
 {
     wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh encode subdoc type %d\n", __func__, __LINE__, type);
 
-    webconfig_easymesh_data.u.decoded.external_protos = (webconfig_external_easymesh_t *)data;
-    webconfig_easymesh_data.descriptor = webconfig_data_descriptor_translate_from_easymesh;
-    // debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
+    webconfig_subdoc_data_t *webconfig_easymesh_data = calloc(1, sizeof(*webconfig_easymesh_data));
+    if (webconfig_easymesh_data == NULL) {
+        *str = NULL;
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh subdoc alloc failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    webconfig_easymesh_data->u.decoded.external_protos = (webconfig_external_easymesh_t *)data;
+    webconfig_easymesh_data->descriptor = webconfig_data_descriptor_translate_from_easymesh;
 
-    if (webconfig_encode(config, &webconfig_easymesh_data, type) != webconfig_error_none) {
+    if (webconfig_encode(config, webconfig_easymesh_data, type) != webconfig_error_none) {
         *str = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh encode failed\n", __func__, __LINE__);
+        free(webconfig_easymesh_data);
         return webconfig_error_encode;
     }
 
@@ -282,9 +297,11 @@ webconfig_error_t webconfig_easymesh_encode(webconfig_t *config,
         free(webconfig_easymesh_raw_data_ptr);
         webconfig_easymesh_raw_data_ptr = NULL;
     }
-    webconfig_easymesh_raw_data_ptr = webconfig_easymesh_data.u.encoded.raw;
+    /* raw is a separate heap buffer handed to the caller via *str; it survives the free below */
+    webconfig_easymesh_raw_data_ptr = webconfig_easymesh_data->u.encoded.raw;
 
     *str = webconfig_easymesh_raw_data_ptr;
+    free(webconfig_easymesh_data);
     return webconfig_error_none;
 }
 // sets the default values in em_bss_info_t Easymesh structure
