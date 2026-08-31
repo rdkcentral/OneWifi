@@ -1,0 +1,284 @@
+{
+  "_comment": "Component Build Configuration for Coverity/Native Builds",
+  "_version": "2.0",
+  "_description": "Defines dependencies and build settings for the native component",
+  "dependencies": {
+    "_comment": "External repositories needed by this component",
+    "repos": [
+      {
+        "name": "hostapd-ucode",
+        "repo": "https://github.com/jow-/ucode.git",
+        "branch": "master",
+        "header_paths": [
+          { "source": "include/ucode", "destination": "$HOME/usr/include/ucode" }
+        ],
+        "build": {
+            "type": "commands",
+            "commands": [
+                "git checkout --detach 655ca6d",
+                "mkdir -p build && cd build",
+                "cmake .. -DUBUS_SUPPORT=OFF -DUCI_SUPPORT=OFF -DULOOP_SUPPORT=OFF -DCMAKE_INSTALL_PREFIX=$HOME/usr -DCMAKE_CXX_FLAGS=\"-std=c++11 -Wno-error=nonnull -Wno-error=class-memaccess\"",
+                "make && make install"
+            ]
+        }
+      },
+      {
+        "name": "rdkb-halif-platform-headers",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-platform.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-platform",
+        "repo": "https://github.com/mediatek/rdkb_hal.git",
+        "branch": "main",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-bridge-util",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-bridge-util.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-moca",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-moca.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-wifi",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-wifi.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-dhcp",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-dhcp.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-cm",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-cm.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-mta",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-mta.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-mso",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-mso.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-ethsw",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-ethsw.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-vlan",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-vlan.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "rdkb-halif-fwupgrade",
+        "repo": "https://github.com/rdkcentral/rdkb-halif-fwupgrade.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "halinterface",
+        "repo": "https://github.com/rdkcentral/halinterface.git",
+        "branch": "develop",
+          "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+          ]
+      },
+      {
+        "name": "gmock-broadband",
+        "repo": "https://github.com/rdkcentral/gmock-broadband.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "docker_scripts/common_headers", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "core-net-library",
+        "repo": "https://github.com/rdkcentral/core-net-library.git",
+        "branch": "main",
+        "header_paths": [
+          { "source": "source", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "webconfig-framework",
+        "repo": "https://github.com/rdkcentral/WebconfigFramework.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      },
+      {
+        "name": "msgpack-c",
+        "repo": "https://github.com/msgpack/msgpack-c.git",
+        "branch": "master",
+        "header_paths": [
+          { "source": "include/", "destination": "$HOME/usr/include/rdkb" }
+        ],
+        "build": {
+            "type": "commands",
+            "commands": [
+                "git pull --unshallow",
+                "git checkout --detach 20ef1f925b007f170ab1c257e4aa61fdd0927773",
+                "mkdir -p build && cd build",
+                "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr -DCMAKE_CXX_FLAGS=\"-std=c++11 -Wno-error=nonnull -Wno-error=class-memaccess\"",
+                "make && make install"
+            ]
+        }
+      },
+      {
+        "name": "rbus",
+        "repo": "https://github.com/rdkcentral/rbus.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "include", "destination": "$HOME/usr/include/rbus/" }
+        ]
+      },
+      {
+        "name": "rdk-libunpriv",
+        "repo": "https://github.com/rdkcentral/rdk-libunpriv.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "source", "destination": "$HOME/usr/include/rdkb" }
+        ],
+        "build": {
+          "type": "autotools",
+          "configure_flags": "CPPFLAGS=\"-I$HOME/usr/include/rdkb\" LDFLAGS=\"-L$HOME/usr/local/lib\""
+        }
+      },
+      {
+        "name": "common-library",
+        "repo": "https://github.com/rdkcentral/common-library.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "source/ccsp/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/ccsp/components/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/ccsp/custom", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/cosa/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/cosa/include/linux", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/cosa/include/linux", "destination": "$HOME/usr/include/rdkb/linux" },
+          { "source": "source/cosa/package/slap/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/debug_api/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/util_api/http/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/util_api/ansc/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/ccsp/components/common/MessageBusHelper/include", "destination": "$HOME/usr/include/rdkb" },
+          { "source": "source/dm_pack", "destination": "$HOME/usr/include/rdkb" }
+        ],
+        "build": {
+          "type": "script",
+          "script": "build_tools_workflows/cov_docker_script/common_external_build.sh"
+        }
+      },
+      {
+        "name": "rdk-wifi-hal",
+        "repo": "https://github.com/rdkcentral/rdk-wifi-hal.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "src/", "destination": "$HOME/usr/include/rdk-wifi-hal" }
+        ]
+      },
+      {
+        "name": "dbus",
+        "repo": "https://gitlab.freedesktop.org/dbus/dbus.git",
+        "branch": "dbus-1.14",
+        "header_paths": [
+          { "source": "dbus", "destination": "$HOME/usr/include/dbus" }
+        ],
+        "build": {
+            "type": "commands",
+            "commands": [
+                "mkdir -p build && cd build",
+                "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr",
+                "make && make install"
+            ]
+        }
+      },
+      {
+        "name": "safec",
+        "repo": "https://github.com/rurban/safeclib.git",
+        "branch": "master",
+        "header_paths": [
+          { "source": "include/", "destination": "$HOME/usr/include/rdkb" }
+        ]
+      }
+    ]
+  },
+  "native_component": {
+    "_comment": "Configuration for the main component being built",
+    "name": "OneWifi",
+    "include_path": "$HOME/usr/include/rdkb/",
+    "lib_output_path": "$HOME/usr/local/lib/",
+    "pre_build_commands": [
+       {
+         "description": "Temporary plugin dummy libraries",
+         "command": "mkdir -p $HOME/usr/dummies"
+       },
+       {
+         "description": "Temporary plugin dummy libraries",
+         "command": "touch $HOME/usr/dummies/libprotobuf-c.so && touch $HOME/usr/dummies/libhostap.so && touch $HOME/usr/dummies/libnl-idiag-3.so "
+       },
+       {
+         "description": "Temporary plugin dummy libraries",
+         "command": "touch $HOME/usr/dummies/libnl-genl-3.so && touch $HOME/usr/dummies/libwebconfig_framework.so"
+       },
+       {
+         "description": "Temporary plugin dummy libraries",
+         "command": "touch $HOME/usr/dummies/libsecure_wrapper.so && touch $HOME/usr/dummies/librdk_wifihal.so"
+       },
+       {
+         "description": "Temporary plugin dummy libraries",
+         "command": "touch $HOME/usr/dummies/libhal_wifi.so && touch $HOME/usr/dummies/libwifi_webconfig.so && touch $HOME/usr/dummies/libtrower-base64.so"
+       },
+       {
+         "description": "Temporary plugin dummy libraries",
+         "command": "touch $HOME/usr/dummies/libwifi_bus.so && touch $HOME/usr/dummies/librbus.so && chmod -R +x $HOME/usr/dummies/"
+       }
+     ],
+      "build": {
+      "type": "autotools",
+      "configure_options_file": "cov_docker_script/configure_options.conf"
+    }
+  }
+}
