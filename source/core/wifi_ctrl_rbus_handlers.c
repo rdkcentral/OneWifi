@@ -358,6 +358,115 @@ void hotspot_timing_disconnected(void)
         memset(&g_hotspot_timing.disconnection_time, 0, sizeof(struct timespec));
     }
 }
+int check_and_start_wei()
+{
+    wifi_util_error_print(WIFI_CTRL,"Enter %s:%d\n",__func__,__LINE__);
+    bus_error_t rc = bus_error_success;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    raw_data_t data;
+    raw_data_t mask_data;
+    memset(&data, 0, sizeof(raw_data_t));
+    memset(&mask_data, 0, sizeof(raw_data_t));
+    char str[512];
+    memset(str, 0, sizeof(str));
+    snprintf(str, sizeof(str), "%s", WEI_MEASUREMENT_RFC);
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, str, &data);
+    if (data.data_type != bus_data_type_boolean || rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            str, data.data_type, rc);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return -1;
+    }
+    if (data.raw_data.b ) {
+         wifi_util_error_print(WIFI_CTRL,"WEI is enabled\n");
+        memset(str, 0, sizeof(str));
+        snprintf(str, sizeof(str), "%s", WEI_RFC_MASK);
+        rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
+        if (mask_data.data_type != bus_data_type_uint32 || rc != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            str, mask_data.data_type, rc);
+            get_bus_descriptor()->bus_data_free_fn(&mask_data);
+            return -1 ;
+        }
+        if (mask_data.raw_data.u32 | WEI_RFC_LQ ) {
+            wifi_util_error_print(WIFI_CTRL,"WEI and LQ is enabled %s:%d\n",__func__, __LINE__);
+            return 0 ;
+        } else {
+            wifi_util_error_print(WIFI_CTRL,"WEI is enabled and LQ not enabled %s:%d\n",__func__, __LINE__);
+            memset(&mask_data, 0, sizeof(raw_data_t));
+            memset(str, 0, sizeof(str));
+            snprintf(str, sizeof(str), "%s", WEI_LQ_CLIENT_ENABLE_DMPATH);
+            mask_data.data_type  = bus_data_type_boolean;
+            mask_data.raw_data.b = true;
+            rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
+            if ( rc != bus_error_success) {
+                 wifi_util_error_print(WIFI_CTRL,"Not able to set LQ\nn");
+                 return -1;
+
+            }
+
+        }
+    } else {
+         wifi_util_error_print(WIFI_CTRL,"WEI is disabled hence setting both WEI and LQ\n");
+        memset(str, 0, sizeof(str));
+        memset(&mask_data, 0, sizeof(raw_data_t));
+        mask_data.data_type  = bus_data_type_boolean;
+        mask_data.raw_data.b = true;
+        snprintf(str, sizeof(str), "%s", WEI_MEASUREMENT_RFC);
+        rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
+        if ( rc != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL,"LQ was not able to set enabled\n");
+            return -1;
+
+        } else {
+            snprintf(str, sizeof(str), "%s", WEI_LQ_CLIENT_ENABLE_DMPATH);
+            rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
+            if ( rc != bus_error_success) {
+                wifi_util_error_print(WIFI_CTRL,"LQ was not able to set enabled\n");
+                return -1;
+            }
+            wifi_util_error_print(WIFI_CTRL,"WEI and LQ both are enabled\n");
+            return 0;
+
+        }
+        
+
+    }
+    
+    return 0;
+}
+int stop_wei()
+{
+    wifi_util_error_print(WIFI_CTRL,"Enter %s:%d\n",__func__,__LINE__);
+    bus_error_t rc = bus_error_success;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    raw_data_t data;
+    char str[32];
+  
+    memset(&data, 0, sizeof(raw_data_t));
+
+
+    memset(str, 0, sizeof(str));
+    data.data_type  = bus_data_type_boolean;
+    data.raw_data.b = false;
+    snprintf(str, sizeof(str), "%s", WEI_LQ_CLIENT_ENABLE_DMPATH);
+    rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data);
+    if ( rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d LQ was not able to set disabled\n",__func__,__LINE__);
+        return -1;
+    } 
+    memset(str, 0, sizeof(str));
+    snprintf(str, sizeof(str), "%s", WEI_MEASUREMENT_RFC);
+    rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data);
+    if ( rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d WEI_MAIN was not able to set disabled\n",__func__,__LINE__);
+        return -1;
+    } 
+    return 0;
+}
+
 
 bus_error_t get_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
@@ -378,6 +487,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
     (void)user_data;
     bus_error_t rc = bus_error_success;
     bool rf_status = false;
+    int wei_ret = -1;
     char tmp[MAX_STR_LEN] = {0};
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
@@ -403,9 +513,11 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:True\n", tmp);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "True");
         wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start,
-            NULL, 0);
-
+        wei_ret = check_and_start_wei();
+        if (wei_ret != 0) {
+             wifi_util_info_print(WIFI_CTRL, "Not able to start WEI\n",wei_ret);
+            return bus_error_general;
+        }
         wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
         if (global_cfg != NULL &&
             global_cfg->global_parameters.ignite_link_quality_threshold > 0.0) {
@@ -430,7 +542,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:False\n", tmp);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "False");
        wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
-       apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+       stop_wei();
        //Stop station vaps
        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
         if (rfc_param->multiap_rfc) {

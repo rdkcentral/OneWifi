@@ -119,6 +119,8 @@ extern "C" {
 
 #define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
 #define WEI_RFC_MASK        "Device.X_RDKCENTRAL-COM_WEI.RFC_MASK"
+#define WEI_MEASUREMENT_RFC      "Device.X_RDKCENTRAL-COM_WEI.Enable"
+#define WEI_LQ_CLIENT_ENABLE_DMPATH        "Device.X_RDKCENTRAL-COM_WEI.LQ.Client.Enable"
 
 extern bool is_sta_set;
 

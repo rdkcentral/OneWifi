@@ -156,6 +156,8 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
         count, entry_size);
 
     /* Log per-entry details for stats_arg_t messages */
+    if (msg_type !=  LQ_IPC_MSG_REGISTER_STA || msg_type !=  LQ_IPC_MSG_UNREGISTER_STA 
+     || msg_type !=  LQ_IPC_MSG_REINIT_METRICS )
     lq_ipc_log_stats_entries(msg_type, entries, count, entry_size);
 
     if (count != 0 && entries == NULL) {
@@ -163,16 +165,20 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
     }
 
     /* Filter: only forward events for private VAPs (private_ssid*) */
-    if (entry_size == sizeof(stats_arg_t) && count > 0) {
-        wifi_mgr_t *mgr = get_wifimgr_obj();
-        if (mgr != NULL) {
-            const stats_arg_t *s = (const stats_arg_t *)entries;
-            for (uint32_t i = 0; i < count; i++) {
-                if (is_vap_private(&mgr->hal_cap.wifi_prop, s[i].vap_index) != TRUE) {
-                    wifi_util_dbg_print(WIFI_APPS,
-                        "%s:%d [IPC-SEND] dropping %s: vap_index=%u is not a private VAP\n",
-                        __func__, __LINE__, lq_msg_type_str(msg_type), s[i].vap_index);
-                    return 0;
+    if (msg_type !=  LQ_IPC_MSG_REGISTER_STA || msg_type !=  LQ_IPC_MSG_UNREGISTER_STA 
+     || msg_type !=  LQ_IPC_MSG_REINIT_METRICS ) {
+        if (entry_size == sizeof(stats_arg_t) && count > 0 ) {
+            wifi_mgr_t *mgr = get_wifimgr_obj();
+            if (mgr != NULL) {
+                const stats_arg_t *s = (const stats_arg_t *)entries;
+                for (uint32_t i = 0; i < count; i++) {
+                    if ((is_vap_private(&mgr->hal_cap.wifi_prop, s[i].vap_index) != TRUE) &&
+                      (is_vap_mesh_sta(&mgr->hal_cap.wifi_prop, s[i].vap_index) != TRUE)   ) {
+                        wifi_util_dbg_print(WIFI_APPS,
+                            "%s:%d [IPC-SEND] dropping %s: vap_index=%u is not a private/station VAP\n",
+                            __func__, __LINE__, lq_msg_type_str(msg_type), s[i].vap_index);
+                        return 0;
+                    }
                 }
             }
         }
