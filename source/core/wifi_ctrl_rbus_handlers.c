@@ -821,6 +821,7 @@ int webconfig_bus_apply_for_dml_thread_update(wifi_ctrl_t *ctrl,
     memset(&rdata, 0, sizeof(raw_data_t));
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)data->raw;
+    rdata.raw_data_len = strlen(data->raw) + 1;
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_INIT_DML_DATA,
         &rdata);
@@ -2080,42 +2081,111 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
         wifi_event_type_command_mesh_status, NULL);
 }
 
+static void process_device_tunnel_status(const char *status)
+{
+    bool tunnel_status = false;
+    wifi_event_subtype_t ces_t;
+
+    if (strcmp(status, "Up") == 0) {
+        tunnel_status = true;
+    } else if (strcmp(status, "Down") == 0) {
+        tunnel_status = false;
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Received Unsupported value:%s\n", __func__,
+            __LINE__, status);
+        return;
+    }
+
+    ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up : wifi_event_type_xfinity_tunnel_down;
+    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
+        NULL);
+}
+
 static void eventReceiveHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     (void)userData;
-    bool tunnel_status = false;
     char *pTmp = NULL;
 
-    wifi_util_dbg_print(WIFI_CTRL, " %s:%d Recvd Event\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d TunnelStatus callback event=%s data=%p\n", __func__,
+        __LINE__, event_name != NULL ? event_name : "NULL", (void *)p_data);
 
-    if ((strcmp(event_name, WIFI_DEVICE_TUNNEL_STATUS) == 0) && p_data->value.data_type == bus_data_type_string) {
-
+    if (event_name != NULL && p_data != NULL &&
+        (strcmp(event_name, WIFI_DEVICE_TUNNEL_STATUS) == 0) &&
+        p_data->value.data_type == bus_data_type_string) {
         pTmp = (char *)p_data->value.raw_data.bytes;
-        if(pTmp == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__, event_name);
+        if (pTmp == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to get value in event:%s\n", __func__,
+                __LINE__, event_name);
             return;
         }
-
-        if (strcmp(pTmp, "Up") == 0) {
-            tunnel_status = true;
-        } else if (strcmp(pTmp, "Down") == 0) {
-            tunnel_status = false;
-        } else {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Received Unsupported value\n", __func__,
-                __LINE__);
-            return;
-        }
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__,
-            event_name, tunnel_status);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s:%x\n", __func__, __LINE__,
-            event_name, p_data->value.data_type);
+            event_name != NULL ? event_name : "NULL",
+            p_data != NULL ? p_data->value.data_type : 0);
         return;
     }
-    wifi_event_subtype_t ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up :
-                                                 wifi_event_type_xfinity_tunnel_down;
-    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t,
-        NULL);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d TunnelStatus callback value=%s\n", __func__, __LINE__,
+        pTmp);
+    process_device_tunnel_status(pTmp);
+}
+
+static void subscribe_device_tunnel_status(wifi_ctrl_t *ctrl)
+{
+    wifi_bus_desc_t *bus_desc = get_bus_descriptor();
+    bus_error_t rc;
+
+    if (ctrl == NULL || bus_desc == NULL || ctrl->hotspot_enabled == false ||
+        ctrl->device_tunnel_status_subscribed) {
+        return;
+    }
+
+    rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
+        eventReceiveHandler, NULL, 0);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Tunnel status subscribe rc=%d\n", __func__, __LINE__,
+        rc);
+    if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
+        ctrl->device_tunnel_status_subscribed = true;
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to subscribe to %s, rc:%d\n", __func__,
+            __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
+    }
+}
+
+static void hotspotStatusHandler(char *event_name, bus_data_prop_t *p_data, void *userData)
+{
+    (void)userData;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_bus_desc_t *bus_desc = get_bus_descriptor();
+    bus_error_t rc;
+
+    if (ctrl == NULL || bus_desc == NULL || event_name == NULL || p_data == NULL ||
+        strcmp(event_name, WIFI_HOTSPOT_STATUS) != 0 ||
+        p_data->value.data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid hotspot enable event\n", __func__,
+            __LINE__);
+        return;
+    }
+
+    ctrl->hotspot_enabled = p_data->value.raw_data.b;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Hotspot enable event value=%d tunnel_subscribed=%d\n",
+        __func__, __LINE__, ctrl->hotspot_enabled,
+        ctrl->device_tunnel_status_subscribed);
+
+    if (ctrl->hotspot_enabled) {
+        subscribe_device_tunnel_status(ctrl);
+    } else {
+        if (ctrl->device_tunnel_status_subscribed) {
+            rc = bus_desc->bus_event_unsubs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS);
+            if (rc == bus_error_success) {
+                ctrl->device_tunnel_status_subscribed = false;
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Failed to unsubscribe from %s, rc:%d\n",
+                    __func__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS, rc);
+            }
+        }
+    }
 }
 
 static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_data, void *userData)
@@ -2545,17 +2615,29 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
-    if (ctrl->device_tunnel_status_subscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_DEVICE_TUNNEL_STATUS,
-                eventReceiveHandler, NULL, 0) != bus_error_success) {
-            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d bus: bus event:%s subscribe
-            // failed\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
+    if (ctrl->hotspot_status_subscribed == false) {
+        bus_error_t rc = bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS,
+            hotspotStatusHandler, NULL, 0);
+        if (rc == bus_error_success || rc == bus_error_subscription_already_exist) {
+            ctrl->hotspot_status_subscribed = true;
+            raw_data_t hs_data;
+            memset(&hs_data, 0, sizeof(raw_data_t));
+            rc = bus_desc->bus_data_get_fn(&ctrl->handle, WIFI_HOTSPOT_STATUS, &hs_data);
+            if (rc == bus_error_success && hs_data.data_type == bus_data_type_boolean) {
+                ctrl->hotspot_enabled = hs_data.raw_data.b;
+                if (ctrl->hotspot_enabled) {
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d Hotspot already Enabled at startup\n",
+                        __func__, __LINE__);
+                }
+            }
+            bus_desc->bus_data_free_fn(&hs_data);
         } else {
-            ctrl->device_tunnel_status_subscribed = true;
-            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
-                __FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d %s subscription failed, rc:%d\n", __func__,
+                __LINE__, WIFI_HOTSPOT_STATUS, rc);
         }
     }
+
+    subscribe_device_tunnel_status(ctrl);
 
     if (consumer_app_file == 0 && ctrl->device_wps_test_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_WIFI_WPS_PIN_START,
@@ -2646,7 +2728,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 #endif
-    if (!ctrl->hotspot_client_dhcp_failure_subscribed) {
+    if (!ctrl->hotspot_client_dhcp_failure_subscribed && ctrl->hotspot_enabled) {
         bus_error_t rc = bus_error_success;
         rc = bus_desc->bus_event_subs_fn(&ctrl->handle, HOTSPOT_CLIENT_DHCP_FAILURE_DISCONNECTED,
             hotspot_client_dhcp_failure_disconnect, NULL, 0);
@@ -4273,6 +4355,83 @@ void register_endpoint_components(wifi_ctrl_t *ctrl)
      return;
 }
 
+bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
+    bus_data_prop_t *outParams, void *asyncHandle)
+{
+    (void)asyncHandle;
+    unsigned vap_idx;
+    char *json_str = NULL;
+    char *enriched_str = NULL;
+    cJSON *json = NULL;
+    int ret;
+
+    if (methodName == NULL || inParams == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid input parameters\r\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    if (inParams->value.data_type != bus_data_type_string || inParams->value.raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid input data type:0x%x\r\n",
+            __func__, __LINE__, inParams->value.data_type);
+        return bus_error_invalid_input;
+    }
+
+    ret = sscanf(methodName, "Device.WiFi.AccessPoint.%u.X_RDKCENTRAL-COM_GetNaSta", &vap_idx);
+    if (ret != 1 || vap_idx < 1 || vap_idx > MAX_VAP) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap index %u\r\n", __func__, __LINE__, vap_idx);
+        return bus_error_destination_not_found;
+    }
+
+    json_str = (char *)inParams->value.raw_data.bytes;
+
+    /* Parse the incoming JSON and inject vap_index (0-based) */
+    json = cJSON_Parse(json_str);
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to parse JSON input\r\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+    cJSON_AddNumberToObject(json, "VapIndex", vap_idx - 1);
+    enriched_str = cJSON_PrintUnformatted(json);
+    cJSON_Delete(json);
+
+    if (enriched_str == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to serialize JSON\r\n", __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d NaSta query for vap %u, pushing to ctrl queue\r\n",
+        __func__, __LINE__, vap_idx);
+
+    if (push_event_to_ctrl_queue(enriched_str, (strlen(enriched_str) + 1),
+        wifi_event_type_webconfig, wifi_event_webconfig_set_data_nasta, NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to push NaSta query to ctrl queue\r\n", __func__, __LINE__);
+        cJSON_free(enriched_str);
+        return bus_error_out_of_resources;
+    }
+
+    cJSON_free(enriched_str);
+    enriched_str = NULL;
+
+    /* Return an ack so the synchronous RBUS invoke succeeds;
+       the actual NaSta response is published asynchronously via
+       Device.WiFi.EM.NaStaResponse event. */
+    if (outParams != NULL) {
+        char *ack = strdup("{\"Status\":\"Accepted\"}");
+        if (ack == NULL) {
+            return bus_error_out_of_resources;
+        }
+
+        outParams->value.data_type = bus_data_type_string;
+        outParams->value.raw_data.bytes = ack;
+        outParams->value.raw_data_len = strlen(ack) + 1;
+        outParams->is_data_set = true;
+        outParams->status = bus_error_success;
+        outParams->ref_count = 1;
+        outParams->next_data = NULL;
+    }
+
+    return bus_error_success;
+}
 
 void bus_register_handlers(wifi_ctrl_t *ctrl)
 {
@@ -4446,6 +4605,12 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     {bus_data_type_uint32, false, 0, 0, 0, NULL } },
                                 { WIFI_IGNITE_STATUS, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_GET_NASTA, bus_element_type_method,
+                                    { NULL, NULL, NULL, NULL, NULL, get_NaSta }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_NASTA_RESPONSE_EVENT, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, eventSubHandler, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
     };
 

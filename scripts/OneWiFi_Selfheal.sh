@@ -378,7 +378,7 @@ do
             check_count=0
             cur_timestamp="`date +"%s"` $1"
             #echo_t "cur_timestamp = $cur_timestamp" >> $LOG_FILE
-            if [ "$MODEL_NUM" == "SR213" ]; then
+            if [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "XER2" ]; then
                 eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_6g="false"

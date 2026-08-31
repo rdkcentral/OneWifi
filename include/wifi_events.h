@@ -85,6 +85,7 @@ typedef enum {
     wifi_event_webconfig_em_config,
     wifi_event_webconfig_br_report,
     wifi_event_webconfig_set_ignite_data,
+    wifi_event_webconfig_set_data_nasta,
     wifi_event_webconfig_max,
 
     // HAL events
@@ -134,6 +135,7 @@ typedef enum {
     wifi_event_type_dfs_atbootup_rfc,
     wifi_event_type_command_kickmac,
     wifi_event_type_command_kick_assoc_devices,
+    wifi_event_type_command_frame_drop_unenc,
     wifi_event_type_command_wps,
     wifi_event_type_command_wps_pin,
     wifi_event_type_command_wps_cancel,

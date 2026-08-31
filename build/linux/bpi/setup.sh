@@ -13,7 +13,10 @@ KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches_6.6/openwr
 UPSTREAM_HOSTAP_URL="https://git.w1.fi/hostap.git"
 SRCREV_2_11="4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c"
 META_CMF_BPI_URL="https://github.com/rdkcentral/meta-cmf-bananapi.git"
-META_FILOGIC_URL="https://git01.mediatek.com/filogic/rdk-b/meta-filogic"
+# MediaTek disabled git01.mediatek.com (2026-08); their public layers moved to GitHub.
+# github.com/mediatek/meta-filogic mirrors the same history, so the pinned SRCREV below
+# is fetchable there and the patch tree is byte-identical (same commit SHA => same tree).
+META_FILOGIC_URL="https://github.com/mediatek/meta-filogic"
 SRCREV_META_FILOGIC="c67a32a7c8876b328a8d1eeaca213e860d85b3ce"
 
 # Apply network optimizations for reliable git clone
@@ -22,9 +25,9 @@ export GIT_HTTP_LOW_SPEED_TIME=999999
 
 #git clone other wifi related components
 cd ..
-git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
-git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
-git clone https://github.com/xmidt-org/trower-base64.git trower-base64
+[ ! -d rdk-wifi-hal ] && git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
+[ ! -d halinterface ] && git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
+[ ! -d trower-base64 ] && git clone https://github.com/xmidt-org/trower-base64.git trower-base64
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
@@ -46,13 +49,13 @@ else
     #and move to the relevant commit
     cd $HOSTAP_SRC_DIR
     echo "Cloning hostap in $HOSTAP_SRC_DIR"
-    git clone $UPSTREAM_HOSTAP_URL hostap-2.11
+    git clone $UPSTREAM_HOSTAP_URL hostap-2.11 || exit 1
     cd hostap-2.11
-    git reset --hard $SRCREV_2_11
+    git reset --hard $SRCREV_2_11 || exit 1
     cd $HOSTAP_DIR
 fi
 
-if [ -f "$HOSTAP_PATCH_FLAG" ]; then
+if [ -f "$HOSTAP_PATCH_FLAG" ] && [ -d "$HOSTAP_SRC_DIR/hostap-2.11" ]; then
     echo "Hostap patches are already applied. Retry after deleting $HOSTAP_DIR"
 else
     #Clone meta-cmf-bananapi, meta-filogic and  apply hostap patches
@@ -64,8 +67,8 @@ else
         git remote add origin "$META_FILOGIC_URL"
         #Increased HTTP post buffer to 1GB to prevent "RPC failed" or "Broken pipe" errors.
         git config http.postBuffer 1048576000
-        git fetch --depth 1 origin "$SRCREV_META_FILOGIC"
-        git reset --hard FETCH_HEAD
+        git fetch --depth 1 origin "$SRCREV_META_FILOGIC" || exit 1
+        git reset --hard FETCH_HEAD || exit 1
         cd "$HOSTAP_DIR"
     fi
 
