@@ -36,7 +36,7 @@
 #define SM_APP_ENABLE_TIMER_INTERVAL_SEC 5
 
 typedef struct {
-    sta_data_t  assoc_stats[BSS_MAX_NUM_STATIONS];
+    sta_data_t  *assoc_stats;
     size_t      stat_array_size;
 } client_assoc_data_t;
 
@@ -213,9 +213,31 @@ int assoc_client_response(wifi_provider_response_t *provider_response)
         return RETURN_ERR;
     }
 
-    memset(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats, 0, sizeof(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats));
-    memcpy(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats, provider_response->stat_pointer, (sizeof(sta_data_t)*provider_response->stat_array_size));
-    client_assoc_stats[radio_index].client_assoc_data[vap_array_index].stat_array_size = provider_response->stat_array_size;
+    client_assoc_data_t *d = &client_assoc_stats[radio_index].client_assoc_data[vap_array_index];
+    size_t new_size = provider_response->stat_array_size;
+    sta_data_t *new_stats = NULL;
+
+    if(new_size > 0) {
+        if (provider_response->stat_pointer == NULL) { 
+            wifi_util_error_print(WIFI_SM, "%s:%d: stat_pointer is NULL\r\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        if (new_size > SIZE_MAX / sizeof(sta_data_t)) {
+            wifi_util_error_print(WIFI_SM, "%s:%d: invalid stat_array_size %zu\r\n", __func__, __LINE__, new_size);
+            return RETURN_ERR;
+        }
+
+        new_stats = malloc(new_size * sizeof(sta_data_t));
+        if (new_stats == NULL) {
+            wifi_util_error_print(WIFI_SM,"%s:%d: failed to allocate memory for assoc_stats for radio_index : %d\r\n",__func__, __LINE__, radio_index);
+            return RETURN_ERR;
+        }
+        memcpy(new_stats, provider_response->stat_pointer, new_size * sizeof(sta_data_t));
+    }
+    free(d->assoc_stats);
+    d->assoc_stats = new_stats;
+    d->stat_array_size = new_size;
     client_assoc_stats[radio_index].assoc_stats_vap_presence_mask |= (1 << vap_index);
 
     wifi_util_dbg_print(WIFI_SM,"%s:%d: vap_index : %d client array size : %d \r\n",__func__, __LINE__, vap_index, provider_response->stat_array_size);
@@ -899,6 +921,13 @@ int sm_init(wifi_app_t *app, unsigned int create_flag)
     }
     rc = sm_report_init(app);
     if (rc != RETURN_OK) {
+        if (client_assoc_stats != NULL) {
+            for (int radio_idx = 0; radio_idx < radios_count; radio_idx++) {
+                for (int vap_idx = 0; vap_idx < MAX_NUM_VAP_PER_RADIO; vap_idx++) {
+                    free(client_assoc_stats[radio_idx].client_assoc_data[vap_idx].assoc_stats);
+                }
+            }
+        }
         free(client_assoc_stats);
         client_assoc_stats = NULL;
         hash_map_destroy(app->data.u.sm_data.report_tasks_map);
@@ -939,6 +968,12 @@ int sm_deinit(wifi_app_t *app)
     sm_stats_to_monitor_set(app, false);
     free_sm_stats_config_map(app);
     if (client_assoc_stats != NULL) {
+        int radios_count = getNumberRadios();
+        for (int radio_idx = 0; radio_idx < radios_count; radio_idx++) {
+            for (int vap_idx = 0; vap_idx < MAX_NUM_VAP_PER_RADIO; vap_idx++) {
+                free(client_assoc_stats[radio_idx].client_assoc_data[vap_idx].assoc_stats);
+            }
+        }
         free(client_assoc_stats);
         client_assoc_stats = NULL;
     }

@@ -340,11 +340,6 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     webconfig_subdoc_data_t *doc;
 
-    if (!arg) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
-        return -1;
-    }
-
     event = arg;
     doc = (webconfig_subdoc_data_t *)event->u.webconfig_data;
     decoded_params = &doc->u.decoded;
@@ -353,13 +348,12 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
         return RETURN_ERR;
     }
 
-    server_arg_t *server_arg = (server_arg_t *)malloc(sizeof(server_arg_t));
-    memset(server_arg,0,sizeof(server_arg_t));
     switch (doc->type) {
         case webconfig_subdoc_type_em_config:
             em_config = &decoded_params->em_config;
-            if (em_config == NULL) {
-                wifi_util_error_print(WIFI_APPS, "%s:%d NULL pointer \n", __func__, __LINE__);
+            server_arg_t *server_arg = (server_arg_t *)calloc(1, sizeof(server_arg_t));
+            if (server_arg == NULL) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d Failed to allocate server_arg\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
 
