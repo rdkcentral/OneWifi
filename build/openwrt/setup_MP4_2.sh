@@ -16,7 +16,7 @@ META_CMF_BPI_URL="https://github.com/rdkcentral/meta-cmf-bananapi.git"
 # MediaTek disabled git01.mediatek.com (2026-08); their public layers moved to GitHub.
 # github.com/mediatek/meta-filogic mirrors the same history, so the pinned SRCREV below
 # is fetchable there and the patch tree is byte-identical (same commit SHA => same tree).
-META_FILOGIC_URL="https://github.com/mediatek/meta-filogic"
+META_FILOGIC_URL="https://github.com/mediatek/meta-filogic.git"
 SRCREV_META_FILOGIC="c67a32a7c8876b328a8d1eeaca213e860d85b3ce"
 
 # Apply network optimizations for reliable git clone
