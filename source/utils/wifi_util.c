@@ -2537,17 +2537,17 @@ wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_st
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num)
 {
     int channels_2g_40_mhz[11][2] = {
-        {1, 3},
-        {2, 4},
-        {3, 5},
-        {4, 6},
-        {5, 7},
-        {6, 8},
-        {7, 9},
-        {8, 6},
-        {9, 7},
-        {10, 8},
-        {11, 9}
+        {1, 5},
+        {2, 6},
+        {3, 7},
+        {4, 8},
+        {5, 9},
+        {6, 10},
+        {7, 11},
+        {8, 4},
+        {9, 5},
+        {10, 6},
+        {11, 7}
     };
     int channels_5g_40_mhz[12][2] = {
         {36, 40},
@@ -4957,6 +4957,44 @@ bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t
     }
 
     return (valid_mask & (1u << encr)) != 0;
+}
+
+void apply_wpa2_personal_encr_policy(wifi_vap_security_t *security_info)
+{
+    if (security_info == NULL || security_info->mode != wifi_security_mode_wpa2_personal) {
+        return;
+    }
+
+    if (security_info->encr == wifi_encryption_aes_gcmp256) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d enforcing WPA2-Personal encryption fallback AES+GCMP(%d)->AES(%d)\n", __func__,
+            __LINE__, wifi_encryption_aes_gcmp256, wifi_encryption_aes);
+        security_info->encr = wifi_encryption_aes;
+        return;
+    }
+
+    /* Preserve valid WPA2 encryptions (AES, AES+TKIP); normalize anything else to AES. */
+    if (security_info->encr != wifi_encryption_aes &&
+        security_info->encr != wifi_encryption_aes_tkip) {
+        wifi_util_info_print(WIFI_WEBCONFIG,
+            "%s:%d enforcing WPA2-Personal encryption fallback invalid(%d)->AES(%d)\n", __func__,
+            __LINE__, security_info->encr, wifi_encryption_aes);
+        security_info->encr = wifi_encryption_aes;
+    }
+}
+
+void apply_wpa3_transition_encr_policy(wifi_vap_security_t *security_info)
+{
+    if (security_info == NULL || security_info->mode != wifi_security_mode_wpa3_transition) {
+        return;
+    }
+
+#ifdef CONFIG_IEEE80211BE
+    /* 11be builds use AES+GCMP as the policy default for WPA3-Transition. */
+    security_info->encr = wifi_encryption_aes_gcmp256;
+#else
+    security_info->encr = wifi_encryption_aes;
+#endif /* CONFIG_IEEE80211BE */
 }
 
 int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac)

@@ -93,6 +93,9 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
 unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
 {
     switch (authtype) {
+        case EM_AUTH_OPEN:
+            return wifi_security_mode_none;
+
         case EM_AUTH_WPAPSK:
             return wifi_security_mode_wpa_personal;
 
@@ -101,6 +104,12 @@ unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
 
         case EM_AUTH_WPA:
             return wifi_security_mode_wpa_enterprise;
+
+        case EM_AUTH_WPA2:
+            return wifi_security_mode_wpa2_enterprise;
+
+        case EM_AUTH_ENHANCED_OPEN:
+            return wifi_security_mode_enhanced_open;
 
         case EM_AUTH_WPA3_PERSONAL:
             return wifi_security_mode_wpa3_personal;
@@ -111,6 +120,120 @@ unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
         default:
             return wifi_security_mode_wpa3_personal;
     }
+}
+
+/* Apply the M2 derived security settings shared by the AP and mesh STA
+   branches. The union is read as RADIUS settings for the open modes (None,
+   Enhanced Open) and the enterprise modes, and as the key otherwise. */
+static void update_security_from_easymesh(wifi_vap_security_t *security, const char *password)
+{
+    switch (security->mode) {
+        case wifi_security_mode_none:
+            memset(&security->u, 0, sizeof(security->u));
+            security->encr = wifi_encryption_none;
+            break;
+        case wifi_security_mode_enhanced_open:
+            /* OWE encrypts with AES and requires PMF. */
+            memset(&security->u, 0, sizeof(security->u));
+            security->encr = wifi_encryption_aes;
+            security->mfp = wifi_mfp_cfg_required;
+            break;
+        case wifi_security_mode_wpa_enterprise:
+        case wifi_security_mode_wpa_wpa2_enterprise:
+        case wifi_security_mode_wpa2_enterprise:
+        case wifi_security_mode_wpa3_enterprise:
+            /* RADIUS settings live in the union and M2 carries none; keep them. */
+            if (!is_valid_encr_for_mode(security->mode, security->encr)) {
+                security->encr = wifi_encryption_aes;
+            }
+            break;
+        default:
+            memset(&security->u, 0, sizeof(security->u));
+            snprintf(security->u.key.key, sizeof(security->u.key.key), "%s", password);
+            if (!is_valid_encr_for_mode(security->mode, security->encr)) {
+                security->encr = wifi_encryption_aes;
+            }
+            /* Clear a PMF requirement left over from a previous WPA3 mode. */
+            security->mfp = wifi_mfp_cfg_disabled;
+            break;
+    }
+    /* PMF is required in the pure WPA3 modes but stays optional in transition
+       mode so that WPA2 clients can still associate. */
+    if (security->mode == wifi_security_mode_wpa3_transition) {
+        security->mfp = wifi_mfp_cfg_optional;
+    } else if (security->mode == wifi_security_mode_wpa3_personal ||
+               security->mode == wifi_security_mode_wpa3_enterprise) {
+        security->mfp = wifi_mfp_cfg_required;
+    }
+}
+
+#ifdef EM_APP
+// the ap metrics report decoder mallocs per-vap sta arrays into the decoded
+// params (see decode_em_ap_metrics_report_object); webconfig_data_free only
+// frees u.encoded.raw, so they must be freed here after translation
+static void webconfig_easymesh_free_ap_metrics_report(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded = &data->u.decoded;
+    int i, j;
+
+    if (data->type != webconfig_subdoc_type_em_ap_metrics_report) {
+        return;
+    }
+
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        for (j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
+            em_vap_metrics_t *vap_report = &decoded->em_ap_metrics_report.radio_reports[i].vap_reports[j];
+
+            if (vap_report->sta_traffic_stats != NULL) {
+                free(vap_report->sta_traffic_stats);
+                vap_report->sta_traffic_stats = NULL;
+            }
+            if (vap_report->sta_link_metrics != NULL) {
+                free(vap_report->sta_link_metrics);
+                vap_report->sta_link_metrics = NULL;
+            }
+        }
+    }
+}
+#endif
+
+static void webconfig_easymesh_free_assoc_maps(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded = &data->u.decoded;
+    unsigned int i, j;
+
+    if (data->type != webconfig_subdoc_type_associated_clients) {
+        return;
+    }
+
+    for (i = 0; i < decoded->num_radios && i < MAX_NUM_RADIOS; i++) {
+        rdk_wifi_vap_map_t *vap_map = &decoded->radios[i].vaps;
+        for (j = 0; j < vap_map->num_vaps && j < MAX_NUM_VAP_PER_RADIO; j++) {
+            rdk_wifi_vap_info_t *vap = &vap_map->rdk_vap_array[j];
+
+            if (vap->associated_devices_map != NULL) {
+                hash_map_destroy(vap->associated_devices_map);
+                vap->associated_devices_map = NULL;
+            }
+
+            if (vap->associated_devices_diff_map != NULL) {
+                hash_map_destroy(vap->associated_devices_diff_map);
+                vap->associated_devices_diff_map = NULL;
+            }
+        }
+    }
+}
+
+/* Free all decoder-allocated memory that webconfig_data_free does not cover.
+ * Each individual free function is type-guarded, so this is safe to call
+ * unconditionally regardless of subdoc type. Add new per-subdoc free functions
+ * here as needed. */
+static void webconfig_easymesh_free_decoded(webconfig_subdoc_data_t *data)
+{
+#ifdef EM_APP
+    webconfig_easymesh_free_ap_metrics_report(data);
+#endif
+    webconfig_easymesh_free_assoc_maps(data);
 }
 
 // webconfig_easymesh_decode() will convert the onewifi structures to easymesh structures
@@ -124,12 +247,15 @@ webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str
     if (webconfig_decode(config, &webconfig_easymesh_data, str) != webconfig_error_none) {
         //        *data = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode failed\n", __func__, __LINE__);
+        webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
+        /* note: webconfig_data_free is called internally by webconfig_decode on error */
         return webconfig_error_decode;
     }
 
     wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_easymesh_data.type);
     *type = webconfig_easymesh_data.type;
     //debug_external_protos(&webconfig_easymesh_data, __func__, __LINE__);
+    webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
     webconfig_data_free(&webconfig_easymesh_data);
     return webconfig_error_none;
 }
@@ -323,7 +449,16 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     memcpy(device_info->backhaul_alid.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
     interfacename_from_mac((const mac_address_t *)device_info->backhaul_alid.mac,device_info->backhaul_alid.name);
     //proto->set_num_radio(proto->data_model, wifi_prop->numRadios);
+    /* Report the device's regulatory country as Network.Device.{i}.CountryCode.
+       Default to US, override only for an in range enum (conversion does not bounds check). */
     snprintf(device_info->country_code, sizeof(device_info->country_code), "US");
+    if (decoded_params->num_radios > 0) {
+        wifi_countrycode_type_t cc_enum = decoded_params->radios[0].oper.countryCode;
+        if ((unsigned int)cc_enum < MAX_WIFI_COUNTRYCODE) {
+            country_code_conversion(&cc_enum, device_info->country_code,
+                                    sizeof(device_info->country_code), ENUM_TO_STRING);
+        }
+    }
     for (unsigned int i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         dfs_enable  = radio->oper.DfsEnabled;
@@ -2502,6 +2637,11 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            /* Hotspot vaps have no dispatch branch below and would abort the
+               whole subdoc; skip them like the DML loop does. */
+            if (is_vap_hotspot(wifi_prop, vap->vap_index) == TRUE) {
+                continue;
+            }
             iface_map = NULL;
             for (k = 0; k < (sizeof(wifi_prop->interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
                 if (wifi_prop->interface_map[k].index == vap->vap_index) {
@@ -3038,21 +3178,13 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                         vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
                     if (vap->vap_mode == wifi_vap_mode_ap) {
                         vap->u.bss_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
-                        if(vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
-                            vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                        }
                         snprintf(vap->u.bss_info.ssid, sizeof(vap->u.bss_info.ssid), "%s", radio_config->ssid[k]);
-                        snprintf(vap->u.bss_info.security.u.key.key,
-                            sizeof(vap->u.bss_info.security.u.key.key), "%s", radio_config->password[k]);
+                        update_security_from_easymesh(&vap->u.bss_info.security, radio_config->password[k]);
                         vap->u.bss_info.enabled = radio_config->enable[k];
                     } else if (vap->vap_mode == wifi_vap_mode_sta) {
                         vap->u.sta_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
-                        if(vap->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) {
-                            vap->u.sta_info.security.mfp = wifi_mfp_cfg_optional;
-                        }
                         snprintf(vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid), "%s", radio_config->ssid[k]);
-                        snprintf(vap->u.sta_info.security.u.key.key,
-                            sizeof(vap->u.sta_info.security.u.key.key), "%s", radio_config->password[k]);
+                        update_security_from_easymesh(&vap->u.sta_info.security, radio_config->password[k]);
                         vap->u.sta_info.enabled = radio_config->enable[k];
                     } else {
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: unhandled vap_mode:%d\n",

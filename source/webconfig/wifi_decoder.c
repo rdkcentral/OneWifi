@@ -1523,6 +1523,14 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         return webconfig_error_decode;
     }
 
+    /* Normalize mode/encryption pairs before compatibility validation. */
+    if (security_info->mode == wifi_security_mode_wpa3_transition) {
+        apply_wpa3_transition_encr_policy(security_info);
+    }
+    if (security_info->mode == wifi_security_mode_wpa2_personal) {
+        apply_wpa2_personal_encr_policy(security_info);
+    }
+
     if (!is_valid_encr_for_mode(security_info->mode, security_info->encr)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption %d for mode %d\n",
             __func__, __LINE__, security_info->encr, security_info->mode);
@@ -3553,6 +3561,9 @@ static webconfig_error_t decode_assoc_dev_stats(const cJSON *obj, assoc_dev_data
 
     decode_param_integer(obj, "AuthenticationFailures", value);
     dev->dev_stats.cli_AuthenticationFailures = value->valuedouble;
+
+    decode_param_integer(obj, "CapableNumSpatialStreams", value);
+    dev->dev_stats.cli_capableNumSpatialStreams = value->valuedouble;
 
     decode_param_integer(obj, "ActiveNumSpatialStreams", value);
     dev->dev_stats.cli_activeNumSpatialStreams = value->valuedouble;
@@ -6154,6 +6165,9 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
         decode_param_integer(assoc_data, "cli_MaxUplinkRate", param);
         client_stats_data[count].cli_MaxUplinkRate = param->valuedouble;
 
+        decode_param_integer(assoc_data, "cli_capableNumSpatialStreams", param);
+        client_stats_data[count].cli_capableNumSpatialStreams = param->valuedouble;
+
         decode_param_integer(assoc_data, "cli_activeNumSpatialStreams", param);
         client_stats_data[count].cli_activeNumSpatialStreams = param->valuedouble;
 
@@ -6656,7 +6670,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     // Default 802.1Q Settings Policy
     def_8021q_policy = cJSON_GetObjectItem(policy_obj, "Default 802.1Q Settings Policy");
     if (def_8021q_policy != NULL) {
-        decode_param_integer(def_8021q_policy, "Primay VLAN ID", param);
+        decode_param_integer(def_8021q_policy, "Primary VLAN ID", param);
         em_config->default_8021q_policy.primary_vid = (unsigned short)param->valuedouble;
         decode_param_integer(def_8021q_policy, "Default PCP", param);
         em_config->default_8021q_policy.default_pcp = (unsigned char)param->valuedouble;

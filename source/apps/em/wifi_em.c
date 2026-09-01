@@ -107,6 +107,18 @@ typedef struct {
     uint16_t reason;
 } wifi_em_failed_conn_t;
 
+/* Previous survey counters per radio, to turn cumulative HAL times into per-window deltas. */
+typedef struct {
+    int chan;
+    unsigned long long total;
+    unsigned long long busy;
+    unsigned long long busy_tx;
+    unsigned long long busy_self;
+    unsigned long long busy_rx;
+} em_chan_survey_prev_t;
+
+static em_chan_survey_prev_t em_chan_survey_prev[MAX_NUM_RADIOS] = { 0 };
+
 static int em_rssi_to_rcpi(int rssi)
 {
     if (!rssi)
@@ -466,6 +478,7 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_EM, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, rc);
+        free(data->u.encoded.raw);
         free(data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics);
         free(data);
         return RETURN_ERR;
@@ -477,8 +490,11 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
         }
     }
 
+    free(data->u.encoded.raw);
     free(data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics);
     free(data);
+
+    return RETURN_OK;
 }
 
 static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats, size_t stats_num,
@@ -896,10 +912,12 @@ static int em_publish_stats_data(channel_scan_response_t *scan_response)
     if (status != bus_error_success) {
         wifi_util_error_print(WIFI_EM, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, status);
+        free(data->u.encoded.raw);
         free(data->u.decoded.collect_stats.stats);
         free(data);
         return RETURN_ERR;
     }
+    free(data->u.encoded.raw);
     free(data->u.decoded.collect_stats.stats);
     free(data);
 
@@ -1237,6 +1255,17 @@ int vap_stats_response(wifi_provider_response_t *provider_response)
     return RETURN_OK;
 }
 
+static unsigned char em_survey_fraction(unsigned long long delta, unsigned long long total)
+{
+    unsigned long long frac;
+
+    if (total == 0) {
+        return 0;
+    }
+    frac = (delta * 255) / total;
+    return (frac > 255) ? 255 : (unsigned char)frac;
+}
+
 static int radio_chan_stats_response(wifi_provider_response_t *provider_response)
 {
     int radio_index = -1;
@@ -1255,9 +1284,13 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
     unsigned int i = 0, k = 0;
     radio_metrics_t *radio_metrics = NULL;
+    em_chan_survey_prev_t *survey_prev = NULL;
+    unsigned long long d_total = 0, d_tx = 0, d_self = 0, d_rx = 0, d_busy = 0;
+    int anpi = 0;
+    unsigned char util255 = 0;
 
     radio_index = provider_response->args.radio_index;
-    if (radio_index > MAX_NUM_RADIOS) {
+    if (radio_index >= MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_EM, "%s:%d Invalid radio index %d\n", __func__, __LINE__,
             radio_index);
         return RETURN_ERR;
@@ -1320,16 +1353,55 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
 
         radio_metrics = &em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics;
         memcpy(radio_metrics->ruid, radio_mac, sizeof(mac_addr_t));
-        radio_metrics->noise = channel_stats[count].ch_noise;
-        radio_metrics->transmit = channel_stats[count].ch_utilization_busy_tx;
-        radio_metrics->receive_self = channel_stats[count].ch_utilization_busy_self;
-        /*
-         * RX other: the fraction of the measurement window during which the AP's radio was receiving
-         * frames that are not from the AP's own associated stations.
-         * That is: all RX minus own RX time = busy_rx − busy_self.
-         */
-        radio_metrics->receive_other = (channel_stats[count].ch_utilization_busy_rx > channel_stats[count].ch_utilization_busy_self) ?
-                                       (channel_stats[count].ch_utilization_busy_rx - channel_stats[count].ch_utilization_busy_self) : 0;
+
+        /* EasyMesh wants 1/255 fractions of the window; the HAL counters are
+         * cumulative, so use the delta. First sample, channel change or counter
+         * reset reports 0. */
+        survey_prev = &em_chan_survey_prev[radio_index];
+        if (survey_prev->total != 0 &&
+            survey_prev->chan == channel_stats[count].ch_number &&
+            channel_stats[count].ch_utilization_total > survey_prev->total &&
+            channel_stats[count].ch_utilization_busy >= survey_prev->busy &&
+            channel_stats[count].ch_utilization_busy_tx >= survey_prev->busy_tx &&
+            channel_stats[count].ch_utilization_busy_self >= survey_prev->busy_self &&
+            channel_stats[count].ch_utilization_busy_rx >= survey_prev->busy_rx) {
+            d_total = channel_stats[count].ch_utilization_total - survey_prev->total;
+            d_tx = channel_stats[count].ch_utilization_busy_tx - survey_prev->busy_tx;
+            d_self = channel_stats[count].ch_utilization_busy_self - survey_prev->busy_self;
+            d_rx = channel_stats[count].ch_utilization_busy_rx - survey_prev->busy_rx;
+            d_busy = channel_stats[count].ch_utilization_busy - survey_prev->busy;
+
+            radio_metrics->transmit = em_survey_fraction(d_tx, d_total);
+            radio_metrics->receive_self = em_survey_fraction(d_self, d_total);
+            /*
+             * RX other: the fraction of the measurement window during which the AP's radio was receiving
+             * frames that are not from the AP's own associated stations.
+             * That is: all RX minus own RX time = busy_rx − busy_self.
+             */
+            radio_metrics->receive_other = em_survey_fraction((d_rx > d_self) ? (d_rx - d_self) : 0, d_total);
+            /* Some drivers exclude own TX from busy, so cover at least TX+RX. */
+            util255 = em_survey_fraction((d_busy > d_tx + d_rx) ? d_busy : d_tx + d_rx, d_total);
+        } else {
+            radio_metrics->transmit = 0;
+            radio_metrics->receive_self = 0;
+            radio_metrics->receive_other = 0;
+            util255 = 0;
+        }
+        survey_prev->chan = channel_stats[count].ch_number;
+        survey_prev->total = channel_stats[count].ch_utilization_total;
+        survey_prev->busy = channel_stats[count].ch_utilization_busy;
+        survey_prev->busy_tx = channel_stats[count].ch_utilization_busy_tx;
+        survey_prev->busy_self = channel_stats[count].ch_utilization_busy_self;
+        survey_prev->busy_rx = channel_stats[count].ch_utilization_busy_rx;
+
+        /* ANPI: 0..220 in steps of 0.5 dB starting at -110 dBm. */
+        anpi = (channel_stats[count].ch_noise + 110) * 2;
+        if (anpi < 0) {
+            anpi = 0;
+        } else if (anpi > 220) {
+            anpi = 220;
+        }
+        radio_metrics->noise = (unsigned char)anpi;
 
         // now save radio channel util for each vap
         for (j = 0; j < radio->vaps.num_vaps; j++) {
@@ -1348,7 +1420,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
 
                 ap_metrics = &ap_data->ap_metrics;
                 if (ap_metrics != NULL) {
-                    ap_metrics->channel_util = channel_stats[count].ch_utilization;
+                    ap_metrics->channel_util = util255;
                 } else {
                     wifi_util_dbg_print(WIFI_EM,
                         "%s:%d ap metrics report data update to cache error\r\n", __func__, __LINE__);
@@ -1366,7 +1438,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
 
                 ap_metrics = &ap_data->ap_metrics;
                 if (ap_metrics != NULL) {
-                    ap_metrics->channel_util = channel_stats[count].ch_utilization;
+                    ap_metrics->channel_util = util255;
                 } else {
                     wifi_util_dbg_print(WIFI_EM,
                         "%s:%d ap metrics report data update to cache error\r\n", __func__, __LINE__);
@@ -1848,8 +1920,25 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
 
             //index cannot be vap index below right for cache retrieval, have to search in the all cache for each vaps and check vap index
             ap_metrics = &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[cache_vap_index].ap_metrics;
-            ap_metrics->num_of_assoc_stas = hash_map_count(
-                wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[j].associated_devices_map);
+            rdk_wifi_vap_info_t *rdk_vap_info = &wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[j];
+            pthread_mutex_t *assoc_lock = rdk_vap_info->associated_devices_lock;
+
+            if (assoc_lock != NULL) {
+                pthread_mutex_lock(assoc_lock);
+            }
+
+            if (rdk_vap_info->associated_devices_map == NULL) {
+                wifi_util_dbg_print(WIFI_EM,
+                    "%s:%d: associated_devices_map is NULL for radio_index %d and vap_index %d\n",
+                    __func__, __LINE__, radio_index, rdk_vap_info->vap_index);
+                ap_metrics->num_of_assoc_stas = 0;
+            } else {
+                ap_metrics->num_of_assoc_stas = hash_map_count(rdk_vap_info->associated_devices_map);
+            }
+
+            if (assoc_lock != NULL) {
+                pthread_mutex_unlock(assoc_lock);
+            }
             vap_report->sta_cnt = ap_metrics->num_of_assoc_stas;
             memcpy(ap_metrics->bssid, vap_info->u.bss_info.bssid, sizeof(bssid_t));
             memcpy(&vap_report->vap_metrics, ap_metrics, sizeof(ap_metrics_t));
@@ -2027,7 +2116,8 @@ cleanup:
     // Cleanup allocated memory
     if (data != NULL) {
         for (int j = 0; j < req_radio_count; j++) {
-            for (int i = 0; i < radio->vaps.num_vaps && i < MAX_NUM_VAP_PER_RADIO; i++) {
+            // num_vaps differs per radio; unused entries are NULL
+            for (int i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
                 vap_report = &data->u.decoded.em_ap_metrics_report.radio_reports[j].vap_reports[i];
                 if (vap_report->sta_link_metrics != NULL) {
                     free(vap_report->sta_link_metrics);
@@ -2037,6 +2127,8 @@ cleanup:
                 }
             }
         }
+        // u.encoded.raw is NULL if encode was not reached (data is memset)
+        free(data->u.encoded.raw);
         free(data);
     }
 
@@ -2114,7 +2206,7 @@ int ap_metrics_collector_config(wifi_app_t *app, wifi_monitor_data_t *data,
         radio_index = em_get_radio_index_from_mac(
             em_config->radio_metrics_policies.radio_metrics_policy[i].ruid);
 
-        if (index == RETURN_ERR) {
+        if (radio_index == RETURN_ERR) {
             return RETURN_ERR;
         }
 
@@ -2948,6 +3040,7 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn Event failed %d\n", __func__,
             __LINE__, rc);
+        free(wb_data->u.encoded.raw);
         free(wb_data);
         return RETURN_ERR;
     } else {
@@ -2955,6 +3048,8 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
             __LINE__, WIFI_EM_BEACON_REPORT);
     }
 
+    free(wb_data->u.encoded.raw);
+    free(wb_data);
     return RETURN_OK;
 }
 

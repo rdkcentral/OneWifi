@@ -218,6 +218,9 @@ bus_error_t convert_rbus_to_bus_error_code(rbusError_t rbus_error)
         case RBUS_ERROR_DIRECT_CON_NOT_EXIST:
             bus_error = bus_error_direct_con_not_exist;
         break;
+        case RBUS_ERROR_NOT_WRITABLE:
+            bus_error = bus_error_not_writable;
+        break;
         default:
             bus_error = bus_error_general;
             wifi_util_error_print(WIFI_BUS, "%s:%d unsupported rbus error code:%02x\r\n", __func__, __LINE__, rbus_error);
@@ -312,6 +315,9 @@ rbusError_t convert_bus_to_rbus_error_code(bus_error_t bus_error)
         break;
         case bus_error_direct_con_not_exist:
             rbus_error = RBUS_ERROR_DIRECT_CON_NOT_EXIST;
+        break;
+        case bus_error_not_writable:
+            rbus_error = RBUS_ERROR_NOT_WRITABLE;
         break;
         default:
             rbus_error = RBUS_ERROR_BUS_ERROR;
@@ -562,9 +568,12 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
         case bus_data_type_uint32:
             rbusValue_SetUInt32(value, bus_data->raw_data.u32);
         break;
-		case bus_data_type_uint8:
-		    rbusValue_SetUInt8(value, bus_data->raw_data.u8);
-		break;
+        case bus_data_type_uint8:
+            rbusValue_SetUInt8(value, bus_data->raw_data.u8);
+        break;
+        case bus_data_type_uint16:
+            rbusValue_SetUInt16(value, bus_data->raw_data.u16);
+        break;
         case bus_data_type_int32:
             rbusValue_SetInt32(value, bus_data->raw_data.i32);
         break;
@@ -591,6 +600,12 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
                         break;
                     case bus_data_type_uint32:
                         rbusProperty_AppendUInt32(property, data_prop->name, prop_value->raw_data.u32);
+                        break;
+                    case bus_data_type_uint8:
+                        rbusProperty_AppendUInt8(property, data_prop->name, prop_value->raw_data.u8);
+                        break;
+                    case bus_data_type_uint16:
+                        rbusProperty_AppendUInt16(property, data_prop->name, prop_value->raw_data.u16);
                         break;
                     default:
                         wifi_util_error_print(WIFI_BUS,"%s Rbus:%s value type not supported =%d\n",
@@ -931,6 +946,12 @@ rbusError_t rbus_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
                     __LINE__, ret, event_name);
             }
         }
+    } else {
+        /* Handler not mapped yet (startup window): the payload is not delivered,
+         * so do not report success. */
+        wifi_util_error_print(WIFI_BUS,"%s:%d rbus event:%s set handler not registered yet, rejecting set\n",
+            __func__, __LINE__, event_name);
+        ret = bus_error_not_writable;
     }
 
     return convert_bus_to_rbus_error_code(ret);

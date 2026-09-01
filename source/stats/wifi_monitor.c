@@ -28,6 +28,7 @@
 #include <sys/time.h>
 #include "collection.h"
 #include "wifi_hal.h"
+#include "wifi_hal_rdk_framework.h"
 #include "wifi_mgr.h"
 #include "wifi_stubs.h"
 #include "wifi_util.h"
@@ -1024,106 +1025,139 @@ static int reset_interop_sta_data(void *arg) {
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
 {
     unsigned int pos = 0;
+    int written = 0;
+    unsigned int remaining = 0;
+    const unsigned int json_trailer_len = sizeof("]}]}");
     sta_data_t *sta_data = NULL;
+    unsigned int sta_count = 0;
+    unsigned int buf_size = CLIENTDIAG_JSON_BUFFER_SIZE * (sizeof(char)) * BSS_MAX_NUM_STATIONS;
     if (harvester_buf[vap_index] == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s %d Harvester Buffer is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    pos = snprintf(harvester_buf[vap_index],
-                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS,
-                "{"
-                "\"Version\":\"1.0\","
-                "\"AssociatedClientsDiagnostics\":["
-                "{"
-                "\"VapIndex\":\"%d\","
-                "\"AssociatedClientDiagnostics\":[",
-                (vap_index+1));
+    int header_written = snprintf(harvester_buf[vap_index], buf_size,
+        "{"
+        "\"Version\":\"1.0\","
+        "\"AssociatedClientsDiagnostics\":["
+        "{"
+        "\"VapIndex\":\"%d\","
+        "\"AssociatedClientDiagnostics\":[",
+        (vap_index + 1));
+    if (header_written < 0 || (unsigned int)header_written >= buf_size) {
+        return RETURN_ERR;
+    }
+    pos = (unsigned int)header_written;
     pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_data = hash_map_get_first(g_monitor_module.bssid_data[vap_index].sta_map);
     while (sta_data != NULL) {
-        pos += snprintf(&harvester_buf[vap_index][pos],
-                (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos, "{"
-                        "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
-                        "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
-                        "\"MLDEnable\":\"%d\","
-                        "\"AssociationLink\":\"%d\","
-                        "\"DownlinkDataRate\":\"%d\","
-                        "\"UplinkDataRate\":\"%d\","
-                        "\"BytesSent\":\"%lu\","
-                        "\"BytesReceived\":\"%lu\","
-                        "\"PacketsSent\":\"%lu\","
-                        "\"PacketsRecieved\":\"%lu\","
-                        "\"Errors\":\"%lu\","
-                        "\"RetransCount\":\"%lu\","
-                        "\"Acknowledgements\":\"%lu\","
-                        "\"SignalStrength\":\"%d\","
-                        "\"SNR\":\"%d\","
-                        "\"OperatingStandard\":\"%s\","
-                        "\"OperatingChannelBandwidth\":\"%s\","
-                        "\"AuthenticationFailures\":\"%d\","
-                        "\"AuthenticationState\":\"%d\","
-                        "\"Active\":\"%d\","
-                        "\"InterferenceSources\":\"%s\","
-                        "\"DataFramesSentNoAck\":\"%lu\","
-                        "\"RSSI\":\"%d\","
-                        "\"MinRSSI\":\"%d\","
-                        "\"MaxRSSI\":\"%d\","
-                        "\"Disassociations\":\"%u\","
-                        "\"Retransmissions\":\"%u\""
-                        "},",
-                        sta_data->dev_stats.cli_MACAddress[0],
-                        sta_data->dev_stats.cli_MACAddress[1],
-                        sta_data->dev_stats.cli_MACAddress[2],
-                        sta_data->dev_stats.cli_MACAddress[3],
-                        sta_data->dev_stats.cli_MACAddress[4],
-                        sta_data->dev_stats.cli_MACAddress[5],
-                        sta_data->dev_stats.cli_MLDAddr[0],
-                        sta_data->dev_stats.cli_MLDAddr[1],
-                        sta_data->dev_stats.cli_MLDAddr[2],
-                        sta_data->dev_stats.cli_MLDAddr[3],
-                        sta_data->dev_stats.cli_MLDAddr[4],
-                        sta_data->dev_stats.cli_MLDAddr[5],
-                        sta_data->dev_stats.cli_MLDEnable,
-                        sta_data->assoc_link,
-                        sta_data->dev_stats.cli_MaxDownlinkRate,
-                        sta_data->dev_stats.cli_MaxUplinkRate,
-                        sta_data->dev_stats.cli_BytesSent,
-                        sta_data->dev_stats.cli_BytesReceived,
-                        sta_data->dev_stats.cli_PacketsSent,
-                        sta_data->dev_stats.cli_PacketsReceived,
-                        sta_data->dev_stats.cli_ErrorsSent,
-                        sta_data->dev_stats.cli_RetransCount,
-                        sta_data->dev_stats.cli_DataFramesSentAck,
-                        sta_data->dev_stats.cli_SignalStrength,
-                        sta_data->dev_stats.cli_SNR,
-                        sta_data->dev_stats.cli_OperatingStandard,
-                        sta_data->dev_stats.cli_OperatingChannelBandwidth,
-                        sta_data->dev_stats.cli_AuthenticationFailures,
-                        sta_data->dev_stats.cli_AuthenticationState,
-                        sta_data->dev_stats.cli_Active,
-                        sta_data->dev_stats.cli_InterferenceSources,
-                        sta_data->dev_stats.cli_DataFramesSentNoAck,
-                        sta_data->dev_stats.cli_RSSI,
-                        sta_data->dev_stats.cli_MinRSSI,
-                        sta_data->dev_stats.cli_MaxRSSI,
-                        sta_data->dev_stats.cli_Disassociations,
-                        sta_data->dev_stats.cli_Retransmissions);
 
+        if (pos >= buf_size || (buf_size - pos) <= json_trailer_len) {
+            wifi_util_error_print(WIFI_MON,
+                "%s %d Buffer limit reached for vap %d, pos=%u buf_size=%u sta_count=%u\n",
+                __func__, __LINE__, vap_index, pos, buf_size, sta_count);
+            break;
+        }
 
+        remaining = buf_size - pos;
+        sta_count++;
+
+        written = snprintf(&harvester_buf[vap_index][pos], remaining,
+            "{"
+            "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
+            "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
+            "\"MLDEnable\":\"%d\","
+            "\"AssociationLink\":\"%d\","
+            "\"DownlinkDataRate\":\"%d\","
+            "\"UplinkDataRate\":\"%d\","
+            "\"BytesSent\":\"%lu\","
+            "\"BytesReceived\":\"%lu\","
+            "\"PacketsSent\":\"%lu\","
+            "\"PacketsRecieved\":\"%lu\","
+            "\"Errors\":\"%lu\","
+            "\"RetransCount\":\"%lu\","
+            "\"Acknowledgements\":\"%lu\","
+            "\"SignalStrength\":\"%d\","
+            "\"SNR\":\"%d\","
+            "\"OperatingStandard\":\"%s\","
+            "\"OperatingChannelBandwidth\":\"%s\","
+            "\"AuthenticationFailures\":\"%d\","
+            "\"AuthenticationState\":\"%d\","
+            "\"Active\":\"%d\","
+            "\"InterferenceSources\":\"%s\","
+            "\"DataFramesSentNoAck\":\"%lu\","
+            "\"RSSI\":\"%d\","
+            "\"MinRSSI\":\"%d\","
+            "\"MaxRSSI\":\"%d\","
+            "\"Disassociations\":\"%u\","
+            "\"Retransmissions\":\"%u\""
+            "},",
+            sta_data->dev_stats.cli_MACAddress[0], sta_data->dev_stats.cli_MACAddress[1],
+            sta_data->dev_stats.cli_MACAddress[2], sta_data->dev_stats.cli_MACAddress[3],
+            sta_data->dev_stats.cli_MACAddress[4], sta_data->dev_stats.cli_MACAddress[5],
+            sta_data->dev_stats.cli_MLDAddr[0], sta_data->dev_stats.cli_MLDAddr[1],
+            sta_data->dev_stats.cli_MLDAddr[2], sta_data->dev_stats.cli_MLDAddr[3],
+            sta_data->dev_stats.cli_MLDAddr[4], sta_data->dev_stats.cli_MLDAddr[5],
+            sta_data->dev_stats.cli_MLDEnable, sta_data->assoc_link,
+            sta_data->dev_stats.cli_MaxDownlinkRate, sta_data->dev_stats.cli_MaxUplinkRate,
+            sta_data->dev_stats.cli_BytesSent, sta_data->dev_stats.cli_BytesReceived,
+            sta_data->dev_stats.cli_PacketsSent, sta_data->dev_stats.cli_PacketsReceived,
+            sta_data->dev_stats.cli_ErrorsSent, sta_data->dev_stats.cli_RetransCount,
+            sta_data->dev_stats.cli_DataFramesSentAck, sta_data->dev_stats.cli_SignalStrength,
+            sta_data->dev_stats.cli_SNR, sta_data->dev_stats.cli_OperatingStandard,
+            sta_data->dev_stats.cli_OperatingChannelBandwidth,
+            sta_data->dev_stats.cli_AuthenticationFailures,
+            sta_data->dev_stats.cli_AuthenticationState, sta_data->dev_stats.cli_Active,
+            sta_data->dev_stats.cli_InterferenceSources,
+            sta_data->dev_stats.cli_DataFramesSentNoAck, sta_data->dev_stats.cli_RSSI,
+            sta_data->dev_stats.cli_MinRSSI, sta_data->dev_stats.cli_MaxRSSI,
+            sta_data->dev_stats.cli_Disassociations, sta_data->dev_stats.cli_Retransmissions);
+
+        if (written < 0) {
+            wifi_util_error_print(WIFI_MON, "%s %d snprintf failed for vap %d at sta_count=%u\n",
+                __func__, __LINE__, vap_index, sta_count);
+            break;
+        }
+
+        if ((unsigned int)written >= remaining) {
+            wifi_util_error_print(WIFI_MON,
+                "%s %d STA entry truncated for vap %d, stopping serialization pos=%u remaining=%u "
+                "sta_count=%u\n",
+                __func__, __LINE__, vap_index, pos, remaining, sta_count);
+            harvester_buf[vap_index][pos] = '\0';
+            break;
+        }
+        if ((buf_size - (pos + (unsigned int)written)) < json_trailer_len) {
+            wifi_util_error_print(WIFI_MON,
+                "%s %d Not enough space to append JSON trailer for vap %d, stopping serialization "
+                "pos=%u remaining=%u sta_count=%u\n",
+                __func__, __LINE__, vap_index, pos, remaining, sta_count);
+            harvester_buf[vap_index][pos] = '\0';
+            break;
+        }
+        pos += (unsigned int)written;
         sta_data = hash_map_get_next(g_monitor_module.bssid_data[vap_index].sta_map, sta_data);
-
     }
     pthread_mutex_unlock(&g_monitor_module.data_lock);
 
-    if (harvester_buf[vap_index][pos-1] == ',') {
+    if (pos > 0 && harvester_buf[vap_index][pos - 1] == ',') {
         pos--;
     }
 
-    snprintf(&harvester_buf[vap_index][pos], (
-             CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos,"]"
-             "}"
-             "]"
-             "}");
+    if (pos < buf_size) {
+        int trailer_written = snprintf(&harvester_buf[vap_index][pos], buf_size - pos,
+            "]"
+            "}"
+            "]"
+            "}");
+        if (trailer_written < 0) {
+            wifi_util_error_print(WIFI_MON, "%s %d Failed to append JSON trailer for vap %d\n",
+                __func__, __LINE__, vap_index);
+        }
+    } else {
+        wifi_util_error_print(WIFI_MON,
+            "%s %d No space left for JSON trailer for vap %d, pos=%u buf_size=%u\n", __func__,
+            __LINE__, vap_index, pos, buf_size);
+    }
 
     wifi_util_dbg_print(WIFI_MON, "%s %d pos : %u Buffer for vap %d updated as %s\n", __func__, __LINE__, pos, vap_index, harvester_buf[vap_index]);
     return RETURN_OK;
@@ -1532,6 +1566,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_Disassociations = sta_data->dev_stats.cli_Disassociations;
     assoc_dev_data->dev_stats.cli_AuthenticationFailures = sta_data->dev_stats.cli_AuthenticationFailures;
     assoc_dev_data->dev_stats.cli_activeNumSpatialStreams = sta_data->dev_stats.cli_activeNumSpatialStreams;
+    assoc_dev_data->dev_stats.cli_capableNumSpatialStreams = sta_data->dev_stats.cli_capableNumSpatialStreams;
     assoc_dev_data->dev_stats.cli_PacketsSent = sta_data->dev_stats.cli_PacketsSent;
     assoc_dev_data->dev_stats.cli_PacketsReceived = sta_data->dev_stats.cli_PacketsReceived;
     assoc_dev_data->dev_stats.cli_ErrorsSent = sta_data->dev_stats.cli_ErrorsSent;
@@ -3992,6 +4027,59 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     return 0;
 }
 
+int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short ether_type)
+{
+    mac_address_t sta_mac;
+    assoc_dev_data_t assoc_data;
+    char cli_ip_str[IP_STR_LEN] = { 0 };
+    char cli_interface_str[IFNAMSIZ] = { 0 };
+    const int reason = WLAN_REASON_PREV_AUTH_NOT_VALID;
+
+    if (src_mac == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d input mac is NULL for ap_index:%d\n",
+            __func__, __LINE__, ap_index);
+        return RETURN_ERR;
+    }
+
+    if (active_sta_connection_status(ap_index, src_mac) == false) {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d: [FC_WEP] client[%s] not active on ap:%d - ignoring\n",
+            __func__, __LINE__, src_mac, ap_index);
+        return RETURN_OK;
+    }
+
+    str_to_mac_bytes(src_mac, sta_mac);
+
+     /* Only force a disassoc when the STA has no IPv4 yet, where the
+      * unprotected frames are blocking DHCP from ever succeeding. */
+    if (csi_getClientIpAddress(src_mac, cli_ip_str, cli_interface_str, 1) == 0 &&
+        cli_ip_str[0] != '\0') {
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d: [FC_WEP] client[%s] has IPv4 %s on %s - no action\n",
+            __func__, __LINE__, src_mac, cli_ip_str, cli_interface_str);
+        return RETURN_OK;
+    }
+
+    wifi_util_info_print(WIFI_MON,
+        "%s:%d: [FC_WEP] client[%s] on ap:%d (ethertype:0x%04x) has no IPv4 - "
+        "queueing disassoc\n",
+        __func__, __LINE__, src_mac, ap_index, ether_type);
+
+    memset(&assoc_data, 0, sizeof(assoc_data));
+    assoc_data.ap_index = ap_index;
+    assoc_data.reason = reason;
+    memcpy(assoc_data.dev_stats.cli_MACAddress, sta_mac, sizeof(mac_address_t));
+    if (push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data),
+            wifi_event_type_command, wifi_event_type_command_frame_drop_unenc, NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON,
+            "%s:%d: [FC_WEP] failed to queue disassoc for client[%s] on ap:%d\n",
+            __func__, __LINE__, src_mac, ap_index);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
 void notify_radius_endpoint_change(radius_fallback_and_failover_data_t *radius_data)
 {
     wifi_vap_security_t *vapSecurity = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(radius_data->apIndex);
@@ -4755,6 +4843,7 @@ int init_wifi_monitor()
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
+    wifi_hal_apFrameDropUnencrypted_callback_register(device_frame_drop_unencrypted);
     wifi_hal_ap_max_client_rejection_callback_register(device_max_client_rejection);
     wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
@@ -5122,8 +5211,15 @@ int collector_postpone_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
+    bool channel_change_in_progress = false;
 
-    if ((mon_data->scan_status[elem->args->radio_index] == 1 || mgr->channel_change_in_progress[elem->args->radio_index] == true) && (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    channel_change_in_progress = mgr->channel_change_in_progress[elem->args->radio_index];
+    pthread_mutex_unlock(&mgr->data_cache_lock);
+
+    if ((mon_data->scan_status[elem->args->radio_index] == 1 ||
+            channel_change_in_progress == true) &&
+            (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
         wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
         scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
         elem->collector_postpone_task_sched_id = id;
@@ -5148,10 +5244,16 @@ int collector_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     wifi_mgr_t *mgr = get_wifimgr_obj();
     int id = elem->collector_postpone_task_sched_id;
+    bool channel_change_in_progress = false;
+
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    channel_change_in_progress = mgr->channel_change_in_progress[elem->args->radio_index];
+    pthread_mutex_unlock(&mgr->data_cache_lock);
 
     if (elem->stat_desc->stats_type == mon_stats_type_radio_channel_stats || 
             elem->stat_desc->stats_type == mon_stats_type_neighbor_stats) {
-        if (mon_data->scan_status[elem->args->radio_index] == 1 || mgr->channel_change_in_progress[elem->args->radio_index] == true) {
+        if (mon_data->scan_status[elem->args->radio_index] == 1 ||
+            channel_change_in_progress == true) {
             if (elem->collector_postpone_task_sched_id == 0) {
                 wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
                 scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
