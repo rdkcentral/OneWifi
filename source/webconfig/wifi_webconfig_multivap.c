@@ -398,8 +398,16 @@ webconfig_error_t decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
                 radio_index, vap_array_index);
             continue;
         }
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n", __func__,
-            __LINE__, radio_index, name, cJSON_Print(obj_vap));
+        str = cJSON_Print(obj_vap);
+        if (str != NULL) {
+            json_param_obscure(str, "Passphrase");
+            json_param_obscure(str, "RadiusSecret");
+            json_param_obscure(str, "SecondaryRadiusSecret");
+            json_param_obscure(str, "DasSecret");
+        }
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n",
+            __func__, __LINE__, radio_index, name, (str != NULL) ? str : "");
+        cJSON_free(str);
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         memset(vap_info, 0, sizeof(wifi_vap_info_t));
