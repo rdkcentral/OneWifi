@@ -6389,8 +6389,9 @@ webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
 
     sta_data->data = (unsigned char *)malloc(sta_data->data_len);
     if (sta_data->data == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to allocate %u bytes for report data\n",
-            __func__, __LINE__, sta_data->data_len);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: failed to allocate %u bytes for report data\n", __func__, __LINE__,
+            sta_data->data_len);
         return webconfig_error_decode;
     }
 

@@ -24,8 +24,6 @@
 #include "wifi_hal.h"
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
-#include "common/ieee802_11_defs.h"
-#include "utils/common.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -3055,8 +3053,8 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
     return RETURN_OK;
 }
 
-static int em_process_beacon_rep(mac_address_t sta_mac, wifi_hal_rrm_report_t *rep,
-    wifi_app_t *app, const struct ieee80211_mgmt *mgmt, size_t len, int ap_index)
+static int em_process_beacon_rep(mac_address_t sta_mac, wifi_hal_rrm_report_t *rep, wifi_app_t *app,
+    const struct ieee80211_mgmt *mgmt, size_t len, int ap_index)
 {
     sta_beacon_report_reponse_t report;
     size_t data_len;
@@ -3070,25 +3068,24 @@ static int em_process_beacon_rep(mac_address_t sta_mac, wifi_hal_rrm_report_t *r
 
     data_len = len - IEEE80211_HDRLEN - 1 - sizeof(mgmt->u.action.u.rrm);
     if (data_len == 0 || data_len > MAX_FRAME_SZ) {
-        wifi_util_error_print(WIFI_EM,
-            "%s:%d invalid beacon report data_len=%zu (max=%d)\n",
+        wifi_util_error_print(WIFI_EM, "%s:%d invalid beacon report data_len=%zu (max=%d)\n",
             __func__, __LINE__, data_len, MAX_FRAME_SZ);
         return -1;
     }
     report.data = (unsigned char *)malloc(data_len);
     if (report.data == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d failed to allocate %zu bytes for beacon report data\n",
-            __func__, __LINE__, data_len);
+        wifi_util_error_print(WIFI_EM,
+            "%s:%d failed to allocate %zu bytes for beacon report data\n", __func__, __LINE__,
+            data_len);
         return -1;
     }
     report.data_len = data_len;
     memcpy(report.data, mgmt->u.action.u.rrm.variable, data_len);
 
     to_mac_str(sta_mac, mac_str);
-    wifi_util_dbg_print(WIFI_EM, "%s:%d forwarding beacon report: sta=%s ap_index=%d num_reports=%zu data_len=%u\n",
-        __func__, __LINE__,
-        mac_str,
-        ap_index, rep->size, report.data_len);
+    wifi_util_dbg_print(WIFI_EM,
+        "%s:%d forwarding beacon report: sta=%s ap_index=%d num_reports=%zu data_len=%u\n",
+        __func__, __LINE__, mac_str, ap_index, rep->size, report.data_len);
 
     int rc = em_beacon_report_publish(&app->ctrl->handle, &report);
     free(report.data);
@@ -3497,7 +3494,8 @@ static int em_send_action_frame(void *data)
         }
 
         for (int j = 0; j < vap_map->num_vaps; j++) {
-            if (memcmp(params->bssid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) == 0) {
+            if (memcmp(params->bssid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) ==
+                0) {
                 ap_index = vap_map->vap_array[j].vap_index;
                 break;
             }
@@ -3510,23 +3508,25 @@ static int em_send_action_frame(void *data)
 
     to_mac_str((unsigned char *)query->sta_mac, client_mac);
     to_mac_str((unsigned char *)params->bssid, bssid_str);
-    wifi_util_dbg_print(WIFI_EM, "%s:%d: Sending beacon query action frame for mac %s with ap_index %d bssid:%s\n", __func__, __LINE__,
-        client_mac, ap_index, bssid_str);
+    wifi_util_dbg_print(WIFI_EM,
+        "%s:%d: Sending beacon query action frame for mac %s with ap_index %d bssid:%s\n", __func__,
+        __LINE__, client_mac, ap_index, bssid_str);
     if (ap_index == RETURN_ERR) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Failed to resolve ap_index for bssid:%s\n",
-            __func__, __LINE__, bssid_str);
+        wifi_util_error_print(WIFI_EM, "%s:%d Failed to resolve ap_index for bssid:%s\n", __func__,
+            __LINE__, bssid_str);
         return RETURN_ERR;
     }
 
-    // Override BSSID to wildcard so the STA reports all neighboring BSSes (BSSID is only used for ap_index resolution above).
+    // Override BSSID to wildcard so the STA reports all neighboring BSSes (BSSID is only used for
+    // ap_index resolution above).
     memset(params->bssid, 0xff, sizeof(mac_addr_t));
-    unsigned int radio_index = get_radio_index_for_vap_index(
-        wifi_prop, ap_index);
+    unsigned int radio_index = get_radio_index_for_vap_index(wifi_prop, ap_index);
     wifi_radio_operationParam_t *radio_oper_param =
         (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
 
     if (radio_oper_param == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Unable to get radio params with radio_index:%d\n", __func__, __LINE__, radio_index);
+        wifi_util_error_print(WIFI_EM, "%s:%d Unable to get radio params with radio_index:%d\n",
+            __func__, __LINE__, radio_index);
         return 0;
     }
 
@@ -3538,17 +3538,18 @@ static int em_send_action_frame(void *data)
     op_class = radio_oper_param->operatingClass;
     global_op_class = country_to_global_op_class(country, op_class);
     wifi_util_dbg_print(WIFI_EM,
-        "%s:%d Beacon request opClass:%u channel:%u radio_opClass:%u radio_channel:%u global_radio_opClass:%u\n",
-        __func__, __LINE__, params->opClass, params->channel, op_class,
-        radio_oper_param->channel, global_op_class);
+        "%s:%d Beacon request opClass:%u channel:%u radio_opClass:%u radio_channel:%u "
+        "global_radio_opClass:%u\n",
+        __func__, __LINE__, params->opClass, params->channel, op_class, radio_oper_param->channel,
+        global_op_class);
 
     /* Normalize the controller-supplied opClass to a global op_class first. */
     if (params->opClass != 0) {
         unsigned int normalized = country_to_global_op_class(country, params->opClass);
         if (normalized != params->opClass) {
             wifi_util_dbg_print(WIFI_EM,
-                "%s:%d Normalizing beacon request opClass from %u to global opClass %u\n",
-                __func__, __LINE__, params->opClass, normalized);
+                "%s:%d Normalizing beacon request opClass from %u to global opClass %u\n", __func__,
+                __LINE__, params->opClass, normalized);
             params->opClass = normalized;
         }
     }
@@ -3560,16 +3561,15 @@ static int em_send_action_frame(void *data)
     bool chan_is_2g = (params->channel >= 1 && params->channel <= 14);
     bool opclass_is_2g = (params->opClass >= 81 && params->opClass <= 84);
     bool opclass_is_5g = (params->opClass >= 115 && params->opClass <= 130);
-    bool band_mismatch = (chan_is_2g && opclass_is_5g) ||
-                            (!chan_is_2g && opclass_is_2g) ||
-                            /* op_class not a known global class (e.g. country-local class) */
-                            (params->opClass != 0 && !opclass_is_2g && !opclass_is_5g &&
-                            params->opClass < 131);
+    bool band_mismatch = (chan_is_2g && opclass_is_5g) || (!chan_is_2g && opclass_is_2g) ||
+        /* op_class not a known global class (e.g. country-local class) */
+        (params->opClass != 0 && !opclass_is_2g && !opclass_is_5g && params->opClass < 131);
     if (band_mismatch) {
         wifi_util_dbg_print(WIFI_EM,
-            "%s:%d opClass:%u channel:%u band mismatch, overriding with radio opClass:%u channel:%u\n",
-            __func__, __LINE__, params->opClass, params->channel,
-            global_op_class, radio_oper_param->channel);
+            "%s:%d opClass:%u channel:%u band mismatch, overriding with radio opClass:%u "
+            "channel:%u\n",
+            __func__, __LINE__, params->opClass, params->channel, global_op_class,
+            radio_oper_param->channel);
         params->opClass = global_op_class;
         params->channel = radio_oper_param->channel;
     }
@@ -3587,10 +3587,11 @@ static int em_send_action_frame(void *data)
                 "%s:%d channel=255 with channelReport opClass=%u, STA will scan listed channels\n",
                 __func__, __LINE__, params->opClass);
         } else {
-            params->opClass  = global_op_class;
-            params->channel  = radio_oper_param->channel;
+            params->opClass = global_op_class;
+            params->channel = radio_oper_param->channel;
             wifi_util_dbg_print(WIFI_EM,
-                "%s:%d channel=255 without channelReport, falling back to radio channel=%u opClass=%u\n",
+                "%s:%d channel=255 without channelReport, falling back to radio channel=%u "
+                "opClass=%u\n",
                 __func__, __LINE__, params->channel, params->opClass);
         }
     }
@@ -3606,40 +3607,39 @@ static bus_error_t send_beacon_query(char *event_name, raw_data_t *p_data, void 
     (void)userData;
 
     if (strcmp(event_name, WIFI_EM_BEACON_QUERY) != 0) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Not EasyMesh beacon query event, %s\n", __func__, __LINE__, event_name);
+        wifi_util_error_print(WIFI_EM, "%s:%d Not EasyMesh beacon query event, %s\n", __func__,
+            __LINE__, event_name);
         return bus_error_invalid_namespace;
     }
 
     if (p_data->data_type != bus_data_type_bytes) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: Invalid Received:%s data type:%x\n",
-            __func__, __LINE__, event_name, p_data->data_type);
+        wifi_util_error_print(WIFI_EM, "%s:%d: Invalid Received:%s data type:%x\n", __func__,
+            __LINE__, event_name, p_data->data_type);
         return bus_error_invalid_input;
     }
 
     if (p_data->raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: Invalid Received:%s raw_data.bytes is NULL\n",
-           __func__, __LINE__, event_name);
+            __func__, __LINE__, event_name);
         return bus_error_invalid_input;
     }
 
     if (p_data->raw_data_len < sizeof(beacon_query_params_t)) {
         wifi_util_error_print(WIFI_EM,
-            "%s:%d: Invalid Received:%s raw_data_len:%u expected at least:%zu\n",
-            __func__, __LINE__, event_name, p_data->raw_data_len,
-            sizeof(beacon_query_params_t));
+            "%s:%d: Invalid Received:%s raw_data_len:%u expected at least:%zu\n", __func__,
+            __LINE__, event_name, p_data->raw_data_len, sizeof(beacon_query_params_t));
         return bus_error_invalid_input;
     }
 
     beacon_query_params_t query;
     memcpy(&query, p_data->raw_data.bytes, sizeof(query));
 
-    //now create map for response and send
+    // now create map for response and send
     if (em_send_action_frame(&query) != RETURN_OK) {
         wifi_util_error_print(WIFI_EM, "%s:%d: Failed to send beacon query action frame\n",
             __func__, __LINE__);
         return bus_error_general;
     }
-    
     return bus_error_success;
 }
 
