@@ -38,12 +38,186 @@
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
 #define SSID_MAX_LEN (64)
 #define KEY_MAX_LEN (256)
+#define DEFAULT_MLO_SSID_PREFIX "BPI-RDKB-MLO-AP-"
+#define FRONTHAUL_TEST_PASSPHRASE "test-fronthaul"
+#define TR181_WIFI_SSID_FMT "Device.WiFi.SSID.%u.SSID"
+#define TR181_WIFI_PASSPHRASE_FMT "Device.WiFi.SSID.%u.Security.KeyPassphrase"
+#define TR181_WIFI_ACCESSPOINT_PASSPHRASE_FMT "Device.WiFi.AccessPoint.%u.Security.KeyPassphrase"
+#define EM_NETWORK_SSID_FMT "Device.WiFi.DataElements.Network.SSID.%u.SSID"
+#define EM_NETWORK_PASSPHRASE_FMT "Device.WiFi.DataElements.Network.SSID.%u.Security.KeyPassphrase"
+
+
+
 bool is_sta_set = false;
 struct ow_conf_vif_config_cb_arg
 {
     rdk_wifi_vap_info_t *rdk_vap_info;
     wifi_vap_info_t *vap_info;
 };
+
+static bool is_default_mlo_ssid(const char *ssid)
+{
+    if (ssid == NULL) {
+        return false;
+    }
+
+    return (strncmp(ssid, DEFAULT_MLO_SSID_PREFIX, strlen(DEFAULT_MLO_SSID_PREFIX)) == 0);
+}
+
+static bool get_fronthaul_ssid_from_rbus(unsigned int idx, char *ssid, size_t ssid_len)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    bus_error_t rc;
+    raw_data_t data;
+    char params[2][128];
+    size_t i;
+
+    if ((mgr == NULL) || (ssid == NULL) || (ssid_len == 0)) {
+        return false;
+    }
+
+    memset(params, 0, sizeof(params));
+    snprintf(params[0], sizeof(params[0]), TR181_WIFI_SSID_FMT, idx);
+    snprintf(params[1], sizeof(params[1]), EM_NETWORK_SSID_FMT, idx);
+
+    for (i = 0; i < (sizeof(params) / sizeof(params[0])); i++) {
+        memset(&data, 0, sizeof(data));
+        rc = get_bus_descriptor()->bus_data_get_fn(&mgr->ctrl.handle, params[i], &data);
+        if ((rc == bus_error_success) && (data.data_type == bus_data_type_string) &&
+            (data.raw_data.bytes != NULL) && (((char *)data.raw_data.bytes)[0] != '\0')) {
+            snprintf(ssid, ssid_len, "%s", (char *)data.raw_data.bytes);
+            get_bus_descriptor()->bus_data_free_fn(&data);
+            return true;
+        }
+
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d failed to read SSID from %s rc:%d type:0x%x\n", __func__, __LINE__,
+            params[i], rc, data.data_type);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+    }
+
+    return false;
+}
+
+static bool get_fronthaul_passphrase_from_rbus(unsigned int idx, char *passphrase, size_t passphrase_len)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    bus_error_t rc;
+    raw_data_t data;
+    char params[3][256];
+    size_t i;
+
+    if ((mgr == NULL) || (passphrase == NULL) || (passphrase_len == 0)) {
+        return false;
+    }
+
+    memset(params, 0, sizeof(params));
+    snprintf(params[0], sizeof(params[0]), TR181_WIFI_PASSPHRASE_FMT, idx);
+    snprintf(params[1], sizeof(params[1]), TR181_WIFI_ACCESSPOINT_PASSPHRASE_FMT, idx);
+    snprintf(params[2], sizeof(params[2]), EM_NETWORK_PASSPHRASE_FMT, idx);
+
+    for (i = 0; i < (sizeof(params) / sizeof(params[0])); i++) {
+        memset(&data, 0, sizeof(data));
+        rc = get_bus_descriptor()->bus_data_get_fn(&mgr->ctrl.handle, params[i], &data);
+        if ((rc == bus_error_success) && (data.data_type == bus_data_type_string) &&
+            (data.raw_data.bytes != NULL) && (((char *)data.raw_data.bytes)[0] != '\0')) {
+            snprintf(passphrase, passphrase_len, "%s", (char *)data.raw_data.bytes);
+            get_bus_descriptor()->bus_data_free_fn(&data);
+            return true;
+        }
+
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d failed to read passphrase from %s rc:%d type:0x%x\n", __func__, __LINE__,
+            params[i], rc, data.data_type);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+    }
+
+    return false;
+}
+
+static void normalize_fronthaul_ssid_from_vap_name(wifi_vap_info_t *vap_info)
+{
+    int copied_len;
+    int key_copied_len;
+    const char *target_ssid = NULL;
+    char resolved_ssid[sizeof(vap_info->u.bss_info.ssid)] = {0};
+    char resolved_passphrase[sizeof(vap_info->u.bss_info.security.u.key.key)] = {0};
+
+    if (vap_info == NULL) {
+        return;
+    }
+
+    if (isVapSTAMesh(vap_info->vap_index)) {
+        return;
+    }
+
+    if (!isVapPrivate(vap_info->vap_index) && !isVapXhs(vap_info->vap_index)) {
+        return;
+    }
+
+    if (!is_default_mlo_ssid(vap_info->u.bss_info.ssid)) {
+        return;
+    }
+
+    if (isVapPrivate(vap_info->vap_index)) {
+        if (get_fronthaul_ssid_from_rbus(vap_info->vap_index + 1, resolved_ssid,
+                sizeof(resolved_ssid))) {
+            wifi_util_info_print(WIFI_CTRL,
+                "DML_TRACE:%s:%d private vap=%s vap_index=%u SSID fetched from RBUS:%s\n",
+                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index, resolved_ssid);
+            target_ssid = resolved_ssid;
+        } else {
+            wifi_util_info_print(WIFI_CTRL,
+                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS SSID fetch failed, using fallback\n",
+                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index);
+            target_ssid = "private_ssid";
+        }
+
+        if (get_fronthaul_passphrase_from_rbus(vap_info->vap_index + 1, resolved_passphrase,
+                sizeof(resolved_passphrase))) {
+            wifi_util_info_print(WIFI_CTRL,
+                "DML_TRACE:%s:%d private vap=%s vap_index=%u passphrase fetched from RBUS:%s\n",
+                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index, resolved_passphrase);
+            key_copied_len = snprintf(vap_info->u.bss_info.security.u.key.key,
+                sizeof(vap_info->u.bss_info.security.u.key.key), "%s", resolved_passphrase);
+        } else {
+            wifi_util_info_print(WIFI_CTRL,
+                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS passphrase fetch failed, using fallback\n",
+                  __func__, __LINE__, vap_info->vap_name, vap_info->vap_index);
+            key_copied_len = snprintf(vap_info->u.bss_info.security.u.key.key,
+                sizeof(vap_info->u.bss_info.security.u.key.key), "%s", FRONTHAUL_TEST_PASSPHRASE);
+        }
+
+        if (key_copied_len < 0 ||
+            (size_t)key_copied_len >= sizeof(vap_info->u.bss_info.security.u.key.key)) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: failed to normalize passphrase for vap:%s\n", __func__, __LINE__,
+                vap_info->vap_name);
+            return;
+        }
+
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d: normalized passphrase for private vap:%s\n", __func__, __LINE__,
+            vap_info->vap_name);
+    } else if (isVapXhs(vap_info->vap_index)) {
+        target_ssid = "iot_ssid";
+    }
+
+    if (target_ssid == NULL) {
+        return;
+    }
+
+    copied_len = snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s",
+        target_ssid);
+    if (copied_len < 0 || (size_t)copied_len >= sizeof(vap_info->u.bss_info.ssid)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to normalize SSID for vap:%s\n",
+            __func__, __LINE__, vap_info->vap_name);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: normalized SSID for vap:%s to:%s\n", __func__,
+        __LINE__, vap_info->vap_name, vap_info->u.bss_info.ssid);
+}
 
 void print_wifi_hal_radio_data(wifi_dbg_type_t log_file_type, char *prefix, unsigned int radio_index, wifi_radio_operationParam_t *radio_config)
 {
@@ -935,7 +1109,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         if (found_target == false) {
             continue;
         }
-
+        normalize_fronthaul_ssid_from_vap_name(vap_info);
         found_target = false;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
         // STA BSSID change is handled by event to avoid disconnection.
