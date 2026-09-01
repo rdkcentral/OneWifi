@@ -1388,6 +1388,7 @@ static bus_error_t bus_data_get(bus_handle_t *handle, char const *name, raw_data
            if (data->raw_data.bytes == NULL) {
                wifi_util_error_print(WIFI_BUS, "%s:%d: bus: memory alloc is failed:%d for name:%s\n",
                    __func__, __LINE__, len, name);
+               rbusValue_Release(value);
                return bus_error_out_of_resources;
            }
            memcpy(data->raw_data.bytes, ptr, len);
@@ -1677,11 +1678,13 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
         prop = rbusObject_GetProperties(outParams);
         if (prop == NULL) {
             wifi_util_error_print(WIFI_BUS, "%s %d prop is NULL\n", __func__, __LINE__);
+	    rbusObject_Release(outParams);
 	    return bus_error_general;
         }
         value = rbusProperty_GetValue(prop);
         if (value == NULL) {
             wifi_util_error_print(WIFI_BUS, "%s %d value is NULL\n", __func__, __LINE__);
+	    rbusObject_Release(outParams);
 	    return bus_error_general;
         }
         switch (output_data->data_type) {
@@ -1722,6 +1725,7 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
         if (output_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_BUS, "%s:%d: bus: memory alloc is failed:%d for name:%s\n", 
 	        __func__, __LINE__, len, event);
+              rbusObject_Release(outParams);
            return bus_error_out_of_resources;
         }
         memcpy(output_data->raw_data.bytes, ptr, len);
