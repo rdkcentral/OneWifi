@@ -57,53 +57,6 @@ typedef uint8_t mac_address_t[MAC_ADDRESS_LEN];
 
 #define CTRL_CAP_SZ 8
 
-#if 0
-typedef struct {
-    void *data;
-} multiap_data_t;
-
-
-typedef enum {
-    multiap_msg_type_autoconf_search = 0x0007,
-    multiap_msg_type_autoconf_resp = 0x0008,
-} multiap_msg_type_t;
-
-
-typedef char multiap_short_string_t[64];
-typedef unsigned char multiap_enum_type_t;
-
-typedef struct {
-    mac_address_t dst;
-    mac_address_t src;
-    unsigned short type;
-} __attribute__((__packed__)) multiap_raw_hdr_t;
-
-
-typedef struct {
-    unsigned char type;
-    unsigned short len;
-    unsigned char value[0];
-} __attribute__((__packed__)) multiap_tlv_t;
-
-
-typedef struct {
-    unsigned char ver;
-    unsigned char reserved;
-    unsigned short type;
-    unsigned short id;
-    unsigned char frag_id;
-    unsigned char reserved_field : 6;
-    unsigned char relay_ind : 1;
-    unsigned char last_frag_ind : 1;
-} __attribute__((__packed__)) multiap_cmdu_t;
-
-
-typedef enum {
-    multiap_tlv_type_eom = 0,
-    multiap_tlv_type_lq = 6,
-    multiap_tlv_type_searched_role =0x0d,
-} multiap_tlv_type_t;
-#endif
 
 #ifdef __cplusplus
 }

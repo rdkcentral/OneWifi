@@ -56,15 +56,6 @@ typedef struct {
     unsigned int reporting;
 } server_arg_t;
 
-/* ext_qualitymgr_type — set by _ext stubs on Extender, read by run_gateway_thread on GW */
-typedef enum {
-    ext_qualitymgr_add_stats,
-    ext_qualitymgr_periodic_caffinity,
-    ext_qualitymgr_disconnect_link_stats,
-    ext_qualitymgr_remove_link_stats,
-    ext_qualitymgr_lq_affinity,
-
-} ext_qualitymgr_type_t;
 
 typedef struct {
     unsigned int  pkt_sent;

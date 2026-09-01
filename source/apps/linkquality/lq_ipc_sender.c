@@ -81,7 +81,7 @@ static void lq_ipc_log_stats_entries(uint32_t msg_type, const void *entries,
 
     const stats_arg_t *s = (const stats_arg_t *)entries;
     for (uint32_t i = 0; i < count; i++) {
-        wifi_util_info_print(WIFI_APPS,
+        wifi_util_dbg_print(WIFI_APPS,
             "%s [IPC-SEND] %s [%u/%u] MAC=%s status_code=%u event=%d "
             "conn_time=%llds disconn_time=%llds snr=%d vap=%u radio=%u\n",
             __func__, lq_msg_type_str(msg_type), i + 1, count,
@@ -93,7 +93,7 @@ static void lq_ipc_log_stats_entries(uint32_t msg_type, const void *entries,
         /* CONN-STATUS trace: log every event that can change connected state */
         if (msg_type == LQ_IPC_MSG_CAFFINITY_EVENT || msg_type == LQ_IPC_MSG_DISCONNECT
                 || msg_type == LQ_IPC_MSG_RAPID_DISCONNECT || msg_type == LQ_IPC_MSG_PERIODIC_STATS) {
-            wifi_util_info_print(WIFI_APPS,
+            wifi_util_dbg_print(WIFI_APPS,
                 "CONN-STATUS [SEND] MAC=%s msg=%s event=%d status_code=%u "
                 "conn_time=%llds disconn_time=%llds\n",
                 s[i].mac_str, lq_msg_type_str(msg_type), s[i].event, s[i].status_code,
@@ -150,11 +150,6 @@ static int build_tlv(uint32_t msg_type, const void *entries,
 int lq_ipc_send(uint32_t msg_type, const void *entries,
                 uint32_t count, size_t entry_size)
 {
-    wifi_util_info_print(WIFI_APPS,
-        "%s:%d [IPC-SEND] msg_type=%s(%u) count=%u entry_size=%zu\n",
-        __func__, __LINE__, lq_msg_type_str(msg_type), msg_type,
-        count, entry_size);
-
     /* Log per-entry details for stats_arg_t messages */
     if (msg_type !=  LQ_IPC_MSG_REGISTER_STA || msg_type !=  LQ_IPC_MSG_UNREGISTER_STA 
      || msg_type !=  LQ_IPC_MSG_REINIT_METRICS )
@@ -228,7 +223,7 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
         }
 
         int err = errno;
-        wifi_util_error_print(WIFI_APPS,
+        wifi_util_dbg_print(WIFI_APPS,
             "%s:%d [IPC-SEND] sendto(%s) failed: %s (attempt %d)\n",
             __func__, __LINE__, LQ_STATS_SOCKET_PATH, strerror(err), attempt + 1);
 

@@ -91,8 +91,6 @@ extern "C" {
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
-/* Device.WiFi.EndPoint.1.LinkQualityStatus is owned and published by the WEI
- * daemon (WEI_IGNITE_STATUS in wei/include/wei_bus_handlers.h). */
 #define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
 #define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
 

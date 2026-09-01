@@ -124,37 +124,6 @@ static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_
     }
     return ret;
 }
-#if 0
-static uint32_t quality_flags_to_mask(const quality_flags_t* f)
-{
-    uint32_t mask = 0;
-
-    if(f->downlink_snr) mask |= LINKQ_DL_SNR;
-    if(f->downlink_per) mask |= LINKQ_DL_PER;
-    if(f->downlink_phy) mask |= LINKQ_DL_PHY;
-    if(f->uplink_snr)   mask |= LINKQ_UL_SNR;
-    if(f->uplink_per)   mask |= LINKQ_UL_PER;
-    if(f->uplink_phy)   mask |= LINKQ_UL_PHY;
-    if(f->aggregate)    mask |= LINKQ_AGGREGATE;
-    if(f->int_reconn)   mask |= LINKQ_INT_RECONN;
-
-    return mask;
-}
-
-static void mask_to_quality_flags(uint32_t mask, quality_flags_t* f)
-{
-    memset(f, 0, sizeof(*f));
-
-    f->downlink_snr = mask & LINKQ_DL_SNR;
-    f->downlink_per = mask & LINKQ_DL_PER;
-    f->downlink_phy = mask & LINKQ_DL_PHY;
-    f->uplink_snr   = mask & LINKQ_UL_SNR;
-    f->uplink_per   = mask & LINKQ_UL_PER;
-    f->uplink_phy   = mask & LINKQ_UL_PHY;
-    f->aggregate    = mask & LINKQ_AGGREGATE;
-    f->int_reconn   = mask & LINKQ_INT_RECONN;
-}
-#endif
 
 static inline double hotspot_timing_elapsed_sec(const struct timespec *start,
                                                 const struct timespec *end)

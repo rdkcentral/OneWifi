@@ -42,7 +42,7 @@
 /* CAFFINITY_EVENT (msg_type 4) – HAL/DHCP events for caffinity scoring */
 static int periodic_caffinity_stats_update_impl(stats_arg_t *stats, int len)
 {
-    wifi_util_info_print(WIFI_APPS,"%s:%d vap_index =%d\n",__func__,__LINE__,
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d vap_index =%d\n",__func__,__LINE__,
     stats->vap_index);
     int rc = lq_ipc_send(LQ_IPC_MSG_CAFFINITY_EVENT, stats,
                          (uint32_t)len, sizeof(stats_arg_t));
@@ -73,8 +73,6 @@ static void unregister_station_mac_impl(const char *str)
 /* RAPID_DISCONNECT (msg_type 3) – rapid connect/disconnect detection */
 static int disconnect_link_stats_impl(stats_arg_t *stats)
 {
-    wifi_util_info_print(WIFI_APPS,"%s:%d vap_index =%d\n",__func__,__LINE__,
-    stats->vap_index);
     int rc = lq_ipc_send(LQ_IPC_MSG_RAPID_DISCONNECT, stats, 1,
                          sizeof(stats_arg_t));
     wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->RAPID_DISCONNECT] lq_ipc_send rc=%d\n",
@@ -95,8 +93,6 @@ static int reinit_link_metrics_impl(server_arg_t *arg)
 /* DISCONNECT (msg_type 2) – client permanently left sta_map */
 static int remove_link_stats_impl(stats_arg_t *stats)
 {
-    wifi_util_info_print(WIFI_APPS,"%s:%d vap_index =%d\n",__func__,__LINE__,
-    stats->vap_index);
 
     int rc = lq_ipc_send(LQ_IPC_MSG_DISCONNECT, stats, 1,sizeof(stats_arg_t));
     wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->DISCONNECT] lq_ipc_send rc=%d\n",
@@ -123,7 +119,7 @@ static int process_lq_stats_impl(stats_arg_t *stats, int len)
 #define LQ_IPC_BATCH_SIZE 16
 
     for (int i = 0; i < len; i++) {
-        wifi_util_info_print(WIFI_APPS,
+        wifi_util_dbg_print(WIFI_APPS,
             "%s:%d  [%d] MAC=%s snr=%d vap=%u status_code=%u "
             "conn_time=%llds disconn_time=%llds\n",
             __func__, __LINE__, i,
@@ -144,7 +140,7 @@ static int process_lq_stats_impl(stats_arg_t *stats, int len)
         }
         offset += chunk;
     }
-    wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->PERIODIC_STATS] total=%d batches=%d rc=%d\n",
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d [IPC->PERIODIC_STATS] total=%d batches=%d rc=%d\n",
         __func__, __LINE__, len, (len + LQ_IPC_BATCH_SIZE - 1) / LQ_IPC_BATCH_SIZE, rc);
     return rc;
 }

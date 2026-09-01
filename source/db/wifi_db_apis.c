@@ -4825,7 +4825,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_rfc_dml_parameters_t rfc_config = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    wifi_util_info_print(WIFI_DB," %s:%d\n",__func__,__LINE__);
     rfc_config.wifipasspoint_rfc = false;
     rfc_config.wifiinterworking_rfc = false;
     rfc_config.radiusgreylist_rfc = false;
@@ -4867,7 +4866,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
-    wifi_util_info_print(WIFI_DB," %s:%d\n",__func__,__LINE__);
 
 }
 
@@ -8241,7 +8239,7 @@ void wifidb_init_default_value()
     wifidb_reset_macfilter_hashmap();
     wifidb_init_gas_config_default(&g_wifidb->global_config.gas_config);
     wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
-    wifi_util_info_print(WIFI_DB,"%s:%d Pramod Wifi db update completed\n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
 

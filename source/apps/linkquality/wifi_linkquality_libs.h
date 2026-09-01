@@ -20,17 +20,10 @@
 #ifndef WIFI_LINKQUALITY_LIBS_H
 #define WIFI_LINKQUALITY_LIBS_H
 #include "run_qmgr.h"
-#define ETH_P_1905 0x893a
 #ifdef __cplusplus
   extern "C" {
  #endif
  
- typedef struct {
-    int len;
-    ext_qualitymgr_type_t ext_event_type;
-    stats_arg_t stats[];
-} qmgr_packet_t;
-
 typedef int (* periodic_caffinity_stats_update_t)(stats_arg_t *stats,int len);
 typedef void (* register_station_mac_t)(const char *str);
 typedef void (* unregister_station_mac_t)(const char *str);
