@@ -3052,12 +3052,13 @@ webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_d
         return webconfig_error_encode;
     }
 
-    if (sta_data->data_len == 0 || sta_data->data == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
+    if (sta_data->data_len == 0 || sta_data->data == NULL || sta_data->data_len > MAX_FRAME_SZ) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid Report Data (len=%u)\n", __func__,
+            __LINE__, sta_data->data_len);
         return webconfig_error_encode;
     }
 
-    size_t hex_buf_len = sta_data->data_len * 2 + 1;
+    size_t hex_buf_len = (size_t)sta_data->data_len * 2 + 1;
     char *assoc_frame_string = (char *)malloc(hex_buf_len);
     if (assoc_frame_string == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to allocate hex buffer\n", __func__,

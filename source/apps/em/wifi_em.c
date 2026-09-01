@@ -24,6 +24,7 @@
 #include "wifi_hal.h"
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
+#include "common/ieee802_11_defs.h"
 #include <stdbool.h>
 #include <stdint.h>
 
