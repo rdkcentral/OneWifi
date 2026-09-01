@@ -55,7 +55,7 @@ static void register_station_mac_impl(const char *str)
 
     size_t slen = strlen(str) + 1;
     int rc = lq_ipc_send(LQ_IPC_MSG_REGISTER_STA, str, 1, slen);
-    wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->UNREGISTER_STA] lq_ipc_send rc=%d\n",
+    wifi_util_info_print(WIFI_APPS,"%s:%d [IPC->REGISTER_STA] lq_ipc_send rc=%d\n",
         __func__, __LINE__, rc);
 
 }
