@@ -3060,7 +3060,8 @@ webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_d
     size_t hex_buf_len = sta_data->data_len * 2 + 1;
     char *assoc_frame_string = (char *)malloc(hex_buf_len);
     if (assoc_frame_string == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to allocate hex buffer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to allocate hex buffer\n", __func__,
+            __LINE__);
         return webconfig_error_encode;
     }
     memset(assoc_frame_string, 0, hex_buf_len);

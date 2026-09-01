@@ -2752,7 +2752,8 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
 
     proto = (webconfig_external_easymesh_t *)params->external_protos;
     if (proto == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__,
+            __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
 
@@ -2781,7 +2782,7 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
 
     if (params->sta_beacon_report.data != NULL && params->sta_beacon_report.data_len > 0) {
         memcpy(em_sta_dev_info.beacon_report_elem, params->sta_beacon_report.data,
-               params->sta_beacon_report.data_len);
+            params->sta_beacon_report.data_len);
     }
 
     proto->put_sta_info(proto->data_model, &em_sta_dev_info, em_target_sta_map_consolidated);
