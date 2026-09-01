@@ -37,6 +37,7 @@ extern "C" {
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
 #define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
 #define WIFI_EM_FAILED_CONNECTION             "Device.WiFi.EM.FailedConnection"
+#define WIFI_EM_WEI_DATA                      "Device.WiFi.EM.WEIData"
 
 #define WNM_CATEGORY               10
 #define IEEE80211_HDRLEN           24
@@ -92,6 +93,7 @@ typedef enum {
     em_app_event_type_neighbor_stats,
     em_app_event_type_ap_metrics_rad_chan_stats,
     em_app_event_type_assoc_dev_stats_periodic,
+    em_app_event_type_wei_data,
     em_app_event_type_vap_stats_periodic,
 
     em_app_event_type_max
