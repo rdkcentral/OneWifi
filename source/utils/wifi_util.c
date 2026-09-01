@@ -37,6 +37,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
+#include <semaphore.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 /* enable PID in debug logs */
@@ -351,12 +355,35 @@ void write_to_file(const char *file_name, char *fmt, ...)
 {
     FILE *fp = NULL;
     va_list args;
+    static const char *sem_name = "/tmp/wifi_health_log_sem";
+    sem_t *sem = sem_open(sem_name, O_CREAT, 0666, 1);
+    if (sem == SEM_FAILED) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d sem_open failed errno=%d\n",
+            __func__, __LINE__, errno);
+        return;
+    }
+     while (sem_wait(sem) == -1) {
+        if (errno == EINTR)
+            continue;
+
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d sem_wait failed errno=%d\n",
+            __func__, __LINE__, errno);
+
+        sem_close(sem);
+        return;
+    }
+
+
 
     fp = fopen(file_name, "a+");
 
     if (fp == NULL) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, open file_name: %s\n",__func__, __LINE__, file_name);
-        return;
+        sem_post(sem);
+        sem_close(sem);
+	return;
     }
 
     va_start(args, fmt);
@@ -365,6 +392,8 @@ void write_to_file(const char *file_name, char *fmt, ...)
 
     fflush(fp);
     fclose(fp);
+    sem_post(sem);
+    sem_close(sem);
 }
 
 void copy_string(char*  destination, char*  source)
