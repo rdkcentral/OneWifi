@@ -20536,6 +20536,7 @@ InterworkingService_SetParamStringValue
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid json for vap %s\n", __FUNCTION__,__LINE__,pcfg->vap_name);
                 return FALSE;
             }
+            cJSON_Delete(p_root);
             if (strnlen(pString, sizeof(vapInfo->u.bss_info.interworking.anqp.anqpParameters)) < sizeof(vapInfo->u.bss_info.interworking.anqp.anqpParameters))
             {
                 AnscCopyString((char*)vapInfo->u.bss_info.interworking.anqp.anqpParameters,(char*)pString);
@@ -20827,6 +20828,8 @@ Passpoint_SetParamBoolValue
             CcspTraceWarning(("Cannot Enable Passpoint. RFC Disabled\n"));
             return FALSE;
         }
+        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        strValue = NULL;
 
         if(false == vapInfo->u.bss_info.interworking.interworking.interworkingEnabled){
             CcspTraceWarning(("Cannot Enable Passpoint. Interworking Disabled\n"));
@@ -20908,6 +20911,7 @@ Passpoint_SetParamStringValue
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid json for vap %s\n", __FUNCTION__,__LINE__,pcfg->vap_name);
                 return FALSE;
             }
+            cJSON_Delete(p_root);
             if (strnlen(pString, sizeof(vapInfo->u.bss_info.interworking.passpoint.hs2Parameters)) < sizeof(vapInfo->u.bss_info.interworking.passpoint.hs2Parameters))
             {
                 AnscCopyString((char*)vapInfo->u.bss_info.interworking.passpoint.hs2Parameters,pString);
@@ -20915,7 +20919,6 @@ Passpoint_SetParamStringValue
             else
             {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Input string too long for vap %s\n", __FUNCTION__, __LINE__, pcfg->vap_name);
-                cJSON_Delete(p_root);
                 return FALSE;
             }
 	    set_dml_cache_vap_config_changed(instance_number - 1);
