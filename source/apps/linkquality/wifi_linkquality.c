@@ -98,11 +98,6 @@ void publish_qmgr_subdoc(const report_batch_t* report)
 }
 #endif
 
-/* publish_station_score() / ignite_score_log_timer() moved to WEI
- * (qmgr_t::wei_publish_station_score / qmgr_t::ignite_score_log_tick).
- * WEI owns Device.WiFi.EndPoint.1.LinkQualityStatus and the wifihealth.txt
- * WIFI_IGNITE_LINKQUALITY* records. */
-
 int link_quality_register_station(wifi_app_t *apps, wifi_event_t *arg)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
