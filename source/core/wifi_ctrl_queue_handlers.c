@@ -4763,6 +4763,16 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL wifi manager\n", __func__, __LINE__);
+        free(data);
+        return;
+    }
+
+    // copy HAL Cap data once for all cases
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+        sizeof(wifi_hal_capability_t));
+
     switch (subtype) {
     case wifi_event_webconfig_set_data:
     case wifi_event_webconfig_set_data_dml:
@@ -4770,8 +4780,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     case wifi_event_webconfig_set_data_ovsm:
     case wifi_event_webconfig_data_resched_to_ctrl_queue:
     case wifi_event_webconfig_set_data_force_apply:
-        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-            sizeof(wifi_hal_capability_t));
 
         if (raw == NULL) {
             free(data);
@@ -4780,6 +4788,11 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         }
 
         json = cJSON_Parse(raw);
+        if (json == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to parse JSON from raw data\n",
+                __func__, __LINE__);
+            break;
+        }
         subdoc_type = find_subdoc_type(config, json);
         cJSON_Delete(json);
         switch (subdoc_type) {
@@ -4830,9 +4843,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             wifi_event->u.webconfig_data = data;
             apps_mgr_event(&ctrl->apps_mgr, wifi_event);
             free_webconfig_msg_payload(subtype, data);
-            if (wifi_event != NULL) {
-                free(wifi_event);
-            }
+            free(wifi_event);
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d NULL event pointer\n", __func__, __LINE__);
         }
@@ -4840,8 +4851,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         break;
 
     case wifi_event_webconfig_set_ignite_data:
-        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-                sizeof(wifi_hal_capability_t));
         memcpy((unsigned char *)&data->u.decoded.ignite_config, (unsigned char *)&mgr->ignite_config, getNumberRadios() * sizeof(ignite_config_t));
         if (raw == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data\n", __func__, __LINE__);
@@ -4855,8 +4864,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         break;
 
     case wifi_event_webconfig_set_data_nasta:
-        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-            sizeof(wifi_hal_capability_t));
         if (raw == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data for NaSta\n",
                 __func__, __LINE__);
@@ -4870,8 +4877,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         break;
 
     case wifi_event_webconfig_set_data_tunnel:
-        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-                sizeof(wifi_hal_capability_t));
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
@@ -4887,9 +4892,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config,
             getNumberRadios() * sizeof(rdk_wifi_radio_t));
 
-        // copy HAL Cap data
-        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
-            sizeof(wifi_hal_capability_t));
         data->u.decoded.num_radios = getNumberRadios();
 
         // tell webconfig to encode
