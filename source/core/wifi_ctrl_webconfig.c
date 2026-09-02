@@ -200,7 +200,11 @@ static void normalize_fronthaul_ssid_from_vap_name(wifi_vap_info_t *vap_info)
             "%s:%d: normalized passphrase for private vap:%s\n", __func__, __LINE__,
             vap_info->vap_name);
     } else if (isVapXhs(vap_info->vap_index)) {
-        target_ssid = "iot_ssid";
+        if (get_fronthaul_ssid_from_rbus(vap_info->vap_index + 1, resolved_ssid, sizeof(resolved_ssid))) {
+            target_ssid = resolved_ssid;
+        } else {
+            return;
+        }
     }
 
     if (target_ssid == NULL) {
