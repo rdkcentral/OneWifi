@@ -1,0 +1,67 @@
+name: Build OneWifi Component in Native Environment
+
+on:
+  push:
+    branches: [ main, 'release/**', develop ]
+  pull_request:
+    branches: [ main, 'release/**', topic/RDK*, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: coverity-${{ github.ref }}
+  cancel-in-progress: false   # don't kill an in-flight submission
+
+permissions:
+  contents: read
+
+jobs:
+  build-onewifi:
+    name: Build OneWifi component in github rdkcentral for Coverity analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/rdkcentral/docker-rdk-ci:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Native-ish build for Coverity based on XB
+        run: |
+          # Trust the workspace
+          git config --global --add safe.directory '*'
+          # Pull the latest changes for the native build system
+          git submodule update --init --recursive
+          # Build and install dependencies
+          mkdir -p $HOME/build/
+          mkdir -p $HOME/usr/
+          ORIG_DIR=$(pwd)
+          #json-c and its deps require pkgconfig .pc which are not installed by framework
+          #due to it ignoring install procedures and performing manual copy
+          git clone -b json-c-0.15-20200726 https://github.com/json-c/json-c.git $HOME/build/json-c
+          cd $HOME/build/json-c
+          mkdir -p jsonc-build/
+          cd jsonc-build/
+          cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr
+          make && make install
+
+          cd $HOME/build
+          git clone --branch v1.4.1 --depth 1 https://github.com/protobuf-c/protobuf-c.git
+          mv protobuf-c/protobuf-c $HOME/usr
+
+          mkdir -p rdk-wifi-libhostap/source/hostap-2.11
+          git clone https://git.w1.fi/hostap.git rdk-wifi-libhostap/source/hostap-2.11
+          cd rdk-wifi-libhostap/source/hostap-2.11
+          git checkout -b 2.11 4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c
+
+          cd $ORIG_DIR
+          chmod +x build_tools_workflows/cov_docker_script/setup_dependencies.sh
+          ./build_tools_workflows/cov_docker_script/setup_dependencies.sh ./cov_docker_script/component_config.json
+          # Build component
+          chmod +x build_tools_workflows/cov_docker_script/build_native.sh
+          ./build_tools_workflows/cov_docker_script/build_native.sh ./cov_docker_script/component_config.json
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.RDKCM_RDKE }}
