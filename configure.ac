@@ -211,7 +211,7 @@ fi
 # Specify ccsp platform (device)
 
 AC_ARG_WITH([ccsp-platform],
-[AC_HELP_STRING([--with-ccsp-platform={intel_usg,pc,bcm}],
+[AC_HELP_STRING([--with-ccsp-platform={intel_usg,pc,bcm,qca}],
                 [specify the ccsp platform])],
 [case x"$withval" in
    xintel_usg)
@@ -222,6 +222,9 @@ AC_ARG_WITH([ccsp-platform],
      ;;
    xbcm)
      CCSP_PLATFORM=bcm
+     ;;
+   xqca)
+     CCSP_PLATFORM=qca
      ;;
    *)
      AC_MSG_ERROR([$withval is an invalid option to --with-ccsp-platform])
