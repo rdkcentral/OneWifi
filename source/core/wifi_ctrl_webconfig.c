@@ -39,7 +39,6 @@
 #define SSID_MAX_LEN (64)
 #define KEY_MAX_LEN (256)
 #define DEFAULT_MLO_SSID_PREFIX "BPI-RDKB-MLO-AP-"
-#define FRONTHAUL_TEST_PASSPHRASE "test-fronthaul"
 #define TR181_WIFI_SSID_FMT "Device.WiFi.SSID.%u.SSID"
 #define TR181_WIFI_PASSPHRASE_FMT "Device.WiFi.SSID.%u.Security.KeyPassphrase"
 #define TR181_WIFI_ACCESSPOINT_PASSPHRASE_FMT "Device.WiFi.AccessPoint.%u.Security.KeyPassphrase"
@@ -158,52 +157,36 @@ static void normalize_fronthaul_ssid_from_vap_name(wifi_vap_info_t *vap_info)
     if (!is_default_mlo_ssid(vap_info->u.bss_info.ssid)) {
         return;
     }
-
-    if (isVapPrivate(vap_info->vap_index)) {
-        if (get_fronthaul_ssid_from_rbus(vap_info->vap_index + 1, resolved_ssid,
-                sizeof(resolved_ssid))) {
-            wifi_util_info_print(WIFI_CTRL,
-                "DML_TRACE:%s:%d private vap=%s vap_index=%u SSID fetched from RBUS:%s\n",
-                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index, resolved_ssid);
-            target_ssid = resolved_ssid;
-        } else {
-            wifi_util_info_print(WIFI_CTRL,
-                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS SSID fetch failed; leaving SSID/passphrase unchanged\n",
-                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index);
+    if (!(isVapPrivate(vap_info->vap_index) ||
+          isVapXhs(vap_info->vap_index))) {
             return;
+    }
 
-        if (get_fronthaul_passphrase_from_rbus(vap_info->vap_index + 1, resolved_passphrase,
+    if (get_fronthaul_ssid_from_rbus(vap_info->vap_index + 1, resolved_ssid,
+            sizeof(resolved_ssid))) {
+        target_ssid = resolved_ssid;
+    } else {
+        return;
+    }
+    if (get_fronthaul_passphrase_from_rbus(vap_info->vap_index + 1, resolved_passphrase,
                 sizeof(resolved_passphrase))) {
-            wifi_util_info_print(WIFI_CTRL,
-                "DML_TRACE:%s:%d private vap=%s vap_index=%u passphrase fetched from RBUS:%s\n",
-                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index, resolved_passphrase);
-            key_copied_len = snprintf(vap_info->u.bss_info.security.u.key.key,
-                sizeof(vap_info->u.bss_info.security.u.key.key), "%s", resolved_passphrase);
-        } else {
-            wifi_util_info_print(WIFI_CTRL,
-                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS passphrase fetch failed; leaving passphrase unchanged\n",
-                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index);
-            return;
-        }
+         key_copied_len = snprintf(vap_info->u.bss_info.security.u.key.key,
+             sizeof(vap_info->u.bss_info.security.u.key.key), "%s", resolved_passphrase);
+    } else {
+         return;
+    }
 
-        if (key_copied_len < 0 ||
-            (size_t)key_copied_len >= sizeof(vap_info->u.bss_info.security.u.key.key)) {
-            wifi_util_error_print(WIFI_CTRL,
-                "%s:%d: failed to normalize passphrase for vap:%s\n", __func__, __LINE__,
-                vap_info->vap_name);
-            return;
-        }
+    if (key_copied_len < 0 ||
+        (size_t)key_copied_len >= sizeof(vap_info->u.bss_info.security.u.key.key)) {
+          wifi_util_error_print(WIFI_CTRL,
+              "%s:%d: failed to normalize passphrase for vap:%s\n", __func__, __LINE__,
+              vap_info->vap_name);
+          return;
+    }
 
-        wifi_util_info_print(WIFI_CTRL,
+     wifi_util_info_print(WIFI_CTRL,
             "%s:%d: normalized passphrase for private vap:%s\n", __func__, __LINE__,
             vap_info->vap_name);
-    } else if (isVapXhs(vap_info->vap_index)) {
-        if (get_fronthaul_ssid_from_rbus(vap_info->vap_index + 1, resolved_ssid, sizeof(resolved_ssid))) {
-            target_ssid = resolved_ssid;
-        } else {
-            return;
-        }
-    }
 
     if (target_ssid == NULL) {
         return;
@@ -223,7 +206,7 @@ static void normalize_fronthaul_ssid_from_vap_name(wifi_vap_info_t *vap_info)
 
 void print_wifi_hal_radio_data(wifi_dbg_type_t log_file_type, char *prefix, unsigned int radio_index, wifi_radio_operationParam_t *radio_config)
 {
-    wifi_util_info_print(log_file_type, "%s:%d: [%s] Wifi_Radio[%d]_Config data: enable = %d\n band = %d\n autoChannelEnabled = %d\n channel = %d\n numSecondaryChannels = %d\n channelSecondary = %s\n channelWidth = %d\n variant = %d\n csa_beacon_count = %d\n countryCode = %d\n DCSEnabled = %d\n dtimPeriod = %d\n beaconInterval = %d\n operatingClass = %d\n basicDataTransmitRates = %d\n operationalDataTransmitRates = %d\n fragmentationThreshold = %d\n guardInterval = %d\n transmitPower = %d\n rtsThreshold = %d\n factoryResetSsid = %d\n radioStatsMeasuringRate = %d\n radioStatsMeasuringInterval = %d\n ctsProtection = %d\n obssCoex = %d\n stbcEnable = %d\n greenFieldEnable = %d\n userControl = %d\n adminControl = %d\n chanUtilThreshold = %d\n chanUtilSelfHealEnable = %d\n EcoPowerDown = %d DFSTimer:%d \r\n", __func__, __LINE__, prefix, radio_index, radio_config->enable, radio_config->band, radio_config->autoChannelEnabled, radio_config->channel, radio_config->numSecondaryChannels, (char *)radio_config->channelSecondary, radio_config->channelWidth, radio_config->variant, radio_config->csa_beacon_count, radio_config->countryCode, radio_config->DCSEnabled, radio_config->dtimPeriod, radio_config->beaconInterval, radio_config->operatingClass, radio_config->basicDataTransmitRates, radio_config->operationalDataTransmitRates, radio_config->fragmentationThreshold, radio_config->guardInterval, radio_config->transmitPower, radio_config->rtsThreshold, radio_config->factoryResetSsid, radio_config->radioStatsMeasuringRate, radio_config->radioStatsMeasuringInterval, radio_config->ctsProtection, radio_config->obssCoex, radio_config->stbcEnable, radio_config->greenFieldEnable, radio_config->userControl, radio_config->adminControl, radio_config->chanUtilThreshold, radio_config->chanUtilSelfHealEnable, radio_config->EcoPowerDown, radio_config->DFSTimer);
+	wifi_util_info_print(log_file_type, "%s:%d: [%s] Wifi_Radio[%d]_Config data: enable = %d\n band = %d\n autoChannelEnabled = %d\n channel = %d\n numSecondaryChannels = %d\n channelSecondary = %s\n channelWidth = %d\n variant = %d\n csa_beacon_count = %d\n countryCode = %d\n DCSEnabled = %d\n dtimPeriod = %d\n beaconInterval = %d\n operatingClass = %d\n basicDataTransmitRates = %d\n operationalDataTransmitRates = %d\n fragmentationThreshold = %d\n guardInterval = %d\n transmitPower = %d\n rtsThreshold = %d\n factoryResetSsid = %d\n radioStatsMeasuringRate = %d\n radioStatsMeasuringInterval = %d\n ctsProtection = %d\n obssCoex = %d\n stbcEnable = %d\n greenFieldEnable = %d\n userControl = %d\n adminControl = %d\n chanUtilThreshold = %d\n chanUtilSelfHealEnable = %d\n EcoPowerDown = %d DFSTimer:%d \r\n", __func__, __LINE__, prefix, radio_index, radio_config->enable, radio_config->band, radio_config->autoChannelEnabled, radio_config->channel, radio_config->numSecondaryChannels, (char *)radio_config->channelSecondary, radio_config->channelWidth, radio_config->variant, radio_config->csa_beacon_count, radio_config->countryCode, radio_config->DCSEnabled, radio_config->dtimPeriod, radio_config->beaconInterval, radio_config->operatingClass, radio_config->basicDataTransmitRates, radio_config->operationalDataTransmitRates, radio_config->fragmentationThreshold, radio_config->guardInterval, radio_config->transmitPower, radio_config->rtsThreshold, radio_config->factoryResetSsid, radio_config->radioStatsMeasuringRate, radio_config->radioStatsMeasuringInterval, radio_config->ctsProtection, radio_config->obssCoex, radio_config->stbcEnable, radio_config->greenFieldEnable, radio_config->userControl, radio_config->adminControl, radio_config->chanUtilThreshold, radio_config->chanUtilSelfHealEnable, radio_config->EcoPowerDown, radio_config->DFSTimer);
 }
 
 void print_wifi_hal_bss_vap_data(wifi_dbg_type_t log_file_type, char *prefix,
