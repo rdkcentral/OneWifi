@@ -170,6 +170,12 @@ extern void* bus_handle;
 
 #define ASSOC_REQ_MAC_HEADER_LEN 24 + 2 + 2 // 4 bytes after mac header reserved for fixed len fields
 
+/* IEEE 802.11 status codes (Table 9-50) */
+#define WIFI_STATUS_CODE_SUCCESS 0
+#define WIFI_STATUS_CODE_ANTI_CLOGGING_TOKEN_REQ 76
+#define WIFI_STATUS_CODE_SAE_HASH_TO_ELEMENT 126
+#define WIFI_STATUS_CODE_SAE_PK 127
+
 char *instSchemaIdBuffer = "8b27dafc-0c4d-40a1-b62c-f24a34074914/4388e585dd7c0d32ac47e71f634b579b";
 
 static wifi_monitor_t g_monitor_module;
@@ -3703,9 +3709,11 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
      * under the dedicated *_status_code subtypes - never under the *_frame subtypes,
      * which the broadcast already uses for frame_data_t. The subtype is what tells the
      * consumer which struct to cast to.
-     * Skip SAE-continuation statuses (76=anti-clogging, 126=hash-to-element,
-     * 127=SAE-PK) - those are normal protocol steps, not failures. */
-    if (status != 0 && status != 76 && status != 126 && status != 127) {
+     * Skip SAE-continuation statuses - those are normal protocol steps, not failures. */
+    if (status != WIFI_STATUS_CODE_SUCCESS &&
+        status != WIFI_STATUS_CODE_ANTI_CLOGGING_TOKEN_REQ &&
+        status != WIFI_STATUS_CODE_SAE_HASH_TO_ELEMENT &&
+        status != WIFI_STATUS_CODE_SAE_PK) {
         wifi_event_subtype_t fail_event = wifi_event_hal_unknown_frame;
         switch ((wifi_mgmtFrameType_t)type) {
         case WIFI_MGMT_FRAME_TYPE_AUTH_RSP:
