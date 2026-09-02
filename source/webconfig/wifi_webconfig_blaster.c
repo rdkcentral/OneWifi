@@ -139,6 +139,7 @@ webconfig_error_t decode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Config Object validation failed\n",
                 __func__, __LINE__);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
     cJSON_Delete(json);
