@@ -270,7 +270,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             "cli_PacketsSent: %lu\ncli_PacketsReceived: %lu\ncli_ErrorsSent: %lu\n"
             "cli_RetransCount: %lu\ncli_FailedRetransCount: %lu\ncli_RetryCount: %lu\n"
             "cli_MultipleRetryCount: %lu\ncli_MaxDownlinkRate: %d\ncli_MaxUplinkRate: %d\n"
-            "cli_activeNumSpatialStreams: %d\ncli_TxFrames: %llu\ncli_RxRetries: %llu\n"
+            "cli_capableNumSpatialStreams: %d\ncli_activeNumSpatialStreams: %d\ncli_TxFrames: %llu\ncli_RxRetries: %llu\n"
             "cli_RxErrors: %llu\ncli_PowerSaveMode: %lu\ncli_sleepTime: %lu\n",
             to_sta_key(dev_array[i].cli_MACAddress, sta_key),
             to_sta_key(dev_array[i].cli_MLDAddr, mld_sta_key), dev_array[i].cli_MLDEnable,
@@ -287,9 +287,10 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             dev_array[i].cli_ErrorsSent, dev_array[i].cli_RetransCount,
             dev_array[i].cli_FailedRetransCount, dev_array[i].cli_RetryCount,
             dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
-            dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
+            dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_capableNumSpatialStreams,
+            dev_array[i].cli_activeNumSpatialStreams,
             dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors,
-	    dev_array[i].cli_PowerSaveMode, dev_array[i].cli_sleepTime);
+            dev_array[i].cli_PowerSaveMode, dev_array[i].cli_sleepTime);
 
         if (link_data && ((link_quality_measurement) || (rf_down_mesh_sta))) {
             memset(&link_data[i], 0, sizeof(linkquality_data_t));
