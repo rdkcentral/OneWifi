@@ -2634,29 +2634,40 @@ void process_factory_reset_command(bool type)
 {
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     p_wifi_mgr->ctrl.factory_reset = type;
-    wifi_util_info_print(WIFI_CTRL,"%s:%d and type is %d\n",__func__,__LINE__,type);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: processing queued factory reset; type=%d\n",
+        __func__, __LINE__, type);
 
     bool db_consolidated = is_db_consolidated();
 
     if (db_consolidated) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: stopping consolidated OVSDB server\n",
+            __func__, __LINE__);
         system("killall -9 ovsdb-server");
     } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: stopping WiFi DB server\n", __func__, __LINE__);
         system("killall -9 wifidb-server");
     }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: deleting persisted WiFi database files\n",
+        __func__, __LINE__);
     system("rm -f /nvram/wifi/rdkb-wifi.db");
     system("rm -f /opt/secure/wifi/rdkb-wifi.db");
     get_wifidb_obj()->desc.cleanup_fn();
     if (!db_consolidated) {
         get_wifidb_obj()->desc.start_wifidb_fn();
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: WiFi DB server started\n", __func__, __LINE__);
     }
     wifi_util_dbg_print(WIFI_DB,"WIFI Factory reset started wifi db %d\n",__LINE__);
     get_wifidb_obj()->desc.init_tables_fn();
     get_wifidb_obj()->desc.init_default_value_fn();
     wifi_util_dbg_print(WIFI_DB,"WIFI Factory reset initiated default value %d\n",__LINE__);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: default WiFi DB values initialized; starting WiFi services\n",
+        __func__, __LINE__);
     start_wifi_services();
     wifi_util_dbg_print(WIFI_DB,"WIFI Factory reset started wifidb monitor %d\n",__LINE__);
     get_wifidb_obj()->desc.start_monitor_fn();
     p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_factoryreset_cfg_rsp_pending;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: factory reset DB/service initialization complete; awaiting configuration response\n",
+        __func__, __LINE__);
 }
 
 void process_radius_grey_list_rfc(bool type)

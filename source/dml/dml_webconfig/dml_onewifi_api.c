@@ -1968,7 +1968,8 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     wifi_radio_feature_param_t fcfg;
     bool retval = FALSE;
 
-    wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d\n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: start WiFi reset; reset_all_vaps=%d radios=%u vaps=%u\n",
+        __func__, __LINE__, factory_reset_all_vaps, getNumberRadios(), getTotalNumberVAPs());
     if (global_wifi_config == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
         goto cleanup;
@@ -1991,6 +1992,8 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
     //Reset to all radios params to default
     for (UINT i= 0; i < getNumberRadios(); i++) {
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d: resetting radio cache to defaults; radio_index=%u\n",
+            __func__, __LINE__, i);
         wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(i);
         wifiRadioFeatParam = (wifi_radio_feature_param_t *) get_dml_cache_radio_feat_map(i);
         if (wifiRadioOperParam == NULL || wifiRadioFeatParam == NULL) {
@@ -2052,6 +2055,8 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)rcfg,sizeof(wifi_radio_operationParam_t));
         memcpy((unsigned char *)wifiRadioFeatParam, (unsigned char *)&fcfg, sizeof(wifi_radio_feature_param_t));
         is_radio_config_changed = TRUE;
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d: radio defaults staged; radio_index=%u\n",
+            __func__, __LINE__, i);
     }
 
     (void)remove(WIFI_STUCK_DETECT_FILE_NAME);
@@ -2065,8 +2070,14 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
         vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
 
-        if (!factory_reset_all_vaps && !isVapPrivate(vap_index))
+        if (!factory_reset_all_vaps && !isVapPrivate(vap_index)) {
+            wifi_util_info_print(WIFI_DMCLI, "%s:%d: skipping non-private VAP; vap_index=%u\n",
+                __func__, __LINE__, vap_index);
             continue;
+        }
+
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d: resetting private VAP cache to defaults; vap_index=%u\n",
+            __func__, __LINE__, vap_index);
 
         p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(vap_index);
         rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(vap_index);
@@ -2110,21 +2121,31 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 #endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
             rdk_vap_info->exists = rdk_default_vap.exists;
             set_dml_cache_vap_config_changed(vap_index);
+            wifi_util_info_print(WIFI_DMCLI, "%s:%d: private VAP defaults staged; vap_index=%u exists=%d\n",
+                __func__, __LINE__, vap_index, rdk_vap_info->exists);
+        } else {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: missing VAP cache during reset; vap_index=%u\n",
+                __func__, __LINE__, vap_index);
         }
     }
 
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: persisting default radio configuration\n",
+        __func__, __LINE__);
     if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed in setting Radios to default\n",__func__, __LINE__);
         goto cleanup;
     }
 
     wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: persisting cleared MAC filter configuration\n",
+        __func__, __LINE__);
     if (push_acl_list_dml_cache_to_one_wifidb(p_vapInfo) != RETURN_OK) {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
         goto cleanup;
     }
 
     create_onewifi_factory_reset_flag();
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: factory-reset flag created\n", __func__, __LINE__);
     wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done and preferPprivate=%d \n",__func__, global_wifi_config->global_parameters.prefer_private);
     if (global_wifi_config->global_parameters.prefer_private) {
         global_wifi_config->global_parameters.prefer_private = false;
@@ -2132,15 +2153,22 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         push_prefer_private_ctrl_queue(false);
     }
 
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: persisting default private VAP configuration\n",
+        __func__, __LINE__);
     if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
     {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
         goto cleanup;
     }
-    wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: WiFi reset defaults persisted successfully\n",
+        __func__, __LINE__);
     retval = TRUE;
 
 cleanup:
+    if (retval != TRUE) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: WiFi reset failed before defaults were fully persisted\n",
+            __func__, __LINE__);
+    }
     if (default_vap != NULL) {
         free(default_vap);
         default_vap = NULL;

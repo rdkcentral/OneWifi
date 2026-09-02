@@ -673,9 +673,15 @@ bool wifi_set_param_string_value(void *obj_ins_context, char *param_name,
     } else if (STR_CMP(param_name, "X_CISCO_COM_FactoryResetRadioAndAp")) {
         fprintf(stderr, "-- %s X_CISCO_COM_FactoryResetRadioAndAp %s\n", __func__,
             (char *)output_value->buff);
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d: received UI WiFi reset request; selector=%s\n",
+            __func__, __LINE__, (char *)output_value->buff);
         if (wifi_factory_reset(false) != true) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: UI WiFi reset preparation failed\n",
+                __func__, __LINE__);
             return false;
         }
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d: UI WiFi reset preparation completed\n",
+            __func__, __LINE__);
     } else if (STR_CMP(param_name, "X_RDK_VapData")) {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: This param set:%s is not supported\n", __func__,
             __LINE__, param_name);

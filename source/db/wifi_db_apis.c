@@ -7931,15 +7931,22 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
             snprintf(cfg->u.bss_info.ssid, sizeof(cfg->u.bss_info.ssid), "%s", ssid);
-
+            wifi_util_info_print(WIFI_DB, "%s:%d: restored default SSID; vap_index=%d\n",
+                __func__, __LINE__, vap_index);
         } else {
-           snprintf(cfg->u.bss_info.ssid, sizeof(cfg->u.bss_info.ssid), "%s", vap_name);
+            wifi_util_error_print(WIFI_DB, "%s:%d: default SSID lookup failed; using VAP name fallback; vap_index=%d\n",
+                __func__, __LINE__, vap_index);
+            snprintf(cfg->u.bss_info.ssid, sizeof(cfg->u.bss_info.ssid), "%s", vap_name);
         }
 
         memset(password, 0, sizeof(password));
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
             snprintf(cfg->u.bss_info.security.u.key.key, sizeof(cfg->u.bss_info.security.u.key.key), "%s", password);
+            wifi_util_info_print(WIFI_DB, "%s:%d: restored default passphrase; vap_index=%d\n",
+                __func__, __LINE__, vap_index);
         } else {
+            wifi_util_error_print(WIFI_DB, "%s:%d: default passphrase lookup failed; using invalid-key fallback; vap_index=%d\n",
+                __func__, __LINE__, vap_index);
             snprintf(cfg->u.bss_info.security.u.key.key, sizeof(cfg->u.bss_info.security.u.key.key), "%s", INVALID_KEY);
         }
 
