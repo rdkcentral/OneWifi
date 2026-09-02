@@ -181,10 +181,9 @@ static void normalize_fronthaul_ssid_from_vap_name(wifi_vap_info_t *vap_info)
                 sizeof(vap_info->u.bss_info.security.u.key.key), "%s", resolved_passphrase);
         } else {
             wifi_util_info_print(WIFI_CTRL,
-                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS passphrase fetch failed, using fallback\n",
-                  __func__, __LINE__, vap_info->vap_name, vap_info->vap_index);
-            key_copied_len = snprintf(vap_info->u.bss_info.security.u.key.key,
-                sizeof(vap_info->u.bss_info.security.u.key.key), "%s", FRONTHAUL_TEST_PASSPHRASE);
+                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS passphrase fetch failed; leaving passphrase unchanged\n",
+                __func__, __LINE__, vap_info->vap_name, vap_info->vap_index);
+            return;
         }
 
         if (key_copied_len < 0 ||
