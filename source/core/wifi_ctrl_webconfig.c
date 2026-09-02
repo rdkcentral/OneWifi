@@ -168,10 +168,9 @@ static void normalize_fronthaul_ssid_from_vap_name(wifi_vap_info_t *vap_info)
             target_ssid = resolved_ssid;
         } else {
             wifi_util_info_print(WIFI_CTRL,
-                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS SSID fetch failed, using fallback\n",
+                "DML_TRACE:%s:%d private vap=%s vap_index=%u RBUS SSID fetch failed; leaving SSID/passphrase unchanged\n",
                 __func__, __LINE__, vap_info->vap_name, vap_info->vap_index);
-            target_ssid = "private_ssid";
-        }
+            return;
 
         if (get_fronthaul_passphrase_from_rbus(vap_info->vap_index + 1, resolved_passphrase,
                 sizeof(resolved_passphrase))) {
