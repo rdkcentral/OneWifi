@@ -1368,6 +1368,11 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         vap_svc_mesh_ext_disconnect(svc);
         cancel_all_running_timer(svc);
         vap_svc_mesh_ext_clear_variable(svc);
+        if (ext->candidates_list.scan_list != NULL) {
+            ext->candidates_list.scan_count = 0;
+            free(ext->candidates_list.scan_list);
+            ext->candidates_list.scan_list = NULL;
+        }
         ext->is_started = false;
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already stopped\n", __func__, __LINE__);
