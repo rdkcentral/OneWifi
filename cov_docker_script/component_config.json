@@ -6,23 +6,6 @@
     "_comment": "External repositories needed by this component",
     "repos": [
       {
-        "name": "hostapd-ucode",
-        "repo": "https://github.com/jow-/ucode.git",
-        "branch": "master",
-        "header_paths": [
-          { "source": "include/ucode", "destination": "$HOME/usr/include/ucode" }
-        ],
-        "build": {
-            "type": "commands",
-            "commands": [
-                "git checkout --detach 655ca6d",
-                "mkdir -p build && cd build",
-                "cmake .. -DUBUS_SUPPORT=OFF -DUCI_SUPPORT=OFF -DULOOP_SUPPORT=OFF -DCMAKE_INSTALL_PREFIX=$HOME/usr -DCMAKE_CXX_FLAGS=\"-std=c++11 -Wno-error=nonnull -Wno-error=class-memaccess\"",
-                "make && make install"
-            ]
-        }
-      },
-      {
         "name": "rdkb-halif-platform-headers",
         "repo": "https://github.com/rdkcentral/rdkb-halif-platform.git",
         "branch": "develop",
@@ -158,14 +141,14 @@
           { "source": "include/", "destination": "$HOME/usr/include/rdkb" }
         ],
         "build": {
-            "type": "commands",
-            "commands": [
-                "git pull --unshallow",
-                "git checkout --detach 20ef1f925b007f170ab1c257e4aa61fdd0927773",
-                "mkdir -p build && cd build",
-                "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr -DCMAKE_CXX_FLAGS=\"-std=c++11 -Wno-error=nonnull -Wno-error=class-memaccess\"",
-                "make && make install"
-            ]
+          "type": "commands",
+          "commands": [
+            "git fetch --all --tags",
+            "git checkout 20ef1f925b007f170ab1c257e4aa61fdd0927773",
+            "mkdir -p build && cd build",
+            "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr -DCMAKE_CXX_FLAGS=\"-std=c++11 -Wno-error=nonnull -Wno-error=class-memaccess\"",
+            "make && make install"
+          ]
         }
       },
       {
@@ -242,6 +225,17 @@
         "header_paths": [
           { "source": "include/", "destination": "$HOME/usr/include/rdkb" }
         ]
+      },
+      {
+        "name": "protobuf",
+        "repo": "https://github.com/protobuf-c/protobuf-c.git",
+        "branch": "v1.4.1",
+        "build": {
+            "type": "commands",
+            "commands": [
+                "mkdir -p $HOME/usr && cp -a protobuf-c/ $HOME/usr"
+            ]
+        }
       }
     ]
   },
