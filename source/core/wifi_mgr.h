@@ -30,6 +30,7 @@ extern "C" {
 #include "wifi_ctrl.h"
 #include "platform_common.h"
 #include "wifi_dml.h"
+#include "misc.h"
 
 #define DFS_RFC_ENABLE_NAMESPACE      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.DFS.Enable"
 #define WIFI_PSM_DB_NAMESPACE         "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable"
@@ -37,6 +38,7 @@ extern "C" {
 #define INACTIVE_FIRMWARE_NAMESPACE   "Device.DeviceInfo.X_RDKCENTRAL-COM_InActiveFirmware"
 
 wifi_ccsp_t *get_wificcsp_obj(void);
+wifi_misc_t *get_wifimisc_obj(void);
 
 typedef struct {
     wifi_db_t                       wifidb;

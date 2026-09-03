@@ -3097,28 +3097,25 @@ void process_multiap_rfc(bool type)
     return;
 }
 
-void process_link_quality_rfc(bool type)
+void process_link_quality_rfc(int type)
 {
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : int %d\n", __func__, __LINE__,
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     if (rfc_param == NULL) {
         wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
         return;
     }
-
-    rfc_param->link_quality_rfc = type;
+    /* Write rfc_dml_parameters directly so get_ctrl_rfc_parameters() sees the new
+     * mask immediately — before the async OVSDB callback fires. */
+    wifi_rfc_dml_parameters_t *db_rfc = get_wifi_db_rfc_parameters();
+    if (db_rfc != NULL)
+        db_rfc->wei_rfc_mask = type;
+    if (rfc_param->wei_rfc_mask != type)
+        rfc_param->wei_rfc_mask = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
-        rfc_param->link_quality_rfc);
-    if( rfc_param->link_quality_rfc) {
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
-        wifi_util_error_print(WIFI_CTRL, "started link quality app %s:%d\n", __func__, __LINE__);
-    } else {
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-        wifi_util_error_print(WIFI_CTRL, "stopped link quality app %s:%d\n", __func__, __LINE__);
-    }
+    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : rfc_name %d\n", __func__, __LINE__,
+        rfc_param->wei_rfc_mask);
     return;
 }
 
@@ -4556,9 +4553,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
         break;
-    case wifi_event_type_link_quality_rfc:
-        process_link_quality_rfc(*(bool *)data);
+    case wifi_event_type_wei_rfc_mask:
+        process_link_quality_rfc(*(int *)data);
         break;
+    
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);
         break;

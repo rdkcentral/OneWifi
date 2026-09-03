@@ -28,7 +28,15 @@ extern "C" {
 #include "run_qmgr.h"
 #include "wifi_base.h"
 #include "wifi_webconfig.h"
+#include "wifi_hal.h"
+#include "wifi_linkquality_libs.h"
 
+#define MAX_STR_LEN_LQ 128
+#define IGNITE_SCORE_LOG_INTERVAL_MS 900000 // 15 mins
+#define IGNITE_INITIAL_PUBLISH_ITERATIONS 5
+
+
+#define MAC_ADDRESS_LEN 6
 typedef struct {
     double last_score;
     double last_threshold;
@@ -44,6 +52,11 @@ typedef struct {
     int size;
     ignite_lq_state_t ignite;
 } linkquality_data_t;
+
+typedef uint8_t mac_address_t[MAC_ADDRESS_LEN];
+
+#define CTRL_CAP_SZ 8
+
 
 #ifdef __cplusplus
 }

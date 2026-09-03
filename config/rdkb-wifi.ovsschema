@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.054",
+  "version": "1.00.055",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1916,10 +1916,10 @@
             "max": 1
           }
         },
-        "link_quality_rfc": {
+        "wei_rfc_mask": {
           "type": {
             "key": {
-              "type": "boolean"
+              "type": "integer"
             },
             "min": 0,
             "max": 1
