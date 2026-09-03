@@ -503,12 +503,12 @@ void *get_bus_cb_data_info(elem_node_map_t *cb_root, char *name)
     return NULL;
 }
 
-/* 
+/*
  * This function can be used to fetch all callback-handler information,
  * so the above get_bus_cb_data_info() function may not be required.
  * Please review this function and consider removing the duplicate
  * implementation if it is not needed.
-*/
+ */
 void *get_bus_cb_data_info_for_table_row_remove(elem_node_map_t *cb_root, char *name)
 {
     elem_node_map_t *mux_elem = get_bus_node_info(cb_root, name);
@@ -530,7 +530,7 @@ void *get_bus_cb_data_info_for_table_row_remove(elem_node_map_t *cb_root, char *
         }
         return mux_elem->node_elem_data;
     }
-    wifi_util_info_print(WIFI_BUS,"%s Rbus callback info not found=%s\n", __func__, name);
+    wifi_util_info_print(WIFI_BUS, "%s Rbus callback info not found=%s\n", __func__, name);
     return NULL;
 }
 
