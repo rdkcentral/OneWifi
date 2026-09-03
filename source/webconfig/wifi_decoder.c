@@ -6396,11 +6396,21 @@ webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
     }
 
     decode_param_string(obj_sta_cfg, "ReportData", param);
-    out_ptr = stringtohex(strlen(param->valuestring), param->valuestring, sta_data->data_len,
-        sta_data->data);
+    size_t report_str_len = (param && param->valuestring) ? strlen(param->valuestring) : 0;
+    size_t expected_len = (size_t)sta_data->data_len * 2;
+    if (report_str_len == 0 || (report_str_len % 2) != 0 || report_str_len != expected_len) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: Invalid ReportData length=%zu (expected=%zu)\n", __func__, __LINE__,
+            report_str_len, expected_len);
+        free(sta_data->data);
+        sta_data->data = NULL;
+        return webconfig_error_decode;
+    }
+
+    out_ptr = stringtohex(report_str_len, param->valuestring, sta_data->data_len, sta_data->data);
     if (out_ptr == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error to convert ot string \n", __func__,
-            __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error converting ReportData to hex\n",
+            __func__, __LINE__);
         free(sta_data->data);
         sta_data->data = NULL;
         return webconfig_error_decode;

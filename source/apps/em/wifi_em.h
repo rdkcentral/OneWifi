@@ -21,6 +21,8 @@
 #define WIFI_EM_H
 
 #include <stdint.h>
+#include "collection.h"
+#include "wifi_base.h"
 
 #ifdef __cplusplus
 extern "C" {
