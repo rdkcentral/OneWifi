@@ -97,6 +97,7 @@
 #define ONEWIFI_DB_VERSION_ENCR_NEW_FLAG 100049
 #define ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG 100051
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100052
+#define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100053
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -272,6 +273,12 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
+        rfc_param->tcm_open_2g_rfc = new_rec->tcm_open_2g_rfc;
+        rfc_param->tcm_open_5g_rfc = new_rec->tcm_open_5g_rfc;
+        rfc_param->tcm_open_6g_rfc = new_rec->tcm_open_6g_rfc;
+        rfc_param->tcm_secure_2g_rfc = new_rec->tcm_secure_2g_rfc;
+        rfc_param->tcm_secure_5g_rfc = new_rec->tcm_secure_5g_rfc;
+        rfc_param->tcm_secure_6g_rfc = new_rec->tcm_secure_6g_rfc;
         rfc_param->wpa3_compatibility_enable = new_rec->wpa3_compatibility_enable;
         rfc_param->link_quality_rfc = new_rec->link_quality_rfc;
         rfc_param->xfi_tel_enable_rfc = new_rec->xfi_tel_enable_rfc;
@@ -280,12 +287,13 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
             "dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d "
-            "hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d "
+            "hotspot_open_2g_last_enabled=%d hotspot_open_5g_last_enabled=%d "
             "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
             "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
-            "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d "
-            "link_quality_rfc=%d xfi_tel_enable_rfc=%d multiap_rfc=%d\r\n",
+            "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d "
+            "wpa3_compatibility_enable=%d link_quality_rfc=%d xfi_tel_enable_rfc=%d "
+            "multiap_rfc=%d\r\n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -295,7 +303,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
             rfc_param->rfc_id, rfc_param->memwraptool_app_rfc, rfc_param->levl_enabled_rfc,
             rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable,
-            rfc_param->link_quality_rfc, rfc_param->xfi_tel_enable_rfc, rfc_param->multiap_rfc); 
+            rfc_param->link_quality_rfc, rfc_param->xfi_tel_enable_rfc, rfc_param->multiap_rfc);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 }
@@ -1952,6 +1960,12 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
+    rfc_info->tcm_open_2g_rfc = pcfg->tcm_open_2g_rfc;
+    rfc_info->tcm_open_5g_rfc = pcfg->tcm_open_5g_rfc;
+    rfc_info->tcm_open_6g_rfc = pcfg->tcm_open_6g_rfc;
+    rfc_info->tcm_secure_2g_rfc = pcfg->tcm_secure_2g_rfc;
+    rfc_info->tcm_secure_5g_rfc = pcfg->tcm_secure_5g_rfc;
+    rfc_info->tcm_secure_6g_rfc = pcfg->tcm_secure_6g_rfc;
     rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
     rfc_info->link_quality_rfc = pcfg->link_quality_rfc;
     rfc_info->xfi_tel_enable_rfc = pcfg->xfi_tel_enable_rfc;
@@ -4845,6 +4859,12 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifi_offchannelscan_app_rfc = false;
     rfc_config.wifi_offchannelscan_sm_rfc = false;
     rfc_config.tcm_enabled_rfc = false;
+    rfc_config.tcm_open_2g_rfc = false;
+    rfc_config.tcm_open_5g_rfc = false;
+    rfc_config.tcm_open_6g_rfc = false;
+    rfc_config.tcm_secure_2g_rfc = false;
+    rfc_config.tcm_secure_5g_rfc = false;
+    rfc_config.tcm_secure_6g_rfc = false;
     rfc_config.wpa3_compatibility_enable = false;
     rfc_config.link_quality_rfc = false;
     rfc_config.xfi_tel_enable_rfc = false;
@@ -4890,6 +4910,7 @@ static void wifidb_global_config_upgrade()
     char strValue[256] = {0};
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     if (g_wifidb->db_version == 0) {
         return;
@@ -4964,6 +4985,17 @@ static void wifidb_global_config_upgrade()
         g_wifidb->global_config.global_parameters.memwraptool.heapwalk_interval =
             DEFAULT_HEAPWALK_INTERVAL;
         g_wifidb->global_config.global_parameters.memwraptool.enable = true;
+    }
+
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade tcm config, old db version %d \n", __func__,
+            __LINE__, g_wifidb->db_version);
+        rfc_param->tcm_open_2g_rfc = true;
+        rfc_param->tcm_open_5g_rfc = true;
+        rfc_param->tcm_open_6g_rfc = true;
+        rfc_param->tcm_secure_2g_rfc = true;
+        rfc_param->tcm_secure_5g_rfc = true;
+        rfc_param->tcm_secure_6g_rfc = true;
     }
 }
 
@@ -6360,6 +6392,12 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.wifi_offchannelscan_app_rfc = rfc_param->wifi_offchannelscan_app_rfc;
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
+    cfg.tcm_open_2g_rfc = rfc_param->tcm_open_2g_rfc;
+    cfg.tcm_open_5g_rfc = rfc_param->tcm_open_5g_rfc;
+    cfg.tcm_open_6g_rfc = rfc_param->tcm_open_6g_rfc;
+    cfg.tcm_secure_2g_rfc = rfc_param->tcm_secure_2g_rfc;
+    cfg.tcm_secure_5g_rfc = rfc_param->tcm_secure_5g_rfc;
+    cfg.tcm_secure_6g_rfc = rfc_param->tcm_secure_6g_rfc;
     cfg.wpa3_compatibility_enable = rfc_param->wpa3_compatibility_enable;
     cfg.link_quality_rfc = rfc_param->link_quality_rfc;
     cfg.xfi_tel_enable_rfc = rfc_param->xfi_tel_enable_rfc;
@@ -8318,12 +8356,12 @@ void init_wifidb_data()
     }
     else {
         dbwritten = true;
-        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+        if (wifidb_get_rfc_config(0, rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
-#ifdef ALWAYS_ENABLE_AX_2G
+    #ifdef ALWAYS_ENABLE_AX_2G
         wifidb_update_rfc_config(0, rfc_param);
-#endif
+    #endif
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
