@@ -1508,7 +1508,7 @@ static webconfig_error_t fill_assoc_sta_mld_info_from_assoc_dev(
     // One affiliated STA entry per link (one entry per VAP visit)
     sta_mld_info->num_affiliated_sta = 1;
     memcpy(sta_mld_info->affiliated_sta[0].bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
-    memcpy(sta_mld_info->affiliated_sta[0].mac_addr, assoc_dev_data->link_address,
+    memcpy(sta_mld_info->affiliated_sta[0].link_addr, assoc_dev_data->link_address,
         sizeof(mac_address_t));
 
     return webconfig_error_none;
