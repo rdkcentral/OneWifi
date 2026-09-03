@@ -1295,10 +1295,11 @@ int vap_svc_mesh_ext_disconnect(vap_svc_t *svc)
 int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
+    unsigned int i;
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service start\n", __func__, __LINE__);
 
-    if (radio_index >= MAX_NUM_RADIOS) {
+    if ((radio_index != WIFI_ALL_RADIO_INDICES) && (radio_index >= MAX_NUM_RADIOS)) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d failed to start mesh service: wrong radio index %d\n", __func__, __LINE__,
             radio_index);
@@ -1306,9 +1307,14 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     }
 
     /* create STA vap's and install acl filters */
-    if (!ext->is_vap_started[radio_index]) {
-        vap_svc_start(svc, radio_index);
-        ext->is_vap_started[radio_index] = true;
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        if ((radio_index != WIFI_ALL_RADIO_INDICES) && (i != radio_index)) {
+            continue;
+        }
+        if (!ext->is_vap_started[i]) {
+            vap_svc_start(svc, i);
+            ext->is_vap_started[i] = true;
+        }
     }
 
     if (ext->is_started == true) {
@@ -1353,6 +1359,7 @@ int vap_svc_mesh_ext_clear_variable(vap_svc_t *svc)
 int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
+    unsigned int i;
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service stop\n", __func__, __LINE__);
 
@@ -1365,16 +1372,21 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already stopped\n", __func__, __LINE__);
     }
 
-    if (radio_index >= MAX_NUM_RADIOS) {
+    if ((radio_index != WIFI_ALL_RADIO_INDICES) && (radio_index >= MAX_NUM_RADIOS)) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d failed to stop mesh service: wrong radio index %d\n", __func__, __LINE__,
             radio_index);
         return -1;
     }
 
-    if (ext->is_vap_started[radio_index]) {
-        vap_svc_stop(svc, radio_index);
-        ext->is_vap_started[radio_index] = false;
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        if ((radio_index != WIFI_ALL_RADIO_INDICES) && (i != radio_index)) {
+            continue;
+        }
+        if (ext->is_vap_started[i]) {
+            vap_svc_stop(svc, i);
+            ext->is_vap_started[i] = false;
+        }
     }
 
     return 0;
