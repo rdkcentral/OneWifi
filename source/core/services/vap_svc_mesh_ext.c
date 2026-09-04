@@ -1306,6 +1306,11 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         return -1;
     }
 
+    if (ext->is_started == false) {
+        // initialize all extender specific structures
+        memset(ext, 0, sizeof(vap_svc_ext_t));
+    }
+
     /* create STA vap's and install acl filters */
     for (i = 0; i < MAX_NUM_RADIOS; i++) {
         if ((radio_index != WIFI_ALL_RADIO_INDICES) && (i != radio_index)) {
@@ -1317,19 +1322,13 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         }
     }
 
-    if (ext->is_started == true) {
+    if (ext->is_started == false) {
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        schedule_connect_sm(svc);
+        ext->is_started = true;
+    } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already started\n", __func__, __LINE__);
-        return 0;
     }
-
-    // initialize all extender specific structures
-    memset(ext, 0, sizeof(vap_svc_ext_t));
-
-    ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-    schedule_connect_sm(svc);
-
-    ext->is_started = true;
-
     return 0;
 }
 
