@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = . math_utils  quality_mgr
+SUBDIRS = . math_utils  quality_mgr  web_socket
 AM_CFLAGS = -D_ANSC_LINUX
 AM_CFLAGS += -D_ANSC_USER
 if CCSP_ARCH_ARM
