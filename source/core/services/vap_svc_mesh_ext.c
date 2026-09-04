@@ -1295,7 +1295,7 @@ int vap_svc_mesh_ext_disconnect(vap_svc_t *svc)
 int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
-    unsigned int i;
+    unsigned int i, num_of_radios;
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service start\n", __func__, __LINE__);
 
@@ -1306,13 +1306,25 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         return -1;
     }
 
+    if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d number of radios %d exceeds supported %d\n", __func__, __LINE__,
+            num_of_radios, MAX_NUM_RADIOS);
+        return -1;
+    }
+
     if (ext->is_started == false) {
         // initialize all extender specific structures
+        if (ext->candidates_list.scan_list != NULL) {
+            free(ext->candidates_list.scan_list);
+            ext->candidates_list.scan_list = NULL;
+            ext->candidates_list.scan_count = 0;
+        }
         memset(ext, 0, sizeof(vap_svc_ext_t));
     }
 
     /* create STA vap's and install acl filters */
-    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+    for (i = 0; i < num_of_radios; i++) {
         if ((radio_index != WIFI_ALL_RADIO_INDICES) && (i != radio_index)) {
             continue;
         }
@@ -1358,7 +1370,7 @@ int vap_svc_mesh_ext_clear_variable(vap_svc_t *svc)
 int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
-    unsigned int i;
+    unsigned int i, num_of_radios;
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service stop\n", __func__, __LINE__);
 
@@ -1378,7 +1390,14 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         return -1;
     }
 
-    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+    if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d number of radios %d exceeds supported %d\n", __func__, __LINE__,
+            num_of_radios, MAX_NUM_RADIOS);
+        return -1;
+    }
+
+    for (i = 0; i < num_of_radios; i++) {
         if ((radio_index != WIFI_ALL_RADIO_INDICES) && (i != radio_index)) {
             continue;
         }
