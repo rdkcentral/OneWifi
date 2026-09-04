@@ -210,6 +210,23 @@ typedef struct {
     void *stats;
 } collect_subscribed_stats_t;
 
+typedef enum {
+    em_dfs_evnt_type_started = 0,
+    em_dfs_evnt_type_finished,
+    em_dfs_evnt_type_radar_detected,
+    em_dfs_evnt_type_aborted,
+    em_dfs_evnt_type_nop_finished
+} em_dfs_evnt_type_t;
+
+typedef struct __attribute__((packed)) {
+    em_dfs_evnt_type_t event_type;
+    unsigned char radio_index;
+    unsigned char op_class;
+    unsigned char channel;
+    unsigned short sec_remain_non_occ_dur;
+    unsigned char status;
+} em_bus_event_type_dfs_evnt_params_t;
+
 typedef struct {
     wifi_global_config_t    config;
     wifi_hal_capability_t   hal_cap;
@@ -237,6 +254,7 @@ typedef struct {
     report_batch_t *qmgr_report;
     nasta_query_t nasta_query;
     nasta_response_t *nasta_response;
+    em_bus_event_type_dfs_evnt_params_t dfs_event;
 } webconfig_subdoc_decoded_data_t;
 
 typedef char  * webconfig_subdoc_encoded_raw_t;

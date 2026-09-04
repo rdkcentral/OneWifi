@@ -3774,7 +3774,8 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         radio_params->operatingClass = ch_chg->op_class;
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
-    else if ( (ch_chg->event == WIFI_EVENT_DFS_RADAR_DETECTED) && (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) ) {
+
+    if ( (ch_chg->event == WIFI_EVENT_DFS_RADAR_DETECTED) && (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) ) {
         UINT channelsInBlock = 1;
         UINT inputChannelBlock = 0;
         UINT firstChannelInBand = 36;
@@ -3963,7 +3964,13 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         }
         free(data);
     }
-    g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+
+    if (ch_chg->event == WIFI_EVENT_DFS_RADAR_DETECTED) {
+        g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_5G_rsp_pending;
+    } else {
+        g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+    }
+
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);
 
