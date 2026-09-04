@@ -304,7 +304,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 #ifdef CONFIG_IEEE80211BE
             wifi_radio_operationParam_t *radioOperation = NULL;
 	    radioOperation = getRadioOperationParam(link_data[i].stats.radio_index);
-	    if (radioOperation->variant & WIFI_80211_VARIANT_BE)
+	    if (radioOperation != NULL && (radioOperation->variant & WIFI_80211_VARIANT_BE))
 	    {
 	      link_data[i].stats.is_be = true;
 	      wifi_util_dbg_print(WIFI_MON,"%s:%d This is a BE Radio\n",__func__,__LINE__);
@@ -561,7 +561,10 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                             if (bss_param == NULL) {
                                  wifi_util_error_print(WIFI_MON, "%s:%d Failed to get bss info for vap index %d\n", __func__,
                                  __LINE__, args->vap_index);
-                                 return RETURN_ERR;
+                                free(disconnect_link_data);
+                                disconnect_link_data = NULL;
+                                pthread_mutex_unlock(&mon_data->data_lock);
+                                return RETURN_ERR;
                             }
 			    to_mac_str(bss_param->bssid, disconnect_link_data->stats.ap_mac_str);
                             wifi_util_dbg_print(WIFI_MON,
@@ -617,6 +620,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     if (bss_param == NULL) {
                         wifi_util_error_print(WIFI_MON, "%s:%d Failed to get bss info for vap index %d\n", __func__,
                          __LINE__, args->vap_index);
+                        free(remove_link_data);
+                        remove_link_data = NULL;
+                        pthread_mutex_unlock(&mon_data->data_lock);
                         return RETURN_ERR;
                     }
 	            to_mac_str(bss_param->bssid, remove_link_data->stats.ap_mac_str);
