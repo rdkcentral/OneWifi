@@ -49,9 +49,6 @@
 #include "webconfig_external_proto.h"
 #include "common/ieee802_11_defs.h"
 
-/* subdoc scratch is heap-allocated per call (calloc/free) so its ~3.4MB is
-   returned to the OS (munmap, >mmap threshold) after each decode/encode instead
-   of sitting resident in .bss for the process lifetime */
 /* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to  */
 static char *webconfig_easymesh_raw_data_ptr = NULL;
 
