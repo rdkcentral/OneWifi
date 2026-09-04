@@ -492,6 +492,7 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
     { 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d ACS KeepOut json_schema at boot up time = %s\n",__FUNCTION__,__LINE__,(char*)keep_out_json);
         process_acs_keep_out_channels_event((char*)keep_out_json);
+        free(keep_out_json);
     }
 
     for (index = 0; index < num_of_radios; index++) {
