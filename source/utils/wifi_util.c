@@ -355,7 +355,7 @@ void write_to_file(const char *file_name, char *fmt, ...)
 {
     FILE *fp = NULL;
     va_list args;
-    static const char *sem_name = "/tmp/wifi_health_log_sem";
+    static const char *sem_name = "/wifi_health_log_sem";
     sem_t *sem = sem_open(sem_name, O_CREAT, 0666, 1);
     if (sem == SEM_FAILED) {
         wifi_util_error_print(WIFI_CTRL,

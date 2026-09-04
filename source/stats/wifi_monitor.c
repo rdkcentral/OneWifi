@@ -4146,7 +4146,7 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     }
     if (is_sta_active == false) {
         wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
-            __func__, __LINE__, src_mac, ap_index, reason);
+            __func__, __LINE__, src_mac, reason, ap_index);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
@@ -4390,13 +4390,16 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
                 if (remove_link_data != NULL) {
                     memset(remove_link_data, 0, sizeof(linkquality_data_t));
                     to_sta_key(sta->sta_mac, remove_link_data->stats.mac_str);
-		    bss_param = Get_wifi_object_bss_parameter(apIndex);
+		            bss_param = Get_wifi_object_bss_parameter(apIndex);
                     if (bss_param == NULL) {
                         wifi_util_error_print(WIFI_MON, "%s:%d Failed to get bss info for vap index %d\n", __func__,
                          __LINE__, apIndex);
                         wifi_util_error_print(WIFI_MON, "VAP-DOWN-DBG %s:%d ABORT apIndex=%d bss_param NULL, loop stopped early sta_total=%d vap_down_sent=%d\n",
                             __func__, __LINE__, apIndex, sta_total, vap_down_sent);
-                        return RETURN_ERR;
+                        free(remove_link_data);
+                        remove_link_data = NULL;
+                        sta = hash_map_get_next(temp_sta_map, sta);
+                        continue;
                     }
                     to_mac_str(bss_param->bssid, remove_link_data->stats.ap_mac_str);
                     wifi_util_info_print(WIFI_MON, "%s:%d: vap down, removing link quality stats for sta mac=%s on ap:%d:%s\n"
@@ -4492,7 +4495,7 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
     }
     if (is_sta_active == false) {
         wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
-            __func__, __LINE__, src_mac, ap_index, reason);
+            __func__, __LINE__, src_mac, reason, ap_index);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));

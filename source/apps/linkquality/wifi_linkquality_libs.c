@@ -49,7 +49,7 @@ static int periodic_caffinity_stats_update_impl(stats_arg_t *stats, int len)
     return rc;
 }
 
-/* REGISTER_STA (msg_type 7) – Ignite RF-down station registration */
+/* REGISTER_STA (msg_type 5) – Ignite RF-down station registration */
 static void register_station_mac_impl(const char *str)
 {
 
@@ -59,7 +59,7 @@ static void register_station_mac_impl(const char *str)
         __func__, __LINE__, rc);
 
 }
-/* UNREGISTER_STA (msg_type 8) – Ignite RF-down station unregistration */
+/* UNREGISTER_STA (msg_type 6) – Ignite RF-down station unregistration */
 static void unregister_station_mac_impl(const char *str)
 {
 
@@ -80,7 +80,7 @@ static int disconnect_link_stats_impl(stats_arg_t *stats)
     return rc;
 }
 
-/* REINIT_METRICS (msg_type 9) – webconfig/EM param update */
+/* REINIT_METRICS (msg_type 7) – webconfig/EM param update */
 static int reinit_link_metrics_impl(server_arg_t *arg)
 {
 
@@ -112,7 +112,8 @@ static int vap_down_link_stats_impl(stats_arg_t *stats)
 
 static int vap_down_link_stats_rpi(stats_arg_t *stats)
 {
-    return rc;
+    (void)stats;
+    return 0;
 }
 
 static int periodic_caffinity_stats_update_rpi(stats_arg_t *stats, int len)
@@ -121,11 +122,21 @@ static int periodic_caffinity_stats_update_rpi(stats_arg_t *stats, int len)
 }
 
 static int process_lq_stats_rpi(stats_arg_t *stats, int len)
-{ 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d\n",__func__,__LINE__);
-    for (int i = 0; i < len; i++) {
-       add_stats_metrics(stats[i]);
+{
+    int rc = 0;
+
+    if (stats == NULL || len <= 0) {
+        return -1;
     }
+
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d len=%d\n",__func__,__LINE__,len);
+    for (int i = 0; i < len; i++) {
+       int ret = add_stats_metrics(&stats[i]);
+       if (ret < 0) {
+           rc = ret;
+       }
+    }
+    return rc;
 }
 
 /* PERIODIC_STATS (msg_type 1) – periodic monitor poll batch */

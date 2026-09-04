@@ -3111,10 +3111,9 @@ void process_link_quality_rfc(int type)
     wifi_rfc_dml_parameters_t *db_rfc = get_wifi_db_rfc_parameters();
     if (db_rfc != NULL)
         db_rfc->wei_rfc_mask = type;
-    if (rfc_param->wei_rfc_mask != type)
-        rfc_param->wei_rfc_mask = type;
+    rfc_param->wei_rfc_mask = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : rfc_name %d\n", __func__, __LINE__,
+    wifi_util_info_print(WIFI_CTRL, "%s:%d wei_rfc_mask updated to 0x%x\n", __func__, __LINE__,
         rfc_param->wei_rfc_mask);
     return;
 }
