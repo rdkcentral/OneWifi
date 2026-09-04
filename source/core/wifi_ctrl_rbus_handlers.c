@@ -378,8 +378,8 @@ int check_and_start_wei()
             mask_data.raw_data.b = true;
             rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
             if ( rc != bus_error_success) {
-                 wifi_util_error_print(WIFI_CTRL,"Not able to set LQ\nn");
-                 return -1;
+                wifi_util_error_print(WIFI_CTRL,"Not able to set LQ\n");
+                return -1;
 
             }
 

@@ -2065,8 +2065,8 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     }
 
-    if (ctrl->network_mode == rdk_dev_mode_type_em_node 
-     || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node || ctrl->rf_status_down == true) {
+    if ((rfc_param != NULL && (rfc_param->wei_rfc_mask & WEI_RFC_MAIN)) || (ctrl->network_mode == rdk_dev_mode_type_em_node
+     || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node || ctrl->rf_status_down == true)) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start link quality app, network_mode:%d rf_status_down:%d\n",
             __func__, __LINE__, ctrl->network_mode, ctrl->rf_status_down);
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
