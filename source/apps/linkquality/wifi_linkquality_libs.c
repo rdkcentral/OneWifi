@@ -110,6 +110,7 @@ static int vap_down_link_stats_impl(stats_arg_t *stats)
     return rc;
 }
 
+#ifndef ONEWIFI_RDKB_APP_SUPPORT
 static int vap_down_link_stats_rpi(stats_arg_t *stats)
 {
     (void)stats;
@@ -138,6 +139,7 @@ static int process_lq_stats_rpi(stats_arg_t *stats, int len)
     }
     return rc;
 }
+#endif
 
 /* PERIODIC_STATS (msg_type 1) – periodic monitor poll batch */
 static int process_lq_stats_impl(stats_arg_t *stats, int len)
