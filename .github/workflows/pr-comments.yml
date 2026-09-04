@@ -182,82 +182,41 @@ jobs:
           expected-repo: ${{ needs.resolve.outputs.head_repo }}
           expected-branch: ${{ needs.resolve.outputs.head_branch }}
 
-      - name: Convert diff into review suggestions
+      - name: Convert clang-format diff into review candidates
         if: steps.ctx.outputs.found == 'true'
         env:
-          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
-          # MAX_COMMENTS comes from the workflow-level env.
           CHANGED_LINES_FILE: clang-format-suggestions/changed-lines.txt
+          CANDIDATES_OUT: /tmp/fmt-candidates.json
         run: |
           # The converter lives in a checked-out script (trusted base branch). When the
-          # changed lines are already clang-format clean there is no diff file - feed /dev/null
-          # so it creates 0 comments. The post step then just dismisses any now-stale review.
+          # changed lines are already clang-format clean there is no diff file - feed
+          # /dev/null so it writes an empty (status ok) candidate file. review_poster
+          # then reconciles: nothing to post, and any now-stale suggestion is removed.
           diff=clang-format-suggestions/clang-format.diff
           [ -f "$diff" ] || diff=/dev/null
           python3 .github/scripts/diff_to_suggestions.py < "$diff"
 
-      - name: Dismiss stale reviews, then post fresh suggestions
-        # Runs whenever the PR head still matches what stage 1 measured - including the clean
-        # case (0 comments). Dismissal comes first so an earlier push's (now-obsolete)
-        # suggestions are cleared even when there is nothing new to post. Stage 1 always uploads
-        # pr-meta.env, so this job still runs when formatting became clean.
+      - name: Reconcile and post clang-format suggestions
+        # Runs whenever the PR head still matches what stage 1 measured - including the
+        # clean case (empty candidate file). review_poster.py posts only the missing
+        # suggestions, deletes outdated/duplicate/stale ones, and leaves any suggestion a
+        # human has replied to intact. It replaces the old dismiss-and-repost loop, which
+        # could not remove a review's inline comments (and GitHub rejects dismissing a
+        # COMMENTED review), so long-lived PRs accumulated duplicate stacks. Stage 1
+        # always uploads pr-meta.env, so this still runs when formatting became clean.
         if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.ctx.outputs.pr_number }}
-          # BOT_LOGIN comes from the workflow-level env.
+          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
+          SLOT: fmt
+          # MAX_COMMENTS and BOT_LOGIN come from the workflow-level env.
         run: |
-          # Stale-review cleanup first (before the empty-check). Identity = our bot
-          # login+type + our body marker. $BOT_LOGIN is workflow-trusted, so the
-          # shell interpolation into the filter is safe. Non-fatal.
-          # shellcheck disable=SC2016  # the backticks in the jq are a literal body marker, not a shell expansion
-          gh api "/repos/$REPO/pulls/$PR/reviews" --paginate \
-            --jq '.[] | select(.user.login == "'"$BOT_LOGIN"'" and (.user.type == "Bot")) | select(.body | startswith("`clang-format` suggests")) | select(.state != "DISMISSED") | .id' \
-            > /tmp/stale_ids.txt \
-            || { echo "::warning::Could not list existing reviews for cleanup (continuing)."; : > /tmp/stale_ids.txt; }
-          while read -r rid; do
-            [ -n "$rid" ] || continue
-            echo "Dismissing prior clang-format review $rid"
-            gh api --method PUT "/repos/$REPO/pulls/$PR/reviews/$rid/dismissals" \
-              -f message="Superseded by a newer clang-format suggestion run." \
-              -f event="DISMISS" >/dev/null \
-              || echo "::warning::Failed to dismiss review $rid (continuing)."
-          done < /tmp/stale_ids.txt
-
-          # Nothing new to post (clean, or all suggestions were pure-additions the
-          # converter dropped). The dismissal above already cleaned up. Done.
-          if [ "$(python3 -c 'import json;print(len(json.load(open("/tmp/comments.json"))))')" = "0" ]; then
-            echo "clang-format clean on the changed lines — dismissed stale reviews, nothing to post."
-            exit 0
-          fi
-
-          # A 422 has two flavours. The benign one (rebase / squash-merge race): a
-          # stale-payload workflow_run posts suggestions computed against the
-          # pre-rebase diff, so some lines no longer exist -> GitHub rejects them as
-          # "not part of the diff". But GitHub also returns 422 for genuinely bad
-          # payloads (invalid position, closed/invalid review, a converter bug), and
-          # blindly soft-skipping every 422 would mask those. Since posting
-          # suggestions is advisory, we never red a PR over it (exit 0 either way),
-          # but we distinguish the two so a real bug stays visible in the logs.
-          # Other failures stay fatal (404 = usually a rate limit from too many
-          # comments -> lower MAX_COMMENTS).
-          if gh api --method POST "/repos/$REPO/pulls/$PR/reviews" \
-                 --input /tmp/review.json > /tmp/resp.json 2> /tmp/review_err.txt; then
-            echo "Review posted: $(python3 -c 'import json;print(json.load(open("/tmp/resp.json")).get("html_url",""))')"
-          elif grep -q 'HTTP 422' /tmp/review_err.txt; then
-            if grep -qiE 'part of the diff|pull_request_review_thread' /tmp/review_err.txt; then
-              echo "::warning::Review POST 422 — suggestions no longer match the PR diff (likely a rebase/merge race). Skipping; a fresh run will supersede."
-            else
-              echo "::warning::Review POST 422 did NOT look like an out-of-diff race — possible invalid payload or converter/API bug; suggestions were dropped this run. Inspect the response below."
-            fi
-            cat /tmp/review_err.txt
-            exit 0
-          else
-            echo "::error::Failed to post review:"
-            cat /tmp/review_err.txt
-            exit 1
-          fi
+          # review_poster posts each suggestion as its own review comment (no batched
+          # review that would leave an undeletable empty shell), reconciling against
+          # what is already on the PR.
+          python3 .github/scripts/review_poster.py /tmp/fmt-candidates.json
 
   # ---------------------------------------------------------------------------
   # gcc build -> one sticky summary comment, aggregating every matrix leg.

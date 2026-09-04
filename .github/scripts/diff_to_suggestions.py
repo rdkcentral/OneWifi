@@ -20,20 +20,18 @@
 """Convert a git-clang-format unified diff (read from stdin) into GitHub PR review
 suggestions, scoped to lines the PR actually changed.
 
-Writes two files consumed by the pr-comments.yml `format` job:
-  /tmp/comments.json  - the (capped) list of review comments
-  /tmp/review.json    - the full review payload for POST .../pulls/{n}/reviews
+Writes one candidate-JSON file (default /tmp/fmt-candidates.json) consumed by
+review_poster.py, which owns dedup, the cap, the review body and the posting:
+  {"source": "formatter", "status": "ok", "dropped": N, "comments": [ ... ]}
 
 Environment:
-  HEAD_SHA            required - commit the review is posted against.
-  MAX_COMMENTS        optional - cap on comments per review (default 25). Large
-                      reviews trigger GitHub rate limiting and fail as a misleading
-                      404 error.
   CHANGED_LINES_FILE  optional - path to a file listing the PR's changed lines
                       (format: "path:start-end" per line, new-side line numbers).
                       When present, suggestions that target only lines the PR did
                       NOT change are dropped. When absent or unparseable, all
                       suggestions are kept (fail-open, same as before this filter).
+  CANDIDATES_OUT      optional - output path for the candidate JSON
+                      (default /tmp/fmt-candidates.json).
 
 Line scoping rationale: git-clang-format can reformat lines adjacent to the
 actual change. The primary mechanism (verified in git_clang_format 18.1.8,
@@ -238,6 +236,7 @@ def main():
     # Line-scope: drop suggestions that target only lines the PR didn't change.
     cl_path = os.environ.get("CHANGED_LINES_FILE", "")
     changed = load_changed_lines(cl_path) if cl_path else None
+    dropped = 0
     if changed is not None:
         # Precompute the commentable region (changed lines grown by DIFF_CONTEXT, merged)
         # once per file; the raw changed intervals stay for the relevance test below.
@@ -265,33 +264,20 @@ def main():
         if dropped:
             print(f"Line-scoping: dropped {dropped} suggestion(s) off the PR's changed/commentable lines")
 
-    total = len(comments)
-    cap = int(os.environ.get("MAX_COMMENTS", "25"))
-    if total > cap:
-        comments = comments[:cap]
-    with open("/tmp/comments.json", "w") as fh:
-        json.dump(comments, fh)
-
-    body = ("`clang-format` suggests the formatting changes below. "
-            "Use **Commit suggestion** to apply them.")
-    if total > cap:
-        body += (f"\n\n> **Note:** showing the first {cap} of {total} suggestions. "
-                 "Apply these and push, and the rest post on the next run — "
-                 "or fix them all at once locally:\n"
-                 "> ```\n"
-                 "> pip install clang-format==18.1.8\n"
-                 "> git-clang-format --style=file --extensions c,h,cpp <merge-base>\n"
-                 "> ```")
-    review = {
-        "commit_id": os.environ["HEAD_SHA"],
-        "event": "COMMENT",
-        "body": body,
+    # Emit the shared-poster candidate envelope. review_poster.py owns the cap,
+    # the review body, dedup and posting; this script only produces findings. A
+    # missing clang-format diff genuinely means "clean" -> status ok, 0 comments.
+    out = {
+        "source": "formatter",
+        "status": "ok",
+        "dropped": dropped,
         "comments": comments,
     }
-    with open("/tmp/review.json", "w") as fh:
-        json.dump(review, fh)
-    print(f"{raw_total} suggestion(s) parsed, {total} after line-scoping; "
-          f"prepared {len(comments)} to post")
+    out_path = os.environ.get("CANDIDATES_OUT", "/tmp/fmt-candidates.json")
+    with open(out_path, "w") as fh:
+        json.dump(out, fh)
+    print(f"{raw_total} suggestion(s) parsed, {len(comments)} candidate(s) "
+          f"({dropped} dropped) -> {out_path}")
 
 
 if __name__ == "__main__":
