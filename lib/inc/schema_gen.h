@@ -214,9 +214,9 @@
         PJS_OVS_BOOL(tcm_secure_5g_rfc) \
         PJS_OVS_BOOL(tcm_secure_6g_rfc) \
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
-        PJS_OVS_BOOL(link_quality_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
         PJS_OVS_BOOL(multiap_rfc) \
+        PJS_OVS_INT(wei_rfc_mask) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -2169,9 +2169,9 @@
     COLUMN(tcm_secure_5g_rfc) \
     COLUMN(tcm_secure_6g_rfc) \
     COLUMN(wpa3_compatibility_enable) \
-    COLUMN(link_quality_rfc) \
     COLUMN(xfi_tel_enable_rfc) \
     COLUMN(multiap_rfc) \
+    COLUMN(wei_rfc_mask)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3548,10 +3548,9 @@
 #define SCHEMA__Wifi_Rfc_Config__tcm_secure_5g_rfc "tcm_secure_5g_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_secure_6g_rfc "tcm_secure_6g_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
-#define SCHEMA__Wifi_Rfc_Config__link_quality_rfc "link_quality_rfc"
 #define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
 #define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
-
+#define SCHEMA__Wifi_Rfc_Config__wei_rfc_mask "wei_rfc_mask"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
