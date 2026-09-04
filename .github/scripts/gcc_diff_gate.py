@@ -257,7 +257,7 @@ def db_args(db, f):
 
 def main():
     if not BASE or not os.path.exists(DB):
-        print("### 🚦 gcc diff-gate: no compile DB or PR base — skipped")
+        print("#### 🚦 gcc diff-gate: no compile DB or PR base — skipped")
         write_inline("skipped", [])
         return 0
     base = effective_base()
@@ -328,23 +328,23 @@ def main():
               .replace("%", "%25").replace("\r", "%0D"), file=sys.stderr)
 
     if not gated and not advis and not failed:
-        print("### 🚦 gcc diff-gate: clean on changed lines")
+        print("#### 🚦 gcc diff-gate: clean on changed lines")
         return 0
     if gated:
         # Same wording with ENFORCE on or off: these are real errors in changed code,
         # whether or not the job is red for them yet.
-        print(f"### ❌ gcc diff-gate — {len(gated)} error(s) on lines this PR changed")
+        print(f"#### ❌ gcc diff-gate — {len(gated)} error(s) on lines this PR changed")
         print("```")
         print("\n".join(gated[:100]))
         print("```")
         print("_Fix the finding, or suppress it with a GCC diagnostic pragma where intentional / refactor._")
     if advis:
-        print(f"### ❗ gcc diff-gate warnings — {len(advis)} on changed lines")
+        print(f"#### ❗ gcc diff-gate warnings — {len(advis)} on changed lines")
         print("```")
         print("\n".join(advis[:100]))
         print("```")
     if failed:
-        print(f"### ⚠️ gcc diff-gate: {len(failed)} file(s) failed to recompile — coverage incomplete")
+        print(f"#### ⚠️ gcc diff-gate: {len(failed)} file(s) failed to recompile — coverage incomplete")
         print("```")
         print("\n".join(failed[:100]))
         print("```")
@@ -365,7 +365,7 @@ if __name__ == "__main__":
         # line so the comment isn't blank, warn, dump the trace to stderr for
         # debugging, and exit 0. Same approach as the clang-tidy gate.
         import traceback
-        print("### 🚦 gcc diff-gate: skipped (mechanism error) — failing open")
+        print("#### 🚦 gcc diff-gate: skipped (mechanism error) — failing open")
         print(f"::warning::gcc diff-gate mechanism error: {exc}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         # A mechanism error must not read as "all clean" to the poster either.

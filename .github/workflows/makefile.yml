@@ -231,7 +231,7 @@ jobs:
         mkdir -p ci-out
         LOG=build.log
         if [ ! -f "$LOG" ]; then
-          echo "## ${{ matrix.platform.name }} — no build log captured" \
+          echo "### ${{ matrix.platform.name }} — no build log captured" \
             | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
@@ -246,9 +246,9 @@ jobs:
             | while IFS= read -r l; do echo "::error::$l"; done
         fi
         {
-          echo "## ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
+          echo "### ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
           if [ -n "$errs" ]; then
-            echo "### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo "#### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
             echo '```'
             head -100 <<< "$errs"
             echo '```'
@@ -266,12 +266,12 @@ jobs:
                   | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' \
                   | sort -u || true)
           if [ -n "$warns" ]; then
-            echo "### ⚠️ OneWifi warnings ($(printf '%s\n' "$warns" | wc -l))"
+            echo "#### ⚠️ OneWifi warnings ($(printf '%s\n' "$warns" | wc -l))"
             echo '```'
             head -100 <<< "$warns"
             echo '```'
           else
-            echo "### ⚠️ OneWifi warnings: 0"
+            echo "#### ⚠️ OneWifi warnings: 0"
           fi
         } | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -287,7 +287,7 @@ jobs:
         # (the per-file `lines=` filter below), so pre-existing findings on untouched lines never red it.
         mkdir -p ci-out
         if [ ! -f compile_commands.json ]; then
-          echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"
+          echo "#### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"
           # skipped (not clean) so the stage-2 poster leaves inline comments alone.
           printf '%s' '{"source":"clang-tidy","status":"skipped","dropped":0,"comments":[]}' > ci-out/inline-tidy.json
           exit 0
@@ -369,16 +369,16 @@ jobs:
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
         {
-          if   [ -z "$CHANGED" ];     then echo "### 🔎 clang-tidy: no changed .c/.cpp to scan"
-          elif [ -z "$gated$advis" ]; then echo "### 🔎 clang-tidy: clean on changed lines"
+          if   [ -z "$CHANGED" ];     then echo "#### 🔎 clang-tidy: no changed .c/.cpp to scan"
+          elif [ -z "$gated$advis" ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
           else
             if [ -n "$gated" ]; then
-              echo "### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
+              echo "#### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
               echo '```'; head -100 <<< "$gated"; echo '```'
               echo "_Fix the finding, or if it is a deliberate, waive it inline with \`// NOLINT(<check-name>)\` on that line._"
             fi
             if [ -n "$advis" ]; then
-              echo "### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
+              echo "#### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
               echo '```'; head -100 <<< "$advis"; echo '```'
             fi
           fi
@@ -433,7 +433,7 @@ jobs:
         set -uo pipefail
         mkdir -p ci-out
         if [ ! -f compile_commands.json ] || [ -z "$BASE" ]; then
-          echo "### 🚦 gcc diff-gate: no compile DB or PR base — skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "#### 🚦 gcc diff-gate: no compile DB or PR base — skipped" >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
@@ -442,7 +442,7 @@ jobs:
         # A missing script (partial cherry-pick / not yet on this branch) must skip,
         # not red the job: python3 on an absent file exits 2 and would fail the matrix.
         if [ ! -f .github/scripts/gcc_diff_gate.py ]; then
-          echo "### 🚦 gcc diff-gate: script not present — skipped" | tee -a ci-out/gcc-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "#### 🚦 gcc diff-gate: script not present — skipped" | tee -a ci-out/gcc-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         set +e

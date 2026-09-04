@@ -276,7 +276,7 @@ jobs:
           set -uo pipefail
           {
             # --- Build summary (always present) ---
-            echo "## 🔨 Build summary"
+            echo "### 🔨 Build summary"
             echo
             echo "_Commit \`${HEAD_SHA:0:7}\` · [\`${RUN_NAME}\` #${RUN_NUMBER}](${RUN_URL})_"
             echo
@@ -302,7 +302,7 @@ jobs:
               # renders as an <hr>, not a setext heading underline of the line above.
               echo "---"
               echo
-              echo "## 🔬 Diff-scoped checks (changed lines only)"
+              echo "### 🔬 Diff-scoped checks (changed lines only)"
               echo
               # How many of these findings were ALSO posted as inline review
               # comments (the 'inline' job posts them; here we surface only the
@@ -318,8 +318,9 @@ jobs:
                 echo "📌 ${n_inline} finding(s) also posted inline on the changed lines."
                 echo
               fi
+              # tidy-summary.md carries its own #### clang-tidy heading — no extra header.
               if [ -s "$tidy" ]; then
-                echo "### 🔎 clang-tidy (advisory)"; echo; cat "$tidy"; echo
+                cat "$tidy"; echo
               fi
               # gcc-gate-summary.md already carries its own ###-level heading(s).
               if [ -s "$gcc" ]; then
