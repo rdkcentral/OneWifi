@@ -11,6 +11,11 @@ description: >
   NOTE: actionlint cannot lint composite action.yml (it parses them as workflows);
   validate this file's shell by extracting the run: blocks and running shellcheck.
 
+  NOTE: steps use `shell: sh` + POSIX `set -u` (no `set -o pipefail`) on purpose —
+  the plain mode runs in native-build.yml's docker-rdk-ci container, whose default
+  shell is dash (no bash). Keep every run: block POSIX so it works there AND under
+  dash on the makefile.yml runner (patched modes).
+
 inputs:
   mode:
     description: 'patched-bpi | patched-rpi | plain'
@@ -44,14 +49,14 @@ runs:
   steps:
     - name: Resolve cache key
       id: key
-      shell: bash
+      shell: sh
       env:
         MODE: ${{ inputs.mode }}
         PIN: ${{ inputs.pin }}
         ONEWIFI_DIR: ${{ inputs.onewifi-dir }}
         GH_TOKEN: ${{ inputs.github-token }}
       run: |
-        set -uo pipefail
+        set -u
         case "$MODE" in
           plain)
             if ! printf '%s' "$PIN" | grep -Eq '^[0-9a-f]{40}$'; then
@@ -104,12 +109,12 @@ runs:
 
     - name: Populate plain tree (cache miss)
       if: ${{ inputs.mode == 'plain' && steps.cache.outputs.cache-hit != 'true' }}
-      shell: bash
+      shell: sh
       env:
         DEST: ${{ inputs.path }}/source/hostap-2.11
         PIN: ${{ inputs.pin }}
       run: |
-        set -uo pipefail
+        set -u
         mkdir -p "$DEST"
         # Shallow-fetch ONLY the pinned commit (~6 MB / ~15 s) rather than a full
         # clone. The '2.11' branch name matches the historical clone so nothing
@@ -127,12 +132,12 @@ runs:
 
     - name: Verify plain tree pin
       if: ${{ inputs.mode == 'plain' }}
-      shell: bash
+      shell: sh
       env:
         DEST: ${{ inputs.path }}/source/hostap-2.11
         PIN: ${{ inputs.pin }}
       run: |
-        set -uo pipefail
+        set -u
         # Fail fast on hit OR miss: a restored cache under a wrong key, or a bad
         # fetch, must never silently build the wrong hostap (the tree-assert).
         got="$(git -C "$DEST" rev-parse HEAD 2>/dev/null || echo none)"
