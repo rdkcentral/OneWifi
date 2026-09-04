@@ -2136,8 +2136,15 @@ void calculate_throughput(int mld_num)
         AckRate = 0;
         Rate = 0;
         for (int i = 0; i <= mld_num; i++) {
-            DiffsamplesAckLink = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentAck[i] - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck[i];
-            DiffsamplesLink = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentTotal[i] - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentTotal[i];
+            // Add underflow protection since counters of t1 might be less then t0 due to BCM packetstats recalculation in platform.c
+            if ((wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentAck[i] > (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck[i])
+                DiffsamplesAckLink = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentAck[i] - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck[i];
+            else
+                DiffsamplesAckLink = 0;
+            if ((wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentTotal[i] > (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentTotal[i])
+                DiffsamplesLink = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentTotal[i] - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentTotal[i];
+            else
+                DiffsamplesLink = 0;
             DiffsamplesAck += DiffsamplesAckLink;
             Diffsamples += DiffsamplesLink;
 
