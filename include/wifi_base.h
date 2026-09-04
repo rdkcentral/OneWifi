@@ -99,18 +99,6 @@ extern "C" {
 #define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
     "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
 
-#ifndef MAX_NUM_MLD_LINKS
-#define MAX_NUM_MLD_LINKS 15
-#endif /*MAX_NUM_MLD_LINKS*/
-
-#ifndef UNDEFINED_MLD_LINK_ID
-#define UNDEFINED_MLD_LINK_ID 255
-#endif
-
-#define UNDEFINED_MLD_ID 255
-#define MLD_UNIT_COUNT 8
-#define MIN_MLO_GROUP_SIZE 2
-
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
@@ -346,6 +334,11 @@ typedef struct {
 } __attribute__((packed)) wifi_csi_dev_t;
 
 #ifdef EM_APP
+typedef struct {
+    mac_address_t sta_mac;
+    wifi_BeaconRequest_t data;
+} beacon_query_params_t;
+
 typedef struct wifi_hal_rrm_request {
     uint8_t dialog_token;
     uint8_t duration;
@@ -1520,11 +1513,10 @@ typedef struct {
     wifi_BeaconReport_t *beacon_repo;
 } wifi_hal_rrm_report_t;
 
-#define EM_MAX_BR_DATA 400
 typedef struct {
     mac_address_t mac_addr;
     unsigned int data_len;
-    unsigned char data[EM_MAX_BR_DATA];
+    unsigned char *data;
     unsigned int ap_index;
     unsigned int num_br_data;
     int sched_handler_id;
