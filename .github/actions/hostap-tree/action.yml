@@ -1,0 +1,143 @@
+name: 'hostap tree'
+description: >
+  Provide the hostap source tree for a build leg, cached by content. Three modes:
+  patched-bpi / patched-rpi cache the MTK-patched tree keyed on that leg's setup.sh
+  + patch inputs (the clone/patch itself is left to setup.sh, whose .hostap_patched
+  guard skips the work on a cache hit); plain caches an UNPATCHED upstream tree keyed
+  on a pinned commit and, on a cache miss, shallow-fetches just that one commit from
+  git.w1.fi instead of a full clone every run. Net traffic to git.w1.fi: one small
+  fetch per pin change per mode, never a clone per run.
+
+  NOTE: actionlint cannot lint composite action.yml (it parses them as workflows);
+  validate this file's shell by extracting the run: blocks and running shellcheck.
+
+inputs:
+  mode:
+    description: 'patched-bpi | patched-rpi | plain'
+    required: true
+  path:
+    description: 'Directory that is cached (and, for plain, populated at <path>/source/hostap-2.11).'
+    required: true
+  pin:
+    description: 'hostap commit SHA (40 hex). Required for plain; ignored for patched modes.'
+    required: false
+    default: ''
+  onewifi-dir:
+    description: 'Path to the OneWifi checkout holding build/linux/<leg>/setup.sh + the patch list (patched modes).'
+    required: false
+    default: 'easymesh_project/OneWifi'
+  github-token:
+    description: 'Token for the bpi meta-cmf-bananapi tree-SHA API call (patched-bpi only).'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  cache-hit:
+    description: 'true when the tree was restored from cache.'
+    value: ${{ steps.cache.outputs.cache-hit }}
+  key:
+    description: 'The exact cache key used.'
+    value: ${{ steps.key.outputs.key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve cache key
+      id: key
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        PIN: ${{ inputs.pin }}
+        ONEWIFI_DIR: ${{ inputs.onewifi-dir }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -uo pipefail
+        case "$MODE" in
+          plain)
+            if ! printf '%s' "$PIN" | grep -Eq '^[0-9a-f]{40}$'; then
+              echo "::error::hostap-tree plain mode needs a 40-hex 'pin' (got '$PIN')."
+              exit 1
+            fi
+            echo "key=hostap-plain-$PIN" >> "$GITHUB_OUTPUT"
+            ;;
+          patched-bpi|patched-rpi)
+            leg="${MODE#patched-}"
+            # --- upstream patch hash (logic lifted verbatim from makefile.yml) ---
+            if [ "$leg" = "bpi" ]; then
+              # meta-cmf-bananapi gets daily commits unrelated to hostap patches;
+              # query just the kernel_6_6 patch dir's git tree SHA via the API, which
+              # changes only when a patch file is added/removed/renamed/modified.
+              api_url="https://api.github.com/repos/rdkcentral/meta-cmf-bananapi/contents"
+              api_url="$api_url/meta-rdk-mtk-bpir4/recipes-ccsp/rdk-wifi-libhostap/files/2.11"
+              upstream="$(curl -sfL -H "Authorization: Bearer $GH_TOKEN" "$api_url" \
+                | python3 -c "import sys,json; entries=json.load(sys.stdin); print(next(e['sha'] for e in entries if e['name']=='kernel_6_6'))" 2>/dev/null || true)"
+            else
+              # hostap-patches repo IS the payload — any commit is a patch change.
+              upstream="$(git ls-remote https://github.com/rdkcentral/hostap-patches.git HEAD | cut -f1)"
+            fi
+            if [ -z "$upstream" ]; then
+              echo "::warning::Could not resolve upstream patch hash (API/network failure). Cache key falls back to 'unresolved' — a hit may serve a stale tree if patches changed during the outage. Purge with: gh cache delete --all"
+            fi
+            upstream="${upstream:-unresolved}"
+            # --- files hash: setup.sh (+ bpi's supplementary patch-list file) ---
+            setup="$ONEWIFI_DIR/build/linux/$leg/setup.sh"
+            patchlist="$ONEWIFI_DIR/build/openwrt/hostap_patch_list.txt"
+            if [ "$leg" = "bpi" ]; then
+              hash="$(cat "$setup" "$patchlist" | sha256sum | cut -c1-16)"
+            else
+              hash="$(sha256sum < "$setup" | cut -c1-16)"
+            fi
+            echo "key=hostap-$leg-$hash-$upstream" >> "$GITHUB_OUTPUT"
+            ;;
+          *)
+            echo "::error::hostap-tree: unknown mode '$MODE' (want patched-bpi|patched-rpi|plain)."
+            exit 1
+            ;;
+        esac
+
+    - name: Cache hostap tree
+      id: cache
+      uses: actions/cache@v5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ steps.key.outputs.key }}
+
+    - name: Populate plain tree (cache miss)
+      if: ${{ inputs.mode == 'plain' && steps.cache.outputs.cache-hit != 'true' }}
+      shell: bash
+      env:
+        DEST: ${{ inputs.path }}/source/hostap-2.11
+        PIN: ${{ inputs.pin }}
+      run: |
+        set -uo pipefail
+        mkdir -p "$DEST"
+        # Shallow-fetch ONLY the pinned commit (~6 MB / ~15 s) rather than a full
+        # clone. The '2.11' branch name matches the historical clone so nothing
+        # downstream changes. Fall back to a full clone if a by-SHA fetch is refused.
+        if git -C "$DEST" init -q \
+           && git -C "$DEST" fetch -q --depth 1 https://git.w1.fi/hostap.git "$PIN" \
+           && git -C "$DEST" checkout -q -b 2.11 FETCH_HEAD; then
+          echo "shallow-fetched hostap $PIN"
+        else
+          echo "::warning::shallow fetch of $PIN failed; falling back to a full clone."
+          rm -rf "$DEST"
+          git clone -q https://git.w1.fi/hostap.git "$DEST"
+          git -C "$DEST" checkout -q -b 2.11 "$PIN"
+        fi
+
+    - name: Verify plain tree pin
+      if: ${{ inputs.mode == 'plain' }}
+      shell: bash
+      env:
+        DEST: ${{ inputs.path }}/source/hostap-2.11
+        PIN: ${{ inputs.pin }}
+      run: |
+        set -uo pipefail
+        # Fail fast on hit OR miss: a restored cache under a wrong key, or a bad
+        # fetch, must never silently build the wrong hostap (the tree-assert).
+        got="$(git -C "$DEST" rev-parse HEAD 2>/dev/null || echo none)"
+        if [ "$got" != "$PIN" ]; then
+          echo "::error::hostap tree at $DEST is $got, expected pin $PIN (bad cache? purge with 'gh cache delete --all')."
+          exit 1
+        fi
+        echo "hostap plain tree verified at $PIN"
