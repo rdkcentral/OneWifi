@@ -39,7 +39,8 @@ jobs:
 
       - name: Load dependency pins
         run: |
-          set -uo pipefail
+          set -u          # POSIX: this job runs in a container whose default shell
+                          # is dash (no bash), so no `set -o pipefail` (a bashism).
           # Same manifest + strict regex as makefile.yml (single source of truth).
           # native-build.yml checks out at the repo root, so the path is plain.
           manifest=.github/ci-pins.env
