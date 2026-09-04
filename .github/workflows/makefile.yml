@@ -11,32 +11,14 @@ concurrency:
   cancel-in-progress: true
 
 # ── Dependency pins ──────────────────────────────────────────────────────
-# ONE-STOP manifest: every external repo this build clones is listed here.
-# To bump a dependency, change the SHA below AND the matching fallback in
-# setup.sh (the "Verify pins" step enforces this — a mismatch errors).
-# Pinned repos get a deterministic build; unpinned repos (empty string)
-# clone the default branch tip — pin them when ready (ci-README.md §7).
-#
-# setup.sh fallbacks keep `make setup` working locally without the workflow.
-# HAL CI clones OneWifi/develop and runs its setup.sh, so the fallbacks
-# are the cross-repo truth — they MUST match.
-env:
-  # ── Pinned (SHA-locked) ──
-  # ucode: 655ca6d = a0ca7b1^1 = last master BEFORE the FFI merge (PR#398).
-  # TRAP: any commit ON the PR#398 branch (incl. 19ffa8a) still ships the
-  # poisoned `unused` macro. Use first-parent (a0ca7b1^1) when moving this
-  # pin, NOT plain `git log`.
-  PIN_UCODE:           "655ca6d55f58135b8b35bfaec77404dc551632e3"
-  PIN_HOSTAP_2_11:     "4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c"  # bpi: git.w1.fi/hostap
-  PIN_HOSTAP_2_10:     "9d07b9447e76059a2ddef2a879c57d0934634188"  # rpi: git.w1.fi/hostap
-  PIN_META_FILOGIC:    "c67a32a7c8876b328a8d1eeaca213e860d85b3ce"  # mediatek/meta-filogic
-  # ── Unpinned (clone default-branch tip — pin when ready) ──
-  # PIN_UNIFIED_MESH:  ""   # rdkcentral/unified-wifi-mesh (develop)
-  # PIN_RDK_WIFI_HAL:  ""   # rdkcentral/rdk-wifi-hal      (develop)
-  # PIN_HALINTERFACE:  ""   # rdkcentral/rdkb-halif-wifi    (develop)
-  # PIN_TROWER_BASE64: ""   # xmidt-org/trower-base64       (main)
-  # PIN_META_CMF_BPI:  ""   # rdkcentral/meta-cmf-bananapi  (default)
-  # PIN_HOSTAP_PATCHES:""   # rdkcentral/hostap-patches      (rpi, default)
+# The pin SHAs live in ONE manifest, .github/ci-pins.env, loaded into the job
+# environment by the early "Load dependency pins" step (below) so this workflow
+# and native-build.yml (Coverity) read the same source of truth. To bump a
+# dependency, change the SHA in ci-pins.env AND the matching fallback in setup.sh
+# (the "Verify pin manifest" step enforces the match — a mismatch errors).
+# setup.sh fallbacks keep `make setup` working locally without the workflow;
+# HAL CI clones OneWifi/develop and runs its setup.sh, so those fallbacks are the
+# cross-repo truth. See ci-README.md §7.
 
 # Stage 1 is deliberately read-only: it builds PR-controlled makefiles, so it
 # must hold no write scope. The PR-comment posting (writes) happens only in the
@@ -84,6 +66,28 @@ jobs:
         mkdir -p easymesh_project
         git clone https://github.com/rdkcentral/unified-wifi-mesh.git easymesh_project/unified-wifi-mesh
         mv OneWifi easymesh_project/OneWifi
+
+    - name: Load dependency pins
+      run: |
+        set -uo pipefail
+        # ONE source of truth for every pinned dependency SHA (ci-pins.env),
+        # loaded into $GITHUB_ENV so later steps read $PIN_* exactly as the old
+        # env: block exposed them. native-build.yml loads the same file. The
+        # strict PIN_NAME=<40hex> regex is the gate: a typo'd or truncated pin
+        # must fail here, never load as a silent partial value.
+        manifest=easymesh_project/OneWifi/.github/ci-pins.env
+        [ -f "$manifest" ] || { echo "::error::pin manifest $manifest missing"; exit 1; }
+        pins=$(grep -E '^PIN_[A-Z0-9_]+=[0-9a-f]{40}$' "$manifest" || true)
+        # Real value lines = non-blank, non-comment (unpinned entries are commented
+        # out). Every one of them must be a well-formed pin, else a SHA is malformed.
+        real=$(grep -cE '^[[:space:]]*[^#[:space:]]' "$manifest" || true)
+        matched=$(printf '%s\n' "$pins" | grep -c . || true)
+        if [ -z "$pins" ] || [ "$matched" -ne "$real" ]; then
+          echo "::error::pin manifest $manifest: $matched of $real value line(s) matched PIN_NAME=<40hex> — a pin is malformed or truncated"
+          exit 1
+        fi
+        printf '%s\n' "$pins" >> "$GITHUB_ENV"
+        echo "loaded $matched dependency pin(s) from $manifest"
 
     - name: Set up dependencies
       run: |
@@ -138,15 +142,25 @@ jobs:
         sudo make install
         sudo ldconfig
 
-    # Guard: the manifest pins (env: block) MUST match the setup.sh fallbacks.
-    # A mismatch means someone bumped only the manifest → the cache key (which
-    # hashes setup.sh) won't invalidate → CI silently builds the old pinned tree.
-    # HAL CI runs setup.sh directly (no manifest env vars), so fallback drift
+    # Guard: the manifest pins (ci-pins.env, loaded above) MUST match the setup.sh
+    # fallbacks. A mismatch means someone bumped only the manifest → the cache key
+    # (which hashes setup.sh) won't invalidate → CI silently builds the old pinned
+    # tree. HAL CI runs setup.sh directly (no manifest env vars), so fallback drift
     # also means cross-repo divergence. Fail loud at setup time, not deep in a build.
     - name: Verify pin manifest matches setup.sh fallbacks
       if: matrix.platform.id != 'mock'
       working-directory: easymesh_project/OneWifi
       run: |
+        set -uo pipefail
+        # The pins must have loaded ("Load dependency pins"). An empty value here
+        # means the manifest failed to load — fail before the grep checks below
+        # silently pass on an empty needle. All three pins are named symmetrically
+        # so the SC2153 "possible misspelling" heuristic can't single one out (they
+        # are assigned via $GITHUB_ENV, which the linter cannot see statically).
+        if [ -z "${PIN_HOSTAP_2_11:-}" ] || [ -z "${PIN_HOSTAP_2_10:-}" ] || [ -z "${PIN_META_FILOGIC:-}" ]; then
+          echo "::error::a dependency pin is empty — the pin manifest did not load."
+          exit 1
+        fi
         ok=true
         check() { # usage: check ENV_NAME SETUP_FILE
           local manifest="$1" file="$2" name="$3"
@@ -161,68 +175,35 @@ jobs:
         else
           check "$PIN_HOSTAP_2_10"  build/linux/rpi/setup.sh PIN_HOSTAP_2_10
         fi
+        # native-build.yml (Coverity) must read its hostap pin from the manifest,
+        # never re-hardcode a SHA — a third copy would drift silently. Assert no
+        # bare 40-hex literal has crept back into it.
+        if grep -nE '[0-9a-f]{40}' .github/workflows/native-build.yml; then
+          echo "::error::native-build.yml carries a 40-hex literal — it must load pins from ci-pins.env, not hardcode a SHA."
+          ok=false
+        fi
         $ok || exit 1
 
-    # Perf: each device leg (bpi, rpi) clones + patches hostap from upstream
-    # (git.w1.fi for rpi, git.w1.fi + GitHub layers for bpi). The patched tree
-    # is a pure function of the pins in setup.sh plus the patch inputs, so
-    # cache it keyed on those files. On a hit, setup.sh's .hostap_patched flag
-    # skips the clone AND patching entirely. A miss falls back to the normal
-    # clone, so this can never be slower than today.
+    # Perf: each device leg (bpi, rpi) clones + patches hostap from upstream.
+    # The patched tree is a pure function of the pins in setup.sh plus the patch
+    # inputs, so the hostap-tree composite action caches it keyed on those files
+    # (patched-<leg> mode). On a hit, setup.sh's .hostap_patched flag skips the
+    # clone AND patching entirely; a miss falls back to the normal clone, so this
+    # can never be slower than today. The key logic (files hash + the one unpinned
+    # patch source per leg: bpi's meta-cmf-bananapi kernel_6_6 tree SHA, rpi's
+    # hostap-patches tip) lives in the action so Coverity (native-build.yml, plain
+    # mode) shares the same cache machinery. mock never clones hostap.
     #
-    # Exact-key-only (NO restore-keys): a pin bump edits setup.sh -> key
-    # changes -> miss -> full re-clone at new pins. restore-keys would
-    # resurrect a stale patched tree and silently build the wrong hostap.
-    #
-    # Each leg has one UNPINNED patch source whose changes must invalidate
-    # the cache:
-    #   bpi: meta-cmf-bananapi — only the kernel_6_6 patch subdir matters;
-    #        the repo gets daily unrelated commits, so we key on the GitHub
-    #        API tree SHA of that directory (changes only when a patch file
-    #        changes), NOT the whole-repo tip.
-    #   rpi: hostap-patches — the entire repo IS patches, so ls-remote tip
-    #        is appropriate.
-    # mock never clones hostap -> no cache needed.
-    - name: Resolve hostap cache key inputs
+    # NOTE: the local `uses:` path is ./easymesh_project/OneWifi/… NOT ./.github/… —
+    # the checkout lands at OneWifi/ then is mv'd under easymesh_project/OneWifi
+    # (above), so the action only exists at that sub-path (ci-README §10).
+    - name: Provide patched hostap tree (cached)
       if: matrix.platform.id != 'mock'
-      id: hostap_key
-      run: |
-        if [ "${{ matrix.platform.id }}" = "bpi" ]; then
-          # meta-cmf-bananapi is a large Yocto layer repo that gets daily
-          # commits unrelated to hostap patches. Only one subdirectory
-          # matters: the kernel_6_6 patch dir. Query its git tree SHA via
-          # the GitHub API — it changes only when an actual patch file is
-          # added, removed, renamed, or modified.
-          api_url="https://api.github.com/repos/rdkcentral/meta-cmf-bananapi/contents"
-          api_url="$api_url/meta-rdk-mtk-bpir4/recipes-ccsp/rdk-wifi-libhostap/files/2.11"
-          upstream="$(curl -sfL -H "Authorization: Bearer ${{ github.token }}" "$api_url" \
-            | python3 -c "import sys,json; entries=json.load(sys.stdin); print(next(e['sha'] for e in entries if e['name']=='kernel_6_6'))" 2>/dev/null || true)"
-        else
-          # hostap-patches repo IS the payload — any commit is a patch change.
-          upstream="$(git ls-remote https://github.com/rdkcentral/hostap-patches.git HEAD | cut -f1)"
-        fi
-        if [ -z "$upstream" ]; then
-          echo "::warning::Could not resolve upstream patch hash (API/network failure). Cache key falls back to 'unresolved' — a hit may serve a stale tree if patches changed during the outage. Purge with: gh cache delete --all"
-        fi
-        echo "upstream=${upstream:-unresolved}" >> "$GITHUB_OUTPUT"
-
-        # Hash the setup script + any supplementary patch-list file. rpi's
-        # patches are inline in setup.sh; bpi's are in hostap_patch_list.txt.
-        setup="easymesh_project/OneWifi/build/linux/${{ matrix.platform.id }}/setup.sh"
-        patchlist="easymesh_project/OneWifi/build/openwrt/hostap_patch_list.txt"
-        if [ "${{ matrix.platform.id }}" = "bpi" ]; then
-          hash="$(cat "$setup" "$patchlist" | sha256sum | cut -c1-16)"
-        else
-          hash="$(sha256sum < "$setup" | cut -c1-16)"
-        fi
-        echo "files_hash=$hash" >> "$GITHUB_OUTPUT"
-
-    - name: Cache patched hostap
-      if: matrix.platform.id != 'mock'
-      uses: actions/cache@v5
+      uses: ./easymesh_project/OneWifi/.github/actions/hostap-tree
       with:
+        mode: patched-${{ matrix.platform.id }}
         path: easymesh_project/rdk-wifi-libhostap
-        key: hostap-${{ matrix.platform.id }}-${{ steps.hostap_key.outputs.files_hash }}-${{ steps.hostap_key.outputs.upstream }}
+        github-token: ${{ github.token }}
 
     - name: Setup OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi

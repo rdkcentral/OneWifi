@@ -28,21 +28,47 @@ jobs:
         with:
           persist-credentials: false
 
+      # actions/cache (used inside the hostap-tree action) does not expand $HOME,
+      # and inside a container HOME is /github/home — resolve it into a step output.
+      - name: Resolve HOME
+        id: home
+        run: echo "home=$HOME" >> "$GITHUB_OUTPUT"
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory '*'
+
+      - name: Load dependency pins
+        run: |
+          set -uo pipefail
+          # Same manifest + strict regex as makefile.yml (single source of truth).
+          # native-build.yml checks out at the repo root, so the path is plain.
+          manifest=.github/ci-pins.env
+          [ -f "$manifest" ] || { echo "::error::pin manifest $manifest missing"; exit 1; }
+          pins=$(grep -E '^PIN_[A-Z0-9_]+=[0-9a-f]{40}$' "$manifest" || true)
+          real=$(grep -cE '^[[:space:]]*[^#[:space:]]' "$manifest" || true)
+          matched=$(printf '%s\n' "$pins" | grep -c . || true)
+          if [ -z "$pins" ] || [ "$matched" -ne "$real" ]; then
+            echo "::error::pin manifest $manifest: $matched of $real value line(s) matched PIN_NAME=<40hex>"
+            exit 1
+          fi
+          printf '%s\n' "$pins" >> "$GITHUB_ENV"
+
+      # Plain (unpatched) hostap tree, cached by pin — replaces a full clone on
+      # every Coverity run with one shallow fetch per pin change (cache hit = no
+      # traffic to git.w1.fi). native-build.yml checks out at the repo root, so the
+      # plain ./.github/actions/… path is correct here (unlike makefile.yml).
+      - name: Provide hostap tree (cached)
+        uses: ./.github/actions/hostap-tree
+        with:
+          mode: plain
+          pin: ${{ env.PIN_HOSTAP_2_11 }}
+          path: ${{ steps.home.outputs.home }}/build/rdk-wifi-libhostap
+
       - name: Native-ish build for Coverity based on XB
         run: |
-
-          # Trust the workspace
-          git config --global --add safe.directory '*'
+          # The workspace trust + hostap tree are provided by the steps above.
           # Pull the latest changes for the native build system
           git submodule update --init --recursive
-
-          #Clone hostapd
-          ORIG_DIR=$(pwd)
-          mkdir -p $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
-          git clone https://git.w1.fi/hostap.git $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
-          cd $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
-          git checkout -b 2.11 4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c
-          cd ${ORIG_DIR}
 
           chmod +x build_tools_workflows/cov_docker_script/setup_dependencies.sh
           ./build_tools_workflows/cov_docker_script/setup_dependencies.sh ./cov_docker_script/component_config.json
