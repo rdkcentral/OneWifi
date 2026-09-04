@@ -286,7 +286,12 @@ jobs:
         # gate. The gate is changed-LINES-scoped: a PR can only fail on a .c/.cpp LINE it touched
         # (the per-file `lines=` filter below), so pre-existing findings on untouched lines never red it.
         mkdir -p ci-out
-        [ -f compile_commands.json ] || { echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+        if [ ! -f compile_commands.json ]; then
+          echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"
+          # skipped (not clean) so the stage-2 poster leaves inline comments alone.
+          printf '%s' '{"source":"clang-tidy","status":"skipped","dropped":0,"comments":[]}' > ci-out/inline-tidy.json
+          exit 0
+        fi
         BASE='${{ github.event.pull_request.base.sha }}'
         CHANGED=''
         DIFF_BASE="$BASE"
@@ -378,6 +383,11 @@ jobs:
             fi
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
+        # Inline-review candidates (Commit 5): parse tidy.log (already changed-lines
+        # scoped) into per-finding comments for the stage-2 'inline' job. Written
+        # even when the gate fires below — findings post regardless of pass/fail.
+        # Never reds the step (|| true): a parse hiccup must not fail the build.
+        python3 .github/scripts/tidy_to_inline.py tidy.log ci-out/inline-tidy.json || true
         # Gate AFTER the summary + artifact are written, on promoted checks only.
         if [ -n "$gated" ]; then
           echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed lines" >&2
@@ -416,6 +426,9 @@ jobs:
         # code left set-but-unused vars" case is -Wunused-but-set-variable.)
         GATE_WARNINGS: "-Wvla -Wreturn-type"
         ADVISORY_WARNINGS: "-Wunused-but-set-variable -Wunused-value -Wunused-label"
+        # Inline-review candidates (Commit 5) for the stage-2 'inline' job. Lands in
+        # ci-out/ (uploaded as ci-summary-bpi). Absent/unset -> the script writes none.
+        INLINE_JSON: "ci-out/inline-gcc.json"
       run: |
         set -uo pipefail
         mkdir -p ci-out

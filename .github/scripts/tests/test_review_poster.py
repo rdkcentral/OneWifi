@@ -171,5 +171,40 @@ class GhSeam(unittest.TestCase):
         self.assertEqual(rp.post_comments("o/r", "1", "sha", [cand("a.c", 5, "x")], "fmt"), 1)
 
 
+class InlineGccTidyFixture(unittest.TestCase):
+    """End-to-end: real gcc-gate + clang-tidy candidate envelopes (as the two
+    Commit-5 producers write them) flow through load_candidates -> reconcile on the
+    inline slot. gcc gates post before clang-tidy, the cap drops the overflow
+    (advisory), and per-file `dropped` counts aggregate for the poster summary."""
+    def _write(self, obj):
+        fd, p = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        with open(p, "w") as fh:
+            json.dump(obj, fh)
+        return p
+
+    def test_priority_and_cap_across_files(self):
+        gcc = {"source": "gcc-gate", "status": "ok", "dropped": 0, "comments": [
+            {"path": "a.c", "line": 10, "side": "RIGHT", "body": "gcc A"},
+            {"path": "a.c", "line": 20, "side": "RIGHT", "body": "gcc B"}]}
+        tidy = {"source": "clang-tidy", "status": "ok", "dropped": 1, "comments": [
+            {"path": "b.c", "line": 5, "side": "RIGHT", "body": "tidy A"}]}
+        cands, all_ok, dropped = rp.load_candidates([self._write(gcc), self._write(tidy)])
+        self.assertTrue(all_ok)
+        self.assertEqual(dropped, 1)                    # tidy reported 1 uncommentable
+        dele, post, _o, overflow, _s = rp.reconcile([], [], cands, all_ok, "inline", 2)
+        # gcc-gate (priority 0) before clang-tidy (1); cap=2 keeps both gcc, drops tidy.
+        self.assertEqual([c["source"] for c in post], ["gcc-gate", "gcc-gate"])
+        self.assertEqual(overflow, 1)
+
+    def test_one_skipped_producer_disables_stale(self):
+        # gcc "ok" but tidy "skipped" -> all_ok False -> the inline slot keeps any
+        # live comment even when the ok producer no longer lists it (fail-open).
+        gcc = {"source": "gcc-gate", "status": "ok", "dropped": 0, "comments": []}
+        tidy = {"source": "clang-tidy", "status": "skipped", "dropped": 0, "comments": []}
+        _c, all_ok, _d = rp.load_candidates([self._write(gcc), self._write(tidy)])
+        self.assertFalse(all_ok)
+
+
 if __name__ == "__main__":
     unittest.main()

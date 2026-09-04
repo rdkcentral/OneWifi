@@ -3,10 +3,12 @@ name: PR comments
 # unified stage 2/2 for every PR-comment payload.
 #
 # One trusted workflow_run flow that posts the CI artifacts back to the PR:
-#   - clang-format          -> inline review suggestions  (job: format, bespoke)
-#   - gcc build summary     -> one sticky comment         (job: build)
-#   - clang-tidy + gcc gate -> one sticky comment         (job: tidy, both
-#                              diff-scoped checks folded together)
+#   - clang-format            -> inline review suggestions (job: format, bespoke
+#                                ```suggestion blocks with a Commit-suggestion button)
+#   - build + diff-scoped     -> ONE sticky "CI summary" comment (job: summary;
+#     summaries (gcc/tidy)        folds the old build-summary + clang-tidy stickies)
+#   - gcc gate + clang-tidy   -> inline review COMMENTS on the exact changed lines
+#     findings                    they fired on (job: inline; advisory, fail-open)
 #
 # Why workflow_run (and why two stages at all): posting to a PR needs
 # `pull-requests: write`. Doing that in a job that has checked out and built
@@ -302,6 +304,20 @@ jobs:
               echo
               echo "## 🔬 Diff-scoped checks (changed lines only)"
               echo
+              # How many of these findings were ALSO posted as inline review
+              # comments (the 'inline' job posts them; here we surface only the
+              # count so the sticky doesn't duplicate the text). Both candidate
+              # files live in the bpi artifact. jq null/absent .comments -> 0.
+              n_inline=0
+              for j in ci-summary-bpi/inline-gcc.json ci-summary-bpi/inline-tidy.json; do
+                [ -s "$j" ] || continue
+                c=$(jq '.comments | length' "$j" 2>/dev/null || echo 0)
+                n_inline=$((n_inline + c))
+              done
+              if [ "$n_inline" -gt 0 ]; then
+                echo "📌 ${n_inline} finding(s) also posted inline on the changed lines."
+                echo
+              fi
               if [ -s "$tidy" ]; then
                 echo "### 🔎 clang-tidy (advisory)"; echo; cat "$tidy"; echo
               fi
@@ -327,3 +343,56 @@ jobs:
           retire-markers: "build-summary clang-tidy"
           body-file: ci-summary-comment.md
           bot-login: ${{ env.BOT_LOGIN }}
+
+  # ---------------------------------------------------------------------------
+  # Build Check -> inline review COMMENTS for the gcc diff-gate + clang-tidy
+  # findings (Commit 5). Distinct from the 'summary' sticky (which shows only the
+  # count): this posts each finding on the exact changed line it fired on, through
+  # the shared review_poster (SLOT=inline — its own hidden marker family, so it
+  # never reconciles against the clang-format 'fmt' suggestions). Advisory and
+  # fail-open: a missing candidate file = that producer skipped => nothing posted
+  # and nothing deleted; posting never reds the PR.
+  # ---------------------------------------------------------------------------
+  inline:
+    name: inline gcc + clang-tidy review
+    runs-on: ubuntu-24.04
+    needs: resolve
+    if: >-
+      needs.resolve.outputs.run_name == 'Build Check'
+      && needs.resolve.outputs.event == 'pull_request'
+      && needs.resolve.outputs.conclusion != 'cancelled'
+    steps:
+      - name: Check out base-repo actions (no PR code)
+        uses: actions/checkout@v6
+
+      # Anchor trust on the bpi artifact (bpi owns the compile DB, so it is the
+      # only leg that produces inline-gcc.json / inline-tidy.json). pr-context
+      # downloads it to ./ci-summary-bpi/, where the poster reads the candidates.
+      - name: Establish trusted PR context
+        id: ctx
+        uses: ./.github/actions/pr-context
+        with:
+          artifact-name: ci-summary-bpi
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          expected-repo: ${{ needs.resolve.outputs.head_repo }}
+          expected-branch: ${{ needs.resolve.outputs.head_branch }}
+
+      - name: Reconcile and post inline gcc + clang-tidy findings
+        if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.ctx.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
+          SLOT: inline
+          # MAX_COMMENTS and BOT_LOGIN come from the workflow-level env.
+        run: |
+          # Both candidate files share the SLOT=inline marker family. review_poster
+          # posts only the missing findings, deletes outdated/duplicate ones, and
+          # leaves any a human has replied to intact. A candidate file that is
+          # absent (its producer skipped) disables stale-deletion for the slot — an
+          # unreadable file never reads as "all clean" and wipes live comments.
+          python3 .github/scripts/review_poster.py \
+            ci-summary-bpi/inline-gcc.json ci-summary-bpi/inline-tidy.json
