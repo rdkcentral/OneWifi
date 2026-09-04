@@ -743,6 +743,50 @@ cleanup:
     return rc;
 }
 
+// Flatten an rbus object tree into bus data properties; child object
+// properties get the object path as a dotted prefix ("Class.1.OpClass").
+static bus_error_t rbus_object_tree_to_bus_props(rbusObject_t obj, const char *prefix,
+    bus_data_prop_t *bus_data)
+{
+    bus_error_t rc = bus_error_success;
+
+    for (rbusProperty_t prop = rbusObject_GetProperties(obj); prop && rc == bus_error_success;
+         prop = rbusProperty_GetNext(prop)) {
+        const char *prop_name = rbusProperty_GetName(prop);
+        rbusValue_t prop_val = rbusProperty_GetValue(prop);
+        if (prop_name == NULL || prop_val == NULL) {
+            return bus_error_invalid_input;
+        }
+        if (prefix != NULL) {
+            char full_name[BUS_MAX_NAME_LENGTH];
+            int name_len = snprintf(full_name, sizeof(full_name), "%s.%s", prefix, prop_name);
+            if (name_len < 0 || name_len >= (int)sizeof(full_name)) {
+                return bus_error_invalid_input;
+            }
+            rc = rbus_value_to_bus_prop(bus_data, full_name, prop_val);
+        } else {
+            rc = rbus_value_to_bus_prop(bus_data, prop_name, prop_val);
+        }
+    }
+
+    for (rbusObject_t child = rbusObject_GetChildren(obj); child && rc == bus_error_success;
+         child = rbusObject_GetNext(child)) {
+        const char *child_name = rbusObject_GetName(child);
+        char child_prefix[BUS_MAX_NAME_LENGTH];
+        if (child_name == NULL) {
+            return bus_error_invalid_input;
+        }
+        int prefix_len = snprintf(child_prefix, sizeof(child_prefix), "%s%s%s",
+                (prefix != NULL) ? prefix : "", (prefix != NULL) ? "." : "", child_name);
+        if (prefix_len < 0 || prefix_len >= (int)sizeof(child_prefix)) {
+            return bus_error_invalid_input;
+        }
+        rc = rbus_object_tree_to_bus_props(child, child_prefix, bus_data);
+    }
+
+    return rc;
+}
+
 // get rbus object data from rbus
 static bus_error_t get_rbus_object_data(char *name, rbusObject_t inParams, bus_data_prop_t *bus_data)
 {
@@ -754,26 +798,8 @@ static bus_error_t get_rbus_object_data(char *name, rbusObject_t inParams, bus_d
     bus_error_t rc = bus_error_success;
     rbusProperty_t prop_head = rbusObject_GetProperties(inParams);
 
-    if (prop_head != NULL) {
-        for (rbusProperty_t prop = prop_head; prop && rc == bus_error_success; prop = rbusProperty_GetNext(prop)) {
-            const char *prop_name = rbusProperty_GetName(prop);
-            if (prop_name == NULL) {
-                rc = bus_error_invalid_input;
-                break;
-            }
-
-            rbusValue_t prop_val = rbusProperty_GetValue(prop);
-            if (prop_val == NULL) {
-                rc = bus_error_invalid_input;
-                break;
-            }
-
-            rc = rbus_value_to_bus_prop(bus_data, prop_name, prop_val);
-            if (rc != bus_error_success) {
-                break;
-            }
-        }
-
+    if (prop_head != NULL || rbusObject_GetChildren(inParams) != NULL) {
+        rc = rbus_object_tree_to_bus_props(inParams, NULL, bus_data);
         if (rc != bus_error_success) {
             bus_release_data_prop(bus_data, NULL);
             wifi_util_error_print(WIFI_BUS, "%s:%d rbus property parse failed for %s\n",
