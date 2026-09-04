@@ -908,7 +908,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_rfc_dml_parameters_t rfc_config = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    rfc_config.link_quality_rfc = true;
+    rfc_config.wei_rfc_mask = 0;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -976,7 +976,8 @@ int get_wifi_global_param(wifi_global_param_t *config)
 
 int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
 {
-   return 0;
+
+    return 0;
 }
 
 int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)

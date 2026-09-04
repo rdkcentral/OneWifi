@@ -490,6 +490,7 @@ bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t
 void apply_wpa2_personal_encr_policy(wifi_vap_security_t *security_info);
 void apply_wpa3_transition_encr_policy(wifi_vap_security_t *security_info);
 int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac);
+void copy_assocstats_dev_stats(wifi_associated_dev3_t* assoc_dev,dev_stats_t *dev);
 #ifdef __cplusplus
 }
 #endif
