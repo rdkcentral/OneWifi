@@ -566,7 +566,7 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
 #endif//ONE_WIFI
 
 /* Legacy Devices Like XB3 have systemd on the side with WiFi Agent, but don't use Service Files */
-#if defined(ENABLE_SD_NOTIFY) && (defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_MIPS_)|| defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_))
+#if defined(ENABLE_SD_NOTIFY) && (defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_MIPS_)|| defined(_COSA_BCM_ARM_) || defined(QCOM_ATH12K_PORT) || defined(_PLATFORM_TURRIS_))
     char cmd[1024]          = {0};
     /*This is used for systemd */
     fd = fopen("/var/tmp/OneWifi.pid", "w+");

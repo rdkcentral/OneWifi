@@ -4262,6 +4262,7 @@ static const wifi_operating_classes_t us_6G[] = {
     { 134, 23,  0, {} 	   },
     { 135, -30, 0, {}      },
     { 136, 23,  0, {}      },
+    { 137, 23,  0, {}      },
 };
 
 // Countrycode: EU, Band 2.4G
