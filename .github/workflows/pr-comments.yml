@@ -22,18 +22,26 @@ name: PR comments
 #
 # NOTE: workflow_run *always* uses the copy of this file (and the referenced local
 # actions) from the repository default branch — so nothing here takes effect
-# until it has merged to 'develop'.
+# until it has merged to 'develop'. The one exception is a manual workflow_dispatch
+# (below): it runs the copy of this file on the ref the maintainer picks, which is
+# how a stage-2 change is tested from a feature branch before it merges.
 # NOTE: workflow_run applies only to same repo.
+#
+# SECURITY: workflow_dispatch requires write access to the repo (a maintainer), who
+# chooses both the ref and the stage-1 run_id. The 'resolve' job rejects a run_id that
+# belongs to a different repository, and pr-context still validates every downloaded
+# artifact — so a dispatch cannot post from another repo's run, and the trust boundary
+# is identical to the workflow_run path.
 
 on:
   workflow_run:
     workflows: ["Build Check", "clang-format"]
     types: [completed]
-  # Manual trigger so stage 2 can be dispatched from a feature branch pre-merge
-  # to test changes before they land (a dispatch runs the branch's copy of this
-  # file, unlike workflow_run which always uses the default-branch copy). Harmless
-  # on 'develop': every job's if: name-gate below is false for a dispatch event,
-  # so all jobs skip until the companion PR adds a resolve job to wire it up.
+  # Manual trigger so stage 2 can be dispatched from a feature branch pre-merge to
+  # test changes before they land (a dispatch runs the branch's copy of this file,
+  # unlike workflow_run which always uses the default-branch copy). The 'resolve' job
+  # normalizes the trigger context so every downstream job behaves identically whether
+  # it was reached via workflow_run or a dispatch carrying this run_id.
   workflow_dispatch:
     inputs:
       run_id:
@@ -55,7 +63,7 @@ permissions:
 # on head_repository.full_name + head_branch, which always exists.
 concurrency:
   group: >-
-    pr-comments-${{ github.event.workflow_run.name }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+    pr-comments-${{ github.event.workflow_run.name || 'dispatch' }}-${{ github.event.workflow_run.head_repository.full_name || github.run_id }}-${{ github.event.workflow_run.head_branch || inputs.run_id }}
   cancel-in-progress: true
 
 env:
@@ -69,20 +77,94 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Normalize the triggering context into ONE set of outputs, so every downstream
+  # job is identical whether this run came from workflow_run (the real path) or a
+  # manual workflow_dispatch (the pre-merge test harness — see the file header).
+  # No checkout: this job only needs gh + jq, which are on the runner.
+  # ---------------------------------------------------------------------------
+  resolve:
+    name: resolve trigger context
+    runs-on: ubuntu-24.04
+    outputs:
+      run_id: ${{ steps.r.outputs.run_id }}
+      run_name: ${{ steps.r.outputs.run_name }}
+      run_number: ${{ steps.r.outputs.run_number }}
+      run_url: ${{ steps.r.outputs.run_url }}
+      head_repo: ${{ steps.r.outputs.head_repo }}
+      head_branch: ${{ steps.r.outputs.head_branch }}
+      event: ${{ steps.r.outputs.event }}
+      conclusion: ${{ steps.r.outputs.conclusion }}
+    steps:
+      - name: Resolve run metadata
+        id: r
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID_INPUT: ${{ inputs.run_id }}
+          # workflow_run.* — populated only on the workflow_run path, empty on dispatch.
+          WR_ID: ${{ github.event.workflow_run.id }}
+          WR_NAME: ${{ github.event.workflow_run.name }}
+          WR_NUMBER: ${{ github.event.workflow_run.run_number }}
+          WR_URL: ${{ github.event.workflow_run.html_url }}
+          WR_HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          WR_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WR_EVENT: ${{ github.event.workflow_run.event }}
+          WR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -uo pipefail
+          emit() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"; }
+
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            emit run_id      "$WR_ID"
+            emit run_name    "$WR_NAME"
+            emit run_number  "$WR_NUMBER"
+            emit run_url     "$WR_URL"
+            emit head_repo   "$WR_HEAD_REPO"
+            emit head_branch "$WR_HEAD_BRANCH"
+            emit event       "$WR_EVENT"
+            emit conclusion  "$WR_CONCLUSION"
+            exit 0
+          fi
+
+          # workflow_dispatch: re-derive the same fields from the API for the run the
+          # maintainer named. Validate the id is numeric BEFORE it reaches a URL, and
+          # refuse a run owned by another repository (see the SECURITY note above).
+          case "$RUN_ID_INPUT" in
+            ''|*[!0-9]*) echo "::error::run_id must be numeric, got '$RUN_ID_INPUT'"; exit 1 ;;
+          esac
+          if ! gh api "/repos/$REPO/actions/runs/$RUN_ID_INPUT" > /tmp/run.json; then
+            echo "::error::Could not fetch run $RUN_ID_INPUT from $REPO"; exit 1
+          fi
+          full=$(jq -r '.repository.full_name // ""' /tmp/run.json)
+          if [ "$full" != "$REPO" ]; then
+            echo "::error::run $RUN_ID_INPUT belongs to '$full', not '$REPO' — refusing."; exit 1
+          fi
+          emit run_id      "$RUN_ID_INPUT"
+          emit run_name    "$(jq -r '.name // ""' /tmp/run.json)"
+          emit run_number  "$(jq -r '.run_number // ""' /tmp/run.json)"
+          emit run_url     "$(jq -r '.html_url // ""' /tmp/run.json)"
+          emit head_repo   "$(jq -r '.head_repository.full_name // ""' /tmp/run.json)"
+          emit head_branch "$(jq -r '.head_branch // ""' /tmp/run.json)"
+          emit event       "$(jq -r '.event // ""' /tmp/run.json)"
+          emit conclusion  "$(jq -r '.conclusion // ""' /tmp/run.json)"
+
+  # ---------------------------------------------------------------------------
   # clang-format -> inline review suggestions (kept bespoke: only this renders as
   # ```suggestion blocks with a "Commit suggestion" button).
   # ---------------------------------------------------------------------------
   format:
     name: clang-format suggestions
     runs-on: ubuntu-24.04
+    needs: resolve
     # Only the clang-format trigger, only PRs, skip cancelled runs (they can leave
     # a stale artifact yet fire 'completed'). Allow failure: if stage 1 failed,
     # suggestions are still useful. Name-gating means the build/tidy jobs don't
     # spin up a no-op run here (and vice-versa), keeping the run list readable.
     if: >-
-      github.event.workflow_run.name == 'clang-format'
-      && github.event.workflow_run.event == 'pull_request'
-      && github.event.workflow_run.conclusion != 'cancelled'
+      needs.resolve.outputs.run_name == 'clang-format'
+      && needs.resolve.outputs.event == 'pull_request'
+      && needs.resolve.outputs.conclusion != 'cancelled'
     steps:
       # Trusted base-repo checkout - for the local composite actions only. No ref
       # is passed, so this is the base default branch (trusted), never PR code.
@@ -94,11 +176,11 @@ jobs:
         uses: ./.github/actions/pr-context
         with:
           artifact-name: clang-format-suggestions
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
-          expected-branch: ${{ github.event.workflow_run.head_branch }}
+          expected-repo: ${{ needs.resolve.outputs.head_repo }}
+          expected-branch: ${{ needs.resolve.outputs.head_branch }}
 
       - name: Convert diff into review suggestions
         if: steps.ctx.outputs.found == 'true'
@@ -183,10 +265,11 @@ jobs:
   build:
     name: build summary comment
     runs-on: ubuntu-24.04
+    needs: resolve
     if: >-
-      github.event.workflow_run.name == 'Build Check'
-      && github.event.workflow_run.event == 'pull_request'
-      && github.event.workflow_run.conclusion != 'cancelled'
+      needs.resolve.outputs.run_name == 'Build Check'
+      && needs.resolve.outputs.event == 'pull_request'
+      && needs.resolve.outputs.conclusion != 'cancelled'
     steps:
       - name: Check out base-repo actions (no PR code)
         uses: actions/checkout@v6
@@ -198,11 +281,11 @@ jobs:
         uses: ./.github/actions/pr-context
         with:
           artifact-name: ci-summary-bpi
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
-          expected-branch: ${{ github.event.workflow_run.head_branch }}
+          expected-repo: ${{ needs.resolve.outputs.head_repo }}
+          expected-branch: ${{ needs.resolve.outputs.head_branch }}
 
       # Pull every platform's summary for one combined comment. These files are
       # passive display text; the trust decision was already made above.
@@ -215,16 +298,16 @@ jobs:
         with:
           pattern: ci-summary-*
           path: summaries
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compose build summary comment
         if: steps.ctx.outputs.found == 'true'
         env:
           HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
-          RUN_NAME: ${{ github.event.workflow_run.name }}
-          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
-          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_NAME: ${{ needs.resolve.outputs.run_name }}
+          RUN_NUMBER: ${{ needs.resolve.outputs.run_number }}
+          RUN_URL: ${{ needs.resolve.outputs.run_url }}
         run: |
           set -uo pipefail
           {
@@ -260,10 +343,11 @@ jobs:
   tidy:
     name: diff-scoped findings comment
     runs-on: ubuntu-24.04
+    needs: resolve
     if: >-
-      github.event.workflow_run.name == 'Build Check'
-      && github.event.workflow_run.event == 'pull_request'
-      && github.event.workflow_run.conclusion != 'cancelled'
+      needs.resolve.outputs.run_name == 'Build Check'
+      && needs.resolve.outputs.event == 'pull_request'
+      && needs.resolve.outputs.conclusion != 'cancelled'
     steps:
       - name: Check out base-repo actions (no PR code)
         uses: actions/checkout@v6
@@ -273,11 +357,11 @@ jobs:
         uses: ./.github/actions/pr-context
         with:
           artifact-name: ci-summary-bpi
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
-          expected-branch: ${{ github.event.workflow_run.head_branch }}
+          expected-repo: ${{ needs.resolve.outputs.head_repo }}
+          expected-branch: ${{ needs.resolve.outputs.head_branch }}
 
       # Both changed-lines checks live in the SAME ci-summary-bpi artifact, so we
       # compose them into ONE sticky comment (clang-tidy + the gcc diff-gate /
