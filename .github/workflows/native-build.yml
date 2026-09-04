@@ -30,33 +30,20 @@ jobs:
 
       - name: Native-ish build for Coverity based on XB
         run: |
+
           # Trust the workspace
           git config --global --add safe.directory '*'
           # Pull the latest changes for the native build system
           git submodule update --init --recursive
-          # Build and install dependencies
-          mkdir -p $HOME/build/
-          mkdir -p $HOME/usr/
+
+          #Clone hostapd
           ORIG_DIR=$(pwd)
-          #json-c and its deps require pkgconfig .pc which are not installed by framework
-          #due to it ignoring install procedures and performing manual copy
-          git clone -b json-c-0.15-20200726 https://github.com/json-c/json-c.git $HOME/build/json-c
-          cd $HOME/build/json-c
-          mkdir -p jsonc-build/
-          cd jsonc-build/
-          cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr
-          make && make install
-
-          cd $HOME/build
-          git clone --branch v1.4.1 --depth 1 https://github.com/protobuf-c/protobuf-c.git
-          mv protobuf-c/protobuf-c $HOME/usr
-
-          mkdir -p rdk-wifi-libhostap/source/hostap-2.11
-          git clone https://git.w1.fi/hostap.git rdk-wifi-libhostap/source/hostap-2.11
-          cd rdk-wifi-libhostap/source/hostap-2.11
+          mkdir -p $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
+          git clone https://git.w1.fi/hostap.git $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
+          cd $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
           git checkout -b 2.11 4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c
+          cd ${ORIG_DIR}
 
-          cd $ORIG_DIR
           chmod +x build_tools_workflows/cov_docker_script/setup_dependencies.sh
           ./build_tools_workflows/cov_docker_script/setup_dependencies.sh ./cov_docker_script/component_config.json
           # Build component
