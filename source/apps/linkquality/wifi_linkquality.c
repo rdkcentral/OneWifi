@@ -444,6 +444,7 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
     if (bss_param == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to get bss info for vap index %d\n", __func__,
         __LINE__, affinity_arg->vap_index);
+        free(affinity_arg);
         return RETURN_ERR;
     }
     to_mac_str(bss_param->bssid, affinity_arg->ap_mac_str);
@@ -502,6 +503,7 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
     if (bss_param == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to get bss info for vap index %d\n", __func__,
         __LINE__, affinity_arg->vap_index);
+        free(affinity_arg);
         return RETURN_ERR;
     }
     to_mac_str(bss_param->bssid, affinity_arg->ap_mac_str);

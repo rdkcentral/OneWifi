@@ -333,6 +333,8 @@ int check_and_start_wei()
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     raw_data_t data;
     raw_data_t mask_data;
+    bool wei_enabled = false;
+    uint32_t wei_mask = 0;
     memset(&data, 0, sizeof(raw_data_t));
     memset(&mask_data, 0, sizeof(raw_data_t));
     char str[512];
@@ -346,7 +348,10 @@ int check_and_start_wei()
         get_bus_descriptor()->bus_data_free_fn(&data);
         return -1;
     }
-    if (data.raw_data.b ) {
+    wei_enabled = data.raw_data.b;
+    get_bus_descriptor()->bus_data_free_fn(&data);
+
+    if (wei_enabled) {
          wifi_util_error_print(WIFI_CTRL,"WEI is enabled\n");
         memset(str, 0, sizeof(str));
         snprintf(str, sizeof(str), "%s", WEI_RFC_MASK);
@@ -358,7 +363,10 @@ int check_and_start_wei()
             get_bus_descriptor()->bus_data_free_fn(&mask_data);
             return -1 ;
         }
-        if (mask_data.raw_data.u32 | WEI_RFC_LQ ) {
+        wei_mask = mask_data.raw_data.u32;
+        get_bus_descriptor()->bus_data_free_fn(&mask_data);
+
+        if (wei_mask & WEI_RFC_LQ) {
             wifi_util_error_print(WIFI_CTRL,"WEI and LQ is enabled %s:%d\n",__func__, __LINE__);
             return 0 ;
         } else {
