@@ -219,10 +219,12 @@ jobs:
           python3 .github/scripts/review_poster.py /tmp/fmt-candidates.json
 
   # ---------------------------------------------------------------------------
-  # gcc build -> one sticky summary comment, aggregating every matrix leg.
+  # Build Check -> ONE sticky "CI summary" comment: the per-leg build summary plus
+  # the diff-scoped checks (clang-tidy + gcc diff-gate), folded from what used to be
+  # two separate jobs/comments (build-summary + clang-tidy). One marker, one comment.
   # ---------------------------------------------------------------------------
-  build:
-    name: build summary comment
+  summary:
+    name: CI summary comment
     runs-on: ubuntu-24.04
     needs: resolve
     if: >-
@@ -234,7 +236,9 @@ jobs:
         uses: actions/checkout@v6
 
       # Anchor trust on the bpi build artifact (bpi always runs and uploads on
-      # if: always()). Its pr-meta.env is identical across legs.
+      # if: always()). Its pr-meta.env is identical across legs. pr-context also
+      # downloads the ci-summary-bpi artifact to ./ci-summary-bpi/ (the diff-scoped
+      # files below read from there).
       - name: Establish trusted PR context
         id: ctx
         uses: ./.github/actions/pr-context
@@ -246,11 +250,10 @@ jobs:
           expected-repo: ${{ needs.resolve.outputs.head_repo }}
           expected-branch: ${{ needs.resolve.outputs.head_branch }}
 
-      # Pull every platform's summary for one combined comment. These files are
-      # passive display text; the trust decision was already made above.
-      # NOTE: makefile.yml currently uploads only the bpi leg's summary, so today
-      # this resolves to a single artifact. It stays a wildcard on purpose — once
-      # rpi/mock are worth posting, enabling them there needs no change here.
+      # Pull every platform's summary for the build section. Passive display text;
+      # the trust decision was already made above. makefile.yml uploads only the bpi
+      # leg today, so this resolves to one artifact — kept a wildcard so enabling
+      # rpi/mock there needs no change here.
       - name: Download all platform summaries
         if: steps.ctx.outputs.found == 'true'
         uses: actions/download-artifact@v7
@@ -260,7 +263,7 @@ jobs:
           run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compose build summary comment
+      - name: Compose CI summary comment
         if: steps.ctx.outputs.found == 'true'
         env:
           HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
@@ -270,111 +273,57 @@ jobs:
         run: |
           set -uo pipefail
           {
+            # --- Build summary (always present) ---
             echo "## 🔨 Build summary"
             echo
             echo "_Commit \`${HEAD_SHA:0:7}\` · [\`${RUN_NAME}\` #${RUN_NUMBER}](${RUN_URL})_"
             echo
-            # Deterministic platform order; each per-leg file already carries its
-            # own "## <platform> — build <outcome>" heading + error/warning blocks.
+            # Deterministic platform order; each per-leg file carries its own
+            # "## <platform> — build <outcome>" heading + error/warning blocks.
             for d in summaries/ci-summary-*/; do
               f="${d}build-summary.md"
               [ -f "$f" ] || continue
               cat "$f"
               echo
             done
-          } > build-comment.md
-          echo "wrote build-comment.md ($(wc -l < build-comment.md) lines)"
 
-      - name: Post sticky build summary
+            # --- Diff-scoped checks (appended only when there are findings) ---
+            # Both changed-lines checks live in the bpi artifact (downloaded to
+            # ci-summary-bpi/ by pr-context). The build section above always posts;
+            # this section is added only when clang-tidy and/or the gcc diff-gate
+            # produced something.
+            tidy="ci-summary-bpi/tidy-summary.md"
+            gcc="ci-summary-bpi/gcc-gate-summary.md"
+            if [ -s "$tidy" ] || [ -s "$gcc" ]; then
+              # Horizontal rule for a visible break from the build section above.
+              # The preceding leg loop always ends with a blank line, so this "---"
+              # renders as an <hr>, not a setext heading underline of the line above.
+              echo "---"
+              echo
+              echo "## 🔬 Diff-scoped checks (changed lines only)"
+              echo
+              if [ -s "$tidy" ]; then
+                echo "### 🔎 clang-tidy (advisory)"; echo; cat "$tidy"; echo
+              fi
+              # gcc-gate-summary.md already carries its own ###-level heading(s).
+              if [ -s "$gcc" ]; then
+                cat "$gcc"; echo
+              fi
+            fi
+          } > ci-summary-comment.md
+          echo "wrote ci-summary-comment.md ($(wc -l < ci-summary-comment.md) lines)"
+
+      # One sticky comment, marker 'ci-summary'. retire-markers deletes the old
+      # 'build-summary' and 'clang-tidy' comments the first time this runs over a PR
+      # that still carries them (the fold self-cleans; no orphans left behind).
+      - name: Post sticky CI summary
         if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
         uses: ./.github/actions/sticky-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           pr-number: ${{ steps.ctx.outputs.pr_number }}
-          marker: build-summary
-          body-file: build-comment.md
-          bot-login: ${{ env.BOT_LOGIN }}
-
-  # ---------------------------------------------------------------------------
-  # clang-tidy -> one sticky summary comment (for now only bpi leg produces it).
-  # ---------------------------------------------------------------------------
-  tidy:
-    name: diff-scoped findings comment
-    runs-on: ubuntu-24.04
-    needs: resolve
-    if: >-
-      needs.resolve.outputs.run_name == 'Build Check'
-      && needs.resolve.outputs.event == 'pull_request'
-      && needs.resolve.outputs.conclusion != 'cancelled'
-    steps:
-      - name: Check out base-repo actions (no PR code)
-        uses: actions/checkout@v6
-
-      - name: Establish trusted PR context
-        id: ctx
-        uses: ./.github/actions/pr-context
-        with:
-          artifact-name: ci-summary-bpi
-          run-id: ${{ needs.resolve.outputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          expected-repo: ${{ needs.resolve.outputs.head_repo }}
-          expected-branch: ${{ needs.resolve.outputs.head_branch }}
-
-      # Both changed-lines checks live in the SAME ci-summary-bpi artifact, so we
-      # compose them into ONE sticky comment (clang-tidy + the gcc diff-gate /
-      # "don't-add-crap gate"). The build summary stays its own comment for now;
-      # merging that in too is the endgame (see design note in the PR).
-      - name: Prepare diff-scoped findings comment
-        id: prep
-        if: steps.ctx.outputs.found == 'true'
-        run: |
-          set -uo pipefail
-          tidy="ci-summary-bpi/tidy-summary.md"
-          gcc="ci-summary-bpi/gcc-gate-summary.md"
-          if [ ! -s "$tidy" ] && [ ! -s "$gcc" ]; then
-            # Neither producer wrote a summary: no compile DB (e.g. the build failed
-            # before one existed). Still post, so the sticky never keeps showing an
-            # older commit's results as if they were current.
-            {
-              echo "## 🔬 Diff-scoped checks (changed lines only)"
-              echo
-              echo "_Not run for this commit: no compile database was produced (see the build summary). Earlier results no longer apply._"
-            } > diff-findings-comment.md
-            echo "post=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          {
-            echo "## 🔬 Diff-scoped checks (changed lines only)"
-            echo
-            # tidy-summary.md labels its own tiers (❌ gate = fatal, ❗ warnings).
-            # A producer that died before writing (the other one did) is named, so the
-            # comment never reads as if both checks ran.
-            if [ -s "$tidy" ]; then
-              cat "$tidy"; echo
-            else
-              echo "### 🔎 clang-tidy: no summary produced for this commit (see the Build Check run)"; echo
-            fi
-            # gcc-gate-summary.md already carries its own ###-level heading(s).
-            if [ -s "$gcc" ]; then
-              cat "$gcc"; echo
-            else
-              echo "### 🚦 gcc diff-gate: no summary produced for this commit (see the Build Check run)"; echo
-            fi
-          } > diff-findings-comment.md
-          echo "post=true" >> "$GITHUB_OUTPUT"
-
-      # Marker kept as 'clang-tidy' (not renamed) so this UPSERTS the existing
-      # sticky comment when it merges over develop, rather than orphaning the old
-      # one and posting a second.
-      - name: Post sticky diff-scoped findings summary
-        if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true' && steps.prep.outputs.post == 'true'
-        uses: ./.github/actions/sticky-comment
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          pr-number: ${{ steps.ctx.outputs.pr_number }}
-          marker: clang-tidy
-          body-file: diff-findings-comment.md
+          marker: ci-summary
+          retire-markers: "build-summary clang-tidy"
+          body-file: ci-summary-comment.md
           bot-login: ${{ env.BOT_LOGIN }}
