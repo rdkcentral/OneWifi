@@ -1144,6 +1144,10 @@ int process_ext_scan_results(wifi_service_node_t *node, wifi_core_data_t *data)
     } else if (num) {
         ext->candidates_list.scan_list = (bss_candidate_t *) realloc(ext->candidates_list.scan_list,
                     ((num + ext->candidates_list.scan_count) * sizeof(bss_candidate_t)));
+        if (ext->candidates_list.scan_list == NULL) {
+            wifi_util_error_print(WIFI_SERVICES, "%s:%d: realloc failed\n", __func__, __LINE__);
+            return 0;
+        }
         scan_list = ext->candidates_list.scan_list + ext->candidates_list.scan_count;
         ext->candidates_list.scan_count += num;
     }
