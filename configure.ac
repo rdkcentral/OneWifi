@@ -283,6 +283,7 @@ AC_CONFIG_FILES(
     source/sampleapps/Makefile
     source/utils/Makefile
     source/utils/math_utils/Makefile
+    source/apps/test/Makefile
     Makefile
 )
 
