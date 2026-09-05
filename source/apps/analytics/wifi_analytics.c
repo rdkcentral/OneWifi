@@ -432,7 +432,7 @@ int analytics_event_hal_assoc_device(wifi_app_t *apps, void *arg)
 
     str_tolower(client_mac);
 
-    sprintf(temp_str, "\"%s\" vap index:%d", client_mac, assoc_data->ap_index);
+    snprintf(temp_str, sizeof(temp_str), "\"%s\" vap index:%d", client_mac, assoc_data->ap_index);
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "connect", temp_str);
 
@@ -466,7 +466,7 @@ int analytics_event_hal_disassoc_device(wifi_app_t *apps, void *arg)
 
     (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
     str_tolower(client_mac);
-    sprintf(temp_str, "\"%s\" vap index:%d reason:%d", client_mac, assoc_data->ap_index, assoc_data->reason);
+    snprintf(temp_str, sizeof(temp_str), "\"%s\" vap index:%d reason:%d", client_mac, assoc_data->ap_index, assoc_data->reason);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "disconnect", temp_str);
 
     sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, client_mac);
@@ -529,7 +529,7 @@ int analytics_event_hal_potential_misconfiguration(wifi_app_t *apps, void *arg)
     char temp_str[128];
     memset(temp_str, 0, sizeof(temp_str));
 
-    sprintf(temp_str, "authentication frame not received from mac:\"%s\" after %d frame", ttl_data->mac_str, ttl_data->max_probe_ttl_cnt);
+    snprintf(temp_str, sizeof(temp_str), "authentication frame not received from mac:\"%s\" after %d frame", ttl_data->mac_str, ttl_data->max_probe_ttl_cnt);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "no_auth", temp_str);
     return RETURN_OK;
 }
