@@ -96,7 +96,6 @@ jobs:
         # mesh agent that links -lmariadb), golang (runner has Go in toolcache),
         # libmysqlcppconn-dev (0 includes/linkage), vim (CI doesn't need an editor).
         # --no-install-recommends avoids pulling unneeded transitive packages.
-        # See ~/ci-aptCache.md for the full analysis.
         sudo apt-get install -y --no-install-recommends \
                                 build-essential \
                                 cmake \
@@ -208,10 +207,11 @@ jobs:
     - name: Setup OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
       run: |
-        # $GITHUB_ACTOR is a built-in runner env var; use it rather than
-        # interpolating ${{ github.actor }} straight into the script.
-        git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-        git config --global user.name "${GITHUB_ACTOR}"
+        # `make setup` creates local patch commits, so git needs a committer
+        # identity. Use a generic CI identity (not the PR actor) so no personal
+        # name ends up echoed in the build logs.
+        git config --global user.email "onewifi-ci@users.noreply.github.com"
+        git config --global user.name "OneWifi CI"
         make -f ${{ matrix.platform.makefile_path }} setup
 
     - name: Build OneWiFi for ${{ matrix.platform.name }}
