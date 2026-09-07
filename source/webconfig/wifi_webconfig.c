@@ -218,6 +218,16 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
                     && (config->apply_data(doc, data)) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Subdocument apply failed\n", __func__, __LINE__);
             err = webconfig_error_apply;
+            if (data->type == webconfig_subdoc_type_mac_filter) {
+                free_vap_object_macfilter_entries(data);
+            } else if (data->type == webconfig_subdoc_type_associated_clients) {
+                free_vap_object_assoc_client_entries(data);
+                free_vap_object_diff_assoc_client_entries(data);
+            }
+            if (data->u.encoded.json != NULL) {
+                cJSON_Delete(data->u.encoded.json);
+                data->u.encoded.json = NULL;
+            }
         }
     }
 
