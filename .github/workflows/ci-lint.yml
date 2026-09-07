@@ -1,0 +1,192 @@
+name: CI Lint
+
+# Conditional lint gate for the CI meta-files themselves: .github/workflows, the
+# composite actions under .github/actions, and the python under .github/scripts.
+# It closes the gap that the machinery guarding this repo was itself unguarded —
+# a broken .yml only surfaced at runtime, a script regression only if a test
+# happened to exercise it.
+#
+# Stage-1, read-only. The linters only PARSE files (actionlint, yamllint, ruff,
+# compileall); the python lane does run PR code (the scripts' unit tests), but only
+# under `pull_request` with a read-only token and no secrets, so there is no
+# 'pwn-request' surface.
+#
+# DO NOT add a workflow-level `paths:` filter. `lint-gate` is the single required
+# check, and that trick only holds if this workflow runs on EVERY PR so the gate
+# always reports a conclusion. Per-surface skipping happens at the JOB level (the
+# `changes` detector + the `if:` guards), never at the trigger.
+#
+# Tool versions are pinned in each job's `env:` — NOT in .github/ci-pins.env,
+# whose strict PIN_NAME=<40hex> format (and makefile.yml's verify step) is for
+# source-dependency SHAs, not tool versions. Pinning here still makes the gate
+# hermetic: runner drift can't silently change what it enforces.
+
+on:
+  pull_request:
+  push:
+    branches: [ develop ]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ci-lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Which surfaces did this PR touch? Booleans gate the lanes below. No checkout
+  # and no third-party action: just the read-only files API (works for fork PRs
+  # too, so no fetch-depth / merge-base games that break on a shallow checkout).
+  changes:
+    name: Detect changed surfaces
+    runs-on: ubuntu-24.04
+    outputs:
+      yaml: ${{ steps.detect.outputs.yaml }}
+      python: ${{ steps.detect.outputs.python }}
+    steps:
+      - name: Detect changed surfaces
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # push to develop (the baseline): lint every surface, it's cheap.
+          if [ "$EVENT" != "pull_request" ]; then
+            printf 'yaml=true\npython=true\n' >> "$GITHUB_OUTPUT"
+            echo "event=$EVENT -> lint all surfaces"
+            exit 0
+          fi
+          files=$(gh api "/repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
+          yaml=false
+          python=false
+          # .yamllint / ruff.toml are lane configs and don't end in .yml/.py, so a
+          # PR that only tunes one must still re-run its lane — match them too.
+          # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting at an
+          # early match SIGPIPEs printf on a long file list, and the lane would skip.
+          if grep -qE '(\.ya?ml$|\.yamllint$)' <<< "$files"; then yaml=true; fi
+          if grep -qE '(\.py$|ruff\.toml$)' <<< "$files"; then python=true; fi
+          printf 'yaml=%s\npython=%s\n' "$yaml" "$python" >> "$GITHUB_OUTPUT"
+          echo "changed surfaces: yaml=$yaml python=$python"
+
+  # actionlint's OWN static analysis (bad needs:/uses:/context refs) plus, since
+  # shellcheck ships on the runner, free SC checks on every run: block. Workflows
+  # ONLY — actionlint mis-parses composite action.yml as workflows (yamllint's job).
+  actionlint:
+    name: actionlint (workflows)
+    needs: changes
+    if: needs.changes.outputs.yaml == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      # From the release's actionlint_<version>_checksums.txt; bump with the version.
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install actionlint ${{ env.ACTIONLINT_VERSION }}
+        run: |
+          set -euo pipefail
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL "$url" -o /tmp/actionlint.tar.gz
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint --version
+      - name: Lint workflows
+        env:
+          # FP policy kept in ONE reviewed place: SC2016 (expansion inside single
+          # quotes) fires on embedded jq filters and literal markdown; genuine
+          # bugs (SC2086, …) still block. actionlint forwards SHELLCHECK_OPTS.
+          SHELLCHECK_OPTS: --exclude=SC2016
+        run: |
+          set -euo pipefail
+          /tmp/actionlint -color .github/workflows/*.yml
+
+  # The ONLY structural guard for the composite action.yml files (actionlint
+  # can't parse them). Structural errors only; style is off (see .github/.yamllint).
+  yamllint:
+    name: yamllint (workflows + actions)
+    needs: changes
+    if: needs.changes.outputs.yaml == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      YAMLLINT_VERSION: 1.35.1
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install yamllint ${{ env.YAMLLINT_VERSION }}
+        run: |
+          set -euo pipefail
+          pipx install "yamllint==${YAMLLINT_VERSION}"
+      - name: Lint workflows + composite actions
+        run: |
+          set -euo pipefail
+          # -f github surfaces findings inline on the PR (Files changed / Checks).
+          yamllint -f github -c .github/.yamllint .github/workflows .github/actions
+
+  # compileall FIRST (zero-dependency; runs even if a later tool install fails),
+  # then ruff (pyflakes F only), then the scripts' own unit tests.
+  python:
+    name: python (compileall + ruff + tests)
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      RUFF_VERSION: 0.6.9
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Syntax gate (compileall)
+        run: python3 -m compileall -q .github/scripts
+      - name: Install ruff ${{ env.RUFF_VERSION }}
+        run: |
+          set -euo pipefail
+          pipx install "ruff==${RUFF_VERSION}"
+      - name: ruff (pyflakes F)
+        run: ruff check --config .github/ruff.toml --no-cache --output-format=github .github/scripts
+      - name: Unit tests
+        run: python3 -m unittest discover -s .github/scripts/tests
+
+  # The ONE job a maintainer marks required in branch protection. A required
+  # conditional job would sit forever "pending" when skipped; this always runs
+  # and reports for the whole gate.
+  lint-gate:
+    name: lint-gate
+    needs: [changes, actionlint, yamllint, python]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Aggregate lane results (fail closed)
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          ACTIONLINT: ${{ needs.actionlint.result }}
+          YAMLLINT: ${{ needs.yamllint.result }}
+          PYTHON: ${{ needs.python.result }}
+        run: |
+          set -euo pipefail
+          echo "changes=$CHANGES actionlint=$ACTIONLINT yamllint=$YAMLLINT python=$PYTHON"
+          # Fail CLOSED: the detector must have succeeded, and no lane may be
+          # failure/cancelled. A `skipped` lane (surface unchanged) is a pass.
+          # (Posting is fail-open elsewhere; a merge GATE is never fail-open — a
+          # crashed detector must redden, not silently pass.)
+          if [ "$CHANGES" != "success" ]; then
+            echo "::error::changes detector did not succeed (result=$CHANGES) — failing closed"
+            exit 1
+          fi
+          rc=0
+          for pair in "actionlint:$ACTIONLINT" "yamllint:$YAMLLINT" "python:$PYTHON"; do
+            name=${pair%%:*}
+            res=${pair#*:}
+            case "$res" in
+              success|skipped) ;;
+              *) echo "::error::lane '$name' reported '$res'"; rc=1 ;;
+            esac
+          done
+          if [ "$rc" -ne 0 ]; then exit 1; fi
+          echo "lint-gate: green"

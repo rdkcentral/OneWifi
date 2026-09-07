@@ -62,7 +62,7 @@ in the cloned OneWifi cwd, but the diff must run against the HAL checkout). Net 
 adds its own enforcement by pointing shared tooling at itself — OneWifi's pipeline needs no change
 for this to work.**
 
-## 3. The four check types
+## 3. The check types
 
 **a) Formatter (clang-format)** — advisory, PR-changed-lines only. `clang-format.yml` runs
 `git-clang-format` over the PR's changed C/C++ lines and records a diff; `diff_to_suggestions.py` turns
@@ -96,6 +96,14 @@ unrelated PR. Per the workflow's env: `GATE_WARNINGS="-Wvla -Wreturn-type"` (wou
 `ADVISORY_WARNINGS="-Wunused-but-set-variable -Wunused-value -Wunused-label"` (report only). The
 whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the ❌ block
 renders, but the job is not actually reddened by it yet.
+
+**e) CI Lint (the CI files themselves)** — `ci-lint.yml`, on every PR and on pushes to `develop`.
+Each lane runs only when its surface changed: actionlint over the workflows (it also runs
+shellcheck on their `run:` blocks), yamllint over the workflows and composite actions (structural
+rules only, `.github/.yamllint`), and for `.github/scripts` compileall, ruff (pyflakes rules,
+`.github/ruff.toml`) and the unit tests under `.github/scripts/tests`. `lint-gate` aggregates the
+lanes and fails closed (a skipped lane passes, a failed detector does not); it is the one check
+to mark required. Tool versions are pinned in the workflow.
 
 ## 4. Two-stage design (why, and how)
 
@@ -315,6 +323,9 @@ red" — a plumbing hiccup should not falsely block a PR.
 - gcc-14 watch: CI runs on `ubuntu-24.04` (gcc 13.x), so nothing breaks today; a future move to
   gcc 14 is worth revisiting since newer gcc releases have sometimes promoted optional warnings to
   default errors — not yet audited against this tree specifically.
+- Workflow steps have no tests of their own: the `run:` blocks get shellcheck (workflows only;
+  composite actions get yamllint's structural check), but their logic is not exercised by
+  `.github/scripts/tests`.
 - Rebase/adapt this system onto `develop` as the various proposal branches land — this doc
   describes the merged end-state, not any one branch's current diff.
 
