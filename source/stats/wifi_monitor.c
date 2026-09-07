@@ -1928,7 +1928,7 @@ int eapol_timeout_type(int ap_index, char *mac, int type)
 	return RETURN_OK;
 }
 
-int handle_eapol_key_msg(int ap_index, char *mac, wifi_eapol_key_msg_t msg_type, unsigned int replay_counter)
+int handle_eapol_key_msg(int ap_index, char *mac, eapol_msg_type_t msg_type, unsigned int replay_counter)
 {
     unsigned int vap_array_index;
     hash_map_t *link_sta_map;
@@ -1941,13 +1941,13 @@ int handle_eapol_key_msg(int ap_index, char *mac, wifi_eapol_key_msg_t msg_type,
         link_sta = (sta_data_t *)hash_map_get(link_sta_map, mac);
         if (link_sta != NULL) {
             switch (msg_type) {
-            case wifi_eapol_key_msg_m1:
+            case EAPOL_MSG_M1:
                 link_sta->eapol_m1_count++;
                 break;
-            case wifi_eapol_key_msg_m2:
+            case EAPOL_MSG_M2:
                 link_sta->eapol_m2_count++;
                 break;
-            case wifi_eapol_key_msg_m3:
+            case EAPOL_MSG_M3:
                 link_sta->eapol_m3_count++;
                 break;
             default:
