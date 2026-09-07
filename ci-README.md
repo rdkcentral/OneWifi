@@ -7,8 +7,7 @@ Both ship the same scripts and composite actions, so learning one teaches you th
 issues on a pull request — without redoing the pre-existing warning/finding backlog in either
 tree. It is built to judge *new* code, not old code.
 
-This doc gives the mental model in ~15 minutes. For exact flag lists, promotion order, and the
-"why", see `~/ci-tightening-roadmap.md` (not in this repo).
+This doc gives the mental model in ~15 minutes.
 
 ## 1. Build legs
 
@@ -164,8 +163,7 @@ real upstream patch change invalidates the key, forcing a rebuild that repopulat
 is deliberately exact-key-only (no `restore-keys` fallback): a routine miss just means "rebuild
 it," never a silently stale hit (the one network-outage exception is in §8). OneWifi's build also caches apt dependencies
 (`actions/cache@v5`, key `<os>-apt-<hashFiles apt-packages>`, *with* `restore-keys`) — much
-smaller, and a stale hit there is harmless, unlike hostap. See `~/ci-tightening-roadmap.md`,
-"Build caching (part 7)" for the full mechanism and the 10 GB/repo budget discussion.
+smaller, and a stale hit there is harmless, unlike hostap.
 
 ## 7. Dependencies — the pin manifest
 
@@ -305,7 +303,6 @@ line, not just by seeing the job go green.
 
 ---
 
-*Sources: the workflow YAML and scripts under `.github/` in this repo and in the HAL repo, plus
-`~/ci-tightening-roadmap.md`. Some details here (line-scoped clang-tidy, the hostap cache step,
+*Sources: the workflow YAML and scripts under `.github/` in this repo and in the HAL repo. Some details here (line-scoped clang-tidy, the hostap cache step,
 the gcc→clang-tidy comment fold, sticky-comment recreate mode) are ahead of any single branch
 currently checked into this repo — this doc describes the intended merged design.*
