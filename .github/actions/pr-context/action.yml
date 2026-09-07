@@ -68,6 +68,7 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         DL_OUTCOME: ${{ steps.dl.outcome }}
         ART_DIR: ${{ inputs.artifact-name }}
+        RUN_ID: ${{ inputs.run-id }}
         REPO: ${{ inputs.repository }}
         EXPECTED_REPO: ${{ inputs.expected-repo }}
         EXPECTED_BRANCH: ${{ inputs.expected-branch }}
@@ -78,7 +79,12 @@ runs:
         found=false; fresh=false; pr_number=; head_sha=
 
         if [ "$DL_OUTCOME" != "success" ]; then
-          echo "No '$ART_DIR' artifact on the triggering run — nothing to post for this job."
+          # Almost always benign: the normal workflow_run path posts within the
+          # minute, so the artifact is fresh. The one real case is a manual
+          # re-dispatch >1 day later, when retention-days:1 has already deleted
+          # it — surface that loudly (a ::notice::) instead of skipping silently.
+          wf="$(gh api "/repos/$REPO/actions/runs/$RUN_ID" --jq '.name' 2>/dev/null || echo 'the stage-1 workflow')"
+          echo "::notice::Stage-1 artifact '$ART_DIR' is already deleted (retention-days: 1). Re-run \"$wf\" on this PR to regenerate it, then re-post. Nothing posted this run."
         else
           META="$ART_DIR/pr-meta.env"
           if [ ! -f "$META" ]; then
