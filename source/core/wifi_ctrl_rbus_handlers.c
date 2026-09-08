@@ -326,6 +326,29 @@ void hotspot_timing_disconnected(void)
         memset(&g_hotspot_timing.disconnection_time, 0, sizeof(struct timespec));
     }
 }
+/* WEI publishes only the ignite status while this is set; T2 bundles stay off. */
+static int wei_set_ignite_mode(bool enable)
+{
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    raw_data_t data;
+    char str[512];
+
+    memset(&data, 0, sizeof(raw_data_t));
+    memset(str, 0, sizeof(str));
+    snprintf(str, sizeof(str), "%s", WEI_IGNITE_ENABLE_DMPATH);
+    data.data_type = bus_data_type_boolean;
+    data.raw_data.b = enable;
+
+    if (get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data) !=
+        bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set ignite mode to %d\n", __func__,
+            __LINE__, enable);
+        return -1;
+    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d ignite mode set to %d\n", __func__, __LINE__, enable);
+    return 0;
+}
+
 int check_and_start_wei()
 {
     wifi_util_error_print(WIFI_CTRL,"Enter %s:%d\n",__func__,__LINE__);
@@ -382,6 +405,7 @@ int check_and_start_wei()
                 return -1;
 
             }
+            return 0;
 
         }
     } else {
@@ -404,7 +428,7 @@ int check_and_start_wei()
                 return -1;
             }
             wifi_util_error_print(WIFI_CTRL,"WEI and LQ both are enabled\n");
-            return 0;
+            return wei_set_ignite_mode(true);
 
         }
         
@@ -423,6 +447,8 @@ int stop_wei()
   
     memset(&data, 0, sizeof(raw_data_t));
 
+
+    wei_set_ignite_mode(false);
 
     memset(str, 0, sizeof(str));
     data.data_type  = bus_data_type_boolean;

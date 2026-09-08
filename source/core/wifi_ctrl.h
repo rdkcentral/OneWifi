@@ -122,6 +122,7 @@ extern "C" {
 #define WEI_RFC_MASK        "Device.X_RDKCENTRAL-COM_WEI.RFC_MASK"
 #define WEI_MEASUREMENT_RFC      "Device.X_RDKCENTRAL-COM_WEI.Enable"
 #define WEI_LQ_CLIENT_ENABLE_DMPATH     "Device.X_RDKCENTRAL-COM_WEI.LQ.Client.Enable"
+#define WEI_IGNITE_ENABLE_DMPATH        "Device.X_RDKCENTRAL-COM_WEI.Ignite.Enable"
 
 extern bool is_sta_set;
 
@@ -341,11 +342,12 @@ typedef struct {
 
 typedef enum
 {
-    WEI_RFC_NONE  = 0x00,  /* Main WEI RFC disabled                  */
-    WEI_RFC_MAIN  = 0x01,  /* Main WEI RFC enabled                   */
-    WEI_RFC_LQ    = 0x02,  /* Link Quality pillar enabled            */
-    WEI_RFC_GC    = 0x04,  /* Getting Connected pillar enabled       */
-    WEI_RFC_SC    = 0x08,  /* Staying Connected pillar enabled       */
+    WEI_RFC_NONE   = 0x00,  /* Main WEI RFC disabled                  */
+    WEI_RFC_MAIN   = 0x01,  /* Main WEI RFC enabled                   */
+    WEI_RFC_LQ     = 0x02,  /* Link Quality pillar enabled            */
+    WEI_RFC_GC     = 0x04,  /* Getting Connected pillar enabled       */
+    WEI_RFC_SC     = 0x08,  /* Staying Connected pillar enabled       */
+    WEI_RFC_IGNITE = 0x10,  /* WEI was switched on by ignite RF-down  */
     WEI_RFC_ALL   = (WEI_RFC_MAIN | WEI_RFC_LQ | WEI_RFC_GC | WEI_RFC_SC)
 } wei_rfc_mask_t;
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
