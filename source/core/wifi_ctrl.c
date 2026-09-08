@@ -2484,7 +2484,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
-        (ctrl->hotspot_client_dhcp_failure_subscribed == false) || (ctrl->wei_events_subscribed == false) 
+        (ctrl->hotspot_client_dhcp_failure_subscribed == false)
 #if defined (RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif
@@ -3007,6 +3007,24 @@ wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void)
 {
     wifi_mgr_t *p_wifi_db_data = get_wifimgr_obj();
     return &p_wifi_db_data->rfc_dml_parameters;
+}
+
+/* DB-mirror cache: kept fresh by callback_Wifi_Wei_Rfc_Config() (OVSDB monitor). */
+wei_rfc_dml_parameters_t* get_wifi_db_wei_rfc_parameters(void)
+{
+    wifi_mgr_t *p_wifi_db_data = get_wifimgr_obj();
+    return &p_wifi_db_data->wei_rfc_dml_parameters;
+}
+
+/* Ctrl-thread working copy, refreshed from the DB mirror on every call so
+ * callers always see the latest committed WEI RFC config. */
+wei_rfc_dml_parameters_t* get_ctrl_wei_rfc_parameters(void)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+
+    memcpy(&ctrl->wei_rfc_params, &g_wifi_mgr->wei_rfc_dml_parameters, sizeof(wei_rfc_dml_parameters_t));
+    return &ctrl->wei_rfc_params;
 }
 
 wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
