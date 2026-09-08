@@ -255,13 +255,11 @@ webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str
 	    free(webconfig_easymesh_data);
 	    return webconfig_error_decode;
     }
-    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_easymesh_data->type);
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode subdoc type %d successfully\n", __func__, __LINE__, webconfig_easymesh_data->type);
     *type = webconfig_easymesh_data->type;
     //debug_external_protos(webconfig_easymesh_data, __func__, __LINE__);
     webconfig_easymesh_free_decoded(webconfig_easymesh_data);
     webconfig_data_free(webconfig_easymesh_data);
-    /* free the ~3.4MB scratch buffer; glibc munmaps it (>mmap threshold),
-       returning both virtual and resident memory to the OS */
     free(webconfig_easymesh_data);
     return webconfig_error_none;
 }
