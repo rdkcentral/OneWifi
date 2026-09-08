@@ -83,6 +83,8 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
                 *haultype = em_haul_type_iot;
         } else if (strncmp("lnf_psk", vapname, strlen("lnf_psk")) == 0) {
                 *haultype = em_haul_type_configurator;
+        } else if (strncmp("lnf_radius", vapname, strlen("lnf_radius")) == 0) {
+                *haultype = em_haul_type_configurator;
         } else if (strncmp("mesh_backhaul", vapname, strlen("mesh_backhaul")) == 0) {
                 *haultype = em_haul_type_backhaul;
         } else if (strncmp("mesh_sta", vapname, strlen("mesh_sta")) == 0) {
@@ -2216,6 +2218,7 @@ webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_
     memcpy(&ap_info->mac_addr, vap->u.bss_info.mld_info.common_info.mld_addr,
         sizeof(mac_address_t));
     snprintf(ap_info->ssid, sizeof(ap_info->ssid), "%s", vap->u.bss_info.ssid);
+    convert_vap_name_to_hault_type(&ap_info->haul_type, (char *)vap->vap_name);
 
     // Todo: VAP structure currently does not have below details, so set it to default for testing.
     ap_info->str = true;
