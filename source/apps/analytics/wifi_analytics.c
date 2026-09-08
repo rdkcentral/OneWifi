@@ -127,7 +127,7 @@ void device_statistics_info(analytics_data_t *data)
 
     memcpy(&data->last_usage, &usage, sizeof(struct rusage));
 
-    printf("Test Coverity workflow %f\n");
+    printf("Test Coverity workflow %s\n");
 
     memset(client_mac, 0, sizeof(client_mac));
     memset(sta_stats_str, 0, sizeof(sta_stats_str));
