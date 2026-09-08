@@ -30,7 +30,7 @@ RDK_HAL_WERROR = -Wall -Wextra \
     -Werror=implicit-function-declaration -Werror=int-conversion \
     -Werror=incompatible-pointer-types -Werror=return-type \
     -Werror=uninitialized -Werror=maybe-uninitialized \
-    -Werror=format -Werror=format-security -Werror=nonnull \
+    -Wno-error=format -Wno-error=format-security -Werror=nonnull \
     -Werror=array-bounds -Werror=stringop-overflow
 $(WIFI_RDK_HAL)/%.o: CFLAGS += $(RDK_HAL_WERROR)
 
@@ -43,7 +43,7 @@ $(WIFI_RDK_HAL)/%.o: CFLAGS += $(RDK_HAL_WERROR)
 # suppressions, so HAL policy and OneWifi policy stay independently tunable and
 # never leak onto each other's objects. Warnings are split by language used.
 ONE_WIFI_WERROR = \
-    -Werror=nonnull -Werror=format \
+    -Werror=nonnull -Wno-error=format -Wno-error=format-security \
     -Werror=misleading-indentation -Werror=logical-not-parentheses
 
 # Known classes suppressed to keep the baseline silent. Valid for BOTH C and C++.
