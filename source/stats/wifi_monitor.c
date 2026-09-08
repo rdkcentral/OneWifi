@@ -385,6 +385,8 @@ void update_wpa3_enhanced_sta_all_vap_data_entry(void) {
             update_wpa3_enhanced_sta_data(vap_index);
         }
     }
+
+    printf("Test Coverity workflow %s\n");
 }
 
 static int reset_wpa3_enhanced_sta_data(void *arg) {
