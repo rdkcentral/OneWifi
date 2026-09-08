@@ -1327,6 +1327,9 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
             case wifi_action_frame_type_public:
                 get_action_frame_evt_params(frame, len, &mgmt_frame, &evt_subtype);
                 break;
+            case wifi_action_frame_type_radio_msmt:
+                evt_subtype = wifi_event_br_report;
+                break;
             default:
                 break;
         }
@@ -2065,12 +2068,14 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     }
 
-    if (rfc_param->link_quality_rfc || ctrl->network_mode == rdk_dev_mode_type_em_node 
-     || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node || ctrl->rf_status_down == true) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d LinkQuality RFC is enabled \n", __func__, __LINE__);
+    if ((ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node
+        || ctrl->rf_status_down == true)) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start link quality app, network_mode:%d rf_status_down:%d\n",
+            __func__, __LINE__, ctrl->network_mode, ctrl->rf_status_down);
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     } else {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d LinkQuality RFC is disabled \n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d stop link quality app, network_mode:%d rf_status_down:%d\n",
+            __func__, __LINE__, ctrl->network_mode, ctrl->rf_status_down);
     }
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
@@ -2483,7 +2488,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
-        (ctrl->hotspot_client_dhcp_failure_subscribed == false)
+        (ctrl->hotspot_client_dhcp_failure_subscribed == false) || (ctrl->wei_events_subscribed == false) 
 #if defined (RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif
@@ -3059,8 +3064,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     g_wifi_mgr->ctrl.rfc_params.csi_analytics_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.csi_analytics_enabled_rfc;
-    g_wifi_mgr->ctrl.rfc_params.link_quality_rfc =
-        g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
+    g_wifi_mgr->ctrl.rfc_params.wei_rfc_mask =
+        g_wifi_mgr->rfc_dml_parameters.wei_rfc_mask;
     g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
         g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
     g_wifi_mgr->ctrl.rfc_params.multiap_rfc =
@@ -3623,10 +3628,16 @@ static bool is_mlo_security_mode_compatible(wifi_security_modes_t mode_a,
 }
 
 /* Check if VAP's SSID, password, and security mode match the main link. */
-bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap)
+bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
+    wifi_dbg_type_t log_type)
 {
     /* Compare SSID */
     if (strncmp(main_vap->u.bss_info.ssid, vap->u.bss_info.ssid, sizeof(ssid_t)) != 0) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
+            "SSID '%s' != '%s'\n",
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
+            vap->u.bss_info.ssid, main_vap->u.bss_info.ssid);
         return false;
     }
 
@@ -3634,12 +3645,21 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap)
     if (strncmp(main_vap->u.bss_info.security.u.key.key,
                 vap->u.bss_info.security.u.key.key,
                 sizeof(main_vap->u.bss_info.security.u.key.key)) != 0) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
+            "password/key does not match\n",
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index);
         return false;
     }
 
     /* Compare Security Mode — WPA3 variants are MLO-compatible across bands */
     if (!is_mlo_security_mode_compatible(main_vap->u.bss_info.security.mode,
             vap->u.bss_info.security.mode)) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
+            "security mode %d != %d\n",
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
+            vap->u.bss_info.security.mode, main_vap->u.bss_info.security.mode);
         return false;
     }
 
@@ -3851,13 +3871,12 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                 mld_group_entry_t *entry = &entries[j];
 
                 if (entry->vap_info == main_link_vap ||
-                        is_mlo_config_matching(main_link_vap, entry->vap_info)) {
+                    is_mlo_config_matching(main_link_vap, entry->vap_info, log_type)) {
                     entry->is_compatible = true;
                     compatible_count++;
                 } else {
                     wifi_util_info_print(log_type,
-                        "%s:%d: vap_index=%d excluded from MLO group %d "
-                        "(SSID/security mismatch with main link)\n",
+                        "%s:%d: vap_index=%d excluded from MLO group %d\n",
                         __func__, __LINE__, entry->vap_info->vap_index, i);
                 }
             }

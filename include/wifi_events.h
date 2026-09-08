@@ -121,6 +121,12 @@ typedef enum {
     wifi_event_hal_wnm_action_frame,
     wifi_event_hal_pre_assoc_fail,
     wifi_event_hal_post_assoc_fail,
+    /* counters for auth/assoc/reassoc frames,
+    eap, and other status codes are defined in the HAL */
+    wifi_event_hal_auth_frame_status_code,
+    wifi_event_hal_assoc_rsp_frame_status_code,
+    wifi_event_hal_reassoc_rsp_frame_status_code,
+    wifi_event_hal_eap_status_code,
     wifi_event_hal_max,
 
     // Commands
@@ -184,7 +190,7 @@ typedef enum {
     wifi_event_type_multiap_rfc,
     wifi_event_type_xfi_tel_enable_rfc,
     wifi_event_type_sm_app_enable,
-    wifi_event_type_link_quality_rfc,
+    wifi_event_type_wei_rfc_mask,
     wifi_event_type_send_btm_req,
     wifi_event_command_max,
 

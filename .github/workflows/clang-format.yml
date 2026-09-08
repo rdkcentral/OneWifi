@@ -50,6 +50,18 @@ jobs:
             exit 1
           }
           echo "Diffing against merge base: $BASE_SHA"
+
+          # Record which lines the PR actually changed (new-side, commit-to-commit
+          # so unaffected by the formatter's worktree edits). Stage 2 uses this to
+          # drop suggestions that git-clang-format expanded onto untouched lines.
+          git diff -U0 "$BASE_SHA" HEAD -- . \
+            | awk '/^\+\+\+ b\// { file = substr($0, 7) }
+                   /^@@ / { c=$3; sub(/^\+/,"",c); n=1
+                             if (c~/,/) { split(c,a,","); c=a[1]; n=a[2] }
+                             if (n>0) print file ":" c "-" c+n-1 }' \
+            > changed-lines.txt
+          echo "PR changed-line ranges: $(wc -l < changed-lines.txt)"
+
           # ================== EXCLUDED PATHS (edit me) ======================
           # Files/dirs here are never reformatted (e.g. vendor ports, imported
           # headers/utils). Uses git pathspec syntax: ':!<pattern>'.
@@ -104,6 +116,7 @@ jobs:
           name: clang-format-suggestions
           path: |
             clang-format.diff
+            changed-lines.txt
             pr-meta.env
           if-no-files-found: ignore
           retention-days: 1

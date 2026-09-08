@@ -25,9 +25,9 @@ export GIT_HTTP_LOW_SPEED_TIME=999999
 
 #git clone other wifi related components
 cd ..
-git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
-git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
-git clone https://github.com/xmidt-org/trower-base64.git trower-base64
+[ ! -d rdk-wifi-hal ] && git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
+[ ! -d halinterface ] && git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
+[ ! -d trower-base64 ] && git clone https://github.com/xmidt-org/trower-base64.git trower-base64
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
@@ -49,13 +49,13 @@ else
     #and move to the relevant commit
     cd $HOSTAP_SRC_DIR
     echo "Cloning hostap in $HOSTAP_SRC_DIR"
-    git clone $UPSTREAM_HOSTAP_URL hostap-2.11
+    git clone $UPSTREAM_HOSTAP_URL hostap-2.11 || exit 1
     cd hostap-2.11
-    git reset --hard $SRCREV_2_11
+    git reset --hard $SRCREV_2_11 || exit 1
     cd $HOSTAP_DIR
 fi
 
-if [ -f "$HOSTAP_PATCH_FLAG" ]; then
+if [ -f "$HOSTAP_PATCH_FLAG" ] && [ -d "$HOSTAP_SRC_DIR/hostap-2.11" ]; then
     echo "Hostap patches are already applied. Retry after deleting $HOSTAP_DIR"
 else
     #Clone meta-cmf-bananapi, meta-filogic and  apply hostap patches
@@ -67,8 +67,8 @@ else
         git remote add origin "$META_FILOGIC_URL"
         #Increased HTTP post buffer to 1GB to prevent "RPC failed" or "Broken pipe" errors.
         git config http.postBuffer 1048576000
-        git fetch --depth 1 origin "$SRCREV_META_FILOGIC"
-        git reset --hard FETCH_HEAD
+        git fetch --depth 1 origin "$SRCREV_META_FILOGIC" || exit 1
+        git reset --hard FETCH_HEAD || exit 1
         cd "$HOSTAP_DIR"
     fi
 

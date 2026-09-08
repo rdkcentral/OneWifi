@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
+if LIBWEBCONFIG
 AM_CFLAGS = -D_ANSC_LINUX
 AM_CFLAGS += -D_ANSC_USER
 if CCSP_ARCH_ARM
@@ -56,4 +57,4 @@ libwifi_math_utils_la_LIBADD = -lrbus -lstdc++fs
 libwifi_math_utils_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
 #include_HEADERS =  $(top_srcdir)/source/utils/wifi_util.h
 noinst_HEADERS = $(top_srcdir)/source/utils/wifi_util.h
-
+endif

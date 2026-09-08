@@ -1879,6 +1879,7 @@ void encode_assoc_dev_stats(cJSON *obj, const assoc_dev_data_t *dev)
     cJSON_AddNumberToObject(obj, "MaxRSSI", dev->dev_stats.cli_MaxRSSI);
     cJSON_AddNumberToObject(obj, "Disassociations", dev->dev_stats.cli_Disassociations);
     cJSON_AddNumberToObject(obj, "AuthenticationFailures", dev->dev_stats.cli_AuthenticationFailures);
+    cJSON_AddNumberToObject(obj, "CapableNumSpatialStreams", dev->dev_stats.cli_capableNumSpatialStreams);
     cJSON_AddNumberToObject(obj, "ActiveNumSpatialStreams", dev->dev_stats.cli_activeNumSpatialStreams);
     cJSON_AddNumberToObject(obj, "PacketsSent", dev->dev_stats.cli_PacketsSent);
     cJSON_AddNumberToObject(obj, "PacketsReceived", dev->dev_stats.cli_PacketsReceived);
@@ -2945,6 +2946,7 @@ webconfig_error_t encode_assocdevice_params(wifi_provider_response_t *assoc_dev_
         cJSON_AddNumberToObject(client_stats_obj, "cli_MultipleRetryCount", client_stats[count].dev_stats.cli_MultipleRetryCount);
         cJSON_AddNumberToObject(client_stats_obj, "cli_MaxDownlinkRate", client_stats[count].dev_stats.cli_MaxDownlinkRate);
         cJSON_AddNumberToObject(client_stats_obj, "cli_MaxUplinkRate", client_stats[count].dev_stats.cli_MaxUplinkRate);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_capableNumSpatialStreams", client_stats[count].dev_stats.cli_capableNumSpatialStreams);
         cJSON_AddNumberToObject(client_stats_obj, "cli_activeNumSpatialStreams", client_stats[count].dev_stats.cli_activeNumSpatialStreams);
         cJSON_AddNumberToObject(client_stats_obj, "cli_TxFrames", client_stats[count].dev_stats.cli_TxFrames);
         cJSON_AddNumberToObject(client_stats_obj, "cli_RxRetries", client_stats[count].dev_stats.cli_RxRetries);
@@ -3039,7 +3041,6 @@ void print_hex_dump(unsigned int length, unsigned char *buffer)
 webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_data,
     cJSON **beacon_report_obj)
 {
-    char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
     if (sta_data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
@@ -3051,16 +3052,23 @@ webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_d
         return webconfig_error_encode;
     }
 
-    memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
-    if (sta_data->data_len != 0) {
-        // print_hex_dump(sta_data->data_len, sta_data->data);
-        hextostring(sta_data->data_len, sta_data->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
-        // printf("assoc_frame_string:%s\n", assoc_frame_string);
-    } else {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
+    if (sta_data->data_len == 0 || sta_data->data == NULL || sta_data->data_len > MAX_FRAME_SZ) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid Report Data (len=%u)\n", __func__,
+            __LINE__, sta_data->data_len);
         return webconfig_error_encode;
     }
+
+    size_t hex_buf_len = (size_t)sta_data->data_len * 2 + 1;
+    char *assoc_frame_string = (char *)malloc(hex_buf_len);
+    if (assoc_frame_string == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to allocate hex buffer\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+    memset(assoc_frame_string, 0, hex_buf_len);
+    hextostring(sta_data->data_len, sta_data->data, hex_buf_len, assoc_frame_string);
     cJSON_AddStringToObject(*beacon_report_obj, "ReportData", assoc_frame_string);
+    free(assoc_frame_string);
     return webconfig_error_none;
 }
 #endif
