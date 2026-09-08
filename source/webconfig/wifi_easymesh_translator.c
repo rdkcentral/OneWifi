@@ -286,6 +286,7 @@ webconfig_error_t webconfig_easymesh_encode(webconfig_t *config,
     if (webconfig_encode(config, webconfig_easymesh_data, type) != webconfig_error_none) {
         *str = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh encode failed\n", __func__, __LINE__);
+		webconfig_data_free(webconfig_easymesh_data);
         free(webconfig_easymesh_data);
         return webconfig_error_encode;
     }
