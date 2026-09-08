@@ -86,6 +86,7 @@ OneWifi_CFLAGS =  $(SYSTEMD_CFLAGS)
 OneWifi_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 OneWifi_CFLAGS += $(SM_APP_FLAG)
 OneWifi_CFLAGS += $(EM_APP_FLAG)
+OneWifi_CFLAGS += -Wno-error=format
 OneWifi_CFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}/usr/include/protobuf-c
 
 OneWifi_SOURCES = wifi_mgr.c wifi_ctrl.c wifi_passpoint.c wifi_8021x.c wifi_data_plane.c wifi_ctrl_queue_handlers.c wifi_ctrl_rbus_handlers.c wifi_multidoc_webconfig.c wifi_ctrl_webconfig.c wifi_ctrl_wifiapi_handlers.c
