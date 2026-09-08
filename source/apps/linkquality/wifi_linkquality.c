@@ -144,7 +144,8 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
     if (ctrl->network_mode == rdk_dev_mode_type_em_node
       || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
 #ifdef EM_APP
-        get_lq_descriptor()->start_link_metrics_fn();
+        if (get_lq_descriptor()->start_link_metrics_fn)
+            get_lq_descriptor()->start_link_metrics_fn();
         qmgr_register_batch_callback(publish_qmgr_subdoc);
          wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
             __func__, __LINE__, ctrl->network_mode);
@@ -160,9 +161,9 @@ int link_quality_event_exec_stop(wifi_app_t *apps, void *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl->network_mode == rdk_dev_mode_type_em_node
       || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-
 #ifdef EM_APP
-        get_lq_descriptor()->stop_link_metrics_fn();
+        if (get_lq_descriptor()->stop_link_metrics_fn)
+            get_lq_descriptor()->stop_link_metrics_fn();
 #endif
     }
     ignite_lq_state_t *ignite = &apps->data.u.linkquality.ignite;
@@ -443,6 +444,8 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
     if (bss_param == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to get bss info for vap index %d\n", __func__,
         __LINE__, affinity_arg->vap_index);
+        free(affinity_arg);
+        affinity_arg = NULL;
         return RETURN_ERR;
     }
     to_mac_str(bss_param->bssid, affinity_arg->ap_mac_str);
@@ -501,6 +504,8 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
     if (bss_param == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d Failed to get bss info for vap index %d\n", __func__,
         __LINE__, affinity_arg->vap_index);
+        free(affinity_arg);
+        affinity_arg = NULL;
         return RETURN_ERR;
     }
     to_mac_str(bss_param->bssid, affinity_arg->ap_mac_str);

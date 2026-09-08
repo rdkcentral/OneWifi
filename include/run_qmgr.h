@@ -116,7 +116,7 @@ int run_web_server();
 int stop_web_server();
 
 
-int add_stats_metrics(stats_arg_t *stats,int len);
+int add_stats_metrics(stats_arg_t *stats);
 int remove_link_stats(stats_arg_t *stats);
 int start_link_metrics();
 int stop_link_metrics();

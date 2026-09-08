@@ -151,8 +151,8 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
                 uint32_t count, size_t entry_size)
 {
     /* Log per-entry details for stats_arg_t messages */
-    if (msg_type !=  LQ_IPC_MSG_REGISTER_STA || msg_type !=  LQ_IPC_MSG_UNREGISTER_STA 
-     || msg_type !=  LQ_IPC_MSG_REINIT_METRICS )
+    if (msg_type !=  LQ_IPC_MSG_REGISTER_STA && msg_type !=  LQ_IPC_MSG_UNREGISTER_STA 
+     &&  msg_type !=  LQ_IPC_MSG_REINIT_METRICS )
     lq_ipc_log_stats_entries(msg_type, entries, count, entry_size);
 
     if (count != 0 && entries == NULL) {
@@ -160,8 +160,8 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
     }
 
     /* Filter: only forward events for private VAPs (private_ssid*) */
-    if (msg_type !=  LQ_IPC_MSG_REGISTER_STA || msg_type !=  LQ_IPC_MSG_UNREGISTER_STA 
-     || msg_type !=  LQ_IPC_MSG_REINIT_METRICS ) {
+    if (msg_type !=  LQ_IPC_MSG_REGISTER_STA && msg_type !=  LQ_IPC_MSG_UNREGISTER_STA 
+     && msg_type !=  LQ_IPC_MSG_REINIT_METRICS ) {
         if (entry_size == sizeof(stats_arg_t) && count > 0 ) {
             wifi_mgr_t *mgr = get_wifimgr_obj();
             if (mgr != NULL) {
@@ -203,6 +203,11 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
         "%s:%d [IPC-SEND] TLV encoded: tlv_type=%s(%u) tlv_len=%d datagram_sz=%zu\n",
         __func__, __LINE__, lq_msg_type_str(msg_type), msg_type,
         tlv_len, (size_t)tlv_len);
+
+    if (tlv_len < 0) {
+         free(buf);
+         return -1;
+     }
 
     ssize_t ret = -1;
     /*

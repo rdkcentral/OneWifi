@@ -49,7 +49,7 @@ static int periodic_caffinity_stats_update_impl(stats_arg_t *stats, int len)
     return rc;
 }
 
-/* REGISTER_STA (msg_type 7) – Ignite RF-down station registration */
+/* REGISTER_STA (msg_type 5) – Ignite RF-down station registration */
 static void register_station_mac_impl(const char *str)
 {
 
@@ -59,7 +59,8 @@ static void register_station_mac_impl(const char *str)
         __func__, __LINE__, rc);
 
 }
-/* UNREGISTER_STA (msg_type 8) – Ignite RF-down station unregistration */
+
+/* UNREGISTER_STA (msg_type 6) – Ignite RF-down station unregistration */
 static void unregister_station_mac_impl(const char *str)
 {
 
@@ -80,7 +81,7 @@ static int disconnect_link_stats_impl(stats_arg_t *stats)
     return rc;
 }
 
-/* REINIT_METRICS (msg_type 9) – webconfig/EM param update */
+/* REINIT_METRICS (msg_type 7) – webconfig/EM param update */
 static int reinit_link_metrics_impl(server_arg_t *arg)
 {
 
@@ -109,6 +110,37 @@ static int vap_down_link_stats_impl(stats_arg_t *stats)
         __func__, __LINE__, stats->mac_str, stats->vap_index, rc);
     return rc;
 }
+
+#ifndef ONEWIFI_RDKB_APP_SUPPORT
+static int vap_down_link_stats_rpi(stats_arg_t *stats)
+{
+    (void)stats;
+    return 0;
+}
+
+static int periodic_caffinity_stats_update_rpi(stats_arg_t *stats, int len)
+{
+    return 0;
+}
+
+static int process_lq_stats_rpi(stats_arg_t *stats, int len)
+{
+    int rc = 0;
+
+    if (stats == NULL || len <= 0) {
+        return -1;
+    }
+
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d len=%d\n",__func__,__LINE__,len);
+    for (int i = 0; i < len; i++) {
+       int ret = add_stats_metrics(&stats[i]);
+       if (ret < 0) {
+           rc = ret;
+       }
+    }
+    return rc;
+}
+#endif
 
 /* PERIODIC_STATS (msg_type 1) – periodic monitor poll batch */
 static int process_lq_stats_impl(stats_arg_t *stats, int len)
@@ -178,7 +210,7 @@ wifi_lq_descriptor_t* get_lq_descriptor()
     static wifi_lq_descriptor_t desc;
 
     if (!initialized) {
-#ifdef ONEWIFI_RDKB_APP_SUPPORT
+#if defined (ONEWIFI_RDKB_APP_SUPPORT) || defined (_GREXT02ACTS_PRODUCT_REQ_)
         desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_impl;
         desc.register_station_mac_fn            = register_station_mac_impl;
         desc.unregister_station_mac_fn          = unregister_station_mac_impl;
@@ -191,16 +223,19 @@ wifi_lq_descriptor_t* get_lq_descriptor()
         desc.process_lq_stats_fn                = process_lq_stats_impl;
         desc.vap_down_link_stats_fn             = vap_down_link_stats_impl;
 #else 
+        desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_rpi;
         desc.register_station_mac_fn            = register_station_mac;
         desc.unregister_station_mac_fn          = unregister_station_mac;
         desc.start_link_metrics_fn              = start_link_metrics;
         desc.stop_link_metrics_fn               = stop_link_metrics;
         desc.disconnect_link_stats_fn           = disconnect_link_stats;
         desc.reinit_link_metrics_fn             = reinit_link_metrics;
+        desc.process_lq_stats_fn                = process_lq_stats_rpi;
         desc.remove_link_stats_fn               = remove_link_stats;
         desc.get_link_metrics_fn                = get_link_metrics;
         desc.set_quality_flags_fn               = set_quality_flags;
         desc.get_quality_flags_fn               = get_quality_flags;
+        desc.vap_down_link_stats_fn             = vap_down_link_stats_rpi;
 #endif
         initialized = true;
     }

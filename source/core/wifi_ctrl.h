@@ -339,6 +339,7 @@ typedef struct wifi_ctrl {
     bool                wifi_sta_5g_status_subscribed;
     bool                eth_bh_status_subscribed;
     bool                mesh_keep_out_chans_subscribed;
+    bool                wei_events_subscribed;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
     wei_rfc_dml_parameters_t     wei_rfc_params;
@@ -424,6 +425,7 @@ typedef struct {
     double   dval;
     char     sval[256 + 1];
 } wei_rfc_field_update_t;
+
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
 wifi_ctrl_t *get_wifictrl_obj();

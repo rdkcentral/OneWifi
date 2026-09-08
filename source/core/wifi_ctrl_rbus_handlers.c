@@ -39,7 +39,6 @@
 
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
-#define MAX_STR_LEN 128
 #define MAX_BUFF_LEN 256
 #define MAX_TELEMETRY_BUFF_LEN 64
 #define MAX_STATUS_LEN 5
@@ -335,6 +334,8 @@ int check_and_start_wei()
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     raw_data_t data;
     raw_data_t mask_data;
+    bool wei_enabled = false;
+    uint32_t wei_mask = 0;
     memset(&data, 0, sizeof(raw_data_t));
     memset(&mask_data, 0, sizeof(raw_data_t));
     char str[512];
@@ -348,7 +349,10 @@ int check_and_start_wei()
         get_bus_descriptor()->bus_data_free_fn(&data);
         return -1;
     }
-    if (data.raw_data.b ) {
+    wei_enabled = data.raw_data.b;
+    get_bus_descriptor()->bus_data_free_fn(&data);
+
+    if (wei_enabled) {
          wifi_util_error_print(WIFI_CTRL,"WEI is enabled\n");
         memset(str, 0, sizeof(str));
         snprintf(str, sizeof(str), "%s", WEI_RFC_MASK);
@@ -360,7 +364,10 @@ int check_and_start_wei()
             get_bus_descriptor()->bus_data_free_fn(&mask_data);
             return -1 ;
         }
-        if (mask_data.raw_data.u32 | WEI_RFC_LQ ) {
+        wei_mask = mask_data.raw_data.u32;
+        get_bus_descriptor()->bus_data_free_fn(&mask_data);
+
+        if (wei_mask & WEI_RFC_LQ) {
             wifi_util_error_print(WIFI_CTRL,"WEI and LQ is enabled %s:%d\n",__func__, __LINE__);
             return 0 ;
         } else {
@@ -372,8 +379,8 @@ int check_and_start_wei()
             mask_data.raw_data.b = true;
             rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
             if ( rc != bus_error_success) {
-                 wifi_util_error_print(WIFI_CTRL,"Not able to set LQ\nn");
-                 return -1;
+                wifi_util_error_print(WIFI_CTRL,"Not able to set LQ\n");
+                return -1;
 
             }
 
@@ -413,7 +420,7 @@ int stop_wei()
     bus_error_t rc = bus_error_success;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     raw_data_t data;
-    char str[32];
+    char str[512];
   
     memset(&data, 0, sizeof(raw_data_t));
 
@@ -485,7 +492,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
         wei_ret = check_and_start_wei();
         if (wei_ret != 0) {
-             wifi_util_info_print(WIFI_CTRL, "Not able to start WEI\n",wei_ret);
+             wifi_util_info_print(WIFI_CTRL, "Not able to start WEI ret:%d\n",wei_ret);
             return bus_error_general;
         }
         wifi_global_config_t *global_cfg = get_wifidb_wifi_global_config();
@@ -2952,6 +2959,19 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d MeshStatus subscribe success, rc: %d\n",
                 __FUNCTION__, __LINE__, rc);
         }
+    }
+
+    if (ctrl->wei_events_subscribed == false) {
+        int ret1 = -1;
+        ret1 = bus_desc->bus_event_subs_fn(&ctrl->handle, WEI_RFC_MASK, wei_rfc_mask_handler, NULL,0);
+        if (ret1 == 0 )  {    
+	    ctrl->wei_events_subscribed = true;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d wei event subscribe success\n",
+                __FUNCTION__, __LINE__);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d wei event subscribe unsuccess\n",
+                __FUNCTION__, __LINE__);
+	}
     }
 
 #if defined(RDKB_EXTENDER_ENABLED) || defined(WAN_FAILOVER_SUPPORTED)

@@ -4534,7 +4534,6 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_wei_rfc_config:
         process_wei_rfc_config_update((wei_rfc_field_update_t *)data);
         break;
-    
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);
         break;

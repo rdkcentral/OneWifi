@@ -1327,6 +1327,9 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
             case wifi_action_frame_type_public:
                 get_action_frame_evt_params(frame, len, &mgmt_frame, &evt_subtype);
                 break;
+            case wifi_action_frame_type_radio_msmt:
+                evt_subtype = wifi_event_br_report;
+                break;
             default:
                 break;
         }
@@ -2065,13 +2068,14 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     }
 
-    if (ctrl->network_mode == rdk_dev_mode_type_em_node 
-     || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node || ctrl->rf_status_down == true) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d WEI RFC is enabled \n", __func__, __LINE__);
+    if ((ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node
+        || ctrl->rf_status_down == true)) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start link quality app, network_mode:%d rf_status_down:%d\n",
+            __func__, __LINE__, ctrl->network_mode, ctrl->rf_status_down);
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     } else {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d WEI RFC is disabled \n", __func__, __LINE__);
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d stop link quality app, network_mode:%d rf_status_down:%d\n",
+            __func__, __LINE__, ctrl->network_mode, ctrl->rf_status_down);
     }
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
@@ -2484,7 +2488,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
-        (ctrl->hotspot_client_dhcp_failure_subscribed == false)
+        (ctrl->hotspot_client_dhcp_failure_subscribed == false) || (ctrl->wei_events_subscribed == false) 
 #if defined (RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif
