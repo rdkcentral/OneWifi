@@ -127,8 +127,6 @@ void device_statistics_info(analytics_data_t *data)
 
     memcpy(&data->last_usage, &usage, sizeof(struct rusage));
 
-    printf("Test Coverity workflow %s\n");
-
     memset(client_mac, 0, sizeof(client_mac));
     memset(sta_stats_str, 0, sizeof(sta_stats_str));
 
@@ -942,6 +940,8 @@ int analytics_init(wifi_app_t *apps, unsigned int create_flag)
     apps->data.u.analytics.minutes_alive = 0;
     memset(&apps->data.u.analytics.last_usage, 0, sizeof(struct rusage));
     apps->data.u.analytics.sta_map = hash_map_create();
+
+    printf("Test Coverity workflow %s\n");
 
     wifi_util_info_print(WIFI_ANALYTICS, "@startuml\n");
     wifi_util_info_print(WIFI_ANALYTICS, "hide footbox\n");
