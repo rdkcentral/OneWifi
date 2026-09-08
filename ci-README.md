@@ -92,8 +92,14 @@ OneWifi.
 `gcc_diff_gate.py` recompiles each PR-changed `.c`/`.cpp` from `compile_commands.json` with extra
 candidate `-W` flags (non-fatal), keeping only findings on lines the PR touched — so a class with
 a tree-wide backlog can still gate *new* code, without a tree-wide `-Werror` that would red every
-unrelated PR. Per the workflow's env: `GATE_WARNINGS="-Wvla -Wreturn-type"` (would fail the job),
-`ADVISORY_WARNINGS="-Wunused-but-set-variable -Wunused-value -Wunused-label"` (report only). The
+unrelated PR. The lists live in the workflow's env. `GATE_WARNINGS` (would fail the job): `-Wvla`,
+`-Wreturn-type`, the four classes gcc-14 makes errors by default (`-Wint-conversion`,
+`-Wimplicit-function-declaration`, `-Wimplicit-int`, `-Wincompatible-pointer-types`), so new code
+does not add to what a gcc-14 move must fix, plus `-Wsizeof-pointer-memaccess` and
+`-Wformat-security`. `ADVISORY_WARNINGS` (report only): the `-Wunused-*` family and classes measured
+quiet over the tree (`-Waddress`, `-Wstringop-*`, `-Warray-bounds`, `-Wdangling-pointer`,
+`-Wuse-after-free`). The recompile runs at `-Os` like the production build (the compile DB is
+`-O0`), so the optimizer-dependent classes can fire, and with the DB's `-Werror=` flags removed. The
 whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the ❌ block
 renders, but the job is not actually reddened by it yet.
 

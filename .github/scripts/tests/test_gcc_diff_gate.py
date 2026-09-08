@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2026 RDK Management — Apache-2.0 (see gcc_diff_gate.py header).
-"""Unit tests for gcc_diff_gate.py's inline-candidate output: build_inline and the
-envelope status main() writes."""
+"""Unit tests for gcc_diff_gate.py: build_inline, the envelope status main() writes, and
+recompile_cmd (the per-file recompile flags)."""
 import contextlib
 import io
 import json
@@ -71,6 +71,30 @@ class MainStatus(unittest.TestCase):
         # A finding the inline converter cannot parse also leaves the set incomplete.
         odd = SimpleNamespace(returncode=0, stderr="/w/OneWifi/source/odd.c:3:5: error: odd [-Wunused-value]")
         self.assertEqual(self._run_main({"odd.c": odd})["status"], "partial")
+
+
+class RecompileCmd(unittest.TestCase):
+    def test_recompile_cmd(self):
+        flags = ["-Wvla", "-Wint-conversion"]
+        cases = [
+            # (DB args, path, OPT, must be in the command, must not be)
+            (["gcc", "-Werror", "-Werror=maybe-uninitialized", "a.c"], "source/a.c", "-Os",
+             ["-Os", "-Wvla", "-Wint-conversion", "-Wno-error=int-conversion", os.devnull],
+             ["-Werror", "-Werror=maybe-uninitialized"]),
+            (["g++", "-Werror=return-type", "a.cpp"], "source/a.cpp", "-Os",      # C-only flag dropped
+             ["-Os", "-Wvla", "-Wno-error=vla"],
+             ["-Wint-conversion", "-Wno-error=int-conversion", "-Werror=return-type"]),
+            (["gcc", "-Werror=format", "a.c"], "source/a.c", "",                  # OPT unset
+             ["-Wvla"], ["-Os", "-Werror=format"]),
+        ]
+        with mock.patch.multiple(gcc_gate, ALL_FLAGS=flags, C_ONLY={"-Wint-conversion"}):
+            for args, path, opt, present, absent in cases:
+                with mock.patch.object(gcc_gate, "OPT", opt):
+                    cmd = gcc_gate.recompile_cmd(args, path)
+                for flag in present:
+                    self.assertIn(flag, cmd, (path, opt))
+                for flag in absent:
+                    self.assertNotIn(flag, cmd, (path, opt))
 
 
 if __name__ == "__main__":

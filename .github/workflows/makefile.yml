@@ -491,19 +491,40 @@ jobs:
         #      with NO "mechanism error" summary line (the try/except fail-open);
         #   2. >= 1 advisory finding (the -Wunused-* classes fire on ordinary
         #      refactors) hand-checked against the diff -> line attribution correct;
-        #   3. zero false positives on the GATE classes.
+        #   3. zero false positives on the GATE classes;
+        #   4. the tree-occurrence count of each GATE class is measured and known --
+        #      several (int-conversion, incompatible-pointer-types, ...) are suppressed
+        #      by ONE_WIFI_WARN and so carry a backlog; because the gate is line-scoped,
+        #      a PR that edits an existing-violation line for an unrelated reason gates
+        #      on it, so the backlog size must be a known, accepted number first.
         # Gate on that evidence, not the calendar. Silence of the GATE classes alone
         # proves nothing (they're rarely introduced) -- the advisory classes are what
         # exercise the recompile + line-scoping machinery.
         ENFORCE: 'false'
+        # Optimization level for the recompile ONLY (not the build product): production
+        # bpi/rpi are -Os but the compile DB is -O0, so middle-end warnings are dormant.
+        # -Os wakes them on the changed files at production's level. The script strips the
+        # DB's own -Werror=<class> promotions (incl. -Werror=array-bounds/-maybe-uninitialized
+        # that -Os trips) so no class can abort the analysis; a real error still exits nonzero.
+        OPT: '-Os'
         # GATE = fail the job (when ENFORCE=true) if introduced on a changed line.
-        # ADVISORY = report only. -Wvla (stack-overflow) + -Wreturn-type (UB) are
-        # high-impact + reliable -> first to gate. The dead-code family is
-        # diff-scope-reliable but kept ADVISORY (promote a class into GATE_WARNINGS
-        # once quiet on real PRs). (-Wunreachable-code-* are clang-only; the "moved
-        # code left set-but-unused vars" case is -Wunused-but-set-variable.)
-        GATE_WARNINGS: "-Wvla -Wreturn-type"
-        ADVISORY_WARNINGS: "-Wunused-but-set-variable -Wunused-value -Wunused-label"
+        # ADVISORY = report only. Both are posted inline (❌ / ❗) and in the ci-summary.
+        # GATE picks: front-end, ~0-FP, crash/RCE/UB or next-compiler-break classes.
+        #   -Wvla (stack overflow), -Wreturn-type (UB). -Wint-conversion,
+        #   -Wimplicit-function-declaration, -Wimplicit-int, -Wincompatible-pointer-types
+        #   are ERRORS-BY-DEFAULT in gcc-14 regardless of -std, so gating on changed
+        #   lines stops the backlog growing before the runner bumps to gcc-14 and the
+        #   tree stops building. -Wsizeof-pointer-memaccess (truncated mem*/str* copy),
+        #   -Wformat-security (uncontrolled format -> leak / %n write; armed by the DB's
+        #   -Wall). The four C-only classes are auto-dropped on C++ TUs by the script.
+        #   gcc-14's other two default errors have no gcc-13 flag: -Wreturn-mismatch is
+        #   covered by -Wreturn-type here, -Wdeclaration-missing-parameter-type is new.
+        GATE_WARNINGS: "-Wvla -Wreturn-type -Wint-conversion -Wimplicit-function-declaration -Wimplicit-int -Wincompatible-pointer-types -Wsizeof-pointer-memaccess -Wformat-security"
+        # ADVISORY: measured quiet over the compile DB at -Os (each 0-4 findings tree-wide,
+        # so they only fire on something genuinely new). -Wpointer-sign (33) and
+        # -Wdiscarded-qualifiers (14) were DROPPED as too noisy. Middle-end classes need
+        # the -Os above to fire.
+        ADVISORY_WARNINGS: "-Wunused-function -Wunused-but-set-variable -Wunused-variable -Wunused-value -Wunused-label -Waddress -Wstringop-overflow -Wstringop-overread -Warray-bounds -Wdangling-pointer -Wuse-after-free"
         # Inline-review candidates (Commit 5) for the stage-2 'inline' job. Lands in
         # ci-out/ (uploaded as ci-summary-bpi). Absent/unset -> the script writes none.
         INLINE_JSON: "ci-out/inline-gcc.json"
