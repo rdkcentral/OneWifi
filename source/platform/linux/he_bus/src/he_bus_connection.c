@@ -627,6 +627,9 @@ void *ipc_unix_broadcast_client_start(void *arg)
         if (FD_ISSET(p_client_info->conn_info.fd, &read_fds)) {
             ret = recv_server_data(handle, &p_client_info->conn_info);
             if (ret == HE_BUS_ERROR_STREAM_CLOSED) {
+                if (p_client_info->conn_info.fd != SOCKET_INVALID_FD) {
+                    close(p_client_info->conn_info.fd);
+                }
                 p_client_info->conn_info.fd = -1;
                 sleep(20); //@TODO TBD Do we need to trigger retry for server connection ?
                 if (bus_client_bind(SOCKET_BROADCAST_SERVER_NAME, &p_client_info->conn_info) !=
@@ -640,7 +643,9 @@ void *ipc_unix_broadcast_client_start(void *arg)
             }
         }
     }
-    close(p_client_info->conn_info.fd);
+    if (p_client_info->conn_info.fd != SOCKET_INVALID_FD) {
+        close(p_client_info->conn_info.fd);
+    }
     return NULL;
 }
 

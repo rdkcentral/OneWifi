@@ -600,6 +600,7 @@ he_bus_error_t process_bus_sub_event(he_bus_handle_t handle, int socket_fd, char
                     p_obj_data->data.raw_data_len);
                 p_sub_data->action = sub_recv_data.action;
             } else {
+                he_bus_free(p_sub_data);
                 ELM_UNLOCK(node->element_mutex);
                 he_bus_core_error_print("%s:%d wrong sub action raw data type:%d for %s\r\n",
                     __func__, __LINE__, p_obj_data->data.data_type, p_obj_data->name);
