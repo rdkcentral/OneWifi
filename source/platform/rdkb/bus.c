@@ -503,6 +503,37 @@ void *get_bus_cb_data_info(elem_node_map_t *cb_root, char *name)
     return NULL;
 }
 
+/*
+ * This function can be used to fetch all callback-handler information,
+ * so the above get_bus_cb_data_info() function may not be required.
+ * Please review this function and consider removing the duplicate
+ * implementation if it is not needed.
+ */
+void *get_bus_cb_data_info_for_table_row_remove(elem_node_map_t *cb_root, char *name)
+{
+    elem_node_map_t *mux_elem = get_bus_node_info(cb_root, name);
+    if (mux_elem != NULL) {
+        wifi_util_dbg_print(WIFI_BUS, "%s Rbus callback info found for=%s name:%s full name:%s\n", __func__, name, mux_elem->name, mux_elem->full_name);
+        if (strcmp(mux_elem->name, "{i}") == 0) {
+            if (mux_elem->parent == NULL) {
+                wifi_util_dbg_print(WIFI_BUS, "%s Rbus callback info parent not found for=%s\n",
+                    __func__, name);
+            } else if (mux_elem->parent->type != bus_element_type_table) {
+                wifi_util_dbg_print(WIFI_BUS,
+                    "%s Rbus callback info parent is not a table for=%s type:%d node name:%s node full name:%s\n",
+                    __func__, name, mux_elem->parent->type, mux_elem->parent->name, mux_elem->parent->full_name);
+            } else {
+                wifi_util_dbg_print(WIFI_BUS, "%s Rbus callback info parent is a table for=%s node name:%s node full name:%s\n",
+                    __func__, name, mux_elem->parent->name, mux_elem->parent->full_name);
+                return mux_elem->parent->node_elem_data;
+            }
+        }
+        return mux_elem->node_elem_data;
+    }
+    wifi_util_info_print(WIFI_BUS, "%s Rbus callback info not found=%s\n", __func__, name);
+    return NULL;
+}
+
 bus_error_t get_rbus_property_data(char *event_name, rbusProperty_t property, raw_data_t *bus_data)
 {
     bus_error_t ret = bus_error_success;
@@ -983,7 +1014,7 @@ rbusError_t rbus_table_remove_row_handler(rbusHandle_t handle, char const* rowNa
     bus_error_t ret = bus_error_success;
 
     wifi_util_info_print(WIFI_BUS,"%s:%d rbus cb triggered for %s\n", __func__, __LINE__, rowName);
-    bus_mux_reg_node_data_t *reg_node_data = get_bus_cb_data_info(get_bus_mux_reg_cb_map(), (char *)rowName);
+    bus_mux_reg_node_data_t *reg_node_data = get_bus_cb_data_info_for_table_row_remove(get_bus_mux_reg_cb_map(), (char *)rowName);
     if (reg_node_data == NULL) {
         wifi_util_error_print(WIFI_BUS,"%s:%d rbus event name:%s, user cb not found\n", __func__, __LINE__, rowName);
         return RBUS_ERROR_ELEMENT_DOES_NOT_EXIST;
