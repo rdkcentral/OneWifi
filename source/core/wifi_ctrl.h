@@ -34,6 +34,7 @@ extern "C" {
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
 #include "wifi_apps_mgr.h"
+#include "wifi_ctrl_wei_rfc.h"
 
 #define WIFI_WEBCONFIG_PRIVATESSID         1
 #define WIFI_WEBCONFIG_HOMESSID            2
@@ -119,9 +120,6 @@ extern "C" {
 #define BUS_WFA_DML_CONFIG_FILE "Data_Elements_JSON_Schema_v3.0.json"
 
 #define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
-#define WEI_RFC_MASK        "Device.X_RDKCENTRAL-COM_WEI.RFC_MASK"
-#define WEI_MEASUREMENT_RFC      "Device.X_RDKCENTRAL-COM_WEI.Enable"
-#define WEI_LQ_CLIENT_ENABLE_DMPATH     "Device.X_RDKCENTRAL-COM_WEI.LQ.Client.Enable"
 
 extern bool is_sta_set;
 
@@ -264,9 +262,9 @@ typedef struct wifi_ctrl {
     bool                wifi_sta_5g_status_subscribed;
     bool                eth_bh_status_subscribed;
     bool                mesh_keep_out_chans_subscribed;
-    bool                wei_events_subscribed;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
+    wei_rfc_dml_parameters_t     wei_rfc_params;
     unsigned int        sta_tree_instance_num;
     unsigned int        ignite_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
@@ -337,15 +335,19 @@ typedef struct {
     bool enabled;
 } public_vaps_data_t;
 
-typedef enum
-{
-    WEI_RFC_NONE  = 0x00,  /* Main WEI RFC disabled                  */
-    WEI_RFC_MAIN  = 0x01,  /* Main WEI RFC enabled                   */
-    WEI_RFC_LQ    = 0x02,  /* Link Quality pillar enabled            */
-    WEI_RFC_GC    = 0x04,  /* Getting Connected pillar enabled       */
-    WEI_RFC_SC    = 0x08,  /* Staying Connected pillar enabled       */
-    WEI_RFC_ALL   = (WEI_RFC_MAIN | WEI_RFC_LQ | WEI_RFC_GC | WEI_RFC_SC)
-} wei_rfc_mask_t;
+/* Delta pushed through the ctrl queue by a WEI rbus Set (field_id indexes
+ * the descriptor table in wifi_ctrl_rbus_handlers.c) so every mutation of
+ * wei_rfc_dml_parameters_t is applied serialized on the ctrl thread.
+ * field_id == -1 means "already applied to the DB-mirror cache by an
+ * external write (e.g. direct OVSDB update); just recompute + notify". */
+typedef struct {
+    int      field_id;
+    bool     bval;
+    uint32_t uval;
+    double   dval;
+    char     sval[256 + 1];
+} wei_rfc_field_update_t;
+
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
 wifi_ctrl_t *get_wifictrl_obj();
@@ -412,6 +414,16 @@ wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void);
 ignite_config_t* get_ignite_config_by_name(char *name);
 wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void);
+wei_rfc_dml_parameters_t* get_wifi_db_wei_rfc_parameters(void);
+wei_rfc_dml_parameters_t* get_ctrl_wei_rfc_parameters(void);
+int wifidb_get_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_info);
+int wifidb_update_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_param);
+void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config);
+/* Implemented in wifi_ctrl_rbus_handlers.c: applies a field delta (if any),
+ * derives Wifi_Rfc_Config.wei_rfc_mask and publishes change-notification
+ * bus events. Invoked from the ctrl-queue dispatcher in
+ * wifi_ctrl_queue_handlers.c on wifi_event_type_wei_rfc_config. */
+void process_wei_rfc_config_update(wei_rfc_field_update_t *upd);
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t r_index);
 int get_device_config_list(char *d_list, int size, char *str);
 int get_cm_mac_address(char *mac);

@@ -16,7 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
+if PLATFORM_BANANAPI
+SUBDIRS = . math_utils quality_mgr
+else
 SUBDIRS = . math_utils
+endif
 AM_CFLAGS = -D_ANSC_LINUX
 AM_CFLAGS += -D_ANSC_USER
 if CCSP_ARCH_ARM

@@ -59,6 +59,7 @@ typedef struct {
     hash_map_t                      *steering_client_map;
     hash_map_t                      *vif_neighbors_map;
     wifi_rfc_dml_parameters_t       rfc_dml_parameters;
+    wei_rfc_dml_parameters_t        wei_rfc_dml_parameters;
     int                             db_version;
     bool                            channel_change_in_progress[MAX_NUM_RADIOS];
 } wifi_mgr_t;
