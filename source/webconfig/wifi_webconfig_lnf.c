@@ -241,6 +241,7 @@ webconfig_error_t decode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     if (presence_count != num_lnf_ssid) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
+        cJSON_Delete(json);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
