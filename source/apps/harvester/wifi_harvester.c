@@ -611,10 +611,12 @@ void process_instant_msmt_monitor(wifi_provider_response_t *provider_response)
     } else {
         if (g_harvester_module.count == 0) {
             for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
-                g_harvester_module.radio_data[radio_index] = (radio_data_t *) malloc (sizeof(radio_data_t));
                 if (g_harvester_module.radio_data[radio_index] == NULL) {
-                    wifi_util_error_print(WIFI_HARVESTER, "%s:%d: Unable to allocate memory \n", __func__, __LINE__);
-                    return;
+                    g_harvester_module.radio_data[radio_index] = (radio_data_t *) malloc(sizeof(radio_data_t));
+                    if (g_harvester_module.radio_data[radio_index] == NULL) {
+                        wifi_util_error_print(WIFI_HARVESTER, "%s:%d: Unable to allocate memory \n", __func__, __LINE__);
+                        return;
+                    }
                 }
                 memset(g_harvester_module.radio_data[radio_index], 0, sizeof(radio_data_t));
                 if (get_dev_stats_for_radio(radio_index, (radio_data_t *)g_harvester_module.radio_data[radio_index]) != RETURN_OK) {
