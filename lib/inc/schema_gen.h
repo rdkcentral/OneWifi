@@ -216,7 +216,6 @@
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
         PJS_OVS_BOOL(multiap_rfc) \
-        PJS_OVS_INT(wei_rfc_mask) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1714,7 +1713,6 @@
         PJS_OVS_STRING(wei_rfc_id, 16 + 1) \
         PJS_OVS_BOOL(wei_enable) \
         PJS_OVS_INT(lq_meas_params_mask) \
-        PJS_OVS_REAL(lq_meas_threshold) \
         PJS_OVS_INT(lq_meas_duration) \
         PJS_OVS_INT(radio_2g_max_snr) \
         PJS_OVS_INT(radio_5g_max_snr) \
@@ -3439,7 +3437,6 @@
     COLUMN(wei_rfc_id) \
     COLUMN(wei_enable) \
     COLUMN(lq_meas_params_mask) \
-    COLUMN(lq_meas_threshold) \
     COLUMN(lq_meas_duration) \
     COLUMN(radio_2g_max_snr) \
     COLUMN(radio_5g_max_snr) \
@@ -3627,7 +3624,6 @@
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
 #define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
 #define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
-#define SCHEMA__Wifi_Rfc_Config__wei_rfc_mask "wei_rfc_mask"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
@@ -4753,7 +4749,6 @@
 #define SCHEMA__Wifi_Wei_Rfc_Config__wei_rfc_id "wei_rfc_id"
 #define SCHEMA__Wifi_Wei_Rfc_Config__wei_enable "wei_enable"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_params_mask "lq_meas_params_mask"
-#define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_threshold "lq_meas_threshold"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_duration "lq_meas_duration"
 #define SCHEMA__Wifi_Wei_Rfc_Config__radio_2g_max_snr "radio_2g_max_snr"
 #define SCHEMA__Wifi_Wei_Rfc_Config__radio_5g_max_snr "radio_5g_max_snr"

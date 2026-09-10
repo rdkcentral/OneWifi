@@ -344,7 +344,6 @@ typedef struct {
     int      field_id;
     bool     bval;
     uint32_t uval;
-    double   dval;
     char     sval[256 + 1];
 } wei_rfc_field_update_t;
 

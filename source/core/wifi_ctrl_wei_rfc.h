@@ -41,7 +41,7 @@ extern "C" {
 
 #define WEI_RFC_MASK               "Device.X_RDKCENTRAL-COM_WEI.RFC_MASK"
 #define WEI_MEASUREMENT_RFC        "Device.X_RDKCENTRAL-COM_WEI.Enable"
-#define WEI_LINK_QUALITY_THRESHOLD "Device.X_RDKCENTRAL-COM_WEI.LinkQualityThreshold"
+#define WEI_LINK_QUALITY_FLAGS     "Device.X_RDKCENTRAL-COM_WEI.LinkQualityFlags"
 #define WEI_LINK_QUALITY_DURATION  "Device.X_RDKCENTRAL-COM_WEI.LinkQualityDuration"
 /* Published by OneWifi whenever Wifi_Wei_Rfc_Config changes; carries a
  * monotonically increasing generation counter that tells WEI to re-GET. */
@@ -103,7 +103,6 @@ typedef struct {
     char                     wei_rfc_id[16 + 1];
     bool                     wei_enable;
     uint32_t                 lq_meas_params_mask;
-    double                   lq_meas_threshold;
     uint32_t                 lq_meas_duration;
     uint32_t                 radio_2g_max_snr;
     uint32_t                 radio_5g_max_snr;
@@ -118,7 +117,7 @@ typedef struct {
 
 /* Field type tags for the WEI RFC parameter descriptor table (drives the
  * generic rbus get/set handlers in wifi_ctrl_rbus_handlers.c). */
-typedef enum { FIELD_BOOL, FIELD_UINT, FIELD_DOUBLE, FIELD_STRING } wei_field_type_t;
+typedef enum { FIELD_BOOL, FIELD_UINT, FIELD_STRING } wei_field_type_t;
 
 /* One row per WEI RFC rbus parameter: maps a TR-181 path to the field it
  * reads/writes in wei_rfc_dml_parameters_t via offset, so a new parameter

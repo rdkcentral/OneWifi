@@ -36,6 +36,8 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stddef.h>
+#include <errno.h>
+#include <math.h>
 
 #define MAX_EVENT_NAME_SIZE 200
 #define MAX_STR_LEN 128
@@ -2100,8 +2102,8 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
     { (path), (ftype), offsetof(wei_rfc_dml_parameters_t, member), sizeof(((wei_rfc_dml_parameters_t *)0)->member) }
 
 static wei_param_entry_t g_wei_param_table[] = {
-    WEI_FIELD(WEI_MEASUREMENT_RFC,      FIELD_BOOL,   wei_enable),
-    WEI_FIELD(WEI_LINK_QUALITY_THRESHOLD, FIELD_DOUBLE, lq_meas_threshold),
+    WEI_FIELD(WEI_MEASUREMENT_RFC,        FIELD_BOOL,   wei_enable),
+    WEI_FIELD(WEI_LINK_QUALITY_FLAGS,     FIELD_UINT,   lq_meas_params_mask),
     WEI_FIELD(WEI_LINK_QUALITY_DURATION,  FIELD_UINT,   lq_meas_duration),
 
     WEI_FIELD(WEI_SC_HOME_ENABLE_DMPATH,          FIELD_BOOL,   sc.home_enable),
@@ -2168,19 +2170,6 @@ static bus_error_t wei_get_param(char *name, raw_data_t *p_data, bus_user_data_t
         p_data->raw_data.u32 = *(uint32_t *)field;
         p_data->raw_data_len = sizeof(uint32_t);
         break;
-    case FIELD_DOUBLE: {
-        char str[32];
-        snprintf(str, sizeof(str), "%.3f", *(double *)field);
-        uint32_t sz = (uint32_t)strlen(str) + 1;
-        p_data->data_type = bus_data_type_string;
-        p_data->raw_data.bytes = malloc(sz);
-        if (p_data->raw_data.bytes == NULL) {
-            return bus_error_out_of_resources;
-        }
-        memcpy(p_data->raw_data.bytes, str, sz);
-        p_data->raw_data_len = sz;
-        break;
-    }
     case FIELD_STRING: {
         uint32_t sz = (uint32_t)strlen(field) + 1;
         p_data->data_type = bus_data_type_string;
@@ -2226,18 +2215,6 @@ static bus_error_t wei_set_param(char *event_name, raw_data_t *p_data, bus_user_
         }
         upd.uval = p_data->raw_data.u32;
         break;
-    case FIELD_DOUBLE:
-        if (p_data->data_type != bus_data_type_string || p_data->raw_data.bytes == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d %s expects string\n", __func__, __LINE__, event_name);
-            return bus_error_invalid_input;
-        }
-        upd.dval = strtod((char *)p_data->raw_data.bytes, NULL);
-        if (upd.dval < 0.0 || upd.dval > 1.0) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d %s out of range: %.3f\n", __func__, __LINE__,
-                event_name, upd.dval);
-            return bus_error_invalid_input;
-        }
-        break;
     case FIELD_STRING:
         if (p_data->data_type != bus_data_type_string || p_data->raw_data.bytes == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d %s expects string\n", __func__, __LINE__, event_name);
@@ -2263,9 +2240,9 @@ static bus_error_t wei_get_rfc_mask_param(char *name, raw_data_t *p_data, bus_us
 {
     (void)name;
     (void)user_data;
-    wifi_rfc_dml_parameters_t *legacy = get_ctrl_rfc_parameters();
+    wifi_rfc_dml_parameters_t *wei_rfc = get_ctrl_rfc_parameters();
     p_data->data_type = bus_data_type_uint32;
-    p_data->raw_data.u32 = (uint32_t)legacy->wei_rfc_mask;
+    p_data->raw_data.u32 = (uint32_t)wei_rfc->wei_rfc_mask;
     p_data->raw_data_len = sizeof(uint32_t);
     return bus_error_success;
 }
@@ -2290,7 +2267,6 @@ static int register_wei_bus_elements(bus_data_element_t *elements)
         case FIELD_UINT:
             elements[i].data_model_prop.data_format = bus_data_type_uint32;
             break;
-        case FIELD_DOUBLE:
         case FIELD_STRING:
             elements[i].data_model_prop.data_format = bus_data_type_string;
             break;
@@ -2360,9 +2336,6 @@ static void wei_apply_field_update(wei_rfc_dml_parameters_t *cfg, wei_rfc_field_
     case FIELD_UINT:
         *(uint32_t *)field = upd->uval;
         break;
-    case FIELD_DOUBLE:
-        *(double *)field = upd->dval;
-        break;
     case FIELD_STRING:
         snprintf(field, e->field_size, "%s", upd->sval);
         break;
@@ -2404,9 +2377,9 @@ void process_wei_rfc_config_update(wei_rfc_field_update_t *upd)
     }
 
     uint32_t mask = wei_compute_rfc_mask(cfg);
-    wifi_rfc_dml_parameters_t *legacy = get_ctrl_rfc_parameters();
-    if (legacy->wei_rfc_mask != (int)mask) {
-        legacy->wei_rfc_mask = (int)mask;
+    wifi_rfc_dml_parameters_t *wei_rfc = get_ctrl_rfc_parameters();
+    if (wei_rfc->wei_rfc_mask != (int)mask) {
+        wei_rfc->wei_rfc_mask = (int)mask;
         /* In-memory only: Wifi_Wei_Rfc_Config (already persisted above) is the
          * sole source of truth, so this derived value is never written back
          * to OVSDB -- keep the DB-mirror struct in sync purely so the next
