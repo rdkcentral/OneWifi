@@ -20906,6 +20906,7 @@ Passpoint_SetParamStringValue
                 cJSON_Delete(p_root);
                 return FALSE;
             }
+            cJSON_Delete(p_root);
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
