@@ -47,6 +47,8 @@ extern "C" {
  * monotonically increasing generation counter that tells WEI to re-GET. */
 #define WEI_RFC_CONFIG_CHANGED     "Device.X_RDKCENTRAL-COM_WEI.ConfigChanged"
 #define WEI_RFC_ID_DEFAULT         "0"
+//WEI endpoint for ignite
+#define WEI_IGNITE_ENABLE_DMPATH   "Device.X_RDKCENTRAL-COM_WEI.Ignite.Enable"
 
 /* ---- Staying-Connected (SC) TR-181 parameter paths (WiFi-DB owned) ---- */
 #define WEI_SC_HOME_ENABLE_DMPATH          "Device.X_RDKCENTRAL-COM_WEI.SC.Home.Enable"
@@ -77,11 +79,12 @@ extern "C" {
 
 typedef enum
 {
-    WEI_RFC_NONE  = 0x00,  /* Main WEI RFC disabled                  */
-    WEI_RFC_MAIN  = 0x01,  /* Main WEI RFC enabled                   */
-    WEI_RFC_LQ    = 0x02,  /* Link Quality pillar enabled            */
-    WEI_RFC_GC    = 0x04,  /* Getting Connected pillar enabled       */
-    WEI_RFC_SC    = 0x08,  /* Staying Connected pillar enabled       */
+    WEI_RFC_NONE   = 0x00,  /* Main WEI RFC disabled                  */
+    WEI_RFC_MAIN   = 0x01,  /* Main WEI RFC enabled                   */
+    WEI_RFC_LQ     = 0x02,  /* Link Quality pillar enabled            */
+    WEI_RFC_GC     = 0x04,  /* Getting Connected pillar enabled       */
+    WEI_RFC_SC     = 0x08,  /* Staying Connected pillar enabled       */
+    WEI_RFC_IGNITE = 0x10,  /* WEI was switched on by ignite RF-down  */
     WEI_RFC_ALL   = (WEI_RFC_MAIN | WEI_RFC_LQ | WEI_RFC_GC | WEI_RFC_SC)
 } wei_rfc_mask_t;
 

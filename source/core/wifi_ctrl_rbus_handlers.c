@@ -329,122 +329,30 @@ void hotspot_timing_disconnected(void)
         memset(&g_hotspot_timing.disconnection_time, 0, sizeof(struct timespec));
     }
 }
-int check_and_start_wei()
+
+/* WEI publishes only the ignite status while this is set; T2 bundles stay off. */
+static int wei_set_ignite_mode(bool enable)
 {
-    wifi_util_error_print(WIFI_CTRL,"Enter %s:%d\n",__func__,__LINE__);
-    bus_error_t rc = bus_error_success;
-    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    raw_data_t data;
-    raw_data_t mask_data;
-    bool wei_enabled = false;
-    uint32_t wei_mask = 0;
-    memset(&data, 0, sizeof(raw_data_t));
-    memset(&mask_data, 0, sizeof(raw_data_t));
-    char str[512];
-    memset(str, 0, sizeof(str));
-    snprintf(str, sizeof(str), "%s", WEI_MEASUREMENT_RFC);
-    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, str, &data);
-    if (data.data_type != bus_data_type_boolean || rc != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
-            str, data.data_type, rc);
-        get_bus_descriptor()->bus_data_free_fn(&data);
-        return -1;
-    }
-    wei_enabled = data.raw_data.b;
-    get_bus_descriptor()->bus_data_free_fn(&data);
-
-    if (wei_enabled) {
-         wifi_util_error_print(WIFI_CTRL,"WEI is enabled\n");
-        memset(str, 0, sizeof(str));
-        snprintf(str, sizeof(str), "%s", WEI_RFC_MASK);
-        rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
-        if (mask_data.data_type != bus_data_type_uint32 || rc != bus_error_success) {
-            wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
-            str, mask_data.data_type, rc);
-            get_bus_descriptor()->bus_data_free_fn(&mask_data);
-            return -1 ;
-        }
-        wei_mask = mask_data.raw_data.u32;
-        get_bus_descriptor()->bus_data_free_fn(&mask_data);
-
-        if (wei_mask & WEI_RFC_LQ) {
-            wifi_util_error_print(WIFI_CTRL,"WEI and LQ is enabled %s:%d\n",__func__, __LINE__);
-            return 0 ;
-        } else {
-            wifi_util_error_print(WIFI_CTRL,"WEI is enabled and LQ not enabled %s:%d\n",__func__, __LINE__);
-            memset(&mask_data, 0, sizeof(raw_data_t));
-            memset(str, 0, sizeof(str));
-            snprintf(str, sizeof(str), "%s", WEI_LQ_CLIENT_ENABLE_DMPATH);
-            mask_data.data_type  = bus_data_type_boolean;
-            mask_data.raw_data.b = true;
-            rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
-            if ( rc != bus_error_success) {
-                wifi_util_error_print(WIFI_CTRL,"Not able to set LQ\n");
-                return -1;
-
-            }
-
-        }
-    } else {
-         wifi_util_error_print(WIFI_CTRL,"WEI is disabled hence setting both WEI and LQ\n");
-        memset(str, 0, sizeof(str));
-        memset(&mask_data, 0, sizeof(raw_data_t));
-        mask_data.data_type  = bus_data_type_boolean;
-        mask_data.raw_data.b = true;
-        snprintf(str, sizeof(str), "%s", WEI_MEASUREMENT_RFC);
-        rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
-        if ( rc != bus_error_success) {
-            wifi_util_error_print(WIFI_CTRL,"LQ was not able to set enabled\n");
-            return -1;
-
-        } else {
-            snprintf(str, sizeof(str), "%s", WEI_LQ_CLIENT_ENABLE_DMPATH);
-            rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &mask_data);
-            if ( rc != bus_error_success) {
-                wifi_util_error_print(WIFI_CTRL,"LQ was not able to set enabled\n");
-                return -1;
-            }
-            wifi_util_error_print(WIFI_CTRL,"WEI and LQ both are enabled\n");
-            return 0;
-
-        }
-        
-
-    }
-    
-    return 0;
-}
-int stop_wei()
-{
-    wifi_util_error_print(WIFI_CTRL,"Enter %s:%d\n",__func__,__LINE__);
-    bus_error_t rc = bus_error_success;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     raw_data_t data;
     char str[512];
-  
+
     memset(&data, 0, sizeof(raw_data_t));
-
-
     memset(str, 0, sizeof(str));
-    data.data_type  = bus_data_type_boolean;
-    data.raw_data.b = false;
-    snprintf(str, sizeof(str), "%s", WEI_LQ_CLIENT_ENABLE_DMPATH);
-    rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data);
-    if ( rc != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d LQ was not able to set disabled\n",__func__,__LINE__);
+    snprintf(str, sizeof(str), "%s", WEI_IGNITE_ENABLE_DMPATH);
+    data.data_type = bus_data_type_boolean;
+    data.raw_data.b = enable;
+
+    if (get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data) !=
+        bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set ignite mode to %d\n", __func__,
+            __LINE__, enable);
         return -1;
-    } 
-    memset(str, 0, sizeof(str));
-    snprintf(str, sizeof(str), "%s", WEI_MEASUREMENT_RFC);
-    rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data);
-    if ( rc != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d WEI_MAIN was not able to set disabled\n",__func__,__LINE__);
-        return -1;
-    } 
+    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d ignite mode set to %d\n", __func__, __LINE__, enable);
     return 0;
 }
+
 
 
 bus_error_t get_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
@@ -492,7 +400,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:True\n", tmp);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "True");
         wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis disabled. Starting Station Vaps\n");
-        wei_ret = check_and_start_wei();
+        wei_ret = wei_set_ignite_mode(true);
         if (wei_ret != 0) {
              wifi_util_info_print(WIFI_CTRL, "Not able to start WEI ret:%d\n",wei_ret);
             return bus_error_general;
@@ -522,7 +430,7 @@ bus_error_t set_endpoint_enable(char *name, raw_data_t *p_data, bus_user_data_t 
         write_to_file(wifi_health_log, "\n%s WIFI_IGNITE_ENABLED:False\n", tmp);
         get_stubs_descriptor()->t2_event_s_fn("WIFI_IGNITE_ENABLED", "False");
        wifi_util_info_print(WIFI_CTRL, "IGNITE_RF_DOWN: Docsis enabled. Stoping Station Vaps\n");
-       stop_wei();
+       wei_set_ignite_mode(false);
        //Stop station vaps
        stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
         if (rfc_param->multiap_rfc) {
@@ -2101,6 +2009,8 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
 #define WEI_FIELD(path, ftype, member) \
     { (path), (ftype), offsetof(wei_rfc_dml_parameters_t, member), sizeof(((wei_rfc_dml_parameters_t *)0)->member) }
 
+static bool g_wei_ignite_enable = false;
+
 static wei_param_entry_t g_wei_param_table[] = {
     WEI_FIELD(WEI_MEASUREMENT_RFC,        FIELD_BOOL,   wei_enable),
     WEI_FIELD(WEI_LINK_QUALITY_FLAGS,     FIELD_UINT,   lq_meas_params_mask),
@@ -2247,6 +2157,41 @@ static bus_error_t wei_get_rfc_mask_param(char *name, raw_data_t *p_data, bus_us
     return bus_error_success;
 }
 
+static bus_error_t wei_get_ignite_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)name;
+    (void)user_data;
+    p_data->data_type = bus_data_type_boolean;
+    p_data->raw_data.b = g_wei_ignite_enable;
+    p_data->raw_data_len = sizeof(bool);
+    return bus_error_success;
+}
+
+static bus_error_t wei_set_ignite_enable(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+    wei_rfc_field_update_t upd;
+
+    if (p_data->data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d %s expects bool\n", __func__, __LINE__,
+            name ? name : "NULL");
+        return bus_error_invalid_input;
+    }
+
+    g_wei_ignite_enable = p_data->raw_data.b;
+
+    /* field_id == -1: nothing to persist, just recompute the derived mask on
+     * the ctrl thread and notify WEI so it re-syncs on its own. */
+    memset(&upd, 0, sizeof(upd));
+    upd.field_id = -1;
+    push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+        wifi_event_type_wei_rfc_config, NULL);
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d SET %s=%d\n", __func__, __LINE__,
+        name ? name : "NULL", (int)g_wei_ignite_enable);
+    return bus_error_success;
+}
+
 static int register_wei_bus_elements(bus_data_element_t *elements)
 {
     unsigned int count = WEI_PARAM_TABLE_COUNT;
@@ -2283,6 +2228,16 @@ static int register_wei_bus_elements(bus_data_element_t *elements)
     elements[count].data_model_prop.data_format = bus_data_type_uint32;
     count++;
 
+    elements[count].full_name = (char *)WEI_IGNITE_ENABLE_DMPATH;
+    elements[count].type = bus_element_type_method;
+    elements[count].cb_table.get_handler = wei_get_ignite_enable;
+    elements[count].cb_table.set_handler = wei_set_ignite_enable;
+    elements[count].cb_table.event_sub_handler = NULL;
+    elements[count].bus_speed = slow_speed;
+    elements[count].num_of_table_row = ZERO_TABLE;
+    elements[count].data_model_prop.data_format = bus_data_type_boolean;
+    count++;
+
     /* Change-notification event; must be registered as a real bus element or
      * publish_fn()/WEI's subscribe_fn() on it silently fail (unknown element). */
     elements[count].full_name = (char *)WEI_RFC_CONFIG_CHANGED;
@@ -2316,6 +2271,9 @@ static uint32_t wei_compute_rfc_mask(wei_rfc_dml_parameters_t *cfg)
     }
     if (cfg->sc.home_enable || cfg->sc.client_enable) {
         mask |= WEI_RFC_SC;
+    }
+    if (g_wei_ignite_enable) {
+        mask |= WEI_RFC_IGNITE;
     }
     return mask;
 }
@@ -4860,7 +4818,7 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
     /* WEI RFC namespace (Device.X_RDKCENTRAL-COM_WEI.*), table-driven so a new
      * WEI RFC parameter only needs one row in g_wei_param_table. */
     {
-        bus_data_element_t weiElements[WEI_PARAM_TABLE_COUNT + 2] = { 0 };
+        bus_data_element_t weiElements[WEI_PARAM_TABLE_COUNT + 3] = { 0 };
         int wei_num_elements = register_wei_bus_elements(weiElements);
 
         rc = get_bus_descriptor()->bus_reg_data_element_fn(&ctrl->handle, weiElements, wei_num_elements);
