@@ -92,6 +92,12 @@ extern "C" {
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
+#define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
+#define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
+#define WIFI_NETWORKDEVICESSTATUS_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.NetworkDevicesStatus.MloRfcEnable"
+#define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
