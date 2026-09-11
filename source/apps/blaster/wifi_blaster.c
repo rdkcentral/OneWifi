@@ -86,7 +86,7 @@
     arg[4], \
     arg[5]
 
-void calculate_throughput(int mld_num);
+void calculate_throughput(int mld_link_num);
 
 #define WIFI_BLASTER_POST_STEP_TIMEOUT 100  // ms
 #define WIFI_BLASTER_CPU_THRESHOLD     90   // percentage
@@ -1954,15 +1954,15 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
     }
 
     int index = g_active_msmt->curStepData.ApIndex;
-    int mld_num = -1;
-    int mld_idx = 0;
-    while((mld_num < MAX_NUM_RADIOS - 2) && (g_active_msmt->curStepData.mldApIndex[mld_num+1] >= 0))
+    int mld_link_num = -1;
+    int mld_link_idx = 0;
+    while((mld_link_num < MAX_NUM_RADIOS - 2) && (g_active_msmt->curStepData.mldApIndex[mld_link_num+1] >= 0))
     {
-        if (provider_response->args.vap_index == (unsigned int)g_active_msmt->curStepData.mldApIndex[mld_num+1]) {
+        if (provider_response->args.vap_index == (unsigned int)g_active_msmt->curStepData.mldApIndex[mld_link_num+1]) {
             index = provider_response->args.vap_index;
-            mld_idx = mld_num+2;
+            mld_link_idx = mld_link_num+2;
         }
-        mld_num++;
+        mld_link_num++;
     }
     if (g_active_msmt->curStepData.isMLO)
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Received MLO link stats response from AP %d\n", __func__, __LINE__, index);
@@ -2033,8 +2033,8 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 #endif //_PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
             }
 
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_idx] = dev_conn->cli_DataFramesSentAck;
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_idx] = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = dev_conn->cli_DataFramesSentAck;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
 
             wifi_util_dbg_print(WIFI_BLASTER,"samplecount[%d] : PacketsSentAck[%lu] PacketsSentTotal[%lu]"
                     " WaitAndLatencyInMs[%d ms] RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d]"
@@ -2061,16 +2061,16 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 }
 
                 active_msmt_log_message(BLASTER_DEBUG_LOG, "%s : %d Unable to get provider response for : %s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
-                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_idx] = 0;
-                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_idx] = 0;
+                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = 0;
+                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = 0;
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
                 sample_done_notify();
                 return;
             }
         } else {
             active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d radio_index is invalid. So, client is treated as offline\n",__func__, __LINE__);
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_idx] = 0;
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_idx] = 0;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = 0;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = 0;
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, "NULL",OPER_BUFFER_LEN);
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, "NULL",OPER_BUFFER_LEN);
@@ -2082,7 +2082,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
             wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
             *SampleCount += 1;
         }
-        else if (mld_num < 0 || index == g_active_msmt->curStepData.mldApIndex[mld_num])
+        else if (mld_link_num < 0 || index == g_active_msmt->curStepData.mldApIndex[mld_link_num])
         {
             wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
             *SampleCount += 1;
@@ -2095,12 +2095,12 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Sample count value = %d\n", __func__, __LINE__, *SampleCount);
     if (*SampleCount == g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples + 1){
         *SampleCount = 0;
-        calculate_throughput(mld_num+1);
+        calculate_throughput(mld_link_num+1);
         sample_done_notify();
     }
 }
 
-void calculate_throughput(int mld_num)
+void calculate_throughput(int mld_link_num)
 {
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Entered in \n", __func__, __LINE__);
     unsigned long totalduration = 0;
@@ -2135,7 +2135,7 @@ void calculate_throughput(int mld_num)
         Diffsamples = 0;
         AckRate = 0;
         Rate = 0;
-        for (int i = 0; i <= mld_num; i++) {
+        for (int i = 0; i <= mld_link_num; i++) {
             // Add underflow protection since counters of t1 might be less than t0 due to BCM packetstats recalculation in platform.c
             const pktGenFrameCountSamples *s0 = &(wifi_app->data.u.blaster.frameCountSample)[SampleCount];
             const pktGenFrameCountSamples *s1 = &(wifi_app->data.u.blaster.frameCountSample)[SampleCount + 1];
@@ -2157,7 +2157,7 @@ void calculate_throughput(int mld_num)
                 wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
                 RateLink = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;
                 Rate += (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                   //calculate bitrate in the unit of Mbpms
-                if (mld_num > 0)
+                if (mld_link_num > 0)
                     wifi_util_dbg_print(WIFI_BLASTER,"Sample[%d] Link[%d] DiffsamplesAck[%lu]   Diffsamples[%lu]   BitrateAckPackets[%.5f Mbps]   BitrateTotalPackets[%.5f Mbps]\n", SampleCount, i, DiffsamplesAckLink, DiffsamplesLink, AckRateLink, RateLink);
             }
         }
