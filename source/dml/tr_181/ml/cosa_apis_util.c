@@ -1144,10 +1144,13 @@ int CosaUtilGetIpv6AddrInfo (char * ifname, ipv6_addr_info_t ** pp_info, int * p
         parsingResult=parseProcfileParams(procLine, &v6Details,ifname);
         if (parsingResult == 1)
         {
-            (*p_num)++;
-            *pp_info = realloc(*pp_info,  *p_num * sizeof(ipv6_addr_info_t));
-            if (!*pp_info)
+            const int new_num = (*p_num) + 1;
+            ipv6_addr_info_t *pp_info = (ipv6_addr_info_t *)realloc(*pp_info,  new_num * sizeof(ipv6_addr_info_t));
+            if (!pp_info) {
+                fclose(fp);
                 return -1;
+            }
+            *p_num = new_num;
             p_ai = &(*pp_info)[*p_num-1];
             strncpy(p_ai->v6addr, v6Details.address6, sizeof(p_ai->v6addr));
 

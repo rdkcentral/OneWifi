@@ -585,6 +585,7 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
 
     //Free up memory
     avro_value_decref(&adr);
+    avro_value_iface_decref(iface);
     avro_writer_free(writer);
 
     size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
