@@ -253,6 +253,7 @@ bool qm_conn_read_req(int fd, qm_request_t *req, char **topic, void **data)
 
     // read topic
     size = req->topic_len;
+    if (size < 0 || size > QM_COMPACT_SEND_SIZE - total) goto read_err;
     if (size) {
         *topic = calloc(size + 1, 1);
         if (!*topic) goto alloc_err;
@@ -264,6 +265,7 @@ bool qm_conn_read_req(int fd, qm_request_t *req, char **topic, void **data)
 
     // read buf
     size = req->data_size;
+    if (size < 0 || size > QM_COMPACT_SEND_SIZE - total) goto read_err;
     if (size) {
         *data = malloc(size);
         if (!*data) goto alloc_err;
