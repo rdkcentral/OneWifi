@@ -440,7 +440,6 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     if(buff)
     {
         free(buff);
-        buff = NULL;
     }
 
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: generate an avro class from our schema and get a pointer to the value interface \n", __func__, __LINE__);
