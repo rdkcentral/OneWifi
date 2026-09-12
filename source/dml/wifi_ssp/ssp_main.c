@@ -227,11 +227,11 @@ int  cmd_dispatch(int  command)
 
                 if ( g_Subsystem[0] != 0 )
                 {
-                    _ansc_sprintf(CName, "%s%s", g_Subsystem, gpWifiStartCfg->ComponentId);
+                    _ansc_snprintf(CName, sizeof(CName), "%s%s", g_Subsystem, gpWifiStartCfg->ComponentId);
                 }
                 else
                 {
-                    _ansc_sprintf(CName, "%s", gpWifiStartCfg->ComponentId);
+                    _ansc_snprintf(CName, sizeof(CName), "%s", gpWifiStartCfg->ComponentId);
                 }
 
                 ssp_WifiMbi_MessageBusEngage

@@ -124,13 +124,14 @@ static int add_str_mac_addr(char *total_mac, const char *str_mac)
 {
     if (mac_exists_in_list((const char *)total_mac, str_mac) == NULL) {
         uint32_t str_len = strlen(total_mac);
-        if (str_len + MAX_MAC_STR_SIZE > MAX_MACLIST_SIZE) {
+        uint32_t mac_len = strlen(str_mac);
+        uint32_t required = (str_len ? 1 : 0) + mac_len + 1;
+        if (str_len + required > MAX_MACLIST_SIZE) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: max stored mac addr reached:%s\n", __func__,
                 __LINE__, total_mac);
             return RETURN_ERR;
         } else if (str_len != 0) {
-            strcat(total_mac, ",");
-            strcat(total_mac, str_mac);
+            snprintf(total_mac + str_len, MAX_MACLIST_SIZE - str_len, ",%s", str_mac);
         } else {
             snprintf(total_mac, MAX_MACLIST_SIZE, "%s", str_mac);
         }
