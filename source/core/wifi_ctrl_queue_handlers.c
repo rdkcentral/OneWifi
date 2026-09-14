@@ -3033,9 +3033,63 @@ void process_tcm_rfc(bool type)
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->tcm_enabled_rfc = type;
+    rfc_param->tcm_open_2g_rfc = type;
+    rfc_param->tcm_open_5g_rfc = type;
+    rfc_param->tcm_open_6g_rfc = type;
+    rfc_param->tcm_secure_2g_rfc = type;
+    rfc_param->tcm_secure_5g_rfc = type;
+    rfc_param->tcm_secure_6g_rfc = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
+    wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Tcm RFC: %d, all VAP-specific RFCs updated\n", __FUNCTION__, __LINE__,
         type);
+}
+
+void process_tcm_open_2g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Open2G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_open_2g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_open_5g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Open5G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_open_5g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_open_6g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Open6G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_open_6g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_secure_2g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Secure2G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_secure_2g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_secure_5g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Secure5G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_secure_5g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+}
+
+void process_tcm_secure_6g_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm Secure6G RFC: %d\n", __FUNCTION__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->tcm_secure_6g_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 }
 
 void process_xfi_tel_enable_rfc(bool type)
@@ -3722,6 +3776,12 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_NOP_FINISHED;
                 break;
             case WIFI_EVENT_RADAR_PRE_CAC_EXPIRED :
+                /* BCM43684 fires this per 20MHz sub-band when vacating a DFS channel.
+                 * Default to nop_finished; the loop guard below preserves cac_completed
+                 * for channels that passed full regulatory CAC (SHARMAN-4249). */
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d PRE_CAC_EXPIRED: radio:%d ch:%d bw:%d\n",
+                    __func__, __LINE__, ch_chg->radioIndex, ch_chg->channel, ch_chg->channelWidth);
                 chan_state = CHAN_STATE_DFS_NOP_FINISHED;
                 break;
             case WIFI_EVENT_RADAR_CAC_STARTED :
@@ -3774,7 +3834,13 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                         ch_chg->sub_event != WIFI_EVENT_RADAR_NOP_FINISHED) {
                         wifi_util_error_print(WIFI_CTRL,
                             "%s:%d Channel %d already in NOP_START, ignoring state change to %d from radar subtype %d\n",
-                            __func__, __LINE__, ch_chg->channel, chan_state, radio_params->channel_map[j].ch_state);
+                            __func__, __LINE__, ch_chg->channel, chan_state, ch_chg->sub_event);
+                    } else if (ch_chg->sub_event == WIFI_EVENT_RADAR_PRE_CAC_EXPIRED &&
+                               radio_params->channel_map[j].ch_state == CHAN_STATE_DFS_CAC_COMPLETED) {
+                        /* SHARMAN-4249: preserve cac_completed -- BCM43684 fires PRE_CAC_EXPIRED per 20MHz subband on DFS channel leave */
+                        wifi_util_dbg_print(WIFI_CTRL,
+                            "%s:%d PRE_CAC_EXPIRED on ch %d: preserving cac_completed, not resetting to nop_finished\n",
+                            __func__, __LINE__, ch_chg->channel);
                     } else {
                         radio_params->channel_map[j].ch_state = chan_state;
                     }
@@ -4337,6 +4403,30 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_type_tcm_rfc:
         process_tcm_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_open_2g_rfc:
+        process_tcm_open_2g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_open_5g_rfc:
+        process_tcm_open_5g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_open_6g_rfc:
+        process_tcm_open_6g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_secure_2g_rfc:
+        process_tcm_secure_2g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_secure_5g_rfc:
+        process_tcm_secure_5g_rfc(*(bool *)data);
+        break;
+
+    case wifi_event_type_tcm_secure_6g_rfc:
+        process_tcm_secure_6g_rfc(*(bool *)data);
         break;
 
     case wifi_event_type_trigger_disconnection:
