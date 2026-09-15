@@ -363,6 +363,12 @@
                 "CuThreshold": "55",
                 "SamplingInterval": "10",
                 "SamplingCount": "3"
+            },
+            "TcmPreAssociationDeny": {
+                "TcmWaitTime": 150,
+                "TcmMinMgmtFrames": 3,
+                "TcmExpWeightage": "0.6",
+                "TcmGradientThreshold": "0.18"
             }
             "TcmPreAssociationDeny": {
                 "TcmWaitTime": 150,

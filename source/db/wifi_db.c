@@ -25,7 +25,6 @@
 
 #ifdef ONEWIFI_DB_SUPPORT
 extern void init_wifidb(void);
-extern void init_wifidb_data(void);
 extern int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int start_wifidb();
 extern void wifidb_print(char *format, ...);
@@ -39,7 +38,6 @@ extern int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_
 extern int wifidb_init_global_config_default(wifi_global_param_t *config);
 extern int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config, rdk_wifi_vap_info_t *rdk_config);
-extern void  wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config);
 extern int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec);
 extern int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
@@ -112,7 +110,11 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.operatingClass = 128;
             cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+#if defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+            cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
+#else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
+#endif
 
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
@@ -201,6 +203,8 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
     cfg.operationalDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_9MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_18MBPS | WIFI_BITRATE_24MBPS | WIFI_BITRATE_36MBPS | WIFI_BITRATE_48MBPS | WIFI_BITRATE_54MBPS;
     Fcfg.radio_index = radio_index;
+    cfg.DFSTimer = DFS_DEFAULT_TIMER_IN_MIN;
+    strncpy(cfg.radarDetected, " ", sizeof(cfg.radarDetected));
     if (is_radio_band_5G(cfg.band)) {
         Fcfg.OffChanTscanInMsec = OFFCHAN_DEFAULT_TSCAN_IN_MSEC;
         Fcfg.OffChanNscanInSec = OFFCHAN_DEFAULT_NSCAN_IN_SEC;
@@ -295,7 +299,7 @@ static int init_interworking_config_default(int vapIndex,
 
 int wifidb_get_default_mld_link_id(int band)
 {
-#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+#if defined(CONFIG_IEEE80211BE) && (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
     switch (band) {
     case WIFI_FREQUENCY_2_4_BAND: return 2;
     case WIFI_FREQUENCY_5_BAND:   return 1;
@@ -402,6 +406,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
         cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
         strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.identity, "username_empty", sizeof(cfg.u.sta_info.security.repurposed_radius.identity)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.repurposed_radius.key));
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
@@ -449,6 +455,9 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.mac_filter_enable = true;
             cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+        } else if (isVapHotspot(vap_index)) {
+            cfg.u.bss_info.mac_filter_enable = true;
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         } else {
             cfg.u.bss_info.mac_filter_enable = false;
             cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
@@ -579,11 +588,12 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 /*For XER5/XB10/XER10 2.4G XHS is disable by default*/
 #if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || \
     defined(_SCXF11BFL_PRODUCT_REQ_)
-        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index)) {
+        if (isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
+            isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
 #else
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+        if ((vap_index == 2) || isVapLnfSecure(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
@@ -707,7 +717,7 @@ void init_wifidb_data(void)
 
         init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
         init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
-        init_gas_config_default(&g_wifidb->global_config.gas_config);
+	init_gas_config_default(&g_wifidb->global_config.gas_config);
 
     }
     wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
@@ -843,6 +853,8 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         config->u.bss_info.wps.enable = TRUE;
         config->u.bss_info.hostap_mgt_frame_ctrl = TRUE;
         config->u.bss_info.mbo_enabled = TRUE;
+        config->u.bss_info.interop_ctrl = FALSE;
+	config->u.bss_info.inum_sta = 0;
     }
     return ret;
 }
@@ -896,7 +908,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_rfc_dml_parameters_t rfc_config = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    rfc_config.link_quality_rfc = true;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -964,7 +975,23 @@ int get_wifi_global_param(wifi_global_param_t *config)
 
 int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
 {
-   return 0;
+
+    return 0;
+}
+
+int wifidb_get_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_info)
+{
+    return 0;
+}
+
+int wifidb_update_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_param)
+{
+    return 0;
+}
+
+void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config)
+{
+    memset(config, 0, sizeof(wei_rfc_dml_parameters_t));
 }
 
 int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)

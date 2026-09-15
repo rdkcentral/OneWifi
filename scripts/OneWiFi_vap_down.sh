@@ -24,7 +24,7 @@ CGM43="CGM4331COM"
 CGM49="CGM4981COM"
 TG4="TG4482A"
 
-if [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
+if [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" == "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
     for i in 0 1
     do
         ifconfig wl"$i" down
@@ -36,7 +36,7 @@ if [ "$MODEL_NUM" == "$CGM49" ] || [ "$MODEL_NUM" == "$CGM43" ] || [ "${MODEL_NU
     echo "all vaps are going to down state..." >> $LOG_FILE
 fi
 
-if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
+if [ "$MODEL_NUM" == "$CGM49" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" == "CWA438TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
     for i in 2
     do
         ifconfig wl"$i" down

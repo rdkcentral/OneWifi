@@ -162,6 +162,9 @@ static int32_t hex2num(char c)
  * @addr: Buffer for the MAC address (ETH_ALEN = 6 bytes)
  * Returns: 0 on success, -1 on failure (e.g., string not a MAC address)
  */
+/* CI coverage build: added 'weak' attr so hostap's identical hwaddr_aton (linked via
+ * libwifihal.a) wins instead of colliding; Nothing uses this copy directly. */
+__attribute__((weak))
 int32_t hwaddr_aton(const char *txt, uint8_t *addr)
 {
     int32_t i;

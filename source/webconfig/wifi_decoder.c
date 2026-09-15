@@ -989,13 +989,14 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     const cJSON *param;
 
     decode_param_allow_empty_string(radius, "RadiusServerIPAddr", param);
-    if (strlen(param->valuestring) == 0) {
+    const char *radius_ip_val = param->valuestring;
+    if (strlen(radius_ip_val) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: RadiusServerIPAddr is NULL\n", __func__, __LINE__);
-            strcpy(param->valuestring,"0.0.0.0");
+            radius_ip_val = "0.0.0.0";
     }
-    if (decode_ipv4_address(param->valuestring) == webconfig_error_none || decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+    if (decode_ipv4_address((char *)radius_ip_val) == webconfig_error_none || decode_ipv6_address((char *)radius_ip_val) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-        strncpy((char *)radius_info->ip,param->valuestring,sizeof(radius_info->ip)-1);
+        strncpy((char *)radius_info->ip,radius_ip_val,sizeof(radius_info->ip)-1);
     }
     else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
@@ -1004,9 +1005,9 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     }
 #else
     /* check the INET family and update the radius ip address */
-    if(inet_pton(AF_INET, param->valuestring, &(radius_info->ip.u.IPv4addr)) > 0) {
+    if(inet_pton(AF_INET, radius_ip_val, &(radius_info->ip.u.IPv4addr)) > 0) {
        radius_info->ip.family = wifi_ip_family_ipv4;
-    } else if(inet_pton(AF_INET6, param->valuestring, &(radius_info->ip.u.IPv6addr)) > 0) {
+    } else if(inet_pton(AF_INET6, radius_ip_val, &(radius_info->ip.u.IPv6addr)) > 0) {
        radius_info->ip.family = wifi_ip_family_ipv6;
     } else {
        return webconfig_error_decode;
@@ -1019,13 +1020,14 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     snprintf(radius_info->key, sizeof(radius_info->key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "SecondaryRadiusServerIPAddr", param);
-    if (strlen(param->valuestring) == 0) {
+    const char *secondary_ip_val = param->valuestring;
+    if (strlen(secondary_ip_val) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SecondaryRadiusServerIPAddr is NULL\n", __func__, __LINE__);
-            strcpy(param->valuestring,"0.0.0.0");
+            secondary_ip_val = "0.0.0.0";
     }
-    if (decode_ipv4_address(param->valuestring) == webconfig_error_none || decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+    if (decode_ipv4_address((char *)secondary_ip_val) == webconfig_error_none || decode_ipv6_address((char *)secondary_ip_val) == webconfig_error_none) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-        strncpy((char *)radius_info->s_ip,param->valuestring,sizeof(radius_info->s_ip)-1);
+        strncpy((char *)radius_info->s_ip,secondary_ip_val,sizeof(radius_info->s_ip)-1);
     }
     else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
@@ -1034,9 +1036,9 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     }
 #else
     /* check the INET family and update the radius ip address */
-    if (inet_pton(AF_INET, param->valuestring, &(radius_info->s_ip.u.IPv4addr)) > 0) {
+    if (inet_pton(AF_INET, secondary_ip_val, &(radius_info->s_ip.u.IPv4addr)) > 0) {
         radius_info->s_ip.family = wifi_ip_family_ipv4;
-    } else if(inet_pton(AF_INET6, param->valuestring, &(radius_info->s_ip.u.IPv6addr)) > 0) {
+    } else if(inet_pton(AF_INET6, secondary_ip_val, &(radius_info->s_ip.u.IPv6addr)) > 0) {
         radius_info->s_ip.family = wifi_ip_family_ipv6;
     } else {
         return webconfig_error_decode;
@@ -1049,13 +1051,14 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     snprintf(radius_info->s_key, sizeof(radius_info->s_key), "%s", param->valuestring);
 
     decode_param_allow_empty_string(radius, "DasServerIPAddr", param);
-    if (strlen(param->valuestring) == 0) {
+    const char *das_ip_val = param->valuestring;
+    if (strlen(das_ip_val) == 0) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: DasServerIPAddr is NULL\n", __func__, __LINE__);
-            strcpy(param->valuestring,"0.0.0.0");
+            das_ip_val = "0.0.0.0";
     }
-    if (inet_pton(AF_INET, param->valuestring, &(radius_info->dasip.u.IPv4addr)) > 0) {
+    if (inet_pton(AF_INET, das_ip_val, &(radius_info->dasip.u.IPv4addr)) > 0) {
         radius_info->dasip.family = wifi_ip_family_ipv4;
-    } else if (inet_pton(AF_INET6, param->valuestring, &(radius_info->dasip.u.IPv6addr)) > 0) {
+    } else if (inet_pton(AF_INET6, das_ip_val, &(radius_info->dasip.u.IPv6addr)) > 0) {
         radius_info->dasip.family = wifi_ip_family_ipv6;
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
@@ -1083,7 +1086,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     decode_param_string(radius, "Identity", param);
     memset(radius_info->identity, '\0', 64);
-    strncpy(radius_info->identity, param->valuestring, strlen(param->valuestring));
+    snprintf(radius_info->identity, sizeof(radius_info->identity), "%s", param->valuestring);
     if ((strlen(radius_info->identity) <= 0) || (strlen(radius_info->identity) > 64)) {
          wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] Invalid identity\n", __func__, __LINE__);
          return webconfig_error_decode;
@@ -1091,7 +1094,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     decode_param_string(radius, "Key", param);
     memset(radius_info->key, '\0', 64);
-    strncpy(radius_info->key, param->valuestring, strlen(param->valuestring));
+    snprintf(radius_info->key, sizeof(radius_info->key), "%s", param->valuestring);
     if ((strlen(radius_info->key) <= 0) || (strlen(radius_info->key) > 64)) {
          wifi_util_error_print(WIFI_WEBCONFIG, "[%s %d] Invalid key\n", __func__, __LINE__);
          return webconfig_error_decode;
@@ -1477,7 +1480,6 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
             __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_encode;
     }
-
 #ifndef CONFIG_IEEE80211BE
     if (security_info->mfp != wifi_mfp_cfg_required &&
         (security_info->mode == wifi_security_mode_enhanced_open ||
@@ -1519,6 +1521,14 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode encryption method: %s\n",
             __func__, __LINE__, param->valuestring);
         return webconfig_error_decode;
+    }
+
+    /* Normalize mode/encryption pairs before compatibility validation. */
+    if (security_info->mode == wifi_security_mode_wpa3_transition) {
+        apply_wpa3_transition_encr_policy(security_info);
+    }
+    if (security_info->mode == wifi_security_mode_wpa2_personal) {
+        apply_wpa2_personal_encr_policy(security_info);
     }
 
     if (!is_valid_encr_for_mode(security_info->mode, security_info->encr)) {
@@ -1743,21 +1753,6 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // Broadcast SSID
     decode_param_bool(vap, "SSIDAdvertisementEnabled", param);
     vap_info->u.bss_info.showSsid = (param->type & cJSON_True) ? true : false;
-    decode_param_allow_empty_integer(vap, "SpeedTier", param, intval);
-    if (!intval) {
-        vap_info->u.bss_info.am_config.npc.speed_tier = intval;
-    } else {
-        decode_param_integer(vap, "SpeedTier", param);
-        vap_info->u.bss_info.am_config.npc.speed_tier = param->valuedouble;
-    }
-
-    decode_param_allow_empty_bool(vap, "MDUEnabled", param, mdu_value);
-    if (!mdu_value) {
-        vap_info->u.bss_info.mdu_enabled = false;
-    } else {
-        decode_param_bool(vap, "MDUEnabled", param);
-        vap_info->u.bss_info.mdu_enabled = (param->type & cJSON_True) ? true : false;
-    }
 
     // MLD Enable
     decode_param_bool(vap, "MLD_Enable", param);
@@ -1774,6 +1769,22 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // MLD_Addr
     decode_param_string(vap, "MLD_Addr", param);
     string_mac_to_uint8_mac(vap_info->u.bss_info.mld_info.common_info.mld_addr, param->valuestring);
+    
+    decode_param_allow_empty_integer(vap, "SpeedTier", param, intval);
+    if (!intval) {
+        vap_info->u.bss_info.am_config.npc.speed_tier = intval;
+    } else {
+        decode_param_integer(vap, "SpeedTier", param);
+        vap_info->u.bss_info.am_config.npc.speed_tier = param->valuedouble;
+    }
+
+    decode_param_allow_empty_bool(vap, "MDUEnabled", param, mdu_value);
+    if (!mdu_value) {
+        vap_info->u.bss_info.mdu_enabled = false;
+    } else {
+        decode_param_bool(vap, "MDUEnabled", param);
+        vap_info->u.bss_info.mdu_enabled = (param->type & cJSON_True) ? true : false;
+    }
 
     // Isolation
     decode_param_bool(vap, "IsolationEnable", param);
@@ -2475,7 +2486,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "VlanCfgVersion", param);
     global_info->vlan_cfg_version = param->valuedouble;
 
- #ifndef EASY_MESH_NODE
+#ifndef EASY_MESH_NODE
     // WpsPin
     decode_param_string(global_cfg, "WpsPin", param);
     snprintf(global_info->wps_pin, sizeof(global_info->wps_pin), "%s", param->valuestring);
@@ -2574,6 +2585,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "heapwalk_interval", param);
     global_info->memwraptool.heapwalk_interval = param->valuedouble;
 
+#ifndef EASY_MESH_NODE
     //WifiRegionCode
     decode_param_string(global_cfg, "WifiRegionCode", param);
     snprintf(global_info->wifi_region_code,
@@ -2607,6 +2619,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     //TxRxRateList
     decode_param_string(global_cfg, "TxRxRateList", param);
     snprintf(global_info->txrx_rate_list, sizeof(global_info->txrx_rate_list), "%s", param->valuestring);
+#endif
 
     param = cJSON_GetObjectItem(global_cfg, "IgniteLinkQualityThreshold");
     if (param != NULL && cJSON_IsNumber(param)) {
@@ -2808,11 +2821,10 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
 int remove_chanlist_entries(wifi_channels_list_per_bandwidth_t *chanlist)
 {
     for (int i = 0; i < chanlist->num_channels_list; i++) {
-        memset(chanlist->channels_list[i].channels_list, 0,
-            sizeof(chanlist->channels_list[i].channels_list));
+        memset(chanlist->channels_list[i].channels_list, 0, sizeof(chanlist->channels_list[i].channels_list));
         chanlist->channels_list[i].num_channels = 0;
     }
-    if (chanlist->num_channels_list > 0) {
+    if(chanlist->num_channels_list > 0) {
         chanlist->num_channels_list = 0;
         chanlist->chanwidth = 0;
     }
@@ -2837,13 +2849,15 @@ webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_st
                 chanlist->num_channels_list++;
             } else {
                 wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d get_on_channel_scan_list failed for bandwidth %s channel %d \n",
-                    __FUNCTION__, __LINE__, bandwidth_str, channel->valueint);
+                    "%s:%d get_on_channel_scan_list failed for bandwidth %s channel %d \n", __FUNCTION__,
+                    __LINE__, bandwidth_str, channel->valueint);
                 return webconfig_error_decode;
             }
         }
         chanlist->chanwidth = bandwidth_type;
-    } else {
+    }
+    else
+    {
         remove_chanlist_entries(chanlist);
     }
     return webconfig_error_none;
@@ -2869,9 +2883,8 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
     return webconfig_error_none;
 }
 
-// Optimize in PHASE 2
-void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radios,
-    webconfig_subdoc_data_t *data)
+//Optimize in PHASE 2
+void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radios, webconfig_subdoc_data_t *data)
 {
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL) {
@@ -2892,8 +2905,9 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
     if (!channelExclusion) {
         for (unsigned int i = 0; i < num_of_radios; i++) {
             radio_oper = &data->u.decoded.radios[i].oper;
-            radio_oper->acs_keep_out_reset = true;
-            for (int k = 0; k < MAX_NUM_CHANNELBANDWIDTH_SUPPORTED; k++) {
+            radio_oper->acs_keep_out_reset = true; 
+            for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
+            {
                 remove_chanlist_entries(&radio_oper->channels_per_bandwidth[k]);
             }
         }
@@ -2904,6 +2918,9 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
         for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
             freq_band = (wifi_freq_bands_t)j;
             if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
+                continue;
+            }
+            if (radioIndex < 0 || (unsigned int)radioIndex >= num_of_radios) {
                 continue;
             }
             radio_oper = &data->u.decoded.radios[radioIndex].oper;
@@ -2925,7 +2942,8 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
                 }
             } else {
                 radio_oper->acs_keep_out_reset = true; // Optimize in Phase 2
-                for (int k = 0; k < MAX_NUM_CHANNELBANDWIDTH_SUPPORTED; k++) {
+                for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
+                {
                     remove_chanlist_entries(&radio_oper->channels_per_bandwidth[k]);
                 }
             }
@@ -3379,16 +3397,16 @@ webconfig_error_t decode_device_info(const cJSON *device_cfg, wifi_platform_prop
     const cJSON  *param;
 
     decode_param_string(device_cfg, "Manufacturer", param);
-    strcpy(info->manufacturer, param->valuestring);
+    snprintf(info->manufacturer, sizeof(info->manufacturer), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "Model", param);
-    strcpy(info->manufacturerModel, param->valuestring);
+    snprintf(info->manufacturerModel, sizeof(info->manufacturerModel), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "SerialNo", param);
-    strcpy(info->serialNo, param->valuestring);
+    snprintf(info->serialNo, sizeof(info->serialNo), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "Software_version", param);
-    strcpy(info->software_version, param->valuestring);
+    snprintf(info->software_version, sizeof(info->software_version), "%s", param->valuestring);
 
     decode_param_string(device_cfg, "CMMAC", param);
     str_to_mac_bytes(param->valuestring,info->cm_mac);
@@ -3543,6 +3561,9 @@ static webconfig_error_t decode_assoc_dev_stats(const cJSON *obj, assoc_dev_data
 
     decode_param_integer(obj, "AuthenticationFailures", value);
     dev->dev_stats.cli_AuthenticationFailures = value->valuedouble;
+
+    decode_param_integer(obj, "CapableNumSpatialStreams", value);
+    dev->dev_stats.cli_capableNumSpatialStreams = value->valuedouble;
 
     decode_param_integer(obj, "ActiveNumSpatialStreams", value);
     dev->dev_stats.cli_activeNumSpatialStreams = value->valuedouble;
@@ -4184,13 +4205,10 @@ webconfig_error_t decode_ignite_object(const cJSON *ignite_cfg,
     decode_param_integer(ignite_cfg, "ignite_maxchutil_threshold", param);
     ignite_info->max_chanutil_threshold = param->valuedouble;
 
-    decode_param_integer(ignite_cfg, "ignite_snr_threshold", param);
-    ignite_info->SNR_threshold = param->valuedouble;
-
     decode_param_integer(ignite_cfg, "ignite_snr_difference", param);
     ignite_info->SNR_difference = param->valuedouble;
     
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] Ch_util [%f %f] SNR [%f %f]\n", __func__, __LINE__,  ignite_info->min_chanutil_threshold, ignite_info->max_chanutil_threshold, ignite_info->SNR_threshold, ignite_info->SNR_difference); 
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s %d] Ch_util [%f %f] SNR [%f]\n", __func__, __LINE__,  ignite_info->min_chanutil_threshold, ignite_info->max_chanutil_threshold, ignite_info->SNR_difference); 
     return webconfig_error_none;
 }
 
@@ -4628,7 +4646,7 @@ webconfig_error_t decode_harvester_object(const cJSON *obj, instant_measurement_
     decode_param_bool(obj, "Enabled", param);
     harvester->b_inst_client_enabled = (param->type & cJSON_True) ? true:false;
     decode_param_string(obj, "MacAddress", param);
-    strcpy(harvester->mac_address, param->valuestring);
+    snprintf(harvester->mac_address, sizeof(harvester->mac_address), "%s", param->valuestring);
     decode_param_integer(obj, "ReportingPeriod", param);
     harvester->u_inst_client_reporting_period = param->valuedouble;
     decode_param_integer(obj, "DefReportingPeriod", param);
@@ -4836,9 +4854,10 @@ webconfig_error_t decode_csi_object(queue_t** csi_queue, cJSON *object)
 webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON *obj_wificap)
 {
     cJSON *allowed_channels, *iterator, *allowed_channelwidths;
-    int count = 0, i, size = 0, chanwidth = 0;
-    cJSON *value_object, *object;
+    int count = 0, i, size = 0, chanwidth = 0, array_size = 0;
+    cJSON *value_object, *object, *array_item;
     wifi_radio_capabilities_t *radio_cap;
+    bool intval = false;
 
     if (wifi_prop == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s %d: Input arguements is NULL\n",__FUNCTION__, __LINE__);
@@ -4870,6 +4889,13 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          }
 
          radio_cap->rdk_radio_index = value_object->valuedouble;
+
+         /* Mode is optional */
+         radio_cap->mode[0] = 0;
+         value_object = cJSON_GetObjectItem(object, "Mode");
+         if ((value_object != NULL) && (cJSON_IsNumber(value_object) == true)) {
+             radio_cap->mode[0] = value_object->valuedouble;
+         }
 
          /*allowed_channels*/
          allowed_channels = cJSON_GetObjectItem(object, "PossibleChannels");
@@ -4910,21 +4936,67 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          }
          wifi_prop->radio_presence[i] = value_object->valuedouble;
 
+        decode_param_allow_empty_integer(object, "HTCap", value_object, intval);
+        if (intval == true) {
+            decode_param_integer(object, "HTCap", value_object);
+            radio_cap->ht_capab = (uint16_t)value_object->valuedouble;
+        }
+        value_object = cJSON_GetObjectItem(object, "HTMCSSet");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            array_size = cJSON_GetArraySize(value_object);
+            if ((size_t)array_size > sizeof(radio_cap->mcs_set)) {
+                array_size = sizeof(radio_cap->mcs_set);
+            }
+            for (int j = 0; j < array_size; j++) {
+                array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->mcs_set[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
+        decode_param_allow_empty_integer(object, "HTAMPDUParams", value_object, intval);
+        if (intval == true) {
+            decode_param_integer(object, "HTAMPDUParams", value_object);
+            radio_cap->ampdu_params = (uint16_t)value_object->valuedouble;
+        }
+
+        decode_param_allow_empty_integer(object, "VHTCap", value_object, intval);
+        if (intval == true) {
+            decode_param_integer(object, "VHTCap", value_object);
+            radio_cap->vht_capab = (uint16_t)value_object->valuedouble;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "VHTMCSSet");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            array_size = cJSON_GetArraySize(value_object);
+            if ((size_t)array_size > sizeof(radio_cap->vht_mcs_set)) {
+                array_size = sizeof(radio_cap->vht_mcs_set);
+            }
+            for (int j = 0; j < array_size; j++) {
+                array_item = cJSON_GetArrayItem(value_object, j);
+                if (cJSON_IsNumber(array_item)) {
+                    radio_cap->vht_mcs_set[j] = (uint8_t)array_item->valuedouble;
+                }
+            }
+        }
 #ifdef CONFIG_IEEE80211AX
         /* WiFi6 (HE) capabilities */
-        decode_param_bool(object, "WiFi6Supported", value_object);
-        if (value_object != NULL) {
+        decode_param_allow_empty_bool(object, "WiFi6Supported", value_object, intval);
+        if (!intval) {
+            radio_cap->wifi6_supported = false;
+        } else {
+            decode_param_bool(object, "WiFi6Supported", value_object);
             radio_cap->wifi6_supported = (value_object->type & cJSON_True) ? true : false;
         }
 
         value_object = cJSON_GetObjectItem(object, "HEPHYCap");
         if (value_object != NULL && cJSON_IsArray(value_object)) {
-            int array_size = cJSON_GetArraySize(value_object);
+            array_size = cJSON_GetArraySize(value_object);
             if (array_size > sizeof(radio_cap->he_phy_cap)) {
                 array_size = sizeof(radio_cap->he_phy_cap);
             }
             for (int j = 0; j < array_size; j++) {
-                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                array_item = cJSON_GetArrayItem(value_object, j);
                 if (cJSON_IsNumber(array_item)) {
                     radio_cap->he_phy_cap[j] = (uint8_t)array_item->valuedouble;
                 }
@@ -4933,12 +5005,12 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
         value_object = cJSON_GetObjectItem(object, "HEMACCap");
         if (value_object != NULL && cJSON_IsArray(value_object)) {
-            int array_size = cJSON_GetArraySize(value_object);
+            array_size = cJSON_GetArraySize(value_object);
             if (array_size > sizeof(radio_cap->he_mac_cap)) {
                 array_size = sizeof(radio_cap->he_mac_cap);
             }
             for (int j = 0; j < array_size; j++) {
-                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                array_item = cJSON_GetArrayItem(value_object, j);
                 if (cJSON_IsNumber(array_item)) {
                     radio_cap->he_mac_cap[j] = (uint8_t)array_item->valuedouble;
                 }
@@ -4947,12 +5019,12 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
         value_object = cJSON_GetObjectItem(object, "HEMCSNSSSet");
         if (value_object != NULL && cJSON_IsArray(value_object)) {
-            int array_size = cJSON_GetArraySize(value_object);
+            array_size = cJSON_GetArraySize(value_object);
             if (array_size > sizeof(radio_cap->he_mcs_nss_set)) {
                 array_size = sizeof(radio_cap->he_mcs_nss_set);
             }
             for (int j = 0; j < array_size; j++) {
-                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                array_item = cJSON_GetArrayItem(value_object, j);
                 if (cJSON_IsNumber(array_item)) {
                     radio_cap->he_mcs_nss_set[j] = (uint8_t)array_item->valuedouble;
                 }
@@ -4961,28 +5033,46 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
         value_object = cJSON_GetObjectItem(object, "HEPPET");
         if (value_object != NULL && cJSON_IsArray(value_object)) {
-            int array_size = cJSON_GetArraySize(value_object);
+            array_size = cJSON_GetArraySize(value_object);
             if (array_size > sizeof(radio_cap->he_ppet)) {
                 array_size = sizeof(radio_cap->he_ppet);
             }
             for (int j = 0; j < array_size; j++) {
-                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                array_item = cJSON_GetArrayItem(value_object, j);
                 if (cJSON_IsNumber(array_item)) {
                     radio_cap->he_ppet[j] = (uint8_t)array_item->valuedouble;
                 }
             }
         }
 
-        //decode_param_integer(cap_obj, "HE6GHzCapa", param);
-        //if (param != NULL && cJSON_IsNumber(param)) {
-        //    radio_cap->he_cap.6ghz_capa = (USHORT)param->valuedouble;
-        //}
+        decode_param_allow_empty_integer(object, "HE6GHzCapa", value_object, intval);
+        if (intval == true) {
+            decode_param_integer(object, "HE6GHzCapa", value_object);
+            radio_cap->he_6ghz_capa = (USHORT)value_object->valuedouble;
+        }
 #endif /* CONFIG_IEEE80211AX */
 
 #ifdef CONFIG_IEEE80211BE
-        decode_param_bool(object, "WiFi7Supported", value_object);
-        if (value_object != NULL) {
+        decode_param_allow_empty_bool(object, "WiFi7Supported", value_object, intval);
+        if (!intval) {
+            radio_cap->wifi7_supported = false;
+        } else {
+            decode_param_bool(object, "WiFi7Supported", value_object);
             radio_cap->wifi7_supported = (value_object->type & cJSON_True) ? true : false;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "MLOOperationalCap");
+        if (value_object != NULL && cJSON_IsNumber(value_object)) {
+            radio_cap->mldOperationalCap = (wifi_multi_link_modes_t)value_object->valueint;
+        } else {
+            radio_cap->mldOperationalCap = (wifi_multi_link_modes_t)0;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "TIDLinkMapNegotiation");
+        if (value_object != NULL && cJSON_IsBool(value_object)) {
+            radio_cap->TIDLinkMapNegotiation = (value_object->type & cJSON_True) ? true : false;
+        } else {
+            radio_cap->TIDLinkMapNegotiation = false;
         }
 
         value_object = cJSON_GetObjectItem(object, "EHTMACCap");
@@ -4992,12 +5082,12 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
         value_object = cJSON_GetObjectItem(object, "EHTPHYCap");
         if (value_object != NULL && cJSON_IsArray(value_object)) {
-            int array_size = cJSON_GetArraySize(value_object);
+            array_size = cJSON_GetArraySize(value_object);
             if ((size_t)array_size > sizeof(radio_cap->eht_phy_cap)) {
                 array_size = sizeof(radio_cap->eht_phy_cap);
             }
             for (int j = 0; j < array_size; j++) {
-                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                array_item = cJSON_GetArrayItem(value_object, j);
                 if (cJSON_IsNumber(array_item)) {
                     radio_cap->eht_phy_cap[j] = (UCHAR)array_item->valuedouble;
                 }
@@ -5006,12 +5096,12 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
         value_object = cJSON_GetObjectItem(object, "EHTMCS");
         if (value_object != NULL && cJSON_IsArray(value_object)) {
-            int array_size = cJSON_GetArraySize(value_object);
+            array_size = cJSON_GetArraySize(value_object);
             if ((size_t)array_size > sizeof(radio_cap->eht_mcs)) {
                 array_size = sizeof(radio_cap->eht_mcs);
             }
             for (int j = 0; j < array_size; j++) {
-                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                array_item = cJSON_GetArrayItem(value_object, j);
                 if (cJSON_IsNumber(array_item)) {
                     radio_cap->eht_mcs[j] = (UCHAR)array_item->valuedouble;
                 }
@@ -5020,19 +5110,60 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 
         value_object = cJSON_GetObjectItem(object, "EHTPPET");
         if (value_object != NULL && cJSON_IsArray(value_object)) {
-            int array_size = cJSON_GetArraySize(value_object);
+            array_size = cJSON_GetArraySize(value_object);
             if ((size_t)array_size > sizeof(radio_cap->eht_ppet)) {
                 array_size = sizeof(radio_cap->eht_ppet);
             }
             for (int j = 0; j < array_size; j++) {
-                cJSON *array_item = cJSON_GetArrayItem(value_object, j);
+                array_item = cJSON_GetArrayItem(value_object, j);
                 if (cJSON_IsNumber(array_item)) {
                     radio_cap->eht_ppet[j] = (UCHAR)array_item->valuedouble;
                 }
             }
         }
 #endif /* CONFIG_IEEE80211BE */
+        decode_param_allow_empty_bool(object, "Channel Scan Boot Only", value_object, intval);
+        if (!intval) {
+            radio_cap->boot_only = false;
+        } else {
+            radio_cap->boot_only = ((value_object->type & cJSON_True) != 0) ? true : false;
+        }
+
+        value_object = cJSON_GetObjectItem(object, "Channel Scan Impact");
+        radio_cap->scan_impact = (value_object != NULL && cJSON_IsNumber(value_object))
+                                     ? (UCHAR)value_object->valuedouble : 0;
+
+        value_object = cJSON_GetObjectItem(object, "Channel Scan Min Interval");
+        radio_cap->min_scan_interval = (value_object != NULL && cJSON_IsNumber(value_object))
+                                           ? (UINT)value_object->valuedouble : 0;
+
+        radio_cap->num_op_class_entries = 0;
+        value_object = cJSON_GetObjectItem(object, "OpClassChList");
+        if (value_object != NULL && cJSON_IsArray(value_object)) {
+            int oc_count = cJSON_GetArraySize(value_object);
+            for (int oci = 0; oci < oc_count && radio_cap->num_op_class_entries < MAX_OP_CLASS_ENTRIES; oci++) {
+                cJSON *oc_obj = cJSON_GetArrayItem(value_object, oci);
+                if (oc_obj == NULL) { continue; }
+                cJSON *oc_num = cJSON_GetObjectItem(oc_obj, "OpClass");
+                cJSON *ch_arr = cJSON_GetObjectItem(oc_obj, "Channels");
+                if (oc_num == NULL || !cJSON_IsNumber(oc_num) || ch_arr == NULL || !cJSON_IsArray(ch_arr)) { continue; }
+                UINT idx = radio_cap->num_op_class_entries;
+                radio_cap->op_class_ch_list[idx].op_class = (UINT)oc_num->valuedouble;
+                int ch_count = cJSON_GetArraySize(ch_arr);
+                if (ch_count > MAX_CHANNELS_PER_OP_CLASS) { ch_count = MAX_CHANNELS_PER_OP_CLASS; }
+                int valid_ch_count = 0;
+                for (int ci = 0; ci < ch_count; ci++) {
+                    cJSON *ch = cJSON_GetArrayItem(ch_arr, ci);
+                    if (ch != NULL && cJSON_IsNumber(ch)) {
+                        radio_cap->op_class_ch_list[idx].channels[valid_ch_count++] = (UCHAR)ch->valuedouble;
+                    }
+                }
+                radio_cap->op_class_ch_list[idx].num_channels = (UCHAR)valid_ch_count;
+                radio_cap->num_op_class_entries++;
+            }
+        }
     }
+
     return webconfig_error_none;
 }
 
@@ -5894,7 +6025,8 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     }
     size = cJSON_GetArraySize(assoc_stats_arr);
 
-    *assoc_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
+    *assoc_stats = (wifi_provider_response_t *)calloc(1, sizeof(wifi_provider_response_t));
+
     if (*assoc_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__,
             __LINE__);
@@ -5956,11 +6088,11 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
         decode_param_bool(assoc_data, "cli_Active", param);
         client_stats_data[count].cli_Active = (param->type & cJSON_True) ? true : false;
 
-        decode_param_string(assoc_data, "cli_OperatingStandard", param);
+        decode_param_allow_empty_string(assoc_data, "cli_OperatingStandard", param);
         strncpy(client_stats_data[count].cli_OperatingStandard, param->valuestring,
             sizeof(client_stats_data[count].cli_OperatingStandard) - 1);
 
-        decode_param_string(assoc_data, "cli_OperatingChannelBandwidth", param);
+        decode_param_allow_empty_string(assoc_data, "cli_OperatingChannelBandwidth", param);
         strncpy(client_stats_data[count].cli_OperatingChannelBandwidth, param->valuestring,
             sizeof(client_stats_data[count].cli_OperatingChannelBandwidth) - 1);
 
@@ -6032,6 +6164,9 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
 
         decode_param_integer(assoc_data, "cli_MaxUplinkRate", param);
         client_stats_data[count].cli_MaxUplinkRate = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_capableNumSpatialStreams", param);
+        client_stats_data[count].cli_capableNumSpatialStreams = param->valuedouble;
 
         decode_param_integer(assoc_data, "cli_activeNumSpatialStreams", param);
         client_stats_data[count].cli_activeNumSpatialStreams = param->valuedouble;
@@ -6252,12 +6387,32 @@ webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
     decode_param_integer(obj_sta_cfg, "FrameLen", param);
     sta_data->data_len = param->valuedouble;
 
+    sta_data->data = (unsigned char *)malloc(sta_data->data_len);
+    if (sta_data->data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: failed to allocate %u bytes for report data\n", __func__, __LINE__,
+            sta_data->data_len);
+        return webconfig_error_decode;
+    }
+
     decode_param_string(obj_sta_cfg, "ReportData", param);
-    out_ptr = stringtohex(strlen(param->valuestring), param->valuestring, sta_data->data_len,
-        sta_data->data);
+    size_t report_str_len = (param && param->valuestring) ? strlen(param->valuestring) : 0;
+    size_t expected_len = (size_t)sta_data->data_len * 2;
+    if (report_str_len == 0 || (report_str_len % 2) != 0 || report_str_len != expected_len) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: Invalid ReportData length=%zu (expected=%zu)\n", __func__, __LINE__,
+            report_str_len, expected_len);
+        free(sta_data->data);
+        sta_data->data = NULL;
+        return webconfig_error_decode;
+    }
+
+    out_ptr = stringtohex(report_str_len, param->valuestring, sta_data->data_len, sta_data->data);
     if (out_ptr == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error to convert ot string \n", __func__,
-            __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error converting ReportData to hex\n",
+            __func__, __LINE__);
+        free(sta_data->data);
+        sta_data->data = NULL;
         return webconfig_error_decode;
     }
 
@@ -6269,12 +6424,39 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     const cJSON *param, *disallowed_sta_array, *sta_obj, *radio_metrics_obj;
     const cJSON *policy_obj, *local_steering_policy, *btm_steering_policy, *backhaul_policy,
         *channel_scan_policy, *radio_metrics_array;
+    const cJSON *unsuccess_assoc_policy, *qos_mgt_policy, *def_8021q_policy;
+    const cJSON *traffic_sep_policy, *client_filters_policy, *radio_steer_array, *radio_steer_obj;
 
     policy_obj = cJSON_GetObjectItem(em_cfg, "Policy");
     if (policy_obj == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: cjson object is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
+
+    // Algorithm Run Policy
+    const cJSON *algo_run_policy = cJSON_GetObjectItem(policy_obj, "Algorithm Run Policy");
+    if (algo_run_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Algorithm Run Policy is NULL\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    decode_param_allow_optional_string(algo_run_policy, "Collection Start Time", param);
+    strncpy(em_config->alarm_report_policy.collection_start_time, param->valuestring,
+        sizeof(em_config->alarm_report_policy.collection_start_time));
+
+    decode_param_integer(algo_run_policy, "Reporting Interval", param);
+    em_config->alarm_report_policy.reporting_interval = param->valuedouble;
+
+    decode_param_integer(algo_run_policy, "Link Quality Threshold", param);
+    em_config->alarm_report_policy.link_quality_threshold = param->valuedouble;
+
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: alarm policy cfg, collection start time is %s\n", __func__,
+            __LINE__, em_config->alarm_report_policy.collection_start_time);
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: alarm policy cfg, reporting interval is %d\n", __func__,
+            __LINE__, em_config->alarm_report_policy.reporting_interval);
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: alarm policy cfg, link quality threshold is %0.2f\n", __func__,
+            __LINE__, em_config->alarm_report_policy.link_quality_threshold);
 
     // AP Metrics Reporting Policy
     const cJSON *ap_metrics_policy = cJSON_GetObjectItem(policy_obj, "AP Metrics Reporting Policy");
@@ -6292,7 +6474,11 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         sizeof(marker_name));
 
     // Local Steering Disallowed Policy
-    local_steering_policy = cJSON_GetObjectItem(policy_obj, "Local Steering Disallowed Policy");
+    // Support both wrapped ("Steering Policies" object) and flat (backward compat) formats.
+    const cJSON *steer_policies_obj = cJSON_GetObjectItem(policy_obj, "Steering Policies");
+    const cJSON *steer_parent = (steer_policies_obj != NULL) ? steer_policies_obj : policy_obj;
+
+    local_steering_policy = cJSON_GetObjectItem(steer_parent, "Local Steering Disallowed Policy");
     if (local_steering_policy == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Local Steering Disallowed Policy is NULL\n",
             __func__, __LINE__);
@@ -6320,7 +6506,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     }
 
     // BTM Steering Disallowed Policy
-    btm_steering_policy = cJSON_GetObjectItem(policy_obj, "BTM Steering Disallowed Policy");
+    btm_steering_policy = cJSON_GetObjectItem(steer_parent, "BTM Steering Disallowed Policy");
     if (btm_steering_policy == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: BTM Steering Disallowed Policy is NULL\n",
             __func__, __LINE__);
@@ -6353,15 +6539,32 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         return webconfig_error_decode;
     }
 
-    decode_param_allow_optional_string(backhaul_policy, "BSSID", param);
-    strncpy((char *)em_config->backhaul_bss_config_policy.bssid, param->valuestring,
-        sizeof(bssid_t));
-
-    decode_param_allow_optional_string(backhaul_policy, "Profile-1 bSTA Disallowed", param);
-    em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed = 0; // param->valuedouble;
-
-    decode_param_allow_optional_string(backhaul_policy, "Profile-2 bSTA Disallowed", param);
-    em_config->backhaul_bss_config_policy.profile_2_bsta_disallowed = 1; // param->valuedouble;
+    em_config->num_backhaul_bss_config = 0;
+    if (cJSON_IsArray(backhaul_policy)) {
+        int bh_arr_size = cJSON_GetArraySize(backhaul_policy);
+        for (int i = 0; i < bh_arr_size && em_config->num_backhaul_bss_config < EM_MAX_BACKHAUL_BSS_POLICY; i++) {
+            const cJSON *bss_item = cJSON_GetArrayItem(backhaul_policy, i);
+            int idx = em_config->num_backhaul_bss_config;
+            decode_param_allow_optional_string(bss_item, "BSSID", param);
+            if (param != NULL) {
+                if (WiFi_IsValidMacAddr(param->valuestring) != TRUE) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid BSSID value: '%s'\n",
+                        __func__, __LINE__, param->valuestring);
+                    continue;
+                }
+                str_to_mac_bytes(param->valuestring, em_config->backhaul_bss_config_policy[idx].bssid);
+            } else {
+                continue;
+            }
+            decode_param_bool(bss_item, "Profile-1 bSTA Disallowed", param);
+            em_config->backhaul_bss_config_policy[idx].profile_1_bsta_disallowed =
+                (param->type & cJSON_True) ? true : false;
+            decode_param_bool(bss_item, "Profile-2 bSTA Disallowed", param);
+            em_config->backhaul_bss_config_policy[idx].profile_2_bsta_disallowed =
+                (param->type & cJSON_True) ? true : false;
+            em_config->num_backhaul_bss_config++;
+        }
+    }
 
     // Channel Scan Reporting Policy
     channel_scan_policy = cJSON_GetObjectItem(policy_obj, "Channel Scan Reporting Policy");
@@ -6417,6 +6620,104 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status =
             (param->type & cJSON_True) ? true : false;
     }
+
+    // Unsuccessful Association Policy
+    unsuccess_assoc_policy = cJSON_GetObjectItem(policy_obj, "Unsuccessful Association Policy");
+    if (unsuccess_assoc_policy != NULL) {
+        decode_param_bool(unsuccess_assoc_policy, "Report Unsuccessful Associations", param);
+        em_config->unsuccess_assoc_policy.report_unassoc_sta =
+            (param->type & cJSON_True) ? true : false;
+        decode_param_integer(unsuccess_assoc_policy, "Maximum Reporting Rate", param);
+        em_config->unsuccess_assoc_policy.max_reporting_rate = param->valuedouble;
+    }
+
+    // QoS Management Policy
+    qos_mgt_policy = cJSON_GetObjectItem(policy_obj, "QoS Management Policy");
+    if (qos_mgt_policy != NULL) {
+        em_config->num_qos_mgt = 0;
+        if (cJSON_IsArray(qos_mgt_policy)) {
+            int qos_count = cJSON_GetArraySize(qos_mgt_policy);
+            for (int qi = 0; qi < qos_count && qi < EM_MAX_QOS_POLICY; qi++) {
+                const cJSON *qos_item = cJSON_GetArrayItem(qos_mgt_policy, qi);
+                const cJSON *mscs_arr = cJSON_GetObjectItem(qos_item, "MSCS Disallowed STA List");
+                if (mscs_arr != NULL && cJSON_IsArray(mscs_arr)) {
+                    int mscs_count = cJSON_GetArraySize(mscs_arr);
+                    em_config->qos_mgt_policy[qi].num_mscs = (mscs_count < EM_MAX_QOS_MAC) ? mscs_count : EM_MAX_QOS_MAC;
+                    for (int i = 0; i < em_config->qos_mgt_policy[qi].num_mscs; i++) {
+                        const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
+                        str_to_mac_bytes(cJSON_GetStringValue(mac_item),
+                            em_config->qos_mgt_policy[qi].mscs_mac[i]);
+                    }
+                }
+                const cJSON *scs_arr = cJSON_GetObjectItem(qos_item, "SCS Disallowed STA List");
+                if (scs_arr != NULL && cJSON_IsArray(scs_arr)) {
+                    int scs_count = cJSON_GetArraySize(scs_arr);
+                    em_config->qos_mgt_policy[qi].num_scs = (scs_count < EM_MAX_QOS_MAC) ? scs_count : EM_MAX_QOS_MAC;
+                    for (int i = 0; i < em_config->qos_mgt_policy[qi].num_scs; i++) {
+                        const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
+                        str_to_mac_bytes(cJSON_GetStringValue(mac_item),
+                            em_config->qos_mgt_policy[qi].scs_mac[i]);
+                    }
+                }
+                em_config->num_qos_mgt++;
+            }
+        } else if (cJSON_IsObject(qos_mgt_policy)) {
+            // Backward compatibility: single object format
+            const cJSON *mscs_arr = cJSON_GetObjectItem(qos_mgt_policy, "MSCS Disallowed STA List");
+            if (mscs_arr != NULL && cJSON_IsArray(mscs_arr)) {
+                int mscs_count = cJSON_GetArraySize(mscs_arr);
+                em_config->qos_mgt_policy[0].num_mscs = (mscs_count < EM_MAX_QOS_MAC) ? mscs_count : EM_MAX_QOS_MAC;
+                for (int i = 0; i < em_config->qos_mgt_policy[0].num_mscs; i++) {
+                    const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
+                    str_to_mac_bytes(cJSON_GetStringValue(mac_item),
+                        em_config->qos_mgt_policy[0].mscs_mac[i]);
+                }
+            }
+            const cJSON *scs_arr = cJSON_GetObjectItem(qos_mgt_policy, "SCS Disallowed STA List");
+            if (scs_arr != NULL && cJSON_IsArray(scs_arr)) {
+                int scs_count = cJSON_GetArraySize(scs_arr);
+                em_config->qos_mgt_policy[0].num_scs = (scs_count < EM_MAX_QOS_MAC) ? scs_count : EM_MAX_QOS_MAC;
+                for (int i = 0; i < em_config->qos_mgt_policy[0].num_scs; i++) {
+                    const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
+                    str_to_mac_bytes(cJSON_GetStringValue(mac_item),
+                        em_config->qos_mgt_policy[0].scs_mac[i]);
+                }
+            }
+            em_config->num_qos_mgt = 1;
+        }
+    }
+
+    // Default 802.1Q Settings Policy
+    def_8021q_policy = cJSON_GetObjectItem(policy_obj, "Default 802.1Q Settings Policy");
+    if (def_8021q_policy != NULL) {
+        decode_param_integer(def_8021q_policy, "Primary VLAN ID", param);
+        em_config->default_8021q_policy.primary_vid = (unsigned short)param->valuedouble;
+        decode_param_integer(def_8021q_policy, "Default PCP", param);
+        em_config->default_8021q_policy.default_pcp = (unsigned char)param->valuedouble;
+    }
+
+    // Radio Steering Parameters
+    radio_steer_array = cJSON_GetObjectItem(steer_parent, "Radio Steering Parameters");
+    if (radio_steer_array != NULL && cJSON_IsArray(radio_steer_array)) {
+        em_config->radio_steering_policies.radio_count = cJSON_GetArraySize(radio_steer_array);
+        for (int i = 0; i < em_config->radio_steering_policies.radio_count &&
+                i < EM_MAX_RADIO_POLICY; i++) {
+            radio_steer_obj = cJSON_GetArrayItem(radio_steer_array, i);
+            decode_param_string(radio_steer_obj, "ID", param);
+            str_to_mac_bytes(param->valuestring,
+                em_config->radio_steering_policies.radio_steering_policy[i].ruid);
+            decode_param_integer(radio_steer_obj, "Steering Policy", param);
+            em_config->radio_steering_policies.radio_steering_policy[i].policy =
+                (int)param->valuedouble;
+            decode_param_integer(radio_steer_obj, "Utilization Threshold", param);
+            em_config->radio_steering_policies.radio_steering_policy[i].util_threshold =
+                (int)param->valuedouble;
+            decode_param_integer(radio_steer_obj, "RCPI Threshold", param);
+            em_config->radio_steering_policies.radio_steering_policy[i].rcpi_threshold =
+                (int)param->valuedouble;
+        }
+    }
+
     return webconfig_error_none;
 }
 
@@ -6538,7 +6839,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
 }
 
 webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_obj,
-    em_ap_metrics_report_t *em_ap_report)
+    em_per_radio_report_t *radio_report)
 {
     cJSON *vap_obj, *param_arr, *param_obj, *value_object, *assoc_sta_arr, *link_metrics_obj,
         *bssid_arr, *bssid_obj;
@@ -6548,21 +6849,30 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
     assoc_sta_ext_link_metrics_data_t *sta_ext_link_metrics_data = NULL;
     int vapindex = -1;
 
-    param_obj = cJSON_GetObjectItem(em_ap_report_obj, "EMAPMetricsReport");
-    if (param_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid or missing EMAPMetricsReport\n",
-            __func__, __LINE__);
-        return webconfig_error_decode;
+    decode_param_integer(em_ap_report_obj, "Radio Index", value_object);
+    radio_report->radio_index = value_object->valueint;
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio Index: %d\n", __func__, __LINE__,
+        radio_report->radio_index);
+
+    // Decode Radio Metrics
+    param_obj = cJSON_GetObjectItem(em_ap_report_obj, "Radio Metrics");
+    if (param_obj != NULL && cJSON_IsObject(param_obj)) {
+        decode_param_integer(param_obj, "Radio.Noise", value_object);
+        radio_report->radio_metrics.noise = value_object->valueint;
+        decode_param_integer(param_obj, "Radio.Transmit", value_object);
+        radio_report->radio_metrics.transmit = value_object->valueint;
+        decode_param_integer(param_obj, "Radio.ReceiveSelf", value_object);
+        radio_report->radio_metrics.receive_self = value_object->valueint;
+        decode_param_integer(param_obj, "Radio.ReceiveOther", value_object);
+        radio_report->radio_metrics.receive_other = value_object->valueint;
     }
 
-    decode_param_integer(param_obj, "Radio Index", value_object);
-    em_ap_report->radio_index = value_object->valueint;
-
     // Decode Vap Info
-    param_arr = cJSON_GetObjectItem(param_obj, "Vap Info");
+    param_arr = cJSON_GetObjectItem(em_ap_report_obj, "Vap Info");
     if (param_arr == NULL || !cJSON_IsArray(param_arr)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Missing Vap Info for Radio Index %d\n",
-            __func__, __LINE__, em_ap_report->radio_index);
+            __func__, __LINE__, radio_report->radio_index);
     }
 
     for (j = 0; j < cJSON_GetArraySize(param_arr); j++) {
@@ -6579,38 +6889,75 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
         if (param_obj != NULL && cJSON_IsObject(param_obj)) {
             decode_param_allow_optional_string(param_obj, "BSSID", value_object);
             str_to_mac_bytes(value_object->valuestring,
-                em_ap_report->vap_reports[j].vap_metrics.bssid);
+                radio_report->vap_reports[j].vap_metrics.bssid);
 
             decode_param_integer(param_obj, "Channel Util", value_object);
-            em_ap_report->vap_reports[j].vap_metrics.channel_util = value_object->valueint;
+            radio_report->vap_reports[j].vap_metrics.channel_util = value_object->valueint;
+            decode_param_bool(param_obj, "Params BE", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_be = (value_object->type & cJSON_True) ? true:false;
+            decode_param_bool(param_obj, "Params BK", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_bk = (value_object->type & cJSON_True) ? true:false;
+            decode_param_bool(param_obj, "Params VI", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vi = (value_object->type & cJSON_True) ? true:false;
+            decode_param_bool(param_obj, "Params VO", value_object);
+            radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vo = (value_object->type & cJSON_True) ? true:false;
+
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_be) {
+                decode_param_integer(param_obj, "AC BE", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_be = value_object->valueint;
+            }
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_bk) {
+                decode_param_integer(param_obj, "AC BK", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_bk = value_object->valueint;
+            }
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vi) {
+                decode_param_integer(param_obj, "AC VI", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_vi = value_object->valueint;
+            }
+            if(radio_report->vap_reports[j].vap_metrics.inc_esp_ac_vo) {
+                decode_param_integer(param_obj, "AC VO", value_object);
+                radio_report->vap_reports[j].vap_metrics.esp_ac_vo = value_object->valueint;
+            }
 
             decode_param_integer(param_obj, "Number of Associated STAs", value_object);
-            em_ap_report->vap_reports[j].sta_cnt =
-                em_ap_report->vap_reports[j].vap_metrics.num_of_assoc_stas = value_object->valueint;
+            radio_report->vap_reports[j].sta_cnt =
+                radio_report->vap_reports[j].vap_metrics.num_of_assoc_stas = value_object->valueint;
         }
 
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:Number of Assoc STAs: %d for vap index:%d of rad index:%d\n", __func__,
-            __LINE__, em_ap_report->vap_reports[j].sta_cnt, vapindex, em_ap_report->radio_index);
+            __LINE__, radio_report->vap_reports[j].sta_cnt, vapindex, radio_report->radio_index);
 
         // Decode AP Extended Metrics
         param_obj = cJSON_GetObjectItem(vap_obj, "AP Extended Metrics");
         if (param_obj != NULL && cJSON_IsObject(param_obj)) {
             decode_param_integer(param_obj, "BSS.UnicastBytesSent", value_object);
-            em_ap_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
+            radio_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
 
             decode_param_integer(param_obj, "BSS.UnicastBytesReceived", value_object);
-            em_ap_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
+            radio_report->vap_reports[j].vap_metrics.unicast_bytes_rcvd = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.MulticastBytesSent", value_object);
+            radio_report->vap_reports[j].vap_metrics.multicast_bytes_sent = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.MulticastBytesReceived", value_object);
+            radio_report->vap_reports[j].vap_metrics.multicast_bytes_rcvd = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.BroadcastBytesSent", value_object);
+            radio_report->vap_reports[j].vap_metrics.broadcast_bytes_sent = value_object->valueint;
+
+            decode_param_integer(param_obj, "BSS.BroadcastBytesReceived", value_object);
+            radio_report->vap_reports[j].vap_metrics.broadcast_bytes_rcvd = value_object->valueint;
         }
 
-        em_ap_report->vap_reports[j].sta_traffic_stats = NULL;
+        radio_report->vap_reports[j].sta_traffic_stats = NULL;
         // Traffic stats
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Traffic Stats");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
-            em_ap_report->vap_reports[j].is_sta_traffic_stats_enabled = true;
-            em_ap_report->vap_reports[j].sta_traffic_stats = (assoc_sta_traffic_stats_t *)malloc(
-                em_ap_report->vap_reports[j].sta_cnt * sizeof(assoc_sta_traffic_stats_t));
+            radio_report->vap_reports[j].is_sta_traffic_stats_enabled = true;
+            radio_report->vap_reports[j].sta_traffic_stats = (assoc_sta_traffic_stats_t *)malloc(
+                radio_report->vap_reports[j].sta_cnt * sizeof(assoc_sta_traffic_stats_t));
 
-            for (sta_cnt = 0; sta_cnt < em_ap_report->vap_reports[j].sta_cnt; sta_cnt++) {
+            for (sta_cnt = 0; sta_cnt < radio_report->vap_reports[j].sta_cnt; sta_cnt++) {
                 param_obj = cJSON_GetArrayItem(assoc_sta_arr, sta_cnt);
                 if (param_obj == NULL) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Null array item\n", __func__,
@@ -6618,7 +6965,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     return webconfig_error_decode;
                 }
                 assoc_sta_traffic_stats_t *traffic_stats =
-                    &em_ap_report->vap_reports[j].sta_traffic_stats[sta_cnt];
+                    &radio_report->vap_reports[j].sta_traffic_stats[sta_cnt];
 
                 decode_param_allow_optional_string(param_obj, "STA MacAddress", value_object);
                 str_to_mac_bytes(value_object->valuestring, traffic_stats->sta_mac);
@@ -6646,12 +6993,12 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             }
         }
 
-        em_ap_report->vap_reports[j].sta_link_metrics = NULL;
+        radio_report->vap_reports[j].sta_link_metrics = NULL;
         // Decode AP Extended Metrics
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Link Metrics Report");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
-            em_ap_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)malloc(
-                em_ap_report->vap_reports[j].sta_cnt * sizeof(per_sta_metrics_t));
+            radio_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)malloc(
+                radio_report->vap_reports[j].sta_cnt * sizeof(per_sta_metrics_t));
             for (sta_cnt = 0; sta_cnt < cJSON_GetArraySize(assoc_sta_arr); sta_cnt++) {
                 link_metrics_obj = cJSON_GetArrayItem(assoc_sta_arr, sta_cnt);
                 if (link_metrics_obj == NULL) {
@@ -6659,20 +7006,20 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                         __LINE__);
                     return webconfig_error_decode;
                 }
-                em_ap_report->vap_reports[j].is_sta_link_metrics_enabled = true;
+                radio_report->vap_reports[j].is_sta_link_metrics_enabled = true;
 
-                sta_link_metrics_data = em_ap_report->vap_reports[j]
+                sta_link_metrics_data = radio_report->vap_reports[j]
                                             .sta_link_metrics[sta_cnt]
                                             .assoc_sta_link_metrics.assoc_sta_link_metrics_data;
 
                 decode_param_allow_optional_string(link_metrics_obj, "STA MAC", value_object);
                 str_to_mac_bytes(value_object->valuestring,
-                    em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
+                    radio_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
 
                 decode_param_allow_optional_string(link_metrics_obj, "Client Type", value_object);
-                strncpy(em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
+                strncpy(radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
                     value_object->valuestring, strlen(value_object->valuestring));
-                em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
+                radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
 
                 param_obj = cJSON_GetObjectItem(link_metrics_obj, "Associated STA Link Metrics");
                 if (param_obj == NULL) {
@@ -6681,13 +7028,13 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     return webconfig_error_decode;
                 }
                 decode_param_integer(param_obj, "Number of BSSIDs", value_object);
-                em_ap_report->vap_reports[j]
+                radio_report->vap_reports[j]
                     .sta_link_metrics[sta_cnt]
                     .assoc_sta_link_metrics.num_bssid = value_object->valuedouble;
 
                 bssid_arr = cJSON_GetObjectItem(param_obj, "Per BSSID Metrics");
                 if (bssid_arr != NULL && cJSON_IsArray(bssid_arr)) {
-                    for (int bssid_cnt = 0; bssid_cnt < em_ap_report->vap_reports[j]
+                    for (int bssid_cnt = 0; bssid_cnt < radio_report->vap_reports[j]
                                                             .sta_link_metrics[sta_cnt]
                                                             .assoc_sta_link_metrics.num_bssid;
                          bssid_cnt++) {
@@ -6726,18 +7073,18 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     return webconfig_error_decode;
                 }
                 decode_param_integer(param_obj, "Number of BSSIDs", value_object);
-                em_ap_report->vap_reports[j]
+                radio_report->vap_reports[j]
                     .sta_link_metrics[sta_cnt]
                     .assoc_sta_ext_link_metrics.num_bssid = value_object->valuedouble;
 
                 bssid_arr = cJSON_GetObjectItem(param_obj, "Per BSSID Metrics");
                 if (bssid_arr != NULL && cJSON_IsArray(bssid_arr)) {
                     sta_ext_link_metrics_data =
-                        em_ap_report->vap_reports[j]
+                        radio_report->vap_reports[j]
                             .sta_link_metrics[sta_cnt]
                             .assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data;
 
-                    for (int bssid_cnt = 0; bssid_cnt < em_ap_report->vap_reports[j]
+                    for (int bssid_cnt = 0; bssid_cnt < radio_report->vap_reports[j]
                                                             .sta_link_metrics[sta_cnt]
                                                             .assoc_sta_ext_link_metrics.num_bssid;
                          bssid_cnt++) {
@@ -6771,6 +7118,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             }
         }
     }
+    return webconfig_error_none;
 }
 
 #endif

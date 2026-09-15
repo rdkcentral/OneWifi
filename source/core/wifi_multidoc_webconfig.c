@@ -375,7 +375,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
         return RETURN_ERR;
     }
-    strcpy(encryption_method, value);
+    snprintf(encryption_method, sizeof(encryption_method), "%s", value);
 
     param = cJSON_GetObjectItem(security, "ModeEnabled");
     if (!param) {
@@ -439,7 +439,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                 vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_sae;
                 vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
-#endif /* CONFIG_IEEE80211BE */  
+#endif /* CONFIG_IEEE80211BE */
     } else {
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg, "Invalid Security Mode",
@@ -448,8 +448,9 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         wifi_util_error_print(WIFI_CTRL, "%s: unknown \"ModeEnabled\": %s\n", __func__, value);
         return RETURN_ERR;
     }
-    bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
-    if (validate_private_home_security_param(value,encryption_method,execRetVal, is_6g) != RETURN_OK) {
+
+    bool is_6g = strstr(vap_info->vap_name, "6g") ? true : false;
+    if (validate_private_home_security_param(value, encryption_method, execRetVal, is_6g) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s: Invalid Encryption Security Combination \n",
             __func__);
         if (execRetVal) {
@@ -458,8 +459,8 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
         return RETURN_ERR;
     }
-    
-    param = cJSON_GetObjectItem(security, "MFPConfig"); 
+
+    param = cJSON_GetObjectItem(security, "MFPConfig");
     if (!param) {
         if (isVapHotspot(vap_info->vap_index)) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"MFPConfig\"\n", __func__);
@@ -478,6 +479,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             }
             return RETURN_ERR;
         }
+
         value = cJSON_GetStringValue(param);
         if (value == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s: \"MFPConfig\" value is NULL\n", __func__);
@@ -487,7 +489,9 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             }
             return RETURN_ERR;
         }
+
         wifi_util_info_print(WIFI_CTRL, "   \"MFPConfig\": %s\n", value);
+
         if (!strcmp(value, "Disabled")) {
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         } else if (!strcmp(value, "Optional")) {
@@ -503,7 +507,9 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             return RETURN_ERR;
         }
     }
+
     if (isVapHotspot(vap_info->vap_index)) {
+
         radius_param = cJSON_GetObjectItem(security, "RadiusSettings");
         if (!radius_param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusSettings\"\n", __func__);
@@ -549,8 +555,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: Validation failed for RadiusServerIPAddr\n",
                 __func__, __LINE__);
-            // strncpy(execRetVal->ErrorMsg, "Invalid Radius server
-            // IP",sizeof(execRetVal->ErrorMsg)-1);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid RadiusServerIPAddr",
                     sizeof(execRetVal->ErrorMsg) - 1);
@@ -571,7 +575,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
                 return RETURN_ERR;
             }
 #endif
-
         param = cJSON_GetObjectItem(radius_param, "RadiusServerPort");
         if (!param) {
             wifi_util_error_print(WIFI_CTRL, "%s: missing \"RadiusServerPort\"\n", __func__);
@@ -661,8 +664,6 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         } else {
             wifi_util_error_print(WIFI_WEBCONFIG,
                 "%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
-            // strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server
-            // IP",sizeof(execRetVal->ErrorMsg)-1);
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
                     sizeof(execRetVal->ErrorMsg) - 1);
@@ -670,19 +671,19 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
             return RETURN_ERR;
         }
 #else
-                /* check the INET family and update the radius ip address */
-                if (inet_pton(AF_INET, param->valuestring, &(radius_info->s_ip.u.IPv4addr)) > 0) {
-                    radius_info->s_ip.family = wifi_ip_family_ipv4;
-                } else if (inet_pton(AF_INET6, param->valuestring,
-                               &(radius_info->s_ip.u.IPv6addr)) > 0) {
-                    radius_info->s_ip.family = wifi_ip_family_ipv6;
-                } else {
-                    if (execRetVal) {
-                        strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
-                            sizeof(execRetVal->ErrorMsg) - 1);
-                    }
-                    return RETURN_ERR;
+            /* check the INET family and update the radius ip address */
+            if (inet_pton(AF_INET, param->valuestring, &(radius_info->s_ip.u.IPv4addr)) > 0) {
+                radius_info->s_ip.family = wifi_ip_family_ipv4;
+            } else if (inet_pton(AF_INET6, param->valuestring,
+                       &(radius_info->s_ip.u.IPv6addr)) > 0) {
+                radius_info->s_ip.family = wifi_ip_family_ipv6;
+            } else {
+                if (execRetVal) {
+                    strncpy(execRetVal->ErrorMsg, "Invalid SecondaryRadiusServerIPAddr",
+                        sizeof(execRetVal->ErrorMsg) - 1);
                 }
+                return RETURN_ERR;
+            }
 #endif
 
         param = cJSON_GetObjectItem(radius_param, "SecondaryRadiusServerPort");
@@ -737,9 +738,9 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr
         }
         strncpy(radius_info->s_key, value, sizeof(radius_info->s_key) - 1);
     }
+
     return RETURN_OK;
 }
-
 static int decode_amenities_blob(wifi_vap_info_t *vap_info, cJSON *amenities_blob, pErr execRetVal)
 {
     cJSON *param;

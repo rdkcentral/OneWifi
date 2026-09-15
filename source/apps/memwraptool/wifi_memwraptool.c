@@ -1,11 +1,15 @@
 /************************************************************************************
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
+
   Copyright 2018 RDK Management
+
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
+
   http://www.apache.org/licenses/LICENSE-2.0
+
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -97,8 +101,7 @@ static int push_memwrap_data_dml_to_ctrl_queue(memwraptool_config_t *memwraptool
     return bus_error_success;
 }
 
-static int memwraptool_event_webconfig_set_data(wifi_app_t *apps, void *arg,
-    wifi_event_subtype_t sub_type)
+static int memwraptool_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_subtype_t sub_type)
 {
     char cmd[256];
     memwraptool_config_t *memwraptool_config = NULL;
@@ -192,8 +195,7 @@ static int memwraptool_event_webconfig_set_data(wifi_app_t *apps, void *arg,
     return RETURN_OK;
 }
 
-static int handle_memwraptool_webconfig_event(wifi_app_t *apps, wifi_event_subtype_t sub_type,
-    void *data)
+static int handle_memwraptool_webconfig_event(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *data)
 {
     switch (sub_type) {
     case wifi_event_webconfig_set_data_dml:
@@ -549,7 +551,7 @@ int memwraptool_deinit(wifi_app_t *app)
 
     rc = get_bus_descriptor()->bus_close_fn(&app->handle);
     if (rc != bus_error_success) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: Unable to close Memwraptool bus handle\n", __func__,
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: Unable to close memwraptool bus handle\n", __func__,
             __LINE__);
     }
     return RETURN_OK;

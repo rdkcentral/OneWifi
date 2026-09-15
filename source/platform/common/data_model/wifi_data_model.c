@@ -2,7 +2,7 @@
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
-  Copyright 2024 RDK Management
+  Copyright 2025 RDK Management
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@
   limitations under the License.
  **************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "bus.h"
 #include "wifi_data_model.h"
-#include "wifi_dml_cb.h"
-#include "wifi_dml_api.h"
-#include "wifi_monitor.h"
-#include "wifi_mgr.h"
+#include "bus.h"
 #include "dml_onewifi_api.h"
+#include "wifi_dml_api.h"
+#include "wifi_dml_cb.h"
+#include "wifi_mgr.h"
+#include "wifi_monitor.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 wifi_dml_data_model_t g_dml_data_model;
 
@@ -187,7 +187,8 @@ bus_error_t dml_get_set_param_value(dml_callback_table_t *p_dml_cb, uint8_t cb_t
     return status;
 }
 
-bus_error_t wifi_get_param_value(char *event_name, raw_data_t *p_data,struct bus_user_data * user_data )
+bus_error_t wifi_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     wifi_global_param_t *pcfg = (wifi_global_param_t *)get_wifidb_wifi_global_param();
@@ -210,7 +211,8 @@ bus_error_t wifi_get_param_value(char *event_name, raw_data_t *p_data,struct bus
     return status;
 }
 
-bus_error_t wifi_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t wifi_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     wifi_global_param_t *pcfg = (wifi_global_param_t *)get_wifidb_wifi_global_param();
@@ -242,7 +244,8 @@ bus_error_t wifi_event_sub_handler(char *eventName, bus_event_sub_action_t actio
     return bus_error_success;
 }
 
-bus_error_t neig_wifi_diag_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t neig_wifi_diag_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     wifi_global_param_t *pcfg = (wifi_global_param_t *)get_wifidb_wifi_global_param();
@@ -266,7 +269,8 @@ bus_error_t neig_wifi_diag_get_param_value(char *event_name, raw_data_t *p_data,
     return status;
 }
 
-bus_error_t neig_wifi_diag_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+bus_error_t neig_wifi_diag_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     wifi_global_param_t *pcfg = (wifi_global_param_t *)get_wifidb_wifi_global_param();
@@ -324,7 +328,8 @@ wifi_neighbor_ap2_t *get_neig_diag_result_obj(uint32_t ap_instance)
     return NULL;
 }
 
-bus_error_t neig_diag_result_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+bus_error_t neig_diag_result_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     uint32_t index = 0;
@@ -381,7 +386,8 @@ bus_error_t neig_diag_result_event_sub_cb(char *eventName, bus_event_sub_action_
     return bus_error_success;
 }
 
-bus_error_t radio_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t radio_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -412,7 +418,8 @@ bus_error_t radio_get_param_value(char *event_name, raw_data_t *p_data, struct b
     return status;
 }
 
-bus_error_t radio_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t radio_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -474,7 +481,8 @@ bus_error_t radio_event_sub_handler(char *eventName, bus_event_sub_action_t acti
     return bus_error_success;
 }
 
-bus_error_t accesspoint_get_param_value(char *event_name, raw_data_t *p_data,struct bus_user_data * user_data)
+bus_error_t accesspoint_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -506,7 +514,8 @@ bus_error_t accesspoint_get_param_value(char *event_name, raw_data_t *p_data,str
     return status;
 }
 
-bus_error_t accesspoint_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t accesspoint_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -569,7 +578,8 @@ bus_error_t accesspoint_event_sub_handler(char *eventName, bus_event_sub_action_
     return bus_error_success;
 }
 
-bus_error_t security_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+bus_error_t security_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -601,7 +611,8 @@ bus_error_t security_get_param_value(char *event_name, raw_data_t *p_data, struc
     return status;
 }
 
-bus_error_t security_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t security_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -642,27 +653,29 @@ bus_error_t security_event_sub_handler(char *eventName, bus_event_sub_action_t a
     return bus_error_success;
 }
 
-bus_error_t ssid_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t ssid_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
     wifi_vap_info_t *vap_param;
-    dml_callback_table_t dml_data_cb = {
-        ssid_get_param_bool_value, ssid_get_param_int_value, ssid_get_param_uint_value, ssid_get_param_string_value,
-        ssid_set_param_bool_value, ssid_set_param_int_value, ssid_set_param_uint_value, ssid_set_param_string_value
-    };
+    dml_callback_table_t dml_data_cb = { ssid_get_param_bool_value, ssid_get_param_int_value,
+        ssid_get_param_uint_value, ssid_get_param_string_value, ssid_set_param_bool_value,
+        ssid_set_param_int_value, ssid_set_param_uint_value, ssid_set_param_string_value };
 
     sscanf(event_name, "Device.WiFi.SSID.%d.%s", &index, extension);
 
     vap_param = (wifi_vap_info_t *)getVapInfo(index - 1);
     if (vap_param == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong vap index:%d for:[%s]\r\n", __func__,
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d wrong vap index:%d for:[%s]\r\n", __func__,
             __LINE__, index, event_name);
         return bus_error_invalid_input;
     }
-    
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d SSID Event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
-    bus_error_t status = dml_get_set_param_value(&dml_data_cb, DML_GET_CB, (void *)vap_param, extension, p_data);
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d SSID Event:[%s][%s]\n", __func__, __LINE__, event_name,
+        extension);
+    bus_error_t status = dml_get_set_param_value(&dml_data_cb, DML_GET_CB, (void *)vap_param,
+        extension, p_data);
     if (status != bus_error_success) {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d ssid param get failed for:[%s][%s]\r\n", __func__,
             __LINE__, event_name, extension);
@@ -671,27 +684,29 @@ bus_error_t ssid_get_param_value(char *event_name, raw_data_t *p_data, struct bu
     return status;
 }
 
-bus_error_t ssid_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t ssid_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
     wifi_vap_info_t *vap_param;
-    dml_callback_table_t dml_data_cb = {
-        ssid_get_param_bool_value, ssid_get_param_int_value, ssid_get_param_uint_value, ssid_get_param_string_value,
-        ssid_set_param_bool_value, ssid_set_param_int_value, ssid_set_param_uint_value, ssid_set_param_string_value
-    };
+    dml_callback_table_t dml_data_cb = { ssid_get_param_bool_value, ssid_get_param_int_value,
+        ssid_get_param_uint_value, ssid_get_param_string_value, ssid_set_param_bool_value,
+        ssid_set_param_int_value, ssid_set_param_uint_value, ssid_set_param_string_value };
 
     sscanf(event_name, "Device.WiFi.SSID.%d.%s", &index, extension);
 
     vap_param = (wifi_vap_info_t *)getVapInfo(index - 1);
     if (vap_param == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s:%d wrong vap index:%d for:[%s]\r\n", __func__,
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d wrong vap index:%d for:[%s]\r\n", __func__,
             __LINE__, index, event_name);
         return bus_error_invalid_input;
     }
 
-    wifi_util_info_print(WIFI_DMCLI,"%s:%d SSID Event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
-    bus_error_t status = dml_get_set_param_value(&dml_data_cb, DML_SET_CB, (void *)vap_param, extension, p_data);
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d SSID Event:[%s][%s]\n", __func__, __LINE__, event_name,
+        extension);
+    bus_error_t status = dml_get_set_param_value(&dml_data_cb, DML_SET_CB, (void *)vap_param,
+        extension, p_data);
     if (status != bus_error_success) {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d ssid param set failed for:[%s][%s]\r\n", __func__,
             __LINE__, event_name, extension);
@@ -731,7 +746,8 @@ bus_error_t ssid_event_sub_handler(char *eventName, bus_event_sub_action_t actio
     return bus_error_success;
 }
 
-bus_error_t macfilter_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t macfilter_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0, acl_index = 0;
     char extension[64] = { 0 };
@@ -773,7 +789,8 @@ bus_error_t macfilter_get_param_value(char *event_name, raw_data_t *p_data, stru
     return status;
 }
 
-bus_error_t macfilter_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+bus_error_t macfilter_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0, acl_index = 0;
     char extension[64] = { 0 };
@@ -896,7 +913,8 @@ bus_error_t macfilter_event_sub_handler(char *eventName, bus_event_sub_action_t 
     return bus_error_success;
 }
 
-bus_error_t associated_sta_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t associated_sta_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0, sta_index = 0;
     char extension[64] = { 0 };
@@ -971,7 +989,8 @@ bus_error_t associated_sta_event_sub_handler(char *eventName, bus_event_sub_acti
     return bus_error_success;
 }
 
-bus_error_t interworking_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t interworking_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1004,7 +1023,8 @@ bus_error_t interworking_get_param_value(char *event_name, raw_data_t *p_data, s
     return status;
 }
 
-bus_error_t interworking_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t interworking_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1046,7 +1066,8 @@ bus_error_t interworking_event_sub_handler(char *eventName, bus_event_sub_action
     return bus_error_success;
 }
 
-bus_error_t wps_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t wps_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1076,7 +1097,8 @@ bus_error_t wps_get_param_value(char *event_name, raw_data_t *p_data, struct bus
     return status;
 }
 
-bus_error_t wps_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+bus_error_t wps_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1115,7 +1137,8 @@ bus_error_t wps_event_sub_handler(char *eventName, bus_event_sub_action_t action
     return bus_error_success;
 }
 
-bus_error_t ap_macfilter_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t ap_macfilter_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1144,7 +1167,8 @@ bus_error_t ap_macfilter_get_param_value(char *event_name, raw_data_t *p_data, s
     return status;
 }
 
-bus_error_t ap_macfilter_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t ap_macfilter_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1182,7 +1206,8 @@ bus_error_t ap_macfilter_event_sub_handler(char *eventName, bus_event_sub_action
     return bus_error_success;
 }
 
-bus_error_t radius_sec_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t radius_sec_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1213,7 +1238,8 @@ bus_error_t radius_sec_get_param_value(char *event_name, raw_data_t *p_data, str
     return status;
 }
 
-bus_error_t radius_sec_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t radius_sec_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1253,7 +1279,8 @@ bus_error_t radius_sec_event_sub_handler(char *eventName, bus_event_sub_action_t
     return bus_error_success;
 }
 
-bus_error_t auth_sec_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t auth_sec_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1283,7 +1310,8 @@ bus_error_t auth_sec_get_param_value(char *event_name, raw_data_t *p_data, struc
     return status;
 }
 
-bus_error_t auth_sec_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t auth_sec_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1322,7 +1350,8 @@ bus_error_t auth_sec_event_sub_handler(char *eventName, bus_event_sub_action_t a
     return bus_error_success;
 }
 
-bus_error_t conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1352,7 +1381,8 @@ bus_error_t conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data, stru
     return status;
 }
 
-bus_error_t conn_ctrl_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t conn_ctrl_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1391,7 +1421,8 @@ bus_error_t conn_ctrl_event_sub_handler(char *eventName, bus_event_sub_action_t 
     return bus_error_success;
 }
 
-bus_error_t pre_conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t pre_conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1422,7 +1453,8 @@ bus_error_t pre_conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data, 
     return status;
 }
 
-bus_error_t pre_conn_ctrl_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t pre_conn_ctrl_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1462,7 +1494,8 @@ bus_error_t pre_conn_ctrl_event_sub_handler(char *eventName, bus_event_sub_actio
     return bus_error_success;
 }
 
-bus_error_t post_conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t post_conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1493,7 +1526,8 @@ bus_error_t post_conn_ctrl_get_param_value(char *event_name, raw_data_t *p_data,
     return status;
 }
 
-bus_error_t post_conn_ctrl_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t post_conn_ctrl_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1533,7 +1567,8 @@ bus_error_t post_conn_ctrl_event_sub_handler(char *eventName, bus_event_sub_acti
     return bus_error_success;
 }
 
-bus_error_t interworking_serv_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t interworking_serv_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1564,7 +1599,8 @@ bus_error_t interworking_serv_get_param_value(char *event_name, raw_data_t *p_da
     return status;
 }
 
-bus_error_t interworking_serv_set_param_value(char *event_name, raw_data_t *p_data,struct bus_user_data * user_data)
+bus_error_t interworking_serv_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1604,7 +1640,8 @@ bus_error_t interworking_serv_event_sub_handler(char *eventName, bus_event_sub_a
     return bus_error_success;
 }
 
-bus_error_t passpoint_get_param_value(char *event_name, raw_data_t *p_data,struct bus_user_data * user_data)
+bus_error_t passpoint_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1635,7 +1672,8 @@ bus_error_t passpoint_get_param_value(char *event_name, raw_data_t *p_data,struc
     return status;
 }
 
-bus_error_t passpoint_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t passpoint_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     uint32_t index = 0;
     char extension[64] = { 0 };
@@ -1675,7 +1713,8 @@ bus_error_t passpoint_event_sub_handler(char *eventName, bus_event_sub_action_t 
     return bus_error_success;
 }
 
-bus_error_t wifi_client_report_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t wifi_client_report_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *)get_dml_harvester();
@@ -1700,7 +1739,8 @@ bus_error_t wifi_client_report_get_param_value(char *event_name, raw_data_t *p_d
     return status;
 }
 
-bus_error_t wifi_client_report_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t wifi_client_report_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *)get_dml_harvester();
@@ -1734,7 +1774,8 @@ bus_error_t wifi_client_report_event_sub_handler(char *eventName, bus_event_sub_
     return bus_error_success;
 }
 
-bus_error_t wifi_client_def_report_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t wifi_client_def_report_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *)get_dml_harvester();
@@ -1757,7 +1798,8 @@ bus_error_t wifi_client_def_report_get_param_value(char *event_name, raw_data_t 
     return status;
 }
 
-bus_error_t wifi_client_def_report_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+bus_error_t wifi_client_def_report_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *)get_dml_harvester();
@@ -1789,7 +1831,8 @@ bus_error_t wifi_client_def_report_event_sub_handler(char *eventName, bus_event_
     return bus_error_success;
 }
 
-bus_error_t wifi_region_code_get_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+bus_error_t wifi_region_code_get_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     wifi_global_param_t *pcfg = (wifi_global_param_t *)get_dml_wifi_global_param();
@@ -1812,7 +1855,8 @@ bus_error_t wifi_region_code_get_param_value(char *event_name, raw_data_t *p_dat
     return status;
 }
 
-bus_error_t wifi_region_code_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data )
+bus_error_t wifi_region_code_set_param_value(char *event_name, raw_data_t *p_data,
+    struct bus_user_data *user_data)
 {
     char extension[64] = { 0 };
     wifi_global_param_t *pcfg = (wifi_global_param_t *)get_dml_wifi_global_param();

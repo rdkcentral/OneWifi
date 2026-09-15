@@ -140,8 +140,8 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
             radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
             radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
             radios_cfg->vaps.vap_map.vap_array[vap_array_index].radio_index = radio_index;
-            strcpy((char *)radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
-            strcpy((char *)radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
+            snprintf((char *)radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_name, sizeof(radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_name), "%s", wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
+            snprintf((char *)radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_name, sizeof(radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_name), "%s", wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
 
             // allocate mutex on heap since rdk_vap_array can be copied
             associated_devices_lock = malloc(sizeof(pthread_mutex_t));
@@ -240,6 +240,10 @@ bool is_device_type_xle(void)
 {
     return is_supported_gateway_device(C_WNX);
 }
+bool is_device_type_sr203(void)
+{
+    return is_supported_gateway_device("SR203");
+}
 
 bool is_device_type_scxf10(void)
 {
@@ -255,7 +259,7 @@ int init_wifimgr()
     struct stat sb;
     char db_file[128];
     int hal_initialized = RETURN_ERR;
-   
+    
     // channel change flag initialized as false
     memset(g_wifi_mgr.channel_change_in_progress, 0, sizeof(g_wifi_mgr.channel_change_in_progress));
 
@@ -282,7 +286,7 @@ int init_wifimgr()
     get_wifidml_obj()->desc.set_dml_init_status_fn(false);
 #endif
 
-    sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
+    snprintf(db_file, sizeof(db_file), "%s/rdkb-wifi.db", WIFIDB_DIR);
     if (stat(db_file, &sb) != 0) {
         wifi_util_info_print(WIFI_MGR,"WiFiDB file not present FRcase\n");
         g_wifi_mgr.ctrl.factory_reset = true;

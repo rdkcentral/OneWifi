@@ -79,7 +79,7 @@ void CcspTraceDebugRdkb(char *format, ...)
 
 }
 
-char *psm_get_value_Rdkb(char *recName, char *strValue)
+char *psm_get_value_Rdkb(char *recName, char *strValue, unsigned int str_size)
 {
     return NULL;
 }

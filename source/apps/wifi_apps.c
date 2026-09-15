@@ -55,8 +55,32 @@ int analytics_event(wifi_app_t *app, wifi_event_t *event)
 
 #ifdef ONEWIFI_CSI_APP_SUPPORT
 extern int csi_init(wifi_app_t *app, unsigned int create_flag);
+extern int csi_analytics_init(wifi_app_t *app, unsigned int create_flag);
+extern int csi_analytics_event(wifi_app_t *app, wifi_event_t *event);
+extern int csi_analytics_deinit(wifi_app_t *app);
+extern int csi_analytics_update(wifi_app_t *app);
 #else
 int csi_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int csi_analytics_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int csi_analytics_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+int csi_analytics_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int csi_analytics_update(wifi_app_t *app)
 {
     return 0;
 }
@@ -375,6 +399,16 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
+#if ONEWIFI_CSI_APP_SUPPORT
+    {
+        wifi_app_inst_csi_analytics, 0,
+        wifi_event_type_webconfig,
+        true, true,
+        "CSI analytics App",
+        csi_analytics_init, csi_analytics_event, csi_analytics_deinit,
+        NULL, csi_analytics_update
+    },
+#endif
 #if ONEWIFI_WHIX_APP_SUPPORT
     {
         wifi_app_inst_whix, 0,
@@ -395,16 +429,6 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
-#ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
-    {
-        wifi_app_inst_memwraptool, 0,
-        wifi_event_type_webconfig | wifi_event_type_command,
-        true, true,
-        "Memwraptool",
-        memwraptool_init, memwraptool_event, memwraptool_deinit,
-        NULL, NULL
-    },
-#endif // ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
     {
         wifi_app_inst_ocs, 0,
@@ -425,6 +449,16 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
+#ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    {
+        wifi_app_inst_memwraptool, 0,
+        wifi_event_type_webconfig | wifi_event_type_command,
+        true, true,
+        "Memwraptool",
+        memwraptool_init, memwraptool_event, memwraptool_deinit,
+        NULL, NULL
+    },
+#endif // ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
     {
         wifi_app_inst_sta_mgr, 0,

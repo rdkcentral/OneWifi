@@ -2,7 +2,7 @@
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
-  Copyright 2024 RDK Management
+  Copyright 2025 RDK Management
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -17,19 +17,19 @@
   limitations under the License.
  **************************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "bus.h"
 #include "wifi_dml_cb.h"
+#include "bus.h"
+#include "dml_onewifi_api.h"
+#include "wifi_base.h"
+#include "wifi_ctrl.h"
 #include "wifi_data_model.h"
+#include "wifi_dml_api.h"
 #include "wifi_events.h"
 #include "wifi_stubs.h"
 #include "wifi_util.h"
-#include "dml_onewifi_api.h"
-#include "wifi_dml_api.h"
-#include "wifi_ctrl.h"
-#include "wifi_base.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern bool is_radio_config_changed;
 extern bool g_update_wifi_region;
@@ -404,7 +404,7 @@ bool wifi_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
         uint32_t instance_number;
         wifi_radio_operationParam_t *dm_wifi_radio_op_param = NULL;
         for (instance_number = 0; instance_number < (uint32_t)getNumberRadios();
-             instance_number++) {
+            instance_number++) {
             dm_wifi_radio_op_param = (wifi_radio_operationParam_t *)get_dml_cache_radio_map(
                 instance_number);
             if (dm_wifi_radio_op_param == NULL) {
@@ -557,10 +557,11 @@ bool wifi_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Log_upload stopped\n", __func__, __LINE__);
         }
     } else if (STR_CMP(param_name, "WPA3_Personal_Compatibility")) {
-        wifi_rfc_dml_parameters_t *p_rfc_cfg = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+        wifi_rfc_dml_parameters_t *p_rfc_cfg =
+            (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
         DM_CHECK_NULL_WITH_RC(p_rfc_cfg, false);
 
-        if(output_value != p_rfc_cfg->wpa3_compatibility_enable){
+        if (output_value != p_rfc_cfg->wpa3_compatibility_enable) {
             push_rfc_dml_cache_to_one_wifidb(output_value, wifi_event_type_rsn_override_rfc);
         }
     } else {
@@ -2224,7 +2225,8 @@ bool ssid_get_param_int_value(void *obj_ins_context, char *param_name, int *outp
         }
         *output_value = mld_common_info->mld_enable ? (int)mld_common_info->mld_id : -1;
     } else {
-        wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__, param_name);
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
+            param_name);
         return false;
     }
     return true;
@@ -2388,7 +2390,8 @@ bool ssid_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
             dm_rdk_vap_info->exists = output_value;
         }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && \
+    !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if (output_value == false) {
             wifi_util_error_print(WIFI_DMCLI,
                 "%s:%d User is Trying to disable SSID for vap_index=%d\n", __func__, __LINE__,
@@ -2475,11 +2478,15 @@ bool ssid_set_param_int_value(void *obj_ins_context, char *param_name, int input
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)obj_ins_context;
     DM_CHECK_NULL_WITH_RC(pcfg, false);
 
-    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
-    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number - 1);
+    uint8_t instance_number = convert_vap_name_to_index(
+                                  &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+                                  pcfg->vap_name) +
+        1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
 
     if (vapInfo == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __func__, __LINE__, instance_number);
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for instance_number:%d\n",
+            __func__, __LINE__, instance_number);
         return false;
     }
 
@@ -2487,25 +2494,30 @@ bool ssid_set_param_int_value(void *obj_ins_context, char *param_name, int input
         bool tmp_mld_enable = false;
 
         if (isVapSTAMesh(pcfg->vap_index)) {
-            wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
             return false;
         }
         if (input_value < -1 || input_value >= MLD_UNIT_COUNT) {
-            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,__LINE__,input_value);
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,
+                __LINE__, input_value);
             return false;
         }
-        wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, input_value);
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__,
+            input_value);
         tmp_mld_enable = (input_value == -1) ? false : true;
 
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
-            if (tmp_mld_enable == false && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
+            if (tmp_mld_enable == false &&
+                vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
                 return true;
             }
-            if (tmp_mld_enable == true && vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)input_value) {
+            if (tmp_mld_enable == true &&
+                vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)input_value) {
                 return true;
             }
         }
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Updating MLD Unit to value %d\n", __FUNCTION__, __LINE__, input_value);
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Updating MLD Unit to value %d\n", __FUNCTION__,
+            __LINE__, input_value);
         vapInfo->u.bss_info.mld_info.common_info.mld_enable = tmp_mld_enable;
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable) {
             vapInfo->u.bss_info.mld_info.common_info.mld_id = input_value;
@@ -2561,7 +2573,7 @@ bool ssid_set_param_uint_value(void *obj_ins_context, char *param_name, uint32_t
         set_dml_cache_vap_config_changed(instance_number - 1);
         return true;
     } else {
-        wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
         return false;
     }
 
@@ -3136,7 +3148,7 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name,
         }
 
         if(rfc_pcfg->wpa3_compatibility_enable == false && (l_tmp_sec_mode == wifi_security_mode_wpa3_compatibility)) {
-            wifi_util_error_print(WIFI_DMCLI,"%s:%d WPA3 personal compatibility is Disabled \n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d WPA3 personal compatibility is Disabled \n",__func__, __LINE__);
         }
 
         // cleanup key/radius for personal-enterprise-open mode change
@@ -4505,7 +4517,9 @@ bool associated_sta_get_param_uint_value(void *obj_ins_context, char *param_name
         *output_value = assoc_dev_data->dev_stats.cli_Disassociations;
     } else if (STR_CMP(param_name, "X_COMCAST-COM_AuthenticationFailures")) {
         *output_value = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
-    } else if( STR_CMP(param_name, "X_RDK_CapSpaStr")) {
+    } else if (STR_CMP(param_name, "X_RDK_CapSpaStr")) {
+        *output_value = assoc_dev_data->dev_stats.cli_capableNumSpatialStreams;
+    } else if (STR_CMP(param_name, "X_RDK_ActiveSpaStr")) {
         *output_value = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
@@ -5458,8 +5472,8 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
         } else if (STR_CMP(p_input_str, "disabled")) {
             STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, "disabled");
         } else {
-	    STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, p_input_str);
-	}
+            STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, p_input_str);
+        }
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,

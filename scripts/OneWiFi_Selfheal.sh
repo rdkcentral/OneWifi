@@ -211,7 +211,7 @@ onewifi_conn_clients_count() {
     conn_clients_total=0
     num_clients=0
     radio_arr=( 1 2 )
-
+    
     num_radios=`dmcli eRT retv Device.WiFi.RadioNumberOfEntries`
     if [ "$num_radios" -eq 3 ]; then
         radio_arr=( 1 2 17 )
@@ -378,19 +378,20 @@ do
             check_count=0
             cur_timestamp="`date +"%s"` $1"
             #echo_t "cur_timestamp = $cur_timestamp" >> $LOG_FILE
-            if [ "$MODEL_NUM" == "SR213" ]; then
+            if [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "XER2" ]; then
                 eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_6g="false"
             elif [ "$MODEL_NUM" == "SCER11BEL" ]  || [ "$MODEL_NUM" == "SCXF11BFL" ]; then
-                eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:` 
+                eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_6g=`dmcli eRT getv Device.WiFi.Radio.$radio_6g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
             else
                 eco_mode_2g="false"
                 eco_mode_5g="false"
-		eco_mode_6g="false"
+                eco_mode_6g="false"
             fi
+
             if [ $eco_mode_2g == "false" ]; then
                 radio_status_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 if [ $radio_status_2g == "true" ]; then
@@ -486,7 +487,6 @@ do
                     fi
                 fi
             fi
-
 
         #we need to use this changes for only TechXB7 device.
         if [ "$MODEL_NUM" == "$CGM43" -o "$MODEL_NUM" == "$CGA4" ]; then

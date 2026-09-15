@@ -200,4 +200,4 @@ bus_error_t wifi_region_code_get_param_value(char *event_name, raw_data_t *p_dat
 bus_error_t wifi_region_code_set_param_value(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data);
 
 wifi_dml_data_model_t *get_dml_data_model_param(void);
-#endif // WIFI_DATA_MODEL_H
+#endif//WIFI_DATA_MODEL_H

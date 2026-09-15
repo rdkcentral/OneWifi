@@ -85,9 +85,9 @@ typedef enum {
     webconfig_error_translate_from_ovsdb,
     webconfig_error_translate_to_tr181,
     webconfig_error_translate_from_tr181,
-    webconfig_error_translate_from_ovsdb_cfg_no_change,
     webconfig_error_translate_to_easymesh,
     webconfig_error_translate_from_easymesh,
+    webconfig_error_translate_from_ovsdb_cfg_no_change,
     webconfig_error_max
 } webconfig_error_t;
 
@@ -144,8 +144,9 @@ typedef enum {
     webconfig_subdoc_type_em_ap_metrics_report,
 #endif
     webconfig_subdoc_type_memwraptool,
-    webconfig_subdoc_type_ignite,
     webconfig_subdoc_type_link_report,
+    webconfig_subdoc_type_ignite,
+    webconfig_subdoc_type_nasta_query,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -174,6 +175,7 @@ typedef enum {
     webconfig_subdoc_object_type_em_sta_link_metrics,
     webconfig_subdoc_object_type_em_ap_metrics_report,
     webconfig_subdoc_object_type_link_report,
+    webconfig_subdoc_object_type_nasta_query,
 
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
@@ -233,6 +235,8 @@ typedef struct {
     em_ap_metrics_report_t em_ap_metrics_report;
 #endif
     report_batch_t *qmgr_report;
+    nasta_query_t nasta_query;
+    nasta_response_t *nasta_response;
 } webconfig_subdoc_decoded_data_t;
 
 typedef char  * webconfig_subdoc_encoded_raw_t;
@@ -602,6 +606,14 @@ webconfig_error_t       encode_cac_config_subdoc(webconfig_t *config, webconfig_
 webconfig_error_t       translate_to_cac_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_cac_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+//  nasta query
+webconfig_error_t       init_nasta_query_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_nasta_query_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 // radio channel stats
 webconfig_error_t       init_radio_channel_stats_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_radio_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -642,7 +654,7 @@ webconfig_error_t       encode_radio_temperature_stats_subdoc(webconfig_t *confi
 webconfig_error_t       translate_to_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
-// Vap_24G, Vap_5G and Vap_6G
+// Vap_24G, Vap_5G and Vap_6G 
 webconfig_error_t       init_multivap_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);

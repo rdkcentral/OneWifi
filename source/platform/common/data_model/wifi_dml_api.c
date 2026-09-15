@@ -2,7 +2,7 @@
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
-  Copyright 2024 RDK Management
+  Copyright 2025 RDK Management
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #include "dml_onewifi_api.h"
 #include "scheduler.h"
 #include "wifi_ctrl.h"
+#include "wifi_dml_api.h"
 #include "wifi_events.h"
 #include "wifi_mgr.h"
 #include "wifi_stubs.h"
@@ -1344,9 +1345,13 @@ int start_dml_main(void *arg)
                          __func__, __LINE__, BUS_DML_CONFIG_FILE);
     parse_and_register_native_dml_schema(&ctrl->handle, BUS_DML_CONFIG_FILE);
 
+/* Skip WFA Data Elements schema parsing in Easy Mesh builds;
+   the Easy Mesh Controller handles this. */
+#ifndef EASY_MESH_NODE
     wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing WFA Data Elements schema: %s\n", 
                          __func__, __LINE__, BUS_WFA_DML_CONFIG_FILE);
     parse_and_register_wfa_schema(&ctrl->handle, BUS_WFA_DML_CONFIG_FILE);
+#endif
 
     print_registered_elems(get_bus_mux_reg_cb_map(), 0);
 

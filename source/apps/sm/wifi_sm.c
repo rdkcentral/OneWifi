@@ -24,6 +24,7 @@
 #include "sm_cache.h"
 #include "sm_report.h"
 #include "wifi_hal.h"
+#include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_sm.h"
 #include "const.h"
@@ -31,6 +32,8 @@
 
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
+#define BUS_SM_APP_ENABLE "Device.X_RDK_MeshAgent.SM_APP.Enable"
+#define SM_APP_ENABLE_TIMER_INTERVAL_SEC 5
 
 typedef struct {
     sta_data_t  assoc_stats[BSS_MAX_NUM_STATIONS];
@@ -42,6 +45,9 @@ typedef struct {
     unsigned int    assoc_stats_vap_presence_mask;
     unsigned int    req_stats_vap_mask;
 } client_assoc_stats_t;
+
+static int sm_stats_to_monitor_set(wifi_app_t *app, bool enable);
+static void sm_events_subscribe(wifi_app_t *app);
 
 client_assoc_stats_t *client_assoc_stats = NULL; //allocate during app init
 
@@ -348,12 +354,15 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
     sm_route(&route);
 
     if (sm_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d SM Config creation failed %d\r\n", __func__, __LINE__, stat_config_entry->stats_type);
+        wifi_util_error_print(WIFI_SM, "%s:%d SM Config creation failed %d\r\n", __func__, __LINE__,
+            stat_config_entry->stats_type);
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
+    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) !=
+        RETURN_OK) {
+        wifi_util_error_print(WIFI_SM, "%s:%d Invalid survey type %d\r\n", __func__, __LINE__,
+            stat_config_entry->survey_type);
         return RETURN_ERR;
     }
     data->u.mon_stats_config.args.scan_mode = halw_scan_type;
@@ -362,21 +371,25 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
     } else {
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
-        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
-        for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
+        data->u.mon_stats_config.args.channel_list.num_channels =
+            stat_config_entry->channels_list.num_channels;
+        for (i = 0; i < stat_config_entry->channels_list.num_channels; i++) {
+            data->u.mon_stats_config.args.channel_list.channels_list[i] =
+                stat_config_entry->channels_list.channels_list[i];
         }
     }
 
     if (data->u.mon_stats_config.interval_ms == 0) {
-        data->u.mon_stats_config.interval_ms = stat_config_entry->reporting_interval * 1000; //converting seconds to ms
+        data->u.mon_stats_config.interval_ms = stat_config_entry->reporting_interval *
+            1000; // converting seconds to ms
     }
 
     data->u.mon_stats_config.args.app_info = sm_app_event_type_neighbor;
-
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
     return RETURN_OK;
@@ -389,12 +402,15 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
     wifi_event_route_t route;
     sm_route(&route);
     if (sm_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d SM Config creation failed %d\r\n", __func__, __LINE__, stat_config_entry->stats_type);
+        wifi_util_error_print(WIFI_SM, "%s:%d SM Config creation failed %d\r\n", __func__, __LINE__,
+            stat_config_entry->stats_type);
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
+    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) !=
+        RETURN_OK) {
+        wifi_util_error_print(WIFI_SM, "%s:%d Invalid survey type %d\r\n", __func__, __LINE__,
+            stat_config_entry->survey_type);
         return RETURN_ERR;
     }
     data->u.mon_stats_config.args.scan_mode = halw_scan_type;
@@ -403,22 +419,25 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
     } else {
-        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
-        for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
+        data->u.mon_stats_config.args.channel_list.num_channels =
+            stat_config_entry->channels_list.num_channels;
+        for (i = 0; i < stat_config_entry->channels_list.num_channels; i++) {
+            data->u.mon_stats_config.args.channel_list.channels_list[i] =
+                stat_config_entry->channels_list.channels_list[i];
         }
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
     }
-    data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
-    //data->u.mon_stats_config.start_immediately = true;
 
+    data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
+    // data->u.mon_stats_config.start_immediately = true;
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
     return RETURN_OK;
 }
-
 
 int client_diag_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
 {
@@ -543,7 +562,7 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     stats_config_t *cur_stats_cfg = NULL;
     hash_map_t *cur_app_stats_cfg_map = app->data.u.sm_data.sm_stats_config_map;
-    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
+    bool sm_app_enable, off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
 
     wifi_util_dbg_print(WIFI_SM, "inside %s:%d off_scan_rfc:%d\n",__func__, __LINE__,off_scan_rfc);
     if (event->sub_type == wifi_event_type_wifi_offchannelscan_sm_rfc )
@@ -569,6 +588,17 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
                  }
                  cur_stats_cfg = hash_map_get_next(cur_app_stats_cfg_map, cur_stats_cfg);
            }
+       }
+   } else if (event->sub_type == wifi_event_type_sm_app_enable) {
+       if (event->u.core_data.msg) {
+           sm_app_enable = *(bool *)event->u.core_data.msg;
+           wifi_util_dbg_print(WIFI_SM, "%s:%d: Received SM app enable event. sm_app_enable=%d\n",
+               __func__, __LINE__, sm_app_enable);
+           sm_stats_to_monitor_set(app, sm_app_enable);
+       } else {
+           wifi_util_error_print(WIFI_SM,
+               "inside %s:%d sub_type: wifi_event_type_sm_app_enable sm_app_enable=NULL\n",
+               __func__, __LINE__);
        }
    }
    return RETURN_OK;
@@ -784,7 +814,7 @@ int sm_event(wifi_app_t *app, wifi_event_t *event)
             monitor_event_sm(app, event);
         break;
         case wifi_event_type_command:
-            handle_sm_command_event(app,event);
+            handle_sm_command_event(app, event);
         break;
         default:
         break;
@@ -792,6 +822,58 @@ int sm_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
+static void sm_app_enable_handler(char *event_name, bus_data_prop_t *p_data)
+{
+    bool sm_app_enable;
+
+    wifi_util_dbg_print(WIFI_SM, "%s:%d recvd event\n", __func__, __LINE__);
+
+    if ((strcmp(event_name, BUS_SM_APP_ENABLE) != 0) ||
+        (p_data->value.data_type != bus_data_type_boolean)) {
+        wifi_util_error_print(WIFI_SM, "%s:%d invalid event received,%s:%x\n", __func__, __LINE__,
+            event_name, p_data->value.data_type);
+        return;
+    }
+
+    sm_app_enable = p_data->value.raw_data.b;
+
+    push_event_to_ctrl_queue(&sm_app_enable, sizeof(sm_app_enable), wifi_event_type_command,
+        wifi_event_type_sm_app_enable, NULL);
+}
+
+static int sm_events_timer_task(void *args)
+{
+    sm_events_subscribe((wifi_app_t *)args);
+    return TIMER_TASK_COMPLETE;
+}
+
+static void sm_events_subscribe(wifi_app_t *app)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_bus_desc_t *bus_desc = get_bus_descriptor();
+    static int task_id = 0;
+    bool add_timer_task = false;
+
+    if (app->data.u.sm_data.sm_app_enable_subscribed == false) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_SM_APP_ENABLE, sm_app_enable_handler,
+                NULL, 0) != bus_error_success) {
+            wifi_util_dbg_print(WIFI_SM, "%s:%d: event:%s subscribe failed\n", __FUNCTION__,
+                __LINE__, BUS_SM_APP_ENABLE);
+            add_timer_task = true;
+        } else {
+            app->data.u.sm_data.sm_app_enable_subscribed = true;
+            wifi_util_info_print(WIFI_SM, "%s:%d: event:%s subscribe success\n", __FUNCTION__,
+                __LINE__, BUS_SM_APP_ENABLE);
+        }
+    }
+
+    if (add_timer_task && task_id == 0) {
+        scheduler_add_timer_task(ctrl->sched, FALSE, &task_id, sm_events_timer_task, app,
+            (SM_APP_ENABLE_TIMER_INTERVAL_SEC * MSEC_IN_SEC), 0, FALSE);
+    } else if (!add_timer_task && task_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, task_id);
+    }
+}
 
 int sm_init(wifi_app_t *app, unsigned int create_flag)
 {
@@ -802,14 +884,14 @@ int sm_init(wifi_app_t *app, unsigned int create_flag)
     }
 
     dpp_init();
+    sm_events_subscribe(app);
 
-    app->data.u.sm_data.sm_stats_config_map  = hash_map_create();
-    app->data.u.sm_data.report_tasks_map  = hash_map_create();
+    app->data.u.sm_data.sm_stats_config_map = hash_map_create();
+    app->data.u.sm_data.report_tasks_map = hash_map_create();
 
     client_assoc_stats = calloc(radios_count, sizeof(client_assoc_stats_t));
     if (client_assoc_stats == NULL) {
-        wifi_util_error_print(WIFI_SM, "%s:%d: calloc failed for client_assoc_stats\n", __func__,
-            __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: calloc failed for client_assoc_stats\n", __func__, __LINE__);
         hash_map_destroy(app->data.u.sm_data.report_tasks_map);
         app->data.u.sm_data.report_tasks_map = NULL;
         free_sm_stats_config_map(app);
@@ -824,7 +906,8 @@ int sm_init(wifi_app_t *app, unsigned int create_flag)
         free_sm_stats_config_map(app);
     }
 
-    wifi_util_info_print(WIFI_SM, "%s:%d: Init SM app %s\n", __func__, __LINE__, rc ? "failure" : "success");
+    wifi_util_info_print(WIFI_SM, "%s:%d: Init SM app %s\n", __func__, __LINE__,
+        rc ? "failure" : "success");
 
     return rc;
 }
@@ -854,6 +937,7 @@ int free_sm_stats_config_map(wifi_app_t *app)
 int sm_deinit(wifi_app_t *app)
 {
     sm_stats_to_monitor_set(app, false);
+    free_sm_stats_config_map(app);
     if (client_assoc_stats != NULL) {
         free(client_assoc_stats);
         client_assoc_stats = NULL;

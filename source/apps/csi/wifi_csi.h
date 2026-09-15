@@ -20,6 +20,9 @@
 #ifndef WIFI_CSI_H
 #define WIFI_CSI_H
 
+#include "collection.h"
+#include "wifi_base.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

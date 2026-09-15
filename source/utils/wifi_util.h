@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
+#include "bus.h"
 #include "ccsp.h"
 
 #define MAX_NAME_LEN 32
@@ -113,9 +114,10 @@ typedef enum {
     WIFI_BLASTER,
     WIFI_OCS,
     WIFI_BUS,
-    WIFI_MEMWRAPTOOL,
     WIFI_TCM,
     WIFI_EC,
+    WIFI_CSI,
+    WIFI_MEMWRAPTOOL,
     WIFI_SENSING,
 } wifi_dbg_type_t;
 
@@ -126,6 +128,7 @@ typedef enum {
     WIFI_LOG_LVL_MAX
 } wifi_log_level_t;
 
+bool wifi_util_webconfig_is_dbg_enabled(void);
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char *format, ...);
 
 #define wifi_util_dbg_print(module, format, ...) \
@@ -140,15 +143,19 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, const char 
 
 #define PARTNER_ID_LEN 64
 
-#define RADIO_NAME_LENGTH 16
 #define MAX_SEC_LEN 64
+#define RADIO_NAME_LENGTH 16
 
 #define MIN_MAC_LEN 12
 #define MAC_ADDR_LEN 6
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
 
 #define MAX_WIFI_COUNTRYCODE 252
-#define MIN_NUM_RADIOS 2
+#ifdef RASPBERRY_PI_PORT
+    #define MIN_NUM_RADIOS 1
+#else
+    #define MIN_NUM_RADIOS 2
+#endif
 struct wifiCountryEnumStrMapMember {
     wifi_countrycode_type_t countryCode;
     char countryStr[4];
@@ -360,6 +367,9 @@ int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *chan
     unsigned int channel_state_strlen);
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band,
     UINT wifi_channel);
+UCHAR wifi_get_bw80_center_ch(unsigned int ch, wifi_freq_bands_t band);
+UCHAR wifi_get_bw160_center_ch(unsigned int ch, wifi_freq_bands_t band);
+UCHAR wifi_get_bw320_center_ch(unsigned int ch);
 bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
                                          const wifi_vap_info_t *hotspot_vap_info);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
@@ -468,16 +478,19 @@ bool is_5g_20M_channel_in_dfs(int channel);
 void decode_acs_keep_out_json(const char *data, unsigned int number_of_radios, webconfig_subdoc_data_t *subdoc_data);
 void* bus_get_keep_out_json();
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
+int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta);
-int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
-int get_partner_id(char *partner_id);
 int update_radio_operating_classes(wifi_radio_operationParam_t *oper);
+int get_partner_id(char *partner_id);
 int interfacename_from_mac(const mac_address_t *mac, char *ifname);
 int mac_address_from_name(const char *ifname, mac_address_t mac);
 bool is_zero_mac(const uint8_t *mac);
 bool is_valid_encr_for_mode(wifi_security_modes_t mode, wifi_encryption_method_t encr);
+void apply_wpa2_personal_encr_policy(wifi_vap_security_t *security_info);
+void apply_wpa3_transition_encr_policy(wifi_vap_security_t *security_info);
 int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index, mac_address_t mac);
+void copy_assocstats_dev_stats(wifi_associated_dev3_t* assoc_dev,dev_stats_t *dev);
 #ifdef __cplusplus
 }
 #endif

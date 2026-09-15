@@ -1,15 +1,15 @@
 /************************************************************************************
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
-
+  
   Copyright 2018 RDK Management
-
+  
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
-
+  
   http://www.apache.org/licenses/LICENSE-2.0
-
+  
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -146,6 +146,60 @@ void process_csa_beacon_frame_event(frame_data_t *msg, uint32_t msg_length, wifi
     }
 }
 
+void process_btm_request_send_event(void *data, uint32_t len) {
+    int ret;
+    wifi_BTMRequest_t btmReq;
+
+    if (!data || len < sizeof(em_btm_req_ctrl_msg_t)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid BTM req data\n",__func__, __LINE__);
+        return;
+    }
+
+    em_btm_req_ctrl_msg_t *msg = (em_btm_req_ctrl_msg_t *)data;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d BTM req send event received\n", __func__, __LINE__);
+
+    memset(&btmReq, 0, sizeof(btmReq));
+
+    // Fill HAL BTM Request
+    btmReq.token       = msg->dialog_token;
+    btmReq.requestMode = msg->request_mode;
+
+    if (msg->neighbor_list_present && msg->num_neighbors > 0) {
+        uint32_t neighbors_count = msg->num_neighbors;
+        if (neighbors_count > MAX_CANDIDATES) {
+            neighbors_count = MAX_CANDIDATES;
+        }
+
+        btmReq.numCandidates = neighbors_count;
+
+        for (uint32_t i = 0; i < btmReq.numCandidates; i++) {
+            neighbor_with_opclass_t *src_ext = &msg->neighbors[i];
+            wifi_neighbor_ap2_t *src = &src_ext->base;
+            wifi_NeighborReport_t *dst = &btmReq.candidates[i];
+
+            str_to_mac_bytes(src->ap_BSSID, dst->bssid);
+            dst->channel = (UCHAR)src->ap_Channel;
+            dst->opClass = src_ext->opClass;
+            snprintf(dst->target_ssid, sizeof(dst->target_ssid), "%s", src->ap_SSID);
+            dst->bssTransitionCandidatePreferencePresent = TRUE;
+            dst->bssTransitionCandidatePreference.preference = (UCHAR)src_ext->score;
+
+            wifi_util_dbg_print(WIFI_CTRL,"BTM[%d]: BSSID: %s Channel: %u opClass: %u RSSI: %d Pref: %d\n",
+                    i, src->ap_BSSID, src->ap_Channel, src_ext->opClass, src->ap_SignalStrength, dst->bssTransitionCandidatePreference.preference);
+
+        }
+        wifi_util_info_print(WIFI_CTRL,"%s:%d BTM neighbor list filled, candidates=%u\n", __func__, __LINE__, btmReq.numCandidates);
+    } else {
+        btmReq.numCandidates = 0;
+    }
+
+    ret = wifi_hal_setBTMRequest(msg->ap_index, msg->sta_mac, &btmReq);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_hal_setBTMRequest failed (ret=%d)\n",__func__, __LINE__, ret);
+    }
+}
+
 const char* wifi_hotspot_action_to_string(wifi_hotspot_action_t action) {
     switch (action) {
         case hotspot_vap_disable:
@@ -217,6 +271,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
             }
        }
     }
+
     get_wifictrl_obj()->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
 
     return RETURN_OK;
@@ -1831,8 +1886,7 @@ void process_greylist_mac_filter(void *data)
             }
         }
     }
-    
-    //Add time and Mac address to wifihealth.txt
+
     if (greylist_client_added) {
         finalize_acl_addition(new_mac_str, reason);
     }
@@ -2707,6 +2761,8 @@ void process_wpa3_rfc(bool type)
             vapInfo->u.bss_info.security.wpa3_transition_disable = false;
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            /* When WPA3 RFC enables transition mode, restore transition encryption policy. */
+            apply_wpa3_transition_encr_policy(&vapInfo->u.bss_info.security);
         } else {
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
                 continue;
@@ -2715,6 +2771,8 @@ void process_wpa3_rfc(bool type)
             if ((radio_params->band == WIFI_FREQUENCY_2_4_BAND) ||  (radio_params->band == WIFI_FREQUENCY_5_BAND) ||
                 (radio_params->band == WIFI_FREQUENCY_5L_BAND) || (radio_params->band == WIFI_FREQUENCY_5H_BAND)) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                /* RFC disable should not leave WPA2 with invalid encryption. */
+                apply_wpa2_personal_encr_policy(&vapInfo->u.bss_info.security);
             }
         }
 
@@ -3001,10 +3059,8 @@ int update_wifi_app_rfc(wifi_app_inst_t inst, bool status)
     return RETURN_OK;
 }
 
-
-void process_link_quality_rfc(bool type)
+void process_csi_analytics_rfc(bool type)
 {
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
@@ -3013,17 +3069,31 @@ void process_link_quality_rfc(bool type)
         return;
     }
 
-    rfc_param->link_quality_rfc = type;
+    rfc_param->csi_analytics_enabled_rfc = type;
+    update_wifi_app_rfc(wifi_app_inst_csi_analytics, type);
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : bool %d\n", __func__, __LINE__,
-        rfc_param->link_quality_rfc);
-    if( rfc_param->link_quality_rfc) {
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
-        wifi_util_error_print(WIFI_CTRL, "started link quality app %s:%d\n", __func__, __LINE__);
-    } else {
-        apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-        wifi_util_error_print(WIFI_CTRL, "stopped link quality app %s:%d\n", __func__, __LINE__);
+    return;
+}
+
+void process_multiap_rfc(bool type)
+{
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to fetch Ctrl RFC\n", __func__, __LINE__);
+        return;
     }
+    rfc_param->multiap_rfc = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    if (rfc_param->multiap_rfc) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Enabled, Starting station vaps\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc is Disabled\n", __func__, __LINE__);
+        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
+	}
+
     return;
 }
 
@@ -3105,27 +3175,6 @@ void process_xfi_tel_enable_rfc(bool type)
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     wifi_util_dbg_print(WIFI_DB, "Exit func %s: %d : Xfi Tel Enable RFC: %d\n", __FUNCTION__, __LINE__, 
         type);
-}
-void process_multiap_rfc(bool type)
-{
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    if (rfc_param == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to fetch Ctrl RFC\n", __func__, __LINE__);
-        return;
-    }
-    rfc_param->multiap_rfc = type;
-    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    if (rfc_param->multiap_rfc) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc RFC is Enabled, Starting station vaps\n", __func__, __LINE__);
-        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
-    } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d multiap_rfc is Disabled\n", __func__, __LINE__);
-        apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
-	}
-
-    return;
 }
 
 void process_wps_command_event(unsigned int vap_index)
@@ -3284,7 +3333,6 @@ void process_device_mode_command_event(int device_mode)
             if (rfc_param->multiap_rfc) {
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             }
-            
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
                 start_extender_vaps(WIFI_ALL_RADIO_INDICES);
@@ -3409,31 +3457,30 @@ int dfs_nop_start_timer(void *args)
     wifi_channel_change_event_t radio_channel_param;
     wifi_radio_operationParam_t *radio_params = NULL;
 
-    if (args == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer\r\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
+    /* Process all 5G radios that have pending radarDetected entries */
+    unsigned int n = getNumberRadios();
+    for (unsigned int dfs_radio_index = 0; dfs_radio_index < n; dfs_radio_index++) {
+        wifi_radio_operationParam_t *c = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
+        if (c == NULL) continue;
+        if (c->band != WIFI_FREQUENCY_5_BAND &&
+            c->band != WIFI_FREQUENCY_5L_BAND &&
+            c->band != WIFI_FREQUENCY_5H_BAND) continue;
+        if (strcmp(c->radarDetected, " ") == 0 || strlen(c->radarDetected) == 0) continue;
 
-    /* Process only the 5G radio this timer was scheduled for. args points to stable
-       static storage owned by the caller (start_radios); it is non-owning, do not free it. */
-    unsigned int dfs_radio_index = *(unsigned int *)args;
-
-    radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
-    if (radio_params == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong index for radio map: %d\n", __func__, __LINE__, dfs_radio_index);
-        return RETURN_ERR;
-    }
-
-    if (strcmp(radio_params->radarDetected, " ") == 0 || strlen(radio_params->radarDetected) == 0) {
-        return TIMER_TASK_COMPLETE;
-    }
-
+    radio_params = c;
     memset(&radio_channel_param, 0, sizeof(radio_channel_param));
 
     char *str_r, *radar_detected_ch_time;
-    char radarDetected_temp[256];
+    char radarDetected_temp[128];
     strncpy(radarDetected_temp, radio_params->radarDetected, sizeof(radarDetected_temp));
+
     radarDetected_temp[sizeof(radarDetected_temp) - 1] = '\0';
+
+    if (!strcmp(radarDetected_temp, " ") )
+    {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d No radar detected \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
     radar_detected_ch_time = strtok_r(radarDetected_temp, ";", &str_r);
     while(radar_detected_ch_time != NULL) {
@@ -3490,9 +3537,10 @@ int dfs_nop_start_timer(void *args)
         radar_detected_ch_time = strtok_r(NULL, ";", &str_r);
     }
 
-    if(strlen(radio_params->radarDetected) == 0) {
+    if(radio_params != NULL && strlen(radio_params->radarDetected) == 0) {
         strncpy(radio_params->radarDetected, " ", sizeof(radio_params->radarDetected));
     }
+    } /* end for each 5G radio */
     return TIMER_TASK_COMPLETE;
 }
 
@@ -3534,13 +3582,9 @@ int dfs_nop_finish_timer(void *args)
     if (dfs_radio_index >= n) {
         wifi_util_error_print(WIFI_CTRL, "%s: ch=%d not found in any 5G radio radarDetected\n", __FUNCTION__, nop_fin_dfs_ch);
         return TIMER_TASK_COMPLETE;
-    }
+}
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(dfs_radio_index);
-    if (radio_params == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: wrong index for radio map: %d\n", __FUNCTION__, __LINE__, dfs_radio_index);
-        return TIMER_TASK_COMPLETE;
-    }
     memset(&radio_channel_param, 0, sizeof(radio_channel_param));
     strncpy(radarDetected_temp, radio_params->radarDetected, sizeof(radarDetected_temp));
 
@@ -3581,12 +3625,37 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     wifi_radio_feature_param_t *radio_feat = NULL;
     wifi_radio_operationParam_t *temp_radio_params = NULL;
     wifi_mgr_t *g_wifidb;
+    unsigned int num_of_radios;
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
     wifi_monitor_data_t *data = NULL;
+
+    if (ch_chg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL channel-change event\n", __func__, __LINE__);
+        return;
+    }
+
+    if (g_wifidb == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_mgr_t is NULL radio:%d\n", __func__, __LINE__,
+            ch_chg->radioIndex);
+        return;
+    }
+
+    if (ch_chg->radioIndex >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d invalid radio index:%d max:%d\n", __func__,
+            __LINE__, ch_chg->radioIndex, MAX_NUM_RADIOS);
+        return;
+    }
+
+    num_of_radios = getNumberRadios();
+    if (num_of_radios > MAX_NUM_RADIOS || ch_chg->radioIndex >= num_of_radios) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d radio index:%d outside configured radios:%u max:%d\n", __func__, __LINE__,
+            ch_chg->radioIndex, num_of_radios, MAX_NUM_RADIOS);
+        return;
+    }
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
@@ -3613,7 +3682,9 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         temp_radio_params->channelWidth = ch_chg->channelWidth;
         temp_radio_params->DfsEnabled = radio_params->DfsEnabled;
         // Channel change completed flag
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
         g_wifidb->channel_change_in_progress[ch_chg->radioIndex] = false;
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         wifi_util_dbg_print(WIFI_CTRL,
             "%s:%d Channel change is completed, setting channel change progress to false\n",
             __func__, __LINE__);
@@ -3755,7 +3826,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 }
                 if (strcmp(radio_params->radarDetected, " ")) {
                     char *str_re, *radar_detected_ch_time;
-                    char radarDetected_temp[256];
+                    char radarDetected_temp[128];
                     unsigned int ch_temp;
 
                     strncpy(radarDetected_temp, radio_params->radarDetected, sizeof(radarDetected_temp));
@@ -3852,7 +3923,8 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         goto cleanup;
     }
-     data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+
+    data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__, __LINE__);
     } else {
@@ -3885,7 +3957,7 @@ int get_neighbor_scan_results(void *arg)
     wifi_monitor_data_t *data = (wifi_monitor_data_t *) malloc(sizeof(wifi_monitor_data_t));
     wifi_event_route_t route;
 
-    //Stop neighbor scan
+    //Stop neighbor scan 
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d data allocation failed\r\n", __func__, __LINE__);
         snprintf(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState), "Completed" );
@@ -3923,7 +3995,7 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-void process_acs_keep_out_channels_event(const char *json_data)
+void process_acs_keep_out_channels_event(const char* json_data)
 {
     unsigned int numOfRadios = getNumberRadios();
     webconfig_subdoc_data_t *data = NULL;
@@ -3936,21 +4008,22 @@ void process_acs_keep_out_channels_event(const char *json_data)
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
 
-    decode_acs_keep_out_json(json_data, numOfRadios,  data);
-    for (unsigned int i = 0; i < numOfRadios; i++) {
+    decode_acs_keep_out_json(json_data,numOfRadios, data);
+    for(unsigned int i=0;i<numOfRadios;i++)
+    {
         radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
-        if (radio_oper)
+        if(radio_oper)
         {
             radio_oper->acs_keep_out_reset = data->u.decoded.radios[i].oper.acs_keep_out_reset;
-            memcpy(radio_oper->channels_per_bandwidth,
-                 data->u.decoded.radios[i].oper.channels_per_bandwidth,
-                 sizeof(data->u.decoded.radios[i].oper.channels_per_bandwidth));
-            if (radio_oper->acs_keep_out_reset)
+            memcpy(radio_oper->channels_per_bandwidth, data->u.decoded.radios[i].oper.channels_per_bandwidth, sizeof(data->u.decoded.radios[i].oper.channels_per_bandwidth));
+            if(radio_oper->acs_keep_out_reset)
             {
-                wifi_hal_set_acs_keep_out_chans(NULL, i);
+                wifi_hal_set_acs_keep_out_chans(NULL,i);
                 radio_oper->acs_keep_out_reset = false;
-            } else {
-                wifi_hal_set_acs_keep_out_chans(radio_oper, i);
+            }
+            else
+            {
+                wifi_hal_set_acs_keep_out_chans(radio_oper,i);
             }
         }
     }
@@ -3968,7 +4041,7 @@ void process_neighbor_scan_command_event()
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Scan already in Progress!!!\n", __func__, __LINE__);
         return;
     }
-
+    
     get_stubs_descriptor()->strcpy_fn(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState), "Requested");
 
     wifi_monitor_data_t *data = (wifi_monitor_data_t *) malloc(sizeof(wifi_monitor_data_t));
@@ -4118,7 +4191,7 @@ static void process_monitor_init_command(void)
     data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
     data->u.mon_stats_config.args.app_info = 0;
     data->u.mon_stats_config.start_immediately = false;
-
+    
     memset(&route, 0, sizeof(wifi_event_route_t));
     route.dst = wifi_sub_component_mon;
     route.u.inst_bit_map = 0;
@@ -4140,6 +4213,37 @@ static void process_monitor_init_command(void)
     }
     free(data);
 }
+
+void process_send_action_frame_command(void *data, unsigned int len)
+{
+    action_frame_params_t *params;
+
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NUll data Pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    if (len < sizeof(action_frame_params_t) + 1) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid parameter size \r\n", __func__, __LINE__);
+        return;
+    }
+
+    params = (action_frame_params_t *)data;
+
+    if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
+            params->wait_time_ms, params->frame_data, params->frame_len)) {
+
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d HAL sendActionFrame method failed (ap_index:%d, dest_addr:" MAC_FMT
+            ", frequency:%d, wait_time_ms:%d)\n",
+            __func__, __LINE__, params->ap_index, MAC_ARG(params->dest_addr), params->frequency,
+            params->wait_time_ms);
+        return;
+    }
+
+    return;
+}
+
 void process_rsn_override_rfc(bool type)
 {
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
@@ -4175,7 +4279,7 @@ void process_rsn_override_rfc(bool type)
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
             continue;
         }
-
+		
 #if !defined(CONFIG_IEEE80211BE)
         if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
             wifi_util_info_print(WIFI_CTRL,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
@@ -4213,13 +4317,17 @@ void process_rsn_override_rfc(bool type)
                 (radio_params->band == WIFI_FREQUENCY_5L_BAND) || (radio_params->band == WIFI_FREQUENCY_5H_BAND)) {
                     vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+                    /* RFC disable should not leave WPA2 with invalid encryption. */
+                    apply_wpa2_personal_encr_policy(&vapInfo->u.bss_info.security);
             }
 
-	    if(rfc_param->wpa3_rfc) {
+        if(rfc_param->wpa3_rfc) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+                /* When RSN override re-enables WPA3 transition, restore its encryption policy. */
+                apply_wpa3_transition_encr_policy(&vapInfo->u.bss_info.security);
             }
 #if defined(CONFIG_IEEE80211BE)
             if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
@@ -4230,6 +4338,12 @@ void process_rsn_override_rfc(bool type)
         ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, new_sec_mode);
         if(ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
+        }
+
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
+            __func__, __LINE__, old_sec_mode, new_sec_mode);
+        if (strcmp(old_sec_mode, new_sec_mode) != 0) {
+            notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
         }
 
         memset(tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
@@ -4250,45 +4364,10 @@ void process_rsn_override_rfc(bool type)
             wifi_util_error_print(WIFI_CTRL,"%s:%d: Private vaps service update_fn failed \n",__func__, __LINE__);
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
-            wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
-                __func__, __LINE__, old_sec_mode, new_sec_mode);
-            if (strcmp(old_sec_mode, new_sec_mode) != 0) {
-                notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
-            }
         }
     }
     free(tgt_vap_map);
     tgt_vap_map = NULL;
-}
-
-void process_send_action_frame_command(void *data, unsigned int len)
-{
-    action_frame_params_t *params;
-
-    if (data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d NUll data Pointer\n", __func__, __LINE__);
-        return;
-    }
-
-    if (len < sizeof(action_frame_params_t) + 1) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid parameter size \r\n", __func__, __LINE__);
-        return;
-    }
-
-    params = (action_frame_params_t *)data;
-
-    if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
-            params->wait_time_ms, params->frame_data, params->frame_len)) {
-
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d HAL sendActionFrame method failed (ap_index:%d, dest_addr:" MAC_FMT
-            ", frequency:%d, wait_time_ms:%d)\n",
-            __func__, __LINE__, params->ap_index, MAC_ARG(params->dest_addr), params->frequency,
-            params->wait_time_ms);
-        return;
-    }
-
-    return;
 }
 
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
@@ -4449,12 +4528,18 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_rsn_override_rfc:
         process_rsn_override_rfc(*(bool *)data);
         break;
-    case wifi_event_type_link_quality_rfc:
-        process_link_quality_rfc(*(bool *)data);
+    case wifi_event_type_csi_analytics_rfc:
+        process_csi_analytics_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_wei_rfc_config:
+        process_wei_rfc_config_update((wei_rfc_field_update_t *)data);
         break;
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);
         break;
+    case wifi_event_type_send_btm_req:
+        process_btm_request_send_event(data, len);
+        break; 
     case wifi_event_type_multiap_rfc:
         process_multiap_rfc(*(bool *)data);
         break;
@@ -4467,6 +4552,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_start_inst_msmt:
     case wifi_event_type_stop_inst_msmt:
     case wifi_event_type_xfinity_rrm:
+    case wifi_event_type_sm_app_enable:
         // not handle here
         break;
     default:
@@ -4556,6 +4642,11 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         process_wps_results_event(data);
         break;
 
+    case wifi_event_hal_wnm_action_frame:
+        break;
+    case wifi_event_hal_pre_assoc_fail:
+    case wifi_event_hal_post_assoc_fail:
+        break;
     default:
 
         wifi_util_error_print(WIFI_CTRL, "[%s]:WIFI hal handler not supported this event %s\r\n",
@@ -4593,6 +4684,38 @@ void update_subdoc_data(webconfig_subdoc_data_t *data, unsigned int num_ssid,
             &mgr->radio_config[radio_index].vaps.rdk_vap_array[vap_array_index],
             sizeof(rdk_wifi_vap_info_t));
     }
+}
+
+int free_event_webconfig_data(webconfig_subdoc_type_t type, webconfig_subdoc_decoded_data_t *data)
+{
+    switch (type) {
+    case webconfig_subdoc_type_csi:
+        wifi_util_info_print(WIFI_CTRL, "%s:%d decoded csi queue:%p\n", __func__, __LINE__,
+            data->csi_data_queue);
+        if (data->csi_data_queue != NULL) {
+            queue_destroy(data->csi_data_queue);
+            data->csi_data_queue = NULL;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return RETURN_OK;
+}
+
+int free_webconfig_msg_payload(wifi_event_subtype_t sub_type, webconfig_subdoc_data_t *data)
+{
+    switch (sub_type) {
+    case wifi_event_webconfig_set_data:
+    case wifi_event_webconfig_set_data_dml:
+        free_event_webconfig_data(data->type, &data->u.decoded);
+        break;
+    default:
+        break;
+    }
+
+    return RETURN_OK;
 }
 
 void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len,
@@ -4681,6 +4804,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             wifi_event->sub_type = subtype;
             wifi_event->u.webconfig_data = data;
             apps_mgr_event(&ctrl->apps_mgr, wifi_event);
+            free_webconfig_msg_payload(subtype, data);
             if (wifi_event != NULL) {
                 free(wifi_event);
             }
@@ -4696,6 +4820,8 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         memcpy((unsigned char *)&data->u.decoded.ignite_config, (unsigned char *)&mgr->ignite_config, getNumberRadios() * sizeof(ignite_config_t));
         if (raw == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data\n", __func__, __LINE__);
+            free(data);
+            data = NULL;
             return;
         }
         webconfig_decode(config, data, raw);
@@ -4703,9 +4829,24 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         webconfig_data_free(data);
         break;
 
-    case wifi_event_webconfig_set_data_tunnel:
+    case wifi_event_webconfig_set_data_nasta:
         memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
+        if (raw == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Empty raw data for NaSta\n",
+                __func__, __LINE__);
+            free(data);
+            data = NULL;
+            return;
+        }
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
+        webconfig_decode(config, data, raw);
+        webconfig_data_free(data);
+        break;
+
+    case wifi_event_webconfig_set_data_tunnel:
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+                sizeof(wifi_hal_capability_t));
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         webconfig_decode(config, data, raw);
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
@@ -4735,7 +4876,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         ctrl->webconfig_state |= ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
         break;
-
+    
     case wifi_event_webconfig_data_to_hal_apply: //Re-factor this for Phase 2
         process_acs_keep_out_channels_event(raw);
         break;

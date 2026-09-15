@@ -349,7 +349,7 @@ webconfig_error_t decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
     cJSON_free(str);
 
     params = &data->u.decoded;
-    
+
     // decode VAP objects
     obj_vaps = cJSON_GetObjectItem(json, "WifiVapConfig");
     if (cJSON_IsArray(obj_vaps) == false) {

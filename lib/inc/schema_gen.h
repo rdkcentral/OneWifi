@@ -147,12 +147,12 @@
         PJS_OVS_BOOL(hostap_mgt_frame_ctrl) \
         PJS_OVS_BOOL(interop_ctrl) \
         PJS_OVS_BOOL(mbo_enabled) \
-        PJS_OVS_BOOL(mdu_enabled)\
-        PJS_OVS_INT(speed_tier)\
-        PJS_OVS_STRING(repurposed_bridge_name, 8 + 1)\
         PJS_OVS_BOOL(mld_enable) \
         PJS_OVS_INT(mld_id) \
         PJS_OVS_INT(mld_link_id) \
+        PJS_OVS_BOOL(mdu_enabled)\
+        PJS_OVS_INT(speed_tier)\
+        PJS_OVS_STRING(repurposed_bridge_name, 8 + 1)\
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -214,7 +214,7 @@
         PJS_OVS_BOOL(tcm_secure_5g_rfc) \
         PJS_OVS_BOOL(tcm_secure_6g_rfc) \
         PJS_OVS_BOOL(wpa3_compatibility_enable) \
-        PJS_OVS_BOOL(link_quality_rfc) \
+        PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
         PJS_OVS_BOOL(multiap_rfc) \
   )
@@ -1701,8 +1701,46 @@
         PJS_OVS_STRING(ignite_name, 32 + 1) \
         PJS_OVS_INT(min_chanutil_threshold) \
         PJS_OVS_INT(max_chanutil_threshold) \
-        PJS_OVS_INT(snr_threshold) \
         PJS_OVS_INT(snr_difference) \
+    )
+
+/* Wifi_Wei_Rfc_Config: single-row WEI RFC config, WiFi DB is the sole owner
+ * (the WEI_RFC_MASK bitmask is derived from this table at read time, not persisted). */
+#define PJS_SCHEMA_Wifi_Wei_Rfc_Config \
+    PJS(schema_Wifi_Wei_Rfc_Config, \
+        PJS_OVS_UUID_Q(_uuid) \
+        PJS_OVS_UUID_Q(_version) \
+        PJS_OVS_STRING(wei_rfc_id, 16 + 1) \
+        PJS_OVS_BOOL(wei_enable) \
+        PJS_OVS_INT(lq_meas_params_mask) \
+        PJS_OVS_INT(lq_meas_duration) \
+        PJS_OVS_INT(radio_2g_max_snr) \
+        PJS_OVS_INT(radio_5g_max_snr) \
+        PJS_OVS_INT(radio_6g_max_snr) \
+        PJS_OVS_INT(radio_2g_max_phy) \
+        PJS_OVS_INT(radio_5g_max_phy) \
+        PJS_OVS_INT(radio_6g_max_phy) \
+        PJS_OVS_BOOL(sc_home_enable) \
+        PJS_OVS_INT(sc_home_threshold) \
+        PJS_OVS_BOOL(sc_home_detail_enable) \
+        PJS_OVS_BOOL(sc_client_enable) \
+        PJS_OVS_INT(sc_client_threshold) \
+        PJS_OVS_BOOL(sc_client_detail_enable) \
+        PJS_OVS_STRING(sc_client_whitelist, 256 + 1) \
+        PJS_OVS_BOOL(gc_home_enable) \
+        PJS_OVS_INT(gc_home_threshold) \
+        PJS_OVS_BOOL(gc_home_detail_enable) \
+        PJS_OVS_BOOL(gc_client_enable) \
+        PJS_OVS_INT(gc_client_threshold) \
+        PJS_OVS_BOOL(gc_client_detail_enable) \
+        PJS_OVS_STRING(gc_client_whitelist, 256 + 1) \
+        PJS_OVS_BOOL(lq_home_enable) \
+        PJS_OVS_INT(lq_home_threshold) \
+        PJS_OVS_BOOL(lq_home_detail_enable) \
+        PJS_OVS_BOOL(lq_client_enable) \
+        PJS_OVS_INT(lq_client_threshold) \
+        PJS_OVS_BOOL(lq_client_detail_enable) \
+        PJS_OVS_STRING(lq_client_whitelist, 256 + 1) \
     )
 
 #define PJS_GEN_TABLE \
@@ -1801,7 +1839,8 @@
      PJS_SCHEMA_Reboot_Status \
      PJS_SCHEMA_Service_Announcement \
      PJS_SCHEMA_Node_Services \
-     PJS_SCHEMA_Wifi_Ignite_Config 
+     PJS_SCHEMA_Wifi_Ignite_Config \
+     PJS_SCHEMA_Wifi_Wei_Rfc_Config
 
 #define SCHEMA_LIST \
     SCHEMA(AWLAN_Node) \
@@ -1826,6 +1865,7 @@
     SCHEMA(Wifi_Postassoc_Control_Config) \
     SCHEMA(Wifi_Connection_Control_Config) \
     SCHEMA(Wifi_Ignite_Config) \
+    SCHEMA(Wifi_Wei_Rfc_Config) \
     SCHEMA(Wifi_Anqp_Config) \
     SCHEMA(Wifi_Passpoint_Config) \
     SCHEMA(Wifi_Radio_State) \
@@ -1926,6 +1966,7 @@
     SCHEMA(Wifi_Postassoc_Control_Config) \
     SCHEMA(Wifi_Connection_Control_Config) \
     SCHEMA(Wifi_Ignite_Config) \
+    SCHEMA(Wifi_Wei_Rfc_Config) \
     SCHEMA(Wifi_Radio_State) \
     SCHEMA(Wifi_Credential_Config) \
     SCHEMA(Wifi_VIF_Config) \
@@ -2110,13 +2151,13 @@
     COLUMN(connected_building_enabled)\
     COLUMN(hostap_mgt_frame_ctrl) \
     COLUMN(mbo_enabled)\
+    COLUMN(mld_enable)\
+    COLUMN(mld_id)\
+    COLUMN(mld_link_id)\
     COLUMN(interop_ctrl)\
     COLUMN(mdu_enabled)\
     COLUMN(speed_tier)\
-    COLUMN(repurposed_bridge_name)\
-    COLUMN(mld_enable)\
-    COLUMN(mld_id)\
-    COLUMN(mld_link_id)
+    COLUMN(repurposed_bridge_name)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -2169,9 +2210,9 @@
     COLUMN(tcm_secure_5g_rfc) \
     COLUMN(tcm_secure_6g_rfc) \
     COLUMN(wpa3_compatibility_enable) \
-    COLUMN(link_quality_rfc) \
-    COLUMN(xfi_tel_enable_rfc) \
+    COLUMN(csi_analytics_enabled_rfc) \
     COLUMN(multiap_rfc) \
+    COLUMN(xfi_tel_enable_rfc)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3302,56 +3343,56 @@
 
 #define SCHEMA__Wifi_Global_Config "Wifi_Global_Config"
 #define SCHEMA_COLUMN__Wifi_Global_Config(COLUMN) \
-    COLUMN(gas_config)                            \
-    COLUMN(notify_wifi_changes)                   \
-    COLUMN(prefer_private)                        \
-    COLUMN(prefer_private_configure)              \
-    COLUMN(factory_reset)                         \
-    COLUMN(tx_overflow_selfheal)                  \
-    COLUMN(inst_wifi_client_enabled)              \
-    COLUMN(inst_wifi_client_reporting_period)     \
-    COLUMN(inst_wifi_client_mac)                  \
+    COLUMN(gas_config) \
+    COLUMN(notify_wifi_changes) \
+    COLUMN(prefer_private) \
+    COLUMN(prefer_private_configure) \
+    COLUMN(factory_reset) \
+    COLUMN(tx_overflow_selfheal) \
+    COLUMN(inst_wifi_client_enabled) \
+    COLUMN(inst_wifi_client_reporting_period) \
+    COLUMN(inst_wifi_client_mac) \
     COLUMN(inst_wifi_client_def_reporting_period) \
-    COLUMN(wifi_active_msmt_enabled)              \
-    COLUMN(wifi_active_msmt_pktsize)              \
-    COLUMN(wifi_active_msmt_num_samples)          \
-    COLUMN(wifi_active_msmt_sample_duration)      \
-    COLUMN(vlan_cfg_version)                      \
-    COLUMN(wps_pin)                               \
-    COLUMN(bandsteering_enable)                   \
-    COLUMN(good_rssi_threshold)                   \
-    COLUMN(assoc_count_threshold)                 \
-    COLUMN(assoc_gate_time)                       \
-    COLUMN(whix_log_interval)                     \
-    COLUMN(whix_chutility_loginterval)            \
-    COLUMN(rss_check_interval)                    \
-    COLUMN(rss_threshold)                         \
-    COLUMN(rss_maxlimit)                          \
-    COLUMN(heapwalk_duration)                     \
-    COLUMN(heapwalk_interval)                     \
-    COLUMN(memwraptool_enable)                    \
-    COLUMN(rss_memory_restart_threshold_low)      \
-    COLUMN(rss_memory_restart_threshold_high)     \
-    COLUMN(assoc_monitor_duration)                \
-    COLUMN(rapid_reconnect_enable)                \
-    COLUMN(vap_stats_feature)                     \
-    COLUMN(mfp_config_feature)                    \
-    COLUMN(force_disable_radio_feature)           \
-    COLUMN(force_disable_radio_status)            \
-    COLUMN(fixed_wmm_params)                      \
-    COLUMN(wifi_region_code)                      \
-    COLUMN(diagnostic_enable)                     \
-    COLUMN(validate_ssid)                         \
-    COLUMN(device_network_mode)                   \
-    COLUMN(normalized_rssi_list)                  \
-    COLUMN(snr_list)                              \
-    COLUMN(cli_stat_list)                         \
-    COLUMN(txrx_rate_list)                        \
-    COLUMN(mgt_frame_rate_limit_enable)           \
-    COLUMN(mgt_frame_rate_limit)                  \
-    COLUMN(mgt_frame_rate_limit_window_size)      \
-    COLUMN(mgt_frame_rate_limit_cooldown_time)    \
-    COLUMN(ignite_link_quality_threshold)
+    COLUMN(wifi_active_msmt_enabled) \
+    COLUMN(wifi_active_msmt_pktsize) \
+    COLUMN(wifi_active_msmt_num_samples) \
+    COLUMN(wifi_active_msmt_sample_duration) \
+    COLUMN(vlan_cfg_version) \
+    COLUMN(wps_pin) \
+    COLUMN(bandsteering_enable) \
+    COLUMN(good_rssi_threshold) \
+    COLUMN(assoc_count_threshold) \
+    COLUMN(assoc_gate_time) \
+    COLUMN(whix_log_interval) \
+    COLUMN(whix_chutility_loginterval) \
+    COLUMN(rss_check_interval) \
+    COLUMN(rss_threshold) \
+    COLUMN(rss_maxlimit) \
+    COLUMN(heapwalk_duration) \
+    COLUMN(heapwalk_interval) \
+    COLUMN(memwraptool_enable) \
+    COLUMN(rss_memory_restart_threshold_low) \
+    COLUMN(rss_memory_restart_threshold_high) \
+    COLUMN(assoc_monitor_duration) \
+    COLUMN(rapid_reconnect_enable) \
+    COLUMN(vap_stats_feature) \
+    COLUMN(mfp_config_feature) \
+    COLUMN(force_disable_radio_feature) \
+    COLUMN(force_disable_radio_status) \
+    COLUMN(fixed_wmm_params) \
+    COLUMN(wifi_region_code) \
+    COLUMN(diagnostic_enable) \
+    COLUMN(validate_ssid) \
+    COLUMN(device_network_mode) \
+    COLUMN(normalized_rssi_list) \
+    COLUMN(snr_list) \
+    COLUMN(cli_stat_list) \
+    COLUMN(txrx_rate_list) \
+    COLUMN(mgt_frame_rate_limit_enable) \
+    COLUMN(mgt_frame_rate_limit) \
+    COLUMN(mgt_frame_rate_limit_window_size) \
+    COLUMN(mgt_frame_rate_limit_cooldown_time) \
+    COLUMN(ignite_link_quality_threshold) \
 
 #define SCHEMA__Wifi_Preassoc_Control_Config "Wifi_Preassoc_Control_Config"
 #define SCHEMA_COLUMN__Wifi_Preassoc_Control_Config(COLUMN) \
@@ -3389,8 +3430,41 @@
     COLUMN(ignite_name) \
     COLUMN(min_chanutil_threshold) \
     COLUMN(max_chanutil_threshold) \
-    COLUMN(snr_threshold) \
     COLUMN(snr_difference) \
+
+#define SCHEMA__Wifi_Wei_Rfc_Config "Wifi_Wei_Rfc_Config"
+#define SCHEMA_COLUMN__Wifi_Wei_Rfc_Config(COLUMN) \
+    COLUMN(wei_rfc_id) \
+    COLUMN(wei_enable) \
+    COLUMN(lq_meas_params_mask) \
+    COLUMN(lq_meas_duration) \
+    COLUMN(radio_2g_max_snr) \
+    COLUMN(radio_5g_max_snr) \
+    COLUMN(radio_6g_max_snr) \
+    COLUMN(radio_2g_max_phy) \
+    COLUMN(radio_5g_max_phy) \
+    COLUMN(radio_6g_max_phy) \
+    COLUMN(sc_home_enable) \
+    COLUMN(sc_home_threshold) \
+    COLUMN(sc_home_detail_enable) \
+    COLUMN(sc_client_enable) \
+    COLUMN(sc_client_threshold) \
+    COLUMN(sc_client_detail_enable) \
+    COLUMN(sc_client_whitelist) \
+    COLUMN(gc_home_enable) \
+    COLUMN(gc_home_threshold) \
+    COLUMN(gc_home_detail_enable) \
+    COLUMN(gc_client_enable) \
+    COLUMN(gc_client_threshold) \
+    COLUMN(gc_client_detail_enable) \
+    COLUMN(gc_client_whitelist) \
+    COLUMN(lq_home_enable) \
+    COLUMN(lq_home_threshold) \
+    COLUMN(lq_home_detail_enable) \
+    COLUMN(lq_client_enable) \
+    COLUMN(lq_client_threshold) \
+    COLUMN(lq_client_detail_enable) \
+    COLUMN(lq_client_whitelist) \
 
 #define SCHEMA__AWLAN_Node__id "id"
 #define SCHEMA__AWLAN_Node__model "model"
@@ -3496,12 +3570,12 @@
 #define SCHEMA__Wifi_VAP_Config__hostap_mgt_frame_ctrl "hostap_mgt_frame_ctrl"
 #define SCHEMA__Wifi_VAP_Config__interop_ctrl "interop_ctrl"
 #define SCHEMA__Wifi_VAP_Config__mbo_enabled "mbo_enabled"
-#define SCHEMA__Wifi_VAP_Config__mdu_enabled "mdu_enabled"
-#define SCHEMA__Wifi_VAP_Config__speed_tier "speed_tier"
-#define SCHEMA__Wifi_VAP_Config__repurposed_bridge_name "repurposed_bridge_name"
 #define SCHEMA__Wifi_VAP_Config__mld_enable "mld_enable"
 #define SCHEMA__Wifi_VAP_Config__mld_id "mld_id"
 #define SCHEMA__Wifi_VAP_Config__mld_link_id "mld_link_id"
+#define SCHEMA__Wifi_VAP_Config__mdu_enabled "mdu_enabled"
+#define SCHEMA__Wifi_VAP_Config__speed_tier "speed_tier"
+#define SCHEMA__Wifi_VAP_Config__repurposed_bridge_name "repurposed_bridge_name"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"
@@ -3548,10 +3622,9 @@
 #define SCHEMA__Wifi_Rfc_Config__tcm_secure_5g_rfc "tcm_secure_5g_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_secure_6g_rfc "tcm_secure_6g_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
-#define SCHEMA__Wifi_Rfc_Config__link_quality_rfc "link_quality_rfc"
-#define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
+#define SCHEMA__Wifi_Rfc_Config__csi_analytics_enabled_rfc "csi_analytics_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
-
+#define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
@@ -4671,5 +4744,36 @@
 #define SCHEMA__Wifi_Ignite_Config__ignite_name "ignite_name"
 #define SCHEMA__Wifi_Ignite_Config__min_chanutil_threshold "min_chanutil_threshold"
 #define SCHEMA__Wifi_Ignite_Config__max_chanutil_threshold "max_chanutil_threshold"
-#define SCHEMA__Wifi_Ignite_Config__snr_threshold "snr_threshold"
 #define SCHEMA__Wifi_Ignite_Config__snr_difference "snr_difference"
+
+#define SCHEMA__Wifi_Wei_Rfc_Config__wei_rfc_id "wei_rfc_id"
+#define SCHEMA__Wifi_Wei_Rfc_Config__wei_enable "wei_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_params_mask "lq_meas_params_mask"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_duration "lq_meas_duration"
+#define SCHEMA__Wifi_Wei_Rfc_Config__radio_2g_max_snr "radio_2g_max_snr"
+#define SCHEMA__Wifi_Wei_Rfc_Config__radio_5g_max_snr "radio_5g_max_snr"
+#define SCHEMA__Wifi_Wei_Rfc_Config__radio_6g_max_snr "radio_6g_max_snr"
+#define SCHEMA__Wifi_Wei_Rfc_Config__radio_2g_max_phy "radio_2g_max_phy"
+#define SCHEMA__Wifi_Wei_Rfc_Config__radio_5g_max_phy "radio_5g_max_phy"
+#define SCHEMA__Wifi_Wei_Rfc_Config__radio_6g_max_phy "radio_6g_max_phy"
+#define SCHEMA__Wifi_Wei_Rfc_Config__sc_home_enable "sc_home_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__sc_home_threshold "sc_home_threshold"
+#define SCHEMA__Wifi_Wei_Rfc_Config__sc_home_detail_enable "sc_home_detail_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__sc_client_enable "sc_client_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__sc_client_threshold "sc_client_threshold"
+#define SCHEMA__Wifi_Wei_Rfc_Config__sc_client_detail_enable "sc_client_detail_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__sc_client_whitelist "sc_client_whitelist"
+#define SCHEMA__Wifi_Wei_Rfc_Config__gc_home_enable "gc_home_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__gc_home_threshold "gc_home_threshold"
+#define SCHEMA__Wifi_Wei_Rfc_Config__gc_home_detail_enable "gc_home_detail_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__gc_client_enable "gc_client_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__gc_client_threshold "gc_client_threshold"
+#define SCHEMA__Wifi_Wei_Rfc_Config__gc_client_detail_enable "gc_client_detail_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__gc_client_whitelist "gc_client_whitelist"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_home_enable "lq_home_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_home_threshold "lq_home_threshold"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_home_detail_enable "lq_home_detail_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_enable "lq_client_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_threshold "lq_client_threshold"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_detail_enable "lq_client_detail_enable"
+#define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_whitelist "lq_client_whitelist"

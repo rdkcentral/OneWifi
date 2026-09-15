@@ -36,7 +36,16 @@
 #include "wifi_base.h"
 #include "wifi_stubs.h"
 #include "wifi_multiap.h"
+
 #define SCORE_TIE_THRESHOLD 1
+#define WIFI_VARIANT_BE 7
+#define WIFI_VARIANT_AX 6
+#define WIFI_VARIANT_AC 5
+#define WIFI_VARIANT_N  4
+#define WIFI_VARIANT_G  3
+#define WIFI_VARIANT_B  2
+#define WIFI_VARIANT_A  1
+#define WIFI_VARIANT_ERROR 0
 
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
@@ -161,14 +170,14 @@ void sort_bss_results_by_rssi(bss_candidate_t *bss, int start, int end)
 
 int get_variant_rank(wifi_ieee80211Variant_t variant)
 {
-    if (variant & WIFI_80211_VARIANT_BE) return 8;
-    if (variant & WIFI_80211_VARIANT_AX) return 7;
-    if (variant & WIFI_80211_VARIANT_AC) return 6;
-    if (variant & WIFI_80211_VARIANT_N)  return 5;
-    if (variant & WIFI_80211_VARIANT_G)  return 4;
-    if (variant & WIFI_80211_VARIANT_B)  return 3;
-    if (variant & WIFI_80211_VARIANT_A)  return 2;
-    return 1;
+    if (variant & WIFI_80211_VARIANT_BE) return WIFI_VARIANT_BE;
+    if (variant & WIFI_80211_VARIANT_AX) return WIFI_VARIANT_AX;
+    if (variant & WIFI_80211_VARIANT_AC) return WIFI_VARIANT_AC;
+    if (variant & WIFI_80211_VARIANT_N)  return WIFI_VARIANT_N;
+    if (variant & WIFI_80211_VARIANT_G)  return WIFI_VARIANT_G;
+    if (variant & WIFI_80211_VARIANT_B)  return WIFI_VARIANT_B;
+    if (variant & WIFI_80211_VARIANT_A)  return WIFI_VARIANT_A;
+    return WIFI_VARIANT_ERROR;
 }
 /**
  * @brief Comparator for qsort - sorts by score (descending)
@@ -217,7 +226,7 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
              free(scores);
              return RETURN_ERR;
         }
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold ,mgr->ignite_config[radio_index].SNR_threshold ,mgr->ignite_config[radio_index].SNR_difference);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f]\n", __func__, __LINE__, count, mgr->ignite_config[radio_index].ignite_name, mgr->ignite_config[radio_index].min_chanutil_threshold ,mgr->ignite_config[radio_index].max_chanutil_threshold , mgr->ignite_config[radio_index].SNR_difference);
 
         ignite_config = &mgr->ignite_config[radio_index];
         float chan_util = (float)scan_list[i].external_ap.chan_utilization;
@@ -272,11 +281,10 @@ int sort_bss_results_by_ranking(bss_candidate_t *scan_list, int count)
                 return RETURN_ERR;
             }
             wifi_util_dbg_print(WIFI_CTRL,
-                "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f %f]\n", __func__,
+                "%s:%d Scan-count : %d Ignite Threshold Values [ %s %f %f %f]\n", __func__,
                 __LINE__, count, mgr->ignite_config[radio_index].ignite_name,
                 mgr->ignite_config[radio_index].min_chanutil_threshold,
                 mgr->ignite_config[radio_index].max_chanutil_threshold,
-                mgr->ignite_config[radio_index].SNR_threshold,
                 mgr->ignite_config[radio_index].SNR_difference);
             ignite_config_t *cfg = &mgr->ignite_config[radio_index];
 	        snr_bucket2 = (float)scores[i].candidate->external_ap.snr;
@@ -881,8 +889,8 @@ void ext_start_scan(vap_svc_t *svc)
 
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
             radio_index);
-        wifi_hal_startScan(radio_index, mode, dwell_time,
-            channels.num_channels, channels.channels_list);
+        wifi_hal_startScan(radio_index, mode, dwell_time, channels.num_channels,
+            channels.channels_list);
     }
     ext->is_on_channel = false;
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_timeout_handler_id,
@@ -1295,35 +1303,52 @@ int vap_svc_mesh_ext_disconnect(vap_svc_t *svc)
 int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
+    unsigned int i, num_of_radios;
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service start\n", __func__, __LINE__);
 
-    if (radio_index >= MAX_NUM_RADIOS) {
+    if ((radio_index != WIFI_ALL_RADIO_INDICES) && (radio_index >= MAX_NUM_RADIOS)) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d failed to start mesh service: wrong radio index %d\n", __func__, __LINE__,
             radio_index);
         return -1;
     }
 
+    if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d number of radios %d exceeds supported %d\n", __func__, __LINE__,
+            num_of_radios, MAX_NUM_RADIOS);
+        return -1;
+    }
+
+    if (ext->is_started == false) {
+        // initialize all extender specific structures
+        if (ext->candidates_list.scan_list != NULL) {
+            free(ext->candidates_list.scan_list);
+            ext->candidates_list.scan_list = NULL;
+            ext->candidates_list.scan_count = 0;
+        }
+        memset(ext, 0, sizeof(vap_svc_ext_t));
+    }
+
     /* create STA vap's and install acl filters */
-    if (!ext->is_vap_started[radio_index]) {
-        vap_svc_start(svc, radio_index);
-        ext->is_vap_started[radio_index] = true;
+    for (i = 0; i < num_of_radios; i++) {
+        if ((radio_index != WIFI_ALL_RADIO_INDICES) && (i != radio_index)) {
+            continue;
+        }
+        if (!ext->is_vap_started[i]) {
+            vap_svc_start(svc, i);
+            ext->is_vap_started[i] = true;
+        }
     }
 
-    if (ext->is_started == true) {
+    if (ext->is_started == false) {
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        schedule_connect_sm(svc);
+        ext->is_started = true;
+    } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already started\n", __func__, __LINE__);
-        return 0;
     }
-
-    // initialize all extender specific structures
-    memset(ext, 0, sizeof(vap_svc_ext_t));
-
-    ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-    schedule_connect_sm(svc);
-
-    ext->is_started = true;
-
     return 0;
 }
 
@@ -1353,6 +1378,7 @@ int vap_svc_mesh_ext_clear_variable(vap_svc_t *svc)
 int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
+    unsigned int i, num_of_radios;
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service stop\n", __func__, __LINE__);
 
@@ -1365,16 +1391,28 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already stopped\n", __func__, __LINE__);
     }
 
-    if (radio_index >= MAX_NUM_RADIOS) {
+    if ((radio_index != WIFI_ALL_RADIO_INDICES) && (radio_index >= MAX_NUM_RADIOS)) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d failed to stop mesh service: wrong radio index %d\n", __func__, __LINE__,
             radio_index);
         return -1;
     }
 
-    if (ext->is_vap_started[radio_index]) {
-        vap_svc_stop(svc, radio_index);
-        ext->is_vap_started[radio_index] = false;
+    if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d number of radios %d exceeds supported %d\n", __func__, __LINE__,
+            num_of_radios, MAX_NUM_RADIOS);
+        return -1;
+    }
+
+    for (i = 0; i < num_of_radios; i++) {
+        if ((radio_index != WIFI_ALL_RADIO_INDICES) && (i != radio_index)) {
+            continue;
+        }
+        if (ext->is_vap_started[i]) {
+            vap_svc_stop(svc, i);
+            ext->is_vap_started[i] = false;
+        }
     }
 
     return 0;
@@ -1501,13 +1539,13 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
     wifi_vap_info_map_t *tgt_vap_map = NULL;
     vap_svc_ext_t *ext = &svc->u.ext;
     wifi_ctrl_t *ctrl = svc->ctrl;
-
+    
     tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (tgt_vap_map == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __FUNCTION__,__LINE__);
         return -1;
     }
-
+    
     for (i = 0; i < map->num_vaps; i++) {
         memset((unsigned char *)tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
         memcpy((unsigned char *)&tgt_vap_map->vap_array[0], (unsigned char *)&map->vap_array[i],
@@ -1534,7 +1572,7 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.sta_info.security);
-
+        update_vap_hal_prop_bridge_name(svc, tgt_vap_map);
         wifi_util_info_print(WIFI_CTRL, "%s:%d RF-Status : %d Ignite-Enable : %d\n", __func__, __LINE__, ctrl->rf_status_down, map->vap_array[i].u.sta_info.ignite_enabled);
         publish_endpoint_enable();
         if ((ctrl->rf_status_down) || (ctrl->multiap_sta_enabled)) {
@@ -1545,7 +1583,6 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
             ext->is_started = true;
         }
     }
-
     if (tgt_vap_map) {
        free(tgt_vap_map);
        tgt_vap_map = NULL;
@@ -2006,9 +2043,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     wifi_ctrl_t *ctrl;
     bss_candidate_t *candidate = NULL;
     bool found_candidate = false, send_event = false;
-    char cmd[MAX_STR_LEN] = {0};
     unsigned int i = 0, j = 0;
     int index;
+    char cmd[MAX_STR_LEN] = {0};
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
     raw_data_t data;
@@ -2428,6 +2465,12 @@ int process_ext_hal_ind(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg
 
     case wifi_event_hal_channel_change:
         process_ext_channel_change(svc, arg);
+        break;
+
+    case wifi_event_hal_pre_assoc_fail:
+    case wifi_event_hal_post_assoc_fail:
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Ignored HAL event: %s\r\n",__func__, __LINE__,
+		      wifi_event_subtype_to_string(sub_type));
         break;
 
     default:
