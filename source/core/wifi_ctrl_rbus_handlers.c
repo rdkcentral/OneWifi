@@ -51,6 +51,14 @@ apply_ignite_config_t g_apply_ignite_config;
 
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
+/* Runtime-only ignite flag; not in g_wei_param_table because
+ * get_ctrl_wei_rfc_parameters() re-copies that struct from the OVSDB mirror on
+ * every call, which would clobber it. */
+static bool g_wei_ignite_enable = false;
+
+/* Defined with the WEI RFC provider table further down. */
+static int wei_lookup_param(const char *name);
+
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
     char *eventName)
 {
@@ -330,21 +338,51 @@ void hotspot_timing_disconnected(void)
     }
 }
 
+/* Queues a WEI RFC bool the same way an rbus Set does, minus the round trip. */
+static int wei_queue_bool(const char *dmpath, bool value)
+{
+    wei_rfc_field_update_t upd;
+    int idx = wei_lookup_param(dmpath);
+
+    if (idx < 0) {
+        return -1;
+    }
+    memset(&upd, 0, sizeof(upd));
+    upd.field_id = idx;
+    upd.bval = value;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d queue %s=%d\n", __func__, __LINE__, dmpath, value);
+    return (push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+                wifi_event_type_wei_rfc_config, NULL) == RETURN_OK) ? 0 : -1;
+}
+
 /* WEI publishes only the ignite status while this is set; T2 bundles stay off. */
 static int wei_set_ignite_mode(bool enable)
 {
-    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    raw_data_t data;
-    char str[512];
+    wei_rfc_dml_parameters_t *cfg = get_ctrl_wei_rfc_parameters();
+    wei_rfc_field_update_t upd;
 
-    memset(&data, 0, sizeof(raw_data_t));
-    memset(str, 0, sizeof(str));
-    snprintf(str, sizeof(str), "%s", WEI_IGNITE_ENABLE_DMPATH);
-    data.data_type = bus_data_type_boolean;
-    data.raw_data.b = enable;
+    /* Everything here goes via the ctrl queue, never an rbus Set: OneWifi owns
+     * these elements and this runs inside the EndPoint.1.Enable set callback,
+     * where rbus cannot dispatch a nested set until we return (times out rc=20). */
+    if (enable != cfg->wei_enable && wei_queue_bool(WEI_MEASUREMENT_RFC, enable) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set WEI enable to %d\n", __func__,
+            __LINE__, enable);
+        return -1;
+    }
+    /* wei_compute_rfc_mask() only reaches the IGNITE bit when wei_enable is set,
+     * and WEI only scores when the LQ pillar is on, so ignite needs both. */
+    if (enable != (cfg->lq.home_enable || cfg->lq.client_enable) &&
+        wei_queue_bool(WEI_LQ_CLIENT_ENABLE_DMPATH, enable) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set LQ to %d\n", __func__, __LINE__,
+            enable);
+        return -1;
+    }
 
-    if (get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data) !=
-        bus_error_success) {
+    g_wei_ignite_enable = enable;
+    memset(&upd, 0, sizeof(upd));
+    upd.field_id = -1;
+    if (push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+            wifi_event_type_wei_rfc_config, NULL) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set ignite mode to %d\n", __func__,
             __LINE__, enable);
         return -1;
@@ -2023,8 +2061,6 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
  * ============================================================ */
 #define WEI_FIELD(path, ftype, member) \
     { (path), (ftype), offsetof(wei_rfc_dml_parameters_t, member), sizeof(((wei_rfc_dml_parameters_t *)0)->member) }
-
-static bool g_wei_ignite_enable = false;
 
 static wei_param_entry_t g_wei_param_table[] = {
     WEI_FIELD(WEI_MEASUREMENT_RFC,        FIELD_BOOL,   wei_enable),

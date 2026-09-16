@@ -82,17 +82,17 @@ void publish_qmgr_subdoc(const report_batch_t* report)
     wifi_app = get_app_by_inst(&ctrl->apps_mgr, wifi_app_inst_link_quality);
     if (wifi_app == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
+        webconfig_data_free(data);
+        free(data);
         return;
     }
     status = get_bus_descriptor()->bus_event_publish_fn(&wifi_app->ctrl->handle, WIFI_QUALITY_LINKREPORT, &rdata);
     if (status != bus_error_success) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, status);
-        free(data);
-        return ;
     }
-    if(data)
-        free(data);
+    webconfig_data_free(data);
+    free(data);
     return;
 }
 #endif
@@ -246,12 +246,17 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
     }
 
     server_arg_t *server_arg = (server_arg_t *)malloc(sizeof(server_arg_t));
+    if (server_arg == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d malloc failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
     memset(server_arg,0,sizeof(server_arg_t));
     switch (doc->type) {
         case webconfig_subdoc_type_em_config:
             em_config = &decoded_params->em_config;
             if (em_config == NULL) {
                 wifi_util_error_print(WIFI_APPS, "%s:%d NULL pointer \n", __func__, __LINE__);
+                free(server_arg);
                 return RETURN_ERR;
             }
 
@@ -270,7 +275,7 @@ int link_quality_param_reinit(wifi_app_t *apps, wifi_event_t *arg)
             break;
 
         default:
-  
+            free(server_arg);
             break;
     }
 #endif
