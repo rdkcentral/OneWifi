@@ -4120,75 +4120,68 @@ static int switch_dfs_channel(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info)
+void update_apmld_map(apmld_map_t *apmld_map)
 {
-    uint8_t j = 0;
-    rdk_wifi_vap_info_t *rdk_vaps;
-    wifi_vap_info_map_t *vap_map = NULL;
-    uint8_t i = 0, vap_index = 0;
-    bool found = false;
+    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
+    unsigned int num_radios = getNumberRadios();
+    int mld_id_to_idx[MLD_UNIT_COUNT];
 
-    for (i = 0; i < tgt_vap_map->num_vaps; i++) {
-        vap_index = tgt_vap_map->vap_array[i].vap_index;
-        found = false;
-        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
-        if (vap_map == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d global vap_map null radio_index:%d\n", __func__,
-                __LINE__, tgt_vap_map->vap_array[i].radio_index);
-            return RETURN_ERR;
+    apmld_map->mld_group_count = 0;
+    memset(apmld_map->mld_groups, 0, sizeof(apmld_map->mld_groups));
+    memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
+
+    for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
+        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
+        if (mgr_vap_info_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
+            apmld_map->mld_group_count = 0;
+            return;
         }
-        rdk_vaps = get_wifidb_rdk_vaps(tgt_vap_map->vap_array[i].radio_index);
-        if (rdk_vaps == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vaps for radio index: %d\n",
-                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index);
-            return RETURN_ERR;
-        }
-        for (j = 0; j < vap_map->num_vaps; j++) {
-            if (vap_map->vap_array[j].vap_index == vap_index) {
-                found = true;
-                memcpy((unsigned char *)&vap_map->vap_array[j],
-                    (unsigned char *)&tgt_vap_map->vap_array[i], sizeof(wifi_vap_info_t));
-#ifdef _PLATFORM_BANANAPI_R4_
-                // Selective sync of rdk_vap_info fields only.
-                // DO NOT memcpy the entire structure because some apply paths use partial
-                // decoded structs and full-copy can skew the internal state for
-                // i.e. vap_names/index, hashmaps
-                rdk_vaps[j].exists = rdk_vap_info[i].exists;
-                rdk_vaps[j].force_apply = rdk_vap_info[i].force_apply;
-#else
-                memcpy(&rdk_vaps[j], &rdk_vap_info[i], sizeof(rdk_wifi_vap_info_t));
-#endif
-                break;
+
+        for (unsigned int k = 0; k < mgr_vap_info_map->num_vaps; k++) {
+            wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
+            wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
+            unsigned int id = mld_info->mld_id;
+            unsigned int mld_idx;
+
+            if (isVapSTAMesh(vap_config->vap_index)) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d VAP %s is a STA mesh, skip\n", __func__, __LINE__, vap_config->vap_name);
+                continue;
+            }
+
+            if (!mld_info->mld_enable) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            if (id >= MLD_UNIT_COUNT) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid MLD ID: %u\n", __func__, __LINE__, id);
+                continue;
+            }
+
+            // Check if MLD ID already has an index
+            if (mld_id_to_idx[id] == -1) {
+                // New MLD ID
+                if (apmld_map->mld_group_count >= MLD_UNIT_COUNT) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d MLD count exceeds maximum\n", __func__, __LINE__);
+                    continue;
+                }
+                mld_idx = apmld_map->mld_group_count;
+                mld_id_to_idx[id] = mld_idx;
+                apmld_map->mld_group_count++;
+            } else {
+                // Existing MLD ID
+                mld_idx = mld_id_to_idx[id];
+            }
+
+            // Store VAP in MLD group
+            mld_group_t *mld_group = &apmld_map->mld_groups[mld_idx];
+            if (mld_group->mld_vap_count < MAX_NUM_RADIOS) {
+                mld_group->mld_vaps[mld_group->mld_vap_count] = vap_config;
+                mld_group->mld_vap_count++;
             }
         }
-
-        if (found == false) {
-            wifi_util_error_print(WIFI_CTRL,
-                "%s:%d: Could not find target vap in manager cache for radio_index:%d "
-                "vap_index:%d\n",
-                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index, vap_index);
-        }
     }
 
-    return RETURN_OK;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Total MLD count = %d\n", __func__, __LINE__, apmld_map->mld_group_count);
 }
-
-#if defined(_PLATFORM_BANANAPI_R4_)
-int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc)
-{
-    int ret = RETURN_OK;
-    ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
-    if (webconfig_encode(&ctrl->webconfig, dml_cache_update_subdoc, webconfig_subdoc_type_dml) ==
-        webconfig_error_none) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
-    } else {
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d webconfig_encode failed ! DML cache may store incorrect values !\n",
-            __FUNCTION__, __LINE__);
-        ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_all_cfg_rsp_pending;
-        ret = RETURN_ERR;
-    }
-    webconfig_data_free(dml_cache_update_subdoc);
-    return ret;
-}
-#endif
