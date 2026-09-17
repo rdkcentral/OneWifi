@@ -172,9 +172,9 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         return -1;
     }
 
-    p_tgt_created_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
+    p_tgt_created_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
     if (p_tgt_created_vap_map == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
         free(p_tgt_vap_map);
         return -1;
     }
@@ -253,10 +253,12 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                    p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = true;
                 }
         }
-        wifi_util_error_print(WIFI_CTRL,"%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
+        wifi_util_error_print(WIFI_CTRL, "%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,
+            p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
-                    sizeof(wifi_vap_info_t));
-        memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+            sizeof(wifi_vap_info_t));
+        memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i],
+            (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
         get_wifidb_obj()->desc.update_wifi_vap_info_fn(map->vap_array[i].vap_name, &map->vap_array[i],
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(map->vap_array[i].vap_name,
