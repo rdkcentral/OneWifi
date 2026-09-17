@@ -471,11 +471,6 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
     unsigned int vap_names_size, wifi_dbg_type_t log_type);
 void update_mlo_rfc_enable(bool init);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
-int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info);
-#if defined(_PLATFORM_BANANAPI_R4_)
-int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc);
-#endif
-
 wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
 wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
 void update_apmld_map(apmld_map_t *apmld_map);
