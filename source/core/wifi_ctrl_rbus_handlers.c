@@ -2143,6 +2143,8 @@ static bus_error_t wei_set_param(char *event_name, raw_data_t *p_data, bus_user_
 
     wei_param_entry_t *e = &g_wei_param_table[idx];
     wei_rfc_field_update_t upd;
+    wei_rfc_update_completion_t completion;
+    int queue_status;
     memset(&upd, 0, sizeof(upd));
     upd.field_id = idx;
 
@@ -2170,10 +2172,27 @@ static bus_error_t wei_set_param(char *event_name, raw_data_t *p_data, bus_user_
         break;
     }
 
-    /* Serialize the read-modify-write on the ctrl thread to avoid lost
-     * updates when two Sets on different fields race. */
-    push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+    memset(&completion, 0, sizeof(completion));
+    pthread_mutex_init(&completion.lock, NULL);
+    pthread_cond_init(&completion.cond, NULL);
+    completion.status = -1;
+    upd.completion = &completion;
+
+    pthread_mutex_lock(&completion.lock);
+    queue_status = push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
         wifi_event_type_wei_rfc_config, NULL);
+    if (queue_status == RETURN_OK) {
+        while (!completion.done) {
+            pthread_cond_wait(&completion.cond, &completion.lock);
+        }
+    }
+    pthread_mutex_unlock(&completion.lock);
+    pthread_cond_destroy(&completion.cond);
+    pthread_mutex_destroy(&completion.lock);
+
+    if (queue_status != RETURN_OK || completion.status != 0) {
+        return bus_error_general;
+    }
     return bus_error_success;
 }
 
@@ -2361,10 +2380,12 @@ static void wei_notify_rfc_config_changed(void)
 void process_wei_rfc_config_update(wei_rfc_field_update_t *upd)
 {
     wei_rfc_dml_parameters_t *cfg = get_ctrl_wei_rfc_parameters();
+    int status = 0;
 
     if (upd != NULL && upd->field_id >= 0) {
         wei_apply_field_update(cfg, upd);
         if (wifidb_update_wei_rfc_config(cfg) != 0) {
+            status = -1;
             wifi_util_error_print(WIFI_CTRL, "%s:%d failed to persist Wifi_Wei_Rfc_Config\n",
                 __func__, __LINE__);
         }
@@ -2379,6 +2400,14 @@ void process_wei_rfc_config_update(wei_rfc_field_update_t *upd)
          * to OVSDB -- keep the DB-mirror struct in sync purely so the next
          * get_ctrl_rfc_parameters() refresh doesn't clobber it back to stale. */
         get_wifi_db_rfc_parameters()->wei_rfc_mask = (int)mask;
+    }
+
+    if (upd != NULL && upd->completion != NULL) {
+        pthread_mutex_lock(&upd->completion->lock);
+        upd->completion->status = status;
+        upd->completion->done = true;
+        pthread_cond_signal(&upd->completion->cond);
+        pthread_mutex_unlock(&upd->completion->lock);
     }
 
     wei_notify_rfc_config_changed();

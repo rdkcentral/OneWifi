@@ -345,7 +345,15 @@ typedef struct {
     bool     bval;
     uint32_t uval;
     char     sval[256 + 1];
+    struct wei_rfc_update_completion *completion;
 } wei_rfc_field_update_t;
+
+typedef struct wei_rfc_update_completion {
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    bool done;
+    int status;
+} wei_rfc_update_completion_t;
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
