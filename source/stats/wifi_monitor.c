@@ -3613,28 +3613,6 @@ int ap_status_code(int ap_index, char *src_mac, char *dest_mac, int type, int st
         }
     }
 
-#ifdef EM_APP
-    report_connection_status(ap_index, src_mac, dest_mac, (unsigned short)status, false, 0);
-#endif // EM_APP
-
-#ifdef EM_APP
-    /* Push pre-association failure event before any hash map lookup.
-     * The STA is not yet in the interop map (pre-association), so this must
-     * happen before the early returns below. */
-    if (status == WLAN_STATUS_CHALLENGE_FAIL ||         /* e.g. wrong SAE password */
-        status == WLAN_STATUS_DENIED_INSUFFICIENT_BANDWIDTH) { /* reused by some implementations for ACL deny; see EasyMesh spec Section 11.6 */
-         char *sta_mac = NULL;
-
-         if (!determine_sta_mac_from_src_dst(src_mac, dest_mac, &sta_mac)) {
-            wifi_util_dbg_print(WIFI_MON,
-                "%s:%d: failed_connection: unable to resolve STA MAC (src=%s dst=%s); skipping event publish\r\n",
-                __func__, __LINE__, src_mac, dest_mac);
-         } else {
-            queue_failed_connection_event(ap_index, sta_mac, (uint16_t)status, 0, wifi_event_hal_pre_assoc_fail);
-         }
-      }
-#endif /* EM_APP */
-
     sta_map = get_interop_sta_data_map(ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
