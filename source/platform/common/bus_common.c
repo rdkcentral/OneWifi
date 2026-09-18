@@ -374,6 +374,7 @@ elem_node_map_t* bus_insert_elem_node(elem_node_map_t* root, bus_mux_data_elem_t
         {
             wifi_util_error_print(WIFI_BUS, "Failed to create node [%s]\n",
                  elem->full_name);
+            free(current_node->node_elem_data);
             BUS_MUX_UNLOCK(get_bus_mux_mutex());
             return NULL;
         }
