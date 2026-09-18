@@ -1,0 +1,271 @@
+name: PR comments
+
+# unified stage 2/2 for every PR-comment payload.
+#
+# One trusted workflow_run flow that posts all three CI artifacts back to the PR:
+#   - clang-format  -> inline review suggestions   (job: format, bespoke)
+#   - gcc build     -> one sticky summary comment  (job: build)
+#   - clang-tidy    -> one sticky summary comment  (job: tidy)
+#
+# Why workflow_run (and why two stages at all): posting to a PR needs
+# `pull-requests: write`. Doing that in a job that has checked out and built
+# untrusted fork PR code is security issue ('pwn-request'). So stage 1 (the
+# Build Check / clang-format workflows) runs over PR code with no token and only
+# creates artifacts. This stage runs in the trusted base-repo context, *never*
+# checks out PR code, and only reads those artifacts as passive data.
+#
+# All three jobs pipe their trust decision through one action (.github/actions/pr-context):
+# 1. validate pr-meta.env, 2. bind the PR number to the triggering run, and
+# 3. check head-sha freshness. The two sticky comment-summaries share a second action,
+# namely '.github/actions/sticky-comment'.
+#
+# NOTE: workflow_run *always* uses the copy of this file (and the referenced local
+# actions) from the repository default branch — so nothing here takes effect
+# until it has merged to 'develop'.
+# NOTE: workflow_run applies only to same repo.
+
+on:
+  workflow_run:
+    workflows: ["Build Check", "clang-format"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write        # the only write scope required (posting)
+  actions: read               # to download stage-1 artifacts from the triggering run
+
+# Separate group per triggering workflow + head, so a Build-Check-triggered run
+# and a clang-format-triggered run for the same branch never cancel each other.
+# workflow_run.pull_requests is empty for fork PRs (actions/runner#3444), so key
+# on head_repository.full_name + head_branch, which always exists.
+concurrency:
+  group: >-
+    pr-comments-${{ github.event.workflow_run.name }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+env:
+  # Cap on inline review comments per run. Large reviews can trip GitHub rate
+  # limiting and fail. Bump here if needed.
+  MAX_COMMENTS: "25"
+  # The identity that owns our comments/reviews (for the ownership match). Change
+  # ONLY this one line if there is a move from the default GITHUB_TOKEN to a GitHub App
+  # token — the bot login becomes "<app-name>[bot]".
+  BOT_LOGIN: "github-actions[bot]"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # clang-format -> inline review suggestions (kept bespoke: only this renders as
+  # ```suggestion blocks with a "Commit suggestion" button).
+  # ---------------------------------------------------------------------------
+  format:
+    name: clang-format suggestions
+    runs-on: ubuntu-latest
+    # Only the clang-format trigger, only PRs, skip cancelled runs (they can leave
+    # a stale artifact yet fire 'completed'). Allow failure: if stage 1 failed,
+    # suggestions are still useful. Name-gating means the build/tidy jobs don't
+    # spin up a no-op run here (and vice-versa), keeping the run list readable.
+    if: >-
+      github.event.workflow_run.name == 'clang-format'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.conclusion != 'cancelled'
+    steps:
+      # Trusted base-repo checkout - for the local composite actions only. No ref
+      # is passed, so this is the base default branch (trusted), never PR code.
+      - name: Check out base-repo actions (no PR code)
+        uses: actions/checkout@v6
+
+      - name: Establish trusted PR context
+        id: ctx
+        uses: ./.github/actions/pr-context
+        with:
+          artifact-name: clang-format-suggestions
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
+          expected-branch: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Convert diff into review suggestions
+        if: steps.ctx.outputs.found == 'true'
+        env:
+          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
+          # MAX_COMMENTS comes from the workflow-level env.
+        run: |
+          # The converter lives in a checked-out script (trusted base branch). When the
+          # changed lines are already clang-format clean there is no diff file - feed /dev/null
+          # so it creates 0 comments. The post step then just dismisses any now-stale review.
+          diff=clang-format-suggestions/clang-format.diff
+          [ -f "$diff" ] || diff=/dev/null
+          python3 .github/scripts/diff_to_suggestions.py < "$diff"
+
+      - name: Dismiss stale reviews, then post fresh suggestions
+        # Runs whenever the PR head still matches what stage 1 measured - including the clean
+        # case (0 comments). Dismissal comes first so an earlier push's (now-obsolete)
+        # suggestions are cleared even when there is nothing new to post. Stage 1 always uploads
+        # pr-meta.env, so this job still runs when formatting became clean.
+        if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.ctx.outputs.pr_number }}
+          # BOT_LOGIN comes from the workflow-level env.
+        run: |
+          # Stale-review cleanup first (before the empty-check). Identity = our bot
+          # login+type + our body marker. $BOT_LOGIN is workflow-trusted, so the
+          # shell interpolation into the filter is safe. Non-fatal.
+          # shellcheck disable=SC2016  # the backticks in the jq are a literal body marker, not a shell expansion
+          gh api "/repos/$REPO/pulls/$PR/reviews" --paginate \
+            --jq '.[] | select(.user.login == "'"$BOT_LOGIN"'" and (.user.type == "Bot")) | select(.body | startswith("`clang-format` suggests")) | select(.state != "DISMISSED") | .id' \
+            > /tmp/stale_ids.txt \
+            || { echo "::warning::Could not list existing reviews for cleanup (continuing)."; : > /tmp/stale_ids.txt; }
+          while read -r rid; do
+            [ -n "$rid" ] || continue
+            echo "Dismissing prior clang-format review $rid"
+            gh api --method PUT "/repos/$REPO/pulls/$PR/reviews/$rid/dismissals" \
+              -f message="Superseded by a newer clang-format suggestion run." \
+              -f event="DISMISS" >/dev/null \
+              || echo "::warning::Failed to dismiss review $rid (continuing)."
+          done < /tmp/stale_ids.txt
+
+          # Nothing new to post (clean, or all suggestions were pure-additions the
+          # converter dropped). The dismissal above already cleaned up. Done.
+          if [ "$(python3 -c 'import json;print(len(json.load(open("/tmp/comments.json"))))')" = "0" ]; then
+            echo "clang-format clean on the changed lines — dismissed stale reviews, nothing to post."
+            exit 0
+          fi
+
+          if ! gh api --method POST "/repos/$REPO/pulls/$PR/reviews" \
+                 --input /tmp/review.json > /tmp/resp.json; then
+            echo "::error::Failed to post review (see log above)."
+            # 422 = a suggestion targeted a line outside the PR diff.
+            # 404 = usually rate limit from too many comments (lower MAX_COMMENTS).
+            exit 1
+          fi
+          echo "Review posted: $(python3 -c 'import json;print(json.load(open("/tmp/resp.json")).get("html_url",""))')"
+
+  # ---------------------------------------------------------------------------
+  # gcc build -> one sticky summary comment, aggregating every matrix leg.
+  # ---------------------------------------------------------------------------
+  build:
+    name: build summary comment
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.name == 'Build Check'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.conclusion != 'cancelled'
+    steps:
+      - name: Check out base-repo actions (no PR code)
+        uses: actions/checkout@v6
+
+      # Anchor trust on the bpi build artifact (bpi always runs and uploads on
+      # if: always()). Its pr-meta.env is identical across legs.
+      - name: Establish trusted PR context
+        id: ctx
+        uses: ./.github/actions/pr-context
+        with:
+          artifact-name: ci-summary-bpi
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
+          expected-branch: ${{ github.event.workflow_run.head_branch }}
+
+      # Pull every platform's summary for one combined comment. These files are
+      # passive display text; the trust decision was already made above.
+      # NOTE: makefile.yml currently uploads only the bpi leg's summary, so today
+      # this resolves to a single artifact. It stays a wildcard on purpose — once
+      # rpi/mock are worth posting, enabling them there needs no change here.
+      - name: Download all platform summaries
+        if: steps.ctx.outputs.found == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          pattern: ci-summary-*
+          path: summaries
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compose build summary comment
+        if: steps.ctx.outputs.found == 'true'
+        env:
+          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -uo pipefail
+          {
+            echo "## 🔨 Build summary"
+            echo
+            echo "_Commit \`${HEAD_SHA:0:7}\` · [\`${RUN_NAME}\` #${RUN_NUMBER}](${RUN_URL})_"
+            echo
+            # Deterministic platform order; each per-leg file already carries its
+            # own "## <platform> — build <outcome>" heading + error/warning blocks.
+            for d in summaries/ci-summary-*/; do
+              f="${d}build-summary.md"
+              [ -f "$f" ] || continue
+              cat "$f"
+              echo
+            done
+          } > build-comment.md
+          echo "wrote build-comment.md ($(wc -l < build-comment.md) lines)"
+
+      - name: Post sticky build summary
+        if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
+        uses: ./.github/actions/sticky-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          pr-number: ${{ steps.ctx.outputs.pr_number }}
+          marker: build-summary
+          body-file: build-comment.md
+          bot-login: ${{ env.BOT_LOGIN }}
+
+  # ---------------------------------------------------------------------------
+  # clang-tidy -> one sticky summary comment (for now only bpi leg produces it).
+  # ---------------------------------------------------------------------------
+  tidy:
+    name: clang-tidy summary comment
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.name == 'Build Check'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.conclusion != 'cancelled'
+    steps:
+      - name: Check out base-repo actions (no PR code)
+        uses: actions/checkout@v6
+
+      - name: Establish trusted PR context
+        id: ctx
+        uses: ./.github/actions/pr-context
+        with:
+          artifact-name: ci-summary-bpi
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
+          expected-branch: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Prepare clang-tidy comment
+        id: prep
+        if: steps.ctx.outputs.found == 'true'
+        run: |
+          set -uo pipefail
+          f="ci-summary-bpi/tidy-summary.md"
+          if [ -f "$f" ] && [ -s "$f" ]; then
+            { echo "## 🔎 clang-tidy (advisory)"; echo; cat "$f"; } > tidy-comment.md
+            echo "post=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No clang-tidy summary in the artifact, skipping."
+            echo "post=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post sticky clang-tidy summary
+        if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true' && steps.prep.outputs.post == 'true'
+        uses: ./.github/actions/sticky-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          pr-number: ${{ steps.ctx.outputs.pr_number }}
+          marker: clang-tidy
+          body-file: tidy-comment.md
+          bot-login: ${{ env.BOT_LOGIN }}
