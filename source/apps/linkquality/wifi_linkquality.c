@@ -42,7 +42,7 @@
 #define NOISE_FLOOR (-95)
 
 
-#ifdef EM_APP
+#if defined(EM_APP) && !defined(QCOM_ATH12K_PORT)
 /* Register callback BEFORE starting qmgr */
 void publish_qmgr_subdoc(const report_batch_t* report)
 {
@@ -146,7 +146,9 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
 #ifdef EM_APP
         if (get_lq_descriptor()->start_link_metrics_fn)
             get_lq_descriptor()->start_link_metrics_fn();
+#ifndef QCOM_ATH12K_PORT
         qmgr_register_batch_callback(publish_qmgr_subdoc);
+#endif
          wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
             __func__, __LINE__, ctrl->network_mode);
 #endif
