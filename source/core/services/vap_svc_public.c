@@ -109,7 +109,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
             to_mac_str(acl_entry->mac, new_mac_str);
             str_tolower(new_mac_str);
-            strcpy(acl_entry->device_name,"");
+            snprintf(acl_entry->device_name, sizeof(acl_entry->device_name), "%s", "");
             acl_entry->reason = PREFER_PRIVATE_RFC_REJECT;
             acl_entry->expiry_time = 0;
 
