@@ -2070,7 +2070,7 @@ bus_error_t levl_event_handler(char *eventName, bus_event_sub_action_t action, i
                 return bus_error_general;
             }
 
-            if ((radio < 0) || (radio > MAX_NUM_RADIOS)) {
+            if ((radio < 1) || (radio > MAX_NUM_RADIOS)) {
                 wifi_util_dbg_print(WIFI_APPS, "%s:%d Invalid Radio: %u\n", __func__, __LINE__, radio-1);
                 pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
                 return bus_error_general;
