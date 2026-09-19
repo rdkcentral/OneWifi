@@ -1265,9 +1265,16 @@ static bool ovsh_parse_where(json_t *where, char *_str, bool is_parent_where)
      * statement (not part of a --parent argument)  */
     if (!is_parent_where)
     {
+        char **tmp;
         ovsh_where_num++;
-        ovsh_where_expr = (char**)realloc(ovsh_where_expr, sizeof(char*) * ovsh_where_num);
-        assert(ovsh_where_expr);
+        tmp = (char**)realloc(ovsh_where_expr, sizeof(*ovsh_where_expr) * ovsh_where_num);
+        if (tmp == NULL) {
+            DEBUG("Memory allocation failed for ovsh_where_expr\n");
+            ovsh_where_num--;
+            retval = false;
+            goto error;
+        }
+        ovsh_where_expr = tmp;
         ovsh_where_expr[ovsh_where_num-1] = strdup(_str);
     }
 
