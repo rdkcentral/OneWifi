@@ -899,6 +899,7 @@ CosaUtilGetStaticRouteTable
 
     sroute = (StaticRoute *) malloc(sizeof(StaticRoute) * (*count));
     if (NULL == sroute) {
+        fclose(fp);
         return ANSC_STATUS_FAILURE;
     }
     bzero(sroute, sizeof(StaticRoute) * (*count));
