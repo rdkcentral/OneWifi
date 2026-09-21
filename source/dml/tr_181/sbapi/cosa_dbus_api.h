@@ -73,7 +73,7 @@
 #include "ccsp_base_api.h"
 
 /* Init and Exit functions for SnmpAgent PA */
-BOOL Cosa_Init ();
+BOOL Cosa_Init (void * pbus_handle);
 BOOL Cosa_Shutdown();
 
 /* retrieve the CCSP Component name and path who supports specified name space */
