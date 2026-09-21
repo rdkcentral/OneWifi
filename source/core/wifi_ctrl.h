@@ -355,7 +355,15 @@ typedef struct {
     bool     bval;
     uint32_t uval;
     char     sval[256 + 1];
+    struct wei_rfc_update_completion *completion;
 } wei_rfc_field_update_t;
+
+typedef struct wei_rfc_update_completion {
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    bool done;
+    int status;
+} wei_rfc_update_completion_t;
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
@@ -467,15 +475,12 @@ int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
 void hotspot_timing_start(void);
 void hotspot_timing_stop(void);
 int reboot_device(void* arg);
+
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
     unsigned int vap_names_size, wifi_dbg_type_t log_type);
 void update_mlo_rfc_enable(bool init);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
-int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info);
-#if defined(_PLATFORM_BANANAPI_R4_)
-int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc);
-#endif
 wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
 wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
 void update_apmld_map(apmld_map_t *apmld_map);
