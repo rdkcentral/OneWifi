@@ -2090,6 +2090,8 @@ static wei_param_entry_t g_wei_param_table[] = {
     WEI_FIELD(WEI_LQ_CLIENT_THRESHOLD_DMPATH,     FIELD_UINT,   lq.client_threshold),
     WEI_FIELD(WEI_LQ_CLIENT_DETAIL_ENABLE_DMPATH, FIELD_BOOL,   lq.client_detail_enable),
     WEI_FIELD(WEI_LQ_CLIENT_WHITELIST_DMPATH,     FIELD_STRING, lq.client_whitelist),
+
+    WEI_FIELD(WEI_DIAGNOSTIC_ENABLE_DMPATH,       FIELD_BOOL,   wei_diagnostic_enable),
 };
 #define WEI_PARAM_TABLE_COUNT (sizeof(g_wei_param_table) / sizeof(g_wei_param_table[0]))
 
