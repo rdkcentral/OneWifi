@@ -5238,7 +5238,7 @@ bool pre_conn_ctrl_get_param_string_value(void *obj_ins_context, char *param_nam
     wifi_preassoc_control_t *p_pre_assoc = &vap_pcfg->u.bss_info.preassoc;
 
     if (STR_CMP(param_name, "RssiUpThresholdSupported")) {
-        set_output_string(output_value, "disabled, 10 to 100");
+        set_output_string(output_value, "disabled, -50 to -95");
     } else if (STR_CMP(param_name, "SnrThresholdSupported")) {
         set_output_string(output_value, "disabled, 1 to 100");
     } else if (STR_CMP(param_name, "RssiUpThreshold")) {

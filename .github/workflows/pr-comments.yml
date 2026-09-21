@@ -28,6 +28,17 @@ on:
   workflow_run:
     workflows: ["Build Check", "clang-format"]
     types: [completed]
+  # Manual trigger so stage 2 can be dispatched from a feature branch pre-merge
+  # to test changes before they land (a dispatch runs the branch's copy of this
+  # file, unlike workflow_run which always uses the default-branch copy). Harmless
+  # on 'develop': every job's if: name-gate below is false for a dispatch event,
+  # so all jobs skip until the companion PR adds a resolve job to wire it up.
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Stage-1 run id to post from'
+        required: true
+        type: string
 
 permissions:
   contents: read
