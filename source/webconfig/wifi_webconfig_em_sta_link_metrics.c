@@ -177,4 +177,3 @@ webconfig_error_t decode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
     return webconfig_error_none;
 }
 #endif
-
