@@ -42,6 +42,15 @@ extern "C" {
 
 #define LINKQ_VALID_MASK    0xFF   /* Only first 8 bits valid */
 
+/* WEI RFC config defaults */
+#define WEI_RFC_LQ_DURATION_DEFAULT        1
+#define WEI_RFC_RADIO_2G_MAX_SNR_DEFAULT   60
+#define WEI_RFC_RADIO_5G_MAX_SNR_DEFAULT   70
+#define WEI_RFC_RADIO_6G_MAX_SNR_DEFAULT   70
+#define WEI_RFC_RADIO_2G_MAX_PHY_DEFAULT   286
+#define WEI_RFC_RADIO_5G_MAX_PHY_DEFAULT   1200
+#define WEI_RFC_RADIO_6G_MAX_PHY_DEFAULT   2401
+
 /* Score params bitmask — controls quality_flags_t (same as UI checkboxes)
  * Uses LINKQ_DL_SNR..LINKQ_INT_RECONN (bits 0-7) defined above.
  * Valid mask is LINKQ_VALID_MASK (0xFF). */
