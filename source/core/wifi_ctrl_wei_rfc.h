@@ -50,6 +50,8 @@ extern "C" {
 //WEI endpoint for ignite
 #define WEI_IGNITE_ENABLE_DMPATH   "Device.X_RDKCENTRAL-COM_WEI.Ignite.Enable"
 
+#define WEI_DIAGNOSTIC_ENABLE_DMPATH "Device.X_RDKCENTRAL-COM_WEI.Diagnostic.Enable"
+
 /* ---- Staying-Connected (SC) TR-181 parameter paths (WiFi-DB owned) ---- */
 #define WEI_SC_HOME_ENABLE_DMPATH          "Device.X_RDKCENTRAL-COM_WEI.SC.Home.Enable"
 #define WEI_SC_HOME_THRESHOLD_DMPATH       "Device.X_RDKCENTRAL-COM_WEI.SC.Home.Threshold"
@@ -116,6 +118,7 @@ typedef struct {
     wei_rfc_pillar_config_t  sc;
     wei_rfc_pillar_config_t  gc;
     wei_rfc_pillar_config_t  lq;
+    bool                     wei_diagnostic_enable;
 } wei_rfc_dml_parameters_t;
 
 /* Field type tags for the WEI RFC parameter descriptor table (drives the
