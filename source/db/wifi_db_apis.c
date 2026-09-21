@@ -349,6 +349,8 @@ static void wei_rfc_schema_to_dml(const struct schema_Wifi_Wei_Rfc_Config *cfg, 
     dml->lq.client_threshold = (uint32_t)cfg->lq_client_threshold;
     dml->lq.client_detail_enable = cfg->lq_client_detail_enable;
     snprintf(dml->lq.client_whitelist, sizeof(dml->lq.client_whitelist), "%s", cfg->lq_client_whitelist);
+
+    dml->wei_diagnostic_enable = cfg->diagnostic_enable;
 }
 
 static void wei_rfc_dml_to_schema(const wei_rfc_dml_parameters_t *dml, struct schema_Wifi_Wei_Rfc_Config *cfg)
@@ -386,6 +388,8 @@ static void wei_rfc_dml_to_schema(const wei_rfc_dml_parameters_t *dml, struct sc
     cfg->lq_client_threshold = (int)dml->lq.client_threshold;
     cfg->lq_client_detail_enable = dml->lq.client_detail_enable;
     snprintf(cfg->lq_client_whitelist, sizeof(cfg->lq_client_whitelist), "%s", dml->lq.client_whitelist);
+
+    cfg->diagnostic_enable = dml->wei_diagnostic_enable;
 }
 
 /************************************************************************************
@@ -424,11 +428,12 @@ void callback_Wifi_Wei_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wif
 
     wifi_util_dbg_print(WIFI_DB,
         "%s:%d WEI RFC Config New/Modify wei_enable=%d lq_dur=%u "
-        "sc(h_en=%d c_en=%d) gc(h_en=%d c_en=%d) lq(h_en=%d c_en=%d)\r\n",
+        "sc(h_en=%d c_en=%d) gc(h_en=%d c_en=%d) lq(h_en=%d c_en=%d) diag_en=%d\r\n",
         __func__, __LINE__, rfc_param->wei_enable, rfc_param->lq_meas_duration,
         rfc_param->sc.home_enable, rfc_param->sc.client_enable,
         rfc_param->gc.home_enable, rfc_param->gc.client_enable,
-        rfc_param->lq.home_enable, rfc_param->lq.client_enable);
+        rfc_param->lq.home_enable, rfc_param->lq.client_enable,
+        rfc_param->wei_diagnostic_enable);
 
     /* Marshal onto the ctrl thread (this callback runs on the wifidb event-loop
      * thread); field_id=-1 means "already applied to the DB-mirror cache above,
@@ -6671,6 +6676,7 @@ void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config)
     defaults.radio_2g_max_phy = WEI_RFC_RADIO_2G_MAX_PHY_DEFAULT;
     defaults.radio_5g_max_phy = WEI_RFC_RADIO_5G_MAX_PHY_DEFAULT;
     defaults.radio_6g_max_phy = WEI_RFC_RADIO_6G_MAX_PHY_DEFAULT;
+    defaults.wei_diagnostic_enable = true;
 
     memcpy(config, &defaults, sizeof(defaults));
 }
