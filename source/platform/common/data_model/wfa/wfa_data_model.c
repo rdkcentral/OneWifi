@@ -218,7 +218,20 @@ bus_error_t de_apmld_sync_handler(char const* tableName, bus_data_prop_t *inPara
     UINT num_row = p_dml_param->table_de_apmld_index;
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %s, numrow %d, numapmld %d\r\n", __func__, __LINE__, tableName, num_row, num_apmld);
 
+    if (num_row != num_apmld) {
+        UINT clamped_num_row = (num_row > MLD_UNIT_COUNT) ? MLD_UNIT_COUNT : num_row;
+        //reset stamld indexes for APMLDs since APMLDs will be unregistered during de_sync_rows
+        for (uint32_t i = 0; i < clamped_num_row; i++) {
+            p_dml_param->table_de_stamld_index[i] = 0;
+        }
+    }
+
     de_sync_rows(tableName, num_row, num_apmld, &p_dml_param->table_de_apmld_index, false);
+    if (p_dml_param->table_de_apmld_index > MLD_UNIT_COUNT) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d invalid APMLD index\r\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+
     return bus_error_success;
 }
 

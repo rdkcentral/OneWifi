@@ -4518,6 +4518,8 @@ bool associated_sta_get_param_uint_value(void *obj_ins_context, char *param_name
     } else if (STR_CMP(param_name, "X_COMCAST-COM_AuthenticationFailures")) {
         *output_value = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
     } else if (STR_CMP(param_name, "X_RDK_CapSpaStr")) {
+        *output_value = assoc_dev_data->dev_stats.cli_capableNumSpatialStreams;
+    } else if (STR_CMP(param_name, "X_RDK_ActiveSpaStr")) {
         *output_value = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
@@ -5236,7 +5238,7 @@ bool pre_conn_ctrl_get_param_string_value(void *obj_ins_context, char *param_nam
     wifi_preassoc_control_t *p_pre_assoc = &vap_pcfg->u.bss_info.preassoc;
 
     if (STR_CMP(param_name, "RssiUpThresholdSupported")) {
-        set_output_string(output_value, "disabled, 10 to 100");
+        set_output_string(output_value, "disabled, -50 to -95");
     } else if (STR_CMP(param_name, "SnrThresholdSupported")) {
         set_output_string(output_value, "disabled, 1 to 100");
     } else if (STR_CMP(param_name, "RssiUpThreshold")) {
