@@ -128,12 +128,16 @@ static char *format_string(const char *input)
     return output;
 }
 
+/* msgpack-c 6.0 added msgpack_pack_str_with_body(); on older releases we
+ * still have to provide it ourselves. */
+#if MSGPACK_VERSION_MAJOR < 6
 int msgpack_pack_str_with_body(msgpack_packer* pk, const void* b, size_t l)
- {
-     int ret = msgpack_pack_str(pk, l);
-     if (ret != 0) { return ret; }
-     return msgpack_pack_str_body(pk, b, l);
- }
+{
+    int ret = msgpack_pack_str(pk, l);
+    if (ret != 0) { return ret; }
+    return msgpack_pack_str_body(pk, b, l);
+}
+#endif
 
 /*
  * Pack cJSON object.
