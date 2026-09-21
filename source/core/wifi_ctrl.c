@@ -326,24 +326,17 @@ bool is_sta_enabled(void)
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;
-    struct timespec tv_now;
-    time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
 
     pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
-        clock_gettime(CLOCK_MONOTONIC, &tv_now);
+        /* Anchor the deadline on the previous scheduler run, not on the current
+         * time: if event handling ran past the second boundary the deadline is
+         * already due and the wait returns at once instead of skipping a run. */
+        time_to_wait.tv_sec = ctrl->last_polled_time.tv_sec + ctrl->poll_period;
         time_to_wait.tv_nsec = 0;
-        time_to_wait.tv_sec = tv_now.tv_sec + ctrl->poll_period;
-
-        if (ctrl->last_signalled_time.tv_sec > ctrl->last_polled_time.tv_sec) {
-            time_diff = ctrl->last_signalled_time.tv_sec - ctrl->last_polled_time.tv_sec;
-            if ((UINT)time_diff < ctrl->poll_period) {
-                time_to_wait.tv_sec = tv_now.tv_sec + (ctrl->poll_period - time_diff);
-            }
-        }
 
         rc = 0;
         if (queue_count(ctrl->queue) == 0) {
@@ -392,7 +385,6 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
                 destroy_wifi_event(event);
 
-                clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
                 pthread_mutex_lock(&ctrl->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
@@ -1492,7 +1484,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         return RETURN_ERR;
     }
     
-    clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
     clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
     pthread_condattr_init(&cond_attr);
     pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
