@@ -2139,7 +2139,7 @@ bus_error_t levl_vap_addrowhandler(char const* tableName, char const* aliasName,
     wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int vap_index;
 
-    if (instanceCounter > getTotalNumberVAPs(NULL)) {
+    if (instanceCounter > getTotalNumberVAPs()) {
         instanceCounter = 1;
     }
     vap_index  = VAP_INDEX(mgr->hal_cap, (instanceCounter-1)) + 1;
@@ -2188,7 +2188,7 @@ bus_error_t levl_radio_addrowhandler(char const* tableName, char const* aliasNam
 
     static int unsigned instanceCounter = 1;
 
-    if (instanceCounter > getNumberRadios(NULL)) {
+    if (instanceCounter > getNumberRadios()) {
         instanceCounter = 1;
     }
 
@@ -2215,7 +2215,7 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
     char *component_name = "WifiAppsLevl";
 
     int num_of_radio = getNumberRadios();
-    int num_of_vaps = getTotalNumberVAPs(NULL);
+    int num_of_vaps = getTotalNumberVAPs();
     int num_elements;
 
     bus_data_element_t dataElements[] = {

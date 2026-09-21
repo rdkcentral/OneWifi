@@ -25,7 +25,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-void wifi_misc_init();
+void wifi_misc_init(wifi_misc_t *misc);
 sem_t *sem;
 
 int rdkb_sysevent_open(char *ip, unsigned short port, int version, char *id, unsigned int *token)
