@@ -1237,7 +1237,6 @@ WiFi_SetParamBoolValue
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_rfc);
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm rfc value set bvalue is %d \n", __FUNCTION__,__LINE__,bValue);
         }
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm started\n", __FUNCTION__,__LINE__);
         return TRUE;
     }
 
@@ -9249,9 +9248,11 @@ Security_SetParamStringValue
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa2_personal:
-            	l_security_cfg->u.key.type = wifi_security_key_type_psk;
-				l_security_cfg->mfp = wifi_mfp_cfg_optional;
-				break;
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Preserve AES/AES+TKIP and normalize invalid carry-over values. */
+                apply_wpa2_personal_encr_policy(l_security_cfg);
+                break;
             case wifi_security_mode_wpa_wpa2_personal:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
@@ -9271,6 +9272,8 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa3_transition:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Restore platform default encryption when switching back to WPA3-Transition. */
+                apply_wpa3_transition_encr_policy(l_security_cfg);
                 break;
             case wifi_security_mode_enhanced_open:
                 l_security_cfg->mfp = wifi_mfp_cfg_required;
@@ -21139,6 +21142,172 @@ BOOL MgtFrameRateLimit_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamNa
                 __LINE__);
         }
 
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/***********************************************************************
+***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        TCM_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+TCM_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get RFC Config\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Open2G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_2g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open5G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_5g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open6G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_6g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure2G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_2g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure5G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_5g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure6G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_6g_rfc;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        TCM_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to set BOOL parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The updated BOOL value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+TCM_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get RFC Config\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Open2G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_2g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_2g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open2G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open5G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_5g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_5g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open5G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open6G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_6g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_6g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open6G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure2G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_2g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_2g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure2G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure5G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_5g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_5g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure5G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure6G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_6g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_6g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure6G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
         return TRUE;
     }
 

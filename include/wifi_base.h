@@ -92,18 +92,12 @@ extern "C" {
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
-
-#ifndef MAX_NUM_MLD_LINKS
-#define MAX_NUM_MLD_LINKS 15
-#endif /*MAX_NUM_MLD_LINKS*/
-
-#ifndef UNDEFINED_MLD_LINK_ID
-#define UNDEFINED_MLD_LINK_ID 255
-#endif
-
-#define UNDEFINED_MLD_ID 255
-#define MLD_UNIT_COUNT 8
-#define MIN_MLO_GROUP_SIZE 2
+#define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
+#define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
+#define WIFI_NETWORKDEVICESSTATUS_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.NetworkDevicesStatus.MloRfcEnable"
+#define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -560,6 +554,12 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool tcm_open_2g_rfc;
+    bool tcm_open_5g_rfc;
+    bool tcm_open_6g_rfc;
+    bool tcm_secure_2g_rfc;
+    bool tcm_secure_5g_rfc;
+    bool tcm_secure_6g_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool link_quality_rfc;
