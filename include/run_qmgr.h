@@ -43,7 +43,6 @@ extern "C" {
 #define LINKQ_VALID_MASK    0xFF   /* Only first 8 bits valid */
 
 /* WEI RFC config defaults */
-#define WEI_RFC_LQ_THRESHOLD_DEFAULT       0.5
 #define WEI_RFC_LQ_DURATION_DEFAULT        1
 #define WEI_RFC_RADIO_2G_MAX_SNR_DEFAULT   60
 #define WEI_RFC_RADIO_5G_MAX_SNR_DEFAULT   70

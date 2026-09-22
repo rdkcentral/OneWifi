@@ -217,7 +217,6 @@
         PJS_OVS_BOOL(csi_analytics_enabled_rfc) \
         PJS_OVS_BOOL(xfi_tel_enable_rfc) \
         PJS_OVS_BOOL(multiap_rfc) \
-        PJS_OVS_INT(wei_rfc_mask) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1714,7 +1713,6 @@
         PJS_OVS_STRING(wei_rfc_id, 16 + 1) \
         PJS_OVS_BOOL(wei_enable) \
         PJS_OVS_INT(lq_meas_params_mask) \
-        PJS_OVS_REAL(lq_meas_threshold) \
         PJS_OVS_INT(lq_meas_duration) \
         PJS_OVS_INT(radio_2g_max_snr) \
         PJS_OVS_INT(radio_5g_max_snr) \
@@ -1743,6 +1741,7 @@
         PJS_OVS_INT(lq_client_threshold) \
         PJS_OVS_BOOL(lq_client_detail_enable) \
         PJS_OVS_STRING(lq_client_whitelist, 256 + 1) \
+        PJS_OVS_BOOL(diagnostic_enable) \
     )
 
 #define PJS_GEN_TABLE \
@@ -3439,7 +3438,6 @@
     COLUMN(wei_rfc_id) \
     COLUMN(wei_enable) \
     COLUMN(lq_meas_params_mask) \
-    COLUMN(lq_meas_threshold) \
     COLUMN(lq_meas_duration) \
     COLUMN(radio_2g_max_snr) \
     COLUMN(radio_5g_max_snr) \
@@ -3468,6 +3466,7 @@
     COLUMN(lq_client_threshold) \
     COLUMN(lq_client_detail_enable) \
     COLUMN(lq_client_whitelist) \
+    COLUMN(diagnostic_enable) \
 
 #define SCHEMA__AWLAN_Node__id "id"
 #define SCHEMA__AWLAN_Node__model "model"
@@ -3628,7 +3627,6 @@
 #define SCHEMA__Wifi_Rfc_Config__csi_analytics_enabled_rfc "csi_analytics_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__multiap_rfc "multiap_rfc"
 #define SCHEMA__Wifi_Rfc_Config__xfi_tel_enable_rfc "xfi_tel_enable_rfc"
-#define SCHEMA__Wifi_Rfc_Config__wei_rfc_mask "wei_rfc_mask"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
@@ -4753,7 +4751,6 @@
 #define SCHEMA__Wifi_Wei_Rfc_Config__wei_rfc_id "wei_rfc_id"
 #define SCHEMA__Wifi_Wei_Rfc_Config__wei_enable "wei_enable"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_params_mask "lq_meas_params_mask"
-#define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_threshold "lq_meas_threshold"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_meas_duration "lq_meas_duration"
 #define SCHEMA__Wifi_Wei_Rfc_Config__radio_2g_max_snr "radio_2g_max_snr"
 #define SCHEMA__Wifi_Wei_Rfc_Config__radio_5g_max_snr "radio_5g_max_snr"
@@ -4782,3 +4779,4 @@
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_threshold "lq_client_threshold"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_detail_enable "lq_client_detail_enable"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_whitelist "lq_client_whitelist"
+#define SCHEMA__Wifi_Wei_Rfc_Config__diagnostic_enable "diagnostic_enable"

@@ -1968,15 +1968,6 @@
             "max": 1
           }
         },
-        "lq_meas_threshold": {
-          "type": {
-            "key": {
-              "type": "real"
-            },
-            "min": 0,
-            "max": 1
-          }
-        },
         "lq_meas_duration": {
           "type": {
             "key": {
@@ -2224,6 +2215,15 @@
           "type": {
             "key": {
               "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "diagnostic_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
             },
             "min": 0,
             "max": 1
