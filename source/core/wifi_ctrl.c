@@ -2009,12 +2009,14 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     }
 
-    if (rfc_param->link_quality_rfc || ctrl->network_mode == rdk_dev_mode_type_em_node 
-     || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node || ctrl->rf_status_down == true) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d LinkQuality RFC is enabled \n", __func__, __LINE__);
+    if ((ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node
+        || ctrl->rf_status_down == true)) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start link quality app, network_mode:%d rf_status_down:%d\n",
+            __func__, __LINE__, ctrl->network_mode, ctrl->rf_status_down);
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
     } else {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d LinkQuality RFC is disabled \n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d stop link quality app, network_mode:%d rf_status_down:%d\n",
+            __func__, __LINE__, ctrl->network_mode, ctrl->rf_status_down);
     }
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
@@ -2952,6 +2954,28 @@ wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void)
     return &p_wifi_db_data->rfc_dml_parameters;
 }
 
+/* DB-mirror cache: kept fresh by callback_Wifi_Wei_Rfc_Config() (OVSDB monitor). */
+wei_rfc_dml_parameters_t *get_wifi_db_wei_rfc_parameters(void)
+{
+    wifi_mgr_t *p_wifi_db_data = get_wifimgr_obj();
+    return &p_wifi_db_data->wei_rfc_dml_parameters;
+}
+
+/* Ctrl-thread working copy, refreshed from the DB mirror on every call so
+ * callers always see the latest committed WEI RFC config. */
+wei_rfc_dml_parameters_t *get_ctrl_wei_rfc_parameters(void)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+
+    pthread_mutex_lock(&g_wifi_mgr->data_cache_lock);
+    memcpy(&ctrl->wei_rfc_params, &g_wifi_mgr->wei_rfc_dml_parameters,
+        sizeof(wei_rfc_dml_parameters_t));
+    pthread_mutex_unlock(&g_wifi_mgr->data_cache_lock);
+
+    return &ctrl->wei_rfc_params;
+}
+
 wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
 {
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
@@ -3001,8 +3025,6 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.tcm_secure_6g_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
         g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
-    g_wifi_mgr->ctrl.rfc_params.link_quality_rfc =
-        g_wifi_mgr->rfc_dml_parameters.link_quality_rfc;
     g_wifi_mgr->ctrl.rfc_params.xfi_tel_enable_rfc =
         g_wifi_mgr->rfc_dml_parameters.xfi_tel_enable_rfc;
     g_wifi_mgr->ctrl.rfc_params.multiap_rfc =
