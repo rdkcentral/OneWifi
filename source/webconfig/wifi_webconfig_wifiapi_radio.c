@@ -116,6 +116,7 @@ webconfig_error_t decode_wifiapiradio_subdoc(webconfig_t *config, webconfig_subd
 
     if (convert_radio_name_to_index(&radio_index,cJSON_GetStringValue(obj)) != 0) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: invalid radio name \n",__func__, __LINE__);
+        cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
 

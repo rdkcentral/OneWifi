@@ -546,7 +546,6 @@ typedef struct {
     unsigned int cli_MaxUplinkRate;
     unsigned int cli_LastDataDownlinkRate;
     unsigned int cli_LastDataUplinkRate;
-    bool cli_PowerSaveMode;
     unsigned long cli_sleepTime;
 } dev_stats_t;
 
@@ -657,6 +656,8 @@ typedef struct {
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
+    /* In-memory only (not an OVSDB column): derived exclusively from
+     * Wifi_Wei_Rfc_Config by wei_compute_rfc_mask(), never persisted itself. */
     int  wei_rfc_mask;
     bool xfi_tel_enable_rfc;
     bool multiap_rfc;
@@ -1586,14 +1587,6 @@ typedef struct {
     UINT num_operating_classes;
     operating_class_t operating_classes[EM_MAX_OPERATING_CLASS];
 } channel_scan_request_t;
-
-typedef struct {
-    bssid_t    bssid;
-    unsigned char assoc_control;
-    unsigned short validity_period;
-    unsigned char count;
-    mac_address_t sta_mac;
-} client_assoc_ctrl_req_t;
 
 typedef struct {
     bssid_t bssid;

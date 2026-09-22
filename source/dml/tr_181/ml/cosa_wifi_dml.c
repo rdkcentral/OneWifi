@@ -4630,7 +4630,7 @@ Stats3_GetParamIntValue
         pthread_mutex_lock(&monitor_param->data_lock);
         radio_activity_factor =
             monitor_param->radio_data[instance_number].RadioActivityFactor;
-        while ((i++) < monitor_param->radio_chan_stats_data[instance_number]
+        while (i < monitor_param->radio_chan_stats_data[instance_number]
                            .num_channels) {
             utilization_rx +=
                 monitor_param->radio_chan_stats_data[instance_number]
@@ -4640,6 +4640,7 @@ Stats3_GetParamIntValue
                 monitor_param->radio_chan_stats_data[instance_number]
                     .chan_data[i]
                     .ch_utilization_busy_tx;
+            i++;
         }
         pthread_mutex_unlock(&monitor_param->data_lock);
         utilization_total = utilization_rx + utilization_tx;
@@ -10488,7 +10489,7 @@ PreAssocDeny_GetParamStringValue
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
     {
-        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        snprintf(pValue, *pUlSize, "disabled, -50 to -95");
         return 0;
     }
 
@@ -20905,6 +20906,7 @@ Passpoint_SetParamStringValue
                 cJSON_Delete(p_root);
                 return FALSE;
             }
+            cJSON_Delete(p_root);
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
