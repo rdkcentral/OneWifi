@@ -51,6 +51,14 @@ apply_ignite_config_t g_apply_ignite_config;
 
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
+/* Runtime-only ignite flag; not in g_wei_param_table because
+ * get_ctrl_wei_rfc_parameters() re-copies that struct from the OVSDB mirror on
+ * every call, which would clobber it. */
+static bool g_wei_ignite_enable = false;
+
+/* Defined with the WEI RFC provider table further down. */
+static int wei_lookup_param(const char *name);
+
 static int get_subdoc_type(wifi_provider_response_t *response, webconfig_subdoc_type_t *subdoc,
     char *eventName)
 {
@@ -330,21 +338,51 @@ void hotspot_timing_disconnected(void)
     }
 }
 
+/* Queues a WEI RFC bool the same way an rbus Set does, minus the round trip. */
+static int wei_queue_bool(const char *dmpath, bool value)
+{
+    wei_rfc_field_update_t upd;
+    int idx = wei_lookup_param(dmpath);
+
+    if (idx < 0) {
+        return -1;
+    }
+    memset(&upd, 0, sizeof(upd));
+    upd.field_id = idx;
+    upd.bval = value;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d queue %s=%d\n", __func__, __LINE__, dmpath, value);
+    return (push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+                wifi_event_type_wei_rfc_config, NULL) == RETURN_OK) ? 0 : -1;
+}
+
 /* WEI publishes only the ignite status while this is set; T2 bundles stay off. */
 static int wei_set_ignite_mode(bool enable)
 {
-    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    raw_data_t data;
-    char str[512];
+    wei_rfc_dml_parameters_t *cfg = get_ctrl_wei_rfc_parameters();
+    wei_rfc_field_update_t upd;
 
-    memset(&data, 0, sizeof(raw_data_t));
-    memset(str, 0, sizeof(str));
-    snprintf(str, sizeof(str), "%s", WEI_IGNITE_ENABLE_DMPATH);
-    data.data_type = bus_data_type_boolean;
-    data.raw_data.b = enable;
+    /* Everything here goes via the ctrl queue, never an rbus Set: OneWifi owns
+     * these elements and this runs inside the EndPoint.1.Enable set callback,
+     * where rbus cannot dispatch a nested set until we return (times out rc=20). */
+    if (enable != cfg->wei_enable && wei_queue_bool(WEI_MEASUREMENT_RFC, enable) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set WEI enable to %d\n", __func__,
+            __LINE__, enable);
+        return -1;
+    }
+    /* wei_compute_rfc_mask() only reaches the IGNITE bit when wei_enable is set,
+     * and WEI only scores when the LQ pillar is on, so ignite needs both. */
+    if (enable != (cfg->lq.home_enable || cfg->lq.client_enable) &&
+        wei_queue_bool(WEI_LQ_CLIENT_ENABLE_DMPATH, enable) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set LQ to %d\n", __func__, __LINE__,
+            enable);
+        return -1;
+    }
 
-    if (get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, str, &data) !=
-        bus_error_success) {
+    g_wei_ignite_enable = enable;
+    memset(&upd, 0, sizeof(upd));
+    upd.field_id = -1;
+    if (push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+            wifi_event_type_wei_rfc_config, NULL) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d unable to set ignite mode to %d\n", __func__,
             __LINE__, enable);
         return -1;
@@ -2032,8 +2070,6 @@ static void meshStatusHandler(char *event_name, bus_data_prop_t *p_data, void *u
 #define WEI_FIELD(path, ftype, member) \
     { (path), (ftype), offsetof(wei_rfc_dml_parameters_t, member), sizeof(((wei_rfc_dml_parameters_t *)0)->member) }
 
-static bool g_wei_ignite_enable = false;
-
 static wei_param_entry_t g_wei_param_table[] = {
     WEI_FIELD(WEI_MEASUREMENT_RFC,        FIELD_BOOL,   wei_enable),
     WEI_FIELD(WEI_LINK_QUALITY_FLAGS,     FIELD_UINT,   lq_meas_params_mask),
@@ -2062,6 +2098,8 @@ static wei_param_entry_t g_wei_param_table[] = {
     WEI_FIELD(WEI_LQ_CLIENT_THRESHOLD_DMPATH,     FIELD_UINT,   lq.client_threshold),
     WEI_FIELD(WEI_LQ_CLIENT_DETAIL_ENABLE_DMPATH, FIELD_BOOL,   lq.client_detail_enable),
     WEI_FIELD(WEI_LQ_CLIENT_WHITELIST_DMPATH,     FIELD_STRING, lq.client_whitelist),
+
+    WEI_FIELD(WEI_DIAGNOSTIC_ENABLE_DMPATH,       FIELD_BOOL,   wei_diagnostic_enable),
 };
 #define WEI_PARAM_TABLE_COUNT (sizeof(g_wei_param_table) / sizeof(g_wei_param_table[0]))
 
@@ -2130,6 +2168,8 @@ static bus_error_t wei_set_param(char *event_name, raw_data_t *p_data, bus_user_
 
     wei_param_entry_t *e = &g_wei_param_table[idx];
     wei_rfc_field_update_t upd;
+    wei_rfc_update_completion_t completion;
+    int queue_status;
     memset(&upd, 0, sizeof(upd));
     upd.field_id = idx;
 
@@ -2157,10 +2197,27 @@ static bus_error_t wei_set_param(char *event_name, raw_data_t *p_data, bus_user_
         break;
     }
 
-    /* Serialize the read-modify-write on the ctrl thread to avoid lost
-     * updates when two Sets on different fields race. */
-    push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+    memset(&completion, 0, sizeof(completion));
+    pthread_mutex_init(&completion.lock, NULL);
+    pthread_cond_init(&completion.cond, NULL);
+    completion.status = -1;
+    upd.completion = &completion;
+
+    pthread_mutex_lock(&completion.lock);
+    queue_status = push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
         wifi_event_type_wei_rfc_config, NULL);
+    if (queue_status == RETURN_OK) {
+        while (!completion.done) {
+            pthread_cond_wait(&completion.cond, &completion.lock);
+        }
+    }
+    pthread_mutex_unlock(&completion.lock);
+    pthread_cond_destroy(&completion.cond);
+    pthread_mutex_destroy(&completion.lock);
+
+    if (queue_status != RETURN_OK || completion.status != 0) {
+        return bus_error_general;
+    }
     return bus_error_success;
 }
 
@@ -2348,10 +2405,12 @@ static void wei_notify_rfc_config_changed(void)
 void process_wei_rfc_config_update(wei_rfc_field_update_t *upd)
 {
     wei_rfc_dml_parameters_t *cfg = get_ctrl_wei_rfc_parameters();
+    int status = 0;
 
     if (upd != NULL && upd->field_id >= 0) {
         wei_apply_field_update(cfg, upd);
         if (wifidb_update_wei_rfc_config(cfg) != 0) {
+            status = -1;
             wifi_util_error_print(WIFI_CTRL, "%s:%d failed to persist Wifi_Wei_Rfc_Config\n",
                 __func__, __LINE__);
         }
@@ -2366,6 +2425,14 @@ void process_wei_rfc_config_update(wei_rfc_field_update_t *upd)
          * to OVSDB -- keep the DB-mirror struct in sync purely so the next
          * get_ctrl_rfc_parameters() refresh doesn't clobber it back to stale. */
         get_wifi_db_rfc_parameters()->wei_rfc_mask = (int)mask;
+    }
+
+    if (upd != NULL && upd->completion != NULL) {
+        pthread_mutex_lock(&upd->completion->lock);
+        upd->completion->status = status;
+        upd->completion->done = true;
+        pthread_cond_signal(&upd->completion->cond);
+        pthread_mutex_unlock(&upd->completion->lock);
     }
 
     wei_notify_rfc_config_changed();
