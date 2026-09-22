@@ -1547,7 +1547,6 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 
 int push_vap_dml_cache_to_one_wifidb()
 {
-    int ret;
 
     if(is_vap_config_changed == FALSE)
     {
