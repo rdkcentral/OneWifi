@@ -292,7 +292,7 @@ int consumer_events_subscribe(webconfig_consumer_t *consumer)
         return -1;
     }
 
-    strcpy(name, "Device.WiFi.STA.*.InterfaceName");
+    snprintf(name, sizeof(name), "%s", "Device.WiFi.STA.*.InterfaceName");
     printf("%s:%d Rbus events subscription start name:%s\n",__FUNCTION__, __LINE__, name);
     rc = rbusEvent_Subscribe(consumer->rbus_handle, name, eventReceiveHandler, NULL, 0);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -300,7 +300,7 @@ int consumer_events_subscribe(webconfig_consumer_t *consumer)
         return -1;
     }
 
-    strcpy(name, "Device.WiFi.STA.*.Connection.Status");
+    snprintf(name, sizeof(name), "%s", "Device.WiFi.STA.*.Connection.Status");
     printf("%s:%d Rbus events subscription start name:%s\n",__FUNCTION__, __LINE__, name);
     rc = rbusEvent_Subscribe(consumer->rbus_handle, name, webconfig_consumer_sta_conn_status, NULL, 0);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -308,7 +308,7 @@ int consumer_events_subscribe(webconfig_consumer_t *consumer)
         return -1;
     }
 
-    strcpy(name, "Device.WiFi.STA.*.Bssid");
+    snprintf(name, sizeof(name), "%s", "Device.WiFi.STA.*.Bssid");
     printf("%s:%d Rbus events subscription start name:%s\n",__FUNCTION__, __LINE__, name);
     rc = rbusEvent_Subscribe(consumer->rbus_handle, name, eventReceiveHandler, NULL, 0);
     if (rc != RBUS_ERROR_SUCCESS) {
