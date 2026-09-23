@@ -94,7 +94,7 @@ print_wifi_2g_txprobe_cnt()
 
 sync_all_wifi_2g_txprobe_cnt()
 {
-    pre_rxprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+    pre_rxprobe_req_2g_cnt=`wl -i wl0.1 counters | grep -o "rxprobereq [0-9]*" | awk '{print $2}'`
     cur_rxprobe_req_2g_cnt=$pre_rxprobe_req_2g_cnt
 
     pre_txprobe_resp_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
@@ -107,7 +107,7 @@ check_wifi_2g_stuck_status()
         sync_all_wifi_2g_txprobe_cnt
         print_wifi_2g_txprobe_cnt
     else
-        cur_rxprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+        cur_rxprobe_req_2g_cnt=`wl -i wl0.1 counters | grep -o "rxprobereq [0-9]*" | awk '{print $2}'`
         if [ $cur_rxprobe_req_2g_cnt -gt $pre_rxprobe_req_2g_cnt ]; then
             cur_txprobe_resp_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
             if [ $cur_txprobe_resp_2g_cnt -eq $pre_txprobe_resp_2g_cnt ]; then
@@ -134,7 +134,7 @@ print_wifi_5g_txprobe_cnt()
 
 sync_all_wifi_5g_txprobe_cnt()
 {
-    pre_rxprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+    pre_rxprobe_req_5g_cnt=`wl -i wl1.1 counters | grep -o "rxprobereq [0-9]*" | awk '{print $2}'`
     cur_rxprobe_req_5g_cnt=$pre_rxprobe_req_5g_cnt
 
     pre_txprobe_resp_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
@@ -147,7 +147,7 @@ check_wifi_5g_stuck_status()
         sync_all_wifi_5g_txprobe_cnt
         print_wifi_5g_txprobe_cnt
     else
-        cur_rxprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+        cur_rxprobe_req_5g_cnt=`wl -i wl1.1 counters | grep -o "rxprobereq [0-9]*" | awk '{print $2}'`
         if [ $cur_rxprobe_req_5g_cnt -gt $pre_rxprobe_req_5g_cnt ]; then
             cur_txprobe_resp_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
             if [ $cur_txprobe_resp_5g_cnt -eq $pre_txprobe_resp_5g_cnt ]; then
@@ -378,7 +378,7 @@ do
             check_count=0
             cur_timestamp="`date +"%s"` $1"
             #echo_t "cur_timestamp = $cur_timestamp" >> $LOG_FILE
-            if [ "$MODEL_NUM" == "SR213" ]; then
+            if [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "XER2" ]; then
                 eco_mode_2g=`dmcli eRT getv Device.WiFi.Radio.$radio_2g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_5g=`dmcli eRT getv Device.WiFi.Radio.$radio_5g_instance.X_RDK_EcoPowerDown | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                 eco_mode_6g="false"

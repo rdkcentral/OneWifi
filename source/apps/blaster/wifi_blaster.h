@@ -50,8 +50,8 @@ extern "C" {
 
 typedef struct wifi_app wifi_app_t;
 typedef struct _pktGenFrameCountSamples {
-        ULONG   PacketsSentAck;
-        ULONG   PacketsSentTotal;
+        ULONG   PacketsSentAck[MAX_NUM_RADIOS];
+        ULONG   PacketsSentTotal[MAX_NUM_RADIOS];
         int             WaitAndLatencyInMs;             //Wait duration + API Latency in millsecs
 } pktGenFrameCountSamples;
 
@@ -151,7 +151,7 @@ void process_active_msmt_diagnostics (int ap_index);
 
 void stream_client_msmt_data(bool ActiveMsmtFlag);
 wifi_actvie_msmt_t *get_wifi_blaster();
-
+char *active_msmt_status_to_str(active_msmt_status_t status);
 #ifdef __cplusplus
 }
 #endif
