@@ -29,26 +29,25 @@ extern "C" {
 
 #define WIFI_XHS_LNF_FLAG_FILE_NAME "/nvram/.bcmwifi_xhs_lnf_enabled"
 
+typedef  enum
+_WIFI_TXRATE
+{
+    WIFI_TXRATE_Auto               = 1,
+    WIFI_TXRATE_6M,
+    WIFI_TXRATE_9M,
+    WIFI_TXRATE_12M,
+    WIFI_TXRATE_18M,
+    WIFI_TXRATE_24M,
+    WIFI_TXRATE_36M,
+    WIFI_TXRATE_48M,
+    WIFI_TXRATE_54M
+}
+WIFI_TXRATE, *PWIFI_TXRATE;
+
 typedef struct {
     void    *acl_vap_context;
     queue_t* new_entry_queue[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
 } acl_data_t;
-
-typedef struct {
-    assoc_dev_data_t *affiliated_sta[MAX_NUM_RADIOS];
-    UINT affiliated_sta_count;
-} stamld_data_t;
-
-typedef struct {
-    wifi_vap_info_t *mld_vaps[MAX_NUM_RADIOS];
-    UINT mld_vap_count;
-} mld_group_t;
-
-typedef struct {
-    mld_group_t mld_groups[MLD_UNIT_COUNT];
-    UINT mld_group_count;
-    hash_map_t *stamld[MLD_UNIT_COUNT]; /* Hash map keyed by MLD MAC address, contains stamld_data_t */
-} apmld_map_t;
 
 typedef struct {
     webconfig_t		webconfig;
@@ -107,6 +106,7 @@ typedef struct {
     INT     MulticastRate;
     INT     MCS;
     ULONG   DFSTimer;
+    WIFI_TXRATE   TxRate;
 } dml_radio_default;
 
 typedef struct {
@@ -138,7 +138,6 @@ hash_map_t** get_dml_acl_hash_map(unsigned int radio_index, unsigned int vap_ind
 queue_t** get_dml_acl_new_entry_queue(unsigned int radio_index, unsigned int vap_index);
 void** get_acl_vap_context();
 UINT get_num_radio_dml();
-void update_apmld_map();
 /* Update STAMLD list for a specific APMLD index by iterating through VAPs and associated devices */
 UINT get_num_apmld_dml();
 mld_group_t* get_dml_apmld_group(uint8_t apmld_index);

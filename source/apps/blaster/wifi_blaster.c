@@ -86,7 +86,7 @@
     arg[4], \
     arg[5]
 
-void calculate_throughput();
+void calculate_throughput(int mld_link_num);
 
 #define WIFI_BLASTER_POST_STEP_TIMEOUT 100  // ms
 #define WIFI_BLASTER_CPU_THRESHOLD     90   // percentage
@@ -149,7 +149,7 @@ static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
     return (char *)key;
 }
 
-bool is_blaster_device_associated(int ap_index, mac_address_t sta_mac)
+bool is_blaster_device_associated(int ap_index, mac_address_t sta_mac, bool *is_mlo)
 {
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     assoc_dev_data_t *sta = NULL;
@@ -178,7 +178,25 @@ bool is_blaster_device_associated(int ap_index, mac_address_t sta_mac)
         return false;
     }
     else {
+        if (is_mlo && !(*is_mlo))
+            *is_mlo = sta->dev_stats.cli_MLDEnable;
         return true;
+    }
+
+    return false;
+}
+
+static bool is_blaster_device_associated_aap_link(mac_address_t sta_mac, active_msmt_step_t *step)
+{
+    //If it's an MLO client, check the AAP MLO links
+    if (step != NULL && step->isMLO) {
+        //step->mldApIndex contains only AAP indexes, since MAP is stored in step->ApIndex
+        for (int i = 0; i < MAX_NUM_RADIOS - 1; i++) {
+            int mld_index = step->mldApIndex[i];
+            if (mld_index != -1 && is_blaster_device_associated(mld_index, sta_mac, NULL)) {
+                return true;
+            }
+        }
     }
 
     return false;
@@ -292,7 +310,7 @@ static void active_msmt_log_message( blaster_log_level_t level,char *fmt, ...)
     wifi_util_dbg_print(WIFI_BLASTER, msg);
 }
 
-static char *active_msmt_status_to_str(active_msmt_status_t status)
+char *active_msmt_status_to_str(active_msmt_status_t status)
 {
     switch (status)
     {
@@ -714,6 +732,41 @@ void SetActiveMsmtStepID(unsigned int StepId, ULONG StepIns)
     g_active_msmt->active_msmt.Step[StepIns].StepId = StepId;
 }
 
+static void SetActiveMAPIndex(UINT MldId, ULONG StepIns)
+{
+    wifi_actvie_msmt_t *g_active_msmt = get_wifi_blaster();
+    active_msmt_t *cfg = &g_active_msmt->active_msmt;
+    wifi_vap_info_t *vap = NULL;
+    if (!cfg->Step[StepIns].isMLO || MldId == UNDEFINED_MLD_ID)
+        return;
+
+    for (UINT i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(get_wifimgr_obj()->hal_cap, i);
+        vap = getVapInfo(vap_index);
+        if (vap && vap->vap_mode != wifi_vap_mode_sta && vap->u.bss_info.enabled &&
+            vap->u.bss_info.mld_info.common_info.mld_id == MldId &&
+            vap->u.bss_info.mld_info.common_info.mld_link_id == 0) {
+            //cfg->Step[StepIns].ApIndex needs to be MAP - packetgen must generate packets on MAP
+            if (cfg->Step[StepIns].ApIndex == (int)vap_index)
+                break;
+
+            //cfg->Step[StepIns].ApIndex is not MAP - we need to find MAP and set it to ApIndex
+            for (UINT j = 0; j < MAX_NUM_RADIOS - 1; j++)
+            {
+                if (cfg->Step[StepIns].mldApIndex[j] == (int)vap_index ||
+                    cfg->Step[StepIns].mldApIndex[j] == -1) {
+                    cfg->Step[StepIns].mldApIndex[j] = cfg->Step[StepIns].ApIndex;
+                    cfg->Step[StepIns].ApIndex = vap_index;
+                    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Found MAP VAP index:%u\n", __func__, __LINE__, vap_index);
+                    return;
+                }
+            }
+            wifi_util_error_print(WIFI_BLASTER, "%s:%d: MAP VAP index not found\n", __func__, __LINE__);
+            break;
+        }
+    }
+}
+
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : SetActiveMsmtStepDstMac                                       */
@@ -734,7 +787,10 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
 {
     wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
     mac_address_t bmac;
-    int i;
+    int i, j = 0;
+    bool client_found = false;
+    UINT mld_id = UNDEFINED_MLD_ID;
+    wifi_vap_info_t *vap = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     active_msmt_t *cfg = &g_active_msmt->active_msmt;
     wifi_ctrl_t *ctrl = &mgr->ctrl;
@@ -754,15 +810,36 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
     memcpy(cfg->Step[StepIns].DestMac, bmac, sizeof(mac_address_t));
 
     active_msmt_set_step_status(__func__, StepIns, ACTIVE_MSMT_STEP_PENDING);
+    for (i = 0; i < MAX_NUM_RADIOS - 1; i++) {
+        cfg->Step[StepIns].mldApIndex[i] = -1;
+    }
+    cfg->Step[StepIns].isMLO = false;
 
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
-
-        if (is_blaster_device_associated(vap_index, bmac)  == true) {
+        if (is_blaster_device_associated(vap_index, bmac, &cfg->Step[StepIns].isMLO) == true) {
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, DstMac,vap_index);
-            cfg->Step[StepIns].ApIndex = vap_index;
-            return;
+            if (cfg->Step[StepIns].isMLO && mld_id == UNDEFINED_MLD_ID) {
+                vap = getVapInfo(vap_index);
+                if (vap)
+                    mld_id = vap->u.bss_info.mld_info.common_info.mld_id;
+            }
+            // Store associated MLD VAP indices
+            // ApIndex is set to the first match and may be reordered to MAP in SetActiveMAPIndex().
+            if (!client_found) {
+                cfg->Step[StepIns].ApIndex = vap_index;
+                client_found = true;
+            }
+            else if (cfg->Step[StepIns].isMLO && (j < MAX_NUM_RADIOS - 1)){
+                cfg->Step[StepIns].mldApIndex[j] = vap_index;
+                j++;
+            }
         }
+    }
+    if (client_found) {
+        //BCM Specific, pktgen need to be done on MAP interface, reorder if needed
+        SetActiveMAPIndex(mld_id, StepIns);
+        return;
     }
 
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: client %s not found \n", __func__, __LINE__, DstMac);
@@ -1393,6 +1470,9 @@ void WiFiBlastClient(void)
 
             /*TODO RDKB-34680 CID: 154402,154401  Data race condition*/
             g_active_msmt->curStepData.ApIndex = apIndex;
+            g_active_msmt->curStepData.isMLO = cfg->Step[StepCount].isMLO;
+            memcpy(g_active_msmt->curStepData.mldApIndex, cfg->Step[StepCount].mldApIndex,
+                sizeof(g_active_msmt->curStepData.mldApIndex));
             wifi_util_error_print(WIFI_BLASTER, "Value of apindex is %d \n", apIndex);
             g_active_msmt->curStepData.StepId = cfg->Step[StepCount].StepId;
 
@@ -1416,7 +1496,8 @@ void WiFiBlastClient(void)
             /* WiFiBlastClient is derefered task, so client could disconnect
              * before it starts
              */
-            if (is_blaster_device_associated(apIndex, bmac) == false) {
+            if (is_blaster_device_associated(apIndex, bmac, NULL) == false &&
+                is_blaster_device_associated_aap_link(bmac, &g_active_msmt->curStepData) == false) {
 
                 if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
 
@@ -1712,7 +1793,11 @@ static int push_blaster_config_event_to_monitor_queue(wifi_mon_stats_request_sta
     data->u.mon_stats_config.args.vap_index = g_active_msmt->curStepData.ApIndex;
     wifi_util_error_print(WIFI_BLASTER,"%s:%d Blaster config values vap_index = %d\n", __func__, __LINE__, g_active_msmt->curStepData.ApIndex);
     config_sample_blaster(data);
-
+    for (int i = 0; (i < MAX_NUM_RADIOS - 1) && (g_active_msmt->curStepData.mldApIndex[i] >= 0); i++) {
+        data->u.mon_stats_config.args.vap_index = g_active_msmt->curStepData.mldApIndex[i];
+        wifi_util_error_print(WIFI_BLASTER,"%s:%d Blaster config values MLD vap_index = %d\n", __func__, __LINE__, g_active_msmt->curStepData.mldApIndex[i]);
+        config_sample_blaster(data);
+    }
     if (NULL != data) {
         free(data);
         data = NULL;
@@ -1850,6 +1935,7 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
     wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
     active_msmt_step_t *step = &g_active_msmt->curStepData;
     unsigned int *SampleCount = get_sample_count();
+    unsigned int count = 0;
     wifi_apps_mgr_t *apps_mgr;
     wifi_app_t *wifi_app =  NULL;
 
@@ -1868,6 +1954,19 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
     }
 
     int index = g_active_msmt->curStepData.ApIndex;
+    int mld_link_num = -1;
+    int mld_link_idx = 0;
+    while((mld_link_num < MAX_NUM_RADIOS - 2) && (g_active_msmt->curStepData.mldApIndex[mld_link_num+1] >= 0))
+    {
+        if (provider_response->args.vap_index == (unsigned int)g_active_msmt->curStepData.mldApIndex[mld_link_num+1]) {
+            index = provider_response->args.vap_index;
+            mld_link_idx = mld_link_num+2;
+        }
+        mld_link_num++;
+    }
+    if (g_active_msmt->curStepData.isMLO)
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Received MLO link stats response from AP %d\n", __func__, __LINE__, index);
+
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
     wifi_radio_operationParam_t* radioOperation = NULL;
@@ -1890,7 +1989,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
     if (radio_index != RETURN_ERR) {
         wifi_util_error_print(WIFI_BLASTER, "%s: bmac is %02x:%02x:%02x:%02x:%02x:%02x\n", __func__, bmac[0], bmac[1], bmac[2], bmac[3], bmac[4], bmac[5]);
         wifi_util_error_print(WIFI_BLASTER, "%s: provider_response->stat_array_size %u\n", __func__, provider_response->stat_array_size);
-        for (unsigned int count = 0; count < provider_response->stat_array_size; count++) {
+        for (count = 0; count < provider_response->stat_array_size; count++) {
             wifi_util_error_print(WIFI_BLASTER, "%s: provider mac is %02x:%02x:%02x:%02x:%02x:%02x \n", __func__, assoc_stats[count].sta_mac[0], assoc_stats[count].sta_mac[1],
                 assoc_stats[count].sta_mac[2], assoc_stats[count].sta_mac[3], assoc_stats[count].sta_mac[4], assoc_stats[count].sta_mac[5]);
             if (!memcmp(bmac, assoc_stats[count].sta_mac, sizeof(mac_address_t))) {
@@ -1911,30 +2010,31 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = ((getCurrentTimeInMicroSeconds () - wifi_app->data.u.blaster.blaster_start) / 1000);
             active_msmt_log_message(BLASTER_DEBUG_LOG, "PKTGEN_WAIT_IN_MS duration : %lu and value of getcurrent time is %lu and value of blaster_start is %lu \n", ((getCurrentTimeInMicroSeconds () - wifi_app->data.u.blaster.blaster_start)/1000), getCurrentTimeInMicroSeconds (), wifi_app->data.u.blaster.blaster_start);
-
-            g_active_msmt->active_msmt_data[*SampleCount].rssi = dev_conn->cli_RSSI;
-            g_active_msmt->active_msmt_data[*SampleCount].TxPhyRate = dev_conn->cli_LastDataDownlinkRate;
-            g_active_msmt->active_msmt_data[*SampleCount].RxPhyRate = dev_conn->cli_LastDataUplinkRate;
-            g_active_msmt->active_msmt_data[*SampleCount].SNR = dev_conn->cli_SNR;
-            g_active_msmt->active_msmt_data[*SampleCount].ReTransmission = dev_conn->cli_Retransmissions;
-            g_active_msmt->active_msmt_data[*SampleCount].MaxTxRate = dev_conn->cli_MaxDownlinkRate;
-            g_active_msmt->active_msmt_data[*SampleCount].MaxRxRate = dev_conn->cli_MaxUplinkRate;
+            if (!g_active_msmt->curStepData.isMLO || (g_active_msmt->curStepData.isMLO && assoc_stats[count].assoc_link)) {
+                g_active_msmt->active_msmt_data[*SampleCount].rssi = dev_conn->cli_RSSI;
+                g_active_msmt->active_msmt_data[*SampleCount].TxPhyRate = dev_conn->cli_LastDataDownlinkRate;
+                g_active_msmt->active_msmt_data[*SampleCount].RxPhyRate = dev_conn->cli_LastDataUplinkRate;
+                g_active_msmt->active_msmt_data[*SampleCount].SNR = dev_conn->cli_SNR;
+                g_active_msmt->active_msmt_data[*SampleCount].ReTransmission = dev_conn->cli_Retransmissions;
+                g_active_msmt->active_msmt_data[*SampleCount].MaxTxRate = dev_conn->cli_MaxDownlinkRate;
+                g_active_msmt->active_msmt_data[*SampleCount].MaxRxRate = dev_conn->cli_MaxUplinkRate;
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
-            if (radioOperation != NULL) {
-                convert_channel_width_to_str(radioOperation->channelWidth, g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN);
-                convert_variant_to_str(radioOperation->variant, g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, OPER_BUFFER_LEN);
-            }
+                if (radioOperation != NULL) {
+                    convert_channel_width_to_str(radioOperation->channelWidth, g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN);
+                    convert_variant_to_str(radioOperation->variant, g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, OPER_BUFFER_LEN);
+                }
 #else
-            if (strstr(dev_conn->cli_OperatingStandard, "802.11") != NULL) {
-                sscanf(dev_conn->cli_OperatingStandard, "802.11%2s", g_active_msmt->active_msmt_data[*SampleCount].Operating_standard);
-            } else {
-                snprintf(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, OPER_BUFFER_LEN, dev_conn->cli_OperatingStandard);
-            }
-            snprintf(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN, dev_conn->cli_OperatingChannelBandwidth);
+                if (strstr(dev_conn->cli_OperatingStandard, "802.11") != NULL) {
+                    sscanf(dev_conn->cli_OperatingStandard, "802.11%2s", g_active_msmt->active_msmt_data[*SampleCount].Operating_standard);
+                } else {
+                    snprintf(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, OPER_BUFFER_LEN, dev_conn->cli_OperatingStandard);
+                }
+                snprintf(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN, dev_conn->cli_OperatingChannelBandwidth);
 #endif //_PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
+            }
 
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck = dev_conn->cli_DataFramesSentAck;
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = dev_conn->cli_DataFramesSentAck;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
 
             wifi_util_dbg_print(WIFI_BLASTER,"samplecount[%d] : PacketsSentAck[%lu] PacketsSentTotal[%lu]"
                     " WaitAndLatencyInMs[%d ms] RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d]"
@@ -1946,7 +2046,8 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 if (ctrl->network_mode == rdk_dev_mode_type_ext) {
                     active_msmt_status_t status;
 
-                    if (is_blaster_device_associated(index, bmac) == false) {
+                    if (is_blaster_device_associated(index, bmac, NULL) == false &&
+                        is_blaster_device_associated_aap_link(bmac, &g_active_msmt->curStepData) == false) {
                         snprintf(msg, sizeof(msg), "The MAC is disconnected");
                         status = ACTIVE_MSMT_STATUS_NO_CLIENT;
                     }
@@ -1960,24 +2061,32 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 }
 
                 active_msmt_log_message(BLASTER_DEBUG_LOG, "%s : %d Unable to get provider response for : %s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
-                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = 0;
-                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck = 0;
+                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = 0;
+                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = 0;
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
                 sample_done_notify();
                 return;
             }
         } else {
             active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d radio_index is invalid. So, client is treated as offline\n",__func__, __LINE__);
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = 0;
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck = 0;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = 0;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = 0;
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, "NULL",OPER_BUFFER_LEN);
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, "NULL",OPER_BUFFER_LEN);
             sample_done_notify();
             return;
         }
-        wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
-        *SampleCount += 1;
+        if (!g_active_msmt->curStepData.isMLO)
+        {
+            wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
+            *SampleCount += 1;
+        }
+        else if (mld_link_num < 0 || index == g_active_msmt->curStepData.mldApIndex[mld_link_num])
+        {
+            wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
+            *SampleCount += 1;
+        }
 }
     if (dev_conn != NULL){
         //free(dev_conn);
@@ -1986,13 +2095,12 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Sample count value = %d\n", __func__, __LINE__, *SampleCount);
     if (*SampleCount == g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples + 1){
         *SampleCount = 0;
-        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: calling calculate_throughput\n", __func__, __LINE__);
-        calculate_throughput();
+        calculate_throughput(mld_link_num+1);
         sample_done_notify();
     }
 }
 
-void calculate_throughput()
+void calculate_throughput(int mld_link_num)
 {
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Entered in \n", __func__, __LINE__);
     unsigned long totalduration = 0;
@@ -2015,37 +2123,48 @@ void calculate_throughput()
         return;
     }
 
-    unsigned long DiffsamplesAck = 0, Diffsamples = 0, TotalAckSamples = 0, TotalSamples = 0;
-    double  tp = 0, AckRate = 0, AckSum = 0, Rate = 0, AvgAckThroughput = 0;
+    unsigned long DiffsamplesAck = 0, Diffsamples = 0, DiffsamplesAckLink = 0, DiffsamplesLink = 0, TotalAckSamples = 0, TotalSamples = 0;
+    double  tp = 0, AckRate = 0, AckSum = 0, Rate = 0, AckRateLink = 0, RateLink = 0, AvgAckThroughput = 0;
 
     int index = g_active_msmt->curStepData.ApIndex;
 
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: calculating the throughput\n", __func__, __LINE__);
     // Analyze samples and get Throughput
     for (SampleCount = 0; SampleCount < GetActiveMsmtNumberOfSamples() ; SampleCount++) {
-        DiffsamplesAck = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentAck - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck;
-        Diffsamples = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentTotal - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentTotal;
+        DiffsamplesAck = 0;
+        Diffsamples = 0;
+        AckRate = 0;
+        Rate = 0;
+        for (int i = 0; i <= mld_link_num; i++) {
+            // Add underflow protection since counters of t1 might be less than t0 due to BCM packetstats recalculation in platform.c
+            const pktGenFrameCountSamples *s0 = &(wifi_app->data.u.blaster.frameCountSample)[SampleCount];
+            const pktGenFrameCountSamples *s1 = &(wifi_app->data.u.blaster.frameCountSample)[SampleCount + 1];
+            DiffsamplesAckLink = (s1->PacketsSentAck[i] >= s0->PacketsSentAck[i]) ? (s1->PacketsSentAck[i] - s0->PacketsSentAck[i]) : 0UL;
+            DiffsamplesLink = (s1->PacketsSentTotal[i] >= s0->PacketsSentTotal[i]) ? (s1->PacketsSentTotal[i] - s0->PacketsSentTotal[i]) : 0UL;
+            DiffsamplesAck += DiffsamplesAckLink;
+            Diffsamples += DiffsamplesLink;
 
-        if ((wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs != 0) {
-            tp = (double)(DiffsamplesAck*8*GetActiveMsmtPktSize());              //number of bits
-            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
-            tp = tp/1000000;                //convert to Mbits
-            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
-            AckRate = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                        //calculate bitrate in the unit of Mbpms
-            tp = (double)(Diffsamples*8*GetActiveMsmtPktSize());         //number of bits
-            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
-            tp = tp/1000000;                //convert to Mbits
-            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
-            Rate = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                   //calculate bitrate in the unit of Mbpms
-        } else {
-            AckRate = 0;
-            Rate = 0;
+            if ((wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs != 0) {
+                tp = (double)(DiffsamplesAckLink*8*GetActiveMsmtPktSize());              //number of bits
+                wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
+                tp = tp/1000000;                //convert to Mbits
+                wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
+                AckRateLink = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;
+                AckRate += (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                        //calculate bitrate in the unit of Mbpms
+                tp = (double)(DiffsamplesLink*8*GetActiveMsmtPktSize());         //number of bits
+                wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
+                tp = tp/1000000;                //convert to Mbits
+                wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
+                RateLink = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;
+                Rate += (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                   //calculate bitrate in the unit of Mbpms
+                if (mld_link_num > 0)
+                    wifi_util_dbg_print(WIFI_BLASTER,"Sample[%d] Link[%d] DiffsamplesAck[%lu]   Diffsamples[%lu]   BitrateAckPackets[%.5f Mbps]   BitrateTotalPackets[%.5f Mbps]\n", SampleCount, i, DiffsamplesAckLink, DiffsamplesLink, AckRateLink, RateLink);
+            }
         }
-
         /* updating the throughput in the global variable */
         g_active_msmt->active_msmt_data[SampleCount].throughput = AckRate;
 
-        wifi_util_dbg_print(WIFI_BLASTER,"Sample[%d]   DiffsamplesAck[%lu]   Diffsamples[%lu]   BitrateAckPackets[%.5f Mbps]   BitrateTotalPackets[%.5f Mbps]\n", SampleCount, DiffsamplesAck, Diffsamples, AckRate, Rate );
+        wifi_util_dbg_print(WIFI_BLASTER,"Sample[%d] Total DiffsamplesAck[%lu]   Diffsamples[%lu]   BitrateAckPackets[%.5f Mbps]   BitrateTotalPackets[%.5f Mbps]\n", SampleCount, DiffsamplesAck, Diffsamples, AckRate, Rate);
         AckSum += AckRate;
         Sum += Rate;
         TotalAckSamples += DiffsamplesAck;

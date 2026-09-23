@@ -814,6 +814,83 @@ void print_sta_client_telemetry_data(unsigned int num_devs, int vap_index, sta_d
 #define CLIENT_TELEMETRY_PARAM_MAX_LEN 64
 #define MAX_BUFF_SIZE BSS_MAX_NUM_STATIONS *CLIENT_TELEMETRY_PARAM_MAX_LEN
 
+#ifdef CONFIG_IEEE80211BE
+static void upload_mld_telemetry_data() {
+    unsigned int mld_idx, index;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    wifi_vap_info_t *vap_info = NULL;
+    char buff[MAX_BUFF_SIZE];
+    char tmp[128];
+    apmld_map_t mld_map = {0};
+    update_apmld_map(&mld_map);
+
+    for (mld_idx = 0; mld_idx < mld_map.mld_group_count; mld_idx++) {
+        unsigned int mlo_clients_count = 0;
+        unsigned int l1 = 0, l2 = 0, l3 = 0;
+        unsigned int mld_id = UNDEFINED_MLD_ID;
+        for (index = 0; index < mld_map.mld_groups[mld_idx].mld_vap_count; index++) {
+            vap_info = mld_map.mld_groups[mld_idx].mld_vaps[index];
+            if (vap_info == NULL) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d Failed to find vap_info mld_idx:%u mld_vap_idx:%u\n",
+                    __func__, __LINE__, mld_idx, index);
+                continue;
+            }
+
+            mld_id = vap_info->u.bss_info.mld_info.common_info.mld_id;
+
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_info->vap_index);
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d Failed to find rdk vap_info:%u\n",
+                    __func__, __LINE__, vap_info->vap_index);
+                continue;
+            }
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+            if (rdk_vap_info->associated_devices_map == NULL) {
+                pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+                continue;
+            }
+            assoc_dev_data_t *sta = hash_map_get_first(rdk_vap_info->associated_devices_map);
+            while (sta) {
+                if (sta->association_link) {
+                    mlo_clients_count++;
+                    unsigned int nb_links = 0;
+                    for (int i = 0; i < MAX_NUM_RADIOS; i++) {
+                        if (sta->mld_info.cli_LinkInfo[i].cli_Valid)
+                            nb_links++;
+                    }
+                    switch (nb_links) {
+                        case 1: l1++; break;
+                        case 2: l2++; break;
+                        case 3: l3++; break;
+                        default: break;
+                    }
+                }
+                sta = hash_map_get_next(rdk_vap_info->associated_devices_map, sta);
+            }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+        }
+
+        if (mld_id == UNDEFINED_MLD_ID) {
+            wifi_util_error_print(WIFI_APPS, "%s:%d Unexpected mld_id for mld_idx:%u",
+                __func__, __LINE__, mld_idx);
+            continue;
+        }
+
+        get_formatted_time(tmp);
+        memset(buff, 0, MAX_BUFF_SIZE);
+        snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_MLO_%u_CLIENT_COUNT:%u\n", tmp, mld_id, mlo_clients_count);
+        write_to_file(wifi_health_log, buff);
+        memset(buff, 0, MAX_BUFF_SIZE);
+        snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_MLO_%u_1LINK_CLIENT_COUNT:%u\n", tmp, mld_id, l1);
+        write_to_file(wifi_health_log, buff);
+        snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_MLO_%u_2LINK_CLIENT_COUNT:%u\n", tmp, mld_id, l2);
+        write_to_file(wifi_health_log, buff);
+        snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_MLO_%u_3LINK_CLIENT_COUNT:%u\n", tmp, mld_id, l3);
+        write_to_file(wifi_health_log, buff);
+    }
+}
+#endif
+
 int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigned int vap_index,
     sta_data_t *sta)
 {
@@ -1037,6 +1114,23 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         snprintf(eventName, sizeof(eventName), "MG_rssi_%u_split", vap_index + 1);
         get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
     }
+    wifi_util_dbg_print(WIFI_APPS, "%s", buff);
+    get_formatted_time(tmp);
+    memset(buff, 0, MAX_BUFF_SIZE);
+    snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_CAPSS_%d:", tmp, vap_index + 1);
+    for (i = 0; i < num_devs; i++) {
+        if (sta[i].dev_stats.cli_Active == true) {
+            snprintf(tmp, 32, "%d/%d,", sta[i].dev_stats.cli_capableNumSpatialStreams,
+                    sta[i].dev_stats.cli_activeNumSpatialStreams);
+            strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+            strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+        }
+    }
+    strncat(buff, "\n", 2);
+    write_to_file(wifi_health_log, buff);
+    snprintf(eventName, sizeof(eventName), "WIFI_CAPSS_%d_split", vap_index + 1);
+    get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
+
     wifi_util_dbg_print(WIFI_APPS, "%s", buff);
     get_formatted_time(tmp);
     memset(buff, 0, MAX_BUFF_SIZE);
@@ -1549,6 +1643,12 @@ void update_clientdiagdata(wifi_app_t *app, unsigned int num_devs, int vap_idx,
     if (isVapHotspotSecure(vap_idx)) {
         upload_ap_telemetry_anqp_whix(vap_idx);
     }
+#ifdef CONFIG_IEEE80211BE
+    if (vap_idx == 0) {
+        //update once per cycle
+        upload_mld_telemetry_data();
+    }
+#endif
     upload_client_telemetry_data(app, num_devs, vap_idx, assoc_stats);
     if (vap_idx == 0) {
         logVAPUpStatus();
