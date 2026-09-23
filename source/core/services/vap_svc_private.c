@@ -92,7 +92,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map = NULL;
     int ret;
-    
     p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (p_tgt_vap_map == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __FUNCTION__,__LINE__);
@@ -110,6 +109,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         if (configure_lnf_psk_radius_from_hotspot(&p_tgt_vap_map->vap_array[0]) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d configure_lnf_psk_radius_from_hotspot failed\n", __FUNCTION__, __LINE__);
+            free(p_tgt_vap_map);
             return -1;
         }
 #if defined(_WNXL11BWL_PRODUCT_REQ_)
@@ -141,7 +141,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         }
 
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
-        
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         get_wifidb_obj()->desc.print_fn("%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
@@ -153,7 +152,9 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             wifi_vap_info_t* lnf_vap_info = NULL;
             lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(p_tgt_vap_map->vap_array[0].vap_index);
             if (lnf_vap_info == NULL) {
-                wifi_util_error_print(WIFI_CTRL,"%s:%d LnF VAP info not found for vap_index=%d\n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
+                wifi_util_error_print(WIFI_CTRL, "%s:%d LnF VAP info not found for vap_index=%d\n",
+                    __FUNCTION__, __LINE__, map->vap_array[i].vap_index);
+                free(p_tgt_vap_map);
                 return -1;
             }
             if (lnf_vap_info->u.bss_info.mdu_enabled) {

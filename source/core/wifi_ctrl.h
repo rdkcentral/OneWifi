@@ -432,13 +432,13 @@ int publish_endpoint_enable(void);
 int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
 void hotspot_timing_start(void);
 void hotspot_timing_stop(void);
+int reboot_device(void* arg);
 
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
     unsigned int vap_names_size, wifi_dbg_type_t log_type);
 void update_mlo_rfc_enable(bool init);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
-
 wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
 wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
 
