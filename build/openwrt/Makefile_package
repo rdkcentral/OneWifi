@@ -39,9 +39,10 @@ define Build/Prepare
 	$(CP) -r ./trower-base64 $(PKG_BUILD_DIR)/
 	@if [ "$(OTS_EXTERNAL_AGENT_ENABLE)" = "1" ]; then \
 		if [ ! -d OneWifiTestSuite ]; then \
-			git clone https://github.com/rdkcentral/OneWifiTestSuite.git \
+			git clone https://github.com/rdkcentral/OneWifiTestSuite.git; \
 			cd OneWifiTestSuite/; \
 			git checkout develop; \
+			mkdir -p install/bin; \
 			git clone http://github.com/yhirose/cpp-httplib; \
 			cd cpp-httplib; \
 			git checkout 9bbb4741b4f7c8fc5083c8a56d8d301a8abc25a3; \
@@ -112,6 +113,7 @@ define Package/easymesh/install
 		$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_ctrl $(1)/usr/bin/; \
 		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/install/bin/OneWifi $(1)/usr/bin/; \
 		$(CP) $(PKG_BUILD_DIR)/OneWifi/config/openwrt/banana-pi/* $(1)/banana-pi/; \
+		$(CP) $(PKG_BUILD_DIR)/OneWifi/config/openwrt/banana-pi/InterfaceMap_kernel_5.4.json $(1)/banana-pi/InterfaceMap.json; \
 		$(INSTALL_DIR) $(1)/etc/init.d; \
 		$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/config/openwrt/banana-pi/etc/init.d/* $(1)/etc/init.d/; \
 		$(CP) $(PKG_BUILD_DIR)/unified-wifi-mesh/config/openwrt/banana-pi/* $(1)/banana-pi/; \

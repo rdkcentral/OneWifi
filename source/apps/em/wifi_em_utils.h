@@ -38,7 +38,6 @@ extern "C" {
 /* conversion */
 char* survey_type_to_str(survey_type_t survey_type);
 char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
-char* radio_index_to_radio_type_str(unsigned int radio_index);
 
 /* time utils*/
 uint64_t get_real_ms();

@@ -34,6 +34,7 @@ extern "C" {
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
 #include "wifi_apps_mgr.h"
+#include "wifi_ctrl_wei_rfc.h"
 
 #define WIFI_WEBCONFIG_PRIVATESSID         1
 #define WIFI_WEBCONFIG_HOMESSID            2
@@ -64,6 +65,7 @@ extern "C" {
 #define WIFI_TxRx_RATE_LIST                "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.TxRxRateList"
 #define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
 #define WIFI_DEVICE_TUNNEL_STATUS          "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus"
+#define WIFI_HOTSPOT_STATUS                "Device.X_COMCAST-COM_GRE.Tunnel.1.Enable"
 #define SPEEDTEST_STATUS                   "Device.IP.Diagnostics.X_RDKCENTRAL-COM_SpeedTest.Status"
 #define SPEEDTEST_SUBSCRIBE                "Device.IP.Diagnostics.X_RDK_SpeedTest.SubscriberUnPauseTimeOut"
 
@@ -170,10 +172,29 @@ typedef struct {
     char *result;
 } wifiapi_t;
 
+#define MAX_TRACKED_VAPS (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)
+
+typedef struct {
+    int active_blocks;
+    int original_filter_mode;
+    bool mode_saved;
+} vap_acl_state_t;
+
 typedef struct kick_details {
     char *kick_list;
     int vap_index;
+    int timer_id;
+    bool cancelled_by_unblock;
 }kick_details_t;
+
+typedef struct {
+    struct timespec start_time;
+    struct timespec target_detection_time;
+    struct timespec end_time;
+    struct timespec disconnection_time;
+} hotspot_timing_t;
+
+extern hotspot_timing_t g_hotspot_timing;
 
 typedef struct {
     wifi_connection_status_t    connect_status;
@@ -228,7 +249,6 @@ typedef struct wifi_ctrl {
     pthread_cond_t      cond;
     pthread_mutexattr_t attr;
     unsigned int        poll_period;
-    struct timespec     last_signalled_time;
     struct timespec     last_polled_time;
     struct scheduler    *sched;
     webconfig_t         webconfig;
@@ -241,6 +261,8 @@ typedef struct wifi_ctrl {
     bool                device_mode_subscribed;
     bool                test_device_mode_subscribed;
     bool                device_tunnel_status_subscribed;
+    bool                hotspot_status_subscribed;
+    bool                hotspot_enabled;
     bool                device_wps_test_subscribed;
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
@@ -251,6 +273,7 @@ typedef struct wifi_ctrl {
     bool                mesh_keep_out_chans_subscribed;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
+    wei_rfc_dml_parameters_t     wei_rfc_params;
     unsigned int        sta_tree_instance_num;
     unsigned int        ignite_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
@@ -270,6 +293,9 @@ typedef struct wifi_ctrl {
     events_bus_data_t   events_bus_data;
     hotspot_cfg_sem_param_t hotspot_sem_param;
     bool                rf_status_down;
+    bool                hotspot_client_dhcp_failure_subscribed;
+    bool                multiap_sta_enabled;
+    int                 multiap_timer_id;
 } wifi_ctrl_t;
 
 
@@ -317,6 +343,26 @@ typedef struct {
     wifi_vap_name_t  vap_name;;
     bool enabled;
 } public_vaps_data_t;
+
+/* Delta pushed through the ctrl queue by a WEI rbus Set (field_id indexes
+ * the descriptor table in wifi_ctrl_rbus_handlers.c) so every mutation of
+ * wei_rfc_dml_parameters_t is applied serialized on the ctrl thread.
+ * field_id == -1 means "already applied to the DB-mirror cache by an
+ * external write (e.g. direct OVSDB update); just recompute + notify". */
+typedef struct {
+    int      field_id;
+    bool     bval;
+    uint32_t uval;
+    char     sval[256 + 1];
+    struct wei_rfc_update_completion *completion;
+} wei_rfc_field_update_t;
+
+typedef struct wei_rfc_update_completion {
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    bool done;
+    int status;
+} wei_rfc_update_completion_t;
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
@@ -384,6 +430,16 @@ wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void);
 ignite_config_t* get_ignite_config_by_name(char *name);
 wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void);
+wei_rfc_dml_parameters_t* get_wifi_db_wei_rfc_parameters(void);
+wei_rfc_dml_parameters_t* get_ctrl_wei_rfc_parameters(void);
+int wifidb_get_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_info);
+int wifidb_update_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_param);
+void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config);
+/* Implemented in wifi_ctrl_rbus_handlers.c: applies a field delta (if any),
+ * derives Wifi_Rfc_Config.wei_rfc_mask and publishes change-notification
+ * bus events. Invoked from the ctrl-queue dispatcher in
+ * wifi_ctrl_queue_handlers.c on wifi_event_type_wei_rfc_config. */
+void process_wei_rfc_config_update(wei_rfc_field_update_t *upd);
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t r_index);
 int get_device_config_list(char *d_list, int size, char *str);
 int get_cm_mac_address(char *mac);
@@ -409,11 +465,24 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int* subdoc);
 
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
-void start_station_vaps(bool enable);
+void start_station_vaps(bool is_private, bool enable);
 bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
 void hotspot_cfg_sem_signal(bool status);
 bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status);
 int publish_endpoint_enable(void);
+int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
+void hotspot_timing_start(void);
+void hotspot_timing_stop(void);
+int reboot_device(void* arg);
+
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
+    unsigned int vap_names_size, wifi_dbg_type_t log_type);
+void update_mlo_rfc_enable(bool init);
+#endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
+wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
+wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
+void update_apmld_map(apmld_map_t *apmld_map);
 
 #ifdef __cplusplus
 }

@@ -391,7 +391,7 @@ void run_csi_enable_timer(wifi_app_t *p_app, bool status)
     }
 }
 
-static void do_nothing_handler(char *event_name, raw_data_t *p_data, void *userData)
+static void do_nothing_handler(char *event_name, bus_data_prop_t *p_data, void *userData)
 {
     UNREFERENCED_PARAMETER(event_name);
     UNREFERENCED_PARAMETER(p_data);

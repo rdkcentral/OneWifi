@@ -29,15 +29,53 @@ public:
     unsigned int m_cols;
     number_t m_val[MAX_MTRX_LEN][MAX_MTRX_LEN];
 
+    unsigned int m_row_capacity;
+    unsigned int m_col_capacity;
+
 private:
     void row_reduced_echelon_form(matrix_t &rref, matrix_t minor);
 
 public:
+    void reset()
+    {
+        m_rows = 0;
+        m_cols = 0;
+    }
     void set_row(unsigned int row, vector_t &v);
     void set_col(unsigned int col, vector_t &v);
 
+    void set_row_capacity(unsigned int cap)
+    {
+        m_row_capacity = cap;
+    }
+    unsigned int get_row_capacity()
+    {
+        return m_row_capacity;
+    }
+
+    void set_col_capacity(unsigned int cap)
+    {
+        m_col_capacity = cap;
+    }
+    unsigned int get_col_capacity()
+    {
+        return m_col_capacity;
+    }
+
+    unsigned int get_num_rows()
+    {
+        return m_rows;
+    }
+    unsigned int get_num_cols()
+    {
+        return m_cols;
+    }
+
     vector_t get_row(unsigned int row);
     vector_t get_col(unsigned int col);
+
+    void push(vector_t v);
+    void push(matrix_t m);
 
     matrix_t operator*(matrix_t m);
     matrix_t operator+(matrix_t m);
