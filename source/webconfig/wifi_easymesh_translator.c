@@ -1608,6 +1608,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
 
                     if (assoc_dev_data->sta_data.msg_data.data == NULL) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Association frame data not present\n", __func__, __LINE__);
+                        free(em_sta_dev_info);
                         return webconfig_error_translate_to_easymesh;
                     }
                     mgmt = (struct ieee80211_mgmt *) assoc_dev_data->sta_data.msg_data.data;
