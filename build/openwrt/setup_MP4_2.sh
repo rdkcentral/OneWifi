@@ -13,7 +13,10 @@ KERNEL_PATCH_DIR="$RDK_WIFI_HAL_DIR/platform/banana-pi/kernel-patches_6.6/openwr
 UPSTREAM_HOSTAP_URL="https://git.w1.fi/hostap.git"
 SRCREV_2_11="4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c"
 META_CMF_BPI_URL="https://github.com/rdkcentral/meta-cmf-bananapi.git"
-META_FILOGIC_URL="https://git01.mediatek.com/filogic/rdk-b/meta-filogic"
+# MediaTek disabled git01.mediatek.com (2026-08); their public layers moved to GitHub.
+# github.com/mediatek/meta-filogic mirrors the same history, so the pinned SRCREV below
+# is fetchable there and the patch tree is byte-identical (same commit SHA => same tree).
+META_FILOGIC_URL="https://github.com/mediatek/meta-filogic.git"
 SRCREV_META_FILOGIC="c67a32a7c8876b328a8d1eeaca213e860d85b3ce"
 
 # Apply network optimizations for reliable git clone

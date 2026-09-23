@@ -19,8 +19,10 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#include "stdlib.h"
 #include <sys/time.h>
+#include <errno.h>
+#include <pthread.h>
+#include "stdlib.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -28,20 +30,59 @@
 #include "wifi_util.h"
 #include "wifi_analytics.h"
 
+static pthread_mutex_t g_csi_map_lock = PTHREAD_MUTEX_INITIALIZER;
+
 INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
 {
-    wifi_event_t *event = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    csi_mac_data_t *csi_map_entry = NULL;
+    wifi_event_t *event = NULL;
+    mac_address_t result_mac = { 0 };
+    mac_addr_str_t mac_str = { 0 };
+    const size_t mac_size = sizeof(mac_addr_t);
 
     wifi_util_dbg_print(WIFI_APPS, "%s: CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d No wifi_ctrl present !\n", __func__, __LINE__);
+        return -1;
+    }
+
+    wifi_apps_mgr_t *apps_mgr = &ctrl->apps_mgr;
+    wifi_app_t *wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_csi);
+
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL csi_app pointer\n", __func__, __LINE__);
+        return -1;
+    }
+
+    to_mac_str((unsigned char *)mac_addr, mac_str);
+
+    pthread_mutex_lock(&g_csi_map_lock);
+    csi_map_entry = hash_map_get(wifi_app->data.u.csi.csi_sounding_mac_map, mac_str);
+    if (csi_map_entry == NULL) {
+        pthread_mutex_unlock(&g_csi_map_lock);
+        wifi_util_error_print(WIFI_APPS, "%s:%d No entry in CSI map for MAC %s\n", __func__,
+            __LINE__, mac_str);
+        return -1;
+    } else {
+        if (csi_map_entry->is_mlo == true) {
+            memcpy(result_mac, csi_map_entry->mac_addr, mac_size);
+        } else {
+            // non-MLO case
+            memcpy(result_mac, mac_addr, mac_size);
+        }
+    }
+    pthread_mutex_unlock(&g_csi_map_lock);
 
     event = create_wifi_event(sizeof(wifi_csi_dev_t), wifi_event_type_csi, wifi_event_type_csi_data); 
     if (event == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    memcpy(event->u.csi->sta_mac, mac_addr, sizeof(mac_addr_t));
+
+    memcpy(event->u.csi->sta_mac, result_mac, sizeof(mac_addr_t));
     memcpy(&(event->u.csi->csi), csi_data, sizeof(wifi_csi_data_t));
     apps_mgr_event(&ctrl->apps_mgr, event);
 
@@ -59,6 +100,9 @@ void update_pinger_config(int ap_index, mac_addr_t mac_addr, bool pause_pinger)
     }
     memset(data, 0, sizeof(wifi_monitor_data_t));
 
+    wifi_util_dbg_print(WIFI_APPS,
+        "%s:%d pinger request ap:%d pause:%d\n",
+        __func__, __LINE__, ap_index, pause_pinger);
     memcpy(data->u.csi_mon.mac_addr, mac_addr, sizeof(mac_addr_t));
     data->u.csi_mon.ap_index = ap_index;
     data->u.csi_mon.pause_pinger = pause_pinger;
@@ -71,26 +115,58 @@ void update_pinger_config(int ap_index, mac_addr_t mac_addr, bool pause_pinger)
 int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int sounding_app)
 {
     mac_addr_str_t mac_str = { 0 };
+    mac_addr_str_t evicted_mac_str = { 0 };
     csi_mac_data_t *to_hash_map = NULL;
+    char *map_key = NULL;
     bool enable_sounding = false;
+    assoc_dev_data_t *assoc_dev_data = NULL;
+    mac_addr_t link_addr = { 0 };
+    rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(ap_index);
+    const size_t mac_size = sizeof(mac_addr_t);
+    bool is_mlo = false;
 
     wifi_app_t *app = (wifi_app_t *)csi_app;
     if (app == NULL) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
         return -1;
     }
 
+    if (rdk_vap_info == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return -1;
+    }
+    wifi_util_dbg_print(WIFI_APPS,
+        "%s:%d start ap:%u app:%d mac:%02x..%02x\n",
+        __func__, __LINE__, ap_index, sounding_app, mac_addr[0], mac_addr[5]);
+
+    if (app->data.u.csi.csi_sounding_mac_map ==  NULL){
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Hash Map\n", __func__, __LINE__);
+        return -1;
+    }
 
     to_mac_str((unsigned char *)mac_addr, mac_str);
-    if (app->data.u.csi.csi_sounding_mac_map ==  NULL){
-        wifi_util_info_print(WIFI_APPS, "%s:%d NULL Hash Map\n", __func__, __LINE__);
-        return -1;
-    }
 
+    pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+    if (rdk_vap_info->associated_devices_map != NULL) {
+        assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
+
+        if (assoc_dev_data != NULL && assoc_dev_data->dev_stats.cli_MLDEnable == true &&
+            assoc_dev_data->association_link == true) {
+            // Save it under link_mac as key, as CSI engine returns link
+            // mac addresses
+            memcpy(link_addr, assoc_dev_data->link_address, mac_size);
+            to_mac_str((unsigned char *)link_addr, mac_str);
+            is_mlo = true;
+        }
+    }
+    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+
+    pthread_mutex_lock(&g_csi_map_lock);
     to_hash_map = hash_map_get(app->data.u.csi.csi_sounding_mac_map, mac_str);
     if (to_hash_map != NULL) {
         if (to_hash_map->subscribed_apps & sounding_app) {
             wifi_util_info_print(WIFI_APPS, "%s:%d Request from same APP not sounding\n", __func__, __LINE__);
+            pthread_mutex_unlock(&g_csi_map_lock);
             return 0;
         } else {
             to_hash_map->subscribed_apps |= sounding_app;
@@ -104,13 +180,24 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
                 while(to_hash_map != NULL) {
                     if ((to_hash_map->subscribed_apps & ~wifi_app_inst_motion)){
                         wifi_util_info_print(WIFI_APPS, "%s:%d Disabling CSI for mac %02x..%02x\n", __func__, __LINE__, to_hash_map->mac_addr[0], to_hash_map->mac_addr[5]);
+                        if (to_hash_map->is_mlo) {
+                            to_mac_str((unsigned char *)to_hash_map->link_addr, evicted_mac_str);
+                        } else {
+                            to_mac_str((unsigned char *)to_hash_map->mac_addr, evicted_mac_str);
+                        }
                         wifi_enableCSIEngine(to_hash_map->ap_index, to_hash_map->mac_addr, FALSE);
                         update_pinger_config(to_hash_map->ap_index, to_hash_map->mac_addr, true);
-                        to_hash_map = (csi_mac_data_t *)hash_map_remove(app->data.u.csi.csi_sounding_mac_map, mac_str);
+                        to_hash_map = (csi_mac_data_t *)hash_map_remove(app->data.u.csi.csi_sounding_mac_map, evicted_mac_str);
                         if (to_hash_map != NULL) {
                             free(to_hash_map);
+                            if (app->data.u.csi.num_current_sounding > 0) {
+                                app->data.u.csi.num_current_sounding--;
+                            }
+                            enable_sounding = true;
+                        } else {
+                            wifi_util_error_print(WIFI_APPS, "%s:%d CSI eviction remove failed for mac %s\n",
+                                __func__, __LINE__, evicted_mac_str);
                         }
-                        enable_sounding = true;
                         break;
                     }
                     to_hash_map = hash_map_get_next(app->data.u.csi.csi_sounding_mac_map, to_hash_map);
@@ -118,6 +205,7 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
             } else {
                 //Ignore request for Low priority apps.
                 wifi_util_info_print(WIFI_APPS, "%s:%d Not Enabling for Low priority Apps", __func__, __LINE__);
+                pthread_mutex_unlock(&g_csi_map_lock);
                 return -1;
             }
         } else {
@@ -125,27 +213,48 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
         }
 
         if (enable_sounding) {
-            wifi_util_info_print(WIFI_APPS, "%s:%d Enabling CSI\n", __func__, __LINE__);
             to_hash_map = (csi_mac_data_t *)malloc(sizeof(csi_mac_data_t));
             if (to_hash_map == NULL) {
                 wifi_util_info_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                pthread_mutex_unlock(&g_csi_map_lock);
                 return -1;
             }
-
+            wifi_util_info_print(WIFI_APPS, "%s:%d Enabling CSI\n", __func__, __LINE__);
             memset(to_hash_map, 0, sizeof(csi_mac_data_t));
             to_hash_map->ap_index = ap_index;
-            memcpy(to_hash_map->mac_addr, mac_addr, sizeof(mac_addr_t));
+            memcpy(to_hash_map->mac_addr, mac_addr, mac_size);
+            memcpy(to_hash_map->link_addr, link_addr, mac_size);
+            to_hash_map->is_mlo = is_mlo;
             to_hash_map->subscribed_apps |= sounding_app;
             wifi_util_info_print(WIFI_APPS, "%s:%d Enabling CSI for mac %02x..%02x\n", __func__, __LINE__, to_hash_map->mac_addr[0], to_hash_map->mac_addr[5]);
             wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, TRUE);
-            hash_map_put(app->data.u.csi.csi_sounding_mac_map, strdup(mac_str), to_hash_map);
+            map_key = strdup(mac_str);
+            if (map_key == NULL) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d CSI map key allocation failed for mac %s\n",
+                    __func__, __LINE__, mac_str);
+                wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, FALSE);
+                free(to_hash_map);
+                pthread_mutex_unlock(&g_csi_map_lock);
+                update_pinger_config(ap_index, mac_addr, true);
+                return -1;
+            }
+            if (hash_map_put(app->data.u.csi.csi_sounding_mac_map, map_key, to_hash_map) != 0) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d CSI map insert failed for mac %s\n",
+                    __func__, __LINE__, mac_str);
+                wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, FALSE);
+                pthread_mutex_unlock(&g_csi_map_lock);
+                update_pinger_config(ap_index, mac_addr, true);
+                return -1;
+            }
             app->data.u.csi.num_current_sounding++;
+            pthread_mutex_unlock(&g_csi_map_lock);
             update_pinger_config(ap_index, mac_addr, false);
             return 0;
         } else {
             wifi_util_info_print(WIFI_APPS, "%s:%d Slots are FULL Not sounding\n", __func__, __LINE__);
         }
     }
+    pthread_mutex_unlock(&g_csi_map_lock);
     return 0;
 }
 
@@ -159,6 +268,10 @@ int csi_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int s
         return -1;
     }
 
+    wifi_util_dbg_print(WIFI_APPS,
+        "%s:%d stop ap:%u app:%d mac:%02x..%02x\n",
+        __func__, __LINE__, ap_index, sounding_app, mac_addr[0], mac_addr[5]);
+
     to_mac_str((unsigned char *)mac_addr, mac_str);
     //Check if the MAC is there in the hash_map.
     if (app->data.u.csi.csi_sounding_mac_map == NULL) {
@@ -166,23 +279,48 @@ int csi_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int s
         return -1;
     }
 
+    pthread_mutex_lock(&g_csi_map_lock);
     csi_mac_data_t *mac_data = (csi_mac_data_t *)hash_map_get(app->data.u.csi.csi_sounding_mac_map, mac_str);
     if (mac_data == NULL) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d Rogue Disable Request from app %d\n", __func__, __LINE__, sounding_app);
-        return 0;
+        // We hash in MLO case by link address, so we need to
+        // map this for MLO clients, since apps use MLD MAC
+        mac_data = (csi_mac_data_t *)hash_map_get_first(app->data.u.csi.csi_sounding_mac_map);
+        while(mac_data != NULL) {
+            if (memcmp(mac_data->mac_addr, mac_addr, sizeof(mac_addr_t)) == 0) {
+                to_mac_str((unsigned char *)mac_data->link_addr, mac_str);
+                break;
+            }
+            mac_data = hash_map_get_next(app->data.u.csi.csi_sounding_mac_map, mac_data);
+        }
+
+        if (mac_data == NULL) {
+            wifi_util_info_print(WIFI_APPS, "%s:%d Rogue Disable Request from app %d\n", __func__, __LINE__, sounding_app);
+            pthread_mutex_unlock(&g_csi_map_lock);
+            return 0;
+        }
     }
+
     //Check if the mac is currently sounding by more apps.
     if (mac_data->subscribed_apps & ~sounding_app) {
         wifi_util_info_print(WIFI_APPS, "%s:%d MAC is being sounded by more than one apps not disabling sounding\n", __func__, __LINE__);
         mac_data->subscribed_apps &= ~sounding_app;
+        pthread_mutex_unlock(&g_csi_map_lock);
     } else {
         //Disable Sounding.
         wifi_util_info_print(WIFI_APPS, "%s:%d Disabling CSI for mac %02x..%02x\n", __func__, __LINE__, mac_data->mac_addr[0], mac_data->mac_addr[5]);
         wifi_enableCSIEngine(mac_data->ap_index, mac_data->mac_addr, FALSE);
         mac_data = (csi_mac_data_t *)hash_map_remove(app->data.u.csi.csi_sounding_mac_map, mac_str);
+        if (mac_data == NULL) {
+            wifi_util_error_print(WIFI_APPS, "%s:%d hash_map_remove returned NULL for mac_str %s\n", __func__, __LINE__, mac_str);
+            pthread_mutex_unlock(&g_csi_map_lock);
+            return -1;
+        }
+        if (app->data.u.csi.num_current_sounding > 0) {
+            app->data.u.csi.num_current_sounding--;
+        }
+        pthread_mutex_unlock(&g_csi_map_lock);
         update_pinger_config(mac_data->ap_index, mac_data->mac_addr, true);
         free(mac_data);
-        app->data.u.csi.num_current_sounding--;
     }
     return 0;
 }
@@ -190,6 +328,7 @@ int csi_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int s
 #ifdef ONEWIFI_CSI_APP_SUPPORT
 int csi_init(wifi_app_t *app, unsigned int create_flag)
 {
+    wifi_util_info_print(WIFI_APPS, "%s:%d init\n", __func__, __LINE__);
     app->data.u.csi.csi_fns.csi_start_fn = csi_start_fn;
     app->data.u.csi.csi_fns.csi_stop_fn = csi_stop_fn;
     app->data.u.csi.csi_sounding_mac_map = hash_map_create();

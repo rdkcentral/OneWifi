@@ -142,69 +142,6 @@ UINT get_num_radio_dml()
     }
 }
 
-void update_apmld_map()
-{
-    webconfig_dml_t* dml = get_webconfig_dml();
-    apmld_map_t *apmld_map = &dml->apmld_map;
-    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
-    unsigned int num_radios = getNumberRadios();
-    int mld_id_to_idx[MLD_UNIT_COUNT];
-
-    apmld_map->mld_group_count = 0;
-    memset(apmld_map->mld_groups, 0, sizeof(apmld_map->mld_groups));
-    memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
-
-    for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
-        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
-        if (mgr_vap_info_map == NULL) {
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
-            apmld_map->mld_group_count = 0;
-            return;
-        }
-
-        for (unsigned int k = 0; k < mgr_vap_info_map->num_vaps; k++) {
-            wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
-            wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
-            unsigned int id = mld_info->mld_id;
-            unsigned int mld_idx;
-
-            if (!mld_info->mld_enable) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
-                continue;
-            }
-
-            if (id >= MLD_UNIT_COUNT) {
-                wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid MLD ID: %u\n", __func__, __LINE__, id);
-                continue;
-            }
-
-            // Check if MLD ID already has an index
-            if (mld_id_to_idx[id] == -1) {
-                // New MLD ID
-                if (apmld_map->mld_group_count >= MLD_UNIT_COUNT) {
-                    wifi_util_error_print(WIFI_DMCLI, "%s:%d MLD count exceeds maximum\n", __func__, __LINE__);
-                    continue;
-                }
-                mld_idx = apmld_map->mld_group_count;
-                mld_id_to_idx[id] = mld_idx;
-                apmld_map->mld_group_count++;
-            } else {
-                // Existing MLD ID
-                mld_idx = mld_id_to_idx[id];
-            }
-
-            // Store VAP in MLD group
-            mld_group_t *mld_group = &apmld_map->mld_groups[mld_idx];
-            if (mld_group->mld_vap_count < MAX_NUM_RADIOS) {
-                mld_group->mld_vaps[mld_group->mld_vap_count] = vap_config;
-                mld_group->mld_vap_count++;
-            }
-        }
-    }
-
-    wifi_util_info_print(WIFI_DMCLI, "%s:%d Total MLD count = %d\n", __func__, __LINE__, apmld_map->mld_group_count);
-}
-
 UINT get_num_apmld_dml()
 {
     webconfig_dml_t* dml = get_webconfig_dml();
@@ -1108,6 +1045,9 @@ int init(webconfig_dml_t *consumer)
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to allocate memory\n", __func__, __LINE__);
+        if (raw_data.raw_data.bytes) {
+            get_bus_descriptor()->bus_data_free_fn(&raw_data);
+        }
         return RETURN_ERR;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
@@ -1748,7 +1688,6 @@ int push_harvester_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache pushed to queue \n", __FUNCTION__);
 
         //Rest to default value since instant measurement enable is triggered successfully
-        webconfig_dml.harvester.b_inst_client_enabled = webconfig_dml.config.global_parameters.inst_wifi_client_enabled;
         webconfig_dml.harvester.u_inst_client_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_def_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_override_ttl = 0;
@@ -1817,6 +1756,7 @@ void update_dml_radio_default() {
         radio_cfg[i].DCSSupported = TRUE;
         radio_cfg[i].ExtensionChannel = 3;
         radio_cfg[i].BasicRate = WIFI_BITRATE_DEFAULT;
+        radio_cfg[i].TxRate = WIFI_TXRATE_Auto;
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;
@@ -1847,7 +1787,7 @@ void update_dml_radio_default() {
             radio_cfg[i].MaxBitRate = 1147;
 #endif /* CONFIG_IEEE80211BE */
 
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1861,7 +1801,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1875,7 +1815,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -1889,7 +1829,7 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
             radio_cfg[i].AmsduTid[0] = 1;
@@ -2060,9 +2000,14 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         wifidb_init_radio_config_default(i,rcfg,&fcfg);
 
         wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
-        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+        if ((rfc_param == NULL) || wifidb_get_rfc_config(0,rfc_param) != 0) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+			goto cleanup;
         }
+
+        //clearing wpa3_personal_compatibility mode after wifi restore
+        rfc_param->wpa3_compatibility_enable = FALSE;
+        get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
         //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
         if (WIFI_FREQUENCY_2_4_BAND == rcfg->band) {
