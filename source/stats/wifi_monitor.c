@@ -33,6 +33,7 @@
 #include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "wifi_monitor.h"
+#include "wifi_em.h"
 #include <sys/socket.h>
 #include <sys/sysinfo.h>
 #include <signal.h>
@@ -2440,6 +2441,13 @@ void *monitor_function  (void *data)
 
     pthread_mutex_lock(&proc_data->queue_lock);
     while (proc_data->exit_monitor == false) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Again calling and upating tx power\n",
+        __func__, __LINE__);
+        if (!wifi_em_is_tx_power_ready()) {
+            wifi_util_error_print(WIFI_MON, "%s:%d inside iff Again calling and upating tx power\n",
+            __func__, __LINE__);
+            wifi_em_handle_monitor_done();
+        }
         clock_gettime(CLOCK_MONOTONIC, &tv_now);
 
         interval.tv_sec = 0;

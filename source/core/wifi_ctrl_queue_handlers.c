@@ -25,6 +25,7 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_monitor.h"
+#include "wifi_em.h"
 #include "scheduler.h"
 #include <unistd.h>
 #include <pthread.h>
@@ -4520,6 +4521,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         process_eth_bh_status_command(*(bool *)data);
         break;
     case wifi_event_type_notify_monitor_done:
+        //wifi_em_handle_monitor_done();
         process_monitor_init_command();
         break;
     case wifi_event_type_send_action_frame:

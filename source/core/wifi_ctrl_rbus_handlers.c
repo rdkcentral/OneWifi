@@ -25,6 +25,7 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_monitor.h"
+#include "wifi_em.h"
 #include "wifi_webconfig.h"
 #include "run_qmgr.h"
 #include "wifi_stubs.h"
@@ -865,6 +866,10 @@ int webconfig_bus_apply_for_dml_thread_update(wifi_ctrl_t *ctrl,
     rdata.raw_data.bytes = (void *)data->raw;
     rdata.raw_data_len = strlen(data->raw) + 1;
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_INIT_DML_DATA initiated\n", __func__,
+            __LINE__);
+    printf("%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_INIT_DML_DATA initiated\n", __func__,
+            __LINE__);
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_INIT_DML_DATA,
         &rdata);
     if (rc != bus_error_success) {
@@ -1108,6 +1113,12 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     int ret = 0;
     mac_addr_str_t mac_str;
 
+//    if (!wifi_em_is_tx_power_ready()) {
+//        wifi_util_error_print(WIFI_CTRL, "%s:%d: transmit power is still not ready; deferring DML retrieval\n",
+//              __func__, __LINE__);
+//        return bus_error_invalid_operation;
+//    }
+
     memset(zero_mac, 0, sizeof(mac_address_t));
     /*
       In case of Easymesh mode few checks should be done before the dml subdoc is sent.
@@ -1200,6 +1211,18 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     webconfig_data_free(data);
     free(data);
     data = NULL;
+    return bus_error_success;
+}
+
+bus_error_t wifi_em_tx_power_ready_status_get(char *event_name, raw_data_t *p_data,
+    bus_user_data_t *user_data)
+{
+    (void)event_name;
+    (void)user_data;
+
+    p_data->data_type = bus_data_type_uint32;
+    p_data->raw_data.u32 = wifi_em_is_tx_power_ready() ? 1 : 0;
+    p_data->raw_data_len = sizeof(p_data->raw_data.u32);
     return bus_error_success;
 }
 
@@ -4806,6 +4829,12 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_WEBCONFIG_INIT_DML_DATA, bus_element_type_method,
                                     { webconfig_get_dml_subdoc, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_EM_TX_POWER_READY, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_uint32, false, 0, 0, 0, NULL } },
+                                { WIFI_EM_TX_POWER_READY_STATUS, bus_element_type_method,
+                                    { wifi_em_tx_power_ready_status_get, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_uint32, false, 0, 0, 0, NULL } },
                                 { WIFI_WEBCONFIG_GET_ASSOC, bus_element_type_method,
                                     { get_assoc_clients_data, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
