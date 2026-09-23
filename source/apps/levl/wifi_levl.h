@@ -21,6 +21,7 @@
 #define WIFI_LEVL_H
 
 #include "wifi_csi.h"
+#include "ds_dlist.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,11 +53,16 @@ typedef struct {
 } __attribute__((__packed__)) probe_ttl_data_t;
 
 typedef struct {
+    frame_data_t probe_frame;
+    struct ds_dlist_node node;
+} probe_frame_t;
+
+typedef struct {
     unsigned int       curr_time_alive;
     time_t             curr_alive_time_sec;
-    frame_data_t       msg_data;
+    ds_dlist_t probe_req_frames_list;
     mac_addr_str_t     mac_str;
-} __attribute__((__packed__)) probe_req_elem_t;
+} probe_req_elem_t;
 
 typedef struct {
     int           sched_handler_id;
@@ -83,6 +89,7 @@ typedef struct {
     bool                 temperature_event_subscribed[MAX_NUM_RADIOS];
     int                  radio_temperature_interval[MAX_NUM_RADIOS];
     pthread_mutex_t      lock;
+    bool                 lock_initialized;
     hash_map_t           *probe_req_map;
     hash_map_t           *curr_sounding_mac_map;
     hash_map_t           *pending_mac_map;
