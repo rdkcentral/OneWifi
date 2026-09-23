@@ -90,8 +90,8 @@ int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *r
         vap_index = tgt_vap_map->vap_array[i].vap_index;
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
         if (vap_map == NULL) {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d global vap_map null radio_index:%d\n", __func__, __LINE__,
-                tgt_vap_map->vap_array[i].radio_index);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d global vap_map null radio_index:%d\n", __func__,
+                __LINE__, tgt_vap_map->vap_array[i].radio_index);
             return RETURN_ERR;
         }
         rdk_vaps = get_wifidb_rdk_vaps(tgt_vap_map->vap_array[i].radio_index);
@@ -102,8 +102,8 @@ int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *r
         }
         for (j = 0; j < vap_map->num_vaps; j++) {
             if (vap_map->vap_array[j].vap_index == vap_index) {
-                memcpy((unsigned char *)&vap_map->vap_array[j], (unsigned char *)&tgt_vap_map->vap_array[i],
-                    sizeof(wifi_vap_info_t));
+                memcpy((unsigned char *)&vap_map->vap_array[j],
+                    (unsigned char *)&tgt_vap_map->vap_array[i], sizeof(wifi_vap_info_t));
                 memcpy(&rdk_vaps[j], &rdk_vap_info[i], sizeof(rdk_wifi_vap_info_t));
                 break;
             }
