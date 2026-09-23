@@ -3068,6 +3068,12 @@
                                             "type": "integer",
                                             "minimum": -127,
                                             "maximum": 127
+                                        },
+                                        "X_AIRTIES_OperatingStandards": {
+                                            "type": "string",
+                                            "description": "List of 802.11 standards in operation for this radio instance",
+                                            "enum": ["a", "b", "g", "n", "ac", "ax", "be", "bn"]
+                                        }
                                         }
                                     }
                                 }

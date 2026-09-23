@@ -2448,7 +2448,10 @@ void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* 
 
     printf("%s:%d Rbus event name=%s\n",__FUNCTION__, __LINE__, event->name);
 
-    sscanf(event->name, "Device.WiFi.STA.%d.Connection.Status", &index);
+    if (sscanf(event->name, "Device.WiFi.STA.%u.Connection.Status", &index) != 1) {
+        printf("%s:%d sscanf failed to parse index from event name\n", __FUNCTION__, __LINE__);
+        return;
+    }
     temp_buff = rbusValue_GetBytes(value, &len);
     if (temp_buff == NULL) {
         printf("%s:%d Rbus get string failure len=%d\n", __FUNCTION__, __LINE__, len);
@@ -2457,17 +2460,19 @@ void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* 
 
     memcpy(&sta_conn_info, temp_buff, len);
     conn_status = (sta_conn_info.connect_status == wifi_connection_status_connected) ? true:false;
-    if (conn_status == true) {
-        printf("%s:%d: Station successfully connected with external AP radio:%d\r\n",
+    if ((conn_status == true) && (index > 0)) {
+        printf("%s:%d: Station successfully connected with external AP radio:%u\r\n",
                     __func__, __LINE__, index - 1);
         if (index == 1) {
             get_rbus_sta_interface_name(WIFI_STA_2G_INTERFACE_NAME);
         } else if (index == 2) {
             get_rbus_sta_interface_name(WIFI_STA_5G_INTERFACE_NAME);
         }
+    } else if ((conn_status == false) && (index > 0)) {
+        printf("%s:%d: Station disconnected from external AP radio:%u\r\n",
+                __func__, __LINE__, index - 1);
     } else {
-        printf("%s:%d: Station disconnected with external AP:%d radio:%d\r\n",
-                __func__, __LINE__, conn_status, index - 1);
+        printf("%s:%d: Unknown radio index\r\n", __func__, __LINE__);
     }
     printf("%s:%d: MAC address info:%s\r\n", __func__, __LINE__, to_mac_str(sta_conn_info.bssid, mac_str));
 

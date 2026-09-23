@@ -40,6 +40,7 @@ AC_ARG_ENABLE([gtestapp],
              [echo "Gtestapp is disabled"])
 AM_CONDITIONAL([WITH_GTEST_SUPPORT], [test x$GTEST_SUPPORT_ENABLED = xtrue])
 
+
 AC_ARG_ENABLE([libwebconfig],
              AS_HELP_STRING([--enable-libwebconfig],[enable libwebconfig (default is no)]),
              [
@@ -134,6 +135,7 @@ AM_CONDITIONAL([EASYCONNECT_SUPPORT], [test x$EASYCONNECT_SUPPORT_ENABLE = xtrue
 AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
 AM_CONDITIONAL([ONEWIFI_CAC_APP_SUPPORT], [test x$ONEWIFI_CAC_APP_SUPPORT = xtrue])
 AM_CONDITIONAL([WIFI_SENSING_APP_SUPPORT], [test x$WIFI_SENSING_APP_SUPPORT = xtrue])
+AM_CONDITIONAL([ONEWIFI_MULTIAP_APP_SUPPORT], [test x$ONEWIFI_MULTIAP_APP_SUPPORT = xtrue])
 AM_CONDITIONAL([ONEWIFI_STA_MGR_APP_SUPPORT], [test x$ONEWIFI_STA_MGR_APP_SUPPORT  = xtrue])
 AM_CONDITIONAL([ONEWIFI_DML_SUPPORT], [test x$ONEWIFI_DML_SUPPORT_MAKEFILE = xtrue])
 AM_CONDITIONAL([ONEWIFI_JSON_DML_SUPPORT], [test x$ONEWIFI_JSON_DML_SUPPORT = xtrue])
@@ -150,6 +152,7 @@ AM_CONDITIONAL([FEATURE_OFF_CHANNEL_SCAN_5G], [test x$FEATURE_OFF_CHANNEL_SCAN_5
 AM_CONDITIONAL([USE_DML_SOURCES], [test x$DEVICE_EXTENDER != xtrue])
 AM_CONDITIONAL([USE_EXTENDER_MISC], [test x$DEVICE_EXTENDER = xtrue])
 AM_CONDITIONAL([ONEWIFI_AVRO_SUPPORT], [test "x$ONEWIFI_BLASTER_APP_SUPPORT" = "xtrue" || "x$ONEWIFI_HARVESTER_APP_SUPPORT" = "xtrue"])
+AM_CONDITIONAL([PLATFORM_BANANAPI], [test "x$PLATFORM_BANANAPI" = "xtrue"])
 
 # Specify ccsp cpu arch
 
@@ -281,10 +284,14 @@ AC_CONFIG_FILES(
     source/Makefile
     source/sampleapps/Makefile
     source/utils/Makefile
-    source/utils/quality_mgr/Makefile
     source/utils/math_utils/Makefile
     Makefile
 )
+AS_IF([test "x$PLATFORM_BANANAPI" = "xtrue"], [
+    AC_CONFIG_FILES(
+        source/utils/quality_mgr/Makefile
+    )
+])
 
 AC_SUBST(GTEST_ENABLE_FLAG)
 AC_OUTPUT

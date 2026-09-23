@@ -20,12 +20,20 @@
 #ifndef WIFI_LINKQUALITY_H
 #define WIFI_LINKQUALITY_H
 
+#define MAX_IGNITE_STR_LEN 32
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 #include "run_qmgr.h"
 #include "wifi_base.h"
 #include "wifi_webconfig.h"
+#include "wifi_hal.h"
+#include "wifi_linkquality_libs.h"
+
+#define MAX_STR_LEN_LQ 128
+#define IGNITE_SCORE_LOG_INTERVAL_MS 900000 // 15 mins
+#define IGNITE_INITIAL_PUBLISH_ITERATIONS 5
 
 typedef struct {
     double last_score;
@@ -33,6 +41,7 @@ typedef struct {
     int score_log_timer_id;
     int last_service_state;
     int iteration_count;
+    char ignite_service_status[MAX_IGNITE_STR_LEN];
 } ignite_lq_state_t;
 
 typedef struct {
@@ -41,6 +50,9 @@ typedef struct {
     int size;
     ignite_lq_state_t ignite;
 } linkquality_data_t;
+
+#define CTRL_CAP_SZ 8
+
 
 #ifdef __cplusplus
 }
