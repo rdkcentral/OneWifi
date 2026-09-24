@@ -173,7 +173,11 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
 	pthread_mutex_unlock(&sched->lock);
 	return -1;
     }
-    queue_push(sched_queue.timer_list, tt);
+    if (queue_push(sched_queue.timer_list, tt) != 0) {
+        free(tt);
+	pthread_mutex_unlock(&sched->lock);
+	return -1;
+    }
     (*sched_queue.num_tasks)++;
     (*sched_queue.index)++;
     if ((*sched_queue.index) >= (*sched_queue.num_tasks)) {
