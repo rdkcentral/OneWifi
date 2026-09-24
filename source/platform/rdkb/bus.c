@@ -815,10 +815,10 @@ rbusError_t rbus_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
         wifi_util_error_print(WIFI_BUS,"%s:%d rbus event name is NULL\n", __func__, __LINE__);
         return RBUS_ERROR_INVALID_INPUT;
     } else if (options != NULL && options->requestingComponent != NULL) {
-        wifi_util_info_print(WIFI_BUS,"%s:%d rbus data get end comp:%s\n", __func__, __LINE__, options->requestingComponent);
+        wifi_util_dbg_print((WIFI_BUS,"%s:%d rbus data get end comp:%s\n", __func__, __LINE__, options->requestingComponent);
     }
 
-    wifi_util_info_print(WIFI_BUS,"%s:%d rbus cb triggered for %s\n", __func__, __LINE__, event_name);
+    wifi_util_dbg_print(WIFI_BUS,"%s:%d rbus cb triggered for %s\n", __func__, __LINE__, event_name);
     rbusValue_t value = rbusProperty_GetValue(property);
     rbusValueType_t type = rbusValue_GetType(value);
     bus_data.data_type = convert_rbus_to_bus_data_type(type);
