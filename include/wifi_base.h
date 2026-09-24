@@ -99,18 +99,6 @@ extern "C" {
 #define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
     "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
 
-#ifndef MAX_NUM_MLD_LINKS
-#define MAX_NUM_MLD_LINKS 15
-#endif /*MAX_NUM_MLD_LINKS*/
-
-#ifndef UNDEFINED_MLD_LINK_ID
-#define UNDEFINED_MLD_LINK_ID 255
-#endif
-
-#define UNDEFINED_MLD_ID 255
-#define MLD_UNIT_COUNT 8
-#define MIN_MLO_GROUP_SIZE 2
-
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
