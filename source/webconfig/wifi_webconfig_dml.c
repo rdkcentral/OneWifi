@@ -690,6 +690,9 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         if (decode_mac_object(rdk_vap_info, obj_acl) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: mac state object validation failed\n",
                     __func__, __LINE__);
+            if (free_vap_object_macfilter_entries(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to free mac filter entries\n", __func__, __LINE__);
+            }
             cJSON_Delete(json);
             wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
