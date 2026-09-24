@@ -55,21 +55,14 @@ static char *format_string(const char *input)
     if (input == NULL) {
         return NULL;
     }
-
     for (inptr = input; *inptr; inptr++) {
-        switch (*inptr) {
-        case '\"':
-        case '\\':
-        case '\b':
-        case '\f':
-        case '\n':
-        case '\r':
-        case '\t':
-            /* one character escape sequence */
+        if (((unsigned char)*inptr > 31) && (*inptr != '\"') && (*inptr != '\\')) {
+            /* Normal character, no extra bytes needed */
+        } else if ((*inptr == '\\') || (*inptr == '\"') || (*inptr == '\b') ||
+            (*inptr == '\f') || (*inptr == '\n') || (*inptr == '\r') || (*inptr == '\t')) {
             escape_characters++;
-            break;
-        default:
-            break;
+        } else {
+            escape_characters += 5; /* Unicode hex representation \u00XX needs 5 extra bytes */
         }
     }
     output_length = (size_t)(inptr - input) + escape_characters;
@@ -89,7 +82,7 @@ static char *format_string(const char *input)
     outptr = output;
     /* copy string */
     for (inptr = input; *inptr != '\0'; (void)inptr++, outptr++) {
-        if ((*inptr > 31) && (*inptr != '\"') && (*inptr != '\\')) {
+        if (((unsigned char)*inptr > 31) && (*inptr != '\"') && (*inptr != '\\')) {
             /* normal character, copy */
             *outptr = *inptr;
         } else {
@@ -97,28 +90,16 @@ static char *format_string(const char *input)
             *outptr++ = '\\';
             switch (*inptr)
             {
-            case '\\':
-                *outptr = '\\';
-                break;
-            case '\"':
-                *outptr = '\"';
-                break;
-            case '\b':
-                *outptr = 'b';
-                break;
-            case '\f':
-                *outptr = 'f';
-                break;
-            case '\n':
-                *outptr = 'n';
-                break;
-            case '\r':
-                *outptr = 'r';
-                break;
-            case '\t':
-                *outptr = 't';
-                break;
+            case '\\': *outptr = '\\'; break;
+            case '\"': *outptr = '\"'; break;
+            case '\b': *outptr = 'b'; break;
+            case '\f': *outptr = 'f'; break;
+            case '\n': *outptr = 'n'; break;
+            case '\r': *outptr = 'r'; break;
+            case '\t': *outptr = 't'; break;
             default:
+                snprintf(outptr, 6, "u%04X", (unsigned char)*inptr);
+                outptr += 4; /* Outer loop automatically increments once more */
                 break;
             }
         }
