@@ -1491,8 +1491,9 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
         ret = push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
             wifi_event_webconfig_set_data_dml, NULL);
         if (ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d: Failed to push subdoc:%u to ctrl queue ret:%d\n",
-                __func__, __LINE__, subdoc, ret);
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push subdoc:%u to ctrl queue ret:%d\n", __func__, __LINE__,
+                subdoc, ret);
         }
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
