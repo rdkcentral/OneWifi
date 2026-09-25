@@ -807,6 +807,10 @@ INT WiFi_InitGasConfig(void)
 
     if((RETURN_OK != WiFi_SetGasConfig(JSON_STR))){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Initialize GAS Configuration from memory. Setting Default\n");
+        if(JSON_STR){
+            free(JSON_STR);
+            JSON_STR = NULL;
+        }
         return WiFi_DefaultGasConfig();
     }
 
