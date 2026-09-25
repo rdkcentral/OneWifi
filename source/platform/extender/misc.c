@@ -54,6 +54,11 @@ int ext_wifi_getRadioTrafficStats2(int radioIndex, wifi_radioTrafficStats2_t *ou
     return 0;
 }
 
+int ext_wifi_getSSIDTrafficStats2(int ssidIndex, wifi_ssidTrafficStats2_t *output_struct)
+{
+    return 0;
+}
+
 int ext_WiFi_InitGasConfig()
 {
     return 0;
@@ -122,6 +127,7 @@ void wifi_misc_init(wifi_misc_t *misc)
    misc->desc.wifi_enableCSIEngine_fn = ext_wifi_enableCSIEngine;
    misc->desc.initparodusTask_fn = ext_initparodusTask;
    misc->desc.wifi_getRadioTrafficStats2_fn = ext_wifi_getRadioTrafficStats2;
+   misc->desc.wifi_getSSIDTrafficStats2_fn = ext_wifi_getSSIDTrafficStats2;
    misc->desc.WiFi_InitGasConfig_fn = ext_WiFi_InitGasConfig;
    misc->desc.daemonize_fn = ext_daemonize;
    misc->desc.sendWebpaMsg_fn = ext_sendWebpaMsg;

@@ -44,6 +44,27 @@ typedef struct {
     ULONG ssid_MulticastBytesReceived;
     ULONG ssid_BroadcastBytesSent;
     ULONG ssid_BroadcastBytesReceived;
+    ULONG ssid_BytesSent;
+    ULONG ssid_BytesReceived;
+    ULONG ssid_PacketsSent;
+    ULONG ssid_PacketsReceived;
+    ULONG ssid_ErrorsSent;
+    ULONG ssid_ErrorsReceived;
+    ULONG ssid_UnicastPacketsSent;
+    ULONG ssid_UnicastPacketsReceived;
+    ULONG ssid_DiscardPacketsSent;
+    ULONG ssid_DiscardPacketsReceived;
+    ULONG ssid_MulticastPacketsSent;
+    ULONG ssid_MulticastPacketsReceived;
+    ULONG ssid_BroadcastPacketsSent;
+    ULONG ssid_BroadcastPacketsReceived;
+    ULONG ssid_UnknownProtoPacketsReceived;
+    ULONG ssid_RetransCount;
+    ULONG ssid_FailedRetransCount;
+    ULONG ssid_RetryCount;
+    ULONG ssid_MultipleRetryCount;
+    ULONG ssid_ACKFailureCount;
+    ULONG ssid_AggregatedPacketCount;
 } vap_traffic_stats_t;
 
 typedef struct {

@@ -57,6 +57,11 @@ int rdkb_wifi_getRadioTrafficStats2(int radioIndex, wifi_radioTrafficStats2_t *o
     return (wifi_getRadioTrafficStats2(radioIndex, output_struct));
 }
 
+int rdkb_wifi_getSSIDTrafficStats2(int ssidIndex, wifi_ssidTrafficStats2_t *output_struct)
+{
+    return (wifi_getSSIDTrafficStats2(ssidIndex, output_struct));
+}
+
 int rdkb_WiFi_InitGasConfig()
 {
     return (WiFi_InitGasConfig());
@@ -126,6 +131,7 @@ void wifi_misc_init(wifi_misc_t *misc)
    misc->desc.wifi_enableCSIEngine_fn = rdkb_wifi_enableCSIEngine;
    misc->desc.initparodusTask_fn = rdkb_initparodusTask;
    misc->desc.wifi_getRadioTrafficStats2_fn = rdkb_wifi_getRadioTrafficStats2;
+   misc->desc.wifi_getSSIDTrafficStats2_fn = rdkb_wifi_getSSIDTrafficStats2;
    misc->desc.WiFi_InitGasConfig_fn = rdkb_WiFi_InitGasConfig;
    misc->desc.daemonize_fn = rdkb_daemonize;
    misc->desc.sendWebpaMsg_fn = rdkb_sendWebpaMsg;
