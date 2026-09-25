@@ -77,10 +77,10 @@ jobs:
                                 libprotobuf-c-dev \
                                 libssl-dev \
                                 uuid-dev \
-                                libmysqlcppconn-dev \
+                                libsqlite3-dev \
                                 libreadline-dev \
                                 iptables \
-                                mariadb-server \
+                                sqlite3 \
                                 gnupg \
                                 file \
                                 golang \
