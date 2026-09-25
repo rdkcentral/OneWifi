@@ -3153,7 +3153,12 @@ int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *
     strcpy(cfg.tcm_exp_weightage, preassoc->tcm_exp_weightage);
     strcpy(cfg.tcm_gradient_threshold, preassoc->tcm_gradient_threshold);
 
-    if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_Preassoc_Control_Config, &cfg, false, filter_preassoc, SCHEMA_TABLE(Wifi_Connection_Control_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_Connection_Control_Config, pre_assoc)) == false) {
+    if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,
+            &table_Wifi_Preassoc_Control_Config, &cfg, false, filter_preassoc,
+            SCHEMA_TABLE(Wifi_Connection_Control_Config),
+            onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config, vap_name),
+                vap_name),
+            SCHEMA_COLUMN(Wifi_Connection_Control_Config, pre_assoc)) == false) {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Preassoc_Control Config table \n",__func__, __LINE__);
         return -1;
     }
