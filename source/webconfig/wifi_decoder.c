@@ -2938,6 +2938,7 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
                     wifi_util_error_print(WIFI_CTRL,
                         "%s:%d decode_bandwidth_from_json returned error\n", __FUNCTION__,
                         __LINE__);
+                    cJSON_Delete(json);
                     return;
                 }
             } else {
