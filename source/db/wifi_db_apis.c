@@ -3326,8 +3326,8 @@ int wifidb_update_wifi_cac_config(wifi_vap_info_map_t *config)
             &config->vap_array[i].u.bss_info.preassoc);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_DB,
-                "%s:%d: Failed to update preassoc cac config for vap:%s ret:%d\n",
-                __func__, __LINE__, config->vap_array[i].vap_name, ret);
+                "%s:%d: Failed to update preassoc cac config for vap:%s ret:%d\n", __func__,
+                __LINE__, config->vap_array[i].vap_name, ret);
             return ret;
         }
 
