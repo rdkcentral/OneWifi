@@ -1718,6 +1718,7 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
     unsigned int vap_index;
     unsigned int radio_index;
     wifi_vap_info_map_t *l_vap_maps;
+    int apply_ret = RETURN_OK;
 
     //Apply the CAC Data
     for(radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
@@ -1739,6 +1740,7 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
                     wifi_util_error_print(WIFI_CTRL,
                         "%s:%d: Failed to update cac config for vap: %d ret:%d\n", __func__,
                         __LINE__, tgt_vap_index, ret);
+                    apply_ret = ret;
                 }
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: Received vap config is same for %d, not applying\n",
@@ -1746,7 +1748,7 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
             }
         }
     }
-    return RETURN_OK;
+    return apply_ret;
 }
 
 int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
