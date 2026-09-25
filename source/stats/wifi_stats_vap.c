@@ -29,6 +29,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "wifi_hal.h"
+#include "misc.h"
 
 int validate_vap_args(wifi_mon_stats_args_t *args)  
 {
@@ -103,7 +104,7 @@ int execute_vap_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *
 
     wifi_ssidTrafficStats2_t hal_stats;
     memset(&hal_stats, 0, sizeof(hal_stats));
-    if (wifi_getSSIDTrafficStats2(args->vap_index, &hal_stats) != RETURN_OK) {
+    if (get_misc_descriptor()->wifi_getSSIDTrafficStats2_fn(args->vap_index, &hal_stats) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s:%d wifi_getSSIDTrafficStats2 failed for vap_index %d\n",
             __func__, __LINE__, args->vap_index);
         free(vap_stats);

@@ -31,6 +31,7 @@ typedef int (* sysevent_close_t) (const int fd, const unsigned int token);
 typedef int (* wifi_enableCSIEngine_t) (int apIndex, mac_address_t sta, bool enable);
 typedef int (* initparodusTask_t) ();
 typedef int (* wifi_getRadioTrafficStats2_t) (int radioIndex, wifi_radioTrafficStats2_t *output_struct);
+typedef int (* wifi_getSSIDTrafficStats2_t) (int ssidIndex, wifi_ssidTrafficStats2_t *output_struct);
 typedef int (* WiFi_InitGasConfig_t) ();
 typedef void (* daemonize_t) ();
 typedef void (* sendWebpaMsg_t) (char *serviceName, char *dest, char *trans_id, char *traceParent, char *traceState, char *contentType, char *payload, unsigned int payload_len);
@@ -41,6 +42,7 @@ typedef struct {
     wifi_enableCSIEngine_t wifi_enableCSIEngine_fn;
     initparodusTask_t initparodusTask_fn;
     wifi_getRadioTrafficStats2_t wifi_getRadioTrafficStats2_fn;
+    wifi_getSSIDTrafficStats2_t wifi_getSSIDTrafficStats2_fn;
     WiFi_InitGasConfig_t WiFi_InitGasConfig_fn;
     daemonize_t daemonize_fn;
     sendWebpaMsg_t sendWebpaMsg_fn;
