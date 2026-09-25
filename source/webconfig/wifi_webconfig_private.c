@@ -129,6 +129,12 @@ webconfig_error_t encode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     str = cJSON_Print(json);
 
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode private subdoc\n", __func__, __LINE__);
+        cJSON_Delete(json);
+        return webconfig_error_encode;
+    }
+
     data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
     if (data->u.encoded.raw == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
@@ -137,11 +143,17 @@ webconfig_error_t encode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
         return webconfig_error_encode;
     }
 
-    memcpy(data->u.encoded.raw, str, strlen(str));
+   memcpy(data->u.encoded.raw, str, strlen(str) + 1);
 
-    json_param_obscure(str, "Passphrase");
-    json_param_obscure(str, "WpsConfigPin");
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
+   if (wifi_util_webconfig_is_dbg_enabled()) {
+        char *dbg = strdup(data->u.encoded.raw);
+        if (dbg != NULL) {
+            json_param_obscure(dbg, "Passphrase");
+            json_param_obscure(dbg, "WpsConfigPin");
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, dbg);
+            free(dbg);
+        }
+    }
     cJSON_free(str);
     cJSON_Delete(json);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
@@ -171,11 +183,16 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d - Number of private SSID found = %u\n", __func__, __LINE__, num_private_ssid);
 
-    str =  cJSON_Print(json);
-    json_param_obscure(str, "Passphrase");
-    json_param_obscure(str, "WpsConfigPin");
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, str);
-    cJSON_free(str);
+    if (wifi_util_webconfig_is_dbg_enabled()) {
+        str =  cJSON_Print(json);
+
+        if (str != NULL) {
+            json_param_obscure(str, "Passphrase");
+            json_param_obscure(str, "WpsConfigPin");
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, str);
+            cJSON_free(str);
+        }
+    }
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
