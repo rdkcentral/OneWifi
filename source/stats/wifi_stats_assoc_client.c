@@ -381,6 +381,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             sta->updated = true;
             sta->dev_stats.cli_Active = true;
             sta->dev_stats.cli_SignalStrength = hal_sta->cli_SignalStrength;
+            sta->timestamp.tv_sec = tv_now.tv_sec;
+            sta->timestamp.tv_nsec = tv_now.tv_nsec;
 
             if (timespeccmp(&(sta->last_connected_time),
                     &(mon_data->bssid_data[vap_array_index].last_sta_update_time),

@@ -1928,7 +1928,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     struct schema_Wifi_Rfc_Config  *pcfg;
     json_t *where;
     int count; 
-    char index[4] = {0};
+    char index[12] = {0};
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -6350,7 +6350,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     bool update = false;
     int count;
     int ret;
-    char index[4] = {0};
+    char index[12] = {0};
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -6454,7 +6454,7 @@ int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas
     bool update = false;
     int count;
     int ret;
-    char index[4] = {0};
+    char index[12] = {0};
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -6512,7 +6512,7 @@ int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_in
     struct schema_Wifi_GAS_Config  *pcfg;
     json_t *where;
     int count;
-    char index[4] = {0};
+    char index[12] = {0};
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -8258,7 +8258,7 @@ void wifidb_init_default_value()
   Description : Init global cache with wifidb persistant data
  *************************************************************************************
 ********************************************** ****************************************/
-void init_wifidb_data()
+void init_wifidb_data(void)
 {
     static bool db_param_init = false;
     if (db_param_init == true) {

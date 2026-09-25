@@ -1798,6 +1798,63 @@ int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t
     return RETURN_ERR;
 }
 
+/*
+ * The three helpers below replicate the lookup-table logic of
+ * get_bw80_center_freq(), get_bw160_center_freq(), get_bw320_center_freq()
+ * from rdk-wifi-hal/src/wifi_hal_nl80211_utils.c, but:
+ *   - use distinct names to avoid colliding with the HAL at link time
+ *     (OneWifi links both this lib and rdk-wifi-hal)
+ *   - return the center channel index directly (unsigned char) instead of a
+ *     frequency in MHz, skipping the ieee80211_chan_to_freq round-trip
+ *     that update_hostap_iface() immediately undoes via ieee80211_freq_to_chan
+ */
+unsigned char wifi_get_bw80_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {42, 58, 106, 122, 138, 155};
+    static const unsigned char centers_6g[] = {7, 23, 39, 55, 71, 87, 103, 119, 135, 151, 167, 183, 199, 215};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 6)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 6)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw160_center_ch(unsigned int ch, wifi_freq_bands_t band)
+{
+    unsigned int i;
+    static const unsigned char centers_5g[] = {50, 114, 163};
+    static const unsigned char centers_6g[] = {15, 47, 79, 111, 143, 175, 207};
+    const unsigned int n_5g = sizeof(centers_5g) / sizeof(centers_5g[0]);
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        for (i = 0; i < n_6g; i++)
+            if (ch <= (unsigned int)(centers_6g[i] + 14)) return centers_6g[i];
+        return centers_6g[n_6g - 1];
+    }
+    for (i = 0; i < n_5g; i++)
+        if (ch <= (unsigned int)(centers_5g[i] + 14)) return centers_5g[i];
+    return centers_5g[n_5g - 1];
+}
+
+unsigned char wifi_get_bw320_center_ch(unsigned int ch)
+{
+    unsigned int i;
+    static const unsigned char centers_6g[] = {31, 63, 95, 127, 159, 191};
+    const unsigned int n_6g = sizeof(centers_6g) / sizeof(centers_6g[0]);
+
+    for (i = 0; i < n_6g; i++)
+        if (ch <= (unsigned int)(centers_6g[i] + 30)) return centers_6g[i];
+    return centers_6g[n_6g - 1];
+}
+
 int is_ssid_name_valid(char *ssid_name)
 {
     int i = 0, ssid_len;
@@ -2473,17 +2530,17 @@ wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_st
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num)
 {
     int channels_2g_40_mhz[11][2] = {
-        {1, 3},
-        {2, 4},
-        {3, 5},
-        {4, 6},
-        {5, 7},
-        {6, 8},
-        {7, 9},
-        {8, 6},
-        {9, 7},
-        {10, 8},
-        {11, 9}
+        {1, 5},
+        {2, 6},
+        {3, 7},
+        {4, 8},
+        {5, 9},
+        {6, 10},
+        {7, 11},
+        {8, 4},
+        {9, 5},
+        {10, 6},
+        {11, 7}
     };
     int channels_5g_40_mhz[12][2] = {
         {36, 40},
@@ -3986,16 +4043,42 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         IS_CHANGED(vap_info_old->vap_mode, vap_info_new->vap_mode)) {
         return true;
     }
-
     if (isSta) {
         // Ignore change of conn_status, scan_params, mac to avoid reconfiguration and disconnection
         // BSSID change is handled by event.
         if (IS_STR_CHANGED(vap_info_old->u.sta_info.ssid, vap_info_new->u.sta_info.ssid,
-                sizeof(ssid_t)) ||
+              sizeof(ssid_t)) ||
             IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
-            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) || 
-            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
-                sizeof(wifi_vap_security_t))) {
+            IS_CHANGED(vap_info_old->u.sta_info.ignite_enabled, vap_info_new->u.sta_info.ignite_enabled) ||
+            IS_CHANGED(vap_info_old->u.sta_info.security.mode, vap_info_new->u.sta_info.security.mode)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.repurposed_mode, vap_info_new->u.sta_info.security.repurposed_mode)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.encr, vap_info_new->u.sta_info.security.encr)||
+#if defined(WIFI_HAL_VERSION_3)
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.mfp, &vap_info_new->u.sta_info.security.mfp, sizeof(wifi_mfp_cfg_t))||
+#else
+            IS_STR_CHANGED(vap_info_old->u.sta_info.security.mfpConfig, vap_info_new->u.sta_info.security.mfpConfig, sizeof(vap_info_new->u.sta_info.security.mfpConfig))||
+#endif
+            IS_CHANGED(vap_info_old->u.sta_info.security.wpa3_transition_disable, vap_info_new->u.sta_info.security.wpa3_transition_disable)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.rekey_interval, vap_info_new->u.sta_info.security.rekey_interval)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.strict_rekey, vap_info_new->u.sta_info.security.strict_rekey)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eapol_key_timeout, vap_info_new->u.sta_info.security.eapol_key_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eapol_key_retries, vap_info_new->u.sta_info.security.eapol_key_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_identity_req_timeout, vap_info_new->u.sta_info.security.eap_identity_req_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_identity_req_retries, vap_info_new->u.sta_info.security.eap_identity_req_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_req_timeout, vap_info_new->u.sta_info.security.eap_req_timeout)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.eap_req_retries, vap_info_new->u.sta_info.security.eap_req_retries)||
+            IS_CHANGED(vap_info_old->u.sta_info.security.disable_pmksa_caching, vap_info_new->u.sta_info.security.disable_pmksa_caching)||
+            IS_STR_CHANGED(vap_info_old->u.sta_info.security.key_id, vap_info_new->u.sta_info.security.key_id, sizeof(vap_info_new->u.sta_info.security.key_id))||
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.repurposed_radius, &vap_info_new->u.sta_info.security.repurposed_radius, sizeof(wifi_radius_settings_t))) {
+            return true;
+        }
+
+        if((vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa2_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info_old->u.sta_info.security.mode == wifi_security_mode_wpa_wpa2_enterprise)) {
+            if(IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.u.radius, &vap_info_new->u.sta_info.security.u.radius, sizeof(vap_info_old->u.sta_info.security.u.radius))) {
+            return true;
+            }
+        }
+        else if(IS_BIN_CHANGED(&vap_info_old->u.sta_info.security.u.key, &vap_info_new->u.sta_info.security.u.key, sizeof(vap_info_old->u.sta_info.security.u.key))) {
             return true;
         }
     } else {
