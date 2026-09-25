@@ -2918,12 +2918,16 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 } else {
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
-                    ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                    // Apply CAC before the HAL path copies decoded data into the manager map,
+                    // otherwise the CAC comparison sees no diff and OVSDB is left stale.
                     int cac_ret = webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (cac_ret != RETURN_OK) {
                         wifi_util_error_print(WIFI_CTRL,
                             "%s:%d: webconfig_cac_apply failed ret:%d\n", __func__, __LINE__,
                             cac_ret);
+                    }
+                    ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                    if (cac_ret != RETURN_OK) {
                         ret = cac_ret;
                     }
                     bool status = ((ret == RETURN_OK) ? true : false);
