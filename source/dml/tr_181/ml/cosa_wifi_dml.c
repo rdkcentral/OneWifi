@@ -6482,35 +6482,30 @@ Stats4_GetParamUlongValue
     )
 {
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
-    wifi_ssidTrafficStats2_t vap_stats;
-    /* Cache the HAL snapshot so a single dmcli object walk (~21 params) triggers one HAL query. */
-    static wifi_ssidTrafficStats2_t cached_stats;
-    static int cached_vap_index = -1;
-    static time_t cached_at;
-    static pthread_mutex_t cache_lock = PTHREAD_MUTEX_INITIALIZER;
-    time_t now;
+    vap_traffic_stats_t vap_stats;
+    wifi_monitor_t *mon;
+    unsigned int vap_array_index;
 
     if (pcfg == NULL || ParamName == NULL || puLong == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Null pointer\n", __FUNCTION__, __LINE__);
         return FALSE;
     }
 
-    pthread_mutex_lock(&cache_lock);
-    now = time(NULL);
-    if (cached_vap_index != (int)pcfg->vap_index || (now - cached_at) >= 2) {
-        memset(&cached_stats, 0, sizeof(cached_stats));
-        if (wifi_getSSIDTrafficStats2(pcfg->vap_index, &cached_stats) != RETURN_OK) {
-            cached_vap_index = -1;
-            pthread_mutex_unlock(&cache_lock);
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d failed to get stats for vap_index %d\n",
-                __FUNCTION__, __LINE__, pcfg->vap_index);
-            return FALSE;
-        }
-        cached_vap_index = (int)pcfg->vap_index;
-        cached_at = now;
+    /* Read the traffic stats the monitor already collected via HAL, so the data-model library
+     * does not link directly against wifi_getSSIDTrafficStats2 (absent on some HALs). */
+    mon = get_wifi_monitor();
+    if (mon == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d monitor not available\n", __FUNCTION__, __LINE__);
+        return FALSE;
     }
-    vap_stats = cached_stats;
-    pthread_mutex_unlock(&cache_lock);
+    if (getVAPArrayIndexFromVAPIndex(pcfg->vap_index, &vap_array_index) != RETURN_OK) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d invalid vap_index %d\n", __FUNCTION__, __LINE__,
+            pcfg->vap_index);
+        return FALSE;
+    }
+    pthread_mutex_lock(&mon->data_lock);
+    vap_stats = mon->bssid_data[vap_array_index].vap_traffic;
+    pthread_mutex_unlock(&mon->data_lock);
 
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "BytesSent", TRUE))
@@ -6563,13 +6558,13 @@ Stats4_GetParamUlongValue
 
     if( AnscEqualString(ParamName, "DiscardPacketsSent", TRUE))
     {
-        *puLong = vap_stats.ssid_DiscardedPacketsSent;
+        *puLong = vap_stats.ssid_DiscardPacketsSent;
         return TRUE;
     }
 
     if( AnscEqualString(ParamName, "DiscardPacketsReceived", TRUE))
     {
-        *puLong = vap_stats.ssid_DiscardedPacketsReceived;
+        *puLong = vap_stats.ssid_DiscardPacketsReceived;
         return TRUE;
     }
 
@@ -6593,13 +6588,13 @@ Stats4_GetParamUlongValue
 
     if( AnscEqualString(ParamName, "BroadcastPacketsReceived", TRUE))
     {
-        *puLong = vap_stats.ssid_BroadcastPacketsRecevied;
+        *puLong = vap_stats.ssid_BroadcastPacketsReceived;
         return TRUE;
     }
 
     if( AnscEqualString(ParamName, "UnknownProtoPacketsReceived", TRUE))
     {
-        *puLong = vap_stats.ssid_UnknownPacketsReceived;
+        *puLong = vap_stats.ssid_UnknownProtoPacketsReceived;
         return TRUE;
     }
 
