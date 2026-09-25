@@ -1737,8 +1737,8 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
                 int ret = wifidb_update_wifi_cac_config(&data->radios[radio_index].vaps.vap_map);
                 if (ret != RETURN_OK) {
                     wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d: Failed to update cac config for vap: %d ret:%d\n",
-                        __func__, __LINE__, tgt_vap_index, ret);
+                        "%s:%d: Failed to update cac config for vap: %d ret:%d\n", __func__,
+                        __LINE__, tgt_vap_index, ret);
                 }
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: Received vap config is same for %d, not applying\n",
