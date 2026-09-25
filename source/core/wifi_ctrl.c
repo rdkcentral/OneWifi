@@ -1185,7 +1185,6 @@ int sta_connection_status(int apIndex, wifi_bss_info_t *bss_dev, wifi_station_st
 int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
 {
     frame_data_t wifi_mgmt_frame;
-    int queue_ret;
 
     memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
     if (frame == NULL) {
@@ -1213,19 +1212,8 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     wifi_mgmt_frame.frame.len = frame->len;
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
 
-    wifi_util_info_print(WIFI_CTRL,
-        "[RDKB-66453][CAC_TRACE] phase2_frame_received ap_index=%d type=%d "
-        "len=%u rssi=%d phy_rate=%d recv_freq=%u\n",
-        ap_index, frame->type, frame->len, frame->sig_dbm, frame->phy_rate,
-        frame->recv_freq);
-
     //In side this API we have allocate memory and send it to control queue
-    queue_ret = push_event_to_ctrl_queue(&wifi_mgmt_frame, sizeof(wifi_mgmt_frame),
-        wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
-    wifi_util_info_print(WIFI_CTRL,
-        "[RDKB-66453][CAC_TRACE] phase2_frame_queue_result ap_index=%d type=%d "
-        "phy_rate=%d ret=%d\n",
-        ap_index, frame->type, frame->phy_rate, queue_ret);
+    push_event_to_ctrl_queue(&wifi_mgmt_frame, sizeof(wifi_mgmt_frame), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }

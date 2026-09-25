@@ -1797,14 +1797,7 @@ void callback_Wifi_Preassoc_Control_Config(ovsdb_update_monitor_t *mon,
         snprintf(l_preassoc_ctrl_cfg->tcm_exp_weightage, sizeof(l_preassoc_ctrl_cfg->tcm_exp_weightage), "%s", new_rec->tcm_exp_weightage);
 
          snprintf(l_preassoc_ctrl_cfg->tcm_gradient_threshold, sizeof(l_preassoc_ctrl_cfg->tcm_gradient_threshold), "%s", new_rec->tcm_gradient_threshold);
-         wifi_util_info_print(WIFI_DB,
-             "[RDKB-66453][CAC_TRACE] db_update vap=%s rssi=%s snr=%s cu=%s "
-             "basic=%s operational=%s supported=%s mcs=%s\n",
-             new_rec->vap_name, new_rec->rssi_up_threshold, new_rec->snr_threshold,
-             new_rec->cu_threshold, new_rec->basic_data_transmit_rates,
-             new_rec->operational_data_transmit_rates,
-             new_rec->supported_data_transmit_rates,
-             new_rec->minimum_advertised_mcs);
+         wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Preassoc_Control_Config table vap_name=%s rssi_up_threshold=%s snr_threshold=%s cu_threshold=%s basic_data_transmit_rates=%s operational_data_transmit_rates=%s supported_data_transmit_rates=%s minimum_advertised_mcs=%s tcm_timeout:%d tcm_min_mgmt_frames:%d tcmexp:%s tcmgradient:%s \n",__func__, __LINE__,new_rec->vap_name,new_rec->rssi_up_threshold,new_rec->snr_threshold,new_rec->cu_threshold,new_rec->basic_data_transmit_rates,new_rec->operational_data_transmit_rates,new_rec->supported_data_transmit_rates,new_rec->minimum_advertised_mcs,new_rec->time_ms,new_rec->min_num_mgmt_frames,new_rec->tcm_exp_weightage,new_rec->tcm_gradient_threshold);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
         if(vap_index == -1) {
@@ -3126,7 +3119,6 @@ int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *
     struct schema_Wifi_Preassoc_Control_Config cfg;
     char *filter_preassoc[] = {"-", NULL};
     wifi_db_t *g_wifidb;
-    bool update_ret;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
     if(preassoc == NULL)
@@ -3149,17 +3141,7 @@ int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *
     strcpy(cfg.tcm_exp_weightage, preassoc->tcm_exp_weightage);
     strcpy(cfg.tcm_gradient_threshold, preassoc->tcm_gradient_threshold);
 
-    update_ret = onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,
-        &table_Wifi_Preassoc_Control_Config, &cfg, false, filter_preassoc,
-        SCHEMA_TABLE(Wifi_Connection_Control_Config),
-        onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name),
-        SCHEMA_COLUMN(Wifi_Connection_Control_Config, pre_assoc));
-    wifi_util_info_print(WIFI_DB,
-        "[RDKB-66453][CAC_TRACE] db_upsert_preassoc vap=%s ret=%d basic=%s "
-        "operational=%s supported=%s\n",
-        vap_name, update_ret, cfg.basic_data_transmit_rates,
-        cfg.operational_data_transmit_rates, cfg.supported_data_transmit_rates);
-    if (update_ret == false) {
+    if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_Preassoc_Control_Config, &cfg, false, filter_preassoc, SCHEMA_TABLE(Wifi_Connection_Control_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_Connection_Control_Config, pre_assoc)) == false) {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Preassoc_Control Config table \n",__func__, __LINE__);
         return -1;
     }
@@ -3332,8 +3314,8 @@ int wifidb_update_wifi_cac_config(wifi_vap_info_map_t *config)
             &config->vap_array[i].u.bss_info.preassoc);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_DB,
-                "[RDKB-66453][CAC_TRACE] preassoc_update_failed vap=%s ret=%d\n",
-                config->vap_array[i].vap_name, ret);
+                "%s:%d: Failed to update preassoc cac config for vap:%s ret:%d\n",
+                __func__, __LINE__, config->vap_array[i].vap_name, ret);
             return ret;
         }
 
@@ -3341,8 +3323,8 @@ int wifidb_update_wifi_cac_config(wifi_vap_info_map_t *config)
             &config->vap_array[i].u.bss_info.postassoc);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_DB,
-                "[RDKB-66453][CAC_TRACE] postassoc_update_failed vap=%s ret=%d\n",
-                config->vap_array[i].vap_name, ret);
+                "%s:%d: Failed to update postassoc cac config for vap:%s ret:%d\n",
+                __func__, __LINE__, config->vap_array[i].vap_name, ret);
             return ret;
         }
     }
