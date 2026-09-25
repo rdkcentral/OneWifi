@@ -3224,11 +3224,10 @@ int diagdata_set_interval(int interval, unsigned int ap_idx)
     unsigned int vap_array_index;
     int ret = RETURN_ERR;
 
-    if(ap_idx >= MAX_VAP) {
-        wifi_util_error_print(WIFI_MON, "%s: ap_idx %d not valid\n",__func__, ap_idx);
+    if (getVAPArrayIndexFromVAPIndex(ap_idx, &vap_array_index) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s: ap_idx %d not valid\n", __func__, ap_idx);
+        return RETURN_ERR;
     }
-
-    getVAPArrayIndexFromVAPIndex(ap_idx, &vap_array_index);
 
     pthread_mutex_lock(&g_events_monitor.lock);
     g_events_monitor.diag_session[vap_array_index].interval = interval;

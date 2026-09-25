@@ -6487,6 +6487,7 @@ Stats4_GetParamUlongValue
     static wifi_ssidTrafficStats2_t cached_stats;
     static int cached_vap_index = -1;
     static time_t cached_at;
+    static pthread_mutex_t cache_lock = PTHREAD_MUTEX_INITIALIZER;
     time_t now;
 
     if (pcfg == NULL || ParamName == NULL || puLong == NULL) {
@@ -6494,11 +6495,13 @@ Stats4_GetParamUlongValue
         return FALSE;
     }
 
+    pthread_mutex_lock(&cache_lock);
     now = time(NULL);
     if (cached_vap_index != (int)pcfg->vap_index || (now - cached_at) >= 2) {
         memset(&cached_stats, 0, sizeof(cached_stats));
         if (wifi_getSSIDTrafficStats2(pcfg->vap_index, &cached_stats) != RETURN_OK) {
             cached_vap_index = -1;
+            pthread_mutex_unlock(&cache_lock);
             wifi_util_error_print(WIFI_DMCLI, "%s:%d failed to get stats for vap_index %d\n",
                 __FUNCTION__, __LINE__, pcfg->vap_index);
             return FALSE;
@@ -6507,6 +6510,7 @@ Stats4_GetParamUlongValue
         cached_at = now;
     }
     vap_stats = cached_stats;
+    pthread_mutex_unlock(&cache_lock);
 
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "BytesSent", TRUE))

@@ -130,7 +130,8 @@ int execute_vap_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *
     vap_stats->ssid_MultipleRetryCount = hal_stats.ssid_MultipleRetryCount;
     vap_stats->ssid_ACKFailureCount = hal_stats.ssid_ACKFailureCount;
     vap_stats->ssid_AggregatedPacketCount = hal_stats.ssid_AggregatedPacketCount;
-    /* ssid_{Unicast,Multicast,Broadcast}Bytes{Sent,Received} stay 0: wifi_getSSIDTrafficStats2() has no per-cast byte fields to source them from. */
+    /* ssid_{Unicast,Multicast,Broadcast}Bytes{Sent,Received} stay 0: wifi_getSSIDTrafficStats2()
+     * has no per-cast byte fields to source them from. */
 
     pthread_mutex_lock(&mon_data->data_lock);  
     memcpy(&mon_data->bssid_data[vap_array_index].vap_traffic, vap_stats, sizeof(vap_traffic_stats_t));
