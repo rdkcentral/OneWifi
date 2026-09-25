@@ -1601,8 +1601,9 @@ int push_vap_dml_cache_to_one_wifidb()
     }
 
     if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_DMCLI, "%s:%d: One or more vap DML subdoc pushes failed, retaining dirty state\n",
-            __func__, __LINE__);
+        wifi_util_error_print(WIFI_DMCLI,
+            "%s:%d: One or more vap DML subdoc pushes failed, retaining dirty state\n", __func__,
+            __LINE__);
         return ret;
     }
 
