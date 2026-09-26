@@ -20531,9 +20531,11 @@ InterworkingService_SetParamStringValue
             else
             {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Input string too long for vap %s\n", __FUNCTION__, __LINE__, pcfg->vap_name);
+                cJSON_Delete(p_root);
                 return FALSE;
             }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+            cJSON_Delete(p_root);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
     }
