@@ -211,7 +211,9 @@ bus_error_t de_apmld_sync_handler(char const* tableName, bus_data_prop_t *inPara
     (void)asyncHandle;
     wfa_dml_data_model_t *p_dml_param = get_wfa_dml_data_model_param();
 
-    update_apmld_map();
+    webconfig_dml_t* dml = get_webconfig_dml();
+    apmld_map_t *apmld_map = &dml->apmld_map;
+    update_apmld_map(apmld_map);
     UINT num_apmld = get_num_apmld_dml();
     UINT num_row = p_dml_param->table_de_apmld_index;
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d enter %s, numrow %d, numapmld %d\r\n", __func__, __LINE__, tableName, num_row, num_apmld);
