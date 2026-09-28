@@ -1067,6 +1067,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
     }
 
+#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+    update_mlo_rfc_enable(false);
+#endif
     return RETURN_OK;
 }
 
@@ -1626,10 +1629,11 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
 
 int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1648,10 +1652,11 @@ int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
 int webconfig_hal_home_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1670,10 +1675,11 @@ int webconfig_hal_home_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
 
 int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1692,10 +1698,11 @@ int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
 int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1714,10 +1721,11 @@ int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data
 
 int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int ap_index;
+    unsigned int ap_index = 0;
     unsigned int num_vaps = 0;
     char *vap_name = NULL;
-    char *vap_names[MAX_VAP];
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1737,9 +1745,10 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
 int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int num_vaps = 0;
-    unsigned int ap_index;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    unsigned int ap_index = 0;
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -1759,9 +1768,10 @@ int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int num_vaps = 0;
-    unsigned int ap_index;
-    char *vap_name;
-    char *vap_names[MAX_VAP];
+    unsigned int ap_index = 0;
+    char *vap_name = NULL;
+    char *vap_names[MAX_VAP] = { NULL };
+
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
@@ -2114,11 +2124,18 @@ static int check_and_reset_channel_change(void *arg)
         return RETURN_ERR;
     }
 
-    if (mgr->channel_change_in_progress[radio_index] == true) {
+    bool channel_change_in_progress = false;
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    channel_change_in_progress = mgr->channel_change_in_progress[radio_index];
+    if (channel_change_in_progress == true) {
+        mgr->channel_change_in_progress[radio_index] = false;
+    }
+    pthread_mutex_unlock(&mgr->data_cache_lock);
+
+    if (channel_change_in_progress == true) {
         wifi_util_dbg_print(WIFI_MON,
             "%s: Channel change still in progress after 5s. Resetting flag and restarting scan.\n",
             __func__);
-        mgr->channel_change_in_progress[radio_index] = false;
     }
 
     return RETURN_OK;
@@ -2287,7 +2304,9 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 
         // channel_change_flag
         if (IS_CHANGED(radio_data->oper.channel, mgr_radio_data->oper.channel)) {
+            pthread_mutex_lock(&mgr->data_cache_lock);
             mgr->channel_change_in_progress[radio_data->vaps.radio_index] = true;
+            pthread_mutex_unlock(&mgr->data_cache_lock);
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: channel_mismatch[%d] set to true\n", __func__,
                 __LINE__, radio_data->vaps.radio_index);
             scheduler_add_timer_task(ctrl->sched, false, NULL, check_and_reset_channel_change,
