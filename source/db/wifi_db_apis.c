@@ -8640,7 +8640,8 @@ void init_wifidb_data()
         else {
                 if(wifidb_overide_rfc_config(rfc_param) == true) {
                     wifidb_update_rfc_config(0, rfc_param);
-         }
+                }
+        }
 
         {
             wei_rfc_dml_parameters_t *wei_rfc_param = get_wifi_db_wei_rfc_parameters();
