@@ -188,6 +188,8 @@ typedef struct {
     wifi_channelMap_t channel_map[MAX_NUM_RADIOS][MAX_CHANNELS];
 } wifi_monitor_t;
 
+hash_map_t *get_interop_sta_data_map(unsigned int vap_index);
+
 typedef struct {
     int              ap_index;
     mac_addr_t       mac_addr;
