@@ -748,6 +748,10 @@ static bus_error_t rbus_value_to_bus_prop(bus_data_prop_t *bus_data, const char 
             prop->value.raw_data.u32 = rbusValue_GetUInt32(value);
             prop->value.raw_data_len = sizeof(uint32_t);
             break;
+        case RBUS_UINT64:
+            prop->value.raw_data.u64 = rbusValue_GetUInt64(value);
+            prop->value.raw_data_len = sizeof(uint64_t);
+            break;
         default:
             rc = bus_error_invalid_input;
             goto cleanup;
@@ -884,6 +888,9 @@ static bus_error_t set_rbus_object_data(char *name, rbusObject_t outParams, bus_
                 break;
             case bus_data_type_uint32:
                 rbusValue_SetUInt32(v, prop->value.raw_data.u32);
+                break;
+            case bus_data_type_uint64:
+                rbusValue_SetUInt64(v, prop->value.raw_data.u64);
                 break;
             case bus_data_type_boolean:
                 rbusValue_SetBoolean(v, prop->value.raw_data.b);
@@ -1396,7 +1403,18 @@ static bus_error_t bus_set(bus_handle_t *handle, char const *name, raw_data_t *d
 
 void bus_data_free(raw_data_t *data)
 {
-    if ((data->raw_data.bytes) &&
+    if (data->data_type == bus_data_type_property && data->raw_data.bytes != NULL) {
+        /* the caller owns the head of the list, the appended nodes are released here */
+        bus_data_prop_t *head = (bus_data_prop_t *)data->raw_data.bytes, *cur, *next;
+        for (cur = head->next_data; cur != NULL; cur = next) {
+            next = cur->next_data;
+            free_raw_data_struct(&cur->value);
+            free(cur);
+        }
+        free_raw_data_struct(&head->value);
+        head->next_data = NULL;
+        head->is_data_set = false;
+    } else if ((data->raw_data.bytes) &&
         (data->data_type == bus_data_type_bytes || data->data_type == bus_data_type_string)) {
         free(data->raw_data.bytes);
     }
@@ -1489,9 +1507,22 @@ static bus_error_t bus_event_publish(bus_handle_t *handle, char const *name, raw
 
     rbusValue_Init(&value);
     rbusObject_Init(&rdata, NULL);
-    rbusObject_SetValue(rdata, name, value);
+    if (data->data_type != bus_data_type_property) {
+        rbusObject_SetValue(rdata, name, value);
+    }
 
     switch (data->data_type) {
+    case bus_data_type_property:
+        /* one rbus property per event argument */
+        if (set_rbus_object_data((char *)name, rdata, (bus_data_prop_t *)data->raw_data.bytes) !=
+            bus_error_success) {
+            wifi_util_error_print(WIFI_BUS, "%s:%d: bus: Invalid property list for name:%s.\n",
+                __func__, __LINE__, name);
+            rbusValue_Release(value);
+            rbusObject_Release(rdata);
+            return bus_error_invalid_input;
+        }
+        break;
     case bus_data_type_boolean:
         rbusValue_SetBoolean(value, data->raw_data.b);
         data->data_type = bus_data_type_boolean;
