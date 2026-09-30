@@ -146,7 +146,9 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
 #ifdef EM_APP
         if (get_lq_descriptor()->start_link_metrics_fn)
             get_lq_descriptor()->start_link_metrics_fn();
+#if defined(_PLATFORM_BANANAPI_R4_)
         qmgr_register_batch_callback(publish_qmgr_subdoc);
+#endif /* _PLATFORM_BANANAPI_R4_ */
          wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
             __func__, __LINE__, ctrl->network_mode);
 #endif
