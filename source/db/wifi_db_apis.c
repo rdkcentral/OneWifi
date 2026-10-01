@@ -52,7 +52,9 @@
 #include "wifi_util.h"
 #include "wifi_mgr.h"
 #include "wifi_dml.h"
+#include "wifi_events.h"
 #include "wifi_monitor.h"
+#include "run_qmgr.h"
 
 #define MAX_BUF_SIZE 128
 #define ONEWIFI_DB_VERSION_EXISTS_FLAG 100017
@@ -87,7 +89,7 @@
 #define ONEWIFI_DB_VERSION_STATS_FLAG 100037
 #define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100040
 #define DEFAULT_WHIX_CHUTILITY_LOGINTERVAL 900
-#define DEFAULT_WHIX_LOGINTERVAL 3600
+#define DEFAULT_WHIX_LOGINTERVAL 900
 
 #define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100042
 #define ONEWIFI_DB_VERSION_UPDATE_MLD_FLAG 100043
@@ -95,6 +97,10 @@
 #define ONEWIFI_DB_VERSION_IGNITE_FLAG 100045
 #define ONEWIFI_DB_VERSION_ENCR_GCMP_FLAG 100048
 #define ONEWIFI_DB_VERSION_ENCR_NEW_FLAG 100049
+#define ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG 100051
+#define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100052
+#define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100053
+#define ONEWIFI_DB_VERSION_2G11AXENABLE_RFC_FLAG 100054
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -116,6 +122,7 @@ ovsdb_table_t table_Wifi_Postassoc_Control_Config;
 ovsdb_table_t table_Wifi_Connection_Control_Config;
 ovsdb_table_t table_Wifi_Rfc_Config;
 ovsdb_table_t table_Wifi_Ignite_Config;
+ovsdb_table_t table_Wifi_Wei_Rfc_Config;
 
 static char *ApMFPConfig         = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.Security.MFPConfig";
 static char *CTSProtection      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.Radio.%d.CTSProtection";
@@ -247,7 +254,6 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
     } else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
 
         wifi_util_dbg_print(WIFI_DB, "%s:%d:RFC Config New/Modify \n", __func__, __LINE__);
-            wifi_util_dbg_print(WIFI_DB,"%s:%d:%d _Wifi_Rfc_Config table\n", __func__, __LINE__,new_rec->link_quality_rfc);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         strcpy(rfc_param->rfc_id, new_rec->rfc_id);
         rfc_param->wifipasspoint_rfc = new_rec->wifipasspoint_rfc;
@@ -270,20 +276,25 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
+        rfc_param->tcm_open_2g_rfc = new_rec->tcm_open_2g_rfc;
+        rfc_param->tcm_open_5g_rfc = new_rec->tcm_open_5g_rfc;
+        rfc_param->tcm_open_6g_rfc = new_rec->tcm_open_6g_rfc;
+        rfc_param->tcm_secure_2g_rfc = new_rec->tcm_secure_2g_rfc;
+        rfc_param->tcm_secure_5g_rfc = new_rec->tcm_secure_5g_rfc;
+        rfc_param->tcm_secure_6g_rfc = new_rec->tcm_secure_6g_rfc;
         rfc_param->wpa3_compatibility_enable = new_rec->wpa3_compatibility_enable;
-        rfc_param->link_quality_rfc = new_rec->link_quality_rfc;
         rfc_param->xfi_tel_enable_rfc = new_rec->xfi_tel_enable_rfc;
         rfc_param->multiap_rfc = new_rec->multiap_rfc;
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
             "dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d "
-            "hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d "
+            "hotspot_open_2g_last_enabled=%d hotspot_open_5g_last_enabled=%d "
             "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
             "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
             "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d "
-            "link_quality_rfc=%d xfi_tel_enable_rfc=%d multiap_rfc=%d\r\n",
+            "xfi_tel_enable_rfc=%d multiap_rfc=%d\r\n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -293,8 +304,149 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
             rfc_param->rfc_id, rfc_param->memwraptool_app_rfc, rfc_param->levl_enabled_rfc,
             rfc_param->tcm_enabled_rfc, rfc_param->wpa3_compatibility_enable,
-            rfc_param->link_quality_rfc, rfc_param->xfi_tel_enable_rfc, rfc_param->multiap_rfc); 
+            rfc_param->xfi_tel_enable_rfc, rfc_param->multiap_rfc);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    }
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wei_rfc_schema_to_dml / wei_rfc_dml_to_schema
+  Description : Field-mapping helpers between wei_rfc_dml_parameters_t and
+                struct schema_Wifi_Wei_Rfc_Config, shared by the get/update/
+                monitor-callback paths so the column list is defined once.
+ *************************************************************************************
+**************************************************************************************/
+static void wei_rfc_schema_to_dml(const struct schema_Wifi_Wei_Rfc_Config *cfg, wei_rfc_dml_parameters_t *dml)
+{
+    dml->wei_enable = cfg->wei_enable;
+    dml->lq_meas_params_mask = (uint32_t)cfg->lq_meas_params_mask;
+    dml->lq_meas_duration = (uint32_t)cfg->lq_meas_duration;
+    dml->radio_2g_max_snr = (uint32_t)cfg->radio_2g_max_snr;
+    dml->radio_5g_max_snr = (uint32_t)cfg->radio_5g_max_snr;
+    dml->radio_6g_max_snr = (uint32_t)cfg->radio_6g_max_snr;
+    dml->radio_2g_max_phy = (uint32_t)cfg->radio_2g_max_phy;
+    dml->radio_5g_max_phy = (uint32_t)cfg->radio_5g_max_phy;
+    dml->radio_6g_max_phy = (uint32_t)cfg->radio_6g_max_phy;
+
+    dml->sc.home_enable = cfg->sc_home_enable;
+    dml->sc.home_threshold = (uint32_t)cfg->sc_home_threshold;
+    dml->sc.home_detail_enable = cfg->sc_home_detail_enable;
+    dml->sc.client_enable = cfg->sc_client_enable;
+    dml->sc.client_threshold = (uint32_t)cfg->sc_client_threshold;
+    dml->sc.client_detail_enable = cfg->sc_client_detail_enable;
+    snprintf(dml->sc.client_whitelist, sizeof(dml->sc.client_whitelist), "%s", cfg->sc_client_whitelist);
+
+    dml->gc.home_enable = cfg->gc_home_enable;
+    dml->gc.home_threshold = (uint32_t)cfg->gc_home_threshold;
+    dml->gc.home_detail_enable = cfg->gc_home_detail_enable;
+    dml->gc.client_enable = cfg->gc_client_enable;
+    dml->gc.client_threshold = (uint32_t)cfg->gc_client_threshold;
+    dml->gc.client_detail_enable = cfg->gc_client_detail_enable;
+    snprintf(dml->gc.client_whitelist, sizeof(dml->gc.client_whitelist), "%s", cfg->gc_client_whitelist);
+
+    dml->lq.home_enable = cfg->lq_home_enable;
+    dml->lq.home_threshold = (uint32_t)cfg->lq_home_threshold;
+    dml->lq.home_detail_enable = cfg->lq_home_detail_enable;
+    dml->lq.client_enable = cfg->lq_client_enable;
+    dml->lq.client_threshold = (uint32_t)cfg->lq_client_threshold;
+    dml->lq.client_detail_enable = cfg->lq_client_detail_enable;
+    snprintf(dml->lq.client_whitelist, sizeof(dml->lq.client_whitelist), "%s", cfg->lq_client_whitelist);
+
+    dml->wei_diagnostic_enable = cfg->diagnostic_enable;
+}
+
+static void wei_rfc_dml_to_schema(const wei_rfc_dml_parameters_t *dml, struct schema_Wifi_Wei_Rfc_Config *cfg)
+{
+    cfg->wei_enable = dml->wei_enable;
+    cfg->lq_meas_params_mask = (int)dml->lq_meas_params_mask;
+    cfg->lq_meas_duration = (int)dml->lq_meas_duration;
+    cfg->radio_2g_max_snr = (int)dml->radio_2g_max_snr;
+    cfg->radio_5g_max_snr = (int)dml->radio_5g_max_snr;
+    cfg->radio_6g_max_snr = (int)dml->radio_6g_max_snr;
+    cfg->radio_2g_max_phy = (int)dml->radio_2g_max_phy;
+    cfg->radio_5g_max_phy = (int)dml->radio_5g_max_phy;
+    cfg->radio_6g_max_phy = (int)dml->radio_6g_max_phy;
+
+    cfg->sc_home_enable = dml->sc.home_enable;
+    cfg->sc_home_threshold = (int)dml->sc.home_threshold;
+    cfg->sc_home_detail_enable = dml->sc.home_detail_enable;
+    cfg->sc_client_enable = dml->sc.client_enable;
+    cfg->sc_client_threshold = (int)dml->sc.client_threshold;
+    cfg->sc_client_detail_enable = dml->sc.client_detail_enable;
+    snprintf(cfg->sc_client_whitelist, sizeof(cfg->sc_client_whitelist), "%s", dml->sc.client_whitelist);
+
+    cfg->gc_home_enable = dml->gc.home_enable;
+    cfg->gc_home_threshold = (int)dml->gc.home_threshold;
+    cfg->gc_home_detail_enable = dml->gc.home_detail_enable;
+    cfg->gc_client_enable = dml->gc.client_enable;
+    cfg->gc_client_threshold = (int)dml->gc.client_threshold;
+    cfg->gc_client_detail_enable = dml->gc.client_detail_enable;
+    snprintf(cfg->gc_client_whitelist, sizeof(cfg->gc_client_whitelist), "%s", dml->gc.client_whitelist);
+
+    cfg->lq_home_enable = dml->lq.home_enable;
+    cfg->lq_home_threshold = (int)dml->lq.home_threshold;
+    cfg->lq_home_detail_enable = dml->lq.home_detail_enable;
+    cfg->lq_client_enable = dml->lq.client_enable;
+    cfg->lq_client_threshold = (int)dml->lq.client_threshold;
+    cfg->lq_client_detail_enable = dml->lq.client_detail_enable;
+    snprintf(cfg->lq_client_whitelist, sizeof(cfg->lq_client_whitelist), "%s", dml->lq.client_whitelist);
+
+    cfg->diagnostic_enable = dml->wei_diagnostic_enable;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : callback_Wifi_Wei_Rfc_Config
+  Parameter   : mon     - Type of modification
+                old_rec - schema_Wifi_Wei_Rfc_Config holds value before modification
+                new_rec - schema_Wifi_Wei_Rfc_Config holds value after modification
+  Description : Callback invoked when Wifi_Wei_Rfc_Config is modified in wifidb;
+                refreshes the DB-mirror cache and drives mask recompute/notify.
+ *************************************************************************************
+**************************************************************************************/
+void callback_Wifi_Wei_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Wei_Rfc_Config *old_rec,
+    struct schema_Wifi_Wei_Rfc_Config *new_rec)
+{
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    wei_rfc_dml_parameters_t *rfc_param = get_wifi_db_wei_rfc_parameters();
+
+    if (dbwritten == false) {
+        wifi_util_info_print(WIFI_DB, "%s:%d: Db is not initialised yet\n", __func__, __LINE__);
+        return;
+    }
+
+    if (mon->mon_type == OVSDB_UPDATE_DEL) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d:Delete\n", __func__, __LINE__);
+        return;
+    }
+    if ((mon->mon_type != OVSDB_UPDATE_NEW) && (mon->mon_type != OVSDB_UPDATE_MODIFY)) {
+        return;
+    }
+
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    wei_rfc_schema_to_dml(new_rec, rfc_param);
+    snprintf(rfc_param->wei_rfc_id, sizeof(rfc_param->wei_rfc_id), "%s", new_rec->wei_rfc_id);
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+    wifi_util_dbg_print(WIFI_DB,
+        "%s:%d WEI RFC Config New/Modify wei_enable=%d lq_dur=%u "
+        "sc(h_en=%d c_en=%d) gc(h_en=%d c_en=%d) lq(h_en=%d c_en=%d) diag_en=%d\r\n",
+        __func__, __LINE__, rfc_param->wei_enable, rfc_param->lq_meas_duration,
+        rfc_param->sc.home_enable, rfc_param->sc.client_enable,
+        rfc_param->gc.home_enable, rfc_param->gc.client_enable,
+        rfc_param->lq.home_enable, rfc_param->lq.client_enable,
+        rfc_param->wei_diagnostic_enable);
+
+    /* Marshal onto the ctrl thread (this callback runs on the wifidb event-loop
+     * thread); field_id=-1 means "already applied to the DB-mirror cache above,
+     * just recompute the derived mask and notify subscribers". */
+    {
+        wei_rfc_field_update_t upd;
+        memset(&upd, 0, sizeof(upd));
+        upd.field_id = -1;
+        push_event_to_ctrl_queue(&upd, sizeof(upd), wifi_event_type_command,
+            wifi_event_type_wei_rfc_config, NULL);
     }
 }
 
@@ -1950,8 +2102,13 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
+    rfc_info->tcm_open_2g_rfc = pcfg->tcm_open_2g_rfc;
+    rfc_info->tcm_open_5g_rfc = pcfg->tcm_open_5g_rfc;
+    rfc_info->tcm_open_6g_rfc = pcfg->tcm_open_6g_rfc;
+    rfc_info->tcm_secure_2g_rfc = pcfg->tcm_secure_2g_rfc;
+    rfc_info->tcm_secure_5g_rfc = pcfg->tcm_secure_5g_rfc;
+    rfc_info->tcm_secure_6g_rfc = pcfg->tcm_secure_6g_rfc;
     rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
-    rfc_info->link_quality_rfc = pcfg->link_quality_rfc;
     rfc_info->xfi_tel_enable_rfc = pcfg->xfi_tel_enable_rfc;
     rfc_info->multiap_rfc = pcfg->multiap_rfc;
     free(pcfg);
@@ -4816,8 +4973,8 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
-    rfc_config.wifipasspoint_rfc = false;
-    rfc_config.wifiinterworking_rfc = false;
+    rfc_config.wifipasspoint_rfc = true;
+    rfc_config.wifiinterworking_rfc = true;
     rfc_config.radiusgreylist_rfc = false;
     rfc_config.dfsatbootup_rfc = false;
     rfc_config.dfs_rfc = false;
@@ -4829,11 +4986,8 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
 #else
     rfc_config.wpa3_rfc = false;
 #endif
-#if defined(ALWAYS_ENABLE_AX_2G) || defined(NEWPLATFORM_PORT)
+
     rfc_config.twoG80211axEnable_rfc = true;
-#else
-    rfc_config.twoG80211axEnable_rfc = false;
-#endif
     rfc_config.hotspot_open_2g_last_enabled = false;
     rfc_config.hotspot_open_5g_last_enabled = false;
     rfc_config.hotspot_open_6g_last_enabled = false;
@@ -4843,10 +4997,16 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifi_offchannelscan_app_rfc = false;
     rfc_config.wifi_offchannelscan_sm_rfc = false;
     rfc_config.tcm_enabled_rfc = false;
+    rfc_config.tcm_open_2g_rfc = false;
+    rfc_config.tcm_open_5g_rfc = false;
+    rfc_config.tcm_open_6g_rfc = false;
+    rfc_config.tcm_secure_2g_rfc = false;
+    rfc_config.tcm_secure_5g_rfc = false;
+    rfc_config.tcm_secure_6g_rfc = false;
     rfc_config.wpa3_compatibility_enable = false;
-    rfc_config.link_quality_rfc = false;
     rfc_config.xfi_tel_enable_rfc = false;
     rfc_config.multiap_rfc = false;
+    rfc_config.wei_rfc_mask = 0;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -4888,12 +5048,11 @@ static void wifidb_global_config_upgrade()
     char strValue[256] = {0};
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     if (g_wifidb->db_version == 0) {
         return;
     }
-    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_LOGINTERVAL_FLAG) {
-        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__, __LINE__, g_wifidb->db_version);
 
         memset(strValue, 0, sizeof(strValue));
         str = (char *) p_ccsp_desc->psm_get_value_fn(WhixLoginterval, strValue);
@@ -4904,7 +5063,6 @@ static void wifidb_global_config_upgrade()
             g_wifidb->global_config.global_parameters.whix_log_interval = DEFAULT_WHIX_LOGINTERVAL;
             wifi_util_error_print(WIFI_DB, ":%s:%d str value for whix_log_interval is null \r\n",
                 __func__, __LINE__);
-        }
     }
 
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_CHUTILITY_LOGINTERVAL_FLAG) {
@@ -4962,6 +5120,17 @@ static void wifidb_global_config_upgrade()
         g_wifidb->global_config.global_parameters.memwraptool.heapwalk_interval =
             DEFAULT_HEAPWALK_INTERVAL;
         g_wifidb->global_config.global_parameters.memwraptool.enable = true;
+    }
+
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade tcm config, old db version %d \n", __func__,
+            __LINE__, g_wifidb->db_version);
+        rfc_param->tcm_open_2g_rfc = true;
+        rfc_param->tcm_open_5g_rfc = true;
+        rfc_param->tcm_open_6g_rfc = true;
+        rfc_param->tcm_secure_2g_rfc = true;
+        rfc_param->tcm_secure_5g_rfc = true;
+        rfc_param->tcm_secure_6g_rfc = true;
     }
 }
 
@@ -5036,6 +5205,22 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     }
 #endif /* CONFIG_IEEE80211BE */
 }
+
+int wifidb_get_default_mld_link_id(int band)
+{
+#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+    switch (band) {
+    case WIFI_FREQUENCY_2_4_BAND: return 2;
+    case WIFI_FREQUENCY_5_BAND:   return 1;
+    case WIFI_FREQUENCY_6_BAND:   return 0;
+    default:                      return UNDEFINED_MLD_LINK_ID;
+    }
+#else
+    (void)band;
+    return UNDEFINED_MLD_LINK_ID;
+#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
+}
+
 
 /************************************************************************************
  ************************************************************************************
@@ -5119,10 +5304,25 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             }
         }
 
+#if defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || \
+    defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || \
+    defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG) {
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
+                wifi_util_info_print(WIFI_DB,
+                    "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
+                    config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl,
+                    config->vap_array[i].vap_index);
+                is_vap_info_upgrade_needed = true;
+            }
+        }
+#endif // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) ||
+       // defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) ||
+       // defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
                 config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
                 wifi_util_info_print(WIFI_DB,
@@ -5132,8 +5332,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 is_vap_info_upgrade_needed = true;
             }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
-       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
-       // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
         }
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_STATS_FLAG) {
@@ -5242,6 +5441,29 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     __func__, __LINE__, config->vap_array[i].vap_name);
             }
         }
+#ifdef _XB10_PRODUCT_REQ_
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG) {
+            wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
+                __func__, __LINE__, g_wifidb->db_version);
+            if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
+                int band = 0;
+                if (convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop,
+                        config->vap_array[i].radio_index, &band) != RETURN_OK) {
+                    wifi_util_error_print(WIFI_DB,
+                        "%s:%d radio index %d, failed to get band\n",
+                        __func__, __LINE__, config->vap_array[i].radio_index);
+                } else {
+                    config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id =
+                        wifidb_get_default_mld_link_id(band);
+                    is_vap_info_upgrade_needed = true;
+                    wifi_util_info_print(WIFI_DB,
+                        "%s:%d vap %s mld_link_id set to %d for band %d\n", __func__, __LINE__,
+                        config->vap_array[i].vap_name,
+                        config->vap_array[i].u.bss_info.mld_info.common_info.mld_link_id, band);
+                }
+            }
+        }
+#endif /* _XB10_PRODUCT_REQ_ */
 #endif /* CONFIG_IEEE80211BE */
         if (is_vap_info_upgrade_needed) {
             int ret = wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,
@@ -6276,7 +6498,6 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
         wifi_util_error_print(WIFI_DB, "%s:%d: rfc_param is NULL\n", __func__, __LINE__);
         return -1;
     }
-    wifi_util_error_print(WIFI_DB, "%s:%d:rfc_param->link_quality_rfc =%d\n", __func__, __LINE__,rfc_param->link_quality_rfc);
 
     sprintf(index,"%d",rfc_id);
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index);
@@ -6305,8 +6526,13 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.wifi_offchannelscan_app_rfc = rfc_param->wifi_offchannelscan_app_rfc;
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
+    cfg.tcm_open_2g_rfc = rfc_param->tcm_open_2g_rfc;
+    cfg.tcm_open_5g_rfc = rfc_param->tcm_open_5g_rfc;
+    cfg.tcm_open_6g_rfc = rfc_param->tcm_open_6g_rfc;
+    cfg.tcm_secure_2g_rfc = rfc_param->tcm_secure_2g_rfc;
+    cfg.tcm_secure_5g_rfc = rfc_param->tcm_secure_5g_rfc;
+    cfg.tcm_secure_6g_rfc = rfc_param->tcm_secure_6g_rfc;
     cfg.wpa3_compatibility_enable = rfc_param->wpa3_compatibility_enable;
-    cfg.link_quality_rfc = rfc_param->link_quality_rfc;
     cfg.xfi_tel_enable_rfc = rfc_param->xfi_tel_enable_rfc;
     cfg.multiap_rfc = rfc_param->multiap_rfc;
     if (update == true) {
@@ -6320,6 +6546,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
             wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_Rfc_Config table\n", __func__, __LINE__);
         } else {
             wifidb_print("%s:%d Updated WIFI DB. Wifi Rfc Config table updated successful. \n",__func__, __LINE__);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: _Wifi_Rfc_Config table\n", __func__, __LINE__);
         }
     } else {
         strcpy(cfg.rfc_id,index);
@@ -6334,6 +6561,144 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
         }
     }
     return 0;
+}
+
+static bool wifidb_overide_rfc_config(wifi_rfc_dml_parameters_t *rfc_param)
+{
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    bool modified = false;
+
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_2G11AXENABLE_RFC_FLAG) {
+        wifi_util_info_print(WIFI_DB, "%s:%d Overriding twoG80211axEnable_rfc=true\n", __func__, __LINE__);
+        rfc_param->twoG80211axEnable_rfc = true;
+        modified = true;
+    }
+
+    return modified;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_get_wei_rfc_config
+  Parameter   : rfc_info - populated with the single row from Wifi_Wei_Rfc_Config
+  Description : Get WEI RFC config from wifidb (WiFi DB is the source of truth)
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_get_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_info)
+{
+    struct schema_Wifi_Wei_Rfc_Config *pcfg;
+    json_t *where;
+    int count;
+    wifi_db_t *g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    if (rfc_info == NULL) {
+        wifi_util_error_print(WIFI_DB, "%s:%d: rfc_info is NULL\n", __func__, __LINE__);
+        return -1;
+    }
+
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "wei_rfc_id", OFUNC_EQ, WEI_RFC_ID_DEFAULT);
+    pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Wei_Rfc_Config, where, &count);
+    if (pcfg == NULL || count <= 0) {
+        wifidb_print("%s:%d Table table_Wifi_Wei_Rfc_Config not found entry count=%d\n", __func__, __LINE__, count);
+        if (pcfg) {
+            free(pcfg);
+        }
+        return -1;
+    }
+
+    wei_rfc_schema_to_dml(pcfg, rfc_info);
+    snprintf(rfc_info->wei_rfc_id, sizeof(rfc_info->wei_rfc_id), "%s", pcfg->wei_rfc_id);
+    free(pcfg);
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_update_wei_rfc_config
+  Parameter   : rfc_param - WEI RFC config to persist to wifidb
+  Description : Update (or insert, if absent) the single Wifi_Wei_Rfc_Config row.
+                dmcli/RFC-manager Set handlers call this so WiFi DB is updated
+                before any bus notification is sent to WEI.
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_update_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_param)
+{
+    struct schema_Wifi_Wei_Rfc_Config cfg, *pcfg;
+    json_t *where;
+    bool update = false;
+    int count, ret;
+    wifi_db_t *g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_DB, "%s:%d: rfc_param is NULL\n", __func__, __LINE__);
+        return -1;
+    }
+
+    memset(&cfg, 0, sizeof(cfg));
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "wei_rfc_id", OFUNC_EQ, WEI_RFC_ID_DEFAULT);
+    pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Wei_Rfc_Config, where, &count);
+    if ((count != 0) && (pcfg != NULL)) {
+        memcpy(&cfg, pcfg, sizeof(struct schema_Wifi_Wei_Rfc_Config));
+        update = true;
+        free(pcfg);
+    }
+
+    wei_rfc_dml_to_schema(rfc_param, &cfg);
+
+    if (update) {
+        where = onewifi_ovsdb_tran_cond(OCLM_STR, "wei_rfc_id", OFUNC_EQ, WEI_RFC_ID_DEFAULT);
+        ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Wei_Rfc_Config, where, &cfg);
+        if (ret == -1) {
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Wei_Rfc_Config table\n", __func__, __LINE__);
+            return -1;
+        }
+    } else {
+        strncpy(cfg.wei_rfc_id, WEI_RFC_ID_DEFAULT, sizeof(cfg.wei_rfc_id) - 1);
+        if (onewifi_ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Wei_Rfc_Config,
+                                  SCHEMA_COLUMN(Wifi_Wei_Rfc_Config, wei_rfc_id),
+                                  cfg.wei_rfc_id, &cfg, NULL) == false) {
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert in table_Wifi_Wei_Rfc_Config\n", __func__, __LINE__);
+            return -1;
+        }
+    }
+
+    /* Write-through: keep the DB-mirror cache authoritative immediately
+     * rather than waiting for the async OVSDB monitor callback to land. */
+    snprintf(rfc_param->wei_rfc_id, sizeof(rfc_param->wei_rfc_id), "%s", WEI_RFC_ID_DEFAULT);
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    pthread_mutex_lock(&mgr->data_cache_lock);
+    memcpy(get_wifi_db_wei_rfc_parameters(), rfc_param, sizeof(*rfc_param));
+    pthread_mutex_unlock(&mgr->data_cache_lock);
+
+    wifidb_print("%s:%d Updated WIFI DB. Wifi_Wei_Rfc_Config table updated successfully\n", __func__, __LINE__);
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_init_wei_rfc_config_default
+  Parameter   : config - populated with factory-default WEI RFC values
+  Description : used on first boot / after a factory reset when the row is absent.
+ *************************************************************************************
+**************************************************************************************/
+void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config)
+{
+    wei_rfc_dml_parameters_t defaults;
+
+    memset(&defaults, 0, sizeof(defaults));
+    snprintf(defaults.wei_rfc_id, sizeof(defaults.wei_rfc_id), "%s", WEI_RFC_ID_DEFAULT);
+    defaults.lq_meas_duration = WEI_RFC_LQ_DURATION_DEFAULT;
+    //defaults.lq_meas_params_mask = LINKQ_AGGREGATE; /* aggregate metric only, by default */
+    defaults.lq_meas_params_mask = LINKQ_VALID_MASK; // With LINKQ_AGGREGATE, lq home score is 0.
+    defaults.radio_2g_max_snr = WEI_RFC_RADIO_2G_MAX_SNR_DEFAULT;
+    defaults.radio_5g_max_snr = WEI_RFC_RADIO_5G_MAX_SNR_DEFAULT;
+    defaults.radio_6g_max_snr = WEI_RFC_RADIO_6G_MAX_SNR_DEFAULT;
+    defaults.radio_2g_max_phy = WEI_RFC_RADIO_2G_MAX_PHY_DEFAULT;
+    defaults.radio_5g_max_phy = WEI_RFC_RADIO_5G_MAX_PHY_DEFAULT;
+    defaults.radio_6g_max_phy = WEI_RFC_RADIO_6G_MAX_PHY_DEFAULT;
+    defaults.wei_diagnostic_enable = true;
+
+    memcpy(config, &defaults, sizeof(defaults));
 }
 
 /************************************************************************************
@@ -7740,13 +8105,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg->u.bss_info.mld_info.common_info.mld_id = 0;
         }
-        /*TODO: Are values correct? */
-#else
+#else /* _PLATFORM_BANANAPI_R4_ */
         cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
-#endif
-        cfg->u.bss_info.mld_info.common_info.mld_link_id = 255;
-
+#endif /* _PLATFORM_BANANAPI_R4_ */
+        cfg->u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
         memset(&cfg->u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg->u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
             cfg->u.bss_info.showSsid = true;
@@ -8147,6 +8510,7 @@ void wifidb_init_default_value()
     wifidb_reset_macfilter_hashmap();
     wifidb_init_gas_config_default(&g_wifidb->global_config.gas_config);
     wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
+    wifidb_init_wei_rfc_config_default(get_wifi_db_wei_rfc_parameters());
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
@@ -8259,18 +8623,43 @@ void init_wifidb_data()
         }
         wifidb_update_gas_config(g_wifidb->global_config.gas_config.AdvertisementID, &g_wifidb->global_config.gas_config);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+        wei_rfc_dml_parameters_t *wei_rfc_param = get_wifi_db_wei_rfc_parameters();
+        wifidb_init_wei_rfc_config_default(wei_rfc_param);
+        wifidb_update_wei_rfc_config(wei_rfc_param);
+
         remove_onewifi_factory_reset_reboot_flag();
         create_onewifi_fr_wifidb_reset_done_flag();
         wifi_util_info_print(WIFI_DB,"%s:%d FactoryReset done. wifidb updated with default values.\n",__func__, __LINE__);
     }
     else {
         dbwritten = true;
-        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+        if (wifidb_get_rfc_config(0, rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
-#ifdef ALWAYS_ENABLE_AX_2G
-        wifidb_update_rfc_config(0, rfc_param);
-#endif
+        else {
+                if(wifidb_overide_rfc_config(rfc_param) == true) {
+                    wifidb_update_rfc_config(0, rfc_param);
+                }
+        }
+
+        {
+            wei_rfc_dml_parameters_t *wei_rfc_param = get_wifi_db_wei_rfc_parameters();
+            if (wifidb_get_wei_rfc_config(wei_rfc_param) != 0) {
+                wifi_util_info_print(WIFI_DB,
+                    "%s:%d: Wifi_Wei_Rfc_Config empty (first boot/upgrade); seeding defaults\n",
+                    __func__, __LINE__);
+                wifidb_init_wei_rfc_config_default(wei_rfc_param);
+                wifidb_update_wei_rfc_config(wei_rfc_param);
+            }
+            // To avoid sync issues from onewifi wifidb to wei push wei rfc config here
+            wei_rfc_field_update_t boot_upd;
+            memset(&boot_upd, 0, sizeof(boot_upd));
+            boot_upd.field_id = -1;
+            push_event_to_ctrl_queue(&boot_upd, sizeof(boot_upd), wifi_event_type_command,
+                wifi_event_type_wei_rfc_config, NULL);
+        }
+
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
@@ -8412,6 +8801,7 @@ int start_wifidb_monitor()
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Passpoint_Config, true);
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Anqp_Config, true);
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Ignite_Config, true);
+    ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Wei_Rfc_Config, true);
     return 0;
 }
 
@@ -8458,6 +8848,7 @@ int init_wifidb_tables()
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Passpoint_Config, vap_name);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Anqp_Config, vap_name);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Ignite_Config, ignite_name);
+    ONEWIFI_OVSDB_TABLE_INIT(Wifi_Wei_Rfc_Config, wei_rfc_id);
     //connect to wifidb with sock path
     if (is_db_consolidated()) {
         snprintf(g_wifidb->wifidb_sock_path, sizeof(g_wifidb->wifidb_sock_path), WIFIDB_CONSOLIDATED_PATH);

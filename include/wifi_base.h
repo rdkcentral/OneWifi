@@ -91,15 +91,12 @@ extern "C" {
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
-#define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
-
-#ifndef MAX_NUM_MLD_LINKS
-#define MAX_NUM_MLD_LINKS 15
-#endif /*MAX_NUM_MLD_LINKS*/
-
-#define UNDEFINED_MLD_ID 255
-#define MLD_UNIT_COUNT 8
-#define MIN_MLO_GROUP_SIZE 2
+#define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
+#define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
+#define WIFI_NETWORKDEVICESSTATUS_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.NetworkDevicesStatus.MloRfcEnable"
+#define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -154,6 +151,19 @@ extern "C" {
 #define UNREFERENCED_PARAMETER(_p_) (void)(_p_)
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];
+
+/* HE PHY/MAC capability bit positions (IEEE 802.11ax-2021) */
+#define HE_PHY_CHAN_WIDTH_160_BIT   3
+#define HE_PHY_CHAN_WIDTH_80P80_BIT 4
+#define HE_PHY_SU_BEAMFORMER_BIT    7   /* byte 3 */
+#define HE_PHY_SU_BEAMFORMEE_BIT    0   /* byte 4 */
+#define HE_PHY_MU_BEAMFORMER_BIT    1   /* byte 4 */
+#define HE_MAC_TWT_REQ_BIT          0   /* byte 0 */
+#define HE_MAC_TWT_RESP_BIT         1   /* byte 0 */
+#define HE_MAC_DL_MU_MIMO_BIT       0   /* byte 4 */
+#define HE_MAC_UL_MU_MIMO_BIT       1   /* byte 4 */
+#define HE_MAC_UL_OFDMA_BIT         2   /* byte 2 */
+#define HE_MAC_DL_OFDMA_BIT         3   /* byte 2 */
 
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
@@ -503,9 +513,50 @@ typedef struct {
 } link_report_t;
 
 typedef struct {
+    unsigned long cli_PacketsSent;
+    unsigned long cli_PacketsReceived;
+    unsigned long cli_RetransCount;
+    unsigned long long cli_RxRetries;
+    int cli_SNR;
+    unsigned int   cli_MaxDownlinkRate;
+    unsigned int cli_MaxUplinkRate;
+    unsigned int cli_LastDataDownlinkRate;
+    unsigned int cli_LastDataUplinkRate;
+    unsigned long cli_sleepTime;
+} dev_stats_t;
+
+typedef struct {
     size_t link_count;
     link_report_t *links;
 } report_batch_t;
+
+typedef struct {
+    mac_addr_str_t mac_str;
+    mac_addr_str_t ap_mac_str;
+    unsigned int vap_index;
+    unsigned int radio_index;
+    int channel_utilization;
+    dev_stats_t dev;
+    bool is_be;
+    struct timespec total_connected_time;
+    struct timespec total_disconnected_time;
+    int event;
+    unsigned int status_code;
+    int dhcp_event;
+    int dhcp_msg_type;
+    char dhcp_hostname[256];
+    char dhcp_vendor_class[256];
+    char dhcp_param_list[512];
+    unsigned int eapol_m1_count;
+    unsigned int eapol_m2_count;
+    unsigned int eapol_m3_count;
+    unsigned int eapol_m4_count;
+    unsigned int eapol_attempts;
+    unsigned int eapol_failures;
+    /* True only when STA_CONN (4WAY complete) has fired for this session.
+     * Populated by wifi_stats_assoc_client from sta_data_t::connection_authorized. */
+    bool connection_authorized;
+} stats_arg_t;
 
 typedef struct {
     unsigned int rss_check_interval; //minutes
@@ -543,9 +594,17 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool tcm_open_2g_rfc;
+    bool tcm_open_5g_rfc;
+    bool tcm_open_6g_rfc;
+    bool tcm_secure_2g_rfc;
+    bool tcm_secure_5g_rfc;
+    bool tcm_secure_6g_rfc;
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
-    bool link_quality_rfc;
+    /* In-memory only (not an OVSDB column): derived exclusively from
+     * Wifi_Wei_Rfc_Config by wei_compute_rfc_mask(), never persisted itself. */
+    int  wei_rfc_mask;
     bool xfi_tel_enable_rfc;
     bool multiap_rfc;
 } wifi_rfc_dml_parameters_t;
@@ -1021,6 +1080,10 @@ typedef struct {
     bool            connection_authorized;
     bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
+    unsigned int    eapol_m1_count;
+    unsigned int    eapol_m2_count;
+    unsigned int    eapol_m3_count;
+    unsigned int    eapol_m4_count;
 
     /* wifi7 client specific data */
     bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */
@@ -1237,6 +1300,22 @@ typedef struct {
     ULONG                   radio_StatisticsStartTime;
     unsigned int            radio_Temperature;
 } radio_data_t;
+
+typedef struct {
+    assoc_dev_data_t *affiliated_sta[MAX_NUM_RADIOS];
+    UINT affiliated_sta_count;
+} stamld_data_t;
+
+typedef struct {
+    wifi_vap_info_t *mld_vaps[MAX_NUM_RADIOS];
+    UINT mld_vap_count;
+} mld_group_t;
+
+typedef struct {
+    mld_group_t mld_groups[MLD_UNIT_COUNT];
+    UINT mld_group_count;
+    hash_map_t *stamld[MLD_UNIT_COUNT]; /* Hash map keyed by MLD MAC address, contains stamld_data_t */
+} apmld_map_t;
 
 #ifdef EM_APP
 

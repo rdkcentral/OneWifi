@@ -359,11 +359,6 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->levl_enabled_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        *pBool = rfc_pcfg->link_quality_rfc;
-        return TRUE;
-    }
 
     if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
     {
@@ -1188,15 +1183,6 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        if(bValue != rfc_pcfg->link_quality_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_link_quality_rfc);
-        }
-
-        return TRUE;
-    }
-
     if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
     {
         if(bValue != rfc_pcfg->multiap_rfc) {
@@ -1237,7 +1223,6 @@ WiFi_SetParamBoolValue
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_rfc);
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm rfc value set bvalue is %d \n", __FUNCTION__,__LINE__,bValue);
         }
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm started\n", __FUNCTION__,__LINE__);
         return TRUE;
     }
 
@@ -4597,7 +4582,7 @@ Stats3_GetParamIntValue
         pthread_mutex_lock(&monitor_param->data_lock);
         radio_activity_factor =
             monitor_param->radio_data[instance_number].RadioActivityFactor;
-        while ((i++) < monitor_param->radio_chan_stats_data[instance_number]
+        while (i < monitor_param->radio_chan_stats_data[instance_number]
                            .num_channels) {
             utilization_rx +=
                 monitor_param->radio_chan_stats_data[instance_number]
@@ -4607,6 +4592,7 @@ Stats3_GetParamIntValue
                 monitor_param->radio_chan_stats_data[instance_number]
                     .chan_data[i]
                     .ch_utilization_busy_tx;
+            i++;
         }
         pthread_mutex_unlock(&monitor_param->data_lock);
         utilization_total = utilization_rx + utilization_tx;
@@ -5425,8 +5411,7 @@ SSID_GetParamIntValue
             *pInt = -1;
             return TRUE;
         }
-        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE ||
-            !isRadioBeEnabled(pcfg->radio_index)) {
+        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE) {
             *pInt = -1;
         } else {
             *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
@@ -5970,13 +5955,6 @@ SSID_SetParamIntValue
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
         tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
 
-        if (tmp_mld_enable == TRUE && !isRadioBeEnabled(pcfg->radio_index)) {
-            wifi_util_error_print(WIFI_DMCLI,
-                "%s:%d Cannot set MLDUnit on VAP %d: radio %d has no BE mode\n", __FUNCTION__,
-                __LINE__, pcfg->vap_index, pcfg->radio_index);
-            return FALSE;
-        }
-
         if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
             if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
                 return TRUE;
@@ -6054,39 +6032,29 @@ SSID_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_MLDLinkID", TRUE))
     {
-        if (isVapSTAMesh(pcfg->vap_index)) {
+        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
+         * MLD_Link_ID can be updated only for private VAP, other VAPs populated automatically from the same radio.
+         */
+        if (!isVapPrivate(pcfg->vap_index)) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+            return FALSE;
+        }
+
+        if (uValue != UNDEFINED_MLD_LINK_ID && uValue >= MAX_NUM_MLD_LINKS) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid X_RDK_MLDLinkID value %lu\n", __func__,
+                __LINE__, uValue);
+            return FALSE;
+        }
+
+        wifi_util_dbg_print(WIFI_DMCLI,
+            "%s:%d Updating mld_link_id radio_index %d vap name %s old val %u new val %lu\n",
+            __FUNCTION__, __LINE__, vapInfo->radio_index, pcfg->vap_name,
+            vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
             return TRUE;
         }
-
-        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
-         * So when MLD_Link_ID is updated for one VAP, we need to update it for all VAPs of the same radio.
-         */
-        unsigned int total_vaps = getTotalNumberVAPs();
-
-        for (unsigned int vap_idx = 0; vap_idx < total_vaps; vap_idx++) {
-            wifi_vap_info_t *temp_vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(vap_idx);
-            if (temp_vapInfo == NULL) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for vap index:%d\n",
-                    __FUNCTION__, __LINE__, vap_idx);
-                continue;
-            }
-            if (temp_vapInfo->radio_index != pcfg->radio_index) {
-                continue;
-            }
-            if (isVapSTAMesh(vap_idx)) {
-                continue;
-            }
-            wifi_util_dbg_print(WIFI_DMCLI,
-                "%s:%d Updating mld_link_id radio_index %d vap index:%d old val %u new val %u\n",
-                __FUNCTION__, __LINE__, temp_vapInfo->radio_index, vap_idx,
-                temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
-            if (temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
-                continue;
-            }
-            temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
-            set_dml_cache_vap_config_changed(vap_idx);
-        }
+        vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -6854,11 +6822,7 @@ AccessPoint_GetParamBoolValue
     if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
     {
         /* collect value */
-        if (!isRadioBeEnabled(pcfg->radio_index)) {
-            *pBool = FALSE;
-        } else {
-            *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
-        }
+        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
         return TRUE;
     }
 
@@ -7219,11 +7183,14 @@ AccessPoint_GetParamUlongValue
 
     if( AnscEqualString(ParamName, "MLD_ID", TRUE))
     {
-        if (!isRadioBeEnabled(pcfg->radio_index)) {
-            *puLong = UNDEFINED_MLD_ID;
+        wifi_mld_common_info_t *mld_common_info = NULL;
+
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
         } else {
-            *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
+            mld_common_info = &pcfg->u.bss_info.mld_info.common_info;
         }
+        *puLong = mld_common_info->mld_id;
         return TRUE;
     }
 
@@ -7395,10 +7362,8 @@ AccessPoint_GetParamStringValue
 
         if (isVapSTAMesh(pcfg->vap_index)) {
             mac = zero_mac;
-        } else if (isRadioBeEnabled(pcfg->radio_index)) {
-            mac = pcfg->u.bss_info.mld_info.common_info.mld_addr;
         } else {
-            mac = pcfg->u.bss_info.bssid;
+            mac = pcfg->u.bss_info.mld_info.common_info.mld_addr;
         }
 
         snprintf(pValue, *pUlSize, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -9266,7 +9231,15 @@ Security_SetParamStringValue
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa_personal:
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
             case wifi_security_mode_wpa2_personal:
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Preserve AES/AES+TKIP and normalize invalid carry-over values. */
+                apply_wpa2_personal_encr_policy(l_security_cfg);
+                break;
             case wifi_security_mode_wpa_wpa2_personal:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
@@ -9286,6 +9259,8 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa3_transition:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Restore platform default encryption when switching back to WPA3-Transition. */
+                apply_wpa3_transition_encr_policy(l_security_cfg);
                 break;
             case wifi_security_mode_enhanced_open:
                 l_security_cfg->mfp = wifi_mfp_cfg_required;
@@ -16733,6 +16708,14 @@ AssociatedDevice1_GetParamUlongValue
     if( AnscEqualString(ParamName, "X_RDK_CapSpaStr", TRUE))
     {
         /* collect value */
+        *puLong = assoc_dev_data->dev_stats.cli_capableNumSpatialStreams;
+        free(assoc_dev_data);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_ActiveSpaStr", TRUE))
+    {
+        /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
         free(assoc_dev_data);
         return TRUE;
@@ -21146,6 +21129,172 @@ BOOL MgtFrameRateLimit_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamNa
                 __LINE__);
         }
 
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/***********************************************************************
+***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        TCM_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+TCM_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get RFC Config\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Open2G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_2g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open5G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_5g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open6G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_open_6g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure2G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_2g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure5G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_5g_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure6G", TRUE)) {
+        *pBool = rfc_pcfg->tcm_secure_6g_rfc;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        TCM_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to set BOOL parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The updated BOOL value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+TCM_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get RFC Config\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Open2G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_2g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_2g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open2G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open5G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_5g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_5g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open5G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Open6G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_open_6g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_open_6g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Open6G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure2G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_2g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_2g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure2G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure5G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_5g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_5g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure5G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Secure6G", TRUE)) {
+        if (bValue != rfc_pcfg->tcm_secure_6g_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_secure_6g_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d TCM Secure6G rfc set to %d\n", __FUNCTION__, __LINE__, bValue);
+        }
         return TRUE;
     }
 

@@ -151,7 +151,7 @@ void process_active_msmt_diagnostics (int ap_index);
 
 void stream_client_msmt_data(bool ActiveMsmtFlag);
 wifi_actvie_msmt_t *get_wifi_blaster();
-
+char *active_msmt_status_to_str(active_msmt_status_t status);
 #ifdef __cplusplus
 }
 #endif

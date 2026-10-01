@@ -116,6 +116,12 @@ typedef enum {
     wifi_event_br_report,
     wifi_event_hal_csa_beacon_frame,
     wifi_event_hal_wps_results,
+    /* counters for auth/assoc/reassoc frames,
+    eap, and other status codes are defined in the HAL */
+    wifi_event_hal_auth_frame_status_code,
+    wifi_event_hal_assoc_rsp_frame_status_code,
+    wifi_event_hal_reassoc_rsp_frame_status_code,
+    wifi_event_hal_eap_status_code,
     wifi_event_hal_max,
 
     // Commands
@@ -130,6 +136,7 @@ typedef enum {
     wifi_event_type_dfs_atbootup_rfc,
     wifi_event_type_command_kickmac,
     wifi_event_type_command_kick_assoc_devices,
+    wifi_event_type_command_frame_drop_unenc,
     wifi_event_type_command_wps,
     wifi_event_type_command_wps_pin,
     wifi_event_type_command_wps_cancel,
@@ -162,15 +169,21 @@ typedef enum {
     wifi_event_type_xfinity_rrm,
     wifi_event_type_collect_stats,
     wifi_event_type_tcm_rfc,
+    wifi_event_type_tcm_open_2g_rfc,
+    wifi_event_type_tcm_open_5g_rfc,
+    wifi_event_type_tcm_open_6g_rfc,
+    wifi_event_type_tcm_secure_2g_rfc,
+    wifi_event_type_tcm_secure_5g_rfc,
+    wifi_event_type_tcm_secure_6g_rfc,
     wifi_event_type_send_action_frame,
     wifi_event_type_start_channel_scan,
     wifi_event_type_toggle_disconn_steady_state,
     wifi_event_type_rsn_override_rfc,
     wifi_event_type_sta_client_info,
     wifi_event_type_start_sta_channel_scan,
-    wifi_event_type_link_quality_rfc,
     wifi_event_type_xfi_tel_enable_rfc,
     wifi_event_type_multiap_rfc,
+    wifi_event_type_wei_rfc_config,
     wifi_event_command_max,
 
     wifi_event_monitor_diagnostics = wifi_event_type_base

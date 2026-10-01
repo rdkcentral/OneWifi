@@ -293,6 +293,21 @@ static int init_interworking_config_default(int vapIndex,
     return 0;
 }
 
+int wifidb_get_default_mld_link_id(int band)
+{
+#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+    switch (band) {
+    case WIFI_FREQUENCY_2_4_BAND: return 2;
+    case WIFI_FREQUENCY_5_BAND:   return 1;
+    case WIFI_FREQUENCY_6_BAND:   return 0;
+    default:                      return UNDEFINED_MLD_LINK_ID;
+    }
+#else
+    (void)band;
+    return UNDEFINED_MLD_LINK_ID;
+#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
+}
+
 static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config)
 {
@@ -541,11 +556,10 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.mld_info.common_info.mld_id = 0;
         }
 #else
-        /*TODO: Are values correct?  */
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg.u.bss_info.mld_info.common_info.mld_id = 255;
-#endif
-        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
+#endif /* _PLATFORM_BANANAPI_R4_ */
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
@@ -882,7 +896,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_rfc_dml_parameters_t rfc_config = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    rfc_config.link_quality_rfc = true;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -950,7 +963,23 @@ int get_wifi_global_param(wifi_global_param_t *config)
 
 int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
 {
-   return 0;
+
+    return 0;
+}
+
+int wifidb_get_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_info)
+{
+    return 0;
+}
+
+int wifidb_update_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_param)
+{
+    return 0;
+}
+
+void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config)
+{
+    memset(config, 0, sizeof(wei_rfc_dml_parameters_t));
 }
 
 int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)
@@ -978,6 +1007,7 @@ int get_all_param_from_psm_and_set_into_db(void)
    return 0;
 }
 #endif
+
 void wifidb_init(wifi_db_t *db)
 {
     db->desc.init_fn = init_wifidb;
