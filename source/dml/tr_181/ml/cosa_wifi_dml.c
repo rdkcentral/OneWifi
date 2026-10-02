@@ -359,11 +359,6 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->levl_enabled_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        *pBool = rfc_pcfg->link_quality_rfc;
-        return TRUE;
-    }
 
     if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
     {
@@ -1183,15 +1178,6 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->levl_enabled_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_levl_rfc);
-        }
-
-        return TRUE;
-    }
-
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        if(bValue != rfc_pcfg->link_quality_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_link_quality_rfc);
         }
 
         return TRUE;
@@ -4596,7 +4582,7 @@ Stats3_GetParamIntValue
         pthread_mutex_lock(&monitor_param->data_lock);
         radio_activity_factor =
             monitor_param->radio_data[instance_number].RadioActivityFactor;
-        while ((i++) < monitor_param->radio_chan_stats_data[instance_number]
+        while (i < monitor_param->radio_chan_stats_data[instance_number]
                            .num_channels) {
             utilization_rx +=
                 monitor_param->radio_chan_stats_data[instance_number]
@@ -4606,6 +4592,7 @@ Stats3_GetParamIntValue
                 monitor_param->radio_chan_stats_data[instance_number]
                     .chan_data[i]
                     .ch_utilization_busy_tx;
+            i++;
         }
         pthread_mutex_unlock(&monitor_param->data_lock);
         utilization_total = utilization_rx + utilization_tx;
