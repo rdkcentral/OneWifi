@@ -8106,6 +8106,10 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg->u.bss_info.mld_info.common_info.mld_id = 0;
         }
+        if (isVapMeshBackhaul(vap_index)) {
+            cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
+            cfg->u.bss_info.mld_info.common_info.mld_id = 1;
+        }
 #else /* _PLATFORM_BANANAPI_R4_ */
         cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
