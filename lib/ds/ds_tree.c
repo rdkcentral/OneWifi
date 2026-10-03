@@ -114,8 +114,8 @@ static inline ds_tree_node_t *ds_bst_rotate(ds_tree_t *root, ds_tree_node_t *nod
     }
     else
     {
-        int dir = (node == save->otn_parent->otn_child[1]);
-        save->otn_parent->otn_child[dir] = save;
+        int pdir = (node == save->otn_parent->otn_child[1]);
+        save->otn_parent->otn_child[pdir] = save;
     }
 
     return save;
