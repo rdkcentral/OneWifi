@@ -893,19 +893,24 @@ char *strexread(const char *prog, const char *const*argv)
             LOGW("%s: failed to execvp(): %d (%s)", ctx, errno, strerror(errno));
             exit(1);
         default:
+            int oom = 0;
             close(fd[1]);
             for (n=0,i=0,p=0;;) {
                 if (i+1 >= n) {
                     if ((q = realloc(p,(size_t)(n+=4096))))
                         p = q;
-                    else
+                    else{
+                        oom = 1;
                         break;
+                    }
                 }
                 if ((j = (int)read(fd[0], p+i, (size_t)(n-i-1))) <= 0)
                     break;
                 i += j;
             }
-            p[i] = 0;
+            if(!oom){
+               p[i] = 0;
+            }
             while (read(fd[0], &c, 1) == 1);
             close(fd[0]);
             waitpid(pid, &status, 0);

@@ -216,6 +216,7 @@ webconfig_error_t decode_stats_config_subdoc(webconfig_t *config, webconfig_subd
     // decode stats config objects
     if (decode_stats_config_object(&params->stats_config_map, st_arr_obj) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to decode stats config\n", __func__, __LINE__);
+        free_stats_config_entries(data);
         cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
