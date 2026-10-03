@@ -1262,6 +1262,10 @@ bus_error_t publish_endpoint_status(wifi_ctrl_t *ctrl, int connection_status)
     data.data_type = bus_data_type_string;
     data.raw_data.bytes = malloc(MAX_STATUS_LEN);
     if (data.raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory for endpoint status\n", __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+    if (data.raw_data.bytes == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n",
                           __func__, __LINE__);
         return bus_error_out_of_resources;
