@@ -23,6 +23,7 @@
 #include "wifi_hal.h"
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_ctrl.h"
+#include "wifi_em.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "scheduler.h"
@@ -2026,6 +2027,11 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #endif
 
     start_wifi_services();
+    wifi_util_error_print(WIFI_CTRL,"%s:%d Start wifi_em_handle_monitor_done, updating txpwr\n", __func__, __LINE__);
+int start_wifi_ctrl(wifi_ctrl_t *ctrl)
+    //Need to check do we need this or not because before starting the wifi services we are already updating the txpwr
+    //in start_wifi_services which is called before this function. So commenting this out for now.
+    //wifi_em_handle_monitor_done();
 
     ctrl->webconfig_state = ctrl_webconfig_state_vap_all_cfg_rsp_pending;
     telemetry_bootup_time_wifibroadcast(); //Telemetry Marker for btime_wifibcast_split

@@ -27,6 +27,7 @@
 #include "common/ieee802_11_defs.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <pthread.h>
 #include <cjson/cJSON.h>
 #include <netinet/ether.h>
 
@@ -43,8 +44,76 @@
     18 // MAC address string length (xx:xx:xx:xx:xx:xx = 17 chars + null terminator)
 
 static bool is_monitor_done = false;
+static bool is_tx_power_ready = false;
+static pthread_mutex_t tx_power_ready_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool g_btm_pending_valid = false;
 static em_btm_req_ctrl_msg_t g_pending_btm;
+
+bool wifi_em_is_tx_power_ready(void)
+{
+    bool ready;
+    pthread_mutex_lock(&tx_power_ready_lock);
+    ready = is_tx_power_ready;
+    pthread_mutex_unlock(&tx_power_ready_lock);
+    return ready;
+}
+
+bool wifi_em_handle_monitor_done(void)
+{
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    unsigned int num_radios = getNumberRadios();
+    bool tx_power_valid = true;
+
+    wifi_util_info_print(WIFI_EM, "%s:%d: refreshing transmit power from HAL for %u radios\n",
+        __func__, __LINE__, num_radios);
+
+    for (unsigned int i = 0; i < num_radios; i++) {
+        ULONG curr_txpower = 0;
+        int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
+        if (rc != RETURN_OK) {
+            tx_power_valid = false;
+            wifi_util_error_print(WIFI_EM, "%s:%d: failed to read tx power for radio_index=%u (rc=%d)\n",
+                __func__, __LINE__, i, rc);
+            continue;
+        }
+        if (curr_txpower == 0) {
+            tx_power_valid = false;
+            wifi_util_error_print(WIFI_EM, "%s:%d: tx power reported as 0 for radio_index=%u; defaulting to 100\n",
+                __func__, __LINE__, i);
+            curr_txpower = 100;
+        }
+
+        pthread_mutex_lock(&wifi_mgr->data_cache_lock);
+        wifi_mgr->radio_config[i].oper.transmitPower = (UINT)curr_txpower;
+        pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
+        wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n",
+            __func__, __LINE__, i, curr_txpower);
+    }
+
+    pthread_mutex_lock(&tx_power_ready_lock);
+    is_tx_power_ready = tx_power_valid;
+    pthread_mutex_unlock(&tx_power_ready_lock);
+
+    if (tx_power_valid) {
+        raw_data_t ready_data = { 0 };
+        ready_data.data_type = bus_data_type_uint32;
+        ready_data.raw_data.u32 = 1;
+        if (get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle,
+                WIFI_EM_TX_POWER_READY, &ready_data) != bus_error_success) {
+            wifi_util_error_print(WIFI_EM, "%s:%d: failed to publish %s\n",
+                __func__, __LINE__, WIFI_EM_TX_POWER_READY);
+        } else {
+            wifi_util_info_print(WIFI_EM, "%s:%d: published %s\n",
+                __func__, __LINE__, WIFI_EM_TX_POWER_READY);
+        }
+    } else {
+        wifi_util_error_print(WIFI_EM, "%s:%d: transmit power is not ready; readiness event not published\n",
+            __func__, __LINE__);
+    }
+
+    return tx_power_valid;
+}
 
 // Structure to track pending block timers
 typedef struct pending_block_node {
@@ -2993,30 +3062,7 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
     switch (event->sub_type) {
     case wifi_event_type_notify_monitor_done:
         is_monitor_done = TRUE;
-        {
-            wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-            unsigned int num_radios = getNumberRadios();
-            for (unsigned int i = 0; i < num_radios; i++) {
-                ULONG curr_txpower = 0;
-                int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
-                if (rc != RETURN_OK) {
-                    wifi_util_error_print(WIFI_EM, "%s:%d: failed to read tx power for radio_index=%u (rc=%d)\n",
-                        __func__, __LINE__, i, rc);
-                    continue;
-                }
-                if (curr_txpower == 0) {
-                    wifi_util_error_print(WIFI_EM, "%s:%d: tx power reported as 0 for radio_index=%u; defaulting to 100\n",
-                        __func__, __LINE__, i);
-                    curr_txpower = 100;
-                }
-
-                pthread_mutex_lock(&wifi_mgr->data_cache_lock);
-                wifi_mgr->radio_config[i].oper.transmitPower = (UINT)curr_txpower;
-                pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
-                wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n",
-                    __func__, __LINE__, i, curr_txpower);
-            }
-        }
+        //wifi_em_handle_monitor_done();
         break;
 
     case wifi_event_type_start_channel_scan:

@@ -155,6 +155,10 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
 void webconfig_init_subdoc_data(webconfig_subdoc_data_t *data)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (!wifi_em_is_tx_power_ready()) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: transmit power is not ready; Retrieving from HAL\n", __func__, __LINE__);
+	    wifi_em_handle_monitor_done();
+    }
 
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
