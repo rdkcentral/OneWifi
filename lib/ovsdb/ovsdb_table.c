@@ -333,7 +333,7 @@ bool onewifi_ovsdb_table_upsert_where_f(const char *ovsdb_sock_path, ovsdb_table
         json_t *where, void *record, bool update_uuid, char *filter[])
 {
     json_t *jrow = NULL;
-    ovs_uuid_t *uuid = update_uuid ?  uuid = record + table->uuid_offset : NULL;
+    ovs_uuid_t *uuid = update_uuid ?  (ovs_uuid_t *)((char *)record + table->uuid_offset) : NULL;
     bool ret;
 
     jrow = onewifi_ovsdb_table_to_json_f(table, record, filter);
@@ -392,7 +392,7 @@ bool onewifi_ovsdb_table_upsert_with_parent_where(const char *ovsdb_sock_path, o
         char *parent_table, json_t *parent_where, char *parent_column)
 {
     json_t *jrow = NULL;
-    ovs_uuid_t *uuid = update_uuid ?  uuid = record + table->uuid_offset : NULL;
+    ovs_uuid_t *uuid = update_uuid ?  (ovs_uuid_t *)((char *)record + table->uuid_offset) : NULL;
     bool ret;
 
     jrow = onewifi_ovsdb_table_to_json_f(table, record, filter);
