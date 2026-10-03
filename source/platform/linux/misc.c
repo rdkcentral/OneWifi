@@ -20,7 +20,7 @@
 #include "wifi_util.h"
 #include "misc.h"
 
-void wifi_misc_init();
+void wifi_misc_init(wifi_misc_t *misc);
 
 int linux_sysevent_open(char *ip, unsigned short port, int version, char *id, unsigned int  *token)
 {

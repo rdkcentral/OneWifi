@@ -263,6 +263,16 @@ AC_ARG_ENABLE([notify],
 AC_SUBST(SYSTEMD_CFLAGS)
 AC_SUBST(SYSTEMD_LDFLAGS)
 
+# msgpack-c 6.0 renamed the C library from libmsgpackc to libmsgpack-c.
+# Probe for the new name first and fall back to the old one so the tree
+MSGPACK_LIBS=
+AC_CHECK_LIB([msgpack-c], [msgpack_pack_str],
+    [MSGPACK_LIBS=-lmsgpack-c],
+    [AC_CHECK_LIB([msgpackc], [msgpack_pack_str],
+        [MSGPACK_LIBS=-lmsgpackc],
+        [AC_MSG_ERROR([msgpack C library not found (tried -lmsgpack-c and -lmsgpackc)])])])
+AC_SUBST(MSGPACK_LIBS)
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
 
