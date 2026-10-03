@@ -860,7 +860,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     public_vaps_data_t pub;
     rdk_wifi_vap_info_t *mgr_rdk_vap_info, *rdk_vap_info;
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
-    int ret = 0;
 
     for (i = 0; i < size; i++) {
 
@@ -1022,7 +1021,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             }
 
             memset(update_status, 0, sizeof(update_status));
-            snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");
+            snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], "success");
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
             if (vap_svc_is_public(tgt_vap_index)) {
                 wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
