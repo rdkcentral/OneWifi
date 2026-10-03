@@ -1496,9 +1496,9 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
             ((band == WIFI_FREQUENCY_6_BAND &&
             security_info->mfp != wifi_mfp_cfg_required) ||
             (band != WIFI_FREQUENCY_6_BAND &&
-            security_info->mfp != wifi_mfp_cfg_disabled))) {
+            security_info->mfp != wifi_mfp_cfg_optional))) {
 #else
-            security_info->mfp != wifi_mfp_cfg_disabled) {
+            security_info->mfp != wifi_mfp_cfg_optional) {
 #endif /* CONFIG_IEEE80211BE */
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
             __func__, __LINE__, security_info->mfp, security_info->mode);
