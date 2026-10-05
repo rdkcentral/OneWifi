@@ -292,7 +292,11 @@ telemetry_data_t *create_wpa3_enhanced_sta_data_hash_map(hash_map_t *sta_map, ma
         pthread_mutex_unlock(&g_monitor_module.data_lock);
         return NULL;
     }
-    hash_map_put(sta_map, mac_str_dup, sta);
+    if (hash_map_put(sta_map, mac_str_dup, sta) < 0) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Failed to put entry in hash map\r\n", __func__, __LINE__);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
     wifi_util_dbg_print(WIFI_MON, "Created STA entry for MAC: %s\r\n", mac_str_dup);
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     return sta;
