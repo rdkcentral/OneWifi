@@ -33,6 +33,7 @@ extern "C" {
 #define WIFI_WEBCONFIG_DOC_DATA_SOUTH   "Device.WiFi.WebConfig.Data.Subdoc.South"
 #define WIFI_WEBCONFIG_INIT_DATA        "Device.WiFi.WebConfig.Data.Init"
 #define WIFI_WEBCONFIG_INIT_DML_DATA    "Device.WiFi.WebConfig.Data.Init_dml"
+#define WIFI_EM_TX_POWER_READY_STATUS   "Device.WiFi.EM.TxPowerReadyStatus"
 #define WIFI_WEBCONFIG_GET_ASSOC        "Device.WiFi.AssociatedClients"
 #define WIFI_WEBCONFIG_GET_ACL          "Device.WiFi.MacFilter"
 #define WIFI_WEBCONFIG_GET_CSI          "Device.WiFi.CSI"
