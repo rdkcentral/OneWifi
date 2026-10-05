@@ -18351,7 +18351,7 @@ MacFiltTab_SetParamStringValue
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
                 return FALSE;
             }
-            hash_map_put(*acl_device_map, strdup(pString), acl_entry);
+            hash_map_put_back(*acl_device_map, strdup(pString), acl_entry);
 
             if (*acl_new_entry_queue == NULL) {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
