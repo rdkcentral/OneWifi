@@ -3638,8 +3638,6 @@ int process_eap_status(int ap_index, mac_address_t sta_mac, int reason)
     return 0;
 }
 
-#ifdef EM_APP
-
 /*
  * Determine STA MAC by matching src/dst against known BSSIDs.
  *
@@ -3702,6 +3700,8 @@ static bool determine_sta_mac_from_src_dst(
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     return false;
 }
+
+#ifdef EM_APP
 
 static void queue_failed_connection_event(int32_t ap_index, char *sta_mac_str,
                                    uint16_t status, uint16_t reason,
@@ -4099,6 +4099,7 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     unsigned int mac_addr[MAC_ADDR_LEN];
     mac_address_t grey_list_mac;
     bool is_sta_active;
+    char *sta_mac = NULL;
 
     if (src_mac == NULL || dest_mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
@@ -4107,18 +4108,24 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     if ((ap_reason_code(ap_index, src_mac, dest_mac, type, reason)) != 0) {
        wifi_util_dbg_print(WIFI_MON,"%s:%d failed in getting the reason code details as mac is null \n", __func__, __LINE__);
     }
+
+    /* src_mac is the BSSID when the AP sent the frame. */
+    if (!determine_sta_mac_from_src_dst(src_mac, dest_mac, &sta_mac)) {
+        sta_mac = src_mac;
+    }
+
     if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
         wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
         greylist_data.reason = reason;
 
-        str_to_mac_bytes(src_mac, grey_list_mac);
+        str_to_mac_bytes(sta_mac, grey_list_mac);
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
-        wifi_util_dbg_print(WIFI_MON," sending Greylist mac to  ctrl queue %s\n",src_mac);
+        wifi_util_dbg_print(WIFI_MON, " sending Greylist mac to  ctrl queue %s\n", sta_mac);
         long long int expiry_time = get_current_time_in_sec() + GREYLIST_TIMEOUT_IN_SECONDS;
-        add_acl_entry_to_vap(src_mac, ap_index, reason, expiry_time, true);
+        add_acl_entry_to_vap(sta_mac, ap_index, reason, expiry_time, true);
     }
 
-    is_sta_active = active_sta_connection_status(ap_index, src_mac);
+    is_sta_active = active_sta_connection_status(ap_index, sta_mac);
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     if (data == NULL) {
@@ -4129,9 +4136,8 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     data->id = msg_id++;
 
     data->ap_index = ap_index;
-    sscanf(src_mac, "%02x:%02x:%02x:%02x:%02x:%02x",
-            &mac_addr[0], &mac_addr[1], &mac_addr[2],
-            &mac_addr[3], &mac_addr[4], &mac_addr[5]);
+    sscanf(sta_mac, "%02x:%02x:%02x:%02x:%02x:%02x", &mac_addr[0], &mac_addr[1], &mac_addr[2],
+        &mac_addr[3], &mac_addr[4], &mac_addr[5]);
     data->u.dev.sta_mac[0] = mac_addr[0]; data->u.dev.sta_mac[1] = mac_addr[1]; data->u.dev.sta_mac[2] = mac_addr[2];
     data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
     data->u.dev.reason = reason;
@@ -4141,12 +4147,13 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     data = NULL;
 
     if (is_sta_active == false && !is_post_assoc_auth_failure(reason)) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__,
+            __LINE__, sta_mac, ap_index);
         return 0;
     }
     if (is_sta_active == false) {
         wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
-            __func__, __LINE__, src_mac, reason, ap_index);
+            __func__, __LINE__, sta_mac, reason, ap_index);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
@@ -4447,6 +4454,7 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
     assoc_dev_data_t assoc_data;
     mac_address_t grey_list_mac;
     bool is_sta_active;
+    char *sta_mac = NULL;
 
     if (src_mac == NULL || dest_mac == NULL ) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
@@ -4457,17 +4465,22 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
        wifi_util_dbg_print(WIFI_MON,"%s:%d failed in getting the particular reason code details \n", __func__, __LINE__);
     }
 
+    /* src_mac is the BSSID when the AP sent the frame. */
+    if (!determine_sta_mac_from_src_dst(src_mac, dest_mac, &sta_mac)) {
+        sta_mac = src_mac;
+    }
+
     if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
-        str_to_mac_bytes(src_mac, grey_list_mac);
+        str_to_mac_bytes(sta_mac, grey_list_mac);
         wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
         greylist_data.reason = reason;
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
-        wifi_util_dbg_print(WIFI_MON,"Sending Greylist mac to ctrl queue %s\n",src_mac);
+        wifi_util_dbg_print(WIFI_MON, "Sending Greylist mac to ctrl queue %s\n", sta_mac);
         long long int expiry_time = get_current_time_in_sec() + GREYLIST_TIMEOUT_IN_SECONDS;
-        add_acl_entry_to_vap(src_mac, ap_index, reason, expiry_time, true);
+        add_acl_entry_to_vap(sta_mac, ap_index, reason, expiry_time, true);
     }
 
-    is_sta_active = active_sta_connection_status(ap_index, src_mac);
+    is_sta_active = active_sta_connection_status(ap_index, sta_mac);
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     if (data == NULL) {
@@ -4478,9 +4491,8 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
     data->id = msg_id++;
 
     data->ap_index = ap_index;
-    sscanf(src_mac, "%02x:%02x:%02x:%02x:%02x:%02x",
-            &mac_addr[0], &mac_addr[1], &mac_addr[2],
-            &mac_addr[3], &mac_addr[4], &mac_addr[5]);
+    sscanf(sta_mac, "%02x:%02x:%02x:%02x:%02x:%02x", &mac_addr[0], &mac_addr[1], &mac_addr[2],
+        &mac_addr[3], &mac_addr[4], &mac_addr[5]);
     data->u.dev.sta_mac[0] = mac_addr[0]; data->u.dev.sta_mac[1] = mac_addr[1]; data->u.dev.sta_mac[2] = mac_addr[2];
     data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
     data->u.dev.reason = reason;
@@ -4490,12 +4502,13 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
     data = NULL;
 
     if (is_sta_active == false && !is_post_assoc_auth_failure(reason)) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, src_mac, ap_index);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__,
+            __LINE__, sta_mac, ap_index);
         return 0;
     }
     if (is_sta_active == false) {
         wifi_util_info_print(WIFI_MON,"%s:%d: sta[%s] auth-failure reason=%d on ap:[%d] (never active) — forwarding disassoc for GettingConnected\r\n",
-            __func__, __LINE__, src_mac, reason, ap_index);
+            __func__, __LINE__, sta_mac, reason, ap_index);
     }
 
     memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
@@ -4783,6 +4796,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
     if (radio_index < 0) {
         wifi_util_error_print(WIFI_MON,"%s:%d Invalid radio_index:%d\n", __func__, __LINE__, radio_index);
+        free(data);
         return RETURN_ERR;
     }
     get_radio_data(radio_index, &chan_stats);

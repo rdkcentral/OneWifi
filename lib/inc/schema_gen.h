@@ -1741,6 +1741,7 @@
         PJS_OVS_INT(lq_client_threshold) \
         PJS_OVS_BOOL(lq_client_detail_enable) \
         PJS_OVS_STRING(lq_client_whitelist, 256 + 1) \
+        PJS_OVS_BOOL(diagnostic_enable) \
     )
 
 #define PJS_GEN_TABLE \
@@ -3465,6 +3466,7 @@
     COLUMN(lq_client_threshold) \
     COLUMN(lq_client_detail_enable) \
     COLUMN(lq_client_whitelist) \
+    COLUMN(diagnostic_enable) \
 
 #define SCHEMA__AWLAN_Node__id "id"
 #define SCHEMA__AWLAN_Node__model "model"
@@ -4777,3 +4779,4 @@
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_threshold "lq_client_threshold"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_detail_enable "lq_client_detail_enable"
 #define SCHEMA__Wifi_Wei_Rfc_Config__lq_client_whitelist "lq_client_whitelist"
+#define SCHEMA__Wifi_Wei_Rfc_Config__diagnostic_enable "diagnostic_enable"

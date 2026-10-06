@@ -2219,6 +2219,15 @@
             "min": 0,
             "max": 1
           }
+        },
+        "diagnostic_enable": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
         }
       },
       "indexes": [

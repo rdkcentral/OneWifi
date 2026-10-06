@@ -120,6 +120,7 @@ webconfig_error_t decode_harvester_subdoc(webconfig_t *config, webconfig_subdoc_
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                 __func__, __LINE__, doc->objects[i].name);
             wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+            cJSON_Delete(json);
             return webconfig_error_invalid_subdoc;
         }
     }
@@ -129,6 +130,7 @@ webconfig_error_t decode_harvester_subdoc(webconfig_t *config, webconfig_subdoc_
     if (obj == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: harvester object not present\n", __func__, __LINE__);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -136,9 +138,11 @@ webconfig_error_t decode_harvester_subdoc(webconfig_t *config, webconfig_subdoc_
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: harvester object validation failed\n",
             __func__, __LINE__);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        cJSON_Delete(json);
         return webconfig_error_decode;
     }
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
+    cJSON_Delete(json);
     return webconfig_error_none;
 }
 

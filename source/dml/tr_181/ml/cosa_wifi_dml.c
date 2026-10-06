@@ -10489,7 +10489,7 @@ PreAssocDeny_GetParamStringValue
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
     {
-        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        snprintf(pValue, *pUlSize, "disabled, -50 to -95");
         return 0;
     }
 
@@ -20906,6 +20906,7 @@ Passpoint_SetParamStringValue
                 cJSON_Delete(p_root);
                 return FALSE;
             }
+            cJSON_Delete(p_root);
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }

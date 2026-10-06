@@ -2198,14 +2198,11 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 {
     CHAR eventName[32] = {0};
-#ifndef DISABLE_ECO_REBOOT
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-#endif
 
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
     get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: EcoPowerDown telemetry: %s %s uploaded for Radio %d\n", __FUNCTION__, eventName, active ? "Active" : "Inactive", index + 1);
-#ifdef DISABLE_ECO_REBOOT
+#if defined(DISABLE_ECO_REBOOT) && !defined(CONFIG_IEEE80211BE)
     wifi_util_dbg_print(WIFI_WEBCONFIG,
         "%s: EcoPowerDown telemetry: Restarting OneWiFi to apply EcoMode. \n", __FUNCTION__);
     /**
@@ -2226,6 +2223,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     }
     system("systemctl restart onewifi.service");
 #else
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     scheduler_add_timer_task(ctrl->sched, TRUE, NULL, reboot_device, ctrl, 0, 1, TRUE);
 #endif
 }
@@ -2534,6 +2532,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             //only if there is a change in the DM Device.WiFi.Radio.{i}.X_RDK_EcoPowerDown
             wifi_util_info_print(WIFI_MGR, "%s:%d: oldEco = %d  newEco = %d\n", __func__, __LINE__, old_ecomode, new_ecomode);
             if (old_ecomode != new_ecomode) {
+                webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
                 // write the value to database and reboot
                 ecomode_telemetry_update_and_reboot(i, new_ecomode);
             }
@@ -2727,6 +2726,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             old_ecomode, new_ecomode);
         if (old_ecomode != new_ecomode) {
             // write the value to database and reboot
+            webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
             ecomode_telemetry_update_and_reboot(radio_index, new_ecomode);
         }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)

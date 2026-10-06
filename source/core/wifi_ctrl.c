@@ -326,24 +326,17 @@ bool is_sta_enabled(void)
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;
-    struct timespec tv_now;
-    time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
 
     pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
-        clock_gettime(CLOCK_MONOTONIC, &tv_now);
+        /* Anchor the deadline on the previous scheduler run, not on the current
+         * time: if event handling ran past the second boundary the deadline is
+         * already due and the wait returns at once instead of skipping a run. */
+        time_to_wait.tv_sec = ctrl->last_polled_time.tv_sec + ctrl->poll_period;
         time_to_wait.tv_nsec = 0;
-        time_to_wait.tv_sec = tv_now.tv_sec + ctrl->poll_period;
-
-        if (ctrl->last_signalled_time.tv_sec > ctrl->last_polled_time.tv_sec) {
-            time_diff = ctrl->last_signalled_time.tv_sec - ctrl->last_polled_time.tv_sec;
-            if ((UINT)time_diff < ctrl->poll_period) {
-                time_to_wait.tv_sec = tv_now.tv_sec + (ctrl->poll_period - time_diff);
-            }
-        }
 
         rc = 0;
         if (queue_count(ctrl->queue) == 0) {
@@ -392,7 +385,6 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
                 destroy_wifi_event(event);
 
-                clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
                 pthread_mutex_lock(&ctrl->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
@@ -1492,7 +1484,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         return RETURN_ERR;
     }
     
-    clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
     clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
     pthread_condattr_init(&cond_attr);
     pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
@@ -4216,80 +4207,6 @@ static int switch_dfs_channel(void *arg)
     free(arg);
     return TIMER_TASK_COMPLETE;
 }
-
-int update_global_cache(wifi_vap_info_map_t *tgt_vap_map, rdk_wifi_vap_info_t *rdk_vap_info)
-{
-    uint8_t j = 0;
-    rdk_wifi_vap_info_t *rdk_vaps;
-    wifi_vap_info_map_t *vap_map = NULL;
-    uint8_t i = 0, vap_index = 0;
-    bool found = false;
-
-    for (i = 0; i < tgt_vap_map->num_vaps; i++) {
-        vap_index = tgt_vap_map->vap_array[i].vap_index;
-        found = false;
-        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
-        if (vap_map == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d global vap_map null radio_index:%d\n", __func__,
-                __LINE__, tgt_vap_map->vap_array[i].radio_index);
-            return RETURN_ERR;
-        }
-        rdk_vaps = get_wifidb_rdk_vaps(tgt_vap_map->vap_array[i].radio_index);
-        if (rdk_vaps == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vaps for radio index: %d\n",
-                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index);
-            return RETURN_ERR;
-        }
-        for (j = 0; j < vap_map->num_vaps; j++) {
-            if (vap_map->vap_array[j].vap_index == vap_index) {
-                found = true;
-                memcpy((unsigned char *)&vap_map->vap_array[j],
-                    (unsigned char *)&tgt_vap_map->vap_array[i], sizeof(wifi_vap_info_t));
-#ifdef _PLATFORM_BANANAPI_R4_
-                // Selective sync of rdk_vap_info fields only.
-                // DO NOT memcpy the entire structure because some apply paths use partial
-                // decoded structs and full-copy can skew the internal state for
-                // i.e. vap_names/index, hashmaps
-                rdk_vaps[j].exists = rdk_vap_info[i].exists;
-                rdk_vaps[j].force_apply = rdk_vap_info[i].force_apply;
-#else
-                memcpy(&rdk_vaps[j], &rdk_vap_info[i], sizeof(rdk_wifi_vap_info_t));
-#endif
-                break;
-            }
-        }
-
-        if (found == false) {
-            wifi_util_error_print(WIFI_CTRL,
-                "%s:%d: Could not find target vap in manager cache for radio_index:%d "
-                "vap_index:%d\n",
-                __func__, __LINE__, tgt_vap_map->vap_array[i].radio_index, vap_index);
-        }
-    }
-
-    return RETURN_OK;
-}
-
-#if defined(_PLATFORM_BANANAPI_R4_)
-int update_dml_cache(wifi_ctrl_t *ctrl, webconfig_subdoc_data_t *dml_cache_update_subdoc)
-{
-    int ret = RETURN_OK;
-    ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
-    if (webconfig_encode(&ctrl->webconfig, dml_cache_update_subdoc, webconfig_subdoc_type_dml) ==
-        webconfig_error_none) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d webconfig_encode success\n", __FUNCTION__, __LINE__);
-    } else {
-        wifi_util_error_print(WIFI_CTRL,
-            "%s:%d webconfig_encode failed ! DML cache may store incorrect values !\n",
-            __FUNCTION__, __LINE__);
-        ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_all_cfg_rsp_pending;
-        ret = RETURN_ERR;
-    }
-    webconfig_data_free(dml_cache_update_subdoc);
-    return ret;
-}
-#endif
-
 
 void update_apmld_map(apmld_map_t *apmld_map)
 {
