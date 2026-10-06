@@ -32,7 +32,6 @@ AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 endif
 
 AM_LDFLAGS =  -L$(top_builddir)/../hal/lib
-AM_LDFLAGS += -lwebconfig_framework
 AM_LDFLAGS += -lsecure_wrapper
 AM_LDFLAGS += -lev
 AM_LDFLAGS += -lpthread
@@ -86,7 +85,11 @@ endif
 
 libwifi_webconfig_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
 
-libwifi_webconfig_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -lssl -lcrypto -shared
+libwifi_webconfig_la_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -lssl -lcrypto -shared
+if WEBCONFIG_FRAMEWORK
+libwifi_webconfig_la_LDFLAGS += -lwebconfig_framework
+libwifi_webconfig_la_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG -DONEWIFI_RDKB_APP_SUPPORT
+endif
 
 libwifi_webconfig_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 
