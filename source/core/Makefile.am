@@ -54,7 +54,7 @@ if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
 AM_LDFLAGS += -L$(top_builddir)/source/platform/
 endif
-AM_LDFLAGS += -lwifi_webconfig
+AM_LDFLAGS += -lwifi_transportprotocolanalyser 
 AM_LDFLAGS += -lwifi_bus
 if ONEWIFI_DML_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
