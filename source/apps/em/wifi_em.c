@@ -1824,8 +1824,7 @@ static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *va
                 "\"BytesSent\":0,\"BytesReceived\":0,"
                 "\"PacketsSent\":0,\"PacketsReceived\":0,"
                 "\"PacketsSentErrors\":0}",
-                first_entry ? "" : ",",
-                mld_str);
+                first_entry ? "" : ",", mld_str);
             if (written < 0 || (size_t)written >= (DISASSOC_AFF_BUF_SZ - aff_pos)) {
                 /* truncation or error - no room for more entries */
                 wifi_util_error_print(WIFI_EM, "%s:%d : no room in affiliated_buf\n", __func__,
