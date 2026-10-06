@@ -3791,6 +3791,12 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             default: nchannels =0;
                 break;
         }
+        if (nchannels == 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: Unsupported channel width 0x%x for DFS validation\n",
+                __func__, __LINE__, oper->channelWidth);
+            return RETURN_ERR;
+        }
 
         for(i = 0; i < (int)(sizeof(ref_ch_list_5g)/sizeof(int)); i++) {
             /*Find the target channel from the reference channels list*/
@@ -3818,8 +3824,10 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             is_valid = true;
         }
 
-        //If radar was detected on the selected DFS channel, return error
-        if( (oper->channel >= 52  &&  oper->channel <=144) ) {
+        //If radar was detected in the selected 5GHz operating block, return error
+        if (is_valid &&
+            (is_5g_20M_channel_in_dfs(oper->channel) ||
+             oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ)) {
             UINT inputChannelBlock = 0;
             UINT firstChannelInBand = 36;
             int blockStartChannel = 0;

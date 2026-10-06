@@ -1023,21 +1023,43 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     }
 }
 
-void convert_freq_to_channel(unsigned int freq, unsigned char *channel)
+void convert_freq_to_channel(wifi_freq_bands_t band, unsigned int freq, unsigned char *channel)
 {
-    if ((freq >= 2407) && (freq <= 2484)) {
-        freq = freq - 2407;
-        *channel = (freq / 5);
-    } else if ((freq >= 5000) && (freq <= 5980)) {
-        freq = freq - 5000;
-        *channel = (freq / 5);
-    } else if ((freq >= MIN_FREQ_MHZ_6G) && (freq <= MAX_FREQ_MHZ_6G)) {
-        freq = freq - 5950;
-        *channel = (freq / 5);
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d frequency out of range:%d\r\n", __func__,__LINE__, freq);
-        return;
+    switch (band) {
+        case WIFI_FREQUENCY_2_4_BAND:
+            if (freq == 2484) {
+                *channel = 14;
+                return;
+            }
+            if ((freq >= MIN_FREQ_MHZ_2G) && (freq < 2484)) {
+                *channel = (freq - 2407) / 5;
+                return;
+            }
+            break;
+        case WIFI_FREQUENCY_5_BAND:
+        case WIFI_FREQUENCY_5L_BAND:
+        case WIFI_FREQUENCY_5H_BAND:
+            if ((freq >= MIN_FREQ_MHZ_5G) && (freq <= MAX_FREQ_MHZ_5G)) {
+                *channel = (freq - 5000) / 5;
+                return;
+            }
+            break;
+        case WIFI_FREQUENCY_6_BAND:
+            if (freq == 5935) {
+                *channel = 2;
+                return;
+            }
+            if ((freq >= MIN_FREQ_MHZ_6G) && (freq <= MAX_FREQ_MHZ_6G)) {
+                *channel = (freq - 5950) / 5;
+                return;
+            }
+            break;
+        default:
+            break;
     }
+
+    wifi_util_error_print(WIFI_CTRL, "%s:%d frequency %d is invalid for band %d\r\n",
+        __func__, __LINE__, freq, band);
 }
 
 static void update_sta_presence(rdk_sta_data_t *sta_data)
