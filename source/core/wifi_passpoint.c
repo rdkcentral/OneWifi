@@ -105,6 +105,7 @@ static long readFileToBuffer(const char *fileName, char **buffer)
        fclose(infile);
        return 0;
     }
+    fclose(infile);
     return numbytes;
 }
 #endif //ENABLE_FEATURE_MESHWIFI
