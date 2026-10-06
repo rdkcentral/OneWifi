@@ -266,7 +266,7 @@ if WITH_LIBWEBCONFIG
 OneWifi_LDFLAGS += -L$(top_builddir)/source/platform/
 OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
-OneWifi_LDFLAGS += -lwifi_webconfig 
+OneWifi_LDFLAGS += -lwifi_transportprotocolanalyser 
 OneWifi_LDFLAGS += -lwifi_bus
 if WIFI_SENSING_APP_SUPPORT
 OneWifi_LDFLAGS += -ltensorflowlite_c
