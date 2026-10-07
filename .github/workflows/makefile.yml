@@ -275,7 +275,7 @@ jobs:
           fi
         } | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
 
-    - name: clang-tidy (gate + advisory) for ${{ matrix.platform.name }}
+    - name: clang-tidy (gate + warnings) for ${{ matrix.platform.name }}
       if: always() && matrix.platform.clang_tidy
       working-directory: easymesh_project/OneWifi
       run: |
@@ -373,7 +373,7 @@ jobs:
               echo "_Fix the finding, or if it is a deliberate, waive it inline with \`// NOLINT(<check-name>)\` on that line._"
             fi
             if [ -n "$advis" ]; then
-              echo "### 🔎 clang-tidy advisory — $(printf '%s\n' "$advis" | wc -l) findings"
+              echo "### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
               echo '```'; printf '%s\n' "$advis" | head -100; echo '```'
             fi
           fi

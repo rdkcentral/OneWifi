@@ -305,7 +305,7 @@ jobs:
           {
             echo "## 🔬 Diff-scoped checks (changed lines only)"
             echo
-            # tidy-summary.md labels its own tiers (❌ gate = fatal, 🔎 advisory).
+            # tidy-summary.md labels its own tiers (❌ gate = fatal, ❗ warnings).
             if [ -s "$tidy" ]; then
               cat "$tidy"; echo
             fi

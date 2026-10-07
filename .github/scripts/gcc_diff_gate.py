@@ -265,14 +265,15 @@ def main():
         print("### 🚦 gcc diff-gate: clean on changed lines")
         return 0
     if gated:
-        verb = "on lines this PR changed" if ENFORCE else "would fail the job (advisory: ENFORCE=false)"
-        print(f"### ❌ gcc diff-gate — {len(gated)} {verb}")
+        # Same wording with ENFORCE on or off: these are real errors in changed code,
+        # whether or not the job is red for them yet.
+        print(f"### ❌ gcc diff-gate — {len(gated)} error(s) on lines this PR changed")
         print("```")
         print("\n".join(gated[:100]))
         print("```")
         print("_Fix the finding, or suppress it with a GCC diagnostic pragma where intentional / refactor._")
     if advis:
-        print(f"### 🚦 gcc diff-gate advisory — {len(advis)} findings")
+        print(f"### ❗ gcc diff-gate warnings — {len(advis)} on changed lines")
         print("```")
         print("\n".join(advis[:100]))
         print("```")

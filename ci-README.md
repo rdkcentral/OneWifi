@@ -94,7 +94,7 @@ candidate `-W` flags (non-fatal), keeping only findings on lines the PR touched 
 a tree-wide backlog can still gate *new* code, without a tree-wide `-Werror` that would red every
 unrelated PR. Per the workflow's env: `GATE_WARNINGS="-Wvla -Wreturn-type"` (would fail the job),
 `ADVISORY_WARNINGS="-Wunused-but-set-variable -Wunused-value -Wunused-label"` (report only). The
-whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the "would fail" block
+whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the ❌ block
 renders, but the job is not actually reddened by it yet.
 
 ## 4. Two-stage design (why, and how)
