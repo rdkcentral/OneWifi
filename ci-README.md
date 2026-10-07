@@ -166,11 +166,15 @@ patch-apply), so it is provided by one composite action, `.github/actions/hostap
   is still `setup.sh`'s job; a cache hit just lets its own guard skip that work.
 - `plain`: an unpatched tree keyed only on the pinned commit SHA (§7), used by `native-build.yml`
   (Coverity). On a miss it shallow-fetches just that one commit from `git.w1.fi` instead of a full
-  clone, and a step after the cache asserts the checked-out tree's `HEAD` equals the pin, so a
-  wrong or stale cache hit fails loudly instead of silently building the wrong hostap.
+  clone. A step after the cache asserts the checked-out tree's `HEAD` equals the pin, then resets
+  and cleans the work tree and asserts it is pristine, so a wrong or dirty cache hit fails loudly
+  (or is cleaned) instead of silently building the wrong hostap.
 
 All three modes are deliberately exact-key-only (no `restore-keys` fallback): a routine miss just
-means "rebuild it," never a silently stale hit (the one network-outage exception is in §8).
+means "rebuild it," never a silently stale hit (the one network-outage exception is in §8). The
+cache is saved at job end, after the device build has compiled hostap objects in-tree, so on every
+hit the action deletes those `*.o` files: the key covers source and patch inputs, not CFLAGS or the
+toolchain, and the cache exists to skip the clone and patch, not the compile.
 
 The action's steps use `shell: sh` and stay POSIX: `native-build.yml` runs inside the
 `docker-rdk-ci` container, whose shell is dash (no bash, so no `set -o pipefail`). The same holds
@@ -241,9 +245,10 @@ red" — a plumbing hiccup should not falsely block a PR.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).
-- **Sticky-comment recreate race.** The one item here that *isn't* handled gracefully:
-  concurrent stage-2 runs for the same PR can leave duplicate, unreconciled marker comments. A real
-  gap to close, not an accepted edge — tracked under known gaps (§9).
+- **Sticky-comment duplicates, self-healing.** Concurrent stage-2 runs for the same PR could
+  leave duplicate marker comments behind (delete-then-post is not atomic). `sticky-comment` looks up
+  every comment it owns for a marker, not just the first, so each run reconciles: recreate mode
+  deletes all of them and posts one fresh copy; edit mode patches the first and deletes any extras.
 - **Fork PRs / superseded runs.** `workflow_run.pull_requests` is empty for fork PRs, so stage 2
   keys concurrency and the trust bind on `head_repository.full_name` + `head_branch` instead. And
   if the PR head advances past what stage 1 measured, `pr-context`'s `fresh` check is false and
@@ -272,10 +277,6 @@ red" — a plumbing hiccup should not falsely block a PR.
   default errors — not yet audited against this tree specifically.
 - Rebase/adapt this system onto `develop` as the various proposal branches land — this doc
   describes the merged end-state, not any one branch's current diff.
-- **Known gap — sticky-comment recreate race (P4).** "Recreate" mode's delete-then-repost isn't
-  atomic across concurrent stage-2 runs, so rapid pushes to one PR can leave duplicate marker
-  comments with nothing to reconcile them. Worth fixing (a lock, a reconcile pass, or an
-  edit-in-place-only mode), not just documenting.
 
 ## 10. If you change the build layout — the path-coupling checklist
 Almost every path assumption in this pipeline **fails silently, as a false-negative**: a mis-scoped

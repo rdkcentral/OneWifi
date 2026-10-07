@@ -107,6 +107,21 @@ runs:
         path: ${{ inputs.path }}
         key: ${{ steps.key.outputs.key }}
 
+    # The cache is saved at job end, after the build has compiled hostap objects
+    # in-tree (*.o next to the sources). Make would reuse them on a later hit even
+    # if CFLAGS or the toolchain changed, since the key only covers source/patch
+    # inputs. The key exists to skip the clone + patch, not the compile: drop them.
+    - name: Drop stale build outputs (cache hit)
+      if: ${{ steps.cache.outputs.cache-hit == 'true' }}
+      shell: sh
+      env:
+        CACHED: ${{ inputs.path }}
+      run: |
+        set -u
+        n=$(find "$CACHED" -type f -name '*.o' | wc -l)
+        find "$CACHED" -type f -name '*.o' -delete
+        echo "removed $n stale object file(s) from the restored hostap tree"
+
     - name: Populate plain tree (cache miss)
       if: ${{ inputs.mode == 'plain' && steps.cache.outputs.cache-hit != 'true' }}
       shell: sh
@@ -145,4 +160,12 @@ runs:
           echo "::error::hostap tree at $DEST is $got, expected pin $PIN (bad cache? purge with 'gh cache delete --all')."
           exit 1
         fi
-        echo "hostap plain tree verified at $PIN"
+        # HEAD alone says nothing about the work tree: discard any modified or
+        # untracked file a restored cache may carry, then assert it is pristine.
+        git -C "$DEST" reset -q --hard
+        git -C "$DEST" clean -qfdx
+        if [ -n "$(git -C "$DEST" status --porcelain)" ]; then
+          echo "::error::hostap tree at $DEST is not clean after reset/clean."
+          exit 1
+        fi
+        echo "hostap plain tree verified at $PIN (clean)"
