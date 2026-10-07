@@ -45,6 +45,7 @@ Env:
 Exit: 1 iff a GATE class fired on a changed line (and ENFORCE); else 0. Always writes a
 markdown summary to stdout. Identical file ships in OneWifi and the HAL.
 """
+import bisect
 import json
 import os
 import re
@@ -158,11 +159,18 @@ def changed_lines(base, f):
         count = int(m.group(2)) if m.group(2) else 1
         if count > 0:
             intervals.append((start, start + count - 1))
+    intervals.sort()  # git emits hunks in order; sorted is what _in_intervals relies on
     return intervals
 
 
 def _in_intervals(line, intervals):
-    return any(s <= line <= e for s, e in intervals)
+    """True if line is inside one of the sorted, non-overlapping (start, end) intervals.
+
+    Binary search (O(log hunks) per diagnostic), so a fragmented diff with many
+    warnings does not cost O(hunks x diagnostics).
+    """
+    i = bisect.bisect_right(intervals, (line, float("inf"))) - 1
+    return i >= 0 and intervals[i][0] <= line <= intervals[i][1]
 
 
 def db_args(db, f):

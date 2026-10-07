@@ -148,10 +148,12 @@ jobs:
           exit 1
         fi
         ok=true
-        check() { # usage: check ENV_NAME SETUP_FILE
+        check() { # usage: check MANIFEST_SHA SETUP_FILE PIN_NAME
           local manifest="$1" file="$2" name="$3"
-          if ! grep -qF "$manifest" "$file"; then
-            echo "::error::Pin mismatch: $name manifest='$manifest' not found in $file"
+          # Match the fallback expansion itself (${PIN_NAME:-<sha>}), not the SHA anywhere:
+          # swapped fallbacks or a stale SHA in a comment must not pass.
+          if ! grep -qF "\${${name}:-${manifest}}" "$file"; then
+            echo "::error::Pin mismatch: $name manifest='$manifest' is not the \${${name}:-...} fallback in $file"
             ok=false
           fi
         }
@@ -346,7 +348,9 @@ jobs:
           clang-tidy-18 -p . "${extra[@]}" --quiet "$f" 2>/dev/null \
             | grep -E ': (warning|error):' | grep -v clang-diagnostic \
             | awk -F: 'NR==FNR{lo[NR]=$1;hi[NR]=$2;r=NR;next}
-                       {for(i=1;i<=r;i++)if($2+0>=lo[i]&&$2+0<=hi[i]){print;next}}' "$ranges" - >> tidy.log || true
+                       {l=$2+0; a=1; b=r                  # ranges are sorted: binary search
+                        while(a<=b){m=int((a+b)/2); if(l<lo[m])b=m-1; else if(l>hi[m])a=m+1; else {print; next}}}' \
+                  "$ranges" - >> tidy.log || true
         done
         # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`.
         gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)

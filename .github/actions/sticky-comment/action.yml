@@ -67,6 +67,9 @@ runs:
         # Hidden marker: lets the next run find our comment for this slot without
         # relying on any actor field that crossed the trust boundary.
         TAG="<!-- onewifi-ci:${MARKER} -->"
+        # The marker is always the FIRST line, and ownership checks below require it there
+        # (startswith, not contains): the body embeds untrusted build output, so a PR could
+        # otherwise plant another slot's marker and get that slot to delete this comment.
         { printf '%s\n\n' "$TAG"; cat "$BODY_FILE"; } > sticky-body.md
 
         # Cap the body. GitHub rejects issue comments over ~65536 bytes, and the
@@ -94,7 +97,7 @@ runs:
         # A failed lookup must NOT read as "no comments yet" (that would POST a duplicate):
         # warn and skip this run instead; the next run reconciles. Never red the job.
         if ! ids_out="$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
-             --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | contains(\"$TAG\")) | .id" \
+             --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | startswith(\"$TAG\")) | .id" \
              2>/tmp/sticky_err)"; then
           echo "::warning::Could not list comments on PR #$PR; not posting sticky '$MARKER' this run (avoids a duplicate)."
           cat /tmp/sticky_err
@@ -121,7 +124,7 @@ runs:
           for rm in "${RETIRE[@]}"; do
             rtag="<!-- onewifi-ci:${rm} -->"
             gh api "/repos/$REPO/issues/$PR/comments" --paginate \
-              --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | contains(\"$rtag\")) | .id" \
+              --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | startswith(\"$rtag\")) | .id" \
               2>/dev/null | while read -r rid; do
                 [ -n "$rid" ] || continue
                 del "$rid" "retired '$rm'" && echo "Retired old '$rm' comment $rid."
