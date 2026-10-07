@@ -291,15 +291,23 @@ jobs:
           tidy="ci-summary-bpi/tidy-summary.md"
           gcc="ci-summary-bpi/gcc-gate-summary.md"
           if [ ! -s "$tidy" ] && [ ! -s "$gcc" ]; then
-            echo "No diff-scoped findings in the artifact, skipping."
-            echo "post=false" >> "$GITHUB_OUTPUT"
+            # Neither producer wrote a summary: no compile DB (e.g. the build failed
+            # before one existed). Still post, so the sticky never keeps showing an
+            # older commit's results as if they were current.
+            {
+              echo "## 🔬 Diff-scoped checks (changed lines only)"
+              echo
+              echo "_Not run for this commit: no compile database was produced (see the build summary). Earlier results no longer apply._"
+            } > diff-findings-comment.md
+            echo "post=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           {
             echo "## 🔬 Diff-scoped checks (changed lines only)"
             echo
+            # tidy-summary.md labels its own tiers (❌ gate = fatal, 🔎 advisory).
             if [ -s "$tidy" ]; then
-              echo "### 🔎 clang-tidy (advisory)"; echo; cat "$tidy"; echo
+              cat "$tidy"; echo
             fi
             # gcc-gate-summary.md already carries its own ###-level heading(s).
             if [ -s "$gcc" ]; then
