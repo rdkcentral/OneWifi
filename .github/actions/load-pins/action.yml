@@ -1,0 +1,43 @@
+name: 'Load dependency pins'
+description: >
+  Load ci-pins.env into $GITHUB_ENV as $PIN_* with a strict PIN_NAME=<40hex>
+  gate, so a typo'd or truncated pin fails HERE instead of loading as a silent
+  partial value. One source of truth shared by makefile.yml and native-build.yml
+  (each passes its own manifest path — they check out into different roots).
+
+  NOTE: actionlint cannot lint composite action.yml (it parses them as workflows);
+  validate this file's shell by extracting the run: block and running shellcheck.
+
+  NOTE: the step uses `shell: sh` + POSIX `set -u` (no `set -o pipefail`) on
+  purpose — native-build.yml runs this in the docker-rdk-ci container whose
+  default shell is dash (no bash). Every pipe below is guarded with `|| true`,
+  so pipefail is not needed; keep the block POSIX so it works there AND on the
+  makefile.yml runner.
+
+inputs:
+  manifest:
+    description: 'Path to the ci-pins.env manifest, relative to the workspace.'
+    required: false
+    default: '.github/ci-pins.env'
+
+runs:
+  using: composite
+  steps:
+    - name: Load dependency pins
+      shell: sh
+      env:
+        MANIFEST: ${{ inputs.manifest }}
+      run: |
+        set -u
+        [ -f "$MANIFEST" ] || { echo "::error::pin manifest $MANIFEST missing"; exit 1; }
+        pins=$(grep -E '^PIN_[A-Z0-9_]+=[0-9a-f]{40}$' "$MANIFEST" || true)
+        # Real value lines = non-blank, non-comment (unpinned entries are commented
+        # out). Every one of them must be a well-formed pin, else a SHA is malformed.
+        real=$(grep -cE '^[[:space:]]*[^#[:space:]]' "$MANIFEST" || true)
+        matched=$(printf '%s\n' "$pins" | grep -c . || true)
+        if [ -z "$pins" ] || [ "$matched" -ne "$real" ]; then
+          echo "::error::pin manifest $MANIFEST: $matched of $real value line(s) matched PIN_NAME=<40hex> — a pin is malformed or truncated"
+          exit 1
+        fi
+        printf '%s\n' "$pins" >> "$GITHUB_ENV"
+        echo "loaded $matched dependency pin(s) from $MANIFEST"
