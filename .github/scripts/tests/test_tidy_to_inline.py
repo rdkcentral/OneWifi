@@ -25,9 +25,11 @@ class Parse(unittest.TestCase):
         self.assertEqual(dropped, 0)
         self.assertEqual(comments[0]["path"], "source/foo.c")   # stripped to repo-rel
         self.assertEqual(comments[0]["line"], 42)
-        self.assertIn("(advisory)", comments[0]["body"])        # warning -> advisory
+        self.assertIn("❗ **clang-tidy**", comments[0]["body"])  # warning:
+        self.assertIn("(warning)", comments[0]["body"])
         self.assertIn("bugprone-a", comments[0]["body"])
-        self.assertIn("(gate)", comments[1]["body"])            # error   -> gate
+        self.assertIn("❌ **clang-tidy**", comments[1]["body"])  # error:
+        self.assertIn("(error)", comments[1]["body"])
         self.assertTrue(all(c["side"] == "RIGHT" for c in comments))
 
     def test_dedupes_same_finding(self):
@@ -69,7 +71,7 @@ class MainIO(unittest.TestCase):
             doc = json.load(fh)
         self.assertEqual(doc["status"], "ok")
         self.assertEqual(len(doc["comments"]), 1)
-        self.assertIn("(gate)", doc["comments"][0]["body"])
+        self.assertIn("(error)", doc["comments"][0]["body"])
 
 
 if __name__ == "__main__":

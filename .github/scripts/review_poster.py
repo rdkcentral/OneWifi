@@ -308,7 +308,7 @@ def post_comments(repo, pr, head_sha, to_post, slot):
               file=sys.stderr)
         print(f"posted {posted} comment(s) before the failure; {skipped} skipped.")
         return 1
-    print(f"posted {posted} review comment(s); {skipped} skipped (advisory).")
+    print(f"posted {posted} review comment(s); {skipped} skipped (HTTP 422, see warnings above).")
     return 0
 
 

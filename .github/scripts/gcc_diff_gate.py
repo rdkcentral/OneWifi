@@ -116,7 +116,7 @@ def build_inline(gated, advis):
     counted as 'dropped' (surfaced in the poster's summary), never silently lost.
     """
     inline, seen, dropped = [], set(), 0
-    for sev, lst in (("gate", gated), ("advisory", advis)):
+    for sev, icon, lst in (("error", "❌", gated), ("warning", "❗", advis)):
         for d in lst:
             m = INLINE_RE.match(d)
             if not m:
@@ -130,7 +130,7 @@ def build_inline(gated, advis):
                 "path": m["path"],
                 "line": int(m["line"]),
                 "side": "RIGHT",
-                "body": f"🚦 **gcc** `{m['tag']}` ({sev}) — {m['msg']}",
+                "body": f"{icon} **gcc** `{m['tag']}` ({sev}) — {m['msg']}",
             })
     return inline, dropped
 

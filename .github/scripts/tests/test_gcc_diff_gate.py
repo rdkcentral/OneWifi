@@ -21,9 +21,9 @@ class BuildInline(unittest.TestCase):
         self.assertEqual(dropped, 0)
         self.assertEqual(inline[0]["path"], "source/a.c")
         self.assertEqual(inline[0]["line"], 10)
-        self.assertIn("(gate)", inline[0]["body"])
+        self.assertIn("❌", inline[0]["body"]); self.assertIn("(error)", inline[0]["body"])
         self.assertIn("-Wvla", inline[0]["body"])
-        self.assertIn("(advisory)", inline[1]["body"])
+        self.assertIn("❗", inline[1]["body"]); self.assertIn("(warning)", inline[1]["body"])
         self.assertTrue(all(c["side"] == "RIGHT" for c in inline))
 
     def test_dedupes_across_columns(self):

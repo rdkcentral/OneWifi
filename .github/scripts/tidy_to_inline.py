@@ -70,12 +70,12 @@ def parse(text):
         if key in seen:
             continue
         seen.add(key)
-        sev = "gate" if m["sev"] == "error" else "advisory"
+        sev, icon = ("error", "❌") if m["sev"] == "error" else ("warning", "❗")
         comments.append({
             "path": path,
             "line": lineno,
             "side": "RIGHT",
-            "body": f"🔎 **clang-tidy** `{check}` ({sev}) — {msg}",
+            "body": f"{icon} **clang-tidy** `{check}` ({sev}) — {msg}",
         })
     return comments, dropped
 
