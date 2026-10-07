@@ -3433,7 +3433,12 @@ INSTMSMT_PH2 -->
                             	    <type>unsignedInt[0:8]</type>
                             	    <syntax>uint32</syntax>
                         	</parameter>
-                            </parameters>
+                            <parameter>
+                            	    <name>X_RDK_ActiveSpaStr</name>
+                            	    <type>unsignedInt[0:8]</type>
+                            	    <syntax>uint32</syntax>
+                        	</parameter>
+                              </parameters>
 
 			<objects>
 		                <object>
