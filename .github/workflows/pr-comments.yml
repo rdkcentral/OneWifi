@@ -289,11 +289,11 @@ jobs:
               echo
             done
 
-            # --- Diff-scoped checks (appended only when there are findings) ---
+            # --- Diff-scoped checks ---
             # Both changed-lines checks live in the bpi artifact (downloaded to
-            # ci-summary-bpi/ by pr-context). The build section above always posts;
-            # this section is added only when clang-tidy and/or the gcc diff-gate
-            # produced something.
+            # ci-summary-bpi/ by pr-context). The build section above always posts.
+            # Each producer writes a summary whenever it runs (even "clean" / "no
+            # changed .c"), so neither file means it did not run for this commit.
             tidy="ci-summary-bpi/tidy-summary.md"
             gcc="ci-summary-bpi/gcc-gate-summary.md"
             if [ -s "$tidy" ] || [ -s "$gcc" ]; then
@@ -326,6 +326,10 @@ jobs:
               if [ -s "$gcc" ]; then
                 cat "$gcc"; echo
               fi
+            else
+              echo "---"
+              echo
+              echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
             fi
           } > ci-summary-comment.md
           echo "wrote ci-summary-comment.md ($(wc -l < ci-summary-comment.md) lines)"
