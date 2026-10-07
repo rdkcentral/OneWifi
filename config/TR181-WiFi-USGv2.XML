@@ -3438,7 +3438,7 @@ INSTMSMT_PH2 -->
                             	    <type>unsignedInt[0:8]</type>
                             	    <syntax>uint32</syntax>
                         	</parameter>
-                              </parameters>
+                            </parameters>
 
 			<objects>
 		                <object>
