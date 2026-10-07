@@ -155,41 +155,77 @@ at the bottom of the PR timeline instead of staying pinned in place.
 
 ## 6. Caching
 
-The patched hostap source tree is expensive to rebuild (upstream clone + patch-apply), so it's
-cached with `actions/cache@v5` for both `bpi` and `rpi`, in both repos. The cache **key** combines
-a hash of the local setup files (`setup.sh`, plus the patch list on `bpi`) with the current tip of
-the relevant upstream patch source (`git ls-remote`, or a GitHub API tree-SHA on `bpi`) — so a
-real upstream patch change invalidates the key, forcing a rebuild that repopulates the cache. It
-is deliberately exact-key-only (no `restore-keys` fallback): a routine miss just means "rebuild
-it," never a silently stale hit (the one network-outage exception is in §8). OneWifi's build also caches apt dependencies
-(`actions/cache@v5`, key `<os>-apt-<hashFiles apt-packages>`, *with* `restore-keys`) — much
-smaller, and a stale hit there is harmless, unlike hostap.
+The hostap source tree is expensive to rebuild (upstream clone, and for the device legs a
+patch-apply), so it is provided by one composite action, `.github/actions/hostap-tree`, wrapping
+`actions/cache@v5`. It has three modes:
 
-## 7. Dependencies — the pin manifest
+- `patched-bpi` / `patched-rpi`: the MTK-patched tree `makefile.yml` builds against. The cache
+  **key** combines a hash of the local setup files (`setup.sh`, plus the patch list on `bpi`) with
+  the current tip of the relevant upstream patch source (`git ls-remote`, or a GitHub API tree-SHA
+  on `bpi`), so a real upstream patch change invalidates the key. The clone and patch-apply itself
+  is still `setup.sh`'s job; a cache hit just lets its own guard skip that work.
+- `plain`: an unpatched tree keyed only on the pinned commit SHA (§7), used by `native-build.yml`
+  (Coverity). On a miss it shallow-fetches just that one commit from `git.w1.fi` instead of a full
+  clone, and a step after the cache asserts the checked-out tree's `HEAD` equals the pin, so a
+  wrong or stale cache hit fails loudly instead of silently building the wrong hostap.
 
-Every external repo this build clones is listed in **one place**: the `env:` block at the top of
-`makefile.yml` (the "Dependency pins" section). Pinned repos have a SHA; unpinned repos are
-commented out with their default branch noted. To bump a dependency, change the SHA in that block.
+All three modes are deliberately exact-key-only (no `restore-keys` fallback): a routine miss just
+means "rebuild it," never a silently stale hit (the one network-outage exception is in §8).
 
-`setup.sh` reads pins via env vars (`${PIN_HOSTAP_2_11:-<hardcoded>}`) so local `make setup`
-still works without the workflow — the hardcoded fallback matches the manifest. The ucode pin is
-consumed directly by the install step in `makefile.yml`.
+The action's steps use `shell: sh` and stay POSIX: `native-build.yml` runs inside the
+`docker-rdk-ci` container, whose shell is dash (no bash, so no `set -o pipefail`). The same holds
+for the `load-pins` action (§7) and for every `run:` step in `native-build.yml`.
+
+## 7. Dependencies: the pin manifest
+
+Every pinned external repo this build clones is listed in **one place**: `.github/ci-pins.env`.
+Its format is strict on purpose, one `PIN_NAME=<40-hex>` per line, no quotes, no inline comment
+after the hash, so a typo'd or truncated pin fails to load rather than loading as a silent partial
+value. Both `makefile.yml` and `native-build.yml` (Coverity) load it early through one composite
+action, `.github/actions/load-pins`, which applies that strict regex, fails if any value line does
+not match, and exports the pins into the job environment. Unpinned repos are left out of the
+manifest (documented as commented-out lines) and clone whatever their default branch currently is.
+
+`setup.sh` reads pins via env vars (`${PIN_HOSTAP_2_11:-<hardcoded fallback>}`), so local
+`make setup` still works without the workflow. Because that hardcoded fallback is a second copy of
+the same SHA, `makefile.yml` runs a "Verify pin manifest matches setup.sh fallbacks" step right
+after loading the pins: it fails the job if the manifest and a `setup.sh` fallback disagree, and
+also fails if `native-build.yml` ever carries a bare 40-hex literal of its own instead of loading
+the manifest. Without that check, bumping only the manifest would leave `setup.sh`'s fallback (and
+the hostap cache key, §6, which hashes `setup.sh`) silently pointed at the old commit. **To bump a
+pin, edit both `ci-pins.env` and the `setup.sh` fallback in the same commit.** The ucode pin is
+consumed directly by the install step in `makefile.yml`, which also greps the checked-out ucode
+tree for a poisoned `unused` macro (the FFI incident below) and fails loudly if that pin ever lands
+on a commit that reintroduces it.
 
 | Repo | Pin var | Pinned? | Consumed by |
 |---|---|---|---|
 | `jow-/ucode` | `PIN_UCODE` | Yes | `makefile.yml` install step |
-| `git.w1.fi/hostap` (2.11, bpi) | `PIN_HOSTAP_2_11` | Yes | `bpi/setup.sh` |
+| `git.w1.fi/hostap` (2.11, bpi) | `PIN_HOSTAP_2_11` | Yes | `bpi/setup.sh`, `hostap-tree` (plain mode, `native-build.yml`) |
 | `git.w1.fi/hostap` (2.10, rpi) | `PIN_HOSTAP_2_10` | Yes | `rpi/setup.sh` |
 | `mediatek/meta-filogic` | `PIN_META_FILOGIC` | Yes | `bpi/setup.sh` |
-| `rdkcentral/unified-wifi-mesh` | — | No (develop tip) | `makefile.yml` clone step |
-| `rdkcentral/rdk-wifi-hal` | — | No (develop tip) | `setup.sh` |
-| `rdkcentral/rdkb-halif-wifi` | — | No (develop tip) | `setup.sh` |
-| `xmidt-org/trower-base64` | — | No (main tip) | `setup.sh` |
-| `rdkcentral/meta-cmf-bananapi` | — | No (default tip) | `bpi/setup.sh` |
-| `rdkcentral/hostap-patches` | — | No (default tip) | `rpi/setup.sh` |
+| `rdkcentral/unified-wifi-mesh` | (none) | No (develop tip) | `makefile.yml` clone step |
+| `rdkcentral/rdk-wifi-hal` | (none) | No (develop tip) | `setup.sh` |
+| `rdkcentral/rdkb-halif-wifi` | (none) | No (develop tip) | `setup.sh` |
+| `xmidt-org/trower-base64` | (none) | No (main tip) | `setup.sh` |
+| `rdkcentral/meta-cmf-bananapi` | (none) | No (default tip) | `bpi/setup.sh` |
+| `rdkcentral/hostap-patches` | (none) | No (default tip) | `rpi/setup.sh` |
+
+`native-build.yml` also clones 24 further dependencies at their branch tips, listed in
+`cov_docker_script/component_config.json`. That is a separate unpinned surface, not covered by
+this manifest.
 
 **Why pin:** an unpinned input can red CI overnight with zero code change (see the ucode FFI
 incident, 2026-08-27). Pin the rest as their next bump surfaces a natural SHA to lock.
+
+**Runner image and tool versions, separate from source pins.** Every job in `makefile.yml`,
+`clang-format.yml`, `pr-comments.yml` and `native-build.yml` runs on `ubuntu-24.04`, never
+`ubuntu-latest`, so the image (and with it the default compiler) only moves when someone bumps it
+on purpose. The build uses the image's default gcc (gcc-13 on `ubuntu-24.04`), so the warning
+baseline (§3) is tied to that version: bumping the image is the one change that can shift it
+without any pin moving. `clang-tidy-18` and `bear` (the compile-DB wrapper) come from apt;
+`clang-format` is pinned to `18.1.8` via pip in `clang-format.yml`. None of these are
+source-dependency SHAs, so they are not in `ci-pins.env`.
 
 ## 8. Edge cases & failure modes
 Where things get weird. The pipeline leans advisory, so most of these resolve to "warn, don't
@@ -222,8 +258,10 @@ red" — a plumbing hiccup should not falsely block a PR.
 
 - Promote individual advisory diff-scoped warning classes to gating, one at a time, once quiet on
   real PRs (the `ENFORCE` rollout in §3d).
-- Extend caching: `ccache` is the biggest remaining lever; a `ucode` cache is also proposed but
-  needs `ucode`'s clone pinned to a SHA first (currently unpinned, so there's no stable key).
+- Extend caching: `ccache` is the biggest remaining lever. A `ucode` build cache is also worth
+  adding now that `ucode` is pinned to a SHA (§7), which gives it a stable cache key.
+- The rdk-wifi-hal repo can adopt the same hostap cache by referencing this repo's action at a
+  pinned commit (`rdkcentral/OneWifi/.github/actions/hostap-tree@<sha>`).
 - Heavier analyzers (`gcc -fanalyzer`, more `clang-analyzer-core.*` checks) are candidates, kept
   diff-scoped only — too noisy tree-wide.
 - Consolidate the several PR comments into one. The gcc-gate → clang-tidy fold is already done;
@@ -262,6 +300,13 @@ are the fragile part — treat every one as load-bearing.
   `[ ! -d <dir> ]` guards.
 - `.github/workflows/makefile.yml` — the checkout `path:` + `mv … easymesh_project/<repo>` assembly,
   and each step's `working-directory:`.
+- **Local composite-action paths.** A local `uses: ./…` resolves against the workspace root, not
+  against the repo. `makefile.yml` checks OneWifi out to `OneWifi/` and then moves it under
+  `easymesh_project/OneWifi`, so its local actions are referenced as
+  `./easymesh_project/OneWifi/.github/actions/{hostap-tree,load-pins}` (and the manifest as
+  `easymesh_project/OneWifi/.github/ci-pins.env`); `native-build.yml` checks out at the root and
+  uses the plain `./.github/actions/…`. Move the checkout and these must follow. This one fails
+  loudly (the action is not found), but only on the next run.
 - The **changed-files exclusion** — `gcc_diff_gate.py` `changed_files()` and the clang-tidy `CHANGED`
   grep both key on the literal marker `rdk-wifi-libhostap/`. Rename that tree and vendored sources
   stop being excluded; give a first-party dir a name that now matches the marker and it gets
