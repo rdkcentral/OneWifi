@@ -215,9 +215,10 @@ on a commit that reintroduces it.
 | `rdkcentral/meta-cmf-bananapi` | (none) | No (default tip) | `bpi/setup.sh` |
 | `rdkcentral/hostap-patches` | (none) | No (default tip) | `rpi/setup.sh` |
 
-`native-build.yml` also clones 24 further dependencies at their branch tips, listed in
-`cov_docker_script/component_config.json`. That is a separate unpinned surface, not covered by
-this manifest.
+`native-build.yml` also clones 24 further dependencies listed in
+`cov_docker_script/component_config.json`, mostly at branch tips (msgpack-c is pinned to a SHA
+inside that file). That is the Coverity setup's own surface: it is not covered by this manifest,
+and the verify step above only checks `native-build.yml` itself.
 
 **Why pin:** an unpinned input can red CI overnight with zero code change (see the ucode FFI
 incident, 2026-08-27). Pin the rest as their next bump surfaces a natural SHA to lock.

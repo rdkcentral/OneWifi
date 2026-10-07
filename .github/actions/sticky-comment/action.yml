@@ -91,9 +91,17 @@ runs:
         # old P4 recreate race): recreate deletes them all and posts one; edit patches
         # the first and deletes the rest. $BOT_LOGIN and $TAG are workflow-trusted (not
         # fork data), so interpolating them into the jq filter is safe.
-        readarray -t IDS < <(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
-          --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | contains(\"$TAG\")) | .id" \
-          2>/dev/null || true)
+        # A failed lookup must NOT read as "no comments yet" (that would POST a duplicate):
+        # warn and skip this run instead; the next run reconciles. Never red the job.
+        if ! ids_out="$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
+             --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | contains(\"$TAG\")) | .id" \
+             2>/tmp/sticky_err)"; then
+          echo "::warning::Could not list comments on PR #$PR; not posting sticky '$MARKER' this run (avoids a duplicate)."
+          cat /tmp/sticky_err
+          exit 0
+        fi
+        IDS=()
+        [ -n "$ids_out" ] && readarray -t IDS <<< "$ids_out"
 
         # Non-fatal single-comment delete that tolerates a 404 (already gone).
         del() {
