@@ -37,22 +37,14 @@ jobs:
       - name: Trust the workspace
         run: git config --global --add safe.directory '*'
 
+      # ci-pins.env -> $PIN_* with a strict <40hex> gate, via the load-pins composite
+      # action shared with makefile.yml (single source of truth for the loader). This
+      # job checks out at the repo root, so the plain path is correct (makefile.yml
+      # carries an easymesh_project/OneWifi prefix because it relocates the tree).
       - name: Load dependency pins
-        run: |
-          set -u          # POSIX: this job runs in a container whose default shell
-                          # is dash (no bash), so no `set -o pipefail` (a bashism).
-          # Same manifest + strict regex as makefile.yml (single source of truth).
-          # native-build.yml checks out at the repo root, so the path is plain.
-          manifest=.github/ci-pins.env
-          [ -f "$manifest" ] || { echo "::error::pin manifest $manifest missing"; exit 1; }
-          pins=$(grep -E '^PIN_[A-Z0-9_]+=[0-9a-f]{40}$' "$manifest" || true)
-          real=$(grep -cE '^[[:space:]]*[^#[:space:]]' "$manifest" || true)
-          matched=$(printf '%s\n' "$pins" | grep -c . || true)
-          if [ -z "$pins" ] || [ "$matched" -ne "$real" ]; then
-            echo "::error::pin manifest $manifest: $matched of $real value line(s) matched PIN_NAME=<40hex>"
-            exit 1
-          fi
-          printf '%s\n' "$pins" >> "$GITHUB_ENV"
+        uses: ./.github/actions/load-pins
+        with:
+          manifest: .github/ci-pins.env
 
       # Plain (unpatched) hostap tree, cached by pin — replaces a full clone on
       # every Coverity run with one shallow fetch per pin change (cache hit = no

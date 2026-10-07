@@ -67,27 +67,14 @@ jobs:
         git clone https://github.com/rdkcentral/unified-wifi-mesh.git easymesh_project/unified-wifi-mesh
         mv OneWifi easymesh_project/OneWifi
 
+    # ci-pins.env -> $PIN_* with a strict <40hex> gate. Shared with native-build.yml
+    # via the load-pins composite action (single source of truth for the loader). This
+    # leg moved OneWifi into easymesh_project/OneWifi, so both the action path and the
+    # manifest path carry that prefix (native-build.yml checks out at the repo root).
     - name: Load dependency pins
-      run: |
-        set -uo pipefail
-        # ONE source of truth for every pinned dependency SHA (ci-pins.env),
-        # loaded into $GITHUB_ENV so later steps read $PIN_* exactly as the old
-        # env: block exposed them. native-build.yml loads the same file. The
-        # strict PIN_NAME=<40hex> regex is the gate: a typo'd or truncated pin
-        # must fail here, never load as a silent partial value.
-        manifest=easymesh_project/OneWifi/.github/ci-pins.env
-        [ -f "$manifest" ] || { echo "::error::pin manifest $manifest missing"; exit 1; }
-        pins=$(grep -E '^PIN_[A-Z0-9_]+=[0-9a-f]{40}$' "$manifest" || true)
-        # Real value lines = non-blank, non-comment (unpinned entries are commented
-        # out). Every one of them must be a well-formed pin, else a SHA is malformed.
-        real=$(grep -cE '^[[:space:]]*[^#[:space:]]' "$manifest" || true)
-        matched=$(printf '%s\n' "$pins" | grep -c . || true)
-        if [ -z "$pins" ] || [ "$matched" -ne "$real" ]; then
-          echo "::error::pin manifest $manifest: $matched of $real value line(s) matched PIN_NAME=<40hex> — a pin is malformed or truncated"
-          exit 1
-        fi
-        printf '%s\n' "$pins" >> "$GITHUB_ENV"
-        echo "loaded $matched dependency pin(s) from $manifest"
+      uses: ./easymesh_project/OneWifi/.github/actions/load-pins
+      with:
+        manifest: easymesh_project/OneWifi/.github/ci-pins.env
 
     - name: Set up dependencies
       run: |
