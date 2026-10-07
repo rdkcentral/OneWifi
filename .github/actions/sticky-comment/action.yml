@@ -125,14 +125,22 @@ runs:
         # dependence on the '@file' loader. Bodies are small (capped upstream).
         body="$(cat sticky-body.md)"
 
-        if [ "$RECREATE" = "true" ]; then
+        if [ "$RECREATE" = "true" ] && [ "${#IDS[@]}" -gt 0 ]; then
           # Recreate: delete every existing copy, then POST one fresh so the sticky lands
           # at the bottom of the timeline (fresh notification). Deleting ALL — not just the
-          # first — self-heals a duplicate left by a prior concurrent run. issues:write is
-          # granted by pr-comments.yml; a DELETE that still fails is left for the next run.
-          if [ "${#IDS[@]}" -gt 0 ]; then
-            for id in "${IDS[@]}"; do del "$id" "sticky '$MARKER'"; done
+          # first — self-heals a duplicate left by a prior concurrent run. If any copy can
+          # NOT be deleted (403/5xx; a 404 counts as gone), do not POST a second one: fall
+          # back to editing the surviving copy in place, as edit mode would.
+          left=()
+          for id in "${IDS[@]}"; do del "$id" "sticky '$MARKER'" || left+=("$id"); done
+          if [ "${#left[@]}" -gt 0 ]; then
+            echo "::warning::Could not delete ${#left[@]} '$MARKER' comment(s); editing in place instead of posting a duplicate."
+            IDS=("${left[@]}")
+            RECREATE=false
           fi
+        fi
+
+        if [ "$RECREATE" = "true" ]; then
           if gh api --method POST "/repos/$REPO/issues/$PR/comments" -f body="$body" >/dev/null; then
             echo "Posted sticky '$MARKER' on PR #$PR (recreate; removed ${#IDS[@]} prior copy/copies)."
           else

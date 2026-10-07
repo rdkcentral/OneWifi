@@ -249,6 +249,8 @@ red" — a plumbing hiccup should not falsely block a PR.
   leave duplicate marker comments behind (delete-then-post is not atomic). `sticky-comment` looks up
   every comment it owns for a marker, not just the first, so each run reconciles: recreate mode
   deletes all of them and posts one fresh copy; edit mode patches the first and deletes any extras.
+  If recreate mode cannot delete a copy (anything but a 404), it edits that copy in place instead
+  of posting a second one.
 - **Fork PRs / superseded runs.** `workflow_run.pull_requests` is empty for fork PRs, so stage 2
   keys concurrency and the trust bind on `head_repository.full_name` + `head_branch` instead. And
   if the PR head advances past what stage 1 measured, `pr-context`'s `fresh` check is false and
