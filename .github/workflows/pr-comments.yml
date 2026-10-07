@@ -253,9 +253,9 @@ jobs:
           expected-branch: ${{ needs.resolve.outputs.head_branch }}
 
       # Pull every platform's summary for the build section. Passive display text;
-      # the trust decision was already made above. makefile.yml uploads only the bpi
-      # leg today, so this resolves to one artifact — kept a wildcard so enabling
-      # rpi/mock there needs no change here.
+      # the trust decision was already made above. makefile.yml uploads the bpi and
+      # rpi legs (mock is excluded); the wildcard picks up whichever legs uploaded,
+      # so enabling mock there needs no change here.
       - name: Download all platform summaries
         if: steps.ctx.outputs.found == 'true'
         uses: actions/download-artifact@v7
