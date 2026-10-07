@@ -143,6 +143,21 @@ class GhSeam(unittest.TestCase):
         _allc, ours_inline = rp.fetch_ours("o/r", "1", "github-actions[bot]", "inline")
         self.assertEqual([c["id"] for c in ours_inline], [])
 
+    def test_fetch_ours_ignores_planted_marker(self):
+        # A formatter suggestion reproduces PR source, so a PR can plant another
+        # slot's marker mid-body; only the trailing marker line decides ownership.
+        planted = "```suggestion\n/* " + rp.marker("inline") + " */\n```"
+        rows = [{"id": 7, "user": {"login": "github-actions[bot]", "type": "Bot"},
+                 "body": planted + "\n\n" + rp.marker("fmt")}]
+        jsonl = "\n".join(json.dumps(r) for r in rows)
+        rp.run_gh = lambda args, input_text=None: (0, jsonl, "")
+        _a, ours_inline = rp.fetch_ours("o/r", "1", "github-actions[bot]", "inline")
+        self.assertEqual(ours_inline, [])
+        _a, ours_fmt = rp.fetch_ours("o/r", "1", "github-actions[bot]", "fmt")
+        self.assertEqual([c["id"] for c in ours_fmt], [7])
+        # and the fingerprint still matches the candidate it was posted from
+        self.assertEqual(rp._strip_marker(rows[0]["body"], "fmt"), planted)
+
     def test_fetch_ours_api_failure_is_none(self):
         rp.run_gh = lambda args, input_text=None: (1, "", "HTTP 500")
         allc, ours = rp.fetch_ours("o/r", "1", "bot", "fmt")

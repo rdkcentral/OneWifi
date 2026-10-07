@@ -89,12 +89,22 @@ def marker(slot):
     return f"<!-- onewifi-ci:review:{slot} -->"
 
 
+def _has_marker(body, slot):
+    """True only if the LAST line is our marker (post_comments always appends it
+    there). Bodies embed untrusted text (formatter suggestions reproduce PR source,
+    compiler/tidy messages quote it), so a marker planted mid-body must not make
+    another slot claim, and then delete, the comment."""
+    lines = (body or "").rstrip().splitlines()
+    return bool(lines) and lines[-1].strip() == marker(slot)
+
+
 def _strip_marker(body, slot):
-    """Body with our marker line removed and trailing whitespace stripped — the
-    canonical form both candidate bodies and live comment bodies fingerprint on."""
-    mk = marker(slot)
-    kept = [ln for ln in (body or "").splitlines() if ln.strip() != mk]
-    return "\n".join(kept).rstrip()
+    """Body with our trailing marker line removed and trailing whitespace stripped —
+    the canonical form both candidate bodies and live comment bodies fingerprint on."""
+    b = (body or "").rstrip()
+    if _has_marker(b, slot):
+        b = b.rsplit("\n", 1)[0] if "\n" in b else ""
+    return b.rstrip()
 
 
 def _fp(path, start_line, line, body, slot):
@@ -182,14 +192,13 @@ def fetch_ours(repo, pr, bot_login, slot):
             all_comments.append(json.loads(ln))
         except json.JSONDecodeError:
             continue
-    mk = marker(slot)
     ours = []
     for c in all_comments:
         u = c.get("user") or {}
         if u.get("login") != bot_login or u.get("type") != "Bot":
             continue
         body = c.get("body") or ""
-        if mk in body:
+        if _has_marker(body, slot):
             ours.append(c)
         elif slot == "fmt" and body.lstrip().startswith("```suggestion"):
             # backward compat: comments from before the marker existed.
