@@ -70,7 +70,7 @@ jobs:
   # ---------------------------------------------------------------------------
   format:
     name: clang-format suggestions
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Only the clang-format trigger, only PRs, skip cancelled runs (they can leave
     # a stale artifact yet fire 'completed'). Allow failure: if stage 1 failed,
     # suggestions are still useful. Name-gating means the build/tidy jobs don't
@@ -160,7 +160,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build:
     name: build summary comment
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: >-
       github.event.workflow_run.name == 'Build Check'
       && github.event.workflow_run.event == 'pull_request'
@@ -237,7 +237,7 @@ jobs:
   # ---------------------------------------------------------------------------
   tidy:
     name: clang-tidy summary comment
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: >-
       github.event.workflow_run.name == 'Build Check'
       && github.event.workflow_run.event == 'pull_request'
