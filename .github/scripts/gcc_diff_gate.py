@@ -55,8 +55,8 @@ import sys
 BASE = os.environ.get("BASE", "").strip()
 GATE = os.environ.get("GATE_WARNINGS", "").split()
 ADVISORY = os.environ.get("ADVISORY_WARNINGS", "").split()
-# Rollout toggle: when false, a GATE-class finding still renders (❌ "would fail")
-# but the job is NOT failed (exit 0). Lets the mechanism run on real PRs as an
+# Rollout toggle: when false, a GATE-class finding still renders (the same ❌ error
+# block as when enforced) but the job is NOT failed (exit 0). Lets the mechanism run on real PRs as an
 # advisory before it can red anyone. Default 'true' so a missing env stays strict
 # (the gate's identity). The workflow sets it to 'false' during the advisory window.
 ENFORCE = os.environ.get("ENFORCE", "true").strip().lower() not in ("false", "0", "no", "off", "")

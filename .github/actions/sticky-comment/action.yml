@@ -119,16 +119,24 @@ runs:
 
         # Retire superseded markers: when a slot is renamed or folded (e.g. build-summary
         # + clang-tidy -> ci-summary), delete their old comments so they do not linger.
+        # The runner runs this step under `bash -e`, so every non-fatal call below is a
+        # tested command (if / ||): an untested failure would end the step before the POST.
         if [ -n "$RETIRE_MARKERS" ]; then
           read -ra RETIRE <<< "$RETIRE_MARKERS"
           for rm in "${RETIRE[@]}"; do
             rtag="<!-- onewifi-ci:${rm} -->"
-            gh api "/repos/$REPO/issues/$PR/comments" --paginate \
-              --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | startswith(\"$rtag\")) | .id" \
-              2>/dev/null | while read -r rid; do
-                [ -n "$rid" ] || continue
-                del "$rid" "retired '$rm'" && echo "Retired old '$rm' comment $rid."
-              done
+            if ! rids="$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
+                 --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | startswith(\"$rtag\")) | .id" \
+                 2>/tmp/sticky_err)"; then
+              echo "::warning::Could not list retired '$rm' comments (continuing)."
+              cat /tmp/sticky_err
+              continue
+            fi
+            RIDS=()
+            [ -n "$rids" ] && readarray -t RIDS <<< "$rids"
+            for rid in "${RIDS[@]}"; do
+              if del "$rid" "retired '$rm'"; then echo "Retired old '$rm' comment $rid."; fi
+            done
           done
         fi
 
@@ -184,8 +192,7 @@ runs:
             exit 1
           fi
           if [ "${#IDS[@]}" -gt 1 ]; then
-            for id in "${IDS[@]:1}"; do del "$id" "duplicate sticky '$MARKER'"; done
+            for id in "${IDS[@]:1}"; do del "$id" "duplicate sticky '$MARKER'" || true; done
           fi
         fi
-        # A non-fatal cleanup delete must never set this step's exit code.
         exit 0

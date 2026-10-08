@@ -396,7 +396,7 @@ jobs:
       working-directory: easymesh_project/OneWifi
       env:
         BASE: ${{ github.event.pull_request.base.sha }}
-        # ROLLOUT: start in advisory mode. ENFORCE=false renders the ❌ "would fail"
+        # ROLLOUT: start in advisory mode. ENFORCE=false renders the same ❌ error
         # block but never reds the job, so the mechanism runs on real PRs first.
         # FLIP to 'true' (one-word change) once ALL of these hold on the live runner:
         #   1. >= a handful of real PRs touching .c/.cpp have processed end-to-end
