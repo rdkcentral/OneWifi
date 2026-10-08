@@ -26,6 +26,23 @@ inputs:
     description: 'Login of the identity that owns our comments (for the ownership match). Change this if you switch to a GitHub App token.'
     required: false
     default: 'github-actions[bot]'
+  recreate:
+    description: >
+      'true' = delete the previous comment and repost, so the single sticky comment always lands
+      at the bottom of the PR timeline (and fires a fresh notification!). Edit-in-place results
+      in the comment staying at its original position, which quickly disappears out of sight on most PRs.
+      'false' = do edit in place (stable permalink, no notification, but can get
+      buried). If the token cannot delete the comment it emits a ::warning:: and falls back to
+      edit-in-place (deletion needs issues: write on the calling workflow's token).
+    required: false
+    default: 'true'
+  retire-markers:
+    description: >
+      Optional space-separated list of OLD marker names this slot supersedes. Any bot
+      comment carrying "<!-- onewifi-ci:<name> -->" for a retired marker is deleted
+      (non-fatal), so renaming/folding a sticky does not orphan its previous comments.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -39,6 +56,8 @@ runs:
         MARKER: ${{ inputs.marker }}
         BODY_FILE: ${{ inputs.body-file }}
         BOT_LOGIN: ${{ inputs.bot-login }}
+        RECREATE: ${{ inputs.recreate }}
+        RETIRE_MARKERS: ${{ inputs.retire-markers }}
       run: |
         set -uo pipefail
         if [ ! -f "$BODY_FILE" ]; then
@@ -48,6 +67,9 @@ runs:
         # Hidden marker: lets the next run find our comment for this slot without
         # relying on any actor field that crossed the trust boundary.
         TAG="<!-- onewifi-ci:${MARKER} -->"
+        # The marker is always the FIRST line, and ownership checks below require it there
+        # (startswith, not contains): the body embeds untrusted build output, so a PR could
+        # otherwise plant another slot's marker and get that slot to delete this comment.
         { printf '%s\n\n' "$TAG"; cat "$BODY_FILE"; } > sticky-body.md
 
         # Cap the body. GitHub rejects issue comments over ~65536 bytes, and the
@@ -66,33 +88,111 @@ runs:
           printf '\n\n_… truncated at %s bytes; see workflow run summary for full output._\n' "$MAXB" >> sticky-body.md
         fi
 
-        # Find an existing comment we own for this marker. "Ours"  here means the bot
-        # identity (login + type == Bot) AND our marker. Login-matched so we
-        # can't patch some other bot's comment that only quoted our marker.
-        # $BOT_LOGIN and $TAG are workflow-trusted (not fork data), so shell
-        # interpolation into the filter is safe.
-        existing="$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
-          --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | contains(\"$TAG\")) | .id" \
-          2>/dev/null | head -1 || true)"
+        # Find EVERY comment we own for this marker (not just the first). "Ours" =
+        # the bot identity (login + type == Bot) AND our marker. Collecting ALL ids
+        # lets a re-run reconcile duplicates a prior concurrent run may have left (the
+        # old P4 recreate race): recreate deletes them all and posts one; edit patches
+        # the first and deletes the rest. $BOT_LOGIN and $TAG are workflow-trusted (not
+        # fork data), so interpolating them into the jq filter is safe.
+        # A failed lookup must NOT read as "no comments yet" (that would POST a duplicate):
+        # warn and skip this run instead; the next run reconciles. Never red the job.
+        if ! ids_out="$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
+             --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | startswith(\"$TAG\")) | .id" \
+             2>/tmp/sticky_err)"; then
+          echo "::warning::Could not list comments on PR #$PR; not posting sticky '$MARKER' this run (avoids a duplicate)."
+          cat /tmp/sticky_err
+          exit 0
+        fi
+        IDS=()
+        [ -n "$ids_out" ] && readarray -t IDS <<< "$ids_out"
 
-        # -f (raw-field) sends the body as a plain string — no gh type-inference,
-        # no dependence on the '@file' loader. Bodies are small (capped upstream),
-        # so passing via one argv is safe.
+        # Non-fatal single-comment delete that tolerates a 404 (already gone).
+        del() {
+          if gh api --method DELETE "/repos/$REPO/issues/comments/$1" >/dev/null 2>/tmp/sticky_err; then
+            return 0
+          fi
+          grep -q 'HTTP 404' /tmp/sticky_err && return 0
+          echo "::warning::Could not delete $2 comment $1 (continuing)."
+          cat /tmp/sticky_err
+          return 1
+        }
+
+        # Retire superseded markers: when a slot is renamed or folded (e.g. build-summary
+        # + clang-tidy -> ci-summary), delete their old comments so they do not linger.
+        # The runner runs this step under `bash -e`, so every non-fatal call below is a
+        # tested command (if / ||): an untested failure would end the step before the POST.
+        if [ -n "$RETIRE_MARKERS" ]; then
+          read -ra RETIRE <<< "$RETIRE_MARKERS"
+          for rm in "${RETIRE[@]}"; do
+            rtag="<!-- onewifi-ci:${rm} -->"
+            if ! rids="$(gh api "/repos/$REPO/issues/$PR/comments" --paginate \
+                 --jq ".[] | select(.user.type == \"Bot\" and .user.login == \"$BOT_LOGIN\") | select(.body | startswith(\"$rtag\")) | .id" \
+                 2>/tmp/sticky_err)"; then
+              echo "::warning::Could not list retired '$rm' comments (continuing)."
+              cat /tmp/sticky_err
+              continue
+            fi
+            RIDS=()
+            [ -n "$rids" ] && readarray -t RIDS <<< "$rids"
+            for rid in "${RIDS[@]}"; do
+              if del "$rid" "retired '$rm'"; then echo "Retired old '$rm' comment $rid."; fi
+            done
+          done
+        fi
+
+        # -f (raw-field) sends the body as a plain string — no gh type-inference, no
+        # dependence on the '@file' loader. Bodies are small (capped upstream).
         body="$(cat sticky-body.md)"
-        if [ -n "$existing" ]; then
-          if gh api --method PATCH "/repos/$REPO/issues/comments/$existing" \
-               -f body="$body" >/dev/null; then
-            echo "Updated sticky '$MARKER' comment ($existing) on PR #$PR."
+
+        if [ "$RECREATE" = "true" ] && [ "${#IDS[@]}" -gt 0 ]; then
+          # Recreate: delete every existing copy, then POST one fresh so the sticky lands
+          # at the bottom of the timeline (fresh notification). Deleting ALL — not just the
+          # first — self-heals a duplicate left by a prior concurrent run. If any copy can
+          # NOT be deleted (403/5xx; a 404 counts as gone), do not POST a second one: fall
+          # back to editing the surviving copy in place, as edit mode would.
+          left=()
+          for id in "${IDS[@]}"; do del "$id" "sticky '$MARKER'" || left+=("$id"); done
+          if [ "${#left[@]}" -gt 0 ]; then
+            echo "::warning::Could not delete ${#left[@]} '$MARKER' comment(s); editing in place instead of posting a duplicate."
+            IDS=("${left[@]}")
+            RECREATE=false
+          fi
+        fi
+
+        if [ "$RECREATE" = "true" ]; then
+          if gh api --method POST "/repos/$REPO/issues/$PR/comments" -f body="$body" >/dev/null; then
+            echo "Posted sticky '$MARKER' on PR #$PR (recreate; removed ${#IDS[@]} prior copy/copies)."
           else
-            echo "::error::Failed to update sticky '$MARKER' comment $existing."
+            echo "::error::Failed to create sticky '$MARKER' comment."
             exit 1
           fi
-        else
-          if gh api --method POST "/repos/$REPO/issues/$PR/comments" \
-               -f body="$body" >/dev/null; then
+        elif [ "${#IDS[@]}" -eq 0 ]; then
+          # Edit mode, first run: nothing to edit -> create.
+          if gh api --method POST "/repos/$REPO/issues/$PR/comments" -f body="$body" >/dev/null; then
             echo "Created sticky '$MARKER' comment on PR #$PR."
           else
             echo "::error::Failed to create sticky '$MARKER' comment."
             exit 1
           fi
+        else
+          # Edit mode: PATCH the first copy in place, then delete any extras (dedup). A 404
+          # on the PATCH means it vanished since the lookup -> POST a fresh one instead.
+          first="${IDS[0]}"
+          if gh api --method PATCH "/repos/$REPO/issues/comments/$first" -f body="$body" >/dev/null 2>/tmp/sticky_err; then
+            echo "Updated sticky '$MARKER' comment ($first) on PR #$PR."
+          elif grep -q 'HTTP 404' /tmp/sticky_err; then
+            echo "::warning::Sticky '$MARKER' comment $first vanished; creating a fresh one."
+            if ! gh api --method POST "/repos/$REPO/issues/$PR/comments" -f body="$body" >/dev/null; then
+              echo "::error::Failed to create sticky '$MARKER' comment."
+              exit 1
+            fi
+          else
+            echo "::error::Failed to update sticky '$MARKER' comment $first."
+            cat /tmp/sticky_err
+            exit 1
+          fi
+          if [ "${#IDS[@]}" -gt 1 ]; then
+            for id in "${IDS[@]:1}"; do del "$id" "duplicate sticky '$MARKER'" || true; done
+          fi
         fi
+        exit 0

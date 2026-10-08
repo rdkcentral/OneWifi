@@ -45,6 +45,7 @@ Env:
 Exit: 1 iff a GATE class fired on a changed line (and ENFORCE); else 0. Always writes a
 markdown summary to stdout. Identical file ships in OneWifi and the HAL.
 """
+import bisect
 import json
 import os
 import re
@@ -54,8 +55,8 @@ import sys
 BASE = os.environ.get("BASE", "").strip()
 GATE = os.environ.get("GATE_WARNINGS", "").split()
 ADVISORY = os.environ.get("ADVISORY_WARNINGS", "").split()
-# Rollout toggle: when false, a GATE-class finding still renders (❌ "would fail")
-# but the job is NOT failed (exit 0). Lets the mechanism run on real PRs as an
+# Rollout toggle: when false, a GATE-class finding still renders (the same ❌ error
+# block as when enforced) but the job is NOT failed (exit 0). Lets the mechanism run on real PRs as an
 # advisory before it can red anyone. Default 'true' so a missing env stays strict
 # (the gate's identity). The workflow sets it to 'false' during the advisory window.
 ENFORCE = os.environ.get("ENFORCE", "true").strip().lower() not in ("false", "0", "no", "off", "")
@@ -143,17 +144,33 @@ def changed_files(base):
 
 
 def changed_lines(base, f):
-    """New-side line numbers this PR changed in f (zero-context hunks)."""
+    """New-side line ranges this PR changed in f (zero-context hunks).
+
+    Returns a list of (start, end) inclusive intervals instead of a per-line
+    set, so memory is bounded by hunk count, not total changed-line count.
+    """
     diff = subprocess.run(
         ["git", "-C", REPO_DIR, "diff", "-U0", "--diff-filter=ACM", base, "HEAD", "--", f],
         capture_output=True, text=True, check=True,
     ).stdout
-    lines = set()
+    intervals = []
     for m in re.finditer(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", diff, re.M):
         start = int(m.group(1))
         count = int(m.group(2)) if m.group(2) else 1
-        lines.update(range(start, start + count))
-    return lines
+        if count > 0:
+            intervals.append((start, start + count - 1))
+    intervals.sort()  # git emits hunks in order; sorted is what _in_intervals relies on
+    return intervals
+
+
+def _in_intervals(line, intervals):
+    """True if line is inside one of the sorted, non-overlapping (start, end) intervals.
+
+    Binary search (O(log hunks) per diagnostic), so a fragmented diff with many
+    warnings does not cost O(hunks x diagnostics).
+    """
+    i = bisect.bisect_right(intervals, (line, float("inf"))) - 1
+    return i >= 0 and intervals[i][0] <= line <= intervals[i][1]
 
 
 def db_args(db, f):
@@ -202,7 +219,7 @@ def main():
             t = TAG_RE.search(line)
             if not m or not t:
                 continue
-            if int(m.group(1)) not in want:
+            if not _in_intervals(int(m.group(1)), want):
                 continue
             tag = t.group(0)
             # Strip to the LAST repo dir in the path token: the runner checks out to
@@ -248,14 +265,15 @@ def main():
         print("### 🚦 gcc diff-gate: clean on changed lines")
         return 0
     if gated:
-        verb = "on lines this PR changed" if ENFORCE else "would fail the job (advisory: ENFORCE=false)"
-        print(f"### ❌ gcc diff-gate — {len(gated)} {verb}")
+        # Same wording with ENFORCE on or off: these are real errors in changed code,
+        # whether or not the job is red for them yet.
+        print(f"### ❌ gcc diff-gate — {len(gated)} error(s) on lines this PR changed")
         print("```")
         print("\n".join(gated[:100]))
         print("```")
         print("_Fix the finding, or suppress it with a GCC diagnostic pragma where intentional / refactor._")
     if advis:
-        print(f"### 🚦 gcc diff-gate advisory — {len(advis)} findings")
+        print(f"### ❗ gcc diff-gate warnings — {len(advis)} on changed lines")
         print("```")
         print("\n".join(advis[:100]))
         print("```")

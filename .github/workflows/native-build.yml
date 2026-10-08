@@ -17,7 +17,7 @@ permissions:
 jobs:
   build-onewifi:
     name: Build OneWifi component in github rdkcentral for Coverity analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
@@ -28,21 +28,40 @@ jobs:
         with:
           persist-credentials: false
 
+      # actions/cache (used inside the hostap-tree action) does not expand $HOME,
+      # and inside a container HOME is /github/home — resolve it into a step output.
+      - name: Resolve HOME
+        id: home
+        run: echo "home=$HOME" >> "$GITHUB_OUTPUT"
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory '*'
+
+      # ci-pins.env -> $PIN_* with a strict <40hex> gate, via the load-pins composite
+      # action shared with makefile.yml (single source of truth for the loader). This
+      # job checks out at the repo root, so the plain path is correct (makefile.yml
+      # carries an easymesh_project/OneWifi prefix because it relocates the tree).
+      - name: Load dependency pins
+        uses: ./.github/actions/load-pins
+        with:
+          manifest: .github/ci-pins.env
+
+      # Plain (unpatched) hostap tree, cached by pin — replaces a full clone on
+      # every Coverity run with one shallow fetch per pin change (cache hit = no
+      # traffic to git.w1.fi). native-build.yml checks out at the repo root, so the
+      # plain ./.github/actions/… path is correct here (unlike makefile.yml).
+      - name: Provide hostap tree (cached)
+        uses: ./.github/actions/hostap-tree
+        with:
+          mode: plain
+          pin: ${{ env.PIN_HOSTAP_2_11 }}
+          path: ${{ steps.home.outputs.home }}/build/rdk-wifi-libhostap
+
       - name: Native-ish build for Coverity based on XB
         run: |
-
-          # Trust the workspace
-          git config --global --add safe.directory '*'
+          # The workspace trust + hostap tree are provided by the steps above.
           # Pull the latest changes for the native build system
           git submodule update --init --recursive
-
-          #Clone hostapd
-          ORIG_DIR=$(pwd)
-          mkdir -p $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
-          git clone https://git.w1.fi/hostap.git $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
-          cd $HOME/build/rdk-wifi-libhostap/source/hostap-2.11
-          git checkout -b 2.11 4b8ac10cb77c3d4dbf7ccefbe697dc0578da374c
-          cd ${ORIG_DIR}
 
           chmod +x build_tools_workflows/cov_docker_script/setup_dependencies.sh
           ./build_tools_workflows/cov_docker_script/setup_dependencies.sh ./cov_docker_script/component_config.json
