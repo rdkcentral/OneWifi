@@ -242,7 +242,7 @@ jobs:
         # Surface the top errors as ANNOTATIONS (the box at the top of the failed
         # check, which people actually check) — not only the run-summary page.
         if [ -n "$errs" ]; then
-          printf '%s\n' "$errs" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+          head -10 <<< "$errs" | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::error::$l"; done
         fi
         {
@@ -250,7 +250,7 @@ jobs:
           if [ -n "$errs" ]; then
             echo "### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
             echo '```'
-            printf '%s\n' "$errs" | head -100
+            head -100 <<< "$errs"
             echo '```'
           fi
           # Warnings from OneWifi's own sources ONLY, with location.
@@ -268,7 +268,7 @@ jobs:
           if [ -n "$warns" ]; then
             echo "### ⚠️ OneWifi warnings ($(printf '%s\n' "$warns" | wc -l))"
             echo '```'
-            printf '%s\n' "$warns" | head -100
+            head -100 <<< "$warns"
             echo '```'
           else
             echo "### ⚠️ OneWifi warnings: 0"
@@ -356,11 +356,11 @@ jobs:
         gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
         advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
         if [ -n "$gated" ]; then
-          printf '%s\n' "$gated" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+          head -10 <<< "$gated" | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::error::$l"; done
         fi
         if [ -n "$advis" ]; then
-          printf '%s\n' "$advis" | head -10 | sed 's/%/%25/g; s/\r/%0D/g' \
+          head -10 <<< "$advis" | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
         {
@@ -369,12 +369,12 @@ jobs:
           else
             if [ -n "$gated" ]; then
               echo "### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
-              echo '```'; printf '%s\n' "$gated" | head -100; echo '```'
+              echo '```'; head -100 <<< "$gated"; echo '```'
               echo "_Fix the finding, or if it is a deliberate, waive it inline with \`// NOLINT(<check-name>)\` on that line._"
             fi
             if [ -n "$advis" ]; then
               echo "### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
-              echo '```'; printf '%s\n' "$advis" | head -100; echo '```'
+              echo '```'; head -100 <<< "$advis"; echo '```'
             fi
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
