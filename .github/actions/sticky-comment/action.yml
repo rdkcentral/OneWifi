@@ -79,8 +79,9 @@ runs:
         MAXB=60000
         if [ "$(wc -c < sticky-body.md)" -gt "$MAXB" ]; then
           # iconv -c drops any invalid/incomplete UTF-8 the byte-cut may leave
-          # (the summaries contain emoji) so the JSON body stays valid.
-          head -c "$MAXB" sticky-body.md | iconv -f utf-8 -t utf-8 -c > sticky-body.cut
+          # (the summaries contain emoji) so the JSON body stays valid. It then exits 1,
+          # which is expected here and must not abort the step (-eo pipefail).
+          { head -c "$MAXB" sticky-body.md | iconv -f utf-8 -t utf-8 -c 2>/dev/null || true; } > sticky-body.cut
           mv sticky-body.cut sticky-body.md
           if [ $(( $(grep -c '```' sticky-body.md) % 2 )) -ne 0 ]; then
             printf '\n```\n' >> sticky-body.md

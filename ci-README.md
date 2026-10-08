@@ -136,8 +136,9 @@ it was reached via `workflow_run` or via the manual `workflow_dispatch` harness 
 
 Every posting job routes its trust decision through `.github/actions/pr-context`: it downloads the
 named stage-1 artifact, strictly parses (never `source`s) `pr-meta.env`, binds the recorded PR
-number back to the triggering run's head repo/branch (unforgeable), and checks whether the PR head
-still matches the recorded sha (`fresh`), so a superseded run doesn't post stale content. Three jobs
+number back to the triggering run's head repo/branch and the recorded sha to the commit that run
+built (both unforgeable), and checks whether the PR head still matches that sha (`fresh`), so a
+superseded run doesn't post stale content. Three jobs
 post: `format` and `inline` reconcile individual review comments against what is already on the PR
 (via a shared poster script, §5); `summary` upserts the one folded `ci-summary` sticky comment via
 `.github/actions/sticky-comment`, keyed on a hidden HTML marker, with an optional "recreate" mode

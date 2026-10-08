@@ -101,6 +101,7 @@ jobs:
       run_url: ${{ steps.r.outputs.run_url }}
       head_repo: ${{ steps.r.outputs.head_repo }}
       head_branch: ${{ steps.r.outputs.head_branch }}
+      head_sha: ${{ steps.r.outputs.head_sha }}
       event: ${{ steps.r.outputs.event }}
       conclusion: ${{ steps.r.outputs.conclusion }}
     steps:
@@ -118,6 +119,7 @@ jobs:
           WR_URL: ${{ github.event.workflow_run.html_url }}
           WR_HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
           WR_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           WR_EVENT: ${{ github.event.workflow_run.event }}
           WR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
@@ -131,6 +133,7 @@ jobs:
             emit run_url     "$WR_URL"
             emit head_repo   "$WR_HEAD_REPO"
             emit head_branch "$WR_HEAD_BRANCH"
+            emit head_sha    "$WR_HEAD_SHA"
             emit event       "$WR_EVENT"
             emit conclusion  "$WR_CONCLUSION"
             exit 0
@@ -155,6 +158,7 @@ jobs:
           emit run_url     "$(jq -r '.html_url // ""' /tmp/run.json)"
           emit head_repo   "$(jq -r '.head_repository.full_name // ""' /tmp/run.json)"
           emit head_branch "$(jq -r '.head_branch // ""' /tmp/run.json)"
+          emit head_sha    "$(jq -r '.head_sha // ""' /tmp/run.json)"
           emit event       "$(jq -r '.event // ""' /tmp/run.json)"
           emit conclusion  "$(jq -r '.conclusion // ""' /tmp/run.json)"
 
@@ -193,6 +197,7 @@ jobs:
           repository: ${{ github.repository }}
           expected-repo: ${{ needs.resolve.outputs.head_repo }}
           expected-branch: ${{ needs.resolve.outputs.head_branch }}
+          expected-sha: ${{ needs.resolve.outputs.head_sha }}
 
       - name: Convert clang-format diff into review candidates
         if: steps.ctx.outputs.found == 'true'
@@ -264,6 +269,7 @@ jobs:
           repository: ${{ github.repository }}
           expected-repo: ${{ needs.resolve.outputs.head_repo }}
           expected-branch: ${{ needs.resolve.outputs.head_branch }}
+          expected-sha: ${{ needs.resolve.outputs.head_sha }}
 
       # Pull every platform's summary for the build section. Passive display text;
       # the trust decision was already made above. makefile.yml uploads the bpi and
@@ -294,14 +300,15 @@ jobs:
             echo "_Commit \`${HEAD_SHA:0:7}\` · [\`${RUN_NAME}\` #${RUN_NUMBER}](${RUN_URL})_"
             echo
             # Deterministic platform order; each per-leg file carries its own
-            # "## <platform> — build <outcome>" heading + error/warning blocks.
+            # "### <platform> — build <outcome>" heading + error/warning blocks.
             for d in summaries/ci-summary-*/; do
               f="${d}build-summary.md"
               [ -f "$f" ] || continue
               cat "$f"
               echo
             done
-
+          } > build-section.md
+          {
             # --- Diff-scoped checks ---
             # Both changed-lines checks live in the bpi artifact (downloaded to
             # ci-summary-bpi/ by pr-context). The build section above always posts.
@@ -358,7 +365,20 @@ jobs:
               echo
               echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
             fi
-          } > ci-summary-comment.md
+          } > diff-section.md
+          # The sticky action cuts the whole body from the tail at 60000 bytes, which after a
+          # noisy build would drop the diff-scoped section. Cut the build section here instead,
+          # to what the diff-scoped section leaves (at least 8000 bytes), closing an open fence.
+          budget=$(( 57000 - $(wc -c < diff-section.md) ))
+          [ "$budget" -ge 8000 ] || budget=8000
+          if [ "$(wc -c < build-section.md)" -gt "$budget" ]; then
+            # iconv -c drops a character the cut split, then exits 1: expected, not an error.
+            { head -c "$budget" build-section.md | iconv -f utf-8 -t utf-8 -c 2>/dev/null || true; } > build-cut.md
+            if [ $(( $(grep -c '```' build-cut.md) % 2 )) -ne 0 ]; then printf '\n```\n' >> build-cut.md; fi
+            printf '\n_… build output truncated; see the workflow run summary for the full output._\n\n' >> build-cut.md
+            mv build-cut.md build-section.md
+          fi
+          cat build-section.md diff-section.md > ci-summary-comment.md
           echo "wrote ci-summary-comment.md ($(wc -l < ci-summary-comment.md) lines)"
 
       # One sticky comment, marker 'ci-summary'. retire-markers deletes the old
@@ -413,6 +433,7 @@ jobs:
           repository: ${{ github.repository }}
           expected-repo: ${{ needs.resolve.outputs.head_repo }}
           expected-branch: ${{ needs.resolve.outputs.head_branch }}
+          expected-sha: ${{ needs.resolve.outputs.head_sha }}
 
       - name: Reconcile and post inline gcc + clang-tidy findings
         if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'

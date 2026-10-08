@@ -35,17 +35,18 @@ class Reconcile(unittest.TestCase):
                 live(2, "a.c", 5, SUG),       # duplicate of 1 (newer id) -> deleted
                 live(3, "a.c", None, SUG),    # GitHub nulled the line (outdated) -> deleted
                 live(4, "a.c", 7, "GONE"),    # finding no longer produced -> stale
-                live(5, "a.c", 8, "OLD")]     # a human replied -> never deleted or reposted
+                live(5, "a.c", 8, "OLD"),     # a human replied -> never deleted or reposted
+                live(7, "a.c", 8, "OLD")]     # unreplied copy of 5 -> deleted
         everyone = ours + [{"id": 6, "in_reply_to_id": 5, "user": {"login": "human", "type": "User"}}]
         cands = [cand("a.c", 5, SUG), cand("a.c", 8, "OLD"), cand("a.c", 9, "NEW"),
                  cand("a.c", 9, "NEW")]       # listed twice in one envelope -> posted once
         dele, post, outdated, overflow, shown = rp.reconcile(everyone, ours, cands, True, "fmt", 25)
-        self.assertEqual(sorted(dele), [2, 3, 4])
+        self.assertEqual(sorted(dele), [2, 3, 4, 7])
         self.assertEqual([item["line"] for item in post], [9])
         self.assertEqual((outdated, overflow, shown), (1, 0, 2))
         # An incomplete candidate set never deletes a finding as "gone".
         dele, *_ = rp.reconcile(everyone, ours, cands, False, "fmt", 25)
-        self.assertEqual(sorted(dele), [2, 3])
+        self.assertEqual(sorted(dele), [2, 3, 7])
 
     def test_priority_and_cap(self):
         cands = [cand("a.c", 1, "b1", source="formatter"),

@@ -246,15 +246,18 @@ def reconcile(all_comments, ours, candidates, all_ok, slot, cap):
 
     # duplicates: for one fingerprint with several live copies, keep the oldest
     # (lowest comment id) and delete the rest — the one-time cleanup of the mess
-    # already sitting on long-lived PRs.
+    # already sitting on long-lived PRs. A replied-to copy already shows the finding,
+    # so every unprotected copy of it goes.
+    protected_fps = {fp(comment) for comment in protected}
     groups = defaultdict(list)
     for comment in live:
         groups[fp(comment)].append(comment)
     kept = []
-    for group in groups.values():
+    for group_fp, group in groups.items():
         group.sort(key=lambda comment: comment["id"])
-        kept.append(group[0])
-        to_delete += [comment["id"] for comment in group[1:]]
+        keep = 0 if group_fp in protected_fps else 1
+        kept += group[:keep]
+        to_delete += [comment["id"] for comment in group[keep:]]
 
     cand_fps = {_fp(cand["path"], cand.get("start_line"), cand["line"], cand["body"], slot)
                 for cand in candidates}
@@ -269,7 +272,7 @@ def reconcile(all_comments, ours, candidates, all_ok, slot, cap):
             survivors.append(comment)
 
     # present = what stays visible (survivors + protected); never re-post those.
-    present_fps = {fp(comment) for comment in survivors} | {fp(comment) for comment in protected}
+    present_fps = {fp(comment) for comment in survivors} | protected_fps
     # Also dedupe within this run: an envelope may list one finding twice.
     to_post = []
     for cand in candidates:
