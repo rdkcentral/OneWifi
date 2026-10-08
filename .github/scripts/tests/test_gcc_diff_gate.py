@@ -119,6 +119,9 @@ class MainStatus(unittest.TestCase):
                                   "gcc: error: unrecognized command-line option '-Wfoo'"))})
         self.assertEqual(doc["status"], "partial")
         self.assertEqual(len(doc["comments"]), 1)
+        # A finding the inline converter cannot parse also leaves the set incomplete.
+        odd = SimpleNamespace(returncode=0, stderr="/w/OneWifi/source/odd.c:3:5: error: odd [-Wunused-value]")
+        self.assertEqual(self._run_main({"odd.c": odd})["status"], "partial")
 
 
 if __name__ == "__main__":

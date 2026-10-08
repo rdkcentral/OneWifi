@@ -124,11 +124,14 @@ class LoadCandidates(unittest.TestCase):
         self.assertFalse(all_ok)
 
     def test_malformed_entry_dropped_and_not_ok(self):
-        cand_file = self._write({"source": "formatter", "status": "ok",
-                         "comments": [{"path": "a.c", "line": "NOTINT", "body": "x"}]})
-        cands, all_ok, _d = rp.load_candidates([cand_file])
-        self.assertEqual(cands, [])
-        self.assertFalse(all_ok)
+        # Wrong types, and values the review API would reject with a 422.
+        for bad in ({"line": "NOTINT"}, {"path": ""}, {"line": 0}, {"side": "UP"},
+                    {"start_line": 5}, {"start_line": 0}):
+            entry = {"path": "a.c", "line": 5, "body": "x", **bad}
+            cand_file = self._write({"source": "formatter", "status": "ok", "comments": [entry]})
+            cands, all_ok, _d = rp.load_candidates([cand_file])
+            self.assertEqual(cands, [], bad)
+            self.assertFalse(all_ok, bad)
 
 
 class GhSeam(unittest.TestCase):

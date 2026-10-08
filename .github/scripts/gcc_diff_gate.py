@@ -316,10 +316,10 @@ def main():
 
     # Inline-review candidates (Commit 5). Written on every non-skip path — including
     # the clean case (empty list) so the poster removes any now-stale gcc comments.
-    # 'partial' when a file failed to recompile: its findings are unknown, so the
-    # poster must not delete existing comments as if they were fixed.
+    # 'partial' when a file failed to recompile or a finding could not be converted:
+    # the set is incomplete, so the poster must not delete comments as if fixed.
     inline, inline_dropped = build_inline(gated, advis)
-    write_inline("partial" if failed else "ok", inline, inline_dropped)
+    write_inline("partial" if failed or inline_dropped else "ok", inline, inline_dropped)
 
     # GitHub annotations (top-of-check box).
     for l in gated[:10]:

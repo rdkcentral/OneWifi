@@ -125,6 +125,12 @@ def _validate_entry(entry):
         raise ValueError("line must be an int, not bool")
     if start_line is not None and (not isinstance(start_line, int) or isinstance(start_line, bool)):
         raise ValueError("start_line must be an int")
+    # What the review API would reject (422) must not pass as a valid candidate: a
+    # set that can't be posted must not license deleting the live comments either.
+    if not path or line < 1 or side not in ("LEFT", "RIGHT"):
+        raise ValueError("empty path, line < 1 or bad side")
+    if start_line is not None and not 1 <= start_line < line:
+        raise ValueError("start_line must be >= 1 and before line")
     if len(body.encode("utf-8")) > MAX_BODY_BYTES:
         raise ValueError("body exceeds size cap")
     cand = {"path": path, "line": line, "side": side, "body": body}

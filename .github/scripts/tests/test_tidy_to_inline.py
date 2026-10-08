@@ -81,17 +81,17 @@ class MainIO(unittest.TestCase):
         self.assertEqual(len(doc["comments"]), 1)
         self.assertIn("(error)", doc["comments"][0]["body"])
 
-    def _log(self):
+    def _log(self, extra=""):
         logfd, log_path = tempfile.mkstemp(suffix=".log")
-        os.write(logfd, (ABS + "source/foo.c:1:1: warning: w [bugprone-a]\n").encode())
+        os.write(logfd, (ABS + "source/foo.c:1:1: warning: w [bugprone-a]\n" + extra).encode())
         os.close(logfd)
         self.addCleanup(os.unlink, log_path)
         return log_path
 
-    def _status(self, *extra):
+    def _status(self, *extra, log_extra=""):
         out = self._tmp()
         self.addCleanup(os.unlink, out)
-        self.assertEqual(tidy_conv.main(["prog", self._log(), out, *extra]), 0)
+        self.assertEqual(tidy_conv.main(["prog", self._log(log_extra), out, *extra]), 0)
         with open(out) as fh:
             doc = json.load(fh)
         self.assertEqual(len(doc["comments"]), 1)       # findings kept either way
@@ -104,6 +104,7 @@ class MainIO(unittest.TestCase):
         with open(failed, "w") as fh:
             fh.write("source/bar.c: clang-tidy exit 139\n")
         self.assertEqual(self._status(failed), "partial")
+        self.assertEqual(self._status(log_extra="not a finding line\n"), "partial")  # dropped
 
 
 if __name__ == "__main__":

@@ -34,9 +34,9 @@ never silently lost.
 
 Usage:  tidy_to_inline.py <tidy.log> <out.json> [<failed-files.txt>]
 Writes a `{"source":"clang-tidy","status":"ok","dropped":N,"comments":[...]}`
-envelope. A missing/unreadable log writes status 'skipped' (empty comments), and a
-non-empty (or unreadable) failed-files list, one line per changed file clang-tidy
-could not fully analyze, writes status 'partial'. Either way the poster disables
+envelope. A missing/unreadable log writes status 'skipped' (empty comments); an
+unparsable finding line, or a non-empty (or unreadable) failed-files list (one line
+per changed file clang-tidy could not fully analyze), writes status 'partial'. Either way the poster disables
 stale deletion for the slot instead of deleting comments as if they were fixed.
 """
 import json
@@ -107,6 +107,8 @@ def main(argv):
             json.dump(payload, fh)
         return 0
     comments, dropped = parse(text)
+    if dropped:
+        status = "partial"      # a changed-line finding we could not represent
     payload = {"source": "clang-tidy", "status": status, "dropped": dropped, "comments": comments}
     with open(out_path, "w") as fh:
         json.dump(payload, fh)
