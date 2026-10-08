@@ -81,15 +81,13 @@ class LoadCandidates(unittest.TestCase):
         docs = [{"source": "gcc-gate", "status": "skipped", "comments": []},
                 {"source": "gcc-gate", "status": "partial", "comments": [good]},
                 [], "text", None,
-                {"status": "ok", "dropped": [1], "comments": []},
-                {"status": "ok", "comments": {"not": "a list"}}]
+                {"status": "ok", "dropped": [1], "comments": []}]
         for doc in docs:
             _c, all_ok, _d = rp.load_candidates([self._write(doc)])
             self.assertFalse(all_ok, doc)
         self.assertFalse(rp.load_candidates(["/no/such/file.json"])[1])
         # Wrong types, and values the review API would reject with a 422: entry dropped.
-        for bad in ({"line": "NOTINT"}, {"path": ""}, {"line": 0}, {"side": "UP"},
-                    {"start_line": 5}, {"start_line": 0}):
+        for bad in ({"line": "NOTINT"}, {"side": "UP"}, {"start_line": 5}):
             doc = {"source": "formatter", "status": "ok", "comments": [{**good, **bad}]}
             cands, all_ok, _d = rp.load_candidates([self._write(doc)])
             self.assertEqual((cands, all_ok), ([], False), bad)

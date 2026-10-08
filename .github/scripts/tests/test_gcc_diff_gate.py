@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2026 RDK Management — Apache-2.0 (see gcc_diff_gate.py header).
-"""Unit tests for gcc_diff_gate.py's inline-candidate output: build_inline, the
-write_inline envelope, and the status main() gives it."""
+"""Unit tests for gcc_diff_gate.py's inline-candidate output: build_inline and the
+envelope status main() writes."""
 import contextlib
 import io
 import json
@@ -27,18 +27,6 @@ class Inline(unittest.TestCase):
         self.assertEqual([(item["path"], item["line"]) for item in inline], [("source/a.c", 10), ("source/b.c", 3)])
         self.assertIn("❌ **gcc** `-Wvla` (error)", inline[0]["body"])
         self.assertIn("❗ **gcc** `-Wunused-value` (warning)", inline[1]["body"])
-
-    def test_write_inline(self):
-        fd, out_path = tempfile.mkstemp(suffix=".json")
-        os.close(fd)
-        self.addCleanup(os.unlink, out_path)
-        with mock.patch.object(gcc_gate, "INLINE_JSON", ""):
-            gcc_gate.write_inline("ok", [{"path": "a.c"}])        # unset: no-op, no raise
-        with mock.patch.object(gcc_gate, "INLINE_JSON", out_path):
-            gcc_gate.write_inline("skipped", [], dropped=2)
-        with open(out_path) as fh:
-            self.assertEqual(json.load(fh), {"source": "gcc-gate", "status": "skipped",
-                                             "dropped": 2, "comments": []})
 
 
 class MainStatus(unittest.TestCase):

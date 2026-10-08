@@ -81,22 +81,14 @@ class Envelope(unittest.TestCase):
         with open(out_path) as fh:
             return json.load(fh)
 
-    def test_envelope_shape_and_source(self):
+    def test_envelope(self):
         out = self._run_main(DIFF, changed_line="a.c:5-6\n")
-        self.assertEqual(out["source"], "formatter")
-        self.assertEqual(out["status"], "ok")
-        self.assertEqual(out["dropped"], 0)
-        self.assertEqual(len(out["comments"]), 1)
-
-    def test_offchange_suggestion_dropped(self):
-        out = self._run_main(DIFF, changed_line="a.c:100-100\n")
-        self.assertEqual(out["comments"], [])
-        self.assertEqual(out["dropped"], 1)
-
-    def test_missing_diff_is_clean_ok(self):
-        out = self._run_main("")     # empty diff (clang-format clean)
-        self.assertEqual(out["status"], "ok")
-        self.assertEqual(out["comments"], [])
+        self.assertEqual((out["source"], out["status"], out["dropped"], len(out["comments"])),
+                         ("formatter", "ok", 0, 1))
+        out = self._run_main(DIFF, changed_line="a.c:100-100\n")   # suggestion off the PR's lines
+        self.assertEqual((out["comments"], out["dropped"]), ([], 1))
+        out = self._run_main("")                                     # clang-format clean
+        self.assertEqual((out["status"], out["comments"]), ("ok", []))
 
 
 if __name__ == "__main__":
