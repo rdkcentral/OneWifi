@@ -58,19 +58,19 @@ def parse(text):
         line = raw.strip()
         if not line:
             continue
-        m = LINE_RE.match(line)
-        if not m:
+        hit = LINE_RE.match(line)
+        if not hit:
             dropped += 1
             continue
-        path = PATH_STRIP_RE.sub("", m["path"])
-        lineno = int(m["line"])
-        check = m["check"]
-        msg = m["msg"]
+        path = PATH_STRIP_RE.sub("", hit["path"])
+        lineno = int(hit["line"])
+        check = hit["check"]
+        msg = hit["msg"]
         key = (path, lineno, check, msg)
         if key in seen:
             continue
         seen.add(key)
-        sev, icon = ("error", "❌") if m["sev"] == "error" else ("warning", "❗")
+        sev, icon = ("error", "❌") if hit["sev"] == "error" else ("warning", "❗")
         comments.append({
             "path": path,
             "line": lineno,

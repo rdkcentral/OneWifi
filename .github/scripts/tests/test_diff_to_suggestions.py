@@ -27,12 +27,12 @@ class Parse(unittest.TestCase):
     def test_multiline_suggestion(self):
         comments = d2s.parse(DIFF)
         self.assertEqual(len(comments), 1)
-        c = comments[0]
-        self.assertEqual(c["path"], "a.c")
-        self.assertEqual(c["start_line"], 5)     # two removed lines -> ranged anchor
-        self.assertEqual(c["line"], 6)
-        self.assertIn("```suggestion", c["body"])
-        self.assertIn("int x = 1;", c["body"])
+        comment = comments[0]
+        self.assertEqual(comment["path"], "a.c")
+        self.assertEqual(comment["start_line"], 5)     # two removed lines -> ranged anchor
+        self.assertEqual(comment["line"], 6)
+        self.assertIn("```suggestion", comment["body"])
+        self.assertIn("int x = 1;", comment["body"])
 
     def test_pure_insertion_dropped(self):
         # A hunk with only + lines would corrupt code on one-click apply -> dropped.

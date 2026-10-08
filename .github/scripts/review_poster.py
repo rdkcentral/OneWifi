@@ -76,9 +76,9 @@ PRIORITY = {"gcc-gate": 0, "clang-tidy": 1, "formatter": 2}
 def run_gh(args, input_text=None):
     """The single seam for every `gh` call, so unit tests monkeypatch one function.
     Returns (returncode, stdout, stderr)."""
-    p = subprocess.run(["gh", *args], input=input_text,
+    proc = subprocess.run(["gh", *args], input=input_text,
                        capture_output=True, text=True)
-    return p.returncode, p.stdout, p.stderr
+    return proc.returncode, proc.stdout, proc.stderr
 
 
 def warn(msg):
@@ -101,23 +101,23 @@ def _has_marker(body, slot):
 def _strip_marker(body, slot):
     """Body with our trailing marker line removed and trailing whitespace stripped —
     the canonical form both candidate bodies and live comment bodies fingerprint on."""
-    b = (body or "").rstrip()
-    if _has_marker(b, slot):
-        b = b.rsplit("\n", 1)[0] if "\n" in b else ""
-    return b.rstrip()
+    text = (body or "").rstrip()
+    if _has_marker(text, slot):
+        text = text.rsplit("\n", 1)[0] if "\n" in text else ""
+    return text.rstrip()
 
 
 def _fp(path, start_line, line, body, slot):
     return (path, start_line or None, line, _strip_marker(body, slot))
 
 
-def _validate_entry(e):
+def _validate_entry(entry):
     """Return a normalized candidate dict, or None if the entry is malformed."""
-    if not isinstance(e, dict):
+    if not isinstance(entry, dict):
         raise ValueError("entry is not an object")
-    path, line, body = e.get("path"), e.get("line"), e.get("body")
-    side = e.get("side", "RIGHT")
-    start_line = e.get("start_line")
+    path, line, body = entry.get("path"), entry.get("line"), entry.get("body")
+    side = entry.get("side", "RIGHT")
+    start_line = entry.get("start_line")
     if not isinstance(path, str) or not isinstance(line, int) or not isinstance(body, str):
         raise ValueError("path/line/body have wrong types")
     if isinstance(line, bool):
@@ -126,10 +126,10 @@ def _validate_entry(e):
         raise ValueError("start_line must be an int")
     if len(body.encode("utf-8")) > MAX_BODY_BYTES:
         raise ValueError("body exceeds size cap")
-    c = {"path": path, "line": line, "side": side, "body": body}
+    cand = {"path": path, "line": line, "side": side, "body": body}
     if start_line is not None:
-        c["start_line"] = start_line
-    return c
+        cand["start_line"] = start_line
+    return cand
 
 
 def load_candidates(paths):
@@ -158,15 +158,15 @@ def load_candidates(paths):
                 raise ValueError(f"too many entries ({len(entries)})")
             if doc.get("status", "ok") != "ok":
                 all_ok = False
-            for e in entries:
+            for entry in entries:
                 try:
-                    c = _validate_entry(e)
+                    cand = _validate_entry(entry)
                 except ValueError as exc:
                     warn(f"dropping malformed candidate in {path}: {exc}")
                     all_ok = False        # incomplete set -> do not stale-delete
                     continue
-                c["source"] = source
-                candidates.append(c)
+                cand["source"] = source
+                candidates.append(cand)
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             warn(f"could not load candidate file {path}: {exc} — source skipped, no deletes")
             all_ok = False
@@ -193,67 +193,67 @@ def fetch_ours(repo, pr, bot_login, slot):
         except json.JSONDecodeError:
             continue
     ours = []
-    for c in all_comments:
-        u = c.get("user") or {}
-        if u.get("login") != bot_login or u.get("type") != "Bot":
+    for comment in all_comments:
+        user = comment.get("user") or {}
+        if user.get("login") != bot_login or user.get("type") != "Bot":
             continue
-        body = c.get("body") or ""
+        body = comment.get("body") or ""
         if _has_marker(body, slot):
-            ours.append(c)
+            ours.append(comment)
         elif slot == "fmt" and body.lstrip().startswith("```suggestion"):
             # backward compat: comments from before the marker existed.
-            ours.append(c)
+            ours.append(comment)
     return all_comments, ours
 
 
 def reconcile(all_comments, ours, candidates, all_ok, slot, cap):
     """Decide what to delete and what to post. Returns
     (to_delete_ids, to_post, n_outdated, overflow, n_shown)."""
-    our_ids = {c["id"] for c in ours}
-    replied_to = {c.get("in_reply_to_id") for c in all_comments if c.get("in_reply_to_id")}
+    our_ids = {comment["id"] for comment in ours}
+    replied_to = {comment.get("in_reply_to_id") for comment in all_comments if comment.get("in_reply_to_id")}
     protected_ids = our_ids & replied_to        # a human replied — never delete
 
-    protected = [c for c in ours if c["id"] in protected_ids]
-    live = [c for c in ours if c["id"] not in protected_ids]
+    protected = [comment for comment in ours if comment["id"] in protected_ids]
+    live = [comment for comment in ours if comment["id"] not in protected_ids]
 
     to_delete = []
     # outdated: GitHub nulls `line` once the anchored line no longer exists.
-    outdated = [c for c in live if c.get("line") is None]
-    to_delete += [c["id"] for c in outdated]
-    live = [c for c in live if c.get("line") is not None]
+    outdated = [comment for comment in live if comment.get("line") is None]
+    to_delete += [comment["id"] for comment in outdated]
+    live = [comment for comment in live if comment.get("line") is not None]
 
-    def fp(c):
-        return _fp(c["path"], c.get("start_line"), c["line"], c.get("body") or "", slot)
+    def fp(comment):
+        return _fp(comment["path"], comment.get("start_line"), comment["line"], comment.get("body") or "", slot)
 
     # duplicates: for one fingerprint with several live copies, keep the oldest
     # (lowest comment id) and delete the rest — the one-time cleanup of the mess
     # already sitting on long-lived PRs.
     groups = defaultdict(list)
-    for c in live:
-        groups[fp(c)].append(c)
+    for comment in live:
+        groups[fp(comment)].append(comment)
     kept = []
     for group in groups.values():
-        group.sort(key=lambda c: c["id"])
+        group.sort(key=lambda comment: comment["id"])
         kept.append(group[0])
-        to_delete += [c["id"] for c in group[1:]]
+        to_delete += [comment["id"] for comment in group[1:]]
 
-    cand_fps = {_fp(c["path"], c.get("start_line"), c["line"], c["body"], slot)
-                for c in candidates}
+    cand_fps = {_fp(cand["path"], cand.get("start_line"), cand["line"], cand["body"], slot)
+                for cand in candidates}
 
     # stale: a kept live comment whose finding is gone from the candidate set.
     # Guarded by all_ok so a skipped/empty producer never deletes everything.
     survivors = []
-    for c in kept:
-        if all_ok and fp(c) not in cand_fps:
-            to_delete.append(c["id"])
+    for comment in kept:
+        if all_ok and fp(comment) not in cand_fps:
+            to_delete.append(comment["id"])
         else:
-            survivors.append(c)
+            survivors.append(comment)
 
     # present = what stays visible (survivors + protected); never re-post those.
-    present_fps = {fp(c) for c in survivors} | {fp(c) for c in protected}
-    to_post = [c for c in candidates
-               if _fp(c["path"], c.get("start_line"), c["line"], c["body"], slot) not in present_fps]
-    to_post.sort(key=lambda c: PRIORITY.get(c["source"], 99))
+    present_fps = {fp(comment) for comment in survivors} | {fp(comment) for comment in protected}
+    to_post = [cand for cand in candidates
+               if _fp(cand["path"], cand.get("start_line"), cand["line"], cand["body"], slot) not in present_fps]
+    to_post.sort(key=lambda cand: PRIORITY.get(cand["source"], 99))
     overflow = max(0, len(to_post) - cap)
     to_post = to_post[:cap]
     return to_delete, to_post, len(outdated), overflow, len(survivors) + len(protected)
@@ -276,13 +276,13 @@ def post_comments(repo, pr, head_sha, to_post, slot):
     rate limit, which stops the run so it is surfaced rather than silently swallowed)."""
     mk = marker(slot)
     posted, skipped = 0, 0
-    for c in to_post:
-        body = c["body"].rstrip() + "\n\n" + mk
-        payload = {"commit_id": head_sha, "path": c["path"], "line": c["line"],
-                   "side": c.get("side", "RIGHT"), "body": body}
-        if c.get("start_line"):
-            payload["start_line"] = c["start_line"]
-            payload["start_side"] = c.get("side", "RIGHT")
+    for cand in to_post:
+        body = cand["body"].rstrip() + "\n\n" + mk
+        payload = {"commit_id": head_sha, "path": cand["path"], "line": cand["line"],
+                   "side": cand.get("side", "RIGHT"), "body": body}
+        if cand.get("start_line"):
+            payload["start_line"] = cand["start_line"]
+            payload["start_side"] = cand.get("side", "RIGHT")
         rc, _out, err = run_gh(["api", "--method", "POST",
                                f"/repos/{repo}/pulls/{pr}/comments", "--input", "-"],
                               input_text=json.dumps(payload))
@@ -296,15 +296,15 @@ def post_comments(repo, pr, head_sha, to_post, slot):
         # so the run surfaces it instead of silently under-posting.
         if "HTTP 422" in err:
             if re.search(r"part of the diff|line must be part of", err, re.I):
-                warn(f"skipped {c['path']}:{c['line']} — line no longer in the PR diff "
+                warn(f"skipped {cand['path']}:{cand['line']} — line no longer in the PR diff "
                      "(rebase/merge race); a fresh run supersedes.")
             else:
-                warn(f"skipped {c['path']}:{c['line']} — 422 not an out-of-diff race; "
+                warn(f"skipped {cand['path']}:{cand['line']} — 422 not an out-of-diff race; "
                      "possible invalid payload or API bug.")
             print(err)
             skipped += 1
             continue
-        print(f"::error::Failed to post review comment on {c['path']}:{c['line']}:\n{err}",
+        print(f"::error::Failed to post review comment on {cand['path']}:{cand['line']}:\n{err}",
               file=sys.stderr)
         print(f"posted {posted} comment(s) before the failure; {skipped} skipped.")
         return 1
