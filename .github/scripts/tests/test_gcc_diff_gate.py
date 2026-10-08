@@ -2,12 +2,16 @@
 # Copyright 2026 RDK Management — Apache-2.0 (see gcc_diff_gate.py header).
 """Unit tests for gcc_diff_gate.py's Commit-5 inline helpers: build_inline
 (gate/advisory split, column dedupe, dropped count) and write_inline (envelope
-shape, skipped vs ok, no-op when INLINE_JSON is unset)."""
+shape, skipped vs ok, no-op when INLINE_JSON is unset) and main()'s envelope status."""
+import contextlib
+import io
 import json
 import os
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import gcc_diff_gate as gcc_gate  # noqa: E402
@@ -74,6 +78,47 @@ class WriteInline(unittest.TestCase):
             doc = json.load(fh)
         self.assertEqual(doc["status"], "skipped")
         self.assertEqual(doc["comments"], [])
+
+
+class MainStatus(unittest.TestCase):
+    """main() marks the envelope 'partial' when a changed file failed to recompile."""
+
+    def _run_main(self, results):
+        fd, db_path = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        self.addCleanup(os.unlink, db_path)
+        with open(db_path, "w") as fh:
+            fh.write("[]")
+        fd, out_path = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        self.addCleanup(os.unlink, out_path)
+
+        def fake_run(cmd, **_kwargs):
+            return results[cmd[0]]
+
+        with mock.patch.multiple(gcc_gate, BASE="base", DB=db_path, INLINE_JSON=out_path,
+                                 ADVISORY_TAGS={"[-Wunused-value]"},
+                                 effective_base=lambda: "base",
+                                 changed_files=lambda _base: sorted(results),
+                                 changed_lines=lambda _base, _name: [(1, 10)],
+                                 db_args=lambda _db, name: ("/w", [name])), \
+             mock.patch.object(gcc_gate.subprocess, "run", fake_run), \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            gcc_gate.main()
+        with open(out_path) as fh:
+            return json.load(fh)
+
+    def _ok(self, name):
+        return SimpleNamespace(returncode=0, stderr=(
+            f"/w/OneWifi/source/{name}:3:5: warning: value computed is not used [-Wunused-value]"))
+
+    def test_failed_recompile_is_partial_and_keeps_findings(self):
+        self.assertEqual(self._run_main({"ok.c": self._ok("ok.c")})["status"], "ok")
+        doc = self._run_main({"ok.c": self._ok("ok.c"),
+                              "bad.c": SimpleNamespace(returncode=1, stderr=(
+                                  "gcc: error: unrecognized command-line option '-Wfoo'"))})
+        self.assertEqual(doc["status"], "partial")
+        self.assertEqual(len(doc["comments"]), 1)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,14 @@ class Parse(unittest.TestCase):
         self.assertEqual(len(comments), 1)
         self.assertEqual(dropped, 0)
 
+    def test_strips_warnings_as_errors_suffix(self):
+        log = (ABS + "source/foo.c:3:7: error: an assignment within an 'if' condition "
+               "is bug-prone [bugprone-assignment-in-if-condition,-warnings-as-errors]\n")
+        comments, dropped = tidy_conv.parse(log)
+        self.assertEqual(dropped, 0)
+        self.assertIn("`bugprone-assignment-in-if-condition` (error)", comments[0]["body"])
+        self.assertNotIn("warnings-as-errors", comments[0]["body"])
+
     def test_drops_unparsable(self):
         comments, dropped = tidy_conv.parse("not a clang-tidy line\n\n")
         self.assertEqual(comments, [])
@@ -72,6 +80,30 @@ class MainIO(unittest.TestCase):
         self.assertEqual(doc["status"], "ok")
         self.assertEqual(len(doc["comments"]), 1)
         self.assertIn("(error)", doc["comments"][0]["body"])
+
+    def _log(self):
+        logfd, log_path = tempfile.mkstemp(suffix=".log")
+        os.write(logfd, (ABS + "source/foo.c:1:1: warning: w [bugprone-a]\n").encode())
+        os.close(logfd)
+        self.addCleanup(os.unlink, log_path)
+        return log_path
+
+    def _status(self, *extra):
+        out = self._tmp()
+        self.addCleanup(os.unlink, out)
+        self.assertEqual(tidy_conv.main(["prog", self._log(), out, *extra]), 0)
+        with open(out) as fh:
+            doc = json.load(fh)
+        self.assertEqual(len(doc["comments"]), 1)       # findings kept either way
+        return doc["status"]
+
+    def test_failed_files_list_sets_status(self):
+        failed = self._tmp()
+        self.addCleanup(os.unlink, failed)
+        self.assertEqual(self._status(failed), "ok")          # empty list: nothing failed
+        with open(failed, "w") as fh:
+            fh.write("source/bar.c: clang-tidy exit 139\n")
+        self.assertEqual(self._status(failed), "partial")
 
 
 if __name__ == "__main__":

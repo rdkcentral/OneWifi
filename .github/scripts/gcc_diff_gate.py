@@ -88,7 +88,8 @@ def write_inline(status, comments, dropped=0):
     """Write the review_poster.py candidate envelope to INLINE_JSON (no-op if unset).
 
     status 'skipped' (no DB/BASE, or a mechanism error) writes an empty comment
-    list, which the poster reads as "producer failed" and so disables stale-comment
+    list and 'partial' (a changed file failed to recompile) keeps the findings it
+    has; the poster reads either as "incomplete" and so disables stale-comment
     deletion for the slot — never as "all clean, delete everything" (fail-open).
     A never-raising best-effort write: a failure here must not red the gate.
     """
@@ -315,8 +316,10 @@ def main():
 
     # Inline-review candidates (Commit 5). Written on every non-skip path — including
     # the clean case (empty list) so the poster removes any now-stale gcc comments.
+    # 'partial' when a file failed to recompile: its findings are unknown, so the
+    # poster must not delete existing comments as if they were fixed.
     inline, inline_dropped = build_inline(gated, advis)
-    write_inline("ok", inline, inline_dropped)
+    write_inline("partial" if failed else "ok", inline, inline_dropped)
 
     # GitHub annotations (top-of-check box).
     for l in gated[:10]:

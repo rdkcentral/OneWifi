@@ -335,6 +335,16 @@ jobs:
         [ -n "$EXTRA_WAE" ]    && extra+=(--warnings-as-errors="$EXTRA_WAE")
         [ -n "$EXTRA_CHECKS" ] && extra+=(--checks="$EXTRA_CHECKS")
         : > tidy.log
+        # Changed files clang-tidy could not fully analyze: a crash or missing binary
+        # (exit >= 2), or a compile error in a file the build compiled. A file outside
+        # the compile DB is not built for this platform; clang-tidy borrows flags from
+        # a nearby entry and most of those fail to compile, which is expected there.
+        tfail_list="$RUNNER_TEMP/tidy-failed.txt"
+        : > "$tfail_list"
+        db_files="$RUNNER_TEMP/tidy-db-files.txt"
+        dbok=true
+        python3 -c 'import json, os; print("\n".join(os.path.realpath(os.path.join(e["directory"], e["file"])) for e in json.load(open("compile_commands.json"))))' \
+          > "$db_files" || dbok=false   # unreadable DB -> treat every file as built (stricter)
         for f in $CHANGED; do
           [ -f "$f" ] || continue
           # New-side line RANGES this PR changed in *this* file (zero-context hunks), one
@@ -346,12 +356,22 @@ jobs:
             | awk '/^@@ /{c=$3;sub(/^\+/,"",c);n=1;if(c~/,/){split(c,a,",");c=a[1];n=a[2]}
                    if(n>0)print c":"c+n-1}' > "$ranges"
           [ -s "$ranges" ] || continue
-          # || true: a no-match grep (exit 1) or a clang-tidy hiccup must not abort the loop.
+          # Exit 1 = a WarningsAsErrors finding OR a compile error; >= 2 = crash / not found.
+          out="$RUNNER_TEMP/tidy-out.txt"
+          rc=0
+          clang-tidy-18 -p . "${extra[@]}" --quiet "$f" > "$out" 2>/dev/null || rc=$?
+          if [ "$rc" -ge 2 ]; then
+            echo "$f: clang-tidy exit $rc" >> "$tfail_list"
+          elif grep -q 'clang-diagnostic-error' "$out" \
+               && { [ "$dbok" = false ] || grep -qxF "$(realpath "$f")" "$db_files"; }; then
+            grep -m1 'clang-diagnostic-error' "$out" \
+              | sed -E 's#^[^ ]*/OneWifi/+##; s# \[clang-diagnostic-error\]$##' >> "$tfail_list"
+          fi
+          # || true: a no-match grep (exit 1) must not abort the loop.
           # clang-tidy runs one file at a time -> every finding is this file's, so keep only the
           # ones whose LINE the PR changed. Filter on the line number alone: matching the
           # sed-normalized display path against git-diff paths is fragile (silently drops all).
-          clang-tidy-18 -p . "${extra[@]}" --quiet "$f" 2>/dev/null \
-            | grep -E ': (warning|error):' | grep -v clang-diagnostic \
+          grep -E ': (warning|error):' "$out" | grep -v clang-diagnostic \
             | awk -F: 'NR==FNR{lo[NR]=$1;hi[NR]=$2;r=NR;next}
                        {l=$2+0; a=1; b=r                  # ranges are sorted: binary search
                         while(a<=b){m=int((a+b)/2); if(l<lo[m])b=m-1; else if(l>hi[m])a=m+1; else {print; next}}}' \
@@ -360,6 +380,10 @@ jobs:
         # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`.
         gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
         advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
+        tfail=$(sort -u "$tfail_list")
+        if [ -n "$tfail" ]; then
+          echo "::warning::clang-tidy could not fully analyze $(wc -l <<< "$tfail") changed file(s); coverage incomplete (see the summary)."
+        fi
         if [ -n "$gated" ]; then
           head -10 <<< "$gated" | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::error::$l"; done
@@ -370,7 +394,7 @@ jobs:
         fi
         {
           if   [ -z "$CHANGED" ];     then echo "#### 🔎 clang-tidy: no changed .c/.cpp to scan"
-          elif [ -z "$gated$advis" ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
+          elif [ -z "$gated$advis$tfail" ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
           else
             if [ -n "$gated" ]; then
               echo "#### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
@@ -381,13 +405,17 @@ jobs:
               echo "#### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
               echo '```'; head -100 <<< "$advis"; echo '```'
             fi
+            if [ -n "$tfail" ]; then
+              echo "#### ⚠️ clang-tidy: $(wc -l <<< "$tfail") file(s) not fully analyzed — coverage incomplete"
+              echo '```'; head -100 <<< "$tfail"; echo '```'
+            fi
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
         # Inline-review candidates (Commit 5): parse tidy.log (already changed-lines
         # scoped) into per-finding comments for the stage-2 'inline' job. Written
         # even when the gate fires below — findings post regardless of pass/fail.
         # Never reds the step (|| true): a parse hiccup must not fail the build.
-        python3 .github/scripts/tidy_to_inline.py tidy.log ci-out/inline-tidy.json || true
+        python3 .github/scripts/tidy_to_inline.py tidy.log ci-out/inline-tidy.json "$tfail_list" || true
         # Gate AFTER the summary + artifact are written, on promoted checks only.
         if [ -n "$gated" ]; then
           echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed lines" >&2

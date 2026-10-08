@@ -32,10 +32,12 @@ candidates against each other, so a duplicate here would post a duplicate commen
 A line that does not parse is counted 'dropped' (surfaced in the poster summary),
 never silently lost.
 
-Usage:  tidy_to_inline.py <tidy.log> <out.json>
+Usage:  tidy_to_inline.py <tidy.log> <out.json> [<failed-files.txt>]
 Writes a `{"source":"clang-tidy","status":"ok","dropped":N,"comments":[...]}`
-envelope. A missing/unreadable log writes status 'skipped' (empty comments) so the
-poster disables stale deletion for the slot instead of wiping live comments.
+envelope. A missing/unreadable log writes status 'skipped' (empty comments), and a
+non-empty (or unreadable) failed-files list, one line per changed file clang-tidy
+could not fully analyze, writes status 'partial'. Either way the poster disables
+stale deletion for the slot instead of deleting comments as if they were fixed.
 """
 import json
 import re
@@ -64,7 +66,8 @@ def parse(text):
             continue
         path = PATH_STRIP_RE.sub("", hit["path"])
         lineno = int(hit["line"])
-        check = hit["check"]
+        # A WarningsAsErrors-promoted check prints as "[name,-warnings-as-errors]".
+        check = re.sub(r",-warnings-as-errors$", "", hit["check"])
         msg = hit["msg"]
         key = (path, lineno, check, msg)
         if key in seen:
@@ -81,10 +84,18 @@ def parse(text):
 
 
 def main(argv):
-    if len(argv) != 3:
-        print(f"usage: {argv[0]} <tidy.log> <out.json>", file=sys.stderr)
+    if len(argv) not in (3, 4):
+        print(f"usage: {argv[0]} <tidy.log> <out.json> [<failed-files.txt>]", file=sys.stderr)
         return 2
     log_path, out_path = argv[1], argv[2]
+    status = "ok"
+    if len(argv) == 4:
+        try:
+            with open(argv[3]) as fh:
+                if fh.read().strip():
+                    status = "partial"
+        except OSError:
+            status = "partial"
     try:
         with open(log_path) as fh:
             text = fh.read()
@@ -96,7 +107,7 @@ def main(argv):
             json.dump(payload, fh)
         return 0
     comments, dropped = parse(text)
-    payload = {"source": "clang-tidy", "status": "ok", "dropped": dropped, "comments": comments}
+    payload = {"source": "clang-tidy", "status": status, "dropped": dropped, "comments": comments}
     with open(out_path, "w") as fh:
         json.dump(payload, fh)
     return 0
