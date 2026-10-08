@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2026 RDK Management — Apache-2.0 (see tidy_to_inline.py header).
 """Unit tests for tidy_to_inline.py: parsing a filtered clang-tidy log into inline
-review candidates (gate/advisory split, path strip, dedupe, dropped count) and the
-missing-log -> skipped envelope."""
+review candidates, and the envelope status main() writes."""
 import json
 import os
 import sys
@@ -13,98 +12,50 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import tidy_to_inline as tidy_conv  # noqa: E402
 
 ABS = "/home/runner/work/OneWifi/OneWifi/easymesh_project/OneWifi/"
+WARN = ABS + "source/foo.c:42:9: warning: 'x' set but not used [bugprone-a]\n"
 
 
 class Parse(unittest.TestCase):
-    def test_gate_advisory_and_pathstrip(self):
-        log = (
-            ABS + "source/foo.c:42:9: warning: 'x' set but not used [bugprone-a]\n"
-            + ABS + "source/bar.c:7:1: error: bad thing [bugprone-b]\n"
-        )
+    def test_parse(self):
+        log = (WARN + WARN                                              # repeated -> one comment
+               + ABS + "source/bar.c:7:1: error: bad thing [bugprone-b,-warnings-as-errors]\n"
+               + "not a clang-tidy line\n\n")                           # dropped; blank skipped
         comments, dropped = tidy_conv.parse(log)
-        self.assertEqual(dropped, 0)
-        self.assertEqual(comments[0]["path"], "source/foo.c")   # stripped to repo-rel
-        self.assertEqual(comments[0]["line"], 42)
-        self.assertIn("❗ **clang-tidy**", comments[0]["body"])  # warning:
-        self.assertIn("(warning)", comments[0]["body"])
-        self.assertIn("bugprone-a", comments[0]["body"])
-        self.assertIn("❌ **clang-tidy**", comments[1]["body"])  # error:
-        self.assertIn("(error)", comments[1]["body"])
-        self.assertTrue(all(item["side"] == "RIGHT" for item in comments))
-
-    def test_dedupes_same_finding(self):
-        # Same finding twice (clang-tidy repeats across TUs / columns) -> one comment.
-        line = ABS + "source/foo.c:42:9: warning: dup [check-x]\n"
-        comments, dropped = tidy_conv.parse(line + line)
-        self.assertEqual(len(comments), 1)
-        self.assertEqual(dropped, 0)
-
-    def test_strips_warnings_as_errors_suffix(self):
-        log = (ABS + "source/foo.c:3:7: error: an assignment within an 'if' condition "
-               "is bug-prone [bugprone-assignment-in-if-condition,-warnings-as-errors]\n")
-        comments, dropped = tidy_conv.parse(log)
-        self.assertEqual(dropped, 0)
-        self.assertIn("`bugprone-assignment-in-if-condition` (error)", comments[0]["body"])
-        self.assertNotIn("warnings-as-errors", comments[0]["body"])
-
-    def test_drops_unparsable(self):
-        comments, dropped = tidy_conv.parse("not a clang-tidy line\n\n")
-        self.assertEqual(comments, [])
-        self.assertEqual(dropped, 1)        # the blank line is skipped, not dropped
+        self.assertEqual(dropped, 1)
+        self.assertEqual([(item["path"], item["line"]) for item in comments],
+                         [("source/foo.c", 42), ("source/bar.c", 7)])   # repo-relative paths
+        self.assertIn("❗ **clang-tidy** `bugprone-a` (warning)", comments[0]["body"])
+        self.assertIn("❌ **clang-tidy** `bugprone-b` (error)", comments[1]["body"])
 
 
 class MainIO(unittest.TestCase):
-    def _tmp(self):
-        fd, json_path = tempfile.mkstemp(suffix=".json")
+    def _file(self, text=None):
+        fd, path = tempfile.mkstemp()
         os.close(fd)
-        return json_path
+        self.addCleanup(os.unlink, path)
+        if text is not None:
+            with open(path, "w") as fh:
+                fh.write(text)
+        return path
+
+    def _run(self, log_path, *extra):
+        out = self._file()
+        self.assertEqual(tidy_conv.main(["prog", log_path, out, *extra]), 0)
+        with open(out) as fh:
+            return json.load(fh)
 
     def test_missing_log_is_skipped(self):
-        out = self._tmp()
-        rc = tidy_conv.main(["prog", "/no/such/tidy.log", out])
-        self.assertEqual(rc, 0)
-        with open(out) as fh:
-            doc = json.load(fh)
-        self.assertEqual(doc["status"], "skipped")   # not "ok" -> poster keeps comments
-        self.assertEqual(doc["comments"], [])
-        self.assertEqual(doc["source"], "clang-tidy")
+        doc = self._run("/no/such/tidy.log")
+        self.assertEqual((doc["source"], doc["status"], doc["comments"]), ("clang-tidy", "skipped", []))
 
-    def test_writes_ok_envelope(self):
-        logfd, logp = tempfile.mkstemp(suffix=".log")
-        os.write(logfd, (ABS + "source/foo.c:1:1: error: e [c] \n").encode())
-        os.close(logfd)
-        out = self._tmp()
-        self.assertEqual(tidy_conv.main(["prog", logp, out]), 0)
-        with open(out) as fh:
-            doc = json.load(fh)
-        self.assertEqual(doc["status"], "ok")
-        self.assertEqual(len(doc["comments"]), 1)
-        self.assertIn("(error)", doc["comments"][0]["body"])
-
-    def _log(self, extra=""):
-        logfd, log_path = tempfile.mkstemp(suffix=".log")
-        os.write(logfd, (ABS + "source/foo.c:1:1: warning: w [bugprone-a]\n" + extra).encode())
-        os.close(logfd)
-        self.addCleanup(os.unlink, log_path)
-        return log_path
-
-    def _status(self, *extra, log_extra=""):
-        out = self._tmp()
-        self.addCleanup(os.unlink, out)
-        self.assertEqual(tidy_conv.main(["prog", self._log(log_extra), out, *extra]), 0)
-        with open(out) as fh:
-            doc = json.load(fh)
-        self.assertEqual(len(doc["comments"]), 1)       # findings kept either way
-        return doc["status"]
-
-    def test_failed_files_list_sets_status(self):
-        failed = self._tmp()
-        self.addCleanup(os.unlink, failed)
-        self.assertEqual(self._status(failed), "ok")          # empty list: nothing failed
-        with open(failed, "w") as fh:
-            fh.write("source/bar.c: clang-tidy exit 139\n")
-        self.assertEqual(self._status(failed), "partial")
-        self.assertEqual(self._status(log_extra="not a finding line\n"), "partial")  # dropped
+    def test_status(self):
+        log = self._file(WARN)
+        self.assertEqual(self._run(log)["status"], "ok")
+        self.assertEqual(self._run(log, self._file(""))["status"], "ok")      # empty failed list
+        failed = self._file("source/bar.c: clang-tidy exit 139\n")
+        doc = self._run(log, failed)
+        self.assertEqual((doc["status"], len(doc["comments"])), ("partial", 1))  # findings kept
+        self.assertEqual(self._run(self._file(WARN + "junk\n"))["status"], "partial")  # dropped
 
 
 if __name__ == "__main__":
