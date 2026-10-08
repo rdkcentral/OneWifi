@@ -396,6 +396,7 @@ jobs:
         gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
         advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
         tfail=$(sort -u "$tfail_list")
+        nbfail=$(wc -l < "$bfail_list")   # best-effort files that did not compile
         if [ -n "$tfail" ]; then
           echo "::warning::clang-tidy coverage incomplete ($(wc -l <<< "$tfail") item(s)); see the summary."
         fi
@@ -409,7 +410,10 @@ jobs:
         fi
         {
           if   [ -z "$CHANGED$tfail" ]; then echo "#### 🔎 clang-tidy: no changed .c/.cpp to scan"
-          elif [ -z "$gated$advis$tfail" ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
+          elif [ -z "$gated$advis$tfail" ] && [ "$nbfail" -eq 0 ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
+          elif [ -z "$gated$advis$tfail" ]; then
+            # Nothing found, but not every file compiled: not "clean".
+            echo "#### 🔎 clang-tidy: no findings on changed lines, best-effort only ($nbfail file(s) did not compile)"
           else
             if [ -n "$gated" ]; then
               echo "#### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
@@ -426,8 +430,8 @@ jobs:
             fi
           fi
           if [ "$besteffort" -gt 0 ]; then
-            nbfail=$(wc -l < "$bfail_list")
-            note=; [ "$nbfail" -gt 0 ] && note=" ($nbfail did not compile)"
+            # The count goes here only when the heading above does not already carry it.
+            note=; [ "$nbfail" -gt 0 ] && [ -n "$gated$advis$tfail" ] && note=" ($nbfail did not compile)"
             echo; echo "ℹ️ $besteffort changed file(s) are only covered by a best-effort clang-tidy run$note."
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
