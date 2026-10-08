@@ -66,10 +66,14 @@ permissions:
 # keys on the stage-1 run it re-posts, so two dispatches of one run never race.
 # The posting jobs also take a job-level group from the resolved head (one per
 # comment slot), so a dispatch and the automatic run for the same PR serialize.
+# Never cancel in progress: review_poster.py and the sticky comment delete before
+# they post, so a cancelled run can leave comments missing, and the run that
+# cancelled it may be stale (an old run re-run or dispatched) and post nothing. A
+# newer queued run still replaces an older queued one (one pending run per group).
 concurrency:
   group: >-
     pr-comments-${{ github.event.workflow_run.name || 'dispatch' }}-${{ github.event.workflow_run.head_repository.full_name || github.repository }}-${{ github.event.workflow_run.head_branch || inputs.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   # Cap on inline review comments per run. Large reviews can trip GitHub rate
@@ -164,7 +168,7 @@ jobs:
     needs: resolve
     concurrency:
       group: pr-comments-format-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     # Only the clang-format trigger, only PRs, skip cancelled runs (they can leave
     # a stale artifact yet fire 'completed'). Allow failure: if stage 1 failed,
     # suggestions are still useful. Name-gating means the build/tidy jobs don't
@@ -237,7 +241,7 @@ jobs:
     needs: resolve
     concurrency:
       group: pr-comments-summary-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     if: >-
       needs.resolve.outputs.run_name == 'Build Check'
       && needs.resolve.outputs.event == 'pull_request'
@@ -387,7 +391,7 @@ jobs:
     needs: resolve
     concurrency:
       group: pr-comments-inline-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     if: >-
       needs.resolve.outputs.run_name == 'Build Check'
       && needs.resolve.outputs.event == 'pull_request'

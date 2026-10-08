@@ -282,7 +282,9 @@ red" — a plumbing hiccup should not falsely block a PR.
 - **Fork PRs / superseded runs.** `workflow_run.pull_requests` is empty for fork PRs, so stage 2
   keys concurrency and the trust bind on `head_repository.full_name` + `head_branch` instead. And
   if the PR head advances past what stage 1 measured, `pr-context`'s `fresh` check is false and
-  stage 2 skips posting, so a stale run never overwrites fresh content.
+  stage 2 skips posting, so a stale run never overwrites fresh content. Stage-2 runs queue rather
+  than cancel each other: posting deletes before it posts, so a cancelled run could leave comments
+  missing.
 - **Expired stage-1 artifact.** Stage-1 artifacts retain for 1 day. A manual `workflow_dispatch`
   re-post (§4) more than a day after the original run finds the artifact already gone; `pr-context`
   surfaces a `::notice::` naming the stage-1 workflow to re-run, and posts nothing that run.

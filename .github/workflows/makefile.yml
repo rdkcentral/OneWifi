@@ -342,9 +342,12 @@ jobs:
         # Changed files clang-tidy could not fully analyze: a crash or missing binary
         # (exit >= 2), or a compile error in a file the build compiled. A file outside
         # the compile DB is not built for this platform; clang-tidy borrows flags from
-        # a nearby entry and most of those fail to compile, which is expected there.
+        # a nearby entry and most of those fail to compile, which is expected there:
+        # counted in the best-effort line, not listed. Either kind makes the inline set
+        # partial, since a compile error can hide a finding that is still there.
         tfail_list="$RUNNER_TEMP/tidy-failed.txt"
-        : > "$tfail_list"
+        bfail_list="$RUNNER_TEMP/tidy-besteffort-failed.txt"
+        : > "$tfail_list"; : > "$bfail_list"
         if [ "$diff_failed" = true ]; then
           echo "git diff against the PR base failed: changed files unknown, nothing analyzed" >> "$tfail_list"
         fi
@@ -374,9 +377,10 @@ jobs:
           clang-tidy-18 -p . "${extra[@]}" --quiet "$f" > "$out" 2>/dev/null || rc=$?
           if [ "$rc" -ge 2 ]; then
             echo "$f: clang-tidy exit $rc" >> "$tfail_list"
-          elif [ "$indb" = true ] && grep -q 'clang-diagnostic-error' "$out"; then
+          elif grep -q 'clang-diagnostic-error' "$out"; then
+            dest="$tfail_list"; [ "$indb" = true ] || dest="$bfail_list"
             grep -m1 'clang-diagnostic-error' "$out" \
-              | sed -E 's#^[^ ]*/OneWifi/+##; s# \[clang-diagnostic-error\]$##' >> "$tfail_list"
+              | sed -E 's#^[^ ]*/OneWifi/+##; s# \[clang-diagnostic-error\]$##' >> "$dest"
           fi
           # || true: a no-match grep (exit 1) must not abort the loop.
           # clang-tidy runs one file at a time -> every finding is this file's, so keep only the
@@ -422,13 +426,16 @@ jobs:
             fi
           fi
           if [ "$besteffort" -gt 0 ]; then
-            echo; echo "ℹ️ $besteffort changed file(s) are only covered by a best-effort clang-tidy run."
+            nbfail=$(wc -l < "$bfail_list")
+            note=; [ "$nbfail" -gt 0 ] && note=" ($nbfail did not compile)"
+            echo; echo "ℹ️ $besteffort changed file(s) are only covered by a best-effort clang-tidy run$note."
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
         # Inline-review candidates (Commit 5): parse tidy.log (already changed-lines
         # scoped) into per-finding comments for the stage-2 'inline' job. Written
         # even when the gate fires below — findings post regardless of pass/fail.
         # Never reds the step (|| true): a parse hiccup must not fail the build.
+        cat "$bfail_list" >> "$tfail_list"
         python3 .github/scripts/tidy_to_inline.py tidy.log ci-out/inline-tidy.json "$tfail_list" || true
         # Gate AFTER the summary + artifact are written, on promoted checks only.
         if [ -n "$gated" ]; then
