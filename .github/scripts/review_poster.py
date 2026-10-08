@@ -49,11 +49,11 @@ Inputs (env):
                     posted body carries a hidden marker "<!-- onewifi-ci:review:SLOT -->"
                     so the two slots never reconcile against each other.
 argv: one or more candidate JSON files, each:
-  {"source": "...", "status": "ok"|"skipped", "dropped": N,
+  {"source": "...", "status": "ok"|"partial"|"skipped", "dropped": N,
    "comments": [ {path, line, [start_line], side, body}, ... ]}
 
 Fail-open contract: any load/validate failure, or a source reporting
-status != "ok", disables the "stale" deletion for the slot (see reconcile) — an
+status != "ok" ("partial" = some changed files were not analyzed), disables the "stale" deletion for the slot (see reconcile) — an
 empty or unreadable candidate file must NEVER be read as "everything is clean"
 and wipe the live comments. Posting failures never red the PR (suggestions are
 advisory); a POST 404 (usually rate limiting) is the one fatal case.
@@ -68,8 +68,9 @@ from collections import defaultdict
 MAX_BODY_BYTES = 4096
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_ENTRIES = 1_000_000
-# Lower number = posted first when the cap bites. gcc-gate findings are the
-# merge-blocking ones, clang-tidy is advisory, formatter is cosmetic.
+# Lower number = posted first when the cap bites. The cap and this order apply per
+# invocation: the inline slot (gcc + clang-tidy) and the fmt slot (formatter) are
+# separate runs, each with its own MAX_COMMENTS.
 PRIORITY = {"gcc-gate": 0, "clang-tidy": 1, "formatter": 2}
 
 
@@ -149,6 +150,8 @@ def load_candidates(paths):
                 if os.fstat(fh.fileno()).st_size > MAX_FILE_BYTES:
                     raise ValueError(f"exceeds {MAX_FILE_BYTES} bytes")
                 doc = json.load(fh)
+            if not isinstance(doc, dict):
+                raise ValueError("top level is not a JSON object")
             source = str(doc.get("source", "unknown"))
             entries = doc.get("comments", [])
             total_dropped += int(doc.get("dropped", 0) or 0)
@@ -167,7 +170,7 @@ def load_candidates(paths):
                     continue
                 cand["source"] = source
                 candidates.append(cand)
-        except (OSError, ValueError, json.JSONDecodeError) as exc:
+        except (OSError, ValueError, TypeError) as exc:  # JSONDecodeError is a ValueError
             warn(f"could not load candidate file {path}: {exc} — source skipped, no deletes")
             all_ok = False
     return candidates, all_ok, total_dropped

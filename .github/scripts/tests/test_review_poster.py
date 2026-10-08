@@ -113,6 +113,12 @@ class LoadCandidates(unittest.TestCase):
         _cands, all_ok, _d = rp.load_candidates([cand_file])
         self.assertFalse(all_ok)
 
+    def test_bad_document_shapes_fail_open(self):
+        # Untrusted artifact: a wrong shape must warn and disable deletes, never raise.
+        for doc in ([], "text", None, {"status": "ok", "dropped": [1], "comments": []}):
+            _cands, all_ok, _d = rp.load_candidates([self._write(doc)])
+            self.assertFalse(all_ok)
+
     def test_missing_file_fails_open(self):
         _cands, all_ok, _d = rp.load_candidates(["/no/such/file.json"])
         self.assertFalse(all_ok)
