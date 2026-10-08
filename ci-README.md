@@ -256,16 +256,18 @@ red" — a plumbing hiccup should not falsely block a PR.
   range, body) and per run: skips findings already posted, deletes its own comments that GitHub
   marked outdated (`line: null`) or whose finding is gone, collapses duplicate copies to the oldest,
   and never deletes a comment someone replied to. If any producer reports `status: skipped` (e.g. no
-  compile DB), that run deletes no "finding gone" comments, so a fail-open run never reads as fixed.
+  compile DB) or `partial` (a changed file failed to recompile, or clang-tidy could not fully analyze
+  it), that run deletes no "finding gone" comments, so an incomplete run never reads as fixed.
   Comments are posted individually, not as one review: a submitted review can't be deleted later,
   and would leave an empty shell behind.
 - **Out-of-diff `422`.** If the PR is rebased or squash-merged between stage 1 and stage 2, a
   suggestion or finding can target a line no longer in the diff, and GitHub rejects that one comment
   with `422`. Only that comment is skipped (a `::warning::` distinguishing the benign rebase/merge
   race from a bad payload); the rest of the run still posts. See `review_poster.py`.
-- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what a
-  run posts (gcc-gate first, then clang-tidy, then formatter), and the overflow is left for the next
-  run. A `404` on the POST is usually that rate limit, and stays fatal: the signal to lower the cap.
+- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what
+  each `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run,
+  not per PR: the inline job (gcc-gate first, then clang-tidy) and the clang-format job each post up
+  to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to lower the cap.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).

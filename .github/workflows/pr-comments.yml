@@ -62,10 +62,11 @@ permissions:
 # Separate group per triggering workflow + head, so a Build-Check-triggered run
 # and a clang-format-triggered run for the same branch never cancel each other.
 # workflow_run.pull_requests is empty for fork PRs (actions/runner#3444), so key
-# on head_repository.full_name + head_branch, which always exists.
+# on head_repository.full_name + head_branch, which always exists. A manual dispatch
+# keys on the stage-1 run it re-posts, so two dispatches of one run never race.
 concurrency:
   group: >-
-    pr-comments-${{ github.event.workflow_run.name || 'dispatch' }}-${{ github.event.workflow_run.head_repository.full_name || github.run_id }}-${{ github.event.workflow_run.head_branch || inputs.run_id }}
+    pr-comments-${{ github.event.workflow_run.name || 'dispatch' }}-${{ github.event.workflow_run.head_repository.full_name || github.repository }}-${{ github.event.workflow_run.head_branch || inputs.run_id }}
   cancel-in-progress: true
 
 env:
@@ -315,7 +316,7 @@ jobs:
                 n_inline=$((n_inline + c))
               done
               if [ "$n_inline" -gt 0 ]; then
-                echo "📌 ${n_inline} finding(s) also posted inline on the changed lines."
+                echo "📌 ${n_inline} finding(s) qualify for inline review comments on the changed lines (at most ${MAX_COMMENTS} posted per run)."
                 echo
               fi
               # tidy-summary.md carries its own #### clang-tidy heading — no extra header.

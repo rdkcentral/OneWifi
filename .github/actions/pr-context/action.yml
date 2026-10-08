@@ -73,18 +73,33 @@ runs:
         EXPECTED_REPO: ${{ inputs.expected-repo }}
         EXPECTED_BRANCH: ${{ inputs.expected-branch }}
       run: |
-        # No `-e`: this script drives its own control flow and fails CLOSED with
-        # explicit exits. Pipefail so a failed producer in a pipe is not masked.
+        # The runner adds `-e` (bash -eo pipefail): every expected failure below is a
+        # tested command, and the script fails CLOSED with explicit exits.
         set -uo pipefail
         found=false; fresh=false; pr_number=; head_sha=
 
         if [ "$DL_OUTCOME" != "success" ]; then
-          # Almost always benign: the normal workflow_run path posts within the
-          # minute, so the artifact is fresh. The one real case is a manual
-          # re-dispatch >1 day later, when retention-days:1 has already deleted
-          # it — surface that loudly (a ::notice::) instead of skipping silently.
-          wf="$(gh api "/repos/$REPO/actions/runs/$RUN_ID" --jq '.name' 2>/dev/null || echo 'the stage-1 workflow')"
-          echo "::notice::Stage-1 artifact '$ART_DIR' is already deleted (retention-days: 1). Re-run \"$wf\" on this PR to regenerate it, then re-post. Nothing posted this run."
+          # Ask the run why: the artifact may have expired (retention-days: 1, e.g. a
+          # manual re-dispatch a day later), never been uploaded (that leg failed
+          # first), or the download itself failed. Only the first is fixed by a re-run.
+          wf='the stage-1 workflow'; age=0
+          if run_info="$(gh api "/repos/$REPO/actions/runs/$RUN_ID" --jq '[.name, .updated_at] | @tsv' 2>/dev/null)"; then
+            wf="${run_info%%$'\t'*}"
+            if updated="$(date -d "${run_info#*$'\t'}" +%s 2>/dev/null)"; then age=$(( $(date +%s) - updated )); fi
+          fi
+          if ! state="$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts?name=$ART_DIR" \
+                 --jq 'if (.artifacts | length) == 0 then "missing" elif all(.artifacts[]; .expired) then "expired" else "present" end' 2>/dev/null)"; then
+            state=unknown
+          fi
+          # GitHub stops listing expired artifacts after a while: an empty list on a run
+          # older than the retention period means expired, not "never uploaded".
+          if [ "$state" = missing ] && [ "$age" -gt 86400 ]; then state=expired; fi
+          case "$state" in
+            expired) echo "::notice::Stage-1 artifact '$ART_DIR' has expired (retention-days: 1). Re-run \"$wf\" on this PR to regenerate it, then re-post. Nothing posted this run." ;;
+            missing) echo "No '$ART_DIR' artifact on the triggering run (that job did not upload it) — nothing to post for this job." ;;
+            present) echo "::warning::Stage-1 artifact '$ART_DIR' exists but could not be downloaded; re-run this workflow. Nothing posted this run." ;;
+            *)       echo "::warning::Stage-1 artifact '$ART_DIR' could not be downloaded, and the run's artifact list could not be read. Nothing posted this run." ;;
+          esac
         else
           META="$ART_DIR/pr-meta.env"
           if [ ! -f "$META" ]; then
