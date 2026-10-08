@@ -64,6 +64,8 @@ permissions:
 # workflow_run.pull_requests is empty for fork PRs (actions/runner#3444), so key
 # on head_repository.full_name + head_branch, which always exists. A manual dispatch
 # keys on the stage-1 run it re-posts, so two dispatches of one run never race.
+# The posting jobs also take a job-level group from the resolved head (one per
+# comment slot), so a dispatch and the automatic run for the same PR serialize.
 concurrency:
   group: >-
     pr-comments-${{ github.event.workflow_run.name || 'dispatch' }}-${{ github.event.workflow_run.head_repository.full_name || github.repository }}-${{ github.event.workflow_run.head_branch || inputs.run_id }}
@@ -160,6 +162,9 @@ jobs:
     name: clang-format suggestions
     runs-on: ubuntu-24.04
     needs: resolve
+    concurrency:
+      group: pr-comments-format-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
+      cancel-in-progress: true
     # Only the clang-format trigger, only PRs, skip cancelled runs (they can leave
     # a stale artifact yet fire 'completed'). Allow failure: if stage 1 failed,
     # suggestions are still useful. Name-gating means the build/tidy jobs don't
@@ -230,6 +235,9 @@ jobs:
     name: CI summary comment
     runs-on: ubuntu-24.04
     needs: resolve
+    concurrency:
+      group: pr-comments-summary-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
+      cancel-in-progress: true
     if: >-
       needs.resolve.outputs.run_name == 'Build Check'
       && needs.resolve.outputs.event == 'pull_request'
@@ -308,12 +316,20 @@ jobs:
               # How many of these findings were ALSO posted as inline review
               # comments (the 'inline' job posts them; here we surface only the
               # count so the sticky doesn't duplicate the text). Both candidate
-              # files live in the bpi artifact. jq null/absent .comments -> 0.
+              # files live in the bpi artifact. Untrusted input: count only one bounded
+              # JSON object with a comments list; anything else counts 0 with a warning.
               n_inline=0
               for j in ci-summary-bpi/inline-gcc.json ci-summary-bpi/inline-tidy.json; do
                 [ -s "$j" ] || continue
-                c=$(jq '.comments | length' "$j" 2>/dev/null || echo 0)
-                n_inline=$((n_inline + c))
+                n=bad
+                if [ "$(stat -c %s "$j")" -le 67108864 ]; then
+                  n=$(jq -n '[inputs] | if length == 1 and (.[0].comments | type) == "array"
+                             then .[0].comments | length else "bad" end' "$j" 2>/dev/null) || n=bad
+                fi
+                case "$n" in
+                  ''|*[!0-9]*) echo "::warning::$j is not a single candidate envelope; not counted." >&2; n=0 ;;
+                esac
+                n_inline=$((n_inline + n))
               done
               if [ "$n_inline" -gt 0 ]; then
                 echo "📌 ${n_inline} finding(s) qualify for inline review comments on the changed lines (at most ${MAX_COMMENTS} posted per run)."
@@ -369,6 +385,9 @@ jobs:
     name: inline gcc + clang-tidy review
     runs-on: ubuntu-24.04
     needs: resolve
+    concurrency:
+      group: pr-comments-inline-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
+      cancel-in-progress: true
     if: >-
       needs.resolve.outputs.run_name == 'Build Check'
       && needs.resolve.outputs.event == 'pull_request'
