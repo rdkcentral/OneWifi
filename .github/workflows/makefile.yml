@@ -345,6 +345,7 @@ jobs:
         dbok=true
         python3 -c 'import json, os; print("\n".join(os.path.realpath(os.path.join(e["directory"], e["file"])) for e in json.load(open("compile_commands.json"))))' \
           > "$db_files" || dbok=false   # unreadable DB -> treat every file as built (stricter)
+        besteffort=0   # changed files outside the DB: no gcc gate, best-effort clang-tidy only
         for f in $CHANGED; do
           [ -f "$f" ] || continue
           # New-side line RANGES this PR changed in *this* file (zero-context hunks), one
@@ -356,14 +357,17 @@ jobs:
             | awk '/^@@ /{c=$3;sub(/^\+/,"",c);n=1;if(c~/,/){split(c,a,",");c=a[1];n=a[2]}
                    if(n>0)print c":"c+n-1}' > "$ranges"
           [ -s "$ranges" ] || continue
+          indb=true
+          if [ "$dbok" = true ] && ! grep -qxF "$(realpath "$f")" "$db_files"; then
+            indb=false; besteffort=$((besteffort + 1))
+          fi
           # Exit 1 = a WarningsAsErrors finding OR a compile error; >= 2 = crash / not found.
           out="$RUNNER_TEMP/tidy-out.txt"
           rc=0
           clang-tidy-18 -p . "${extra[@]}" --quiet "$f" > "$out" 2>/dev/null || rc=$?
           if [ "$rc" -ge 2 ]; then
             echo "$f: clang-tidy exit $rc" >> "$tfail_list"
-          elif grep -q 'clang-diagnostic-error' "$out" \
-               && { [ "$dbok" = false ] || grep -qxF "$(realpath "$f")" "$db_files"; }; then
+          elif [ "$indb" = true ] && grep -q 'clang-diagnostic-error' "$out"; then
             grep -m1 'clang-diagnostic-error' "$out" \
               | sed -E 's#^[^ ]*/OneWifi/+##; s# \[clang-diagnostic-error\]$##' >> "$tfail_list"
           fi
@@ -409,6 +413,9 @@ jobs:
               echo "#### ⚠️ clang-tidy: $(wc -l <<< "$tfail") file(s) not fully analyzed — coverage incomplete"
               echo '```'; head -100 <<< "$tfail"; echo '```'
             fi
+          fi
+          if [ "$besteffort" -gt 0 ]; then
+            echo; echo "ℹ️ $besteffort changed file(s) are only covered by a best-effort clang-tidy run."
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
         # Inline-review candidates (Commit 5): parse tidy.log (already changed-lines
