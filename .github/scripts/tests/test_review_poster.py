@@ -78,21 +78,23 @@ class LoadCandidates(unittest.TestCase):
         # Untrusted artifacts: anything not a complete, valid set must disable deletes
         # (all_ok False) and never raise.
         good = {"path": "a.c", "line": 5, "body": "x"}
-        docs = [{"source": "gcc-gate", "status": "skipped", "comments": []},
-                {"source": "gcc-gate", "status": "partial", "comments": [good]},
+        docs = [{"source": "gcc-gate", "status": "skipped", "dropped": 0, "comments": []},
+                {"source": "gcc-gate", "status": "partial", "dropped": 0, "comments": [good]},
+                {}, {"source": "gcc-gate", "dropped": 0, "comments": []},   # truncated: no status
                 [], "text", None,
-                {"status": "ok", "dropped": [1], "comments": []}]
+                {"source": "gcc-gate", "status": "ok", "dropped": [1], "comments": []}]
         for doc in docs:
             _c, all_ok, _d = rp.load_candidates([self._write(doc)])
             self.assertFalse(all_ok, doc)
         self.assertFalse(rp.load_candidates(["/no/such/file.json"])[1])
         # Wrong types, and values the review API would reject with a 422: entry dropped.
         for bad in ({"line": "NOTINT"}, {"side": "UP"}, {"start_line": 5}):
-            doc = {"source": "formatter", "status": "ok", "comments": [{**good, **bad}]}
+            doc = {"source": "formatter", "status": "ok", "dropped": 0, "comments": [{**good, **bad}]}
             cands, all_ok, _d = rp.load_candidates([self._write(doc)])
             self.assertEqual((cands, all_ok), ([], False), bad)
         # One incomplete producer next to a complete one still disables deletes.
-        ok_doc = {"source": "gcc-gate", "status": "ok", "comments": []}
+        ok_doc = {"source": "gcc-gate", "status": "ok", "dropped": 0, "comments": []}
+        self.assertTrue(rp.load_candidates([self._write(ok_doc)])[1])
         self.assertFalse(rp.load_candidates([self._write(ok_doc), self._write(docs[0])])[1])
 
 
@@ -130,6 +132,8 @@ class GhSeam(unittest.TestCase):
         self.assertEqual(calls[1]["start_line"], 7)
         # A 422 (line left the diff) skips just that comment; a 404 (rate limit) is fatal.
         self._gh(lambda args, input_text=None: (1, "", "gh: HTTP 422 ... not part of the diff"))
+        self.assertEqual(rp.post_comments("o/r", "1", "sha", [cand("a.c", 5, "x")], "fmt"), 0)
+        self._gh(lambda args, input_text=None: (1, "", "gh: HTTP 502 Bad Gateway"))   # warn, stop
         self.assertEqual(rp.post_comments("o/r", "1", "sha", [cand("a.c", 5, "x")], "fmt"), 0)
         self._gh(lambda args, input_text=None: (1, "", "gh: HTTP 404 Not Found"))
         self.assertEqual(rp.post_comments("o/r", "1", "sha", [cand("a.c", 5, "x")], "fmt"), 1)

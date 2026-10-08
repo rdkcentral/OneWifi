@@ -48,7 +48,7 @@ Inputs (env):
   SLOT              "fmt" | "inline" — which family of comments this owns. Each
                     posted body carries a hidden marker "<!-- onewifi-ci:review:SLOT -->"
                     so the two slots never reconcile against each other.
-argv: one or more candidate JSON files, each:
+argv: one or more candidate JSON files, each (all four fields required):
   {"source": "...", "status": "ok"|"partial"|"skipped", "dropped": N,
    "comments": [ {path, line, [start_line], side, body}, ... ]}
 
@@ -158,14 +158,20 @@ def load_candidates(paths):
                 doc = json.load(fh)
             if not isinstance(doc, dict):
                 raise ValueError("top level is not a JSON object")
-            source = str(doc.get("source", "unknown"))
-            entries = doc.get("comments", [])
-            total_dropped += int(doc.get("dropped", 0) or 0)
+            # Every field is required: an empty or truncated envelope ({}) must never
+            # default its way into a complete, clean set that licenses deletes.
+            source, status = doc.get("source"), doc.get("status")
+            entries, dropped = doc.get("comments"), doc.get("dropped")
+            if not isinstance(source, str) or not isinstance(status, str):
+                raise ValueError("'source' and 'status' must be strings")
+            if not isinstance(dropped, int) or isinstance(dropped, bool) or dropped < 0:
+                raise ValueError("'dropped' must be a non-negative int")
+            total_dropped += dropped
             if not isinstance(entries, list):
                 raise ValueError("'comments' is not a list")
             if len(entries) > MAX_ENTRIES:
                 raise ValueError(f"too many entries ({len(entries)})")
-            if doc.get("status", "ok") != "ok":
+            if status != "ok":
                 all_ok = False
             for entry in entries:
                 try:
@@ -302,7 +308,9 @@ def post_comments(repo, pr, head_sha, to_post, slot):
         # no longer exists in the diff -> "not part of the diff"; skip just this comment.
         # Any other 422 is a possible real bug (invalid payload / API), still advisory so
         # we skip it too, but say so loudly. A 404 is usually a rate limit -> stop (fatal)
-        # so the run surfaces it instead of silently under-posting.
+        # so the run surfaces it instead of silently under-posting. Anything else (403,
+        # 429, 5xx, a gh hiccup) stops posting with a warning and never reds the job:
+        # the next run posts what is missing.
         if "HTTP 422" in err:
             if re.search(r"part of the diff|line must be part of", err, re.I):
                 warn(f"skipped {cand['path']}:{cand['line']} — line no longer in the PR diff "
@@ -313,6 +321,11 @@ def post_comments(repo, pr, head_sha, to_post, slot):
             print(err)
             skipped += 1
             continue
+        if "HTTP 404" not in err:
+            warn(f"stopped posting at {cand['path']}:{cand['line']}: {err.strip()} "
+                 "(not fatal; the next run posts what is missing)")
+            print(f"posted {posted} comment(s) before the failure; {skipped} skipped.")
+            return 0
         print(f"::error::Failed to post review comment on {cand['path']}:{cand['line']}:\n{err}",
               file=sys.stderr)
         print(f"posted {posted} comment(s) before the failure; {skipped} skipped.")

@@ -268,6 +268,8 @@ red" — a plumbing hiccup should not falsely block a PR.
   each `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run,
   not per PR: the inline job (gcc-gate first, then clang-tidy) and the clang-format job each post up
   to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to lower the cap.
+  Any other POST failure (403, 429, 5xx) stops that run's posting with a warning, without failing
+  the job; the next run posts what is missing.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).
