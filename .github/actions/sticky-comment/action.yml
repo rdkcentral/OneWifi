@@ -3,8 +3,8 @@ description: >
   Create-or-update a single PR issue comment identified by a hidden HTML marker,
   so re-runs replace the previous body instead of adding new comments. Used for
   the folded CI summary comment (build + diff-scoped checks). Trusted stage-2
-  only: the caller must already have
-  established a validated pr-number via the pr-context action.
+  only: the caller must already have established a validated pr-number via the
+  pr-context action.
 
 inputs:
   github-token:

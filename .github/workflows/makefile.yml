@@ -363,9 +363,11 @@ jobs:
           # a large added file would overflow it (E2BIG), and the || true below would then
           # mask that as "clean".
           ranges="$RUNNER_TEMP/tidy-ranges.txt"
-          git diff -U0 --diff-filter=ACM "$DIFF_BASE" HEAD -- "$f" 2>/dev/null \
+          if ! git diff -U0 --diff-filter=ACM "$DIFF_BASE" HEAD -- "$f" 2>/dev/null \
             | awk '/^@@ /{c=$3;sub(/^\+/,"",c);n=1;if(c~/,/){split(c,a,",");c=a[1];n=a[2]}
-                   if(n>0)print c":"c+n-1}' > "$ranges"
+                   if(n>0)print c":"c+n-1}' > "$ranges"; then
+            echo "$f: git diff of this file failed, not analyzed" >> "$tfail_list"; continue
+          fi
           [ -s "$ranges" ] || continue
           indb=true
           if [ "$dbok" = true ] && ! grep -qxF "$(realpath "$f")" "$db_files"; then

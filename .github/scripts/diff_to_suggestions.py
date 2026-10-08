@@ -21,7 +21,7 @@
 suggestions, scoped to lines the PR actually changed.
 
 Writes one candidate-JSON file (default /tmp/fmt-candidates.json) consumed by
-review_poster.py, which owns dedup, the cap, the review body and the posting:
+review_poster.py, which owns dedup, the cap and the posting:
   {"source": "formatter", "status": "ok", "dropped": N, "comments": [ ... ]}
 
 Environment:
@@ -265,7 +265,7 @@ def main():
             print(f"Line-scoping: dropped {dropped} suggestion(s) off the PR's changed/commentable lines")
 
     # Emit the shared-poster candidate envelope. review_poster.py owns the cap,
-    # the review body, dedup and posting; this script only produces findings. A
+    # dedup and posting; this script only produces findings. A
     # missing clang-format diff genuinely means "clean" -> status ok, 0 comments.
     out = {
         "source": "formatter",

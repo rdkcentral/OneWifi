@@ -53,10 +53,12 @@ argv: one or more candidate JSON files, each (all four fields required):
    "comments": [ {path, line, [start_line], side, body}, ... ]}
 
 Fail-open contract: any load/validate failure, or a source reporting
-status != "ok" ("partial" = some changed files were not analyzed), disables the "stale" deletion for the slot (see reconcile) — an
-empty or unreadable candidate file must NEVER be read as "everything is clean"
-and wipe the live comments. Posting failures never red the PR (suggestions are
-advisory); a POST 404 (usually rate limiting) is the one fatal case.
+status != "ok" ("partial" = some changed files were not analyzed), disables the
+"stale" deletion for the slot (see reconcile) — an empty or unreadable candidate
+file must NEVER be read as "everything is clean" and wipe the live comments. An
+unreadable comment list posts and deletes nothing. Posting failures never red
+the PR (suggestions are advisory); a POST 404 (usually rate limiting) is the one
+fatal case.
 """
 import json
 import os
@@ -113,7 +115,7 @@ def _fp(path, start_line, line, body, slot):
 
 
 def _validate_entry(entry):
-    """Return a normalized candidate dict, or None if the entry is malformed."""
+    """Return a normalized candidate dict; raise ValueError if the entry is malformed."""
     if not isinstance(entry, dict):
         raise ValueError("entry is not an object")
     path, line, body = entry.get("path"), entry.get("line"), entry.get("body")
@@ -192,7 +194,8 @@ def fetch_ours(repo, pr, bot_login, slot):
     """Fetch the PR's review comments (JSONL via --paginate --jq '.[]' — a plain
     --paginate concatenates one JSON array per page and does NOT parse as one
     document). Returns (all_comments, ours) or (None, None) if the list could not
-    be fetched (caller then posts nothing this run)."""
+    be fetched or a line does not parse (caller then posts nothing this run): a lost
+    human reply would leave its thread unprotected, a lost own comment reposted."""
     rc, out, err = run_gh(["api", f"/repos/{repo}/pulls/{pr}/comments",
                           "--paginate", "--jq", ".[]"])
     if rc != 0:
@@ -206,7 +209,8 @@ def fetch_ours(repo, pr, bot_login, slot):
         try:
             all_comments.append(json.loads(ln))
         except json.JSONDecodeError:
-            continue
+            warn("existing review comment list has an unparsable line")
+            return None, None
     ours = []
     for comment in all_comments:
         user = comment.get("user") or {}

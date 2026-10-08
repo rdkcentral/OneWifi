@@ -96,9 +96,9 @@ def write_inline(status, comments, dropped=0):
     if not INLINE_JSON:
         return
     try:
-        d = os.path.dirname(INLINE_JSON)
-        if d:
-            os.makedirs(d, exist_ok=True)
+        out_dir = os.path.dirname(INLINE_JSON)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
         with open(INLINE_JSON, "w") as fh:
             json.dump({"source": "gcc-gate", "status": status,
                        "dropped": dropped, "comments": comments}, fh)
@@ -112,26 +112,26 @@ def build_inline(gated, advis):
 
     One comment per (path, line, tag, msg): gcc repeats a finding at several
     columns on macro expansion, so dedupe on those four fields (dropping the
-    column) — review_poster does NOT dedupe candidates against each other, so a
-    duplicate here would post a duplicate comment. A line that does not parse is
-    counted as 'dropped' (surfaced in the poster's summary), never silently lost.
+    column); deduping here keeps the counts honest (the poster also drops exact
+    repeats). A line that does not parse is counted as 'dropped' (surfaced in the
+    poster's summary), never silently lost.
     """
     inline, seen, dropped = [], set(), 0
     for sev, icon, lst in (("error", "❌", gated), ("warning", "❗", advis)):
-        for d in lst:
-            m = INLINE_RE.match(d)
-            if not m:
+        for disp in lst:
+            hit = INLINE_RE.match(disp)
+            if not hit:
                 dropped += 1
                 continue
-            key = (m["path"], int(m["line"]), m["tag"], m["msg"])
+            key = (hit["path"], int(hit["line"]), hit["tag"], hit["msg"])
             if key in seen:
                 continue
             seen.add(key)
             inline.append({
-                "path": m["path"],
-                "line": int(m["line"]),
+                "path": hit["path"],
+                "line": int(hit["line"]),
                 "side": "RIGHT",
-                "body": f"{icon} **gcc** `{m['tag']}` ({sev}) — {m['msg']}",
+                "body": f"{icon} **gcc** `{hit['tag']}` ({sev}) — {hit['msg']}",
             })
     return inline, dropped
 

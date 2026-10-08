@@ -99,7 +99,7 @@ jobs:
 
       # Record + upload metadata *always* (not only when changed==true). When the
       # changed lines become clang-format clean there is no diff, but stage 2
-      # still needs the PR identity so it can dismiss any now-obsolete review it
+      # still needs the PR identity so it can remove any now-obsolete suggestion it
       # posted on an earlier push. clang-format.diff is present only when
       # changed==true; if-no-files-found: ignore lets the clean case upload just
       # pr-meta.env.

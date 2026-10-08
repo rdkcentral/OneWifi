@@ -27,8 +27,8 @@ kept only where the line number is one the PR changed). Each line looks like:
 
 `error:` lines are WarningsAsErrors-promoted checks (the gate); `warning:` lines
 are advisory. One comment per (path, line, check, msg): clang-tidy can print the
-same finding under several checks / columns, and review_poster does NOT dedupe
-candidates against each other, so a duplicate here would post a duplicate comment.
+same finding at several columns, and deduping here keeps the counts honest (the
+poster also drops exact repeats).
 A line that does not parse is counted 'dropped' (surfaced in the poster summary),
 never silently lost.
 
@@ -36,8 +36,9 @@ Usage:  tidy_to_inline.py <tidy.log> <out.json> [<failed-files.txt>]
 Writes a `{"source":"clang-tidy","status":"ok","dropped":N,"comments":[...]}`
 envelope. A missing/unreadable log writes status 'skipped' (empty comments); an
 unparsable finding line, or a non-empty (or unreadable) failed-files list (one line
-per changed file clang-tidy could not fully analyze), writes status 'partial'. Either way the poster disables
-stale deletion for the slot instead of deleting comments as if they were fixed.
+per changed file clang-tidy could not fully analyze), writes status 'partial'.
+Either way the poster disables stale deletion for the slot instead of deleting
+comments as if they were fixed.
 """
 import json
 import re

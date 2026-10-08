@@ -111,13 +111,15 @@ class GhSeam(unittest.TestCase):
                 {"id": 2, "user": BOT, "body": "```suggestion\nx\n```"},            # ours: pre-marker fmt
                 {"id": 3, "user": {"login": "someone", "type": "User"}, "body": "x\n\n" + rp.marker("fmt")},
                 {"id": 4, "user": BOT, "body": planted + "\n\n" + rp.marker("fmt")}]  # marker planted mid-body
-        jsonl = "\n".join(json.dumps(row) for row in rows) + "\n\nnot json\n"
+        jsonl = "\n".join(json.dumps(row) for row in rows) + "\n\n"   # blank lines are fine
         self._gh(lambda args, input_text=None: (0, jsonl, ""))
         self.assertEqual([item["id"] for item in rp.fetch_ours("o/r", "1", BOT["login"], "fmt")[1]], [1, 2, 4])
         self.assertEqual(rp.fetch_ours("o/r", "1", BOT["login"], "inline")[1], [])
         self.assertEqual(rp._strip_marker(rows[3]["body"], "fmt"), planted)   # fingerprint unchanged
-        self._gh(lambda args, input_text=None: (1, "", "HTTP 500"))
-        self.assertEqual(rp.fetch_ours("o/r", "1", "bot", "fmt"), (None, None))
+        # An unreadable list (API error, or a line that does not parse) posts and deletes nothing.
+        for result in ((1, "", "HTTP 500"), (0, jsonl + "not json\n", "")):
+            self._gh(lambda args, input_text=None, result=result: result)
+            self.assertEqual(rp.fetch_ours("o/r", "1", "bot", "fmt"), (None, None))
 
     def test_post_comments(self):
         calls = []
