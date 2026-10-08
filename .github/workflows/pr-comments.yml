@@ -293,6 +293,25 @@ jobs:
           RUN_URL: ${{ needs.resolve.outputs.run_url }}
         run: |
           set -uo pipefail
+          # The sticky action cuts the whole body from the tail at 60000 bytes, which after a
+          # noisy build would drop the diff-scoped section. Each section is capped here instead:
+          # the two diff-scoped summaries at 22000 bytes each, the build section to what is left.
+          # cut_md FILE BYTES WHAT [KEEP_RE]: drop a character the cut split (iconv -c then
+          # exits 1, expected), close an open code fence, say where the full output is, and
+          # re-append the lines matching KEEP_RE that fell after the cut.
+          cut_md() {
+            { head -c "$2" "$1" | iconv -f utf-8 -t utf-8 -c 2>/dev/null || true; } > "$1.cut"
+            if [ $(( $(grep -c '```' "$1.cut") % 2 )) -ne 0 ]; then printf '\n```\n' >> "$1.cut"; fi
+            printf '\n_… %s truncated; see the workflow run summary for the full output._\n\n' "$3" >> "$1.cut"
+            if [ -n "${4:-}" ]; then tail -c "+$(( $2 + 1 ))" "$1" | grep -E "$4" >> "$1.cut" || true; fi
+            mv "$1.cut" "$1"
+          }
+          # The summaries end with their status lines ("#### ⚠️ ... coverage incomplete", the
+          # ℹ️ best-effort count), which a tail cut would hide: keep those.
+          for part in "ci-summary-bpi/tidy-summary.md:clang-tidy output" "ci-summary-bpi/gcc-gate-summary.md:gcc diff-gate output"; do
+            f="${part%%:*}"
+            if [ -s "$f" ] && [ "$(wc -c < "$f")" -gt 22000 ]; then cut_md "$f" 22000 "${part#*:}" '^(#### ⚠|ℹ)'; fi
+          done
           {
             # --- Build summary (always present) ---
             echo "### 🔨 Build summary"
@@ -366,18 +385,9 @@ jobs:
               echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
             fi
           } > diff-section.md
-          # The sticky action cuts the whole body from the tail at 60000 bytes, which after a
-          # noisy build would drop the diff-scoped section. Cut the build section here instead,
-          # to what the diff-scoped section leaves (at least 8000 bytes), closing an open fence.
+          # The diff-scoped section is now at most ~45000 bytes, so this budget stays positive.
           budget=$(( 57000 - $(wc -c < diff-section.md) ))
-          [ "$budget" -ge 8000 ] || budget=8000
-          if [ "$(wc -c < build-section.md)" -gt "$budget" ]; then
-            # iconv -c drops a character the cut split, then exits 1: expected, not an error.
-            { head -c "$budget" build-section.md | iconv -f utf-8 -t utf-8 -c 2>/dev/null || true; } > build-cut.md
-            if [ $(( $(grep -c '```' build-cut.md) % 2 )) -ne 0 ]; then printf '\n```\n' >> build-cut.md; fi
-            printf '\n_… build output truncated; see the workflow run summary for the full output._\n\n' >> build-cut.md
-            mv build-cut.md build-section.md
-          fi
+          if [ "$(wc -c < build-section.md)" -gt "$budget" ]; then cut_md build-section.md "$budget" "build output"; fi
           cat build-section.md diff-section.md > ci-summary-comment.md
           echo "wrote ci-summary-comment.md ($(wc -l < ci-summary-comment.md) lines)"
 

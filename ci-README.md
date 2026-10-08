@@ -265,6 +265,11 @@ red" — a plumbing hiccup should not falsely block a PR.
   suggestion or finding can target a line no longer in the diff, and GitHub rejects that one comment
   with `422`. Only that comment is skipped (a `::warning::` distinguishing the benign rebase/merge
   race from a bad payload); the rest of the run still posts. See `review_poster.py`.
+- **Merge-ref line numbers.** Build Check analyzes the merge ref (`refs/pull/N/merge`), so
+  clang-tidy and the gcc gate report merge-result lines, while review comments anchor to the PR head.
+  A stage-1 step (`map_head_lines.py`) maps each finding to its PR-head line; one on a line the head
+  does not have (the base changed it) is dropped and makes the set `partial`. The summary comment
+  and the check annotations still show merge-ref line numbers.
 - **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what
   each `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run,
   not per PR: the inline job (gcc-gate first, then clang-tidy) and the clang-format job each post up

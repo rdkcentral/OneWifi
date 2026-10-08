@@ -355,6 +355,11 @@ jobs:
         dbok=true
         python3 -c 'import json, os; print("\n".join(os.path.realpath(os.path.join(e["directory"], e["file"])) for e in json.load(open("compile_commands.json"))))' \
           > "$db_files" || dbok=false   # unreadable DB -> treat every file as built (stricter)
+        # clang-tidy itself exits 0 with no output on an unreadable DB (the error goes to
+        # stderr), so record it: the run cannot read as clean.
+        if [ "$dbok" = false ] && [ -n "$CHANGED" ]; then
+          echo "compile_commands.json could not be read: changed files not analyzed with their build flags" >> "$tfail_list"
+        fi
         besteffort=0   # changed files outside the DB: no gcc gate, best-effort clang-tidy only
         for f in $CHANGED; do
           [ -f "$f" ] || continue
@@ -506,6 +511,22 @@ jobs:
         set -e
         tee -a ci-out/gcc-gate-summary.md < gcc-gate.md >> "$GITHUB_STEP_SUMMARY"
         exit "$rc"
+
+    - name: Map inline findings to PR-head lines for ${{ matrix.platform.name }}
+      # clang-tidy and the gcc gate ran on the merge ref (HEAD = refs/pull/N/merge), so
+      # their line numbers are merge-result lines. Review comments anchor to the PR head,
+      # where a line moves when the base branch changed the same file above it.
+      if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      env:
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        # A crash must not leave merge-numbered candidates behind: drop both files, which
+        # the poster reads as "producer skipped" (posts and deletes nothing).
+        if ! python3 .github/scripts/map_head_lines.py "$HEAD_SHA" ci-out/inline-gcc.json ci-out/inline-tidy.json; then
+          echo "::warning::Could not map inline findings to PR-head lines; none are posted this run."
+          rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json
+        fi
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
     # Record the PR identity as passive data for the workflow_run poster to
