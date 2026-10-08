@@ -294,6 +294,7 @@ jobs:
         fi
         BASE='${{ github.event.pull_request.base.sha }}'
         CHANGED=''
+        diff_failed=false
         DIFF_BASE="$BASE"
         if [ -n "$BASE" ]; then
           git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
@@ -309,20 +310,23 @@ jobs:
              && git merge-base --is-ancestor "$BASE" HEAD^1 2>/dev/null; then
             DIFF_BASE=HEAD^1
           fi
-          # Changed file not present in compile_commands.json (not built) falls back to default
-          # flags. A real source then can't resolve its includes -> a fatal clang-diagnostic
-          # aborts file parsing before any check run on it -> that output is dropped by the
-          # clang-diagnostic filter below -> file can't fail. Thus, only built files are judged.
+          # A changed file not in compile_commands.json (not built for this platform) gets
+          # flags borrowed from a nearby entry: some compile and are fully checked, most fail
+          # on includes (clang-diagnostic, filtered below). Counted as best-effort below.
           # Exclude only the vendored hostap tree (sibling clone rdk-wifi-libhostap/), never
           # first-party sources: '^build/' wrongly dropped build/linux/compat/coverage_stubs.c
           # (compiled by the makefile, real DB entry) and bare 'hostap' dropped e.g.
-          # wifi_hostapd_glue.c. A changed file not in the DB self-skips (default-flags fallback
-          # -> fatal clang-diagnostic -> filtered below), so DB membership is the real gate.
+          # wifi_hostapd_glue.c.
           # Anchored '^': git diff paths are repo-relative and the vendored tree, if ever
           # surfaced, sits at the repo root -- so a first-party path that merely *contains*
           # the name (e.g. source/.../rdk-wifi-libhostap-notes.c) is never dropped.
-          CHANGED=$(git diff --name-only --diff-filter=ACM "$DIFF_BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
-                    | grep -vE '^rdk-wifi-libhostap/' || true)
+          # A failed diff (bad or unfetched base) is not "no changed files": record it so the
+          # summary and the inline set say nothing was analyzed (gcc_diff_gate.py does the same).
+          if changed_all=$(git diff --name-only --diff-filter=ACM "$DIFF_BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null); then
+            CHANGED=$(grep -vE '^rdk-wifi-libhostap/' <<< "$changed_all" || true)
+          else
+            diff_failed=true
+          fi
         fi
         # Extra checks this repo wants on top of the shared .clang-tidy config.
         # --warnings-as-errors COMBINES with the config's WAE (proven clang-tidy-18);
@@ -341,6 +345,9 @@ jobs:
         # a nearby entry and most of those fail to compile, which is expected there.
         tfail_list="$RUNNER_TEMP/tidy-failed.txt"
         : > "$tfail_list"
+        if [ "$diff_failed" = true ]; then
+          echo "git diff against the PR base failed: changed files unknown, nothing analyzed" >> "$tfail_list"
+        fi
         db_files="$RUNNER_TEMP/tidy-db-files.txt"
         dbok=true
         python3 -c 'import json, os; print("\n".join(os.path.realpath(os.path.join(e["directory"], e["file"])) for e in json.load(open("compile_commands.json"))))' \
@@ -386,7 +393,7 @@ jobs:
         advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
         tfail=$(sort -u "$tfail_list")
         if [ -n "$tfail" ]; then
-          echo "::warning::clang-tidy could not fully analyze $(wc -l <<< "$tfail") changed file(s); coverage incomplete (see the summary)."
+          echo "::warning::clang-tidy coverage incomplete ($(wc -l <<< "$tfail") item(s)); see the summary."
         fi
         if [ -n "$gated" ]; then
           head -10 <<< "$gated" | sed 's/%/%25/g; s/\r/%0D/g' \
@@ -397,7 +404,7 @@ jobs:
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
         {
-          if   [ -z "$CHANGED" ];     then echo "#### 🔎 clang-tidy: no changed .c/.cpp to scan"
+          if   [ -z "$CHANGED$tfail" ]; then echo "#### 🔎 clang-tidy: no changed .c/.cpp to scan"
           elif [ -z "$gated$advis$tfail" ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
           else
             if [ -n "$gated" ]; then
@@ -410,7 +417,7 @@ jobs:
               echo '```'; head -100 <<< "$advis"; echo '```'
             fi
             if [ -n "$tfail" ]; then
-              echo "#### ⚠️ clang-tidy: $(wc -l <<< "$tfail") file(s) not fully analyzed — coverage incomplete"
+              echo "#### ⚠️ clang-tidy: coverage incomplete"
               echo '```'; head -100 <<< "$tfail"; echo '```'
             fi
           fi

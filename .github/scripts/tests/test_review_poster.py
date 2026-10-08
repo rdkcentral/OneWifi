@@ -37,7 +37,8 @@ class Reconcile(unittest.TestCase):
                 live(4, "a.c", 7, "GONE"),    # finding no longer produced -> stale
                 live(5, "a.c", 8, "OLD")]     # a human replied -> never deleted or reposted
         everyone = ours + [{"id": 6, "in_reply_to_id": 5, "user": {"login": "human", "type": "User"}}]
-        cands = [cand("a.c", 5, SUG), cand("a.c", 8, "OLD"), cand("a.c", 9, "NEW")]
+        cands = [cand("a.c", 5, SUG), cand("a.c", 8, "OLD"), cand("a.c", 9, "NEW"),
+                 cand("a.c", 9, "NEW")]       # listed twice in one envelope -> posted once
         dele, post, outdated, overflow, shown = rp.reconcile(everyone, ours, cands, True, "fmt", 25)
         self.assertEqual(sorted(dele), [2, 3, 4])
         self.assertEqual([item["line"] for item in post], [9])
@@ -60,7 +61,7 @@ class LoadCandidates(unittest.TestCase):
         fd, path = tempfile.mkstemp(suffix=".json")
         os.close(fd)
         with open(path, "w") as fh:
-            json.dump(obj, fh)
+            fh.write(obj if isinstance(obj, str) and obj.startswith("[[") else json.dumps(obj))
         self.addCleanup(os.unlink, path)
         return path
 
@@ -81,7 +82,7 @@ class LoadCandidates(unittest.TestCase):
         docs = [{"source": "gcc-gate", "status": "skipped", "dropped": 0, "comments": []},
                 {"source": "gcc-gate", "status": "partial", "dropped": 0, "comments": [good]},
                 {}, {"source": "gcc-gate", "dropped": 0, "comments": []},   # truncated: no status
-                [], "text", None,
+                [], "text", None, "[" * 100000 + "]" * 100000,   # RecursionError in json.load
                 {"source": "gcc-gate", "status": "ok", "dropped": [1], "comments": []}]
         for doc in docs:
             _c, all_ok, _d = rp.load_candidates([self._write(doc)])

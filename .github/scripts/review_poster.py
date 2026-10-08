@@ -182,7 +182,7 @@ def load_candidates(paths):
                     continue
                 cand["source"] = source
                 candidates.append(cand)
-        except (OSError, ValueError, TypeError) as exc:  # JSONDecodeError is a ValueError
+        except (OSError, ValueError, TypeError, RecursionError) as exc:  # JSONDecodeError is a ValueError
             warn(f"could not load candidate file {path}: {exc} — source skipped, no deletes")
             all_ok = False
     return candidates, all_ok, total_dropped
@@ -266,8 +266,13 @@ def reconcile(all_comments, ours, candidates, all_ok, slot, cap):
 
     # present = what stays visible (survivors + protected); never re-post those.
     present_fps = {fp(comment) for comment in survivors} | {fp(comment) for comment in protected}
-    to_post = [cand for cand in candidates
-               if _fp(cand["path"], cand.get("start_line"), cand["line"], cand["body"], slot) not in present_fps]
+    # Also dedupe within this run: an envelope may list one finding twice.
+    to_post = []
+    for cand in candidates:
+        cand_fp = _fp(cand["path"], cand.get("start_line"), cand["line"], cand["body"], slot)
+        if cand_fp not in present_fps:
+            present_fps.add(cand_fp)
+            to_post.append(cand)
     to_post.sort(key=lambda cand: PRIORITY.get(cand["source"], 99))
     overflow = max(0, len(to_post) - cap)
     to_post = to_post[:cap]
