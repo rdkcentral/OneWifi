@@ -306,12 +306,18 @@ jobs:
             echo "## 🔬 Diff-scoped checks (changed lines only)"
             echo
             # tidy-summary.md labels its own tiers (❌ gate = fatal, ❗ warnings).
+            # A producer that died before writing (the other one did) is named, so the
+            # comment never reads as if both checks ran.
             if [ -s "$tidy" ]; then
               cat "$tidy"; echo
+            else
+              echo "### 🔎 clang-tidy: no summary produced for this commit (see the Build Check run)"; echo
             fi
             # gcc-gate-summary.md already carries its own ###-level heading(s).
             if [ -s "$gcc" ]; then
               cat "$gcc"; echo
+            else
+              echo "### 🚦 gcc diff-gate: no summary produced for this commit (see the Build Check run)"; echo
             fi
           } > diff-findings-comment.md
           echo "post=true" >> "$GITHUB_OUTPUT"
