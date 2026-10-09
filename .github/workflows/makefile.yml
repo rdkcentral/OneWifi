@@ -360,6 +360,16 @@ jobs:
         if [ "$dbok" = false ] && [ -n "$CHANGED" ]; then
           echo "compile_commands.json could not be read: changed files not analyzed with their build flags" >> "$tfail_list"
         fi
+        # A .clang-tidy that does not parse is not fatal either: clang-tidy prints the error to
+        # stderr, falls back to its default checks and exits 0. --verify-config reports it, but
+        # not in its exit code, so match the text.
+        if [ -n "$CHANGED" ]; then
+          cfg_err=$(clang-tidy-18 --verify-config "${extra[@]}" 2>&1 | grep -m1 ': error: ' \
+                    | sed -E 's#^[^ ]*/OneWifi/+##' | tr -d '`' || true)
+          if [ -n "$cfg_err" ]; then
+            echo "clang-tidy configuration invalid, default checks used: $cfg_err" >> "$tfail_list"
+          fi
+        fi
         besteffort=0   # changed files outside the DB: no gcc gate, best-effort clang-tidy only
         for f in $CHANGED; do
           [ -f "$f" ] || continue
@@ -378,16 +388,24 @@ jobs:
           if [ "$dbok" = true ] && ! grep -qxF "$(realpath "$f")" "$db_files"; then
             indb=false; besteffort=$((besteffort + 1))
           fi
-          # Exit 1 = a WarningsAsErrors finding OR a compile error; >= 2 = crash / not found.
+          # Exit 1 = a WarningsAsErrors finding or a compile error, both an "error:" on stdout;
+          # exit 1 without one is a configuration or invocation failure, told only on stderr
+          # (e.g. "no checks enabled"). >= 2 = crash / not found.
           out="$RUNNER_TEMP/tidy-out.txt"
+          err="$RUNNER_TEMP/tidy-err.txt"
           rc=0
-          clang-tidy-18 -p . "${extra[@]}" --quiet "$f" > "$out" 2>/dev/null || rc=$?
+          clang-tidy-18 -p . "${extra[@]}" --quiet "$f" > "$out" 2> "$err" || rc=$?
           if [ "$rc" -ge 2 ]; then
             echo "$f: clang-tidy exit $rc" >> "$tfail_list"
           elif grep -q 'clang-diagnostic-error' "$out"; then
             dest="$tfail_list"; [ "$indb" = true ] || dest="$bfail_list"
             grep -m1 'clang-diagnostic-error' "$out" \
               | sed -E 's#^[^ ]*/OneWifi/+##; s# \[clang-diagnostic-error\]$##' >> "$dest"
+          elif [ "$rc" -ne 0 ] && ! grep -qE ':[0-9]+:[0-9]+: error: ' "$out"; then
+            why=$( { grep -m1 -E '[Ee]rror' "$err" || grep -m1 . "$err"; } \
+                   | sed -E 's#^[^ ]*/OneWifi/+##' | tr -d '`' || true)
+            echo "$f: clang-tidy exit $rc: ${why:-no message}" >> "$tfail_list"
+            continue   # stdout is not findings here (e.g. the usage text)
           fi
           # || true: a no-match grep (exit 1) must not abort the loop.
           # clang-tidy runs one file at a time -> every finding is this file's, so keep only the
@@ -552,11 +570,13 @@ jobs:
     # (unlike the clang-tidy step). It relies on that silent baseline, so any un-suppressed
     # residual warning would show on every PR. mock is the unittest leg (no clean-baseline gate)
     # -> excluded to avoid exactly that noise.
-    # The pr-comments.yml 'build' job aggregates however many ci-summary-* exist
-    # (and anchors trust on ci-summary-bpi, so bpi must always upload), so:
-    #   TO ADD mock:     drop the `&& matrix.platform.id != 'mock'` clause below.
-    #   TO REVERT to bpi-only: change it back to `== 'bpi'`.
-    #   (nothing to change in pr-comments.yml either way.)
+    # The pr-comments.yml 'summary' job shows every ci-summary-* that exists, names an
+    # expected leg that uploaded none, and anchors trust on ci-summary-bpi (so bpi must
+    # always upload), so:
+    #   TO ADD mock:     drop the `&& matrix.platform.id != 'mock'` clause below, and add mock
+    #                    to the expected legs ("bpi rpi") in pr-comments.yml's "Compose CI
+    #                    summary comment" step, which names an expected leg that uploaded nothing.
+    #   TO REVERT to bpi-only: change it back to `== 'bpi'`, and drop rpi from that list.
     - name: Upload CI summary artifact
       if: always() && github.event_name == 'pull_request' && matrix.platform.id != 'mock'
       uses: actions/upload-artifact@v6

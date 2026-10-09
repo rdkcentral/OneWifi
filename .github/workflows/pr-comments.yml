@@ -273,8 +273,8 @@ jobs:
 
       # Pull every platform's summary for the build section. Passive display text;
       # the trust decision was already made above. makefile.yml uploads the bpi and
-      # rpi legs (mock is excluded); the wildcard picks up whichever legs uploaded,
-      # so enabling mock there needs no change here.
+      # rpi legs (mock is excluded); the wildcard picks up whichever legs uploaded, and
+      # the compose step below names an expected leg that did not.
       - name: Download all platform summaries
         if: steps.ctx.outputs.found == 'true'
         uses: actions/download-artifact@v7
@@ -298,12 +298,16 @@ jobs:
           # the two diff-scoped summaries at 22000 bytes each, the build section to what is left.
           # cut_md FILE BYTES WHAT [KEEP_RE]: drop a character the cut split (iconv -c then
           # exits 1, expected), close an open code fence, say where the full output is, and
-          # re-append the lines matching KEEP_RE that fell after the cut.
+          # re-append the lines matching KEEP_RE that fell after the cut (at most 12 of up to
+          # 150 bytes: for the build cut, the 3000 bytes between the 57000 budget below and
+          # the 60000 cap cover them).
           cut_md() {
             { head -c "$2" "$1" | iconv -f utf-8 -t utf-8 -c 2>/dev/null || true; } > "$1.cut"
             if [ $(( $(grep -c '```' "$1.cut") % 2 )) -ne 0 ]; then printf '\n```\n' >> "$1.cut"; fi
             printf '\n_… %s truncated; see the workflow run summary for the full output._\n\n' "$3" >> "$1.cut"
-            if [ -n "${4:-}" ]; then tail -c "+$(( $2 + 1 ))" "$1" | grep -E "$4" >> "$1.cut" || true; fi
+            if [ -n "${4:-}" ]; then
+              tail -c "+$(( $2 + 1 ))" "$1" | grep -E "$4" | awk 'length <= 150' | head -n 12 >> "$1.cut" || true
+            fi
             mv "$1.cut" "$1"
           }
           # The summaries end with their status lines ("#### ⚠️ ... coverage incomplete", the
@@ -318,12 +322,20 @@ jobs:
             echo
             echo "_Commit \`${HEAD_SHA:0:7}\` · [\`${RUN_NAME}\` #${RUN_NUMBER}](${RUN_URL})_"
             echo
-            # Deterministic platform order; each per-leg file carries its own
-            # "### <platform> — build <outcome>" heading + error/warning blocks.
-            for d in summaries/ci-summary-*/; do
-              f="${d}build-summary.md"
-              [ -f "$f" ] || continue
-              cat "$f"
+            # The legs makefile.yml uploads a summary for (bpi rpi; keep in sync with its
+            # "Upload CI summary artifact" step), then any other that uploaded one. Each
+            # per-leg file carries its own "### <platform> — build <outcome>" heading +
+            # error/warning blocks; an expected leg that stopped before its upload (failed,
+            # timed out, cancelled) gets a heading saying so instead of silently vanishing.
+            legs=$(printf '%s\n' bpi rpi summaries/ci-summary-*/ \
+                   | sed -n 's#^summaries/ci-summary-\(.*\)/$#\1#; /^[a-z0-9_-]\{1,40\}$/p' | awk '!seen[$0]++')
+            for leg in $legs; do
+              f="summaries/ci-summary-$leg/build-summary.md"
+              if [ -f "$f" ]; then
+                cat "$f"
+              else
+                echo "### $leg leg — no build summary uploaded (the leg stopped first; see the run)"
+              fi
               echo
             done
           } > build-section.md
@@ -385,9 +397,12 @@ jobs:
               echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
             fi
           } > diff-section.md
-          # The diff-scoped section is now at most ~45000 bytes, so this budget stays positive.
+          # The diff-scoped section stays under ~49000 bytes, so this budget stays positive.
           budget=$(( 57000 - $(wc -c < diff-section.md) ))
-          if [ "$(wc -c < build-section.md)" -gt "$budget" ]; then cut_md build-section.md "$budget" "build output"; fi
+          # Keep the per-leg headings and counts after a cut, so no leg's outcome is lost.
+          if [ "$(wc -c < build-section.md)" -gt "$budget" ]; then
+            cut_md build-section.md "$budget" "build output" '^####? '
+          fi
           cat build-section.md diff-section.md > ci-summary-comment.md
           echo "wrote ci-summary-comment.md ($(wc -l < ci-summary-comment.md) lines)"
 

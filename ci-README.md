@@ -156,7 +156,8 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 
 **Stage 1 to stage 2:**
 - `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `pr-meta.env`.
-- `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads): `build-summary.md`, `pr-meta.env`.
+- `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
+  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
   The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
   `gcc-gate-summary.md`, `inline-tidy.json` and `inline-gcc.json`.
 
@@ -257,8 +258,8 @@ red" — a plumbing hiccup should not falsely block a PR.
   range, body) and per run: skips findings already posted, deletes its own comments that GitHub
   marked outdated (`line: null`) or whose finding is gone, collapses duplicate copies to the oldest,
   and never deletes a comment someone replied to. If any producer reports `status: skipped` (e.g. no
-  compile DB) or `partial` (a changed file failed to recompile, or clang-tidy could not fully analyze
-  it), that run deletes no "finding gone" comments, so an incomplete run never reads as fixed.
+  compile DB) or `partial` (a changed file failed to recompile, clang-tidy could not fully analyze
+  it, or `.clang-tidy` did not load), that run deletes no "finding gone" comments, so an incomplete run never reads as fixed.
   Comments are posted individually, not as one review: a submitted review can't be deleted later,
   and would leave an empty shell behind.
 - **Out-of-diff `422`.** If the PR is rebased or squash-merged between stage 1 and stage 2, a
