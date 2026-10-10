@@ -215,7 +215,14 @@ webconfig_error_t decode_nasta_query_subdoc(webconfig_t *config,
     /* Extract VapIndex (injected by RBUS handler) */
     cJSON *vap_idx_obj = cJSON_GetObjectItem(json, "VapIndex");
     if (vap_idx_obj && cJSON_IsNumber(vap_idx_obj)) {
-        query->vap_index = (unsigned int)cJSON_GetNumberValue(vap_idx_obj);
+        double vap_idx_val = cJSON_GetNumberValue(vap_idx_obj);
+        if (vap_idx_val < 0 || vap_idx_val >= MAX_VAP) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: VapIndex out of range: %f\n", __func__, __LINE__, vap_idx_val);
+            cJSON_Delete(json);
+            return webconfig_error_decode;
+        }
+        query->vap_index = (unsigned int)vap_idx_val;
     }
 
     opclass_arr = cJSON_GetObjectItem(json, "UnassocStaQueryList");
@@ -319,9 +326,11 @@ webconfig_error_t decode_nasta_query_subdoc(webconfig_t *config,
                 }
 
                 unsigned int m[6];
+                int mac_len = 0;
                 if (sscanf(sta_item->valuestring,
-                        "%02x:%02x:%02x:%02x:%02x:%02x",
-                        &m[0], &m[1], &m[2], &m[3], &m[4], &m[5]) != 6) {
+                        "%02x:%02x:%02x:%02x:%02x:%02x%n",
+                        &m[0], &m[1], &m[2], &m[3], &m[4], &m[5], &mac_len) != 6 ||
+                    sta_item->valuestring[mac_len] != '\0') {
                     wifi_util_error_print(WIFI_WEBCONFIG,
                         "%s:%d: Invalid MAC format: %s\n",
                         __func__, __LINE__, sta_item->valuestring);

@@ -4732,6 +4732,11 @@ bus_error_t get_NaSta(char const* methodName, bus_data_prop_t *inParams,
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to parse JSON input\r\n", __func__, __LINE__);
         return bus_error_invalid_input;
     }
+    /* VapIndex comes from methodName only; drop any caller-supplied copy, since
+       the decoder reads the first match. */
+    while (cJSON_HasObjectItem(json, "VapIndex")) {
+        cJSON_DeleteItemFromObject(json, "VapIndex");
+    }
     cJSON_AddNumberToObject(json, "VapIndex", vap_idx - 1);
     enriched_str = cJSON_PrintUnformatted(json);
     cJSON_Delete(json);

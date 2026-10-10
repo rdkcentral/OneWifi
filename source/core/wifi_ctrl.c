@@ -1163,6 +1163,7 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
     res = (scan_results_t *)calloc(1, sizeof(scan_results_t));
     if(!res) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Failed to allocate memory for scan_results_t\n", __FUNCTION__, __LINE__);
+        free(*bss);
         return RETURN_ERR;
     }
 
