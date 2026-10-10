@@ -1,0 +1,38 @@
+# yamllint config for the CI meta-files (.github/workflows + .github/actions).
+#
+# Structural rules only. Style opinions (line length, indentation, document
+# start, quoting) are OFF so the gate flags real breakage — duplicate keys,
+# empty values, bad syntax, octal footguns — not formatting taste. yamllint is
+# also the ONLY structural guard for composite action.yml files: actionlint
+# mis-parses those as workflows, so it must never be pointed at .github/actions.
+
+extends: default
+
+rules:
+  # ── style: off (taste, not breakage) ──
+  line-length: disable
+  document-start: disable
+  document-end: disable
+  indentation: disable
+  comments: disable
+  comments-indentation: disable
+  trailing-spaces: disable
+  new-line-at-end-of-file: disable
+  empty-lines: disable
+  hyphens: disable
+  colons: disable
+  commas: disable
+  brackets: disable
+  braces: disable
+  quoted-strings: disable
+  # `on:` in a workflow is the classic yamllint truthy false-positive.
+  truthy: disable
+
+  # ── structure: errors (genuine breakage) ──
+  # `empty-values` is intentionally OFF: empty block-mapping values are idiomatic
+  # in GitHub Actions YAML (`workflow_dispatch:`, `pull_request:`, `on: {push:}`)
+  # and are not bugs. key-duplicates is the real prize — GHA takes the last of a
+  # duplicated key silently, so a dup `jobs:`/step key is a genuine footgun.
+  key-duplicates: {level: error}
+  octal-values: {level: error}
+  anchors: {level: error}
