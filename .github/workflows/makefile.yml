@@ -231,7 +231,7 @@ jobs:
         mkdir -p ci-out
         LOG=build.log
         if [ ! -f "$LOG" ]; then
-          echo "## ${{ matrix.platform.name }} — no build log captured" \
+          echo "### ${{ matrix.platform.name }} — no build log captured" \
             | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
@@ -246,9 +246,9 @@ jobs:
             | while IFS= read -r l; do echo "::error::$l"; done
         fi
         {
-          echo "## ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
+          echo "### ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
           if [ -n "$errs" ]; then
-            echo "### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo "#### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
             echo '```'
             head -100 <<< "$errs"
             echo '```'
@@ -266,12 +266,12 @@ jobs:
                   | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' \
                   | sort -u || true)
           if [ -n "$warns" ]; then
-            echo "### ⚠️ OneWifi warnings ($(printf '%s\n' "$warns" | wc -l))"
+            echo "#### ⚠️ OneWifi warnings ($(printf '%s\n' "$warns" | wc -l))"
             echo '```'
             head -100 <<< "$warns"
             echo '```'
           else
-            echo "### ⚠️ OneWifi warnings: 0"
+            echo "#### ⚠️ OneWifi warnings: 0"
           fi
         } | tee ci-out/build-summary.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -286,9 +286,15 @@ jobs:
         # gate. The gate is changed-LINES-scoped: a PR can only fail on a .c/.cpp LINE it touched
         # (the per-file `lines=` filter below), so pre-existing findings on untouched lines never red it.
         mkdir -p ci-out
-        [ -f compile_commands.json ] || { echo "### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+        if [ ! -f compile_commands.json ]; then
+          echo "#### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"
+          # skipped (not clean) so the stage-2 poster leaves inline comments alone.
+          printf '%s' '{"source":"clang-tidy","status":"skipped","dropped":0,"comments":[]}' > ci-out/inline-tidy.json
+          exit 0
+        fi
         BASE='${{ github.event.pull_request.base.sha }}'
         CHANGED=''
+        diff_failed=false
         DIFF_BASE="$BASE"
         if [ -n "$BASE" ]; then
           git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
@@ -304,20 +310,23 @@ jobs:
              && git merge-base --is-ancestor "$BASE" HEAD^1 2>/dev/null; then
             DIFF_BASE=HEAD^1
           fi
-          # Changed file not present in compile_commands.json (not built) falls back to default
-          # flags. A real source then can't resolve its includes -> a fatal clang-diagnostic
-          # aborts file parsing before any check run on it -> that output is dropped by the
-          # clang-diagnostic filter below -> file can't fail. Thus, only built files are judged.
+          # A changed file not in compile_commands.json (not built for this platform) gets
+          # flags borrowed from a nearby entry: some compile and are fully checked, most fail
+          # on includes (clang-diagnostic, filtered below). Counted as best-effort below.
           # Exclude only the vendored hostap tree (sibling clone rdk-wifi-libhostap/), never
           # first-party sources: '^build/' wrongly dropped build/linux/compat/coverage_stubs.c
           # (compiled by the makefile, real DB entry) and bare 'hostap' dropped e.g.
-          # wifi_hostapd_glue.c. A changed file not in the DB self-skips (default-flags fallback
-          # -> fatal clang-diagnostic -> filtered below), so DB membership is the real gate.
+          # wifi_hostapd_glue.c.
           # Anchored '^': git diff paths are repo-relative and the vendored tree, if ever
           # surfaced, sits at the repo root -- so a first-party path that merely *contains*
           # the name (e.g. source/.../rdk-wifi-libhostap-notes.c) is never dropped.
-          CHANGED=$(git diff --name-only --diff-filter=ACM "$DIFF_BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null \
-                    | grep -vE '^rdk-wifi-libhostap/' || true)
+          # A failed diff (bad or unfetched base) is not "no changed files": record it so the
+          # summary and the inline set say nothing was analyzed (gcc_diff_gate.py does the same).
+          if changed_all=$(git diff --name-only --diff-filter=ACM "$DIFF_BASE" HEAD -- '*.c' '*.cpp' 2>/dev/null); then
+            CHANGED=$(grep -vE '^rdk-wifi-libhostap/' <<< "$changed_all" || true)
+          else
+            diff_failed=true
+          fi
         fi
         # Extra checks this repo wants on top of the shared .clang-tidy config.
         # --warnings-as-errors COMBINES with the config's WAE (proven clang-tidy-18);
@@ -330,6 +339,38 @@ jobs:
         [ -n "$EXTRA_WAE" ]    && extra+=(--warnings-as-errors="$EXTRA_WAE")
         [ -n "$EXTRA_CHECKS" ] && extra+=(--checks="$EXTRA_CHECKS")
         : > tidy.log
+        # Changed files clang-tidy could not fully analyze: a crash or missing binary
+        # (exit >= 2), or a compile error in a file the build compiled. A file outside
+        # the compile DB is not built for this platform; clang-tidy borrows flags from
+        # a nearby entry and most of those fail to compile, which is expected there:
+        # counted in the best-effort line, not listed. Either kind makes the inline set
+        # partial, since a compile error can hide a finding that is still there.
+        tfail_list="$RUNNER_TEMP/tidy-failed.txt"
+        bfail_list="$RUNNER_TEMP/tidy-besteffort-failed.txt"
+        : > "$tfail_list"; : > "$bfail_list"
+        if [ "$diff_failed" = true ]; then
+          echo "git diff against the PR base failed: changed files unknown, nothing analyzed" >> "$tfail_list"
+        fi
+        db_files="$RUNNER_TEMP/tidy-db-files.txt"
+        dbok=true
+        python3 -c 'import json, os; print("\n".join(os.path.realpath(os.path.join(e["directory"], e["file"])) for e in json.load(open("compile_commands.json"))))' \
+          > "$db_files" || dbok=false   # unreadable DB -> treat every file as built (stricter)
+        # clang-tidy itself exits 0 with no output on an unreadable DB (the error goes to
+        # stderr), so record it: the run cannot read as clean.
+        if [ "$dbok" = false ] && [ -n "$CHANGED" ]; then
+          echo "compile_commands.json could not be read: changed files not analyzed with their build flags" >> "$tfail_list"
+        fi
+        # A .clang-tidy that does not parse is not fatal either: clang-tidy prints the error to
+        # stderr, falls back to its default checks and exits 0. --verify-config reports it, but
+        # not in its exit code, so match the text.
+        if [ -n "$CHANGED" ]; then
+          cfg_err=$(clang-tidy-18 --verify-config "${extra[@]}" 2>&1 | grep -m1 ': error: ' \
+                    | sed -E 's#^[^ ]*/OneWifi/+##' | tr -d '`' || true)
+          if [ -n "$cfg_err" ]; then
+            echo "clang-tidy configuration invalid, default checks used: $cfg_err" >> "$tfail_list"
+          fi
+        fi
+        besteffort=0   # changed files outside the DB: no gcc gate, best-effort clang-tidy only
         for f in $CHANGED; do
           [ -f "$f" ] || continue
           # New-side line RANGES this PR changed in *this* file (zero-context hunks), one
@@ -337,16 +378,40 @@ jobs:
           # a large added file would overflow it (E2BIG), and the || true below would then
           # mask that as "clean".
           ranges="$RUNNER_TEMP/tidy-ranges.txt"
-          git diff -U0 --diff-filter=ACM "$DIFF_BASE" HEAD -- "$f" 2>/dev/null \
+          if ! git diff -U0 --diff-filter=ACM "$DIFF_BASE" HEAD -- "$f" 2>/dev/null \
             | awk '/^@@ /{c=$3;sub(/^\+/,"",c);n=1;if(c~/,/){split(c,a,",");c=a[1];n=a[2]}
-                   if(n>0)print c":"c+n-1}' > "$ranges"
+                   if(n>0)print c":"c+n-1}' > "$ranges"; then
+            echo "$f: git diff of this file failed, not analyzed" >> "$tfail_list"; continue
+          fi
           [ -s "$ranges" ] || continue
-          # || true: a no-match grep (exit 1) or a clang-tidy hiccup must not abort the loop.
+          indb=true
+          if [ "$dbok" = true ] && ! grep -qxF "$(realpath "$f")" "$db_files"; then
+            indb=false; besteffort=$((besteffort + 1))
+          fi
+          # Exit 1 = a WarningsAsErrors finding or a compile error, both an "error:" on stdout;
+          # exit 1 without one is a configuration or invocation failure, told only on stderr
+          # (e.g. "no checks enabled"). >= 2 = crash / not found.
+          out="$RUNNER_TEMP/tidy-out.txt"
+          err="$RUNNER_TEMP/tidy-err.txt"
+          rc=0
+          clang-tidy-18 -p . "${extra[@]}" --quiet "$f" > "$out" 2> "$err" || rc=$?
+          if [ "$rc" -ge 2 ]; then
+            echo "$f: clang-tidy exit $rc" >> "$tfail_list"
+          elif grep -q 'clang-diagnostic-error' "$out"; then
+            dest="$tfail_list"; [ "$indb" = true ] || dest="$bfail_list"
+            grep -m1 'clang-diagnostic-error' "$out" \
+              | sed -E 's#^[^ ]*/OneWifi/+##; s# \[clang-diagnostic-error\]$##' >> "$dest"
+          elif [ "$rc" -ne 0 ] && ! grep -qE ':[0-9]+:[0-9]+: error: ' "$out"; then
+            why=$( { grep -m1 -E '[Ee]rror' "$err" || grep -m1 . "$err"; } \
+                   | sed -E 's#^[^ ]*/OneWifi/+##' | tr -d '`' || true)
+            echo "$f: clang-tidy exit $rc: ${why:-no message}" >> "$tfail_list"
+            continue   # stdout is not findings here (e.g. the usage text)
+          fi
+          # || true: a no-match grep (exit 1) must not abort the loop.
           # clang-tidy runs one file at a time -> every finding is this file's, so keep only the
           # ones whose LINE the PR changed. Filter on the line number alone: matching the
           # sed-normalized display path against git-diff paths is fragile (silently drops all).
-          clang-tidy-18 -p . "${extra[@]}" --quiet "$f" 2>/dev/null \
-            | grep -E ': (warning|error):' | grep -v clang-diagnostic \
+          grep -E ': (warning|error):' "$out" | grep -v clang-diagnostic \
             | awk -F: 'NR==FNR{lo[NR]=$1;hi[NR]=$2;r=NR;next}
                        {l=$2+0; a=1; b=r                  # ranges are sorted: binary search
                         while(a<=b){m=int((a+b)/2); if(l<lo[m])b=m-1; else if(l>hi[m])a=m+1; else {print; next}}}' \
@@ -355,6 +420,11 @@ jobs:
         # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`.
         gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
         advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
+        tfail=$(sort -u "$tfail_list")
+        nbfail=$(wc -l < "$bfail_list")   # best-effort files that did not compile
+        if [ -n "$tfail" ]; then
+          echo "::warning::clang-tidy coverage incomplete ($(wc -l <<< "$tfail") item(s)); see the summary."
+        fi
         if [ -n "$gated" ]; then
           head -10 <<< "$gated" | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::error::$l"; done
@@ -364,20 +434,38 @@ jobs:
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
         {
-          if   [ -z "$CHANGED" ];     then echo "### 🔎 clang-tidy: no changed .c/.cpp to scan"
-          elif [ -z "$gated$advis" ]; then echo "### 🔎 clang-tidy: clean on changed lines"
+          if   [ -z "$CHANGED$tfail" ]; then echo "#### 🔎 clang-tidy: no changed .c/.cpp to scan"
+          elif [ -z "$gated$advis$tfail" ] && [ "$nbfail" -eq 0 ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
+          elif [ -z "$gated$advis$tfail" ]; then
+            # Nothing found, but not every file compiled: not "clean".
+            echo "#### 🔎 clang-tidy: no findings on changed lines, best-effort only ($nbfail file(s) did not compile)"
           else
             if [ -n "$gated" ]; then
-              echo "### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
+              echo "#### ❌ clang-tidy gate — $(printf '%s\n' "$gated" | wc -l) fatal"
               echo '```'; head -100 <<< "$gated"; echo '```'
               echo "_Fix the finding, or if it is a deliberate, waive it inline with \`// NOLINT(<check-name>)\` on that line._"
             fi
             if [ -n "$advis" ]; then
-              echo "### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
+              echo "#### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
               echo '```'; head -100 <<< "$advis"; echo '```'
             fi
+            if [ -n "$tfail" ]; then
+              echo "#### ⚠️ clang-tidy: coverage incomplete"
+              echo '```'; head -100 <<< "$tfail"; echo '```'
+            fi
+          fi
+          if [ "$besteffort" -gt 0 ]; then
+            # The count goes here only when the heading above does not already carry it.
+            note=; [ "$nbfail" -gt 0 ] && [ -n "$gated$advis$tfail" ] && note=" ($nbfail did not compile)"
+            echo; echo "ℹ️ $besteffort changed file(s) are only covered by a best-effort clang-tidy run$note."
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
+        # Inline-review candidates (Commit 5): parse tidy.log (already changed-lines
+        # scoped) into per-finding comments for the stage-2 'inline' job. Written
+        # even when the gate fires below — findings post regardless of pass/fail.
+        # Never reds the step (|| true): a parse hiccup must not fail the build.
+        cat "$bfail_list" >> "$tfail_list"
+        python3 .github/scripts/tidy_to_inline.py tidy.log ci-out/inline-tidy.json "$tfail_list" || true
         # Gate AFTER the summary + artifact are written, on promoted checks only.
         if [ -n "$gated" ]; then
           echo "clang-tidy gate: $(printf '%s\n' "$gated" | wc -l) promoted-check violation(s) on changed lines" >&2
@@ -416,11 +504,14 @@ jobs:
         # code left set-but-unused vars" case is -Wunused-but-set-variable.)
         GATE_WARNINGS: "-Wvla -Wreturn-type"
         ADVISORY_WARNINGS: "-Wunused-but-set-variable -Wunused-value -Wunused-label"
+        # Inline-review candidates (Commit 5) for the stage-2 'inline' job. Lands in
+        # ci-out/ (uploaded as ci-summary-bpi). Absent/unset -> the script writes none.
+        INLINE_JSON: "ci-out/inline-gcc.json"
       run: |
         set -uo pipefail
         mkdir -p ci-out
         if [ ! -f compile_commands.json ] || [ -z "$BASE" ]; then
-          echo "### 🚦 gcc diff-gate: no compile DB or PR base — skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "#### 🚦 gcc diff-gate: no compile DB or PR base — skipped" >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
@@ -429,7 +520,7 @@ jobs:
         # A missing script (partial cherry-pick / not yet on this branch) must skip,
         # not red the job: python3 on an absent file exits 2 and would fail the matrix.
         if [ ! -f .github/scripts/gcc_diff_gate.py ]; then
-          echo "### 🚦 gcc diff-gate: script not present — skipped" | tee -a ci-out/gcc-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "#### 🚦 gcc diff-gate: script not present — skipped" | tee -a ci-out/gcc-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
         set +e
@@ -438,6 +529,22 @@ jobs:
         set -e
         tee -a ci-out/gcc-gate-summary.md < gcc-gate.md >> "$GITHUB_STEP_SUMMARY"
         exit "$rc"
+
+    - name: Map inline findings to PR-head lines for ${{ matrix.platform.name }}
+      # clang-tidy and the gcc gate ran on the merge ref (HEAD = refs/pull/N/merge), so
+      # their line numbers are merge-result lines. Review comments anchor to the PR head,
+      # where a line moves when the base branch changed the same file above it.
+      if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      env:
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        # A crash must not leave merge-numbered candidates behind: drop both files, which
+        # the poster reads as "producer skipped" (posts and deletes nothing).
+        if ! python3 .github/scripts/map_head_lines.py "$HEAD_SHA" ci-out/inline-gcc.json ci-out/inline-tidy.json; then
+          echo "::warning::Could not map inline findings to PR-head lines; none are posted this run."
+          rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json
+        fi
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
     # Record the PR identity as passive data for the workflow_run poster to
@@ -463,11 +570,13 @@ jobs:
     # (unlike the clang-tidy step). It relies on that silent baseline, so any un-suppressed
     # residual warning would show on every PR. mock is the unittest leg (no clean-baseline gate)
     # -> excluded to avoid exactly that noise.
-    # The pr-comments.yml 'build' job aggregates however many ci-summary-* exist
-    # (and anchors trust on ci-summary-bpi, so bpi must always upload), so:
-    #   TO ADD mock:     drop the `&& matrix.platform.id != 'mock'` clause below.
-    #   TO REVERT to bpi-only: change it back to `== 'bpi'`.
-    #   (nothing to change in pr-comments.yml either way.)
+    # The pr-comments.yml 'summary' job shows every ci-summary-* that exists, names an
+    # expected leg that uploaded none, and anchors trust on ci-summary-bpi (so bpi must
+    # always upload), so:
+    #   TO ADD mock:     drop the `&& matrix.platform.id != 'mock'` clause below, and add mock
+    #                    to the expected legs ("bpi rpi") in pr-comments.yml's "Compose CI
+    #                    summary comment" step, which names an expected leg that uploaded nothing.
+    #   TO REVERT to bpi-only: change it back to `== 'bpi'`, and drop rpi from that list.
     - name: Upload CI summary artifact
       if: always() && github.event_name == 'pull_request' && matrix.platform.id != 'mock'
       uses: actions/upload-artifact@v6

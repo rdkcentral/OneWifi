@@ -2,9 +2,9 @@ name: 'Upsert a sticky PR comment'
 description: >
   Create-or-update a single PR issue comment identified by a hidden HTML marker,
   so re-runs replace the previous body instead of adding new comments. Used for
-  the gcc build summary and the clang-tidy summary (the two "unify as one sticky
-  comment" payloads). Trusted stage-2 only: the caller must already have
-  established a validated pr-number via the pr-context action.
+  the folded CI summary comment (build + diff-scoped checks). Trusted stage-2
+  only: the caller must already have established a validated pr-number via the
+  pr-context action.
 
 inputs:
   github-token:
@@ -79,8 +79,9 @@ runs:
         MAXB=60000
         if [ "$(wc -c < sticky-body.md)" -gt "$MAXB" ]; then
           # iconv -c drops any invalid/incomplete UTF-8 the byte-cut may leave
-          # (the summaries contain emoji) so the JSON body stays valid.
-          head -c "$MAXB" sticky-body.md | iconv -f utf-8 -t utf-8 -c > sticky-body.cut
+          # (the summaries contain emoji) so the JSON body stays valid. It then exits 1,
+          # which is expected here and must not abort the step (-eo pipefail).
+          { head -c "$MAXB" sticky-body.md | iconv -f utf-8 -t utf-8 -c 2>/dev/null || true; } > sticky-body.cut
           mv sticky-body.cut sticky-body.md
           if [ $(( $(grep -c '```' sticky-body.md) % 2 )) -ne 0 ]; then
             printf '\n```\n' >> sticky-body.md

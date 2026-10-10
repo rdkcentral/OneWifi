@@ -108,17 +108,17 @@ makefiles/scripts. Doing both in one job is a classic "pwn-request." So the syst
         v
  STAGE 1 (pull_request, untrusted PR code, NO write token)
    clang-format.yml -> clang-format.diff, changed-lines.txt, pr-meta.env
-   makefile.yml      -> build-summary.md, tidy-summary.md,
-                         gcc-gate-summary.md, pr-meta.env
+   makefile.yml      -> build-summary.md, tidy-summary.md, gcc-gate-summary.md,
+                         inline-gcc.json, inline-tidy.json, pr-meta.env
         | (artifacts only)
         v
  STAGE 2 (workflow_run, trusted base-repo context, write token)
-   pr-comments.yml
+   pr-comments.yml: resolve -> format / summary / inline
      - checks out the BASE repo only, never PR code
      - downloads stage-1 artifacts as passive data, validates, posts
         |
         v
-   inline suggestions / sticky PR comments
+   one sticky "CI summary" comment / inline review comments / clang-format suggestions
 ```
 
 Stage 1 is `makefile.yml` and `clang-format.yml`, triggered on `pull_request`, both
@@ -131,27 +131,45 @@ in to run with the write token. It holds `pull-requests: write` (plus `issues: w
 sticky-comment recreate flow's delete step), checks out only the base repo, and reads stage-1
 artifacts purely as data.
 
-Every stage-2 job routes its trust decision through `.github/actions/pr-context`: it downloads the
+Its first job, `resolve`, normalizes the trigger, so every downstream job behaves identically whether
+it was reached via `workflow_run` or via the manual `workflow_dispatch` harness described below.
+
+Every posting job routes its trust decision through `.github/actions/pr-context`: it downloads the
 named stage-1 artifact, strictly parses (never `source`s) `pr-meta.env`, binds the recorded PR
-number back to the triggering run's head repo/branch (unforgeable), and checks whether the PR head
-still matches the recorded sha (`fresh`), so a superseded run doesn't post stale content. The two
-sticky-comment jobs share `.github/actions/sticky-comment`, which upserts one comment per marker
-(a hidden HTML tag), with an optional "recreate" mode (delete + repost) so the comment resurfaces
-at the bottom of the PR timeline instead of staying pinned in place.
+number back to the triggering run's head repo/branch and the recorded sha to the commit that run
+built (both unforgeable), and checks whether the PR head still matches that sha (`fresh`), so a
+superseded run doesn't post stale content. Three jobs
+post: `format` and `inline` reconcile individual review comments against what is already on the PR
+(via a shared poster script, §5); `summary` upserts the one folded `ci-summary` sticky comment via
+`.github/actions/sticky-comment`, keyed on a hidden HTML marker, with an optional "recreate" mode
+(delete + repost) so the comment resurfaces at the bottom of the PR timeline instead of staying
+pinned in place.
+
+**Testing stage 2 from a branch.** `pr-comments.yml` also accepts `workflow_dispatch`, so a change
+to stage 2 itself can be exercised before it merges: a maintainer picks a branch and a stage-1
+`run_id` to post from, and that dispatch runs the *branch's* copy of the workflow (unlike
+`workflow_run`, which always uses the default branch). This needs write access to trigger, the
+`resolve` job refuses a `run_id` that belongs to a different repository, and `pr-context` still
+validates every downloaded artifact, so the trust boundary is unchanged.
 
 ## 5. Artifacts
 
-**Stage 1 → stage 2:**
-- `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `pr-meta.env`
-- `ci-summary-<leg>` (per `bpi`/`rpi`): `build-summary.md`, `pr-meta.env`, plus (`bpi` only)
-  `tidy-summary.md` and `gcc-gate-summary.md`
+**Stage 1 to stage 2:**
+- `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `pr-meta.env`.
+- `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
+  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
+  The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
+  `gcc-gate-summary.md`, `inline-tidy.json` and `inline-gcc.json`.
 
 **Posted back to the PR:**
-- inline review `suggestion` comments from the formatter (its own review, dismissed and reposted
-  fresh each run, not a sticky comment)
-- one sticky "Build summary" comment aggregating every uploaded leg
-- one sticky comment folding `tidy-summary.md` + `gcc-gate-summary.md` together (that fold is
-  already done; folding the build-summary comment in too is a listed extension)
+- one sticky `ci-summary` comment (job `summary`), folding the build summary and the diff-scoped
+  gcc/clang-tidy findings into a single comment keyed on one marker, so a re-push replaces that same
+  comment instead of adding a new one. It replaces the two older stickies (`build-summary`,
+  `clang-tidy`), which the job retires on its first run.
+- inline review comments for the gcc diff-gate and clang-tidy findings, on the exact changed lines
+  they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks (job `format`).
+  Both post through `.github/scripts/review_poster.py`, which reconciles against what is already on
+  the PR instead of reposting everything on every run (§8).
 
 ## 6. Caching
 
@@ -236,13 +254,29 @@ source-dependency SHAs, so they are not in `ci-pins.env`.
 Where things get weird. The pipeline leans advisory, so most of these resolve to "warn, don't
 red" — a plumbing hiccup should not falsely block a PR.
 
-- **Out-of-diff review `422`.** If the PR is rebased or squash-merged between stage 1 and stage 2,
-  a formatter suggestion can target a line no longer in the diff, and GitHub rejects the whole
-  review with `422`. Treated as advisory: a `::warning::` (distinguishing the benign rebase/merge
-  race from a genuine bad-payload/converter bug) and `exit 0` — never a red. See `pr-comments.yml`.
-- **Too many suggestions.** Large reviews trip GitHub rate limits; `MAX_COMMENTS` (25) caps the
-  post and the overflow is deferred to the next run with a note. A `404` on the POST is usually
-  that rate limit, and stays fatal — the signal to lower the cap.
+- **Re-runs don't duplicate comments.** The poster fingerprints every comment it owns (path, line
+  range, body) and per run: skips findings already posted, deletes its own comments that GitHub
+  marked outdated (`line: null`) or whose finding is gone, collapses duplicate copies to the oldest,
+  and never deletes a comment someone replied to. If any producer reports `status: skipped` (e.g. no
+  compile DB) or `partial` (a changed file failed to recompile, clang-tidy could not fully analyze
+  it, or `.clang-tidy` did not load), that run deletes no "finding gone" comments, so an incomplete run never reads as fixed.
+  Comments are posted individually, not as one review: a submitted review can't be deleted later,
+  and would leave an empty shell behind.
+- **Out-of-diff `422`.** If the PR is rebased or squash-merged between stage 1 and stage 2, a
+  suggestion or finding can target a line no longer in the diff, and GitHub rejects that one comment
+  with `422`. Only that comment is skipped (a `::warning::` distinguishing the benign rebase/merge
+  race from a bad payload); the rest of the run still posts. See `review_poster.py`.
+- **Merge-ref line numbers.** Build Check analyzes the merge ref (`refs/pull/N/merge`), so
+  clang-tidy and the gcc gate report merge-result lines, while review comments anchor to the PR head.
+  A stage-1 step (`map_head_lines.py`) maps each finding to its PR-head line; one on a line the head
+  does not have (the base changed it) is dropped and makes the set `partial`. The summary comment
+  and the check annotations still show merge-ref line numbers.
+- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what
+  each `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run,
+  not per PR: the inline job (gcc-gate first, then clang-tidy) and the clang-format job each post up
+  to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to lower the cap.
+  Any other POST failure (403, 429, 5xx) stops that run's posting with a warning, without failing
+  the job; the next run posts what is missing.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).
@@ -255,10 +289,16 @@ red" — a plumbing hiccup should not falsely block a PR.
 - **Fork PRs / superseded runs.** `workflow_run.pull_requests` is empty for fork PRs, so stage 2
   keys concurrency and the trust bind on `head_repository.full_name` + `head_branch` instead. And
   if the PR head advances past what stage 1 measured, `pr-context`'s `fresh` check is false and
-  stage 2 skips posting, so a stale run never overwrites fresh content.
-- **Hostile or oversized inputs.** `changed-lines.txt` is built over untrusted PR code, so its
-  ranges are kept as intervals with a record cap — a crafted `file.c:1-1000000000` can't exhaust
-  the trusted job's memory. Likewise the gcc diff-gate fails open (skip + `::warning::`, `exit 0`)
+  stage 2 skips posting, so a stale run never overwrites fresh content. Stage-2 runs queue rather
+  than cancel each other: posting deletes before it posts, so a cancelled run could leave comments
+  missing.
+- **Expired stage-1 artifact.** Stage-1 artifacts retain for 1 day. A manual `workflow_dispatch`
+  re-post (§4) more than a day after the original run finds the artifact already gone; `pr-context`
+  surfaces a `::notice::` naming the stage-1 workflow to re-run, and posts nothing that run.
+- **Hostile or oversized inputs.** `changed-lines.txt` and the `inline-*.json` findings are built
+  over untrusted PR code, so the trusted job caps them: intervals with a record cap for the former (a
+  crafted `file.c:1-1000000000` can't exhaust memory), byte/entry/schema/body-length caps for the
+  latter. Likewise the gcc diff-gate fails open (skip + `::warning::`, `exit 0`)
   on a malformed compile DB or a recompile that won't run, rather than emitting a false gate result.
 
 ## 9. Extensions / known gaps
@@ -272,9 +312,6 @@ red" — a plumbing hiccup should not falsely block a PR.
   pinned commit (`rdkcentral/OneWifi/.github/actions/hostap-tree@<sha>`).
 - Heavier analyzers (`gcc -fanalyzer`, more `clang-analyzer-core.*` checks) are candidates, kept
   diff-scoped only — too noisy tree-wide.
-- Consolidate the several PR comments into one. The gcc-gate → clang-tidy fold is already done;
-  folding the build-summary comment in too is next, deferred until the gcc diff-gate exits its
-  advisory rollout.
 - gcc-14 watch: CI runs on `ubuntu-24.04` (gcc 13.x), so nothing breaks today; a future move to
   gcc 14 is worth revisiting since newer gcc releases have sometimes promoted optional warnings to
   default errors — not yet audited against this tree specifically.

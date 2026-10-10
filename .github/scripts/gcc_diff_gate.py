@@ -42,8 +42,12 @@ Env:
   ENFORCE            'false' -> advisory (render ❌ but exit 0). default enforce
   REPO_DIR           dir the changed files + git history live in (default '.'; the HAL sets
                      this to '../rdk-wifi-hal' since its DB lives in the cloned OneWifi cwd)
+  INLINE_JSON        optional path; when set, also write a review_poster.py candidate
+                     envelope (source 'gcc-gate') of the gate/advisory findings so they can
+                     be posted as inline PR review comments (Commit 5). Empty/unset -> no file.
 Exit: 1 iff a GATE class fired on a changed line (and ENFORCE); else 0. Always writes a
-markdown summary to stdout. Identical file ships in OneWifi and the HAL.
+markdown summary to stdout. Identical file ships in OneWifi and the HAL — the INLINE_JSON
+support must be re-ported verbatim when this file is synced to the HAL.
 """
 import bisect
 import json
@@ -64,6 +68,9 @@ ENFORCE = os.environ.get("ENFORCE", "true").strip().lower() not in ("false", "0"
 # '../rdk-wifi-hal' for the HAL (its DB is built in the cloned OneWifi cwd, cross-dir).
 REPO_DIR = os.environ.get("REPO_DIR", ".").strip() or "."
 DB = "compile_commands.json"
+# When set, write inline-review candidates here (Commit 5). Same envelope
+# review_poster.py reads; source 'gcc-gate' gives it top posting priority.
+INLINE_JSON = os.environ.get("INLINE_JSON", "").strip()
 
 # Map each candidate -Wflag to its [-Wflag] diagnostic tag; classify a warning line by tag.
 GATE_TAGS = {f"[{w}]" for w in GATE}
@@ -73,6 +80,60 @@ ALL_FLAGS = GATE + ADVISORY
 NO_ERROR = [f"-Wno-error={w[2:]}" for w in ALL_FLAGS]
 LINE_RE = re.compile(r"\.(?:c|cpp):(\d+):")
 TAG_RE = re.compile(r"\[-W[a-z0-9-]+\]")
+# Parse a normalized `disp` line (path already stripped) into inline-comment fields.
+INLINE_RE = re.compile(r"^(?P<path>[^:]+):(?P<line>\d+):\d+: warning: (?P<msg>.*) \[(?P<tag>-W[a-z0-9-]+)\]$")
+
+
+def write_inline(status, comments, dropped=0):
+    """Write the review_poster.py candidate envelope to INLINE_JSON (no-op if unset).
+
+    status 'skipped' (no DB/BASE, or a mechanism error) writes an empty comment
+    list and 'partial' (a changed file failed to recompile) keeps the findings it
+    has; the poster reads either as "incomplete" and so disables stale-comment
+    deletion for the slot — never as "all clean, delete everything" (fail-open).
+    A never-raising best-effort write: a failure here must not red the gate.
+    """
+    if not INLINE_JSON:
+        return
+    try:
+        out_dir = os.path.dirname(INLINE_JSON)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+        with open(INLINE_JSON, "w") as fh:
+            json.dump({"source": "gcc-gate", "status": status,
+                       "dropped": dropped, "comments": comments}, fh)
+    except Exception as exc:  # pragma: no cover - best-effort I/O
+        print(f"::warning::gcc diff-gate could not write INLINE_JSON {INLINE_JSON}: {exc}",
+              file=sys.stderr)
+
+
+def build_inline(gated, advis):
+    """Turn the deduped gate/advisory display lines into inline candidates.
+
+    One comment per (path, line, tag, msg): gcc repeats a finding at several
+    columns on macro expansion, so dedupe on those four fields (dropping the
+    column); deduping here keeps the counts honest (the poster also drops exact
+    repeats). A line that does not parse is counted as 'dropped' (surfaced in the
+    poster's summary), never silently lost.
+    """
+    inline, seen, dropped = [], set(), 0
+    for sev, icon, lst in (("error", "❌", gated), ("warning", "❗", advis)):
+        for disp in lst:
+            hit = INLINE_RE.match(disp)
+            if not hit:
+                dropped += 1
+                continue
+            key = (hit["path"], int(hit["line"]), hit["tag"], hit["msg"])
+            if key in seen:
+                continue
+            seen.add(key)
+            inline.append({
+                "path": hit["path"],
+                "line": int(hit["line"]),
+                "side": "RIGHT",
+                "body": f"{icon} **gcc** `{hit['tag']}` ({sev}) — {hit['msg']}",
+            })
+    return inline, dropped
 
 
 def effective_base():
@@ -197,7 +258,8 @@ def db_args(db, f):
 
 def main():
     if not BASE or not os.path.exists(DB):
-        print("### 🚦 gcc diff-gate: no compile DB or PR base — skipped")
+        print("#### 🚦 gcc diff-gate: no compile DB or PR base — skipped")
+        write_inline("skipped", [])
         return 0
     base = effective_base()
     db = json.load(open(DB))
@@ -252,6 +314,13 @@ def main():
     advis = sorted(set(advis))
     failed = sorted(set(failed))
 
+    # Inline-review candidates (Commit 5). Written on every non-skip path — including
+    # the clean case (empty list) so the poster removes any now-stale gcc comments.
+    # 'partial' when a file failed to recompile or a finding could not be converted:
+    # the set is incomplete, so the poster must not delete comments as if fixed.
+    inline, inline_dropped = build_inline(gated, advis)
+    write_inline("partial" if failed or inline_dropped else "ok", inline, inline_dropped)
+
     # GitHub annotations (top-of-check box).
     for l in gated[:10]:
         print(f"::error::{l}".replace("%", "%25").replace("\r", "%0D"), file=sys.stderr)
@@ -262,23 +331,23 @@ def main():
               .replace("%", "%25").replace("\r", "%0D"), file=sys.stderr)
 
     if not gated and not advis and not failed:
-        print("### 🚦 gcc diff-gate: clean on changed lines")
+        print("#### 🚦 gcc diff-gate: clean on changed lines")
         return 0
     if gated:
         # Same wording with ENFORCE on or off: these are real errors in changed code,
         # whether or not the job is red for them yet.
-        print(f"### ❌ gcc diff-gate — {len(gated)} error(s) on lines this PR changed")
+        print(f"#### ❌ gcc diff-gate — {len(gated)} error(s) on lines this PR changed")
         print("```")
         print("\n".join(gated[:100]))
         print("```")
         print("_Fix the finding, or suppress it with a GCC diagnostic pragma where intentional / refactor._")
     if advis:
-        print(f"### ❗ gcc diff-gate warnings — {len(advis)} on changed lines")
+        print(f"#### ❗ gcc diff-gate warnings — {len(advis)} on changed lines")
         print("```")
         print("\n".join(advis[:100]))
         print("```")
     if failed:
-        print(f"### ⚠️ gcc diff-gate: {len(failed)} file(s) failed to recompile — coverage incomplete")
+        print(f"#### ⚠️ gcc diff-gate: {len(failed)} file(s) failed to recompile — coverage incomplete")
         print("```")
         print("\n".join(failed[:100]))
         print("```")
@@ -299,7 +368,9 @@ if __name__ == "__main__":
         # line so the comment isn't blank, warn, dump the trace to stderr for
         # debugging, and exit 0. Same approach as the clang-tidy gate.
         import traceback
-        print("### 🚦 gcc diff-gate: skipped (mechanism error) — failing open")
+        print("#### 🚦 gcc diff-gate: skipped (mechanism error) — failing open")
         print(f"::warning::gcc diff-gate mechanism error: {exc}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
+        # A mechanism error must not read as "all clean" to the poster either.
+        write_inline("skipped", [])
         sys.exit(0)

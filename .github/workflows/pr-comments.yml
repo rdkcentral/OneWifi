@@ -3,10 +3,12 @@ name: PR comments
 # unified stage 2/2 for every PR-comment payload.
 #
 # One trusted workflow_run flow that posts the CI artifacts back to the PR:
-#   - clang-format          -> inline review suggestions  (job: format, bespoke)
-#   - gcc build summary     -> one sticky comment         (job: build)
-#   - clang-tidy + gcc gate -> one sticky comment         (job: tidy, both
-#                              diff-scoped checks folded together)
+#   - clang-format            -> inline review suggestions (job: format, bespoke
+#                                ```suggestion blocks with a Commit-suggestion button)
+#   - build + diff-scoped     -> ONE sticky "CI summary" comment (job: summary;
+#     summaries (gcc/tidy)        folds the old build-summary + clang-tidy stickies)
+#   - gcc gate + clang-tidy   -> inline review COMMENTS on the exact changed lines
+#     findings                    they fired on (job: inline; advisory, fail-open)
 #
 # Why workflow_run (and why two stages at all): posting to a PR needs
 # `pull-requests: write`. Doing that in a job that has checked out and built
@@ -22,18 +24,26 @@ name: PR comments
 #
 # NOTE: workflow_run *always* uses the copy of this file (and the referenced local
 # actions) from the repository default branch — so nothing here takes effect
-# until it has merged to 'develop'.
+# until it has merged to 'develop'. The one exception is a manual workflow_dispatch
+# (below): it runs the copy of this file on the ref the maintainer picks, which is
+# how a stage-2 change is tested from a feature branch before it merges.
 # NOTE: workflow_run applies only to same repo.
+#
+# SECURITY: workflow_dispatch requires write access to the repo (a maintainer), who
+# chooses both the ref and the stage-1 run_id. The 'resolve' job rejects a run_id that
+# belongs to a different repository, and pr-context still validates every downloaded
+# artifact — so a dispatch cannot post from another repo's run, and the trust boundary
+# is identical to the workflow_run path.
 
 on:
   workflow_run:
     workflows: ["Build Check", "clang-format"]
     types: [completed]
-  # Manual trigger so stage 2 can be dispatched from a feature branch pre-merge
-  # to test changes before they land (a dispatch runs the branch's copy of this
-  # file, unlike workflow_run which always uses the default-branch copy). Harmless
-  # on 'develop': every job's if: name-gate below is false for a dispatch event,
-  # so all jobs skip until the companion PR adds a resolve job to wire it up.
+  # Manual trigger so stage 2 can be dispatched from a feature branch pre-merge to
+  # test changes before they land (a dispatch runs the branch's copy of this file,
+  # unlike workflow_run which always uses the default-branch copy). The 'resolve' job
+  # normalizes the trigger context so every downstream job behaves identically whether
+  # it was reached via workflow_run or a dispatch carrying this run_id.
   workflow_dispatch:
     inputs:
       run_id:
@@ -52,11 +62,18 @@ permissions:
 # Separate group per triggering workflow + head, so a Build-Check-triggered run
 # and a clang-format-triggered run for the same branch never cancel each other.
 # workflow_run.pull_requests is empty for fork PRs (actions/runner#3444), so key
-# on head_repository.full_name + head_branch, which always exists.
+# on head_repository.full_name + head_branch, which always exists. A manual dispatch
+# keys on the stage-1 run it re-posts, so two dispatches of one run never race.
+# The posting jobs also take a job-level group from the resolved head (one per
+# comment slot), so a dispatch and the automatic run for the same PR serialize.
+# Never cancel in progress: review_poster.py and the sticky comment delete before
+# they post, so a cancelled run can leave comments missing, and the run that
+# cancelled it may be stale (an old run re-run or dispatched) and post nothing. A
+# newer queued run still replaces an older queued one (one pending run per group).
 concurrency:
   group: >-
-    pr-comments-${{ github.event.workflow_run.name }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
-  cancel-in-progress: true
+    pr-comments-${{ github.event.workflow_run.name || 'dispatch' }}-${{ github.event.workflow_run.head_repository.full_name || github.repository }}-${{ github.event.workflow_run.head_branch || inputs.run_id }}
+  cancel-in-progress: false
 
 env:
   # Cap on inline review comments per run. Large reviews can trip GitHub rate
@@ -69,20 +86,101 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Normalize the triggering context into ONE set of outputs, so every downstream
+  # job is identical whether this run came from workflow_run (the real path) or a
+  # manual workflow_dispatch (the pre-merge test harness — see the file header).
+  # No checkout: this job only needs gh + jq, which are on the runner.
+  # ---------------------------------------------------------------------------
+  resolve:
+    name: resolve trigger context
+    runs-on: ubuntu-24.04
+    outputs:
+      run_id: ${{ steps.r.outputs.run_id }}
+      run_name: ${{ steps.r.outputs.run_name }}
+      run_number: ${{ steps.r.outputs.run_number }}
+      run_url: ${{ steps.r.outputs.run_url }}
+      head_repo: ${{ steps.r.outputs.head_repo }}
+      head_branch: ${{ steps.r.outputs.head_branch }}
+      head_sha: ${{ steps.r.outputs.head_sha }}
+      event: ${{ steps.r.outputs.event }}
+      conclusion: ${{ steps.r.outputs.conclusion }}
+    steps:
+      - name: Resolve run metadata
+        id: r
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID_INPUT: ${{ inputs.run_id }}
+          # workflow_run.* — populated only on the workflow_run path, empty on dispatch.
+          WR_ID: ${{ github.event.workflow_run.id }}
+          WR_NAME: ${{ github.event.workflow_run.name }}
+          WR_NUMBER: ${{ github.event.workflow_run.run_number }}
+          WR_URL: ${{ github.event.workflow_run.html_url }}
+          WR_HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          WR_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          WR_EVENT: ${{ github.event.workflow_run.event }}
+          WR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -uo pipefail
+          emit() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"; }
+
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            emit run_id      "$WR_ID"
+            emit run_name    "$WR_NAME"
+            emit run_number  "$WR_NUMBER"
+            emit run_url     "$WR_URL"
+            emit head_repo   "$WR_HEAD_REPO"
+            emit head_branch "$WR_HEAD_BRANCH"
+            emit head_sha    "$WR_HEAD_SHA"
+            emit event       "$WR_EVENT"
+            emit conclusion  "$WR_CONCLUSION"
+            exit 0
+          fi
+
+          # workflow_dispatch: re-derive the same fields from the API for the run the
+          # maintainer named. Validate the id is numeric BEFORE it reaches a URL, and
+          # refuse a run owned by another repository (see the SECURITY note above).
+          case "$RUN_ID_INPUT" in
+            ''|*[!0-9]*) echo "::error::run_id must be numeric, got '$RUN_ID_INPUT'"; exit 1 ;;
+          esac
+          if ! gh api "/repos/$REPO/actions/runs/$RUN_ID_INPUT" > /tmp/run.json; then
+            echo "::error::Could not fetch run $RUN_ID_INPUT from $REPO"; exit 1
+          fi
+          full=$(jq -r '.repository.full_name // ""' /tmp/run.json)
+          if [ "$full" != "$REPO" ]; then
+            echo "::error::run $RUN_ID_INPUT belongs to '$full', not '$REPO' — refusing."; exit 1
+          fi
+          emit run_id      "$RUN_ID_INPUT"
+          emit run_name    "$(jq -r '.name // ""' /tmp/run.json)"
+          emit run_number  "$(jq -r '.run_number // ""' /tmp/run.json)"
+          emit run_url     "$(jq -r '.html_url // ""' /tmp/run.json)"
+          emit head_repo   "$(jq -r '.head_repository.full_name // ""' /tmp/run.json)"
+          emit head_branch "$(jq -r '.head_branch // ""' /tmp/run.json)"
+          emit head_sha    "$(jq -r '.head_sha // ""' /tmp/run.json)"
+          emit event       "$(jq -r '.event // ""' /tmp/run.json)"
+          emit conclusion  "$(jq -r '.conclusion // ""' /tmp/run.json)"
+
+  # ---------------------------------------------------------------------------
   # clang-format -> inline review suggestions (kept bespoke: only this renders as
   # ```suggestion blocks with a "Commit suggestion" button).
   # ---------------------------------------------------------------------------
   format:
     name: clang-format suggestions
     runs-on: ubuntu-24.04
+    needs: resolve
+    concurrency:
+      group: pr-comments-format-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
+      cancel-in-progress: false
     # Only the clang-format trigger, only PRs, skip cancelled runs (they can leave
     # a stale artifact yet fire 'completed'). Allow failure: if stage 1 failed,
     # suggestions are still useful. Name-gating means the build/tidy jobs don't
     # spin up a no-op run here (and vice-versa), keeping the run list readable.
     if: >-
-      github.event.workflow_run.name == 'clang-format'
-      && github.event.workflow_run.event == 'pull_request'
-      && github.event.workflow_run.conclusion != 'cancelled'
+      needs.resolve.outputs.run_name == 'clang-format'
+      && needs.resolve.outputs.event == 'pull_request'
+      && needs.resolve.outputs.conclusion != 'cancelled'
     steps:
       # Trusted base-repo checkout - for the local composite actions only. No ref
       # is passed, so this is the base default branch (trusted), never PR code.
@@ -94,244 +192,288 @@ jobs:
         uses: ./.github/actions/pr-context
         with:
           artifact-name: clang-format-suggestions
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
-          expected-branch: ${{ github.event.workflow_run.head_branch }}
+          expected-repo: ${{ needs.resolve.outputs.head_repo }}
+          expected-branch: ${{ needs.resolve.outputs.head_branch }}
+          expected-sha: ${{ needs.resolve.outputs.head_sha }}
 
-      - name: Convert diff into review suggestions
+      - name: Convert clang-format diff into review candidates
         if: steps.ctx.outputs.found == 'true'
         env:
-          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
-          # MAX_COMMENTS comes from the workflow-level env.
           CHANGED_LINES_FILE: clang-format-suggestions/changed-lines.txt
+          CANDIDATES_OUT: /tmp/fmt-candidates.json
         run: |
           # The converter lives in a checked-out script (trusted base branch). When the
-          # changed lines are already clang-format clean there is no diff file - feed /dev/null
-          # so it creates 0 comments. The post step then just dismisses any now-stale review.
+          # changed lines are already clang-format clean there is no diff file - feed
+          # /dev/null so it writes an empty (status ok) candidate file. review_poster
+          # then reconciles: nothing to post, and any now-stale suggestion is removed.
           diff=clang-format-suggestions/clang-format.diff
           [ -f "$diff" ] || diff=/dev/null
           python3 .github/scripts/diff_to_suggestions.py < "$diff"
 
-      - name: Dismiss stale reviews, then post fresh suggestions
-        # Runs whenever the PR head still matches what stage 1 measured - including the clean
-        # case (0 comments). Dismissal comes first so an earlier push's (now-obsolete)
-        # suggestions are cleared even when there is nothing new to post. Stage 1 always uploads
-        # pr-meta.env, so this job still runs when formatting became clean.
+      - name: Reconcile and post clang-format suggestions
+        # Runs whenever the PR head still matches what stage 1 measured - including the
+        # clean case (empty candidate file). review_poster.py posts only the missing
+        # suggestions, deletes outdated/duplicate/stale ones, and leaves any suggestion a
+        # human has replied to intact. It replaces the old dismiss-and-repost loop, which
+        # could not remove a review's inline comments (and GitHub rejects dismissing a
+        # COMMENTED review), so long-lived PRs accumulated duplicate stacks. Stage 1
+        # always uploads pr-meta.env, so this still runs when formatting became clean.
         if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.ctx.outputs.pr_number }}
-          # BOT_LOGIN comes from the workflow-level env.
+          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
+          SLOT: fmt
+          # MAX_COMMENTS and BOT_LOGIN come from the workflow-level env.
         run: |
-          # Stale-review cleanup first (before the empty-check). Identity = our bot
-          # login+type + our body marker. $BOT_LOGIN is workflow-trusted, so the
-          # shell interpolation into the filter is safe. Non-fatal.
-          # shellcheck disable=SC2016  # the backticks in the jq are a literal body marker, not a shell expansion
-          gh api "/repos/$REPO/pulls/$PR/reviews" --paginate \
-            --jq '.[] | select(.user.login == "'"$BOT_LOGIN"'" and (.user.type == "Bot")) | select(.body | startswith("`clang-format` suggests")) | select(.state != "DISMISSED") | .id' \
-            > /tmp/stale_ids.txt \
-            || { echo "::warning::Could not list existing reviews for cleanup (continuing)."; : > /tmp/stale_ids.txt; }
-          while read -r rid; do
-            [ -n "$rid" ] || continue
-            echo "Dismissing prior clang-format review $rid"
-            gh api --method PUT "/repos/$REPO/pulls/$PR/reviews/$rid/dismissals" \
-              -f message="Superseded by a newer clang-format suggestion run." \
-              -f event="DISMISS" >/dev/null \
-              || echo "::warning::Failed to dismiss review $rid (continuing)."
-          done < /tmp/stale_ids.txt
-
-          # Nothing new to post (clean, or all suggestions were pure-additions the
-          # converter dropped). The dismissal above already cleaned up. Done.
-          if [ "$(python3 -c 'import json;print(len(json.load(open("/tmp/comments.json"))))')" = "0" ]; then
-            echo "clang-format clean on the changed lines — dismissed stale reviews, nothing to post."
-            exit 0
-          fi
-
-          # A 422 has two flavours. The benign one (rebase / squash-merge race): a
-          # stale-payload workflow_run posts suggestions computed against the
-          # pre-rebase diff, so some lines no longer exist -> GitHub rejects them as
-          # "not part of the diff". But GitHub also returns 422 for genuinely bad
-          # payloads (invalid position, closed/invalid review, a converter bug), and
-          # blindly soft-skipping every 422 would mask those. Since posting
-          # suggestions is advisory, we never red a PR over it (exit 0 either way),
-          # but we distinguish the two so a real bug stays visible in the logs.
-          # Other failures stay fatal (404 = usually a rate limit from too many
-          # comments -> lower MAX_COMMENTS).
-          if gh api --method POST "/repos/$REPO/pulls/$PR/reviews" \
-                 --input /tmp/review.json > /tmp/resp.json 2> /tmp/review_err.txt; then
-            echo "Review posted: $(python3 -c 'import json;print(json.load(open("/tmp/resp.json")).get("html_url",""))')"
-          elif grep -q 'HTTP 422' /tmp/review_err.txt; then
-            if grep -qiE 'part of the diff|pull_request_review_thread' /tmp/review_err.txt; then
-              echo "::warning::Review POST 422 — suggestions no longer match the PR diff (likely a rebase/merge race). Skipping; a fresh run will supersede."
-            else
-              echo "::warning::Review POST 422 did NOT look like an out-of-diff race — possible invalid payload or converter/API bug; suggestions were dropped this run. Inspect the response below."
-            fi
-            cat /tmp/review_err.txt
-            exit 0
-          else
-            echo "::error::Failed to post review:"
-            cat /tmp/review_err.txt
-            exit 1
-          fi
+          # review_poster posts each suggestion as its own review comment (no batched
+          # review that would leave an undeletable empty shell), reconciling against
+          # what is already on the PR.
+          python3 .github/scripts/review_poster.py /tmp/fmt-candidates.json
 
   # ---------------------------------------------------------------------------
-  # gcc build -> one sticky summary comment, aggregating every matrix leg.
+  # Build Check -> ONE sticky "CI summary" comment: the per-leg build summary plus
+  # the diff-scoped checks (clang-tidy + gcc diff-gate), folded from what used to be
+  # two separate jobs/comments (build-summary + clang-tidy). One marker, one comment.
   # ---------------------------------------------------------------------------
-  build:
-    name: build summary comment
+  summary:
+    name: CI summary comment
     runs-on: ubuntu-24.04
+    needs: resolve
+    concurrency:
+      group: pr-comments-summary-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
+      cancel-in-progress: false
     if: >-
-      github.event.workflow_run.name == 'Build Check'
-      && github.event.workflow_run.event == 'pull_request'
-      && github.event.workflow_run.conclusion != 'cancelled'
+      needs.resolve.outputs.run_name == 'Build Check'
+      && needs.resolve.outputs.event == 'pull_request'
+      && needs.resolve.outputs.conclusion != 'cancelled'
     steps:
       - name: Check out base-repo actions (no PR code)
         uses: actions/checkout@v6
 
       # Anchor trust on the bpi build artifact (bpi always runs and uploads on
-      # if: always()). Its pr-meta.env is identical across legs.
+      # if: always()). Its pr-meta.env is identical across legs. pr-context also
+      # downloads the ci-summary-bpi artifact to ./ci-summary-bpi/ (the diff-scoped
+      # files below read from there).
       - name: Establish trusted PR context
         id: ctx
         uses: ./.github/actions/pr-context
         with:
           artifact-name: ci-summary-bpi
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
-          expected-branch: ${{ github.event.workflow_run.head_branch }}
+          expected-repo: ${{ needs.resolve.outputs.head_repo }}
+          expected-branch: ${{ needs.resolve.outputs.head_branch }}
+          expected-sha: ${{ needs.resolve.outputs.head_sha }}
 
-      # Pull every platform's summary for one combined comment. These files are
-      # passive display text; the trust decision was already made above.
-      # NOTE: makefile.yml currently uploads only the bpi leg's summary, so today
-      # this resolves to a single artifact. It stays a wildcard on purpose — once
-      # rpi/mock are worth posting, enabling them there needs no change here.
+      # Pull every platform's summary for the build section. Passive display text;
+      # the trust decision was already made above. makefile.yml uploads the bpi and
+      # rpi legs (mock is excluded); the wildcard picks up whichever legs uploaded, and
+      # the compose step below names an expected leg that did not.
       - name: Download all platform summaries
         if: steps.ctx.outputs.found == 'true'
         uses: actions/download-artifact@v7
         with:
           pattern: ci-summary-*
           path: summaries
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compose build summary comment
+      - name: Compose CI summary comment
         if: steps.ctx.outputs.found == 'true'
         env:
           HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
-          RUN_NAME: ${{ github.event.workflow_run.name }}
-          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
-          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_NAME: ${{ needs.resolve.outputs.run_name }}
+          RUN_NUMBER: ${{ needs.resolve.outputs.run_number }}
+          RUN_URL: ${{ needs.resolve.outputs.run_url }}
         run: |
           set -uo pipefail
+          # The sticky action cuts the whole body from the tail at 60000 bytes, which after a
+          # noisy build would drop the diff-scoped section. Each section is capped here instead:
+          # the two diff-scoped summaries at 22000 bytes each, the build section to what is left.
+          # cut_md FILE BYTES WHAT [KEEP_RE]: drop a character the cut split (iconv -c then
+          # exits 1, expected), close an open code fence, say where the full output is, and
+          # re-append the lines matching KEEP_RE that fell after the cut (at most 12 of up to
+          # 150 bytes: for the build cut, the 3000 bytes between the 57000 budget below and
+          # the 60000 cap cover them).
+          cut_md() {
+            { head -c "$2" "$1" | iconv -f utf-8 -t utf-8 -c 2>/dev/null || true; } > "$1.cut"
+            if [ $(( $(grep -c '```' "$1.cut") % 2 )) -ne 0 ]; then printf '\n```\n' >> "$1.cut"; fi
+            printf '\n_… %s truncated; see the workflow run summary for the full output._\n\n' "$3" >> "$1.cut"
+            if [ -n "${4:-}" ]; then
+              tail -c "+$(( $2 + 1 ))" "$1" | grep -E "$4" | awk 'length <= 150' | head -n 12 >> "$1.cut" || true
+            fi
+            mv "$1.cut" "$1"
+          }
+          # The summaries end with their status lines ("#### ⚠️ ... coverage incomplete", the
+          # ℹ️ best-effort count), which a tail cut would hide: keep those.
+          for part in "ci-summary-bpi/tidy-summary.md:clang-tidy output" "ci-summary-bpi/gcc-gate-summary.md:gcc diff-gate output"; do
+            f="${part%%:*}"
+            if [ -s "$f" ] && [ "$(wc -c < "$f")" -gt 22000 ]; then cut_md "$f" 22000 "${part#*:}" '^(#### ⚠|ℹ)'; fi
+          done
           {
-            echo "## 🔨 Build summary"
+            # --- Build summary (always present) ---
+            echo "### 🔨 Build summary"
             echo
             echo "_Commit \`${HEAD_SHA:0:7}\` · [\`${RUN_NAME}\` #${RUN_NUMBER}](${RUN_URL})_"
             echo
-            # Deterministic platform order; each per-leg file already carries its
-            # own "## <platform> — build <outcome>" heading + error/warning blocks.
-            for d in summaries/ci-summary-*/; do
-              f="${d}build-summary.md"
-              [ -f "$f" ] || continue
-              cat "$f"
+            # The legs makefile.yml uploads a summary for (bpi rpi; keep in sync with its
+            # "Upload CI summary artifact" step), then any other that uploaded one. Each
+            # per-leg file carries its own "### <platform> — build <outcome>" heading +
+            # error/warning blocks; an expected leg that stopped before its upload (failed,
+            # timed out, cancelled) gets a heading saying so instead of silently vanishing.
+            legs=$(printf '%s\n' bpi rpi summaries/ci-summary-*/ \
+                   | sed -n 's#^summaries/ci-summary-\(.*\)/$#\1#; /^[a-z0-9_-]\{1,40\}$/p' | awk '!seen[$0]++')
+            for leg in $legs; do
+              f="summaries/ci-summary-$leg/build-summary.md"
+              if [ -f "$f" ]; then
+                cat "$f"
+              else
+                echo "### $leg leg — no build summary uploaded (the leg stopped first; see the run)"
+              fi
               echo
             done
-          } > build-comment.md
-          echo "wrote build-comment.md ($(wc -l < build-comment.md) lines)"
+          } > build-section.md
+          {
+            # --- Diff-scoped checks ---
+            # Both changed-lines checks live in the bpi artifact (downloaded to
+            # ci-summary-bpi/ by pr-context). The build section above always posts.
+            # Each producer writes a summary whenever it runs (even "clean" / "no
+            # changed .c"), so neither file means it did not run for this commit.
+            tidy="ci-summary-bpi/tidy-summary.md"
+            gcc="ci-summary-bpi/gcc-gate-summary.md"
+            if [ -s "$tidy" ] || [ -s "$gcc" ]; then
+              # Horizontal rule for a visible break from the build section above.
+              # The preceding leg loop always ends with a blank line, so this "---"
+              # renders as an <hr>, not a setext heading underline of the line above.
+              echo "---"
+              echo
+              echo "### 🔬 Diff-scoped checks (changed lines only)"
+              echo
+              # How many of these findings were ALSO posted as inline review
+              # comments (the 'inline' job posts them; here we surface only the
+              # count so the sticky doesn't duplicate the text). Both candidate
+              # files live in the bpi artifact. Untrusted input: count only one bounded
+              # JSON object with a comments list; anything else counts 0 with a warning.
+              n_inline=0
+              for j in ci-summary-bpi/inline-gcc.json ci-summary-bpi/inline-tidy.json; do
+                [ -s "$j" ] || continue
+                n=bad
+                if [ "$(stat -c %s "$j")" -le 67108864 ]; then
+                  n=$(jq -n '[inputs] | if length == 1 and (.[0].comments | type) == "array"
+                             then .[0].comments | length else "bad" end' "$j" 2>/dev/null) || n=bad
+                fi
+                case "$n" in
+                  ''|*[!0-9]*) echo "::warning::$j is not a single candidate envelope; not counted." >&2; n=0 ;;
+                esac
+                n_inline=$((n_inline + n))
+              done
+              if [ "$n_inline" -gt 0 ]; then
+                echo "📌 ${n_inline} finding(s) qualify for inline review comments on the changed lines (at most ${MAX_COMMENTS} posted per run)."
+                echo
+              fi
+              # tidy-summary.md carries its own #### clang-tidy heading — no extra header.
+              # A producer that died before writing (the other one did) is named, so the
+              # comment never reads as if both checks ran.
+              if [ -s "$tidy" ]; then
+                cat "$tidy"; echo
+              else
+                echo "#### 🔎 clang-tidy: no summary produced for this commit (see the Build Check run)"; echo
+              fi
+              # gcc-gate-summary.md already carries its own ####-level heading(s).
+              if [ -s "$gcc" ]; then
+                cat "$gcc"; echo
+              else
+                echo "#### 🚦 gcc diff-gate: no summary produced for this commit (see the Build Check run)"; echo
+              fi
+            else
+              echo "---"
+              echo
+              echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
+            fi
+          } > diff-section.md
+          # The diff-scoped section stays under ~49000 bytes, so this budget stays positive.
+          budget=$(( 57000 - $(wc -c < diff-section.md) ))
+          # Keep the per-leg headings and counts after a cut, so no leg's outcome is lost.
+          if [ "$(wc -c < build-section.md)" -gt "$budget" ]; then
+            cut_md build-section.md "$budget" "build output" '^####? '
+          fi
+          cat build-section.md diff-section.md > ci-summary-comment.md
+          echo "wrote ci-summary-comment.md ($(wc -l < ci-summary-comment.md) lines)"
 
-      - name: Post sticky build summary
+      # One sticky comment, marker 'ci-summary'. retire-markers deletes the old
+      # 'build-summary' and 'clang-tidy' comments the first time this runs over a PR
+      # that still carries them (the fold self-cleans; no orphans left behind).
+      - name: Post sticky CI summary
         if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
         uses: ./.github/actions/sticky-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           pr-number: ${{ steps.ctx.outputs.pr_number }}
-          marker: build-summary
-          body-file: build-comment.md
+          marker: ci-summary
+          retire-markers: "build-summary clang-tidy"
+          body-file: ci-summary-comment.md
           bot-login: ${{ env.BOT_LOGIN }}
 
   # ---------------------------------------------------------------------------
-  # clang-tidy -> one sticky summary comment (for now only bpi leg produces it).
+  # Build Check -> inline review COMMENTS for the gcc diff-gate + clang-tidy
+  # findings (Commit 5). Distinct from the 'summary' sticky (which shows only the
+  # count): this posts each finding on the exact changed line it fired on, through
+  # the shared review_poster (SLOT=inline — its own hidden marker family, so it
+  # never reconciles against the clang-format 'fmt' suggestions). Advisory and
+  # fail-open: a missing candidate file = that producer skipped => nothing posted
+  # and nothing deleted; posting never reds the PR.
   # ---------------------------------------------------------------------------
-  tidy:
-    name: diff-scoped findings comment
+  inline:
+    name: inline gcc + clang-tidy review
     runs-on: ubuntu-24.04
+    needs: resolve
+    concurrency:
+      group: pr-comments-inline-${{ needs.resolve.outputs.head_repo }}-${{ needs.resolve.outputs.head_branch }}
+      cancel-in-progress: false
     if: >-
-      github.event.workflow_run.name == 'Build Check'
-      && github.event.workflow_run.event == 'pull_request'
-      && github.event.workflow_run.conclusion != 'cancelled'
+      needs.resolve.outputs.run_name == 'Build Check'
+      && needs.resolve.outputs.event == 'pull_request'
+      && needs.resolve.outputs.conclusion != 'cancelled'
     steps:
       - name: Check out base-repo actions (no PR code)
         uses: actions/checkout@v6
 
+      # Anchor trust on the bpi artifact (bpi owns the compile DB, so it is the
+      # only leg that produces inline-gcc.json / inline-tidy.json). pr-context
+      # downloads it to ./ci-summary-bpi/, where the poster reads the candidates.
       - name: Establish trusted PR context
         id: ctx
         uses: ./.github/actions/pr-context
         with:
           artifact-name: ci-summary-bpi
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          expected-repo: ${{ github.event.workflow_run.head_repository.full_name }}
-          expected-branch: ${{ github.event.workflow_run.head_branch }}
+          expected-repo: ${{ needs.resolve.outputs.head_repo }}
+          expected-branch: ${{ needs.resolve.outputs.head_branch }}
+          expected-sha: ${{ needs.resolve.outputs.head_sha }}
 
-      # Both changed-lines checks live in the SAME ci-summary-bpi artifact, so we
-      # compose them into ONE sticky comment (clang-tidy + the gcc diff-gate /
-      # "don't-add-crap gate"). The build summary stays its own comment for now;
-      # merging that in too is the endgame (see design note in the PR).
-      - name: Prepare diff-scoped findings comment
-        id: prep
-        if: steps.ctx.outputs.found == 'true'
+      - name: Reconcile and post inline gcc + clang-tidy findings
+        if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.ctx.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.ctx.outputs.head_sha }}
+          SLOT: inline
+          # MAX_COMMENTS and BOT_LOGIN come from the workflow-level env.
         run: |
-          set -uo pipefail
-          tidy="ci-summary-bpi/tidy-summary.md"
-          gcc="ci-summary-bpi/gcc-gate-summary.md"
-          if [ ! -s "$tidy" ] && [ ! -s "$gcc" ]; then
-            # Neither producer wrote a summary: no compile DB (e.g. the build failed
-            # before one existed). Still post, so the sticky never keeps showing an
-            # older commit's results as if they were current.
-            {
-              echo "## 🔬 Diff-scoped checks (changed lines only)"
-              echo
-              echo "_Not run for this commit: no compile database was produced (see the build summary). Earlier results no longer apply._"
-            } > diff-findings-comment.md
-            echo "post=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          {
-            echo "## 🔬 Diff-scoped checks (changed lines only)"
-            echo
-            # tidy-summary.md labels its own tiers (❌ gate = fatal, ❗ warnings).
-            # A producer that died before writing (the other one did) is named, so the
-            # comment never reads as if both checks ran.
-            if [ -s "$tidy" ]; then
-              cat "$tidy"; echo
-            else
-              echo "### 🔎 clang-tidy: no summary produced for this commit (see the Build Check run)"; echo
-            fi
-            # gcc-gate-summary.md already carries its own ###-level heading(s).
-            if [ -s "$gcc" ]; then
-              cat "$gcc"; echo
-            else
-              echo "### 🚦 gcc diff-gate: no summary produced for this commit (see the Build Check run)"; echo
-            fi
-          } > diff-findings-comment.md
-          echo "post=true" >> "$GITHUB_OUTPUT"
-
-      # Marker kept as 'clang-tidy' (not renamed) so this UPSERTS the existing
-      # sticky comment when it merges over develop, rather than orphaning the old
-      # one and posting a second.
-      - name: Post sticky diff-scoped findings summary
-        if: steps.ctx.outputs.found == 'true' && steps.ctx.outputs.fresh == 'true' && steps.prep.outputs.post == 'true'
-        uses: ./.github/actions/sticky-comment
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          pr-number: ${{ steps.ctx.outputs.pr_number }}
-          marker: clang-tidy
-          body-file: diff-findings-comment.md
-          bot-login: ${{ env.BOT_LOGIN }}
+          # Both candidate files share the SLOT=inline marker family. review_poster
+          # posts only the missing findings, deletes outdated/duplicate ones, and
+          # leaves any a human has replied to intact. A candidate file that is
+          # absent (its producer skipped) disables stale-deletion for the slot — an
+          # unreadable file never reads as "all clean" and wipes live comments.
+          python3 .github/scripts/review_poster.py \
+            ci-summary-bpi/inline-gcc.json ci-summary-bpi/inline-tidy.json
