@@ -103,7 +103,21 @@ webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
     emap_metrics_report_arr = cJSON_CreateArray();
     cJSON_AddItemToObject(json, "EMAPMetricsReport", emap_metrics_report_arr);
 
+    if (ap_report->radio_count < 0 || ap_report->radio_count > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio_count: %d\n", __func__, __LINE__,
+            ap_report->radio_count);
+        cJSON_Delete(json);
+        return webconfig_error_encode;
+    }
+
     for (int i = 0; i < ap_report->radio_count; i++) {
+        if (ap_report->radio_reports[i].radio_index < 0 ||
+            ap_report->radio_reports[i].radio_index >= MAX_NUM_RADIOS) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio_index: %d\n", __func__,
+                __LINE__, ap_report->radio_reports[i].radio_index);
+            cJSON_Delete(json);
+            return webconfig_error_encode;
+        }
         radio = &params->radios[ap_report->radio_reports[i].radio_index];
         radio_reports = cJSON_CreateObject();
         cJSON_AddItemToArray(emap_metrics_report_arr, radio_reports);
