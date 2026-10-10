@@ -828,6 +828,13 @@ he_bus_error_t bus_publish_data_to_all_sub(he_bus_handle_t handle, he_bus_data_o
 
     ELM_LOCK(node->element_mutex);
     subscription_element_t *p_subscription_data = hash_map_get_first(node->subscriptions);
+    if (p_subscription_data == NULL) {
+       he_bus_core_error_print("%s:%d No subscribers for :%s namespace\r\n", __func__, __LINE__,
+           obj_data->name);
+       ELM_UNLOCK(node->element_mutex);
+       FREE_BUFF_MEMORY(output_buff.buff);
+       return he_bus_error_nosubscribers;
+    }
     while (p_subscription_data != NULL) {
         if (p_subscription_data->action == he_bus_event_action_subscribe) {
             send_data_to_endpoint(p_subscription_data->socket_fd, output_buff.buff,

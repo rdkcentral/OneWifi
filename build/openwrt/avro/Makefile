@@ -7,7 +7,8 @@ PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 #PKG_SOURCE_URL:=@APACHE/avro/avro-$(PKG_VERSION)/c
-PKG_SOURCE_URL:=https://downloads.apache.org/avro/avro-$(PKG_VERSION)/c
+#PKG_SOURCE_URL:=https://downloads.apache.org/avro/avro-$(PKG_VERSION)/c
+PKG_SOURCE_URL:=https://archive.apache.org/dist/avro/avro-$(PKG_VERSION)/c
 #PKG_HASH:=4639982b2b8fbd91fc7128fef672207129c959bb7900dd64b077ce4206edf10e
 PKG_HASH:=7217caacfb7d5f34611766473a66c2e279bc7bfaf1ba298c7f04b3b2fba57365
 
