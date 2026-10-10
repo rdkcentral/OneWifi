@@ -2132,7 +2132,9 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
         rad_met->receive_self = em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.receive_self;
         rad_met->receive_other = em_ap_metrics_report_cache.radio_report[radio_index].radio_metrics.receive_other;
 
-        data->u.decoded.radios[i] = wifi_mgr->radio_config[radio_index];
+        /* The encoder looks the radio up by radio_reports[i].radio_index, so the
+         * config must sit at that slot, not at the policy position. */
+        data->u.decoded.radios[radio_index] = wifi_mgr->radio_config[radio_index];
     }
 
     data->u.decoded.hal_cap = wifi_mgr->hal_cap;
