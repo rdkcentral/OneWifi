@@ -98,7 +98,7 @@ whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the ❌
 renders, but the job is not actually reddened by it yet.
 
 **e) CI Lint (the CI files themselves)** — `ci-lint.yml`, on every PR and on pushes to `develop`.
-Each lane runs only when its surface changed: actionlint over the workflows (it also runs
+Each lane runs only when its surface changed: actionlint over the workflows (with a pinned
 shellcheck on their `run:` blocks), yamllint over the workflows and composite actions (structural
 rules only, `.github/.yamllint`), and for `.github/scripts` compileall, ruff (pyflakes rules,
 `.github/ruff.toml`) and the unit tests under `.github/scripts/tests`. `lint-gate` aggregates the

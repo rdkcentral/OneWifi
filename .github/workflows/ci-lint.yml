@@ -52,6 +52,7 @@ jobs:
           REPO: ${{ github.repository }}
           EVENT: ${{ github.event_name }}
           PR: ${{ github.event.pull_request.number }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
         run: |
           set -euo pipefail
           # push to develop (the baseline): lint every surface, it's cheap.
@@ -60,7 +61,18 @@ jobs:
             echo "event=$EVENT -> lint all surfaces"
             exit 0
           fi
-          files=$(gh api "/repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
+          # One row per file, with the old path of a rename: renaming ruff.toml or a
+          # script away from its extension must still run that lane.
+          rows=$(gh api "/repos/$REPO/pulls/$PR/files" --paginate \
+                 --jq '.[] | .filename + "\t" + (.previous_filename // "")')
+          # The files API stops at 3000 files; a list shorter than the PR lints everything.
+          listed=$(wc -l <<< "$rows")
+          if [ "$listed" -lt "$CHANGED_FILES" ]; then
+            printf 'yaml=true\npython=true\n' >> "$GITHUB_OUTPUT"
+            echo "file list has $listed of $CHANGED_FILES files -> lint all surfaces"
+            exit 0
+          fi
+          files=$(tr '\t' '\n' <<< "$rows")
           yaml=false
           python=false
           # .yamllint / ruff.toml are lane configs and don't end in .yml/.py, so a
@@ -72,9 +84,9 @@ jobs:
           printf 'yaml=%s\npython=%s\n' "$yaml" "$python" >> "$GITHUB_OUTPUT"
           echo "changed surfaces: yaml=$yaml python=$python"
 
-  # actionlint's OWN static analysis (bad needs:/uses:/context refs) plus, since
-  # shellcheck ships on the runner, free SC checks on every run: block. Workflows
-  # ONLY — actionlint mis-parses composite action.yml as workflows (yamllint's job).
+  # actionlint's OWN static analysis (bad needs:/uses:/context refs) plus shellcheck
+  # on every run: block. Workflows ONLY — actionlint mis-parses composite action.yml
+  # as workflows (yamllint's job).
   actionlint:
     name: actionlint (workflows)
     needs: changes
@@ -84,6 +96,11 @@ jobs:
       ACTIONLINT_VERSION: 1.7.12
       # From the release's actionlint_<version>_checksums.txt; bump with the version.
       ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+      # Pinned, not the runner's: actionlint silently skips shellcheck (exit 0) when
+      # the binary is missing. The release publishes no checksum file; this is the
+      # sha256 of its linux.x86_64 tarball, recorded when pinned.
+      SHELLCHECK_VERSION: 0.9.0
+      SHELLCHECK_SHA256: 700324c6dd0ebea0117591c6cc9d7350d9c7c5c287acbad7630fa17b1d4d9e2f
     steps:
       - uses: actions/checkout@v6
         with:
@@ -96,6 +113,15 @@ jobs:
           echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum -c -
           tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
           /tmp/actionlint --version
+      - name: Install shellcheck ${{ env.SHELLCHECK_VERSION }}
+        run: |
+          set -euo pipefail
+          url="https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          curl -fsSL "$url" -o /tmp/shellcheck.tar.xz
+          echo "${SHELLCHECK_SHA256}  /tmp/shellcheck.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/shellcheck.tar.xz -C /tmp
+          # Fails the job if the binary does not run, instead of actionlint skipping it.
+          "/tmp/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" --version
       - name: Lint workflows
         env:
           # FP policy kept in ONE reviewed place: SC2016 (expansion inside single
@@ -104,7 +130,9 @@ jobs:
           SHELLCHECK_OPTS: --exclude=SC2016
         run: |
           set -euo pipefail
-          /tmp/actionlint -color .github/workflows/*.yml
+          # No file arguments: actionlint finds every workflow under .github/workflows,
+          # .yml and .yaml alike.
+          /tmp/actionlint -color -shellcheck="/tmp/shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
 
   # The ONLY structural guard for the composite action.yml files (actionlint
   # can't parse them). Structural errors only; style is off (see .github/.yamllint).
