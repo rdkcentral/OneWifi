@@ -1136,6 +1136,28 @@ static void free_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *radio)
     }
 }
 
+static void free_decoded_macfilter_maps(webconfig_subdoc_data_t *data)
+{
+    unsigned int radio_index;
+    unsigned int vap_index;
+
+    if (data == NULL) {
+        return;
+    }
+
+    for (radio_index = 0; radio_index < MAX_NUM_RADIOS; radio_index++) {
+        for (vap_index = 0; vap_index < MAX_NUM_VAP_PER_RADIO; vap_index++) {
+            rdk_wifi_vap_info_t *rdk_vap =
+                &data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_index];
+
+            if (rdk_vap->acl_map != NULL) {
+                hash_map_destroy(rdk_vap->acl_map);
+                rdk_vap->acl_map = NULL;
+            }
+        }
+    }
+}
+
 webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     const webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t type, char **str)
 {
@@ -1206,24 +1228,33 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
 webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
     webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t *type)
 {
+    webconfig_error_t decode_status;
+
     pthread_mutex_lock(&webconfig_data_lock);
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_to_ovsdb;
+    webconfig_ovsdb_data.type = webconfig_subdoc_type_unknown;
 
-    if (webconfig_decode(config, &webconfig_ovsdb_data, str) != webconfig_error_none) {
-        //        *data = NULL;
+    decode_status = webconfig_decode(config, &webconfig_ovsdb_data, str);
+
+    if (decode_status == webconfig_error_none) {
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode subdoc type %d successfully\n",
+            __func__, __LINE__, webconfig_ovsdb_data.type);
+        *type = webconfig_ovsdb_data.type;
+        debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
+
+    }
+    else {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode failed\n", __func__, __LINE__);
-        pthread_mutex_unlock(&webconfig_data_lock);
-        return webconfig_error_decode;
+        decode_status = webconfig_error_decode;
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode subdoc type %d sucessfully\n",
-        __func__, __LINE__, webconfig_ovsdb_data.type);
-    *type = webconfig_ovsdb_data.type;
-    debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
+    if (webconfig_ovsdb_data.type == webconfig_subdoc_type_mac_filter) {
+        free_decoded_macfilter_maps(&webconfig_ovsdb_data);
+    }
     webconfig_data_free(&webconfig_ovsdb_data);
     pthread_mutex_unlock(&webconfig_data_lock);
-    return webconfig_error_none;
+    return decode_status;
 }
 
 webconfig_error_t free_vap_object_assoc_client_entries(webconfig_subdoc_data_t *data)
