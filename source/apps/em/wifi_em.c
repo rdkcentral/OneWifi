@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <cjson/cJSON.h>
 #include <netinet/ether.h>
+#include <pthread.h>
 
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
@@ -43,8 +44,152 @@
     18 // MAC address string length (xx:xx:xx:xx:xx:xx = 17 chars + null terminator)
 
 static bool is_monitor_done = false;
+static bool is_tx_power_ready = false;
+static pthread_mutex_t tx_power_ready_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool g_btm_pending_valid = false;
 static em_btm_req_ctrl_msg_t g_pending_btm;
+
+static int em_get_radio_index_from_mac(mac_addr_t ruuid);
+
+bool wifi_em_is_tx_power_ready(void)
+{
+    bool ready;
+    pthread_mutex_lock(&tx_power_ready_lock);
+    ready = is_tx_power_ready;
+    pthread_mutex_unlock(&tx_power_ready_lock);
+    return ready;
+}
+
+bool wifi_em_handle_monitor_done(void)
+{
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    unsigned int num_radios = getNumberRadios();
+    bool tx_power_valid = true;
+
+    wifi_util_info_print(WIFI_EM, "%s:%d: refreshing transmit power from HAL for %u radios\n",
+        __func__, __LINE__, num_radios);
+
+    for (unsigned int i = 0; i < num_radios; i++) {
+        ULONG curr_txpower = 0;
+        int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
+        if (rc != RETURN_OK) {
+            tx_power_valid = false;
+            wifi_util_error_print(WIFI_EM, "%s:%d: failed to read tx power for radio_index=%u (rc=%d)\n",
+                __func__, __LINE__, i, rc);
+            continue;
+        }
+        if (curr_txpower == 0) {
+            tx_power_valid = false;
+            wifi_util_error_print(WIFI_EM, "%s:%d: tx power reported as 0 for radio_index=%u; defaulting to 100\n",
+                __func__, __LINE__, i);
+            curr_txpower = 100;
+        }
+
+        pthread_mutex_lock(&wifi_mgr->data_cache_lock);
+        wifi_mgr->radio_config[i].oper.transmitPower = (UINT)curr_txpower;
+        pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
+        wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n",
+            __func__, __LINE__, i, curr_txpower);
+    }
+
+    pthread_mutex_lock(&tx_power_ready_lock);
+    is_tx_power_ready = tx_power_valid;
+    pthread_mutex_unlock(&tx_power_ready_lock);
+
+    if (tx_power_valid) {
+        raw_data_t ready_data = { 0 };
+        ready_data.data_type = bus_data_type_uint32;
+        ready_data.raw_data.u32 = 1;
+        if (get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle,
+                WIFI_EM_TX_POWER_READY, &ready_data) != bus_error_success) {
+            wifi_util_error_print(WIFI_EM, "%s:%d: failed to publish %s\n",
+                __func__, __LINE__, WIFI_EM_TX_POWER_READY);
+        } else {
+            wifi_util_info_print(WIFI_EM, "%s:%d: published %s\n",
+                __func__, __LINE__, WIFI_EM_TX_POWER_READY);
+        }
+    } else {
+        wifi_util_error_print(WIFI_EM, "%s:%d: transmit power is not ready; readiness event not published\n",
+            __func__, __LINE__);
+    }
+
+    return tx_power_valid;
+}
+
+/**!
+ * @brief Handles a runtime transmit-power request from the EasyMesh agent.
+ *
+ * The request payload contains a request ID and radio UID. This callback resolves the
+ * matching radio index, reads the live transmit-power value from the HAL, and publishes
+ * the response as a tx-power report event back to the agent.
+ *
+ * @param[in] name Bus method name associated with the request.
+ * @param[in] p_data Raw payload containing the request ID and radio UID.
+ *
+ * @return bus_error_success on success, otherwise the corresponding bus error code.
+ */
+static bus_error_t get_runtime_tx_power(char *name, raw_data_t *p_data,
+     bus_user_data_t *user_data)
+{
+    (void)user_data;
+    const size_t request_len = sizeof(uint32_t) + sizeof(mac_addr_t);
+    unsigned char *request;
+    unsigned char response[sizeof(uint32_t) + sizeof(mac_addr_t) + sizeof(uint32_t)];
+    uint32_t request_id;
+    uint32_t tx_power;
+    mac_addr_t ruid;
+    ULONG hal_tx_power = 0;
+    wifi_ctrl_t *ctrl;
+    wifi_bus_desc_t *desc;
+    int radio_index;
+
+    if (name == NULL || p_data == NULL || p_data->data_type != bus_data_type_bytes ||
+        p_data->raw_data.bytes == NULL || p_data->raw_data_len != request_len) {
+        return bus_error_invalid_input;
+    }
+
+    request = (unsigned char *)p_data->raw_data.bytes;
+    memcpy(&request_id, request, sizeof(request_id));
+    memcpy(ruid, request + sizeof(request_id), sizeof(ruid));
+    radio_index = em_get_radio_index_from_mac(ruid);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: unable to map RUID to radio index\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    if (wifi_hal_getRadioTransmitPower((INT)radio_index, &hal_tx_power) != RETURN_OK ||
+        hal_tx_power == 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: failed to get valid runtime tx power for radio_index=%d\n",
+            __func__, __LINE__, radio_index);
+        return bus_error_general;
+    }
+
+    ctrl = get_wifictrl_obj();
+    desc = get_bus_descriptor();
+    if (ctrl == NULL || desc == NULL || desc->bus_event_publish_fn == NULL) {
+        return bus_error_general;
+    }
+
+    tx_power = (uint32_t)hal_tx_power;
+    memcpy(response, &request_id, sizeof(request_id));
+    memcpy(response + sizeof(request_id), ruid, sizeof(ruid));
+    memcpy(response + sizeof(request_id) + sizeof(ruid), &tx_power, sizeof(tx_power));
+
+    raw_data_t report = { 0 };
+    report.data_type = bus_data_type_bytes;
+    report.raw_data.bytes = response;
+    report.raw_data_len = sizeof(response);
+    if (desc->bus_event_publish_fn(&ctrl->handle, WIFI_EM_TX_POWER_REPORT, &report) != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: failed to publish %s\n",
+            __func__, __LINE__, WIFI_EM_TX_POWER_REPORT);
+        return bus_error_general;
+    }
+
+    wifi_util_info_print(WIFI_EM, "%s:%d: published runtime tx power %u for radio_index=%d\n",
+        __func__, __LINE__, tx_power, radio_index);
+    return bus_error_success;
+}
 
 // Structure to track pending block timers
 typedef struct pending_block_node {
@@ -2993,30 +3138,7 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
     switch (event->sub_type) {
     case wifi_event_type_notify_monitor_done:
         is_monitor_done = TRUE;
-        {
-            wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-            unsigned int num_radios = getNumberRadios();
-            for (unsigned int i = 0; i < num_radios; i++) {
-                ULONG curr_txpower = 0;
-                int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
-                if (rc != RETURN_OK) {
-                    wifi_util_error_print(WIFI_EM, "%s:%d: failed to read tx power for radio_index=%u (rc=%d)\n",
-                        __func__, __LINE__, i, rc);
-                    continue;
-                }
-                if (curr_txpower == 0) {
-                    wifi_util_error_print(WIFI_EM, "%s:%d: tx power reported as 0 for radio_index=%u; defaulting to 100\n",
-                        __func__, __LINE__, i);
-                    curr_txpower = 100;
-                }
-
-                pthread_mutex_lock(&wifi_mgr->data_cache_lock);
-                wifi_mgr->radio_config[i].oper.transmitPower = (UINT)curr_txpower;
-                pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
-                wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n",
-                    __func__, __LINE__, i, curr_txpower);
-            }
-        }
+        wifi_em_handle_monitor_done();
         break;
 
     case wifi_event_type_start_channel_scan:
@@ -4144,6 +4266,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_EM_CHANNEL_SCAN_REQUEST, bus_element_type_method,
             { NULL, start_channel_scan, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_EM_TX_POWER_REQUEST, bus_element_type_method,
+            { NULL, get_runtime_tx_power, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } },
         { WIFI_SET_DISCONN_STEADY_STATE, bus_element_type_method,
             { NULL, set_disconn_steady_state, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_none, true, 0, 0, 0, NULL } },
@@ -4151,6 +4276,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { NULL, set_disconn_scan_none_state, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_none, true, 0, 0, 0, NULL } },
         { WIFI_EM_CHANNEL_SCAN_REPORT, bus_element_type_event,
+            { NULL, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+        { WIFI_EM_TX_POWER_REPORT, bus_element_type_event,
             { NULL, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, false, 0, 0, 0, NULL } },
         { WIFI_EM_BEACON_QUERY, bus_element_type_method,
