@@ -392,16 +392,30 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
     bool first = true;
     unsigned short *query_list_id;
     unsigned char *buff, *query_list_hs_id;
+    unsigned char *end = attrib + len;
 
     buff = attrib;
 
-    while (buff < (attrib+len))
+    while (buff < end)
     {
+        if ((size_t)(end - buff) < sizeof(wifi_anqp_element_format_t)) {
+             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid ANQP length\n", __func__, __LINE__);
+            break;
+        }
         anqp_info = (wifi_anqp_element_format_t *)buff;
+
+        if (anqp_info->len > (size_t)(end - buff) - sizeof(wifi_anqp_element_format_t)) {
+             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: ANQP payload exceeds frame length\n", __func__, __LINE__);
+             break;
+        }
 
         if (anqp_info->info_id == wifi_anqp_element_name_vendor_specific)
         {
             anqp_hs_2_info = (wifi_hs_2_anqp_element_format_t *)buff;
+            if (anqp_hs_2_info->len < 6) {
+                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid HS2.0 length\n", __func__,__LINE__);
+                break;
+            }
 
             if (memcmp(anqp_hs_2_info->oi, wfa_oui, sizeof(wfa_oui)) != 0)
             {
@@ -412,8 +426,11 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
             anqp_hs_2_queries_len = anqp_hs_2_info->len - 6;//wifi_oui(3) + Type(1) + SubType(1) + Reserved (1)
             query_list_hs_id = anqp_hs_2_info->payload;
 
-            while (anqp_hs_2_queries_len)
+            while (anqp_hs_2_queries_len > 0)
             {
+                if (query_list_hs_id >= end) {
+                    break;
+                }
 
                 tmp = (wifi_anqp_node_t *)malloc(sizeof(wifi_anqp_node_t));
                 memset((unsigned char *)tmp, 0, sizeof(wifi_anqp_node_t));
@@ -446,12 +463,20 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
         }
         else if (anqp_info->info_id == wifi_anqp_element_name_query_list)
         {
+            if (anqp_info->len % sizeof(unsigned short) != 0) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Malformed query_list\n", __func__,__LINE__);
+                break;
+            }
             anqp_queries_len = anqp_info->len;
 
             query_list_id = (unsigned short *)anqp_info->info;
 
-            while (anqp_queries_len > 0)
+            while (anqp_queries_len >= (short)sizeof(unsigned short))
             {
+                if ((size_t)(end - (unsigned char *)query_list_id) < sizeof(unsigned short)) {
+                    break;
+                }
+
                 tmp = (wifi_anqp_node_t *)malloc(sizeof(wifi_anqp_node_t));
                 memset((unsigned char *)tmp, 0, sizeof(wifi_anqp_node_t));
 
@@ -480,7 +505,7 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
                 query_list_id++;
             }
 
-            buff = (unsigned char *)query_list_id;
+            buff += sizeof(wifi_anqp_element_format_t) + anqp_info->len;
         }
         else
         {
