@@ -432,33 +432,52 @@ INT getTxDataRateFromInt(wifi_bitrate_t DataTxRate, char *DataTxRateStr)
     return 0;
 }
 
-INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityName)
+INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityName, size_t bufSize)
 {
     unsigned int i;
+    size_t currentLen;
+    size_t secLen;
+
+    if (securityName == NULL || bufSize == 0)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid argument\n", __func__));
+        return 0;
+    }
+
     for (i = 0 ; i < ARRAY_SZ(wifiSecMap) ; ++i)
     {
         if(securityType == wifiSecMap[i].halSecCfgMethod)
         {
-            if (AnscSizeOfString(securityName) != 0)
+            currentLen = strnlen(securityName, bufSize);
+            if (currentLen == bufSize)
             {
-                strcat(securityName, ",");
-                strcat(securityName, wifiSecMap[i].wifiSecType);
+                CcspWifiTrace(("RDK_LOG_ERROR, %s securityName is not NUL terminated\n", __func__));
+                return 0;
+            }
+            secLen = strlen(wifiSecMap[i].wifiSecType);
+            if (currentLen != 0)
+            {
+                if ((bufSize - currentLen) < (secLen + 2))
+                {
+                    CcspWifiTrace(("RDK_LOG_ERROR, %s buffer full, cannot append security type\n", __func__));
+                    return 0;
+                }
+                snprintf(securityName + currentLen, bufSize - currentLen, ",%s", wifiSecMap[i].wifiSecType);
             }
             else
             {
-                strcpy(securityName, wifiSecMap[i].wifiSecType);
+                if (bufSize < (secLen + 1))
+                {
+                    CcspWifiTrace(("RDK_LOG_ERROR, %s buffer full, cannot copy security type\n", __func__));
+                    return 0;
+                }
+                snprintf(securityName, bufSize, "%s", wifiSecMap[i].wifiSecType);
             }
+            return (INT)strnlen(securityName, bufSize);
        }
     }
 
-    if(strlen(securityName) == 0)
-    {
-        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Security type enum\n", __func__));
-    }
-    else
-    {
-        return strlen(securityName);
-    }
+    CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Security type enum\n", __func__));
     return 0;
 }
 
