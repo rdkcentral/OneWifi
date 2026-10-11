@@ -4045,6 +4045,19 @@ int getVAPArrayIndexFromVAPIndex(unsigned int apIndex, unsigned int *vap_array_i
 {
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
+    if (vap_array_index == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL vap_array_index\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    *vap_array_index = 0;
+
+    if (!wifi_util_is_vap_index_valid(&wifi_mgr->hal_cap.wifi_prop, (int)apIndex)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: invalid vap_index %u\n", __func__, __LINE__,
+            apIndex);
+        return RETURN_ERR;
+    }
+
     VAP_ARRAY_INDEX(*vap_array_index, wifi_mgr->hal_cap, apIndex);
     return RETURN_OK;
 }
