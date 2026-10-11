@@ -322,6 +322,11 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         radio_stats[radio_index] = (radio_data_t *) malloc (sizeof(radio_data_t));
         if (radio_stats[radio_index] == NULL) {
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: radio_stats is NULL\n", __func__, __LINE__);
+            for (unsigned int i = 0; i < radio_index; i++) {
+                free(radio_stats[i]);
+                radio_stats[i] = NULL;
+            }
+            return;
         }
         memset(radio_stats[radio_index],0, sizeof(radio_data_t));
         if (get_dev_stats_for_radio(radio_index, (radio_data_t *)radio_stats[radio_index]) != RETURN_OK) {
@@ -450,6 +455,14 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     avro_schema_decref(inst_msmt_schema);
 
     buff = malloc(MAX_BUFF_SIZE);
+    if (buff == NULL) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: buff allocation failed\n", __func__, __LINE__);
+        avro_value_iface_decref(iface);
+        for (unsigned int i = 0; i < getNumberRadios(); i++) {
+            free(radio_stats[i]);
+        }
+        return;
+    }
     memset(buff, 0, MAX_BUFF_SIZE);
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: filling MAGIC NUMBER in buff[0] \n", __func__, __LINE__);
     //generate an avro class from our schema and get a pointer to the value interface

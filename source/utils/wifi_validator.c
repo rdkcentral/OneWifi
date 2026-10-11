@@ -128,7 +128,7 @@ int validate_ipv6_address(char *ip) {
 
 }
 
-int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRetVal)
+static int validate_anqp_content(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRetVal, cJSON *statsList)
 {
     cJSON *mainEntry = NULL;
     cJSON *anqpElement = NULL;
@@ -140,17 +140,11 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     cJSON *subParam = NULL;
     UCHAR *next_pos = NULL;
 
-    
-    cJSON *passPointStats = cJSON_CreateObject();//root object for Passpoint Stats
-    cJSON *statsMainEntry = cJSON_AddObjectToObject(passPointStats,"PassPointStats");
-    cJSON *statsList = cJSON_AddArrayToObject(statsMainEntry, "ANQPResponse");
-    
     if(!anqp || !vap_info || !execRetVal){
         wifi_util_dbg_print(WIFI_PASSPOINT,"ANQP entry is NULL\n");
         if(execRetVal) {
             strncpy(execRetVal->ErrorMsg, "Empty ANQP Entry",sizeof(execRetVal->ErrorMsg)-1);
         }
-        cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
     mainEntry = (cJSON *) anqp;
@@ -168,7 +162,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     if(cJSON_GetArraySize(anqpList) > 16){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Venue entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Exceeded Max number of Venue entries",sizeof(execRetVal->ErrorMsg)-1); 
-        cJSON_Delete(passPointStats);
         return RETURN_ERR;
     } else if (cJSON_GetArraySize(anqpList)) {
         //Venue List is non-empty. Update capability List
@@ -192,7 +185,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid size for Venue name",sizeof(execRetVal->ErrorMsg)-1);
-            cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
         copy_string((char*)next_pos, anqpParam->valuestring);
@@ -209,7 +201,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     if(cJSON_GetArraySize(anqpList) > 32){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Only 32 OUI supported in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__); 
         strncpy(execRetVal->ErrorMsg, "Invalid number of OUIs",sizeof(execRetVal->ErrorMsg)-1);
-        cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
     int ouiCount = 0;
@@ -224,7 +215,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
             if((ouiStrLen < 6) || (ouiStrLen > 30) || (ouiStrLen % 2)){
                 wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid OUI Length in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
                 strncpy(execRetVal->ErrorMsg, "Invalid OUI Length",sizeof(execRetVal->ErrorMsg)-1);
-                cJSON_Delete(passPointStats);
                 return RETURN_ERR;
             }
             copy_string((char*)ouiStr, anqpParam->valuestring);
@@ -240,7 +230,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
             }else{
                 wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid OUI in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
                 strncpy(execRetVal->ErrorMsg, "Invalid  character in OUI",sizeof(execRetVal->ErrorMsg)-1);
-                cJSON_Delete(passPointStats);
                 return RETURN_ERR;
             }
             if(i%2){
@@ -272,7 +261,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     if((0 > anqpParam->valuedouble) || (2 < anqpParam->valuedouble)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid IPAddressTypeAvailabilityANQPElement. Discarding Configuration\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Invalid IPAddressTypeAvailabilityANQPElement",sizeof(execRetVal->ErrorMsg)-1);
-        cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
     vap_info->anqp.ipAddressInfo.field_format = (UCHAR)anqpParam->valuedouble;
@@ -281,7 +269,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     if((0 > anqpParam->valuedouble) || (7 < anqpParam->valuedouble)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid IPAddressTypeAvailabilityANQPElement. Discarding Configuration\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Invalid IPAddressTypeAvailabilityANQPElement",sizeof(execRetVal->ErrorMsg)-1);
-        cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
     vap_info->anqp.ipAddressInfo.field_format |= ((UCHAR)anqpParam->valuedouble << 2);
@@ -297,7 +284,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     if(naiElem->nai_realm_count > 20) {
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Only 20 Realm Entries are supported. Discarding Configuration\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Exceeded max number of Realm entries",sizeof(execRetVal->ErrorMsg)-1);
-        cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
     next_pos = (UCHAR *)naiElem;
@@ -320,7 +306,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Realm Length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Realm Length",sizeof(execRetVal->ErrorMsg)-1);
-            cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
         realmInfoBuf->realm_length = strlen(anqpParam->valuestring);
@@ -341,7 +326,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         if(eap_method_count > 16){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: EAP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid number of EAP entries in realm",sizeof(execRetVal->ErrorMsg)-1);
-            cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
         *next_pos = eap_method_count;
@@ -363,7 +347,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
             if(eapBuf->auth_param_count > 16){
                 wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Auth entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
                 strncpy(execRetVal->ErrorMsg, "Invalid number of Auth entries in EAP Method",sizeof(execRetVal->ErrorMsg)-1);
-                cJSON_Delete(passPointStats);
                 return RETURN_ERR;
             }
             next_pos += sizeof(eapBuf->auth_param_count);
@@ -380,7 +363,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                 if(!subParam_1){
                     wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Auth Parameter Value not prensent in NAIRealmANQPElement EAP Data. Discarding Configuration\n", __func__, __LINE__);
                     strncpy(execRetVal->ErrorMsg, "Auth param missing in RealANQP EAP Data",sizeof(execRetVal->ErrorMsg)-1);  
-                    cJSON_Delete(passPointStats);
                     return RETURN_ERR;
                 } else if (subParam_1->valuedouble) {
                     authBuf->length = 1;
@@ -390,7 +372,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                     if((authStrLen != 2) && (authStrLen != 14)){
                         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
                         strncpy(execRetVal->ErrorMsg, "Invalid EAP Length in NAIRealmANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
-                        cJSON_Delete(passPointStats);
                         return RETURN_ERR;
                     }
                     copy_string((char*)authStr,subParam_1->valuestring);
@@ -406,7 +387,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                         }else{
                             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid EAP val in NAIRealmANQPElement Data. Discarding Configuration\n", __func__, __LINE__); 
                             strncpy(execRetVal->ErrorMsg, "Invalid EAP value in NAIRealmANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
-                            cJSON_Delete(passPointStats);
                             return RETURN_ERR;
                         }
                         if(i%2){
@@ -448,7 +428,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     if(plmnInfoBuf->number_of_plmns > 16){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: 3GPP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Exceeded max number of 3GPP entries",sizeof(execRetVal->ErrorMsg)-1);
-        cJSON_Delete(passPointStats);
         return RETURN_ERR; 
      }
 
@@ -467,7 +446,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MCC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MCC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
-            cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
 
@@ -480,7 +458,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MNC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MNC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1); 
-            cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
         wifi_plmn_t *plmnBuf = (wifi_plmn_t *)next_pos;
@@ -511,7 +488,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     if(cJSON_GetArraySize(anqpList) > 4){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Only 4 Entries supported in DomainNameANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Exceeded max no of entries in DomainNameANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
-        cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
     next_pos = (UCHAR *)&vap_info->anqp.domainNameInfo;
@@ -522,7 +498,6 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         if(strlen(anqpParam->valuestring) > 255){ 
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Domain name length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Domain name length",sizeof(execRetVal->ErrorMsg)-1);
-            cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
         nameBuf->length = strlen(anqpParam->valuestring);
@@ -544,11 +519,41 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_domain_name;
     }
 
-    //Update the stats JSON
-    cJSON_PrintPreallocated(passPointStats,(char *)&vap_info->anqp.passpointStats, sizeof(vap_info->anqp.passpointStats), false);
+    return RETURN_OK;
+}
+
+int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRetVal)
+{
+    int ret;
+    cJSON *passPointStats = cJSON_CreateObject();//root object for Passpoint Stats
+    if (passPointStats == NULL) {
+        wifi_util_error_print(WIFI_PASSPOINT, "%s:%d Failed to create passPointStats JSON object\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    cJSON *statsMainEntry = cJSON_AddObjectToObject(passPointStats,"PassPointStats");
+    if (statsMainEntry == NULL) {
+        wifi_util_error_print(WIFI_PASSPOINT, "%s:%d Failed to create statsMainEntry JSON object\n",
+            __func__, __LINE__);
+        cJSON_Delete(passPointStats);
+        return RETURN_ERR;
+    }
+    cJSON *statsList = cJSON_AddArrayToObject(statsMainEntry, "ANQPResponse");
+    if (statsList == NULL) {
+        wifi_util_error_print(WIFI_PASSPOINT, "%s:%d Failed to create ANQP stats array\n",
+            __func__, __LINE__);
+        cJSON_Delete(passPointStats);
+        return RETURN_ERR;
+    }
+
+    ret = validate_anqp_content(anqp, vap_info, execRetVal, statsList);
+    if (ret == RETURN_OK) {
+        //Update the stats JSON
+        cJSON_PrintPreallocated(passPointStats,(char *)&vap_info->anqp.passpointStats, sizeof(vap_info->anqp.passpointStats), false);
+    }
     cJSON_Delete(passPointStats);
 
-    return RETURN_OK;
+    return ret;
 }
 
 int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pErr execRetVal) 
