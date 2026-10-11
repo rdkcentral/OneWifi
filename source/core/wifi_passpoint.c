@@ -17,7 +17,6 @@
   limitations under the License.
 **************************************************************************/
 
-#include "webconfig_framework.h"
 #include "wifi_data_plane.h"
 #include "wifi_monitor.h"
 #include <sys/socket.h>
@@ -653,7 +652,7 @@ INT WiFi_SetGasConfig(char *JSON_STR)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     wifi_GASConfiguration_t gasConfig_struct = {0, 0, 0, 0, 0, 0};
-    Err execRetVal;
+    wifi_validation_error_t execRetVal;
     wifi_GASConfiguration_t *p_gas_config = Get_wifi_gas_conf_object();
 
     if(!p_gas_config){
@@ -837,7 +836,7 @@ INT WiFi_GetGasStats(wifi_gas_stats_t *pGASStats)
 
 INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
 {
-    Err execRetVal;
+    wifi_validation_error_t execRetVal;
     int apIns = vapIndex - 1;
 
     if((apIns < 0) || (apIns > 15)){
@@ -1048,7 +1047,7 @@ void WiFi_UpdateANQPVenueInfo(uint8_t vapIndex)
 INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
-    Err execRetVal;
+    wifi_validation_error_t execRetVal;
     BOOL apEnable = FALSE;
     int apIns = vapIndex - 1;
     if((apIns < 0) || (apIns > 15)){

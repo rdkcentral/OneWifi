@@ -34,6 +34,12 @@
 #include "bus.h"
 #include "ccsp.h"
 
+typedef struct {
+    uint16_t ErrorCode;
+    char ErrorMsg[128];
+} wifi_validation_error_t;
+
+
 #define MAX_NAME_LEN 32
 
 #ifdef __cplusplus
