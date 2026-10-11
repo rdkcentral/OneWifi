@@ -464,6 +464,8 @@ void update_default_oem_configs(int apIndex, struct hostapd_bss_config *bss)
                 if (!jsonData || wps_dev_type_str2bin(jsonData->valuestring, bss->device_type))
                 {
                     wpa_printf(MSG_ERROR,"Error in device type configs - %d\n", __LINE__);
+                    cJSON_Delete(json);
+                    free(data);
                     return;
                 }
 
