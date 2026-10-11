@@ -2561,6 +2561,29 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
     data_ptr = (frame_data_t *)p_data->value.raw_data.bytes;
 
     if (data_ptr != NULL && len != 0) {
+        size_t frame_hdr_len = sizeof(frame_data_t) - MAX_FRAME_SZ;
+        size_t payload_len;
+
+        if (len < frame_hdr_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame blob len:%u\n",
+                __func__, __LINE__, len);
+            return;
+        }
+
+        if (data_ptr->frame.len > MAX_FRAME_SZ) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len too large:%u\n",
+                __func__, __LINE__, data_ptr->frame.len);
+            return;
+        }
+
+        payload_len = len - frame_hdr_len;
+        if ((size_t)data_ptr->frame.len > payload_len) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d frame.len:%u exceeds payload:%zu\n",
+                __func__, __LINE__, data_ptr->frame.len, payload_len);
+            return;
+        }
+
         memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&data_ptr->frame.sta_mac,
             sizeof(mac_address_t));
         frame_data.frame.ap_index = data_ptr->frame.ap_index;
@@ -2570,9 +2593,10 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
         frame_data.frame.sig_dbm = data_ptr->frame.sig_dbm;
         frame_data.frame.phy_rate = data_ptr->frame.phy_rate;
         frame_data.frame.recv_freq = data_ptr->frame.recv_freq;
-        frame_data.frame.data = data_ptr->frame.data;
 
-        memcpy(&frame_data.data, data_ptr->data, data_ptr->frame.len);
+
+        memcpy(frame_data.data, data_ptr->data, frame_data.frame.len);
+        frame_data.frame.data = frame_data.data;
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: vap_index:%d len:%d frame_byte:%d\r\n", __func__,
             __LINE__, frame_data.frame.ap_index, len, frame_data.frame.len);
         wifi_util_dbg_print(WIFI_CTRL,
