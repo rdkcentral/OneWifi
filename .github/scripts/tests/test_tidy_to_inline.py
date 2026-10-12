@@ -19,6 +19,8 @@ class Parse(unittest.TestCase):
     def test_parse(self):
         log = (WARN + WARN                                              # repeated -> one comment
                + ABS + "source/bar.c:7:1: error: bad thing [bugprone-b,-warnings-as-errors]\n"
+               + ABS + "source/bar.c:9:5: warning: code will never be executed"
+               + " [clang-diagnostic-unreachable-code]\n"                 # summary-only, not dropped
                + "not a clang-tidy line\n\n")                           # dropped; blank skipped
         comments, dropped = tidy_conv.parse(log)
         self.assertEqual(dropped, 1)

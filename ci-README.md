@@ -82,8 +82,10 @@ time is the intent.
 **c) clang-tidy** — two-tier, changed-lines scoped, `bpi` only. Governed by `.clang-tidy`:
 `WarningsAsErrors` checks (a short `bugprone-*` list verified at zero occurrences across both
 trees) print `error:` and fail the job; the rest of the enabled `bugprone-*` checks print
-`warning:` and are advisory only. `clang-diagnostic-*` is filtered out entirely, so it can never
-gate. Findings are scoped to lines the PR changed, so a pre-existing finding on an untouched line
+`warning:` and are advisory only. `clang-diagnostic-*` is filtered out, so it can never gate, except
+the unreachable-code group (`-Wunreachable-code-aggressive`, the dead-code proxy): its findings go
+to the summary and annotations only, never inline, because reachability can depend on the build
+configuration, and they are dropped for a file that did not parse with its own flags. Findings are scoped to lines the PR changed, so a pre-existing finding on an untouched line
 never fails a PR. The HAL layers its own extra checks (`HAL_EXTRA_WAE` / `HAL_EXTRA_CHECKS`, in
 the HAL's `makefile.yml`) on top of this shared config, for checks clean in the HAL but not yet in
 OneWifi.
