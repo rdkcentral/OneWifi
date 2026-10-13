@@ -331,6 +331,7 @@ void *wifi_connections_listener    (void *arg)
     
     if (bind(fd, (struct sockaddr *)&name, sizeof(struct sockaddr_un)) < 0) {
         wifi_util_dbg_print(WIFI_MON, "Error binding to socket:%d\n", errno);
+        close(fd);
         return NULL;
     }
     

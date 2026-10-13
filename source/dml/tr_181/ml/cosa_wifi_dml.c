@@ -370,11 +370,6 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->csi_analytics_enabled_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        *pBool = rfc_pcfg->link_quality_rfc;
-        return TRUE;
-    }
 
     if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
     {
@@ -1203,14 +1198,6 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->csi_analytics_enabled_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_csi_analytics_rfc);
-        }
-
-        return TRUE;
-    }
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        if(bValue != rfc_pcfg->link_quality_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_link_quality_rfc);
         }
 
         return TRUE;
@@ -4643,7 +4630,7 @@ Stats3_GetParamIntValue
         pthread_mutex_lock(&monitor_param->data_lock);
         radio_activity_factor =
             monitor_param->radio_data[instance_number].RadioActivityFactor;
-        while ((i++) < monitor_param->radio_chan_stats_data[instance_number]
+        while (i < monitor_param->radio_chan_stats_data[instance_number]
                            .num_channels) {
             utilization_rx +=
                 monitor_param->radio_chan_stats_data[instance_number]
@@ -4653,6 +4640,7 @@ Stats3_GetParamIntValue
                 monitor_param->radio_chan_stats_data[instance_number]
                     .chan_data[i]
                     .ch_utilization_busy_tx;
+            i++;
         }
         pthread_mutex_unlock(&monitor_param->data_lock);
         utilization_total = utilization_rx + utilization_tx;
@@ -9292,16 +9280,17 @@ Security_SetParamStringValue
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa_personal:
-				l_security_cfg->u.key.type = wifi_security_key_type_psk;
-				l_security_cfg->mfp = wifi_mfp_cfg_disabled;
-				break;
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
             case wifi_security_mode_wpa2_personal:
-				l_security_cfg->u.key.type = wifi_security_key_type_psk;
-				l_security_cfg->mfp = wifi_mfp_cfg_optional;
-				wpa2_personal_gcmp_fallback_to_aes(l_security_cfg);
-				break;
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Preserve AES/AES+TKIP and normalize invalid carry-over values. */
+                apply_wpa2_personal_encr_policy(l_security_cfg);
+                break;
             case wifi_security_mode_wpa_wpa2_personal:
-				l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa_enterprise:
@@ -9319,6 +9308,8 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa3_transition:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Restore platform default encryption when switching back to WPA3-Transition. */
+                apply_wpa3_transition_encr_policy(l_security_cfg);
                 break;
             case wifi_security_mode_enhanced_open:
                 l_security_cfg->mfp = wifi_mfp_cfg_required;
@@ -10498,7 +10489,7 @@ PreAssocDeny_GetParamStringValue
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
     {
-        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        snprintf(pValue, *pUlSize, "disabled, -50 to -95");
         return 0;
     }
 
@@ -16776,6 +16767,14 @@ AssociatedDevice1_GetParamUlongValue
     if( AnscEqualString(ParamName, "X_RDK_CapSpaStr", TRUE))
     {
         /* collect value */
+        *puLong = assoc_dev_data->dev_stats.cli_capableNumSpatialStreams;
+        free(assoc_dev_data);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_ActiveSpaStr", TRUE))
+    {
+        /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
         free(assoc_dev_data);
         return TRUE;
@@ -20911,6 +20910,7 @@ Passpoint_SetParamStringValue
                 cJSON_Delete(p_root);
                 return FALSE;
             }
+            cJSON_Delete(p_root);
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
