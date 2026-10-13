@@ -4,7 +4,7 @@ ONEWIFI_DIR=$(pwd)
 HOSTAP_DIR="$(pwd)/../rdk-wifi-libhostap/source"
 HOSTAP_PATCH_FLAG="$(pwd)/../rdk-wifi-libhostap/.hostap_patched"
 UPSTREAM_HOSTAP_URL="https://git.w1.fi/hostap.git"
-SRCREV_2_10="9d07b9447e76059a2ddef2a879c57d0934634188"
+SRCREV_2_10="${PIN_HOSTAP_2_10:-9d07b9447e76059a2ddef2a879c57d0934634188}"
 
 #git clone other wifi related components
 cd ..
