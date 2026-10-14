@@ -81,6 +81,8 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
                 *haultype = em_haul_type_hotspot;
         } else if (strncmp("iot_ssid", vapname, strlen("iot_ssid")) == 0) {
                 *haultype = em_haul_type_iot;
+        } else if (strncmp("lnf_radius", vapname, strlen("lnf_radius")) == 0) {
+                *haultype = em_haul_type_configurator;
         } else if (strncmp("lnf_psk", vapname, strlen("lnf_psk")) == 0) {
                 *haultype = em_haul_type_configurator;
         } else if (strncmp("mesh_backhaul", vapname, strlen("mesh_backhaul")) == 0) {
@@ -2196,9 +2198,13 @@ webconfig_error_t translate_mesh_sta_info_to_em_bss_config(wifi_vap_info_t *vap,
 }
 
 webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_info_t *vap,
-    radio_interface_mapping_t *radio_iface_map)
+    radio_interface_mapping_t *radio_iface_map, wifi_platform_property_t *wifi_prop)
 {
     mac_addr_str_t mld_mac_str, bssid_str;
+    static const mac_address_t zero_mac = { 0 };
+    wifi_multi_link_modes_t mld_modes;
+    wifi_radio_capabilities_t *radio_cap;
+    em_affiliated_ap_info_t *aff;
 
     if (ap_info == NULL || vap == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -2208,7 +2214,9 @@ webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_
     memset(ap_info, 0, sizeof(em_ap_mld_info_t));
 
     to_mac_str(vap->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
-    if (WiFi_IsValidMacAddr(mld_mac_str)) {
+    if (WiFi_IsValidMacAddr(mld_mac_str) &&
+        memcmp(vap->u.bss_info.mld_info.common_info.mld_addr, zero_mac, sizeof(mac_address_t)) !=
+            0) {
         ap_info->mac_addr_valid = true;
     } else {
         ap_info->mac_addr_valid = false;
@@ -2216,19 +2224,42 @@ webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_
     memcpy(&ap_info->mac_addr, vap->u.bss_info.mld_info.common_info.mld_addr,
         sizeof(mac_address_t));
     snprintf(ap_info->ssid, sizeof(ap_info->ssid), "%s", vap->u.bss_info.ssid);
+    ap_info->haul_type = em_haul_type_max;
+    convert_vap_name_to_hault_type(&ap_info->haul_type, (char *)vap->vap_name);
+    if (ap_info->haul_type >= em_haul_type_max) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot determine haul type for vap %s\n",
+            __func__, __LINE__, vap->vap_name);
+        return webconfig_error_translate_to_easymesh;
+    }
 
-    // Todo: VAP structure currently does not have below details, so set it to default for testing.
-    ap_info->str = true;
-    ap_info->nstr = false;
-    ap_info->emlsr = true;
-    ap_info->emlmr = false;
+    if (wifi_prop != NULL) {
+        radio_cap = get_radio_cap_from_radio_index(wifi_prop, vap->radio_index);
+        if (radio_cap != NULL) {
+            mld_modes = radio_cap->mldOperationalCap;
+            ap_info->str = (mld_modes & STR) != 0;
+            ap_info->nstr = (mld_modes & NSTR) != 0;
+            ap_info->emlsr = (mld_modes & eMLSR) != 0;
+            ap_info->emlmr = (mld_modes & eMLMR) != 0;
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: No radio capabilities found for radio_index=%u\n", __func__, __LINE__,
+                vap->radio_index);
+        }
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: Updating AP info for ssid=\"%s\" bssid=%s vap_name=%s str=%d nstr=%d emlsr=%d "
+        "emlmr=%d\n",
+        __func__, __LINE__, vap->u.bss_info.ssid, mld_mac_str, vap->vap_name, ap_info->str,
+        ap_info->nstr, ap_info->emlsr, ap_info->emlmr);
 
     ap_info->num_affiliated_ap++;
-    em_affiliated_ap_info_t *aff = &ap_info->affiliated_ap[0];
+    aff = &ap_info->affiliated_ap[0];
     memset(aff, 0, sizeof(*aff));
 
     to_mac_str(vap->u.bss_info.bssid, bssid_str);
-    if (WiFi_IsValidMacAddr(bssid_str)) {
+    if (WiFi_IsValidMacAddr(bssid_str) &&
+        memcmp(vap->u.bss_info.bssid, zero_mac, sizeof(mac_address_t)) != 0) {
         aff->mac_addr_valid = true;
     } else {
         aff->mac_addr_valid = false;
@@ -2249,29 +2280,54 @@ webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_
 }
 
 webconfig_error_t update_vap_with_ap_mld_info(wifi_vap_info_t *vap,
-    webconfig_external_easymesh_t *proto)
+    webconfig_external_easymesh_t *proto, radio_interface_mapping_t *radio_iface_map)
 {
     char bssid_mac_str[32] = {};
+    em_haul_type_t haul_type;
+    em_ap_mld_info_t *ap_mld_info;
+    mac_address_t vap_ruid_mac;
+    unsigned int i;
+
     uint8_mac_to_string_mac(vap->u.bss_info.bssid, bssid_mac_str);
 
-    em_ap_mld_info_t *ap_mld_info = proto->get_ap_mld_frm_bssid(proto->data_model,
-        vap->u.bss_info.bssid);
-    if (!ap_mld_info) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No AP MLD information available for bssid %s\n",
-            __func__, __LINE__, bssid_mac_str);
+    // Default to disabled; based on AP MLD info enable MLD.
+    vap->u.bss_info.mld_info.common_info.mld_enable = false;
+
+    haul_type = em_haul_type_max;
+    convert_vap_name_to_hault_type(&haul_type, (char *)vap->vap_name);
+    if (haul_type >= em_haul_type_max) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: No valid haul type for vap_name=%s\n",
+            __func__, __LINE__, vap->vap_name);
         return webconfig_error_translate_from_easymesh;
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Found AP MLD information for bssid=%s\n", __func__,
-        __LINE__, bssid_mac_str);
-
-    if (ap_mld_info->mac_addr_valid) {
-        vap->u.bss_info.mld_info.common_info.mld_enable = true;
+    ap_mld_info = proto->get_ap_mld_frm_haul_type(proto->data_model, haul_type);
+    if (ap_mld_info == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: No AP MLD information available for haul_type=%d vap_name=%s bssid=%s\n",
+            __func__, __LINE__, haul_type, vap->vap_name, bssid_mac_str);
+        return webconfig_error_translate_from_easymesh;
     }
 
-    for (int i = 0; i < ap_mld_info->num_affiliated_ap; i++) {
-        if (memcmp(ap_mld_info->affiliated_ap[i].mac_addr, vap->u.bss_info.bssid,
-                sizeof(mac_address_t)) == 0) {
+    // Require at least one advertised MLD mode before enabling this VAP.
+    if (!ap_mld_info->str && !ap_mld_info->nstr && !ap_mld_info->emlsr && !ap_mld_info->emlmr) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,
+            "%s:%d: No AP MLD modes for haul_type=%d vap_name=%s; leaving MLD disabled\n", __func__,
+            __LINE__, haul_type, vap->vap_name);
+        return webconfig_error_none;
+    }
+
+    // Match this radio to an affiliated AP and apply its valid link ID.
+    if (mac_address_from_name(radio_iface_map->interface_name, vap_ruid_mac) != 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: Unable to resolve radio interface %s\n", __func__, __LINE__,
+            radio_iface_map->interface_name);
+        return webconfig_error_translate_from_easymesh;
+    }
+    for (i = 0; i < ap_mld_info->num_affiliated_ap; i++) {
+        if (memcmp(ap_mld_info->affiliated_ap[i].ruid.mac, vap_ruid_mac, sizeof(mac_address_t)) ==
+            0) {
+            vap->u.bss_info.mld_info.common_info.mld_enable = true;
             if (ap_mld_info->affiliated_ap[i].link_id_valid) {
                 vap->u.bss_info.mld_info.common_info.mld_link_id =
                     ap_mld_info->affiliated_ap[i].link_id;
@@ -2279,7 +2335,14 @@ webconfig_error_t update_vap_with_ap_mld_info(wifi_vap_info_t *vap,
             break;
         }
     }
-    // str, nstr, emlsr, emlmr parameters are not updated currently since vap structure doesn't support this now.
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: AP MLD update: haul_type=%d vap_name=%s ssid=%s bssid=%s radio_index=%d "
+        "mld_enable=%d link_id=%d modes(str=%d nstr=%d emlsr=%d emlmr=%d)\n",
+        __func__, __LINE__, haul_type, vap->vap_name, vap->u.bss_info.ssid, bssid_mac_str,
+        vap->radio_index, vap->u.bss_info.mld_info.common_info.mld_enable,
+        vap->u.bss_info.mld_info.common_info.mld_link_id, ap_mld_info->str, ap_mld_info->nstr,
+        ap_mld_info->emlsr, ap_mld_info->emlmr);
 
     return webconfig_error_none;
 }
@@ -2413,28 +2476,6 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                 fill_eht_ops_from_radio(&radio->oper,
                     (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
                     &em_bss_info->eht_ops);
-            }
-
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
-                // details for STA
-                // em_bsta_info_t *bsta_info;
-                // fill_bsta_info_from_vap(&bsta_info, vap, radio_iface_map);
-                // proto->update_bsta_info(proto->data_model, bsta_info);
-            } else {
-                if (vap->u.bss_info.mld_info.common_info.mld_enable == true) {
-                    em_ap_mld_info_t ap_info;
-                    ret = fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map);
-                    if (ret == webconfig_error_none) {
-                        proto->update_ap_mld_info(proto->data_model, &ap_info);
-                        wifi_util_dbg_print(WIFI_WEBCONFIG,
-                            "%s:%d: AP MLD info updated successfully for vap %s\n", __func__,
-                            __LINE__, vap->vap_name);
-                    }
-                } else {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: AP MLD is not enabled on vap %s\n",
-                        __func__, __LINE__, vap->vap_name);
-                }
             }
         }
     }
@@ -2713,7 +2754,7 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
             } else {
                 if (vap->u.bss_info.mld_info.common_info.mld_enable == true) {
                     em_ap_mld_info_t ap_info;
-                    ret = fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map);
+                    ret = fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map, wifi_prop);
                     if (ret == webconfig_error_none) {
                         proto->update_ap_mld_info(proto->data_model, &ap_info);
                         wifi_util_dbg_print(WIFI_WEBCONFIG,
@@ -3183,7 +3224,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
         }
 
         if (vap->vap_mode == wifi_vap_mode_ap) {
-            ret = update_vap_with_ap_mld_info(vap, proto);
+            ret = update_vap_with_ap_mld_info(vap, proto, radio_iface_map);
             if (ret == webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Updated VAP %s with AP MLD info\n",
                     __func__, __LINE__, vap->vap_name);
@@ -4103,7 +4144,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac,
         ext_proto_put_scan_results_t put_scan_res, ext_proto_update_ap_mld_info_t update_ap_mld,
         ext_proto_update_bsta_mld_info_t update_bsta_mld, ext_proto_update_assoc_sta_mld_info_t update_assoc_sta_mld,
-        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid, ext_proto_get_radio_cap_t get_radio_cap)
+        ext_proto_get_ap_mld_frm_haul_type_t get_ap_mld_frm_haul_type, ext_proto_get_radio_cap_t get_radio_cap)
 {
     proto->data_model = data_model;
     proto->m2ctrl_radioconfig = m2ctrl_radioconfig;
@@ -4129,6 +4170,6 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
     proto->update_ap_mld_info = update_ap_mld;
     proto->update_bsta_mld_info = update_bsta_mld;
     proto->update_assoc_sta_mld_info = update_assoc_sta_mld;
-    proto->get_ap_mld_frm_bssid = get_ap_mld_frm_bssid;
+    proto->get_ap_mld_frm_haul_type = get_ap_mld_frm_haul_type;
     proto->get_radio_cap = get_radio_cap;
 }
