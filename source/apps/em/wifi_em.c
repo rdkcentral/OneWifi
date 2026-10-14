@@ -41,12 +41,14 @@
 #define EM_NEIGBOUR_SCAN_INTERVAL_MSEC 60000 // 60 Seconds
 #define EM_DEF_LINK_METRICS_COLLECT_INTERVAL_MSEC 10000 // 10 Seconds
 #define EM_BSS_COLOR_DEFAULT 0x3F
+#define EM_OP_CLASS_POWER_REFRESH_MSEC 60000 // 60 Seconds
 #define EM_SCAN_TYPE_ACTIVE 1
 #define MAX_STA_COUNT_JSON MAX_ACL_COUNT // Maximum STAs per block request (driver ACL limit)
 #define MAC_ADDR_STR_LEN \
     18 // MAC address string length (xx:xx:xx:xx:xx:xx = 17 chars + null terminator)
 
 static bool is_monitor_done = false;
+static int em_op_class_power_sched_id = 0;
 static pthread_mutex_t monitor_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool g_btm_pending_valid = false;
 static em_btm_req_ctrl_msg_t g_pending_btm;
@@ -193,6 +195,166 @@ static int em_rssi_to_rcpi(int rssi)
     if (rssi > 0)
         return 220;
     return (rssi + 110) * 2;
+}
+
+static bool em_is_op_class_channel_non_operable(const wifi_operating_classes_t *op_class,
+    int channel)
+{
+    for (UINT i = 0; i < op_class->numberOfNonOperChan && i < MAXNUMNONOPERABLECHANNELS; i++) {
+        if (op_class->nonOperable[i] == (UINT)channel) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Return the lowest regulatory limit of the 20 MHz channels that make up the operating class
+ * block containing the given op_class_ch_list[] channel, and the center channel of that block. */
+static int em_get_op_class_channel_max_tx_power(int radio_index, wifi_freq_bands_t band,
+    const wifi_operating_classes_t *op_class, int channel, int *max_tx_power, int *block_center)
+{
+    int center = channel;
+    int half_width = 0;
+
+    switch (op_class->opClass) {
+    case 83:
+    case 116:
+    case 119:
+    case 122:
+    case 126:
+    case 132:
+        center = channel + 2;
+        half_width = 2;
+        break;
+    case 84:
+    case 117:
+    case 120:
+    case 123:
+    case 127:
+        center = channel - 2;
+        half_width = 2;
+        break;
+    case 128:
+    case 130:
+    case 133:
+    case 135:
+        center = wifi_get_bw80_center_ch(channel, band);
+        /* The helper stops at center 155 on 5 GHz (5, 5L and 5H radios), channels 165-177 form
+         * the 171 block */
+        if (band != WIFI_FREQUENCY_6_BAND && channel > 161) {
+            center = 171;
+        }
+        half_width = 6;
+        break;
+    case 129:
+    case 134:
+        center = wifi_get_bw160_center_ch(channel, band);
+        half_width = 14;
+        break;
+    case 137:
+        /* 320 MHz blocks overlap, the listed channel is the lowest 20 MHz channel of its block */
+        center = channel + 30;
+        half_width = 30;
+        break;
+    default:
+        break;
+    }
+
+    /* Skip channels outside the derived block and the ones excluded for this operating class */
+    if (channel < center - half_width || channel > center + half_width ||
+        em_is_op_class_channel_non_operable(op_class, channel) ||
+        em_is_op_class_channel_non_operable(op_class, center)) {
+        return RETURN_ERR;
+    }
+
+    *max_tx_power = INT_MAX;
+    for (int ch = center - half_width; ch <= center + half_width; ch += 4) {
+        int power;
+
+        if (wifi_getRadioChannelMaxTxPower(radio_index, band, ch, &power) != RETURN_OK) {
+            return RETURN_ERR;
+        }
+        if (power < *max_tx_power) {
+            *max_tx_power = power;
+        }
+    }
+    *block_center = center;
+    return RETURN_OK;
+}
+
+/* Update maxTxPower of every operating class of the radio from the regulatory limits reported
+ * by the HAL. */
+static void em_update_op_class_max_tx_power(unsigned int radio_index)
+{
+    wifi_radio_operationParam_t *oper = get_wifidb_radio_map(radio_index);
+    wifi_radio_capabilities_t *radio_cap = getRadioCapability(radio_index);
+
+    if (oper == NULL || radio_cap == NULL) {
+        return;
+    }
+
+    for (UINT i = 0; i < oper->numOperatingClasses && i < MAXNUMOPERCLASSESPERBAND; i++) {
+        wifi_operating_classes_t *op_class = &oper->operatingClasses[i];
+        const op_class_ch_list_t *ch_list = NULL;
+        int max_tx_power = INT_MIN;
+        int centers[MAX_CHANNELS_PER_OP_CLASS];
+        int powers[MAX_CHANNELS_PER_OP_CLASS];
+        UINT num_blocks = 0;
+        /* 80+80 MHz classes combine two non-adjacent 80 MHz blocks */
+        bool is_80p80 = (op_class->opClass == 130 || op_class->opClass == 135);
+
+        for (UINT j = 0; j < radio_cap->num_op_class_entries && j < MAX_OP_CLASS_ENTRIES; j++) {
+            if (radio_cap->op_class_ch_list[j].op_class == op_class->opClass) {
+                ch_list = &radio_cap->op_class_ch_list[j];
+                break;
+            }
+        }
+        if (ch_list == NULL) {
+            continue;
+        }
+
+        for (UINT k = 0; k < ch_list->num_channels && k < MAX_CHANNELS_PER_OP_CLASS; k++) {
+            if (em_get_op_class_channel_max_tx_power(radio_index, oper->band, op_class,
+                    ch_list->channels[k], &powers[num_blocks], &centers[num_blocks]) ==
+                RETURN_OK) {
+                num_blocks++;
+            }
+        }
+
+        /* A single block, or a pair of blocks for 80+80 MHz, is limited by its lowest member */
+        for (UINT k = 0; k < num_blocks; k++) {
+            for (UINT l = is_80p80 ? k + 1 : k; l < num_blocks; l++) {
+                int power = powers[k] < powers[l] ? powers[k] : powers[l];
+
+                if (is_80p80 && abs(centers[k] - centers[l]) <= 16) {
+                    continue;
+                }
+                if (power > max_tx_power) {
+                    max_tx_power = power;
+                }
+            }
+        }
+
+        if (max_tx_power != INT_MIN) {
+            op_class->maxTxPower = max_tx_power;
+            wifi_util_dbg_print(WIFI_EM, "%s:%d: radio %u op class %u max tx power %d dBm\n",
+                __func__, __LINE__, radio_index, op_class->opClass, max_tx_power);
+        }
+    }
+}
+
+static void em_update_all_op_class_max_tx_power(void)
+{
+    for (unsigned int i = 0; i < getNumberRadios(); i++) {
+        em_update_op_class_max_tx_power(i);
+    }
+}
+
+static int em_op_class_power_task(void *arg)
+{
+    (void)arg;
+    em_update_all_op_class_max_tx_power();
+    return RETURN_OK;
 }
 
 static int em_get_radio_index_from_mac(mac_addr_t ruuid)
@@ -3473,6 +3635,10 @@ int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *da
         em_handle_wnm_action_frame(app, data);
         break;
 
+    case wifi_event_hal_channel_change:
+        em_update_all_op_class_max_tx_power();
+        break;
+
     default:
         wifi_util_dbg_print(WIFI_EM, "%s:%d app sub_event:%s not handled\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));
@@ -4498,6 +4664,13 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     client_type_info.sta_client_type.client_type_map = hash_map_create();
 
     ap_report_cache_init();
+    em_update_all_op_class_max_tx_power();
+    /* Radio config updates rebuild the operating classes, so keep the powers refreshed */
+    if (scheduler_add_timer_task(app->ctrl->sched, FALSE, &em_op_class_power_sched_id,
+            em_op_class_power_task, NULL, EM_OP_CLASS_POWER_REFRESH_MSEC, 0, FALSE) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: failed to add op class power refresh task\n",
+            __func__, __LINE__);
+    }
 
     rc = get_bus_descriptor()->bus_open_fn(&app->handle, component_name);
     if (rc != bus_error_success) {
@@ -4553,6 +4726,11 @@ int em_deinit(wifi_app_t *app)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wifi_util_info_print(WIFI_EM, "%s:%d: em-app deinit\n", __func__, __LINE__);
+
+    if (em_op_class_power_sched_id > 0) {
+        scheduler_cancel_timer_task(ctrl->sched, em_op_class_power_sched_id);
+        em_op_class_power_sched_id = 0;
+    }
 
     sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_get_first(
         client_type_info.sta_client_type.client_type_map);
