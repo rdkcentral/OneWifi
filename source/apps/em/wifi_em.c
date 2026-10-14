@@ -27,6 +27,7 @@
 #include "common/ieee802_11_defs.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <limits.h>
 #include <cjson/cJSON.h>
 #include <netinet/ether.h>
 
@@ -146,6 +147,272 @@ static int em_rssi_to_rcpi(int rssi)
     if (rssi > 0)
         return 220;
     return (rssi + 110) * 2;
+}
+
+static size_t add_op_class_channel_range(UINT *channels, size_t capacity, UINT first, UINT last,
+    UINT step)
+{
+    size_t count = 0;
+
+    for (UINT channel = first; channel <= last && count < capacity; channel += step) {
+        channels[count++] = channel;
+    }
+    return count;
+}
+
+static size_t get_op_class_channels(UINT op_class, UINT *channels, size_t capacity)
+{
+    switch (op_class) {
+    case 81:
+        return add_op_class_channel_range(channels, capacity, 1, 13, 1);
+    case 82:
+        channels[0] = 14;
+        return 1;
+    case 83:
+        return add_op_class_channel_range(channels, capacity, 1, 9, 1);
+    case 84:
+        return add_op_class_channel_range(channels, capacity, 5, 13, 1);
+    case 115:
+        return add_op_class_channel_range(channels, capacity, 36, 48, 4);
+    case 116:
+        channels[0] = 36;
+        channels[1] = 44;
+        return 2;
+    case 117:
+        channels[0] = 40;
+        channels[1] = 48;
+        return 2;
+    case 118:
+        return add_op_class_channel_range(channels, capacity, 52, 64, 4);
+    case 119:
+        channels[0] = 52;
+        channels[1] = 60;
+        return 2;
+    case 120:
+        channels[0] = 56;
+        channels[1] = 64;
+        return 2;
+    case 121:
+        return add_op_class_channel_range(channels, capacity, 100, 144, 4);
+    case 122:
+        return add_op_class_channel_range(channels, capacity, 100, 140, 8);
+    case 123:
+        return add_op_class_channel_range(channels, capacity, 104, 144, 8);
+    case 124:
+        return add_op_class_channel_range(channels, capacity, 149, 161, 4);
+    case 125:
+        return add_op_class_channel_range(channels, capacity, 149, 177, 4);
+    case 126:
+        return add_op_class_channel_range(channels, capacity, 149, 173, 8);
+    case 127:
+        return add_op_class_channel_range(channels, capacity, 153, 177, 8);
+    case 128:
+    case 130:
+        if (capacity < 7)
+            return 0;
+        channels[0] = 42;
+        channels[1] = 58;
+        channels[2] = 106;
+        channels[3] = 122;
+        channels[4] = 138;
+        channels[5] = 155;
+        channels[6] = 171;
+        return 7;
+    case 129:
+        if (capacity < 3)
+            return 0;
+        channels[0] = 50;
+        channels[1] = 114;
+        channels[2] = 163;
+        return 3;
+    case 131:
+        return add_op_class_channel_range(channels, capacity, 1, 233, 4);
+    case 132:
+        return add_op_class_channel_range(channels, capacity, 3, 227, 8);
+    case 133:
+    case 135:
+        return add_op_class_channel_range(channels, capacity, 7, 215, 16);
+    case 134:
+        return add_op_class_channel_range(channels, capacity, 15, 207, 32);
+    case 136:
+        channels[0] = 2;
+        return 1;
+    case 137:
+        return add_op_class_channel_range(channels, capacity, 31, 191, 32);
+    default:
+        return 0;
+    }
+}
+
+static int get_op_class_channel_power(int radio_index, wifi_freq_bands_t band, UINT op_class,
+    UINT channel, int *max_tx_power)
+{
+    static const int offsets_40_plus[] = { 0, 4 };
+    static const int offsets_40_minus[] = { -4, 0 };
+    static const int offsets_40_center[] = { -2, 2 };
+    static const int offsets_80[] = { -6, -2, 2, 6 };
+    static const int offsets_160[] = { -14, -10, -6, -2, 2, 6, 10, 14 };
+    static const int offsets_320[] = { -30, -26, -22, -18, -14, -10, -6, -2, 2, 6, 10, 14, 18, 22,
+        26, 30 };
+    const int *offsets = NULL;
+    size_t offset_count = 1;
+    int min_power = INT_MAX;
+
+    switch (op_class) {
+    case 83:
+    case 116:
+    case 119:
+    case 122:
+    case 126:
+        offsets = offsets_40_plus;
+        offset_count = sizeof(offsets_40_plus) / sizeof(offsets_40_plus[0]);
+        break;
+    case 84:
+    case 117:
+    case 120:
+    case 123:
+    case 127:
+        offsets = offsets_40_minus;
+        offset_count = sizeof(offsets_40_minus) / sizeof(offsets_40_minus[0]);
+        break;
+    case 132:
+        offsets = offsets_40_center;
+        offset_count = sizeof(offsets_40_center) / sizeof(offsets_40_center[0]);
+        break;
+    case 128:
+    case 130:
+    case 133:
+    case 135:
+        offsets = offsets_80;
+        offset_count = sizeof(offsets_80) / sizeof(offsets_80[0]);
+        break;
+    case 129:
+    case 134:
+        offsets = offsets_160;
+        offset_count = sizeof(offsets_160) / sizeof(offsets_160[0]);
+        break;
+    case 137:
+        offsets = offsets_320;
+        offset_count = sizeof(offsets_320) / sizeof(offsets_320[0]);
+        break;
+    default:
+        break;
+    }
+
+    for (size_t i = 0; i < offset_count; i++) {
+        int power;
+        int constituent = (int)channel + (offsets != NULL ? offsets[i] : 0);
+
+        if (constituent <= 0 ||
+            wifi_getRadioChannelMaxTxPower(radio_index, band, constituent, &power) != RETURN_OK) {
+            return RETURN_ERR;
+        }
+        if (power < min_power) {
+            min_power = power;
+        }
+    }
+    *max_tx_power = min_power;
+    return RETURN_OK;
+}
+
+static int get_op_class_max_tx_power(int radio_index, wifi_freq_bands_t band,
+    const wifi_operating_classes_t *op_class, int *max_tx_power)
+{
+    UINT channels[64];
+    UINT segment_channels[64];
+    int segment_powers[64];
+    size_t count = get_op_class_channels(op_class->opClass, channels,
+        sizeof(channels) / sizeof(channels[0]));
+    size_t non_operable_count = op_class->numberOfNonOperChan;
+    size_t segment_count = 0;
+    int max_power = INT_MIN;
+
+    if (non_operable_count > MAXNUMNONOPERABLECHANNELS) {
+        non_operable_count = MAXNUMNONOPERABLECHANNELS;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        int channel_power;
+        bool excluded = false;
+
+        for (size_t j = 0; j < non_operable_count; j++) {
+            if (channels[i] == op_class->nonOperable[j]) {
+                excluded = true;
+                break;
+            }
+        }
+        if (excluded) {
+            continue;
+        }
+
+        if (get_op_class_max_tx_power(radio_index, oper->band, &oper->operatingClasses[i],
+            &max_tx_power) == RETURN_OK) {
+            continue;
+        }
+        if (op_class->opClass == 130 || op_class->opClass == 135) {
+            segment_channels[segment_count] = channels[i];
+            segment_powers[segment_count++] = channel_power;
+        } else if (channel_power > max_power) {
+            max_power = channel_power;
+        }
+    }
+
+    if (op_class->opClass == 130 || op_class->opClass == 135) {
+        for (size_t i = 0; i < segment_count; i++) {
+            for (size_t j = i + 1; j < segment_count; j++) {
+                int distance = (int)segment_channels[i] - (int)segment_channels[j];
+                int pair_power;
+
+                if (distance < 0) {
+                    distance = -distance;
+                }
+                if (distance <= 16) {
+                    continue;
+                }
+                pair_power = segment_powers[i] < segment_powers[j] ? segment_powers[i] :
+                                                                     segment_powers[j];
+                if (pair_power > max_power) {
+                    max_power = pair_power;
+                }
+            }
+        }
+    }
+
+    if (max_power == INT_MIN) {
+        return RETURN_ERR;
+    }
+    *max_tx_power = max_power;
+    return RETURN_OK;
+}
+
+void wifi_em_update_radio_operating_class_max_tx_power(wifi_radio_operationParam_t *oper,
+    int radio_index)
+{
+    if (oper == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: Radio operation parameters are NULL\n", __func__,
+            __LINE__);
+        return;
+    }
+    if (radio_index < 0 || radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: Invalid radio index %d\n", __func__, __LINE__,
+            radio_index);
+        return;
+    }
+
+    for (UINT i = 0; i < oper->numOperatingClasses && i < MAXNUMOPERCLASSESPERBAND; i++) {
+        int max_tx_power;
+
+        if (get_op_class_max_tx_power(radio_index, oper->band, &oper->operatingClasses[i],
+                &max_tx_power) == RETURN_OK) {
+            oper->operatingClasses[i].maxTxPower = max_tx_power;
+            wifi_util_info_print(WIFI_EM, "Radio=%d OpClass=%u ComputedMaxTxPower=%d dBm\n",
+                radio_index, oper->operatingClasses[i].opClass, max_tx_power);
+        } else {
+            wifi_util_info_print(WIFI_EM,
+                "Radio=%d OpClass=%u has no valid regulatory channel power\n", radio_index,
+                oper->operatingClasses[i].opClass);
+        }
+    }
 }
 
 static int em_get_radio_index_from_mac(mac_addr_t ruuid)
