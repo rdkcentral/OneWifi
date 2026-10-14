@@ -3392,6 +3392,7 @@ bool active_sta_connection_status(int ap_index, char *mac)
     return true;
 }
 
+#ifdef CONFIG_IEEE80211BE
 /* For an MLD AP, mgmt frames arrive on the MLD primary interface while the STA
  * may be tracked on another affiliated link VAP. Returns that VAP index or -1. */
 static int get_mld_sta_active_ap_index(int ap_index, char *mac)
@@ -3434,6 +3435,7 @@ static int get_mld_sta_active_ap_index(int ap_index, char *mac)
     }
     return -1;
 }
+#endif
 
 int increment_reason_count(interop_data_t *telemetry, wifi_reason_code_t code, int ap) {
     if (ap == 0) {
