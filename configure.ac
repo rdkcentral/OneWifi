@@ -264,11 +264,11 @@ AC_SUBST(SYSTEMD_CFLAGS)
 AC_SUBST(SYSTEMD_LDFLAGS)
 
 # msgpack-c 6.0 renamed the C library from libmsgpackc to libmsgpack-c.
-# Probe for the new name first and fall back to the old one so the tree
+# Probe for the new name first and fall back to the old one so the tree can build with either version.
 MSGPACK_LIBS=
-AC_CHECK_LIB([msgpack-c], [msgpack_pack_str],
+AC_CHECK_LIB([msgpack-c], [msgpack_unpack_next],
     [MSGPACK_LIBS=-lmsgpack-c],
-    [AC_CHECK_LIB([msgpackc], [msgpack_pack_str],
+    [AC_CHECK_LIB([msgpackc], [msgpack_unpack_next],
         [MSGPACK_LIBS=-lmsgpackc],
         [AC_MSG_ERROR([msgpack C library not found (tried -lmsgpack-c and -lmsgpackc)])])])
 AC_SUBST(MSGPACK_LIBS)
