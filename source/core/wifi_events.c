@@ -236,6 +236,61 @@ bool is_high_priority_event(wifi_event_subtype_t sub_type)
         return false;
     }
 }
+
+static bool is_associated_device_stats_event(const wifi_event_t *event)
+{
+    return (event != NULL) && (event->event_type == wifi_event_type_monitor) &&
+        ((event->sub_type == wifi_event_monitor_provider_response) ||
+         (event->sub_type == wifi_event_type_collect_stats)) &&
+        (event->u.provider_response != NULL) &&
+        (event->u.provider_response->data_type == mon_stats_type_associated_device_stats);
+}
+
+static bool is_same_associated_device_stats_request(const wifi_event_t *queued_event,
+    const wifi_event_t *new_event)
+{
+    const wifi_provider_response_t *queued_response;
+    const wifi_provider_response_t *new_response;
+
+    if (!is_associated_device_stats_event(queued_event) ||
+        !is_associated_device_stats_event(new_event)) {
+        return false;
+    }
+
+    queued_response = queued_event->u.provider_response;
+    new_response = new_event->u.provider_response;
+
+    return (queued_event->sub_type == new_event->sub_type) &&
+        (queued_event->route.dst == new_event->route.dst) &&
+        (queued_event->route.u.inst_bit_map == new_event->route.u.inst_bit_map) &&
+        (queued_response->args.vap_index == new_response->args.vap_index) &&
+        (queued_response->args.app_info == new_response->args.app_info);
+}
+
+static unsigned int coalesce_associated_device_stats_events(wifi_ctrl_t *ctrl,
+    const wifi_event_t *new_event)
+{
+    unsigned int index = 0;
+    unsigned int coalesced = 0;
+    wifi_event_t *queued_event;
+
+    while (index < queue_count(ctrl->queue)) {
+        queued_event = (wifi_event_t *)queue_peek(ctrl->queue, index);
+        if (!is_same_associated_device_stats_request(queued_event, new_event)) {
+            index++;
+            continue;
+        }
+
+        queued_event = (wifi_event_t *)queue_remove(ctrl->queue, index);
+        if (queued_event != NULL) {
+            destroy_wifi_event(queued_event);
+            coalesced++;
+        }
+    }
+
+    return coalesced;
+}
+
 void free_cloned_event(wifi_event_t *clone)
 {
     destroy_wifi_event(clone);
@@ -264,7 +319,8 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
         msg = event->u.core_data.msg;
         break;
     case wifi_event_type_monitor:
-        if (event->sub_type == wifi_event_monitor_provider_response) {
+        if ((event->sub_type == wifi_event_monitor_provider_response) ||
+            (event->sub_type == wifi_event_type_collect_stats)) {
             msg = event->u.provider_response;
             msg_len = sizeof(wifi_provider_response_t);
         } else {
@@ -281,7 +337,8 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
     }
 
     if ((event_type == wifi_event_type_monitor) &&
-        (sub_type == wifi_event_monitor_provider_response)) {
+        ((sub_type == wifi_event_monitor_provider_response) ||
+         (sub_type == wifi_event_type_collect_stats))) {
         cloned = (wifi_event_t *)create_wifi_monitor_response_event(msg, msg_len, event_type,
             sub_type);
     } else {
@@ -769,10 +826,28 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
         }
 
         pthread_mutex_lock(&ctrl->queue_lock);
+        if (is_associated_device_stats_event(event)) {
+            unsigned int coalesced =
+                coalesce_associated_device_stats_events(ctrl, event);
+            if (coalesced > 0) {
+                wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:%d coalesced %u stale associated-device stats event(s) for vap %u\n",
+                    __func__, __LINE__, coalesced,
+                    event->u.provider_response->args.vap_index);
+            }
+        }
         is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
         
         if (!is_limit_reached || is_high_priority_event(sub_type)) {
-            queue_push(ctrl->queue, event);
+            if (queue_push(ctrl->queue, event) < 0) {
+                pthread_mutex_unlock(&ctrl->queue_lock);
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d failed to enqueue monitor response event type: %s subtype: %s\n",
+                    __func__, __LINE__, wifi_event_type_to_string(type),
+                    wifi_event_subtype_to_string(sub_type));
+                destroy_wifi_event(event);
+                return RETURN_ERR;
+            }
             pthread_cond_signal(&ctrl->cond);
             pthread_mutex_unlock(&ctrl->queue_lock);
         } else { 
@@ -823,7 +898,14 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
     is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
   
     if (!is_limit_reached || is_high_priority_event(sub_type)) {
-        queue_push(ctrl->queue, event);
+        if (queue_push(ctrl->queue, event) < 0) {
+            pthread_mutex_unlock(&ctrl->queue_lock);
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d failed to enqueue event type: %s subtype: %s\n", __func__, __LINE__,
+                wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
+            destroy_wifi_event(event);
+            return RETURN_ERR;
+        }
         pthread_cond_signal(&ctrl->cond);
         pthread_mutex_unlock(&ctrl->queue_lock);
     } else {
@@ -876,7 +958,14 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
     is_limit_reached = queue_count(monitor_param->queue) >= MONITOR_QUEUE_SIZE_MAX;
   
     if (!is_limit_reached || is_high_priority_event(sub_type)) {
-        queue_push(monitor_param->queue, event);
+        if (queue_push(monitor_param->queue, event) < 0) {
+            pthread_mutex_unlock(&monitor_param->queue_lock);
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d failed to enqueue monitor event subtype: %s\n", __func__, __LINE__,
+                wifi_event_subtype_to_string(sub_type));
+            destroy_wifi_event(event);
+            return RETURN_ERR;
+        }
         pthread_cond_signal(&monitor_param->cond);
         pthread_mutex_unlock(&monitor_param->queue_lock);
     } else {
@@ -996,4 +1085,3 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
     }
     pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
 }
-

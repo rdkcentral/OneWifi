@@ -5574,7 +5574,12 @@ int provider_execute_task(void *arg)
     } else {
         route.dst = wifi_sub_component_core;
     }
-    push_monitor_response_event_to_ctrl_queue(response, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_monitor_provider_response, &route);
+    if (push_monitor_response_event_to_ctrl_queue(response, sizeof(wifi_provider_response_t),
+            wifi_event_type_monitor, wifi_event_monitor_provider_response, &route) !=
+        RETURN_OK) {
+        wifi_util_error_print(WIFI_MON,
+            "%s:%d failed to enqueue provider response for %s\n", __func__, __LINE__, elem->key);
+    }
 
     elem->response = response;
     free(elem->response);

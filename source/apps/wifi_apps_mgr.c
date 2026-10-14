@@ -93,7 +93,13 @@ int push_event_to_app_queue(wifi_app_t *app, wifi_event_t *event)
     }
 
     pthread_mutex_lock(&app->lock);
-    queue_push(app->queue, clone);
+    if (queue_push(app->queue, clone) < 0) {
+        pthread_mutex_unlock(&app->lock);
+        wifi_util_error_print(WIFI_APPS, "%s %d failed to enqueue cloned event\n", __FUNCTION__,
+            __LINE__);
+        destroy_wifi_event(clone);
+        return RETURN_ERR;
+    }
     pthread_cond_signal(&app->cond);
     pthread_mutex_unlock(&app->lock);
 

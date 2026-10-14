@@ -693,7 +693,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_dbg_print(WIFI_MON, "%s:%d assoc_data is NULL\n", __func__, __LINE__);
         }
         wifi_provider_response_t *collect_stats;
-        collect_stats = (wifi_provider_response_t *)malloc(sizeof(wifi_provider_response_t));
+        collect_stats = (wifi_provider_response_t *)calloc(1, sizeof(wifi_provider_response_t));
         if (collect_stats == NULL) {
             wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__,
                 __LINE__);
@@ -710,8 +710,13 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         wifi_util_dbg_print(WIFI_MON,
             "Sending assoc client stats event to core of size %d for %d\n", dev_count,
             collect_stats->args.vap_index);
-        push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t),
-            wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
+        if (push_monitor_response_event_to_ctrl_queue(collect_stats,
+                sizeof(wifi_provider_response_t), wifi_event_type_monitor,
+                wifi_event_type_collect_stats, NULL) != RETURN_OK) {
+            wifi_util_error_print(WIFI_MON,
+                "%s:%d failed to enqueue associated-device stats for vap %u\n", __func__,
+                __LINE__, args->vap_index);
+        }
         free(assoc_data);
         free(collect_stats);
     }
@@ -796,4 +801,3 @@ int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void
     pthread_mutex_unlock(&mon_cache->data_lock);
     return RETURN_OK;
 }
-
