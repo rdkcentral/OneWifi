@@ -134,7 +134,9 @@ static char *format_string(const char *input)
 int msgpack_pack_str_with_body(msgpack_packer* pk, const void* b, size_t l)
 {
     int ret = msgpack_pack_str(pk, l);
-    if (ret != 0) { return ret; }
+    if (ret != 0) {
+        return ret;
+    }
     return msgpack_pack_str_body(pk, b, l);
 }
 #endif
