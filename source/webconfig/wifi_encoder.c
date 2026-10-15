@@ -247,6 +247,8 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     cJSON_AddBoolToObject(radio_object, "DcsEnabled", radio_info->DCSEnabled);
 
     // DtimPeriod
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoding DtimPeriod=%d\n", __func__, __LINE__,
+        radio_info->dtimPeriod);
     cJSON_AddNumberToObject(radio_object, "DtimPeriod", radio_info->dtimPeriod);
 
     // OperatingClass
