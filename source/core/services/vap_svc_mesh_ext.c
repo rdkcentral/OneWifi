@@ -1513,6 +1513,25 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         return 0;
     }
 
+    // A scan-state replay of the previous parent must not replace a pending target.
+    if (is_bssid_valid(candidate->external_ap.bssid) &&
+        candidate->vap_index != vap_info->vap_index &&
+        ext->connected_vap_index == vap_info->vap_index &&
+        is_bssid_valid(ext->last_connected_bss.external_ap.bssid) &&
+        memcmp(vap_info->u.sta_info.bssid, ext->last_connected_bss.external_ap.bssid,
+            sizeof(bssid_t)) == 0 &&
+        (ext->conn_state == connection_state_disconnection_in_progress ||
+         ext->conn_state == connection_state_disconnected_scan_list_none ||
+         ext->conn_state == connection_state_disconnected_scan_list_in_progress ||
+         ext->conn_state == connection_state_disconnected_scan_list_all)) {
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d: parent_bssid_guard ignored last-connected BSSID from vap %s (%d); "
+            "pending target vap %d, state %s\n",
+            __func__, __LINE__, vap_info->vap_name, (int)vap_info->vap_index,
+            (int)candidate->vap_index, ext_conn_state_to_str(ext->conn_state));
+        return 0;
+    }
+
     band = mgr->radio_config[vap_info->radio_index].oper.band;
     channel = mgr->radio_config[vap_info->radio_index].oper.channel;
     freq = convert_channel_to_freq(band, channel);
