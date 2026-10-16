@@ -5661,6 +5661,7 @@ webconfig_error_t   translate_blaster_config_to_ovsdb_for_blaster(webconfig_subd
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     active_msmt_t *blaster_info = NULL;
     webconfig_external_ovsdb_t *proto = NULL;
+    unsigned int *row_count = NULL;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -5693,6 +5694,10 @@ webconfig_error_t   translate_blaster_config_to_ovsdb_for_blaster(webconfig_subd
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of Blaster to ovsdb failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    count++;
+    row_count = (unsigned int *)&proto->blaster_state_row_count;
+    *row_count = count;
 
     return webconfig_error_none;
 }

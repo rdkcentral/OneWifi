@@ -1718,6 +1718,7 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
     unsigned int vap_index;
     unsigned int radio_index;
     wifi_vap_info_map_t *l_vap_maps;
+    int apply_ret = RETURN_OK;
 
     //Apply the CAC Data
     for(radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
@@ -1734,16 +1735,20 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
             if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
                 || is_postassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])) {
                 // cac or tcm data changed apply
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received cac config, applying new configuration for vap: %d\n",
-                                    __func__, __LINE__, vap_index);
-                wifidb_update_wifi_cac_config(&data->radios[radio_index].vaps.vap_map);
+                int ret = wifidb_update_wifi_cac_config(&data->radios[radio_index].vaps.vap_map);
+                if (ret != RETURN_OK) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d: Failed to update cac config for radio: %u ret:%d\n", __func__,
+                        __LINE__, radio_index, ret);
+                    apply_ret = ret;
+                }
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: Received vap config is same for %d, not applying\n",
                             __func__, __LINE__, vap_index);
             }
         }
     }
-    return RETURN_OK;
+    return apply_ret;
 }
 
 int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
@@ -2198,14 +2203,11 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 {
     CHAR eventName[32] = {0};
-#ifndef DISABLE_ECO_REBOOT
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-#endif
 
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
     get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: EcoPowerDown telemetry: %s %s uploaded for Radio %d\n", __FUNCTION__, eventName, active ? "Active" : "Inactive", index + 1);
-#ifdef DISABLE_ECO_REBOOT
+#if defined(DISABLE_ECO_REBOOT) && !defined(CONFIG_IEEE80211BE)
     wifi_util_dbg_print(WIFI_WEBCONFIG,
         "%s: EcoPowerDown telemetry: Restarting OneWiFi to apply EcoMode. \n", __FUNCTION__);
     /**
@@ -2226,6 +2228,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     }
     system("systemctl restart onewifi.service");
 #else
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     scheduler_add_timer_task(ctrl->sched, TRUE, NULL, reboot_device, ctrl, 0, 1, TRUE);
 #endif
 }
@@ -2915,12 +2918,22 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 } else {
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
+                    // Apply CAC before the HAL path copies decoded data into the manager map,
+                    // otherwise the CAC comparison sees no diff and OVSDB is left stale.
+                    int cac_ret = webconfig_cac_apply(ctrl, &data->u.decoded);
+                    if (cac_ret != RETURN_OK) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s:%d: webconfig_cac_apply failed ret:%d\n", __func__, __LINE__,
+                            cac_ret);
+                    }
                     ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                    if (cac_ret != RETURN_OK) {
+                        ret = cac_ret;
+                    }
                     bool status = ((ret == RETURN_OK) ? true : false);
                     hotspot_cfg_sem_signal(status);
                     wifi_util_info_print(WIFI_CTRL,":%s:%d xfinity blob cfg status:%d\n", __func__, __LINE__, ret);
                     process_managed_wifi_enable();
-                    webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
                         wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");
                         pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);

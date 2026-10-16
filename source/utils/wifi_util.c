@@ -3834,8 +3834,10 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             is_valid = true;
         }
 
-        //If radar was detected on the selected DFS channel, return error
-        if( (oper->channel >= 52  &&  oper->channel <=144) ) {
+        //If radar was detected in the selected 5GHz operating block, return error
+        if (is_valid &&
+            (is_5g_20M_channel_in_dfs(oper->channel) ||
+             oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ)) {
             UINT inputChannelBlock = 0;
             UINT firstChannelInBand = 36;
             int blockStartChannel = 0;
