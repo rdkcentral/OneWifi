@@ -1316,8 +1316,10 @@ int detach_onewifi_main_process(void)
         fclose(fd);
     }
     breakpad_ExceptionHandler();
+#if defined (FEATURE_SUPPORT_WEBCONFIG)
     /* Inform Webconfig framework if component is coming after crash */
     check_component_crash("/tmp/wifi_initialized");
+#endif
     /* For some reason, touching the file via system command was not working consistently.
      * We'll fopen the file and dump in a value */
     wifi_util_info_print(WIFI_DMCLI, "%s:%d: Checking wifi_initialized!\n", __func__, __LINE__);

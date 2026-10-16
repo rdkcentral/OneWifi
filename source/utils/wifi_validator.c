@@ -32,7 +32,6 @@
 #include <arpa/inet.h>
 #include <cjson/cJSON.h>
 #include "ctype.h"
-#include "webconfig_framework.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
@@ -128,7 +127,7 @@ int validate_ipv6_address(char *ip) {
 
 }
 
-int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRetVal)
+int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info,  wifi_validation_error_t *execRetVal)
 {
     cJSON *mainEntry = NULL;
     cJSON *anqpElement = NULL;
@@ -551,7 +550,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     return RETURN_OK;
 }
 
-int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pErr execRetVal) 
+int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, wifi_validation_error_t *execRetVal) 
 {
     cJSON *mainEntry = NULL;
     cJSON *anqpElement = NULL;
@@ -712,14 +711,14 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
     return RETURN_OK;
 }
 
-static void validation_error_msg(const uint8_t group, const uint8_t type, pErr execRetVal)
+static void validation_error_msg(const uint8_t group, const uint8_t type, wifi_validation_error_t *execRetVal)
 {
     wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup=%d and VenueType=%d\n",
         __func__, __LINE__, group, type);
     strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination", sizeof(execRetVal->ErrorMsg) - 1);
 }
 
-static int checkVenueParams(const uint8_t venueGroup, const uint8_t venueType, pErr execRetVal)
+static int checkVenueParams(const uint8_t venueGroup, const uint8_t venueType, wifi_validation_error_t *execRetVal)
 {
     switch (venueGroup) {
     case 0:
@@ -802,7 +801,7 @@ static int checkVenueParams(const uint8_t venueGroup, const uint8_t venueType, p
     return RETURN_OK;
 }
 
-int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
     const cJSON *param, *venue;
     const cJSON *passpoint, *anqp;
@@ -892,7 +891,7 @@ int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, 
     return RETURN_OK;
 }
 
-int early_validate_interworking(const cJSON *interworking, pErr execRetVal)
+int early_validate_interworking(const cJSON *interworking, wifi_validation_error_t *execRetVal)
 {
     const cJSON *param, *venue;
     const cJSON *passpoint, *anqp;
@@ -941,7 +940,7 @@ int early_validate_interworking(const cJSON *interworking, pErr execRetVal)
     return RETURN_OK;
 }
 
-int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
 	const cJSON *param;
 
@@ -1068,7 +1067,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 
 }
 
-int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
 	const cJSON *param;
 
@@ -1148,7 +1147,7 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
 	return RETURN_OK;
 }
 
-int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
 
         if(!security || !vap_info || !execRetVal){
@@ -1197,7 +1196,7 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
         return RETURN_OK;
 }
 
-int validate_ssid_name(char *ssid_name, pErr execRetVal) 
+int validate_ssid_name(char *ssid_name, wifi_validation_error_t *execRetVal) 
 {
     int i =0, ssid_len;
 
@@ -1224,7 +1223,7 @@ int validate_ssid_name(char *ssid_name, pErr execRetVal)
     return RETURN_OK;
 }
 
-int validate_xfinity_secure_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_xfinity_secure_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
         if(!vap || !vap_info || !execRetVal){
             wifi_util_dbg_print(WIFI_PASSPOINT,"VAP entry is NULL\n");
@@ -1249,7 +1248,7 @@ int validate_xfinity_secure_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pEr
 	return RETURN_OK;
 }
 
-int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
         const cJSON *security, *param, *interworking;
         
@@ -1320,7 +1319,7 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
 	return RETURN_OK;
 }
 
-int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
         const cJSON *security, *param, *interworking;
 
@@ -1396,7 +1395,7 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
 	return RETURN_OK;
 }
 
-int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_validation_error_t *execRetVal)
 {
         const cJSON *security, *param, *interworking;
 
@@ -1491,7 +1490,7 @@ int validate_contry_code(wifi_countrycode_type_t *contry_code, char *contry)
     return RETURN_ERR;
 }
 
-int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop, pErr execRetVal)
+int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop, wifi_validation_error_t *execRetVal)
 {
 	const cJSON  *param;
 	int ret=RETURN_OK;
@@ -1661,7 +1660,7 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 	return ret;
 }
 
-int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *global_info, pErr execRetVal)
+int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *global_info, wifi_validation_error_t *execRetVal)
 {
     if(!global_cfg || !execRetVal){
         wifi_util_dbg_print(WIFI_PASSPOINT,"wifi global entry is NULL\n");
@@ -1835,7 +1834,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     return RETURN_OK;
 }
 
-int validate_gas_config(const cJSON *gas, wifi_GASConfiguration_t *gas_info, pErr execRetVal)
+int validate_gas_config(const cJSON *gas, wifi_GASConfiguration_t *gas_info, wifi_validation_error_t *execRetVal)
 {
         if(!gas || !gas_info || !execRetVal){
             wifi_util_dbg_print(WIFI_PASSPOINT,"GAS entry is NULL\n");
@@ -1964,7 +1963,7 @@ int validate_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel,
     return RETURN_OK;
 }
 
-int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radio_info, wifi_vap_info_map_t *vap_map,  wifi_radio_feature_param_t *wifi_radio_feat_info, pErr execRetVal)
+int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radio_info, wifi_vap_info_map_t *vap_map,  wifi_radio_feature_param_t *wifi_radio_feat_info, wifi_validation_error_t *execRetVal)
 {
     static const unsigned int channelWidthFirst = WIFI_CHANNELBANDWIDTH_20MHZ;
 #ifdef CONFIG_IEEE80211BE
@@ -2222,7 +2221,7 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
     return RETURN_OK;
 }
 
-int validate_wifi_config(const cJSON *wifi, wifi_global_config_t *wifi_info, pErr execRetVal)
+int validate_wifi_config(const cJSON *wifi, wifi_global_config_t *wifi_info, wifi_validation_error_t *execRetVal)
 {
     const cJSON  *param,*gas_entry;
     int ret;
@@ -2251,7 +2250,7 @@ int validate_wifi_config(const cJSON *wifi, wifi_global_config_t *wifi_info, pEr
     return RETURN_OK;
 }
 
-int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_config, wifi_vap_info_map_t *vap_map, wifi_radio_operationParam_t *radio_vap_map, wifi_radio_feature_param_t *radio_feat_map, char *num_of_radio, wifi_platform_property_t *wifi_prop, pErr execRetVal)
+int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_config, wifi_vap_info_map_t *vap_map, wifi_radio_operationParam_t *radio_vap_map, wifi_radio_feature_param_t *radio_feat_map, char *num_of_radio, wifi_platform_property_t *wifi_prop, wifi_validation_error_t *execRetVal)
 {
     const cJSON *wifi, *radio_vaps, *radio_vap, *param_vap, *param_radio;
     int num_radio;
