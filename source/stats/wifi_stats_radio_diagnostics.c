@@ -37,7 +37,7 @@ int validate_radio_diagnostic_args(wifi_mon_stats_args_t *args)
         return RETURN_ERR;
     }
 
-    if (args->radio_index > getNumberRadios()) {
+    if (args->radio_index >= getNumberRadios()) {
         wifi_util_error_print(WIFI_MON, "%s:%d invalid radio index : %d\n",__func__,__LINE__, args->radio_index);
         return RETURN_ERR;
     }
@@ -134,7 +134,6 @@ int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wif
     }
 
     memset(radioTrafficStats, 0, sizeof(wifi_radioTrafficStats2_t));
-
     if (radioOperation->enable == true) {
         ret = get_misc_descriptor()->wifi_getRadioTrafficStats2_fn(args->radio_index, radioTrafficStats);
         if (ret != RETURN_OK) {
