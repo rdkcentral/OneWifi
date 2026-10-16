@@ -2417,28 +2417,6 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                     (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
                     &em_bss_info->eht_ops);
             }
-
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
-                // details for STA
-                // em_bsta_info_t *bsta_info;
-                // fill_bsta_info_from_vap(&bsta_info, vap, radio_iface_map);
-                // proto->update_bsta_info(proto->data_model, bsta_info);
-            } else {
-                if (vap->u.bss_info.mld_info.common_info.mld_enable == true) {
-                    em_ap_mld_info_t ap_info;
-                    ret = fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map);
-                    if (ret == webconfig_error_none) {
-                        proto->update_ap_mld_info(proto->data_model, &ap_info);
-                        wifi_util_dbg_print(WIFI_WEBCONFIG,
-                            "%s:%d: AP MLD info updated successfully for vap %s\n", __func__,
-                            __LINE__, vap->vap_name);
-                    }
-                } else {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: AP MLD is not enabled on vap %s\n",
-                        __func__, __LINE__, vap->vap_name);
-                }
-            }
         }
     }
     return webconfig_error_none;
