@@ -1014,6 +1014,13 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
         data->u.decoded.num_radios = num_of_radios;
+#ifdef EM_APP
+        for (unsigned int radio_index = 0; radio_index < data->u.decoded.num_radios;
+             radio_index++) {
+            wifi_em_update_radio_operating_class_max_tx_power(
+                &data->u.decoded.radios[radio_index].oper, radio_index);
+        }
+#endif
         // tell webconfig to encode
 	    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
 	        wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
@@ -1173,6 +1180,12 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
         sizeof(wifi_hal_capability_t));
     data->u.decoded.num_radios = getNumberRadios();
+#ifdef EM_APP
+    for (unsigned int radio_index = 0; radio_index < data->u.decoded.num_radios; radio_index++) {
+        wifi_em_update_radio_operating_class_max_tx_power(&data->u.decoded.radios[radio_index].oper,
+            radio_index);
+    }
+#endif
     // tell webconfig to encode
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) !=
         webconfig_error_none) {
