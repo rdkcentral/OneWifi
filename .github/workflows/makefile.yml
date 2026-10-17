@@ -9,12 +9,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         platform:
           - name: "Raspberry Pi"
             makefile_path: "build/linux/rpi/makefile"
+          - name: "Platform Mock Unittests"
+            makefile_path: "build/linux/mockplatform/makefile"
       fail-fast: false
 
     name: Build for ${{ matrix.platform.name }}
@@ -64,7 +66,9 @@ jobs:
                                 mariadb-server \
                                 gnupg \
                                 file \
-                                golang
+                                golang \
+                                libgtest-dev \
+                                libgmock-dev
 
     - name: Setup OneWiFi for ${{ matrix.platform.name }}
       working-directory: easymesh_project/OneWifi
