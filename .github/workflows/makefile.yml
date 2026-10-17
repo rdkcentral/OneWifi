@@ -100,8 +100,10 @@ jobs:
                                 libprotobuf-c-dev \
                                 libssl-dev \
                                 uuid-dev \
+                                libsqlite3-dev \
                                 libreadline-dev \
                                 iptables \
+                                sqlite3 \
                                 gnupg \
                                 file \
                                 pkg-config \
