@@ -142,74 +142,6 @@ UINT get_num_radio_dml()
     }
 }
 
-void update_apmld_map()
-{
-    webconfig_dml_t* dml = get_webconfig_dml();
-    apmld_map_t *apmld_map = &dml->apmld_map;
-    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
-    unsigned int num_radios = getNumberRadios();
-    int mld_id_to_idx[MLD_UNIT_COUNT];
-
-    apmld_map->mld_group_count = 0;
-    memset(apmld_map->mld_groups, 0, sizeof(apmld_map->mld_groups));
-    memset(mld_id_to_idx, -1, sizeof(mld_id_to_idx));
-
-    for (unsigned int r_idx = 0; r_idx < num_radios; r_idx++) {
-        mgr_vap_info_map = get_wifidb_vap_map(r_idx);
-        if (mgr_vap_info_map == NULL) {
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d get_wifidb_vap_map failed for radio: %d\n", __func__, __LINE__, r_idx);
-            apmld_map->mld_group_count = 0;
-            return;
-        }
-
-        for (unsigned int k = 0; k < mgr_vap_info_map->num_vaps; k++) {
-            wifi_vap_info_t *vap_config = &mgr_vap_info_map->vap_array[k];
-            wifi_mld_common_info_t *mld_info = &vap_config->u.bss_info.mld_info.common_info;
-            unsigned int id = mld_info->mld_id;
-            unsigned int mld_idx;
-
-            if (isVapSTAMesh(vap_config->vap_index)) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d VAP %s is a STA mesh, skip\n", __func__, __LINE__, vap_config->vap_name);
-                continue;
-            }
-
-            if (!mld_info->mld_enable) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d MLD disabled for id %d, skip\n", __func__, __LINE__, id);
-                continue;
-            }
-
-            if (id >= MLD_UNIT_COUNT) {
-                wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid MLD ID: %u\n", __func__, __LINE__, id);
-                continue;
-            }
-
-            // Check if MLD ID already has an index
-            if (mld_id_to_idx[id] == -1) {
-                // New MLD ID
-                if (apmld_map->mld_group_count >= MLD_UNIT_COUNT) {
-                    wifi_util_error_print(WIFI_DMCLI, "%s:%d MLD count exceeds maximum\n", __func__, __LINE__);
-                    continue;
-                }
-                mld_idx = apmld_map->mld_group_count;
-                mld_id_to_idx[id] = mld_idx;
-                apmld_map->mld_group_count++;
-            } else {
-                // Existing MLD ID
-                mld_idx = mld_id_to_idx[id];
-            }
-
-            // Store VAP in MLD group
-            mld_group_t *mld_group = &apmld_map->mld_groups[mld_idx];
-            if (mld_group->mld_vap_count < MAX_NUM_RADIOS) {
-                mld_group->mld_vaps[mld_group->mld_vap_count] = vap_config;
-                mld_group->mld_vap_count++;
-            }
-        }
-    }
-
-    wifi_util_info_print(WIFI_DMCLI, "%s:%d Total MLD count = %d\n", __func__, __LINE__, apmld_map->mld_group_count);
-}
-
 UINT get_num_apmld_dml()
 {
     webconfig_dml_t* dml = get_webconfig_dml();
@@ -1540,6 +1472,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 {
     webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
+    int ret;
 
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
@@ -1555,10 +1488,17 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     if (webconfig_encode(&webconfig_dml.webconfig, data, subdoc) == webconfig_error_none) {
         str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
+        ret = push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+            wifi_event_webconfig_set_data_dml, NULL);
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push subdoc:%u to ctrl queue ret:%d\n", __func__, __LINE__,
+                subdoc, ret);
+        }
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();
+        ret = RETURN_ERR;
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
@@ -1567,7 +1507,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     free(data);
     data = NULL;
 
-    return RETURN_OK;
+    return ret;
 }
 int push_factory_reset_to_ctrl_queue()
 {
@@ -1609,6 +1549,7 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 
 int push_vap_dml_cache_to_one_wifidb()
 {
+    int ret = RETURN_OK;
 
     if(is_vap_config_changed == FALSE)
     {
@@ -1618,31 +1559,52 @@ int push_vap_dml_cache_to_one_wifidb()
 
     if (is_vap_config_changed & PRIVATE) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_private DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_private);
+        if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_private) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
     }
     if (is_vap_config_changed & HOTSPOT) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_xfinity DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_xfinity);
+        if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_xfinity) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
     }
     if (is_vap_config_changed & HOME) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_home DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_home);
+        if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_home) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
     }
     if (is_vap_config_changed & MESH_STA) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_mesh_sta DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh_sta);
+        if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh_sta) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
     }
     if (is_vap_config_changed & MESH_BACKHAUL) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_mesh_backhaul DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh_backhaul);
+        if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh_backhaul) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
     }
     if (is_vap_config_changed & MESH) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_mesh DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh);
+        if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
     }
     if (is_vap_config_changed & LNF) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_lnf DML Modified  \n", __FUNCTION__);
-        push_subdoc_to_one_wifidb(webconfig_subdoc_type_lnf);
+        if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_lnf) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
+    }
+
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_DMCLI,
+            "%s:%d: One or more vap DML subdoc pushes failed, retaining dirty state\n", __func__,
+            __LINE__);
+        return ret;
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);

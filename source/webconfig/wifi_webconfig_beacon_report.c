@@ -164,6 +164,7 @@ webconfig_error_t decode_beacon_report_subdoc(webconfig_t *config, webconfig_sub
         return webconfig_error_decode;
     }
 
+    free(params->sta_beacon_report.data);
     memset(&params->sta_beacon_report, 0, sizeof(sta_beacon_report_reponse_t));
     cJSON *obj_config = cJSON_GetObjectItem(json, "WiFiBeaconReport");
     if (obj_config == NULL) {

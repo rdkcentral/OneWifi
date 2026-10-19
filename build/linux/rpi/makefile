@@ -346,10 +346,11 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_stats.c		\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_neighbor_stats.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_assocdevice_stats.c	\
+        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_ignite.c    \
+        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_nasta.c                \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_temperature.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
-        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_nasta.c       \
         $(ONE_WIFI_HOME)/source/utils/wifi_util.c	\
 
 
@@ -368,13 +369,13 @@ ifdef EASY_MESH_NODE
 endif
 
 ifdef ONEWIFI_CSI_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/csi/*.c)	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/csi/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_csi.c
 endif
 
 
 ifdef ONEWIFI_CAC_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/cac/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/cac/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_cac.c
 endif
 
@@ -384,12 +385,12 @@ ifdef ONEWIFI_MOTION_APP_SUPPORT
 endif
 
 ifdef ONEWIFI_HARVESTER_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/harvester/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/harvester/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_harvester.c
 endif
 
 ifdef ONEWIFI_LEVL_APP_SUPPORT
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/levl/*.c) 	\
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/levl/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_levl.c
 endif
 
@@ -398,7 +399,8 @@ ifdef ONEWIFI_WHIX_APP_SUPPORT
 endif
 
 ifdef ONEWIFI_BLASTER_APP_SUPPORT 
-	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/blaster/*.c) \
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/blaster/*.c)
+	CSOURCES += $(ONE_WIFI_HOME)/source/utils/ext_blaster.pb-c.c
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_blaster.c
 endif
 
@@ -406,15 +408,25 @@ ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/easyconnect/*.c)
 endif
 
+ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)
+    WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_memwraptool.c
+endif
 ifdef ONEWIFI_STA_MGR_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_mgr/*.c)
 endif
 
-ifdef ONEWIFI_MEMWRAPTOOL_APP_SUPPORT
-    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/memwraptool/*.c)    \
-    WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_memwraptool.c
+ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/analytics/*.c)
 endif
-    WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_ignite.c
+
+ifdef SM_APP_SUPPORT
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sm/*.c)
+endif
+
+ifdef FEATURE_OFF_CHANNEL_SCAN_5G
+    CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/ocs/*.c)
+endif
 
 ifdef EM_APP
     #INCLUDEDIRS +=  -I$(ONE_WIFI_HOME)/source/apps/em
@@ -458,6 +470,11 @@ endif
 
 LDFLAGS = $(LIBDIRS) $(LIBS)
 
+# Shared per-object warning scoping + the HAL/OneWifi -Werror gate, kept in
+# one file so the bpi and rpi legs cannot drift. Requires WIFI_HOSTAP_*,
+# WIFI_RDK_HAL and the OneWifi object lists (all defined above) to be set first.
+include build/linux/makefile.common
+
 $(BUILD_DIR):
 	@mkdir -p $(INSTALLDIR)/lib
 	@mkdir -p $(INSTALLDIR)/bin
@@ -492,7 +509,9 @@ $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 # executing its link command.
 #
 
-$(PROGRAM): $(ALLOBJECTS)
+# PROGRAM links -lwifihal, so libwifihal.a must exist first; naming it as a
+# prerequisite makes `make -j` safe (objects alone don't order the archive).
+$(PROGRAM): $(HAL_LIBRARY) $(ALLOBJECTS)
 	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
 #
@@ -511,7 +530,7 @@ $(PROGRAM): $(ALLOBJECTS)
 #
 
 clean:
-	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY)$(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
+	$(RM) $(ALLOBJECTS) $(ALL_CMN_LIB_OBJECTS) $(ALL_HAL_LIB_OBJECTS) $(CMN_LIBRARY) $(HE_BUS_LIBRARY) $(WEBCONFIG_LIBRARY) $(MATH_UTIL_LIBRARY) $(QUALITY_MANAGER_LIBRARY) $(HAL_LIBRARY) $(HOSTAP_LIBRARY) $(PROGRAM)
 
 #
 # Run target: "make -f Makefile.Linux run" to execute the application

@@ -14,14 +14,14 @@ jobs:
     steps:
       - name: Checkout Code
         # This is mandatory to access the .github/community_authors.json file
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Read Author List and Apply Labels
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: labeler
         with:
           # Use the repository's token to run in the context of the repository, not the PR author
-          token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const path = require('path');
@@ -32,7 +32,7 @@ jobs:
 
             const communityUsers = data.community_users;
             const prAuthor = context.payload.pull_request.user.login;
-            
+
             // Define the labels to apply
             const labelsToAdd = ['community contribution'];
 

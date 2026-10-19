@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
+if PLATFORM_BANANAPI
 AM_CFLAGS = -D_ANSC_LINUX
 AM_CFLAGS += -D_ANSC_USER
 if CCSP_ARCH_ARM
@@ -58,3 +59,4 @@ libwifi_quality_manager_la_LDFLAGS += -lwifi_math_utils
 noinst_HEADERS = $(top_srcdir)/source/utils/wifi_util.h
 
 #include_HEADERS =  $(top_srcdir)/source/utils/wifi_util.h
+endif

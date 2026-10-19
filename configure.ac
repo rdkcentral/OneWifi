@@ -40,6 +40,7 @@ AC_ARG_ENABLE([gtestapp],
              [echo "Gtestapp is disabled"])
 AM_CONDITIONAL([WITH_GTEST_SUPPORT], [test x$GTEST_SUPPORT_ENABLED = xtrue])
 
+
 AC_ARG_ENABLE([libwebconfig],
              AS_HELP_STRING([--enable-libwebconfig],[enable libwebconfig (default is no)]),
              [
@@ -152,6 +153,7 @@ AM_CONDITIONAL([USE_DML_SOURCES], [test x$DEVICE_EXTENDER != xtrue])
 AM_CONDITIONAL([USE_EXTENDER_MISC], [test x$DEVICE_EXTENDER = xtrue])
 AM_CONDITIONAL([ONEWIFI_AVRO_SUPPORT], [test "x$ONEWIFI_BLASTER_APP_SUPPORT" = "xtrue" || "x$ONEWIFI_HARVESTER_APP_SUPPORT" = "xtrue"])
 AM_CONDITIONAL([WITH_EXTERNAL_DELEGATE], [test x$WITH_EXTERNAL_DELEGATE = xtrue])
+AM_CONDITIONAL([PLATFORM_BANANAPI], [test "x$PLATFORM_BANANAPI" = "xtrue"])
 
 # Specify ccsp cpu arch
 
@@ -262,6 +264,16 @@ AC_ARG_ENABLE([notify],
 AC_SUBST(SYSTEMD_CFLAGS)
 AC_SUBST(SYSTEMD_LDFLAGS)
 
+# msgpack-c 6.0 renamed the C library from libmsgpackc to libmsgpack-c.
+# Probe for the new name first and fall back to the old one so the tree can build with either version.
+MSGPACK_LIBS=
+AC_CHECK_LIB([msgpack-c], [msgpack_unpack_next],
+    [MSGPACK_LIBS=-lmsgpack-c],
+    [AC_CHECK_LIB([msgpackc], [msgpack_unpack_next],
+        [MSGPACK_LIBS=-lmsgpackc],
+        [AC_MSG_ERROR([msgpack C library not found (tried -lmsgpack-c and -lmsgpackc)])])])
+AC_SUBST(MSGPACK_LIBS)
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
 
@@ -283,10 +295,14 @@ AC_CONFIG_FILES(
     source/Makefile
     source/sampleapps/Makefile
     source/utils/Makefile
-    source/utils/quality_mgr/Makefile
     source/utils/math_utils/Makefile
     Makefile
 )
+AS_IF([test "x$PLATFORM_BANANAPI" = "xtrue"], [
+    AC_CONFIG_FILES(
+        source/utils/quality_mgr/Makefile
+    )
+])
 
 AC_SUBST(GTEST_ENABLE_FLAG)
 AC_OUTPUT

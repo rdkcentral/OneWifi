@@ -25,7 +25,6 @@
 
 #ifdef ONEWIFI_DB_SUPPORT
 extern void init_wifidb(void);
-extern void init_wifidb_data(void);
 extern int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int start_wifidb();
 extern void wifidb_print(char *format, ...);
@@ -39,7 +38,6 @@ extern int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_
 extern int wifidb_init_global_config_default(wifi_global_param_t *config);
 extern int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config, rdk_wifi_vap_info_t *rdk_config);
-extern void  wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config);
 extern int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec);
 extern int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
@@ -301,7 +299,7 @@ static int init_interworking_config_default(int vapIndex,
 
 int wifidb_get_default_mld_link_id(int band)
 {
-#if defined(CONFIG_IEEE80211BE) && defined(_XB10_PRODUCT_REQ_)
+#if defined(CONFIG_IEEE80211BE) && (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
     switch (band) {
     case WIFI_FREQUENCY_2_4_BAND: return 2;
     case WIFI_FREQUENCY_5_BAND:   return 1;
@@ -910,7 +908,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_rfc_dml_parameters_t rfc_config = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    rfc_config.link_quality_rfc = true;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -978,7 +975,23 @@ int get_wifi_global_param(wifi_global_param_t *config)
 
 int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
 {
-   return 0;
+
+    return 0;
+}
+
+int wifidb_get_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_info)
+{
+    return 0;
+}
+
+int wifidb_update_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_param)
+{
+    return 0;
+}
+
+void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config)
+{
+    memset(config, 0, sizeof(wei_rfc_dml_parameters_t));
 }
 
 int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)
