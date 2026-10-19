@@ -165,6 +165,31 @@ static bool is_string_digit(const char *str)
     return true;
 }
 
+static bool is_sibling_name_present(elem_node_map_t *node, const char *name)
+{
+    for (; node != NULL; node = node->nextSibling) {
+        if (strcmp(node->name, name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* A table nested under another table row is shared (by reference) between all the parent
+ * rows, so its row nodes must never be freed on a single row removal. */
+static bool is_nested_table_row(elem_node_map_t *row_node)
+{
+    elem_node_map_t *node = (row_node != NULL && row_node->parent != NULL) ?
+        row_node->parent->parent : NULL;
+
+    for (; node != NULL; node = node->parent) {
+        if (node->parent != NULL && node->parent->type == bus_element_type_table) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static elem_node_map_t* link_tables_with_node(elem_node_map_t* parent_node)
 {
     VERIFY_NULL_WITH_RETURN_ADDR(parent_node);
@@ -471,6 +496,10 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
 
             if (isWildcard || (user_cb && user_cb->get_handler)) {
                 token = "{i}";
+            } else if (is_string_digit(token) && !is_sibling_name_present(next_node, token)) {
+                /* Rows registered with registerRow on a nested table are shared by all
+                 * parent rows: resolve unknown numeric instances via the row template. */
+                token = "{i}";
             }
         }
     }
@@ -721,11 +750,34 @@ void print_registered_elems(elem_node_map_t *root, int level)
 
 bus_error_t bus_table_remove_row(elem_node_map_t *p_root_node, char *p_name_space)
 {
+    bus_name_string_t name = { 0 };
+    char *row_name;
+    size_t len;
     elem_node_map_t *table_row_node = get_bus_node_info(p_root_node, p_name_space);
-    if (table_row_node != NULL) {
-        return free_node_elems(table_row_node);
+
+    if (table_row_node == NULL) {
+        return bus_error_destination_not_found;
     }
-    return bus_error_destination_not_found;
+
+    snprintf(name, sizeof(name), "%s", p_name_space);
+    len = strlen(name);
+    if (len > 0 && name[len - 1] == '.') {
+        name[len - 1] = '\0';
+    }
+    row_name = strrchr(name, '.');
+    row_name = (row_name != NULL) ? row_name + 1 : name;
+
+    /* Never free the row template or a node resolved through it, and keep the
+     * row nodes of nested tables since they are shared between parent rows. */
+    if (strcmp(table_row_node->name, row_name) != 0 || !is_string_digit(table_row_node->name) ||
+        table_row_node->parent == NULL || table_row_node->parent->type != bus_element_type_table ||
+        is_nested_table_row(table_row_node)) {
+        wifi_util_dbg_print(WIFI_BUS, "%s:%d keep shared mux node for %s\n", __func__, __LINE__,
+            p_name_space);
+        return bus_error_success;
+    }
+
+    return free_node_elems(table_row_node);
 }
 
 int check_dm_min_max_data_range(long int min_data, long int max_data, raw_data_t *bus_set_data)
