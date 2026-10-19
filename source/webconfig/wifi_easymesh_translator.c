@@ -1454,6 +1454,8 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
     convert_vap_name_to_hault_type(&vap_row->id.haul_type, (char *)vap->vap_name);
 
     default_em_bss_info(vap_row);
+    vap_row->acl_filter_mode = (vap->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list) ?
+        EM_ACL_MODE_WHITELIST : EM_ACL_MODE_BLACKLIST;
     radio_iface_map = NULL;
     for (k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
         if (wifi_prop->radio_interface_map[k].radio_index == vap->radio_index) {
