@@ -3305,8 +3305,7 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data, bus_user_data_t *
     return bus_error_success;
 }
 
-// Helper function to add a pending block to the tracking list
-static int add_pending_block(kick_details_t *kick_details)
+static int add_pending_block_locked(kick_details_t *kick_details)
 {
     pending_block_node_t *node = (pending_block_node_t *)malloc(sizeof(pending_block_node_t));
     if (!node) {
@@ -3315,58 +3314,14 @@ static int add_pending_block(kick_details_t *kick_details)
         return RETURN_ERR;
     }
     node->kick_details = kick_details;
-
-    pthread_mutex_lock(&pending_blocks_lock);
     node->next = pending_blocks_head;
     pending_blocks_head = node;
-    pthread_mutex_unlock(&pending_blocks_lock);
 
     return RETURN_OK;
 }
 
-static kick_details_t *find_remove_and_cancel_pending_block(int vap_index, const char *sta_mac)
+static void remove_pending_block_locked(kick_details_t *kick_details)
 {
-    pthread_mutex_lock(&pending_blocks_lock);
-
-    pending_block_node_t *current = pending_blocks_head;
-    pending_block_node_t *prev = NULL;
-
-    while (current) {
-
-        if (current->kick_details && current->kick_details->vap_index == vap_index &&
-            current->kick_details->kick_list &&
-            strcmp(current->kick_details->kick_list, sta_mac) == 0) {
-
-            if (prev)
-                prev->next = current->next;
-            else
-                pending_blocks_head = current->next;
-
-            kick_details_t *result = current->kick_details;
-
-            free(current);
-
-            pthread_mutex_unlock(&pending_blocks_lock);
-
-            return result;
-        }
-
-        prev = current;
-        current = current->next;
-    }
-
-    pthread_mutex_unlock(&pending_blocks_lock);
-
-    return NULL;
-}
-
-// Helper function to remove a pending block by pointer (when timer fires)
-static bool remove_pending_block(kick_details_t *kick_details)
-{
-    bool removed = false;
-
-    pthread_mutex_lock(&pending_blocks_lock);
-
     pending_block_node_t *current = pending_blocks_head;
     pending_block_node_t *prev = NULL;
 
@@ -3379,15 +3334,23 @@ static bool remove_pending_block(kick_details_t *kick_details)
                 pending_blocks_head = current->next;
             }
             free(current);
-            removed = true;
-            break;
+            return;
         }
         prev = current;
         current = current->next;
     }
 
-    pthread_mutex_unlock(&pending_blocks_lock);
-    return removed;
+}
+
+static bool is_pending_block_locked(kick_details_t *kick_details)
+{
+    for (pending_block_node_t *current = pending_blocks_head; current; current = current->next) {
+        if (current->kick_details == kick_details) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static int acl_block_start(int vap_index)
@@ -3473,16 +3436,28 @@ static int del_acl_cb(void *arg)
     }
 
     kick_details_t *d = (kick_details_t *)arg;
+    /* Serialize expiry and ACL removal with permanent/unblock state changes. */
+    pthread_mutex_lock(&pending_blocks_lock);
+
+    if (!is_pending_block_locked(d)) {
+        pthread_mutex_unlock(&pending_blocks_lock);
+        return 0;
+    }
+
+    if (d->permanent && !d->cancelled_by_unblock) {
+        d->timer_id = -1;
+        pthread_mutex_unlock(&pending_blocks_lock);
+        return 0;
+    }
+
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Callback Del ACL, vap_index:%d, MAC: %s\n", __func__,
         __LINE__, d->vap_index, d->kick_list ? d->kick_list : "NULL");
 
-    // Remove from pending blocks list first (also synchronizes with pending_blocks_lock users)
-    remove_pending_block(d);
+    remove_pending_block_locked(d);
 
     if (d->cancelled_by_unblock) {
-
+        pthread_mutex_unlock(&pending_blocks_lock);
         acl_block_end(d->vap_index);
-
         free(d->kick_list);
         free(d);
 
@@ -3490,14 +3465,15 @@ static int del_acl_cb(void *arg)
     }
 
     INT rc = wifi_hal_delHostapdDenyAclDevice(d->vap_index, d->kick_list);
+    pthread_mutex_unlock(&pending_blocks_lock);
 
     if (rc != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d Failed to delete ACL device (vap_index:%d, mac:%s), rc:%d\n", __func__, __LINE__,
             d->vap_index, d->kick_list ? d->kick_list : "NULL", rc);
     }
-    acl_block_end(d->vap_index);
 
+    acl_block_end(d->vap_index);
     free(d->kick_list);
     free(d);
     return (int)rc;
@@ -3562,6 +3538,12 @@ static bus_error_t parse_client_assoc_ctrl_json(const char *json_str, bssid_t *b
         assoc_obj->valuedouble != (double)assoc_obj->valueint) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d AssocControl out of range or non-integer: %f\n",
             __func__, __LINE__, assoc_obj->valuedouble);
+        cJSON_Delete(root);
+        return bus_error_invalid_input;
+    }
+    if (assoc_obj->valueint > 1) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Unsupported AssocControl value: %d\n", __func__,
+            __LINE__, assoc_obj->valueint);
         cJSON_Delete(root);
         return bus_error_invalid_input;
     }
@@ -3635,6 +3617,28 @@ static bus_error_t parse_client_assoc_ctrl_json(const char *json_str, bssid_t *b
     return bus_error_success;
 }
 
+static bus_error_t kick_cacr_blocked_sta(int vap_index, const char *sta_mac)
+{
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+    struct ether_addr sta_ea;
+    if (ether_aton_r(sta_mac, &sta_ea) == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid STA MAC for disassociation: %s\n",
+            __func__, __LINE__, sta_mac);
+        return bus_error_invalid_input;
+    }
+    int kick_status = wifi_kickApAssociatedDevice(vap_index, sta_ea.ether_addr_octet);
+#else
+    int kick_status = wifi_kickApAssociatedDevice(vap_index, (char *)sta_mac);
+#endif
+    if (kick_status != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to disassociate STA %s on vap %d\n",
+            __func__, __LINE__, sta_mac, vap_index);
+        return bus_error_general;
+    }
+
+    return bus_error_success;
+}
+
 static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_data, void *userData)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received Client Assoc Ctrl Event from Agent\n", __func__, __LINE__);
@@ -3700,57 +3704,83 @@ static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_dat
         return bus_error_invalid_input;
     }
 
+    // Check if the VAP is in whitelist mode
+    wifi_vap_info_t *cacr_vap_info = getVapInfo(vap_index);
+    if (!cacr_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d VAP info not found for vap %d\n", __func__,
+            __LINE__, vap_index);
+        return bus_error_general;
+    }
+    bool whitelist_mode = (cacr_vap_info->u.bss_info.mac_filter_enable &&
+        cacr_vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d VAP %d filter_enable:%d filter_mode:%d whitelist_mode:%d\n",
+        __func__, __LINE__, vap_index,
+        cacr_vap_info ? cacr_vap_info->u.bss_info.mac_filter_enable : -1,
+        cacr_vap_info ? (int)cacr_vap_info->u.bss_info.mac_filter_mode : -1, whitelist_mode);
+
     // Process each STA in the list
     for (i = 0; i < sta_count; i++) {
         wifi_util_dbg_print(WIFI_CTRL,
             "%s:%d Processing STA[%u]: %s, assoc_control: %u, validity_period: %u\n", __func__,
             __LINE__, i, sta_mac_list[i], assoc_control, validity_period);
 
-        /* perform the actual block/disassociation as specified */
-        if (assoc_control == 0x00) { /* block */
+        /* Whitelists add on unblock; blacklists add on block. */
+        bool add_acl_entry = (assoc_control == 0x00) != whitelist_mode;
 
+        if (add_acl_entry && whitelist_mode) {
+            if (wifi_hal_addApAclDevice(vap_index, sta_mac_list[i]) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to add STA to whitelist on vap %d\n",
+                    __func__, __LINE__, vap_index);
+                ret = bus_error_general;
+                goto cleanup;
+            }
+        } else if (add_acl_entry) { /* blacklist: block */
+            kick_details_t *existing = NULL;
             int existing_timer_id = -1;
+            bool timer_update_failed = false;
+
             pthread_mutex_lock(&pending_blocks_lock);
             for (pending_block_node_t *cur = pending_blocks_head; cur; cur = cur->next) {
                 if (cur->kick_details && !cur->kick_details->cancelled_by_unblock &&
                     cur->kick_details->vap_index == vap_index && cur->kick_details->kick_list &&
                     strcmp(cur->kick_details->kick_list, sta_mac_list[i]) == 0) {
-                    existing_timer_id = cur->kick_details->timer_id;
+                    existing = cur->kick_details;
+                    existing_timer_id = existing->timer_id;
                     break;
                 }
             }
-            pthread_mutex_unlock(&pending_blocks_lock);
-            if (existing_timer_id > 0) {
 
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d STA %s already blocked, extending timer\n",
-                    __func__, __LINE__, sta_mac_list[i]);
-
+            if (existing && validity_period == 0 && !existing->permanent) {
+                existing->permanent = true;
+            } else if (existing && validity_period > 0 && !existing->permanent &&
+                existing_timer_id > 0) {
                 struct timespec now;
                 clock_gettime(CLOCK_MONOTONIC, &now);
+                timer_update_failed =
+                    scheduler_update_timer_task_interval(ctrl->sched, existing_timer_id,
+                        validity_period * 1000) != RETURN_OK ||
+                    scheduler_update_timeout(ctrl->sched, existing_timer_id, now) != RETURN_OK;
+            }
+            pthread_mutex_unlock(&pending_blocks_lock);
 
-                if (scheduler_update_timer_task_interval(ctrl->sched, existing_timer_id,
-                       validity_period * 1000) != RETURN_OK ||
-                    scheduler_update_timeout(ctrl->sched, existing_timer_id, now) != RETURN_OK) {
+            if (existing) {
+                if (timer_update_failed) {
                     ret = bus_error_general;
                     goto cleanup;
                 }
-
                 continue;
             }
 
-            kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
+            kick_details = (kick_details_t *)calloc(1, sizeof(kick_details_t));
             if (!kick_details) {
                 wifi_util_error_print(WIFI_CTRL,
                     "%s:%d Failed to allocate memory for kick_details\n", __func__, __LINE__);
                 ret = bus_error_out_of_resources;
-                // continue;
                 goto cleanup;
             }
-
-            memset(kick_details, 0, sizeof(kick_details_t));
-
-            kick_details->cancelled_by_unblock = false;
-            kick_details->timer_id = -1; // Initialize to invalid ID
+            kick_details->timer_id = -1;
+            kick_details->permanent = (validity_period == 0);
 
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Blocking STA %s on BSSID %s for %u seconds\n",
                 __func__, __LINE__, sta_mac_list[i], to_mac_str(bssid, bssid_mac_str),
@@ -3776,7 +3806,6 @@ static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_dat
             kick_details->vap_index = vap_index;
             kick_details->kick_list = strdup(sta_mac_list[i]);
             if (!kick_details->kick_list) {
-                // Roll back ACL add due to strdup failure
                 if (wifi_hal_delHostapdDenyAclDevice(vap_index, sta_mac_list[i]) != RETURN_OK) {
                     wifi_util_error_print(WIFI_CTRL,
                         "%s:%d Failed to roll back ACL device on vap %d\n", __func__, __LINE__,
@@ -3787,87 +3816,117 @@ static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_dat
                 goto cleanup;
             }
 
-            rc = scheduler_add_timer_task(ctrl->sched, TRUE, &kick_details->timer_id, del_acl_cb,
-                kick_details, validity_period * 1000, 1, FALSE);
+            bool pending_added = false;
+            bool timer_schedule_failed = false;
+            pthread_mutex_lock(&pending_blocks_lock);
+            rc = add_pending_block_locked(kick_details);
+            pending_added = (rc == RETURN_OK);
+            if (pending_added && validity_period > 0) {
+                rc = scheduler_add_timer_task(ctrl->sched, TRUE, &kick_details->timer_id,
+                    del_acl_cb, kick_details, validity_period * 1000, 1, FALSE);
+                timer_schedule_failed = (rc != RETURN_OK);
+                if (timer_schedule_failed) {
+                    remove_pending_block_locked(kick_details);
+                }
+            }
+            pthread_mutex_unlock(&pending_blocks_lock);
             if (rc != RETURN_OK) {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to schedule timer task for vap %d\n",
-                    __func__, __LINE__, vap_index);
-
-                success = (wifi_hal_delHostapdDenyAclDevice(vap_index, sta_mac_list[i]) ==
-                    RETURN_OK);
-                if (!success) {
+                if (timer_schedule_failed) {
                     wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d Failed to delete ACL device on vap %d\n", __func__, __LINE__,
+                        "%s:%d Failed to schedule timer task for vap %d\n", __func__, __LINE__,
+                        vap_index);
+                } else {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Failed to track pending block for vap %d\n", __func__, __LINE__,
                         vap_index);
                 }
-
-                free(kick_details->kick_list);
-                kick_details->kick_list = NULL;
-                ret = bus_error_general;
-                acl_block_end(vap_index);
-                goto cleanup;
-            }
-            // Add to pending blocks list for tracking
-            if (add_pending_block(kick_details) != RETURN_OK) {
-                /* We couldn't track this block, so roll back the ACL entry and expedite timer
-                 * cleanup to restore the original filter mode and free kick_details safely via
-                 * del_acl_cb().
-                 */
-                kick_details->cancelled_by_unblock = true;
-
                 if (wifi_hal_delHostapdDenyAclDevice(vap_index, sta_mac_list[i]) != RETURN_OK) {
                     wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d Failed to delete ACL device on vap %d\n", __func__, __LINE__,
+                        "%s:%d Failed to roll back ACL device on vap %d\n", __func__, __LINE__,
                         vap_index);
                 }
-
-                struct timespec now;
-                clock_gettime(CLOCK_MONOTONIC, &now);
-                (void)scheduler_update_timer_task_interval(ctrl->sched, kick_details->timer_id, 1);
-                (void)scheduler_update_timeout(ctrl->sched, kick_details->timer_id, now);
-
-                /* del_acl_cb() will call acl_block_end() and free kick_details */
-                kick_details = NULL;
-
-                ret = bus_error_out_of_resources;
+                acl_block_end(vap_index);
+                ret = timer_schedule_failed ? bus_error_general : bus_error_out_of_resources;
                 goto cleanup;
             }
-            /* ownership transferred to timer/pending list */
-            kick_details = NULL;
-        } else {
-            kick_details_t *pending = find_remove_and_cancel_pending_block(vap_index,
-                sta_mac_list[i]);
 
-            // if sta already block then removed it from acl list
+            kick_details = NULL;
+        } else if (whitelist_mode) {
+            /* Whitelist mode: remove STA from accept list to disallow */
+            if (wifi_hal_delApAclDevice(vap_index, sta_mac_list[i]) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Failed to remove STA from whitelist on vap %d\n", __func__, __LINE__,
+                    vap_index);
+                ret = bus_error_general;
+                goto cleanup;
+            }
+        } else {
+            int timer_id = -1;
+            kick_details_t *pending = NULL;
+            pending_block_node_t *pending_node = NULL;
+            pending_block_node_t *pending_prev = NULL;
+
+            pthread_mutex_lock(&pending_blocks_lock);
+            pending_block_node_t *current = pending_blocks_head;
+            while (current) {
+                if (current->kick_details && current->kick_details->vap_index == vap_index &&
+                    current->kick_details->kick_list &&
+                    strcmp(current->kick_details->kick_list, sta_mac_list[i]) == 0) {
+                    pending = current->kick_details;
+                    pending_node = current;
+                    break;
+                }
+                pending_prev = current;
+                current = current->next;
+            }
+
+            if (pending && pending->timer_id > 0) {
+                pending->cancelled_by_unblock = true;
+                timer_id = pending->timer_id;
+            } else if (pending) {
+                if (pending_prev) {
+                    pending_prev->next = pending_node->next;
+                } else {
+                    pending_blocks_head = pending_node->next;
+                }
+            }
+
             success = (wifi_hal_delHostapdDenyAclDevice(vap_index, sta_mac_list[i]) == RETURN_OK);
             if (!success) {
+                if (pending && timer_id > 0) {
+                    pending->cancelled_by_unblock = false;
+                } else if (pending) {
+                    pending_node->next = pending_blocks_head;
+                    pending_blocks_head = pending_node;
+                }
+                pthread_mutex_unlock(&pending_blocks_lock);
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to delete ACL device on vap %d\n",
                     __func__, __LINE__, vap_index);
-                if (pending && add_pending_block(pending) != RETURN_OK) {
-                    wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to add pending\n", __func__,
-                        __LINE__);
-                }
                 ret = bus_error_general;
                 goto cleanup;
             }
 
-            if (pending) {
-
-                int tid = pending->timer_id;
-                pending->cancelled_by_unblock = true;
-
-                /* Do not cancel the timer: the scheduler frees only the timer_task, not tt->arg.
-                 * Expedite del_acl_cb() so it can run acl_block_end() and free kick_details.
-                 */
-                if (tid > 0) {
-                    struct timespec now;
-                    clock_gettime(CLOCK_MONOTONIC, &now);
-                    (void)scheduler_update_timer_task_interval(ctrl->sched, tid, 1);
-                    (void)scheduler_update_timeout(ctrl->sched, tid, now);
-                }
-
-                /* del_acl_cb() owns cleanup */
+            if (pending && timer_id <= 0) {
+                free(pending_node);
             }
+            pthread_mutex_unlock(&pending_blocks_lock);
+
+            if (pending && timer_id > 0) {
+                struct timespec now;
+                clock_gettime(CLOCK_MONOTONIC, &now);
+                (void)scheduler_update_timer_task_interval(ctrl->sched, timer_id, 1);
+                (void)scheduler_update_timeout(ctrl->sched, timer_id, now);
+            } else if (pending) {
+                acl_block_end(vap_index);
+                free(pending->kick_list);
+                free(pending);
+            }
+        }
+
+        if (assoc_control == 0x00 &&
+            kick_cacr_blocked_sta(vap_index, sta_mac_list[i]) != bus_error_success) {
+            ret = bus_error_general;
+            goto cleanup;
         }
     }
     return bus_error_success;
@@ -4263,7 +4322,7 @@ int em_deinit(wifi_app_t *app)
     }
     hash_map_destroy(client_type_info.sta_client_type.client_type_map);
 
-    // Cancel and free any pending block timers/entries before destroying the mutex
+    // Cancel and free pending blacklist entries; callbacks ignore entries no longer tracked.
     pthread_mutex_lock(&pending_blocks_lock);
     pending_block_node_t *node = pending_blocks_head;
     pending_blocks_head = NULL;
@@ -4278,7 +4337,6 @@ int em_deinit(wifi_app_t *app)
 
             wifi_hal_delHostapdDenyAclDevice(node->kick_details->vap_index,
                 node->kick_details->kick_list);
-
             acl_block_end(node->kick_details->vap_index);
 
             free(node->kick_details->kick_list);
@@ -4288,7 +4346,5 @@ int em_deinit(wifi_app_t *app)
         node = next;
     }
 
-    pthread_mutex_destroy(&pending_blocks_lock);
-    pthread_mutex_destroy(&g_vap_acl_lock);
     return RETURN_OK;
 }

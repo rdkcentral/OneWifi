@@ -1443,11 +1443,12 @@ cleanup:
 }
 
 static int schedule_maclist_timeout_task(wifi_ctrl_t *ctrl, rdk_wifi_vap_info_t *rdk_vap_info,
-    int vap_index, int timeout, char *assoc_maclist, kick_details_t *kick_details,
-    bool has_successful_operations)
+    wifi_vap_info_t *vap_info, int vap_index, int timeout, char *assoc_maclist,
+    kick_details_t *kick_details, bool has_successful_operations)
 {
 
-    if (rdk_vap_info == NULL || assoc_maclist == NULL || kick_details == NULL) {
+    if (rdk_vap_info == NULL || vap_info == NULL || assoc_maclist == NULL ||
+        kick_details == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid input parameters\n", __func__,__LINE__);
         return RETURN_ERR;
     }
@@ -1458,6 +1459,13 @@ static int schedule_maclist_timeout_task(wifi_ctrl_t *ctrl, rdk_wifi_vap_info_t 
             "scheduler\n",
             __func__, __LINE__, vap_index);
         return RETURN_ERR;
+    }
+
+    if (vap_info->u.bss_info.mac_filter_enable &&
+        vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list) {
+        free(assoc_maclist);
+        free(kick_details);
+        return RETURN_OK;
     }
 
     int len = strlen(assoc_maclist);
@@ -1525,8 +1533,8 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
     }
 
-    if (schedule_maclist_timeout_task(ctrl, rdk_vap_info, vap_index, timeout, assoc_maclist,
-            kick_details, has_successful_operations) != RETURN_OK) {
+    if (schedule_maclist_timeout_task(ctrl, rdk_vap_info, vap_info, vap_index, timeout,
+            assoc_maclist, kick_details, has_successful_operations) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d No successful operations for vap %d, skipping "
             "scheduler\n", __func__, __LINE__, vap_index);
         goto cleanup;
@@ -1704,8 +1712,8 @@ void process_kick_assoc_devices_event(void *data)
     free(str_dup);
     str_dup = NULL;
 
-    if (schedule_maclist_timeout_task(ctrl, rdk_vap_info, vap_index, timeout, assoc_maclist,
-            kick_details, has_successful_operations) != RETURN_OK) {
+    if (schedule_maclist_timeout_task(ctrl, rdk_vap_info, vap_info, vap_index, timeout,
+            assoc_maclist, kick_details, has_successful_operations) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d No successful operations for vap %d\n", __func__, __LINE__,
             vap_index);
         goto cleanup_all;
