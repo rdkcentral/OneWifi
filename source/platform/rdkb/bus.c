@@ -1230,7 +1230,10 @@ static void mux_bus_cb_registration(bus_data_element_t *data_element, bool user_
 
     strncpy(event_name, data_element->full_name, strlen(data_element->full_name) + 1);
 
-    if (user_cb_set == true) {
+    /* Tables are always added to the mux tree, even without callbacks (rows managed with
+     * registerRow/unregisterRow), so that their row template and rows are correctly typed
+     * when resolving the instances of their children. */
+    if (user_cb_set == true || data_element->type == bus_element_type_table) {
         elem_node_map_t          *reg_cb_mux_map = get_bus_mux_reg_cb_map();
         bus_mux_reg_node_data_t  reg_node_data;
         bus_mux_data_elem_t      node_elem = { 0 };
