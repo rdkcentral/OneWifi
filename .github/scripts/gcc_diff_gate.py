@@ -97,9 +97,11 @@ C_ONLY = {
     "-Wjump-misses-init",
 }
 LINE_RE = re.compile(r"\.(?:c|cc|cpp|cxx):(\d+):")
-TAG_RE = re.compile(r"\[-W[a-z0-9-]+\]")
+# gcc tags a warning that takes a level with a trailing '=' ([-Warray-bounds=],
+# [-Wdangling-pointer=], [-Wstringop-overflow=]); group 1 is the bare flag name.
+TAG_RE = re.compile(r"\[(-W[a-z0-9-]+)=?\]")
 # Parse a normalized `disp` line (path already stripped) into inline-comment fields.
-INLINE_RE = re.compile(r"^(?P<path>[^:]+):(?P<line>\d+):\d+: warning: (?P<msg>.*) \[(?P<tag>-W[a-z0-9-]+)\]$")
+INLINE_RE = re.compile(r"^(?P<path>[^:]+):(?P<line>\d+):\d+: warning: (?P<msg>.*) \[(?P<tag>-W[a-z0-9-]+)=?\]$")
 
 
 def write_inline(status, comments, dropped=0):
@@ -328,7 +330,7 @@ def main():
                 continue
             if not _in_intervals(int(m.group(1)), want):
                 continue
-            tag = t.group(0)
+            tag = f"[{t.group(1)}]"
             # Strip to the LAST repo dir in the path token: the runner checks out to
             # .../work/OneWifi/OneWifi/easymesh_project/OneWifi/source/..., so a
             # non-greedy '.*?' would stop at the first 'OneWifi/' and leave a broken,

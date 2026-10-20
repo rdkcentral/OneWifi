@@ -21,12 +21,15 @@ class Inline(unittest.TestCase):
         gated = ["source/a.c:10:5: warning: variable-length array used [-Wvla]",
                  "source/a.c:10:9: warning: variable-length array used [-Wvla]",   # same, other column
                  "no tag here"]                                                    # dropped
-        advis = ["source/b.c:3:1: warning: value computed is not used [-Wunused-value]"]
+        advis = ["source/b.c:3:1: warning: value computed is not used [-Wunused-value]",
+                 "source/c.c:7:2: warning: array subscript 5 is above array bounds [-Warray-bounds=]"]
         inline, dropped = gcc_gate.build_inline(gated, advis)
         self.assertEqual(dropped, 1)
-        self.assertEqual([(item["path"], item["line"]) for item in inline], [("source/a.c", 10), ("source/b.c", 3)])
+        self.assertEqual([(item["path"], item["line"]) for item in inline],
+                         [("source/a.c", 10), ("source/b.c", 3), ("source/c.c", 7)])
         self.assertIn("❌ **gcc** `-Wvla` (error)", inline[0]["body"])
         self.assertIn("❗ **gcc** `-Wunused-value` (warning)", inline[1]["body"])
+        self.assertIn("❗ **gcc** `-Warray-bounds` (warning)", inline[2]["body"])
 
 
 class MainStatus(unittest.TestCase):
@@ -46,7 +49,7 @@ class MainStatus(unittest.TestCase):
             return results[cmd[0]]
 
         with mock.patch.multiple(gcc_gate, BASE="base", DB=db_path, INLINE_JSON=out_path,
-                                 ADVISORY_TAGS={"[-Wunused-value]"},
+                                 ADVISORY_TAGS={"[-Wunused-value]", "[-Warray-bounds]"},
                                  effective_base=lambda: "base",
                                  changed_files=lambda _base: sorted(results),
                                  changed_lines=lambda _base, _name: [(1, 10)],
@@ -71,6 +74,11 @@ class MainStatus(unittest.TestCase):
         # A finding the inline converter cannot parse also leaves the set incomplete.
         odd = SimpleNamespace(returncode=0, stderr="/w/OneWifi/source/odd.c:3:5: error: odd [-Wunused-value]")
         self.assertEqual(self._run_main({"odd.c": odd})["status"], "partial")
+        # gcc tags a level-taking warning with '=': classified under its bare name.
+        level = SimpleNamespace(returncode=0, stderr=(
+            "/w/OneWifi/source/lvl.c:4:9: warning: array subscript 5 is above array bounds [-Warray-bounds=]"))
+        doc = self._run_main({"lvl.c": level})
+        self.assertEqual((doc["status"], len(doc["comments"])), ("ok", 1))
 
 
 class RecompileCmd(unittest.TestCase):
