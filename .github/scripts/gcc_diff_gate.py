@@ -25,10 +25,16 @@ promoting them tree-wide. The OneWifi tree still carries backlogs for these clas
 PR. Instead lets recompile each changed .c/.cpp from compile_commands.json with the candidate
 warnings enabled (non-fatal: the DB's own -Werror=<class> promotions are stripped and -Os is
 applied when OPT is set — see recompile_cmd), then keep only findings whose line the PR changed.
-A PR can then fail on a class that fires on a line it changed. NB this is
-line-scoped, not base-compared: a warning already present on a line the PR
-edits for an unrelated reason also counts (accepted trade-off, not literally
-"newly introduced").
+A PR can then fail on a class that fires on a line it changed, unless the finding was already
+in the file before the PR: the base version of each changed file is compiled the same way, and a
+finding whose tag and message the base already had at least as often is not counted (see
+base_findings / preexisting). An edited line that calls a function the file already called
+without a prototype therefore stays quiet; a new undeclared function does not. Limits: the base
+is compiled against the PR's headers (a PR that removes a prototype from a header is not
+flagged); a file the PR adds, or whose base gcc cannot finish, is judged line-scoped only (the
+summary names the latter); a PR that fixes one finding and adds another with the same message
+(no identifier in it, e.g. "control reaches end of non-void function") is not flagged; and a
+message naming something the PR renamed, or an argument position the PR shifted, looks new.
 The silent baseline (and the build-summary that relies on it) remains unaffected.
 
 This is the gcc analogue of the clang-tidy changed-files gate already in makefile.yml.
@@ -53,6 +59,8 @@ markdown summary to stdout. Identical file ships in OneWifi and the HAL — the 
 support must be re-ported verbatim when this file is synced to the HAL.
 """
 import bisect
+import collections
+import contextlib
 import json
 import os
 import re
@@ -97,9 +105,12 @@ C_ONLY = {
     "-Wjump-misses-init",
 }
 LINE_RE = re.compile(r"\.(?:c|cc|cpp|cxx):(\d+):")
-# gcc tags a warning that takes a level with a trailing '=' ([-Warray-bounds=],
-# [-Wdangling-pointer=], [-Wstringop-overflow=]); group 1 is the bare flag name.
-TAG_RE = re.compile(r"\[(-W[a-z0-9-]+)=?\]")
+# A finding's message and tag (the key matched between the base and head compiles; line numbers
+# shift). gcc tags a warning that takes a level with a trailing '=' ([-Warray-bounds=],
+# [-Wdangling-pointer=], [-Wstringop-overflow=]); 'tag' is the bare flag name.
+KEY_RE = re.compile(r": (?:warning|error): (?P<msg>.*) \[(?P<tag>-W[a-z0-9-]+)=?\]$")
+# gcc's spelling hint changes when a PR adds a similar name; not part of the finding.
+HINT_RE = re.compile(r"; did you mean [‘'][^’']*[’']\?")
 # Parse a normalized `disp` line (path already stripped) into inline-comment fields.
 INLINE_RE = re.compile(r"^(?P<path>[^:]+):(?P<line>\d+):\d+: warning: (?P<msg>.*) \[(?P<tag>-W[a-z0-9-]+)=?\]$")
 
@@ -162,8 +173,8 @@ def recompile_cmd(args, path):
     `args` is the DB command already minus -c/-o (from db_args). This recompile only
     COLLECTS warnings, so no diagnostic may abort it. Two mechanisms are needed:
 
-      * STRIP every -Werror* token from args. The DB carries 13 distinct -Werror=<class>
-        promotions (incl. -Werror=maybe-uninitialized / -array-bounds that -Os newly
+      * STRIP every -Werror* token from args. The DB carries per-class -Werror=<class>
+        promotions (incl. the HAL's -Werror=maybe-uninitialized / -array-bounds that -Os newly
         trips). A bare -Wno-error does NOT undo a per-class -Werror=<class> (verified
         gcc 13.3.0: `-Werror=return-type -Wno-error` still errors), so drop them outright.
       * KEEP a per-class -Wno-error=<class> for every candidate. On gcc-14 the classes
@@ -303,6 +314,63 @@ def db_args(db, f):
     return entry["directory"], out
 
 
+def finding(line):
+    """(line number, (tag, message)) of a tagged diagnostic in a .c/.cpp file, else None."""
+    num = LINE_RE.search(line)
+    hit = KEY_RE.search(line)
+    if not num or not hit:
+        return None
+    return int(num.group(1)), (hit["tag"], HINT_RE.sub("", hit["msg"]))
+
+
+def base_findings(base, name, cwd, args):
+    """(findings of `name` as it was at base, problem). findings None -> judge line-scoped only.
+
+    The base text is written next to the source (same directory and extension, so quoted
+    includes and the C/C++ split behave the same) and compiled like the head, against the
+    PR's headers. A base with ordinary errors (a struct member the PR renamed) still reports
+    every front-end class, so its findings are kept. Only a compile gcc stopped early
+    ("compilation terminated.", e.g. a header the PR removed), a killed compiler or a temp-file
+    failure leaves no base; `problem` then says why, for the summary. A file the PR adds has
+    no base and no problem.
+    """
+    show = subprocess.run(["git", "-C", REPO_DIR, "show", f"{base}:{name}"], capture_output=True)
+    if show.returncode != 0:
+        return None, None
+    src = next((arg for arg in reversed(args) if arg == name or arg.endswith("/" + name)), None)
+    if src is None:
+        return None, "not found in its compile command"
+    path = os.path.join(cwd, src)
+    tmp = os.path.join(os.path.dirname(path), ".gcc-gate-base-" + os.path.basename(path))
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(show.stdout)
+        cmd = recompile_cmd([tmp if arg == src else arg for arg in args], name)
+        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, errors="replace")
+    except OSError as exc:
+        return None, f"could not be compiled ({exc.strerror or exc})"
+    finally:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+    if proc.returncode < 0 or "compilation terminated." in proc.stderr:
+        return None, "stopped compiling early"
+    return [hit for hit in map(finding, proc.stderr.splitlines()) if hit], None
+
+
+def preexisting(head, base):
+    """Keys the PR did not add: the head file has no more findings with the key than the base had.
+
+    Counted per distinct (line, key), so one finding repeated at several columns counts once.
+    Coarse on purpose: a key the PR adds one more of (a second VLA named 'buf') counts all of
+    its changed-line findings, since which one is new cannot be told apart.
+    """
+    if base is None:
+        return set()
+    head_n = collections.Counter(key for _line, key in set(head))
+    base_n = collections.Counter(key for _line, key in set(base))
+    return {key for key, count in head_n.items() if count <= base_n[key]}
+
+
 def main():
     if not BASE or not os.path.exists(DB):
         print("#### 🚦 gcc diff-gate: no compile DB or PR base — skipped")
@@ -311,6 +379,8 @@ def main():
     base = effective_base()
     db = json.load(open(DB))
     gated, advis, failed = [], [], []
+    known = []     # changed-line findings the file already had before the PR (not counted)
+    unjudged = []  # files whose base could not be compiled (judged on changed lines only)
     for f in changed_files(base):
         info = db_args(db, f)
         if not info:
@@ -320,17 +390,18 @@ def main():
         if not want:
             continue
         cmd = recompile_cmd(args, f)
-        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
-        for line in r.stderr.splitlines():
-            if ": warning:" not in line and ": error:" not in line:
-                continue
-            m = LINE_RE.search(line)
-            t = TAG_RE.search(line)
-            if not m or not t:
-                continue
-            if not _in_intervals(int(m.group(1)), want):
-                continue
-            tag = f"[{t.group(1)}]"
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, errors="replace")
+        hits = [(hit, line) for line in r.stderr.splitlines() if (hit := finding(line))]
+        tags = GATE_TAGS | ADVISORY_TAGS
+        mine = [(hit, line) for hit, line in hits if _in_intervals(hit[0], want) and f"[{hit[1][0]}]" in tags]
+        old = set()
+        if mine:  # compile the base only when there is something to compare
+            base_hits, problem = base_findings(base, f, cwd, args)
+            if problem:
+                unjudged.append(f"`{f}`: its base {problem}")
+            old = preexisting([hit for hit, _line in hits], base_hits)
+        for (_lineno, key), line in mine:
+            tag = f"[{key[0]}]"
             # Strip to the LAST repo dir in the path token: the runner checks out to
             # .../work/OneWifi/OneWifi/easymesh_project/OneWifi/source/..., so a
             # non-greedy '.*?' would stop at the first 'OneWifi/' and leave a broken,
@@ -338,7 +409,9 @@ def main():
             # into the message text) yet backtracks to the last match. Mirrors the
             # sed idiom in makefile.yml's build/tidy summaries.
             disp = re.sub(r"^[^ ]*/(?:OneWifi|rdk-wifi-hal)/+", "", line)
-            if tag in GATE_TAGS:
+            if key in old:
+                known.append(disp)
+            elif tag in GATE_TAGS:
                 gated.append(disp)
             elif tag in ADVISORY_TAGS:
                 advis.append(disp)
@@ -378,8 +451,23 @@ def main():
         print(f"::warning::gcc diff-gate could not recompile — {l}"
               .replace("%", "%25").replace("\r", "%0D"), file=sys.stderr)
 
+    # Maintainer overview only: never inline, never gated. The dropped findings themselves go
+    # to the job log, where the ENFORCE rollout can check them.
+    known = sorted(set(known))
+    for shown in known:
+        print(f"gcc diff-gate: already in the file before this PR: {shown}", file=sys.stderr)
+    notes = []
+    if known:
+        notes.append(f"_{len(known)} finding(s) on edited lines were already in the file before "
+                     "this PR; not counted (listed in the job log)._")
+    if unjudged:
+        notes.append("_Judged on changed lines only, without comparing to the file before this PR: "
+                     + "; ".join(unjudged[:10]) + "._")
+    note = "\n".join(notes)
     if not gated and not advis and not failed:
         print("#### 🚦 gcc diff-gate: clean on changed lines")
+        if note:
+            print(note)
         return 0
     if gated:
         # Same wording with ENFORCE on or off: these are real errors in changed code,
@@ -402,6 +490,8 @@ def main():
         print("_A nonzero compiler exit means these files were NOT analyzed (an unrecognized -W flag, "
               "a missing generated header, or a killed compiler) — the result above is partial. This is "
               "a mechanism warning, not a code finding, so it never reds the job on its own._")
+    if note:
+        print(note)
     # In advisory mode the ❌ block above still renders, but we never red the job.
     # `failed` alone never fails the gate (fail-open) — only a GATE finding under ENFORCE does.
     return 1 if (gated and ENFORCE) else 0

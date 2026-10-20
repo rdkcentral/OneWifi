@@ -505,7 +505,8 @@ jobs:
       # PR's changed LINES only, without promoting them tree-wide (the tree still carries a
       # backlog: -Wvla 18, -Wreturn-type 11, dead-code family). The script recompiles each changed
       # .c/.cpp from compile_commands.json with the candidate warnings enabled (non-fatal) and keeps
-      # only findings on lines the PR touched -> a PR can only fail on a class that fires on a changed line.
+      # only findings on lines the PR touched that the file's base version did not already have
+      # -> a PR can only fail on a finding it introduced on a changed line.
       # The silent baseline (and the build-summary that relies on it) is unaffected. bpi leg only
       # (it owns the compile DB). Runs AFTER clang-tidy so both gate independently.
       if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
@@ -520,11 +521,11 @@ jobs:
         #   2. >= 1 advisory finding (the -Wunused-* classes fire on ordinary
         #      refactors) hand-checked against the diff -> line attribution correct;
         #   3. zero false positives on the GATE classes;
-        #   4. the tree-occurrence count of each GATE class is measured and known --
-        #      several (int-conversion, incompatible-pointer-types, ...) are suppressed
-        #      by ONE_WIFI_WARN and so carry a backlog; because the gate is line-scoped,
-        #      a PR that edits an existing-violation line for an unrelated reason gates
-        #      on it, so the backlog size must be a known, accepted number first.
+        #   4. the hidden backlog stays out of the way: makefile.common's -Wno-<class>
+        #      silences several GATE classes (bpi DB, 2026-10: 431 implicit-function-
+        #      declaration, 14 incompatible-pointer-types, 9 return-type, 1 int-conversion).
+        #      The script drops a finding the file had before the PR, so a PR that edits
+        #      such a line for an unrelated reason does not gate; confirm on real PRs.
         # Gate on that evidence, not the calendar. Silence of the GATE classes alone
         # proves nothing (they're rarely introduced) -- the advisory classes are what
         # exercise the recompile + line-scoping machinery.
@@ -537,16 +538,18 @@ jobs:
         OPT: '-Os'
         # GATE = fail the job (when ENFORCE=true) if introduced on a changed line.
         # ADVISORY = report only. Both are posted inline (❌ / ❗) and in the ci-summary.
-        # GATE picks: front-end, ~0-FP, crash/RCE/UB or next-compiler-break classes.
+        # GATE picks: front-end, ~0-FP, crash/RCE/UB classes.
         #   -Wvla (stack overflow), -Wreturn-type (UB). -Wint-conversion,
-        #   -Wimplicit-function-declaration, -Wimplicit-int, -Wincompatible-pointer-types
-        #   are ERRORS-BY-DEFAULT in gcc-14 regardless of -std, so gating on changed
-        #   lines stops the backlog growing before the runner bumps to gcc-14 and the
-        #   tree stops building. -Wsizeof-pointer-memaccess (truncated mem*/str* copy),
-        #   -Wformat-security (uncontrolled format -> leak / %n write; armed by the DB's
-        #   -Wall). The four C-only classes are auto-dropped on C++ TUs by the script.
-        #   gcc-14's other two default errors have no gcc-13 flag: -Wreturn-mismatch is
-        #   covered by -Wreturn-type here, -Wdeclaration-missing-parameter-type is new.
+        #   -Wimplicit-function-declaration, -Wimplicit-int, -Wincompatible-pointer-types:
+        #   wrong call ABI / int-pointer confusion, and errors by default from gcc-14.
+        #   makefile.common silences three of them (a -Wno-<class> also turns the gcc-14
+        #   error off), so the tree keeps building but hides a backlog (see 4. above);
+        #   the gate keeps new code from adding to it. -Wsizeof-pointer-memaccess
+        #   (truncated mem*/str* copy), -Wformat-security (uncontrolled format -> leak /
+        #   %n write; armed by the DB's -Wall). The four C-only classes are auto-dropped on
+        #   C++ TUs by the script. gcc-14's other two default errors have no gcc-13 flag:
+        #   -Wreturn-mismatch is covered by -Wreturn-type here (it is what actually breaks
+        #   this build on gcc-14: 5 sites), -Wdeclaration-missing-parameter-type is new.
         GATE_WARNINGS: "-Wvla -Wreturn-type -Wint-conversion -Wimplicit-function-declaration -Wimplicit-int -Wincompatible-pointer-types -Wsizeof-pointer-memaccess -Wformat-security"
         # ADVISORY: measured quiet over the compile DB at -Os (each 0-4 findings tree-wide,
         # so they only fire on something genuinely new). -Wpointer-sign (33) and

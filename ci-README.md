@@ -94,11 +94,14 @@ OneWifi.
 `gcc_diff_gate.py` recompiles each PR-changed `.c`/`.cpp` from `compile_commands.json` with extra
 candidate `-W` flags (non-fatal), keeping only findings on lines the PR touched — so a class with
 a tree-wide backlog can still gate *new* code, without a tree-wide `-Werror` that would red every
-unrelated PR. The lists live in the workflow's env. `GATE_WARNINGS` (would fail the job): `-Wvla`,
-`-Wreturn-type`, the four classes gcc-14 makes errors by default (`-Wint-conversion`,
-`-Wimplicit-function-declaration`, `-Wimplicit-int`, `-Wincompatible-pointer-types`), so new code
-does not add to what a gcc-14 move must fix, plus `-Wsizeof-pointer-memaccess` and
-`-Wformat-security`. `ADVISORY_WARNINGS` (report only): the `-Wunused-*` family and classes measured
+unrelated PR. It also compiles each file's base version and drops a finding the file already had
+before the PR (matched by class and message), so editing a line that calls an old undeclared
+function does not count. The lists live in the workflow's env. `GATE_WARNINGS` (would fail the
+job): `-Wvla`, `-Wreturn-type`, the four classes gcc-14 makes errors by default
+(`-Wint-conversion`, `-Wimplicit-function-declaration`, `-Wimplicit-int`,
+`-Wincompatible-pointer-types`: wrong call ABI and int/pointer confusion; `makefile.common`
+silences three of them, hiding a backlog that new code should not add to), plus
+`-Wsizeof-pointer-memaccess` and `-Wformat-security`. `ADVISORY_WARNINGS` (report only): the `-Wunused-*` family and classes measured
 quiet over the tree (`-Waddress`, `-Wstringop-*`, `-Warray-bounds`, `-Wdangling-pointer`,
 `-Wuse-after-free`). The recompile runs at `-Os` like the production build (the compile DB is
 `-O0`), so the optimizer-dependent classes can fire, and with the DB's `-Werror=` flags removed. The
@@ -328,9 +331,12 @@ red" — a plumbing hiccup should not falsely block a PR.
   pinned commit (`rdkcentral/OneWifi/.github/actions/hostap-tree@<sha>`).
 - Heavier analyzers (`gcc -fanalyzer`, more `clang-analyzer-core.*` checks) are candidates, kept
   diff-scoped only — too noisy tree-wide.
-- gcc-14 watch: CI runs on `ubuntu-24.04` (gcc 13.x), so nothing breaks today; a future move to
-  gcc 14 is worth revisiting since newer gcc releases have sometimes promoted optional warnings to
-  default errors — not yet audited against this tree specifically.
+- gcc-14 / gcc-15 watch: CI builds with gcc 13. Measured 2026-10 on the bpi compile DB, gcc 14
+  (also on the `ubuntu-24.04` image) fails 4 of 380 C files: 5 `return` mismatches in OneWifi
+  (`source/apps/em/wifi_em.c`, `source/platform/linux/misc.c`) and 2 implicit declarations in the
+  patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
+  builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
+  `()`-declared functions called with an argument; `-std=gnu17` removes them.
 - Workflow steps have no tests of their own: the `run:` blocks get shellcheck (workflows only;
   composite actions get yamllint's structural check), but their logic is not exercised by
   `.github/scripts/tests`.

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2026 RDK Management — Apache-2.0 (see gcc_diff_gate.py header).
-"""Unit tests for gcc_diff_gate.py: build_inline, the envelope status main() writes, and
-recompile_cmd (the per-file recompile flags)."""
+"""Unit tests for gcc_diff_gate.py: build_inline, the envelope status main() writes,
+preexisting / base_findings (findings the base already had) and recompile_cmd (the per-file recompile flags)."""
 import contextlib
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -35,7 +36,7 @@ class Inline(unittest.TestCase):
 class MainStatus(unittest.TestCase):
     """main() marks the envelope 'partial' when a changed file failed to recompile."""
 
-    def _run_main(self, results):
+    def _run_main(self, results, base=None):
         fd, db_path = tempfile.mkstemp(suffix=".json")
         os.close(fd)
         self.addCleanup(os.unlink, db_path)
@@ -53,7 +54,8 @@ class MainStatus(unittest.TestCase):
                                  effective_base=lambda: "base",
                                  changed_files=lambda _base: sorted(results),
                                  changed_lines=lambda _base, _name: [(1, 10)],
-                                 db_args=lambda _db, name: ("/w", [name])), \
+                                 db_args=lambda _db, name: ("/w", [name]),
+                                 base_findings=lambda *_args: (base, None)), \
              mock.patch.object(gcc_gate.subprocess, "run", fake_run), \
              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             gcc_gate.main()
@@ -79,6 +81,60 @@ class MainStatus(unittest.TestCase):
             "/w/OneWifi/source/lvl.c:4:9: warning: array subscript 5 is above array bounds [-Warray-bounds=]"))
         doc = self._run_main({"lvl.c": level})
         self.assertEqual((doc["status"], len(doc["comments"])), ("ok", 1))
+        # A finding the base version of the file already had is not posted.
+        known = [(2, ("-Wunused-value", "value computed is not used"))]
+        doc = self._run_main({"ok.c": self._ok("ok.c")}, base=known)
+        self.assertEqual((doc["status"], doc["comments"]), ("ok", []))
+
+
+class Preexisting(unittest.TestCase):
+    def test_preexisting(self):
+        def implicit(line, name, hint=""):
+            return f"/w/x.c:{line}:5: warning: implicit declaration of function ‘{name}’{hint} [-Wimplicit-function-declaration]"
+        vla = "/w/x.c:{}:10: warning: ISO C90 forbids variable length array ‘buf’ [-Wvla]"
+        cases = [
+            # (head stderr lines, base stderr lines or None, head line numbers whose key is pre-existing)
+            ([implicit(12, "foo")], [implicit(10, "foo")], {12}),                      # edited old call
+            ([implicit(12, "bar")], [implicit(10, "foo")], set()),                     # new undeclared function
+            ([vla.format(5), vla.format(20)], [vla.format(5)], set()),                 # one more of the same key
+            ([implicit(12, "foo")], None, set()),                                      # no base: line-scoped only
+            ([implicit(12, "foo", "; did you mean ‘fob’?")], [implicit(10, "foo")], {12}),  # hint ignored
+        ]
+        for head_lines, base_lines, expected in cases:
+            head = [gcc_gate.finding(line) for line in head_lines]
+            base = None if base_lines is None else [gcc_gate.finding(line) for line in base_lines]
+            old = gcc_gate.preexisting(head, base)
+            self.assertEqual({line for line, key in head if key in old}, expected, head_lines)
+
+
+class BaseFindings(unittest.TestCase):
+    def test_base_findings(self):
+        warn = ("/w/.gcc-gate-base-a.c:3:5: warning: implicit declaration of function ‘foo’ "
+                "[-Wimplicit-function-declaration]")
+        work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work)
+        cases = [
+            # (git show rc, compile rc, compile stderr, cwd, findings kept (None = no base), problem)
+            (128, 0, "", work, None, False),                                    # file the PR adds
+            (0, 1, warn + "\n/w/.gcc-gate-base-a.c:9:1: error: no member named ‘old’", work, 1, False),
+            (0, 1, warn + "\nfatal error: x.h: No such file\ncompilation terminated.", work, None, True),
+            (0, 0, warn, os.path.join(work, "gone"), None, True),               # temp file not writable
+        ]
+        for show_rc, rc, stderr, cwd, kept, problem in cases:
+            cmds = []
+
+            def fake_run(cmd, show_rc=show_rc, rc=rc, stderr=stderr, **_kwargs):
+                cmds.append(cmd)
+                if cmd[0] == "git":
+                    return SimpleNamespace(returncode=show_rc, stdout=b"int x;\n")
+                return SimpleNamespace(returncode=rc, stderr=stderr)
+            with mock.patch.object(gcc_gate.subprocess, "run", fake_run):
+                found, why = gcc_gate.base_findings("base", "a.c", cwd, ["gcc", "-I.", "a.c"])
+            self.assertEqual((None if found is None else len(found), bool(why)), (kept, problem), stderr)
+            if kept:  # compiled the base text in place of the source, then removed it
+                self.assertIn(os.path.join(cwd, ".gcc-gate-base-a.c"), cmds[-1])
+                self.assertNotIn("a.c", cmds[-1])
+            self.assertFalse(os.path.exists(os.path.join(cwd, ".gcc-gate-base-a.c")))
 
 
 class RecompileCmd(unittest.TestCase):
