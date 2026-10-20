@@ -589,8 +589,47 @@ jobs:
         tee -a ci-out/gcc-gate-summary.md < gcc-gate.md >> "$GITHUB_STEP_SUMMARY"
         exit "$rc"
 
+    - name: Complexity nudge for ${{ matrix.platform.name }}
+      # Never fails the build. lizard compares per-function cyclomatic complexity between the
+      # PR base and head of each changed .c/.cpp: a function the PR pushes over CCN 30 gets an
+      # inline ❗ (ci-out/inline-complexity.json, always written) plus a summary entry; one that
+      # grew by >= 5 to >= 20 is listed in the summary (ci-out/complexity.md). Functions moved
+      # out of another changed or removed file keep their old CCN. bpi leg only, ~0.5 s/file.
+      if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        LIZARD_VERSION: 1.24.0
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        # Not on the runner image; pure python. A failed install makes the script write a
+        # 'skipped' candidate file (no inline deletes) and nothing else.
+        pipx install "lizard==${LIZARD_VERSION}" >/dev/null 2>&1 || echo "::warning::lizard install failed"
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        # Same effective base as the gcc gate (HEAD^1 on a merge ref when BASE leads into it).
+        DIFF_BASE="$BASE"
+        if git rev-parse --verify --quiet HEAD^2 >/dev/null \
+           && git merge-base --is-ancestor "$BASE" HEAD^1 2>/dev/null; then
+          DIFF_BASE=HEAD^1
+        fi
+        : > "$RUNNER_TEMP/changed-c.txt"
+        : > "$RUNNER_TEMP/removed-c.txt"
+        if names=$(git diff --name-status -M "$DIFF_BASE" HEAD -- '*.c' '*.cpp' '*.cc' '*.cxx'); then
+          # A M / R<score> old new / D old: changed = what the head has, removed = old paths gone.
+          awk -F'\t' '$1 ~ /^[AM]/ {print $2} $1 ~ /^R/ {print $3}' <<< "$names" > "$RUNNER_TEMP/changed-c.txt"
+          awk -F'\t' '$1 ~ /^D/ {print $2} $1 ~ /^R/ {print $2}' <<< "$names" > "$RUNNER_TEMP/removed-c.txt"
+        else
+          DIFF_BASE=''  # base unreadable: the script writes 'skipped', so no inline comment is deleted
+        fi
+        BASE="$DIFF_BASE" python3 .github/scripts/complexity_delta.py \
+          "$RUNNER_TEMP/changed-c.txt" "$RUNNER_TEMP/removed-c.txt" || true
+        if [ -s ci-out/complexity.md ]; then
+          cat ci-out/complexity.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+
     - name: Map inline findings to PR-head lines for ${{ matrix.platform.name }}
-      # clang-tidy and the gcc gate ran on the merge ref (HEAD = refs/pull/N/merge), so
+      # clang-tidy, the gcc gate and the complexity nudge ran on the merge ref (HEAD = refs/pull/N/merge), so
       # their line numbers are merge-result lines. Review comments anchor to the PR head,
       # where a line moves when the base branch changed the same file above it.
       if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
@@ -598,11 +637,12 @@ jobs:
       env:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: |
-        # A crash must not leave merge-numbered candidates behind: drop both files, which
+        # A crash must not leave merge-numbered candidates behind: drop the files, which
         # the poster reads as "producer skipped" (posts and deletes nothing).
-        if ! python3 .github/scripts/map_head_lines.py "$HEAD_SHA" ci-out/inline-gcc.json ci-out/inline-tidy.json; then
+        if ! python3 .github/scripts/map_head_lines.py "$HEAD_SHA" ci-out/inline-gcc.json ci-out/inline-tidy.json \
+               ci-out/inline-complexity.json; then
           echo "::warning::Could not map inline findings to PR-head lines; none are posted this run."
-          rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json
+          rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json ci-out/inline-complexity.json
         fi
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------

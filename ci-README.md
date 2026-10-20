@@ -121,6 +121,13 @@ rules only, `.github/.yamllint`), and for `.github/scripts` compileall, ruff (py
 lanes and fails closed (a skipped lane passes, a failed detector does not); it is the one check
 to mark required. Tool versions are pinned in the workflow.
 
+**f) Complexity nudge** — `complexity_delta.py`, changed `.c`/`.cpp` files, `bpi` only; never fails
+the build. lizard (pinned) measures each function's cyclomatic complexity (CCN) at the PR base and
+head, so only what the PR adds counts. A function the PR pushes over CCN 30 gets a ❗ inline comment
+on its first changed line and a summary entry; one that grew by 5 or more and ends at 20 or above is
+listed in the summary only. A function moved out of another changed or removed file keeps its old
+CCN. Replayed over 85 develop commits (2026-07..10): 1 crossed 30, 5 grew.
+
 ## 4. Two-stage design (why, and how)
 
 Posting to a PR needs `pull-requests: write`. Building a PR's code means running a fork author's
@@ -133,7 +140,8 @@ makefiles/scripts. Doing both in one job is a classic "pwn-request." So the syst
  STAGE 1 (pull_request, untrusted PR code, NO write token)
    clang-format.yml -> clang-format.diff, changed-lines.txt, pr-meta.env
    makefile.yml      -> build-summary.md, tidy-summary.md, gcc-gate-summary.md,
-                         inline-gcc.json, inline-tidy.json, pr-meta.env
+                         inline-gcc.json, inline-tidy.json, complexity.md,
+                         inline-complexity.json, pr-meta.env
         | (artifacts only)
         v
  STAGE 2 (workflow_run, trusted base-repo context, write token)
@@ -183,7 +191,8 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 - `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
   is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
   The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
-  `gcc-gate-summary.md`, `inline-tidy.json` and `inline-gcc.json`.
+  `gcc-gate-summary.md`, `inline-tidy.json`, `inline-gcc.json`, `inline-complexity.json` and,
+  when a function's complexity crossed or grew, `complexity.md`.
 
 **Posted back to the PR:**
 - one sticky `ci-summary` comment (job `summary`), folding the build summary and the diff-scoped
