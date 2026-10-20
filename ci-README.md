@@ -97,14 +97,19 @@ a tree-wide backlog can still gate *new* code, without a tree-wide `-Werror` tha
 unrelated PR. It also compiles each file's base version and drops a finding the file already had
 before the PR (matched by class and message), so editing a line that calls an old undeclared
 function does not count. The lists live in the workflow's env. `GATE_WARNINGS` (would fail the
-job): `-Wvla`, `-Wreturn-type`, the four classes gcc-14 makes errors by default
+job): `-Wvla`, `-Wreturn-type`, the six classes gcc 14 makes errors by default
 (`-Wint-conversion`, `-Wimplicit-function-declaration`, `-Wimplicit-int`,
-`-Wincompatible-pointer-types`: wrong call ABI and int/pointer confusion; `makefile.common`
+`-Wincompatible-pointer-types`, `-Wreturn-mismatch`, `-Wdeclaration-missing-parameter-type`: wrong
+call ABI, int/pointer confusion, a `return` that does not match the function; `makefile.common`
 silences three of them, hiding a backlog that new code should not add to), plus
-`-Wsizeof-pointer-memaccess` and `-Wformat-security`. `ADVISORY_WARNINGS` (report only): the `-Wunused-*` family and classes measured
-quiet over the tree (`-Waddress`, `-Wstringop-*`, `-Warray-bounds`, `-Wdangling-pointer`,
-`-Wuse-after-free`). The recompile runs at `-Os` like the production build (the compile DB is
-`-O0`), so the optimizer-dependent classes can fire, and with the DB's `-Werror=` flags removed. The
+`-Wsizeof-pointer-memaccess` and `-Wformat-security`. `ADVISORY_WARNINGS` (report only): the
+`-Wunused-*` family and classes measured quiet over the tree (`-Waddress`, `-Wstringop-*`,
+`-Warray-bounds`, `-Wdangling-pointer`, `-Wuse-after-free`, `-Wcalloc-transposed-args`). The
+recompile uses gcc 14 (`GATE_CC` / `GATE_CXX`; preinstalled on `ubuntu-24.04`, while the build
+itself stays on gcc 13), runs at `-Os` like the production build (the compile DB is `-O0`) so the
+optimizer-dependent classes can fire, undefines `_FORTIFY_SOURCE` so an overflowing
+`memcpy`/`strcpy` is reported on the `.c` line rather than inside a glibc header, and removes the
+DB's `-Werror=` flags. The
 whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the ❌ block
 renders, but the job is not actually reddened by it yet.
 
