@@ -128,6 +128,12 @@ on its first changed line and a summary entry; one that grew by 5 or more and en
 listed in the summary only. A function moved out of another changed or removed file keeps its old
 CCN. Replayed over 85 develop commits (2026-07..10): 1 crossed 30, 5 grew.
 
+**g) Source-coverage nudge** — `source_coverage.py`, files a PR adds, `bpi` only; never fails the
+build. A `.c`/`.cpp` that a `Makefile.am` builds but neither `build/linux/{bpi,rpi}/makefile`
+compiles, in a directory a leg already compiles from, is reported in the summary with a file
+annotation: CI would never compile it. XB-only or feature-gated files are the legitimate exception,
+which a text check cannot tell apart, so it never fails the build.
+
 ## 4. Two-stage design (why, and how)
 
 Posting to a PR needs `pull-requests: write`. Building a PR's code means running a fork author's
@@ -141,7 +147,7 @@ makefiles/scripts. Doing both in one job is a classic "pwn-request." So the syst
    clang-format.yml -> clang-format.diff, changed-lines.txt, pr-meta.env
    makefile.yml      -> build-summary.md, tidy-summary.md, gcc-gate-summary.md,
                          inline-gcc.json, inline-tidy.json, complexity.md,
-                         inline-complexity.json, pr-meta.env
+                         inline-complexity.json, source-coverage.md, pr-meta.env
         | (artifacts only)
         v
  STAGE 2 (workflow_run, trusted base-repo context, write token)
@@ -191,8 +197,8 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 - `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
   is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
   The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
-  `gcc-gate-summary.md`, `inline-tidy.json`, `inline-gcc.json`, `inline-complexity.json` and,
-  when a function's complexity crossed or grew, `complexity.md`.
+  `gcc-gate-summary.md`, `inline-tidy.json`, `inline-gcc.json`, `inline-complexity.json` and, when
+  they found something, `complexity.md` and `source-coverage.md`.
 
 **Posted back to the PR:**
 - one sticky `ci-summary` comment (job `summary`), folding the build summary and the diff-scoped

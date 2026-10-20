@@ -399,9 +399,9 @@ jobs:
             fi
           } > diff-section.md
           {
-            # --- Nudges (complexity, ...): each file exists only when something fired. Capped
+            # --- Nudges (source coverage, complexity): each file exists only when something fired. Capped
             # at 6000 bytes each, so the build budget below stays positive. ---
-            for part in "complexity:complexity"; do
+            for part in "source-coverage:source coverage" "complexity:complexity"; do
               f="ci-summary-bpi/${part%%:*}.md"
               [ -s "$f" ] || continue
               if [ "$(wc -c < "$f")" -gt 6000 ]; then cut_md "$f" 6000 "${part#*:} output"; fi

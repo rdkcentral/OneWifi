@@ -589,6 +589,33 @@ jobs:
         tee -a ci-out/gcc-gate-summary.md < gcc-gate.md >> "$GITHUB_STEP_SUMMARY"
         exit "$rc"
 
+    - name: Source-coverage nudge for ${{ matrix.platform.name }}
+      # Never fails the build: a source file this PR ADDS that a Makefile.am builds but neither
+      # leg compiles (a likely-forgotten build/linux makefile entry; XB-only files are the
+      # legitimate exception, so it only reports). Textual, no build needed; writes
+      # ci-out/source-coverage.md only on a finding. bpi leg only (its checkout has both legs'
+      # makefiles).
+      if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        # Same effective base as the gcc gate (HEAD^1 on a merge ref when BASE leads into it).
+        DIFF_BASE="$BASE"
+        if git rev-parse --verify --quiet HEAD^2 >/dev/null \
+           && git merge-base --is-ancestor "$BASE" HEAD^1 2>/dev/null; then
+          DIFF_BASE=HEAD^1
+        fi
+        git diff --name-only --diff-filter=A "$DIFF_BASE" HEAD -- '*.c' '*.cpp' '*.cc' \
+          > "$RUNNER_TEMP/added-sources.txt" 2>/dev/null || : > "$RUNNER_TEMP/added-sources.txt"
+        python3 .github/scripts/source_coverage.py "$RUNNER_TEMP/added-sources.txt" || true
+        if [ -s ci-out/source-coverage.md ]; then
+          cat ci-out/source-coverage.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+
     - name: Complexity nudge for ${{ matrix.platform.name }}
       # Never fails the build. lizard compares per-function cyclomatic complexity between the
       # PR base and head of each changed .c/.cpp: a function the PR pushes over CCN 30 gets an
