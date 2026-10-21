@@ -1523,7 +1523,9 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         (ext->conn_state == connection_state_disconnection_in_progress ||
          ext->conn_state == connection_state_disconnected_scan_list_none ||
          ext->conn_state == connection_state_disconnected_scan_list_in_progress ||
-         ext->conn_state == connection_state_disconnected_scan_list_all)) {
+         ext->conn_state == connection_state_disconnected_scan_list_all ||
+         ext->conn_state == connection_state_connection_in_progress ||
+         ext->conn_state == connection_state_connection_to_nb_in_progress)) {
         wifi_util_info_print(WIFI_CTRL,
             "%s:%d: parent_bssid_guard ignored last-connected BSSID from vap %s (%d); "
             "pending target vap %d, state %s\n",
