@@ -351,6 +351,29 @@ BOOL is_vap_hotspot_secure_5g(wifi_platform_property_t *wifi_prop, unsigned int 
 BOOL is_vap_hotspot_secure_6g(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_lnf_radius(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
+#ifdef UWM_CTRL_WPS_SUPPORT
+static inline BOOL is_vap_onboarding(wifi_platform_property_t *wifi_prop,
+    unsigned int ap_index)
+{
+    wifi_interface_name_idex_map_t *vap_prop;
+    unsigned int radio;
+    unsigned int interface;
+    unsigned int total_interfaces = 0;
+
+    for (radio = 0; radio < wifi_prop->numRadios; radio++) {
+        total_interfaces += wifi_prop->radiocap[radio].maxNumberVAPs;
+    }
+    for (interface = 0; interface < total_interfaces; interface++) {
+        vap_prop = &wifi_prop->interface_map[interface];
+        if (vap_prop->index == ap_index) {
+            return strncmp((char *)&vap_prop->vap_name[0], "onboarding_",
+                strlen("onboarding_")) == 0 ? TRUE : FALSE;
+        }
+    }
+
+    return FALSE;
+}
+#endif /* UWM_CTRL_WPS_SUPPORT */
 
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len,
     unsigned int conv_type);
@@ -417,6 +440,16 @@ int get_list_of_mesh_sta(wifi_platform_property_t *wifi_prop, int list_size,
     wifi_vap_name_t vap_names[]);
 int get_list_of_iot_ssid(wifi_platform_property_t *wifi_prop, int list_size,
     wifi_vap_name_t vap_names[]);
+#ifdef UWM_CTRL_WPS_SUPPORT
+/* Dedicated onboarding: collect dedicated EasyMesh onboarding VAPs (prefix
+ * "onboarding_") so the PRIVATE subdoc apply pipeline can also
+ * reach them. */
+static inline int get_list_of_onboarding_ssid(wifi_platform_property_t *wifi_prop,
+    int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, "onboarding");
+}
+#endif /* UWM_CTRL_WPS_SUPPORT */
 int get_radio_index_for_vap_index(wifi_platform_property_t *wifi_prop, int vap_index);
 int min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
 int vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);

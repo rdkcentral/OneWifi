@@ -464,7 +464,12 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;
+#ifdef UWM_CTRL_WPS_SUPPORT
+            /* WPS is carried by the dedicated onboarding VAPs only. */
+            cfg.u.bss_info.wps.enable = false;
+#else
             cfg.u.bss_info.wps.enable = true;
+#endif /* UWM_CTRL_WPS_SUPPORT */
             cfg.u.bss_info.rapidReconnectEnable = true;
         } else {
             cfg.u.bss_info.vapStatsEnable = false;
@@ -676,6 +681,51 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(cfg.u.bss_info.security.u.key.key), vap_name);
                 strncpy(cfg.u.bss_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.bss_info.security.u.key.key));
             }
+#ifdef UWM_CTRL_WPS_SUPPORT
+        }
+
+        /*
+         * Dedicated onboarding: dedicated EasyMesh onboarding VAPs (e.g. wifi0.4 /
+         * wifi1.4 with vap_name = "onboarding_*"). These VAPs exist in
+         * dmcli at boot but stay disabled (no createVAP) until the WPS
+         * button enables them via TR-181. Pin a deterministic on-boot
+         * configuration here so neither HAL defaults nor the persistent
+         * DB can deviate from {SSID=onboarding, key=onboarding,
+         * WPA2-Personal+AES, MFP optional, MLO off, Enabled=false,
+         * WPS.Enable=false}. The private identity is copied immediately
+         * before activation. Replaces the previous EM_WPS_FH_HACK that
+         * hijacked the private fronthaul SSID.
+         */
+        if (is_vap_onboarding(&wifi_hal_cap_obj->wifi_prop, vap_index)) {
+            const char *onboarding_ssid =
+                (band == WIFI_FREQUENCY_2_4_BAND) ? "onboarding_2G" :
+                ((band == WIFI_FREQUENCY_5_BAND ||
+                  band == WIFI_FREQUENCY_5L_BAND ||
+                  band == WIFI_FREQUENCY_5H_BAND) ?
+                    "onboarding_5G" : "onboarding");
+            strncpy(cfg.u.bss_info.ssid, onboarding_ssid, sizeof(cfg.u.bss_info.ssid)-1);
+            cfg.u.bss_info.ssid[sizeof(cfg.u.bss_info.ssid)-1] = '\0';
+            strncpy(cfg.u.bss_info.security.u.key.key, "onboarding", sizeof(cfg.u.bss_info.security.u.key.key)-1);
+            cfg.u.bss_info.security.u.key.key[sizeof(cfg.u.bss_info.security.u.key.key)-1] = '\0';
+            cfg.u.bss_info.security.mode       = wifi_security_mode_wpa2_personal;
+            cfg.u.bss_info.security.encr       = wifi_encryption_aes;
+            cfg.u.bss_info.security.mfp        = wifi_mfp_cfg_optional;
+            cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk;
+            cfg.u.bss_info.security.wpa3_transition_disable = false;
+            cfg.u.bss_info.wps.enable          = false;
+            cfg.u.bss_info.wps.methods         = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
+            cfg.u.bss_info.enabled             = false;
+            cfg.u.bss_info.showSsid            = true;
+            cfg.u.bss_info.bssHotspot          = false;
+            cfg.u.bss_info.bssMaxSta           = BSS_MAX_NUM_STA_COMMON;
+            cfg.u.bss_info.mld_info.common_info.mld_enable  = 0;
+            cfg.u.bss_info.mld_info.common_info.mld_id      = 255;
+            cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
+            cfg.u.bss_info.mld_info.common_info.mld_apply   = 1;
+            wifi_util_info_print(WIFI_DB,
+                "%s:%d: dedicated onboarding VAP defaults applied: vap_index=%d vap_name=%s ssid=%s\n",
+                __func__, __LINE__, vap_index, vap_name, cfg.u.bss_info.ssid);
+#endif /* UWM_CTRL_WPS_SUPPORT */
         }
     }
 

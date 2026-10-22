@@ -946,7 +946,12 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             default_vap_info->u.bss_info.network_initiated_greylist = false;
             default_vap_info->u.bss_info.vapStatsEnable = true;
             default_vap_info->u.bss_info.wpsPushButton = 0;
+#ifdef UWM_CTRL_WPS_SUPPORT
+            /* WPS is carried by the dedicated onboarding VAPs only. */
+            default_vap_info->u.bss_info.wps.enable = false;
+#else
             default_vap_info->u.bss_info.wps.enable = true;
+#endif /* UWM_CTRL_WPS_SUPPORT */
             default_vap_info->u.bss_info.rapidReconnectEnable = true;
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;

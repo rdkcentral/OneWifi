@@ -4786,6 +4786,24 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         case webconfig_subdoc_type_private:
             num_ssid += get_list_of_private_ssid(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
                 &vap_names[num_ssid]);
+#ifdef UWM_CTRL_WPS_SUPPORT
+            /*
+             * Dedicated onboarding: also include the dedicated EasyMesh
+             * onboarding VAPs (prefix "onboarding_", AP.5 / AP.6).
+             * They are routed through the PRIVATE subdoc by
+             * get_subdoc_name_from_vap_index and emitted by
+             * encode_private_subdoc, but update_subdoc_data() only
+             * pre-loads the live mgr state for vap_names listed
+             * here. Without this addition the decoded radio slot
+             * for onboarding stays at the JSON-decoded value with
+             * no fall-back from mgr -- and any private VAP that
+             * encode_private_subdoc didn't touch would be missing
+             * downstream. The webconfig_hal_private_vap_apply
+             * pass also relies on this list to scope the apply.
+             */
+            num_ssid += get_list_of_onboarding_ssid(&mgr->hal_cap.wifi_prop,
+                MAX_NUM_RADIOS, &vap_names[num_ssid]);
+#endif /* UWM_CTRL_WPS_SUPPORT */
             break;
         case webconfig_subdoc_type_home:
             num_ssid += get_list_of_iot_ssid(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,

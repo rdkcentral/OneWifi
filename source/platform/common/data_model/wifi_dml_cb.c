@@ -4773,9 +4773,21 @@ bool wps_set_param_bool_value(void *obj_ins_context, char *param_name, bool outp
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d %s does not support configuration\n", __func__,
             __LINE__, pcfg->vap_name);
         return true;
+#ifdef UWM_CTRL_WPS_SUPPORT
+    } else if (!is_vap_onboarding(
+            &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_index) &&
+        is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#else
     } else if (is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#endif /* UWM_CTRL_WPS_SUPPORT */
+#else
+#ifdef UWM_CTRL_WPS_SUPPORT
+    if (!isVapSTAMesh(pcfg->vap_index) &&
+        !is_vap_onboarding(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+            pcfg->vap_index) && is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
 #else
     if (!isVapSTAMesh(pcfg->vap_index) && is_sec_mode_open_for_private_ap(pcfg->vap_index) != RETURN_OK) {
+#endif /* UWM_CTRL_WPS_SUPPORT */
 #endif
         wifi_util_error_print(WIFI_DMCLI, "%s:%d [%s] does not support configuration
 ", __func__,
@@ -4818,8 +4830,19 @@ bool wps_set_param_bool_value(void *obj_ins_context, char *param_name, bool outp
             }
             p_dm_vap_info->u.bss_info.wpsPushButton = output_value;
             set_dml_cache_vap_config_changed(instance_number - 1);
+#ifdef UWM_CTRL_WPS_SUPPORT
+            /*
+             * A dedicated onboarding BSS is created by the subsequent
+             * ApplyAccessPointSettings transaction. Preserve its PBC marker
+             * so the webconfig apply path can start PBC after createVAP.
+             */
+            if (output_value == true &&
+                !is_vap_onboarding(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+                    instance_number - 1)) {
+#else
             // WPS commit
             if (output_value == true) {
+#endif /* UWM_CTRL_WPS_SUPPORT */
                 int32_t temp_vap_index = instance_number - 1;
                 wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:Activate push button for vap %d\n", __func__,
                     __LINE__, temp_vap_index);

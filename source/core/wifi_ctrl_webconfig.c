@@ -816,6 +816,13 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
 static void webconfig_send_wps_change_event(int tgt_vap_index, wifi_vap_info_t *vap_info_old,
     wifi_vap_info_t *vap_info_new)
 {
+#ifdef UWM_CTRL_WPS_SUPPORT
+    /* Onboarding PBC must wait until createVAP has started the hostap BSS. */
+    if (is_vap_onboarding(get_wifi_hal_cap_prop(), tgt_vap_index)) {
+        return;
+    }
+
+#endif /* UWM_CTRL_WPS_SUPPORT */
     if (!isVapPrivate(tgt_vap_index) ||
         !IS_CHANGED(vap_info_old->u.bss_info.wpsPushButton,
             vap_info_new->u.bss_info.wpsPushButton)) {
@@ -1019,6 +1026,19 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 free(p_tgt_vap_map);
                 p_tgt_vap_map = NULL;
                 return RETURN_ERR;
+#ifdef UWM_CTRL_WPS_SUPPORT
+            }
+
+            if (is_vap_onboarding(get_wifi_hal_cap_prop(), tgt_vap_index) &&
+                p_tgt_vap_map->vap_array[0].u.bss_info.wpsPushButton) {
+                wifi_util_info_print(WIFI_WEBCONFIG,
+                    "%s:%d: starting deferred PBC after onboarding VAP %d create\n",
+                    __func__, __LINE__, tgt_vap_index);
+                push_event_to_ctrl_queue(&tgt_vap_index, sizeof(tgt_vap_index),
+                    wifi_event_type_command, wifi_event_type_command_wps, NULL);
+                p_tgt_vap_map->vap_array[0].u.bss_info.wpsPushButton = false;
+                vap_info->u.bss_info.wpsPushButton = false;
+#endif /* UWM_CTRL_WPS_SUPPORT */
             }
 
             memset(update_status, 0, sizeof(update_status));
@@ -1762,7 +1782,24 @@ int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
         ap_index = VAP_INDEX(mgr->hal_cap, index);
+#ifdef UWM_CTRL_WPS_SUPPORT
+        /*
+         * Dedicated onboarding: also apply the dedicated EasyMesh onboarding
+         * VAPs (prefix "onboarding_", AP.5 / AP.6) through the
+         * private apply pipeline. encode_private_subdoc /
+         * decode_private_subdoc and get_subdoc_name_from_vap_index
+         * already route them via the PRIVATE bit and emit them
+         * into the JSON; the apply pass would otherwise scope
+         * the loop to is_vap_private only and silently drop the
+         * onboarding entries -- which is exactly the symptom
+         * users see after a WPS press: the BSS comes up with no
+         * SSID / no security.
+         */
+        if (isVapPrivate(ap_index) ||
+            is_vap_onboarding(&mgr->hal_cap.wifi_prop, ap_index)) {
+#else
         if(isVapPrivate(ap_index)){
+#endif /* UWM_CTRL_WPS_SUPPORT */
             vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
             num_vaps++;

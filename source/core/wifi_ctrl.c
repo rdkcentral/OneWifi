@@ -3998,6 +3998,26 @@ void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc)
     if (isVapPrivate(vap_index)) {
         *subdoc = PRIVATE;
         return;
+#ifdef UWM_CTRL_WPS_SUPPORT
+    } else if (is_vap_onboarding(get_wifi_hal_cap_prop(), vap_index)) {
+        /*
+         * Dedicated onboarding: dedicated EasyMesh onboarding VAPs (vap_name prefix
+         * "onboarding_", AP.5 / AP.6) ride the PRIVATE subdoc so a
+         * rdk-wps-monitor write of Device.WiFi.AccessPoint.{5,6}.Enable
+         * + Device.WiFi.ApplyAccessPointSettings flushes through
+         * push_vap_dml_cache_to_one_wifidb -> push_subdoc_to_one_wifidb
+         * (PRIVATE arm) -> webconfig_hal_private_vap_apply ->
+         * vap_svc_private_update -> wifi_hal_createVAP with the
+         * cached SSID="onboarding" / WPA2-PSK / key="onboarding"
+         * payload. Without this routing the dispatch falls through
+         * to the default arm (MESH_STA), encode_mesh_sta_subdoc()
+         * doesn't iterate onboarding VAPs, and the WPS press is
+         * silently dropped on the apply side -- the BSS comes up
+         * blank with no SSID/security.
+         */
+        *subdoc = ONBOARDING;
+        return;
+#endif /* UWM_CTRL_WPS_SUPPORT */
     } else if (isVapHotspot(vap_index) || isVapHotspotSecure(vap_index)) {
         *subdoc = HOTSPOT;
         return;
