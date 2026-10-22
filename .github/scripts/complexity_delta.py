@@ -135,13 +135,27 @@ def first_changed(ranges, start, end):
     return None
 
 
+def moved_ccn(bases, heads, path):
+    """{name: CCN} of the functions gone from another changed or removed file's head, the
+    highest when several files lose the same name (an ambiguous move is never new complexity)."""
+    moved = {}
+    for other, funcs in bases.items():
+        if other == path:
+            continue
+        for name, info in funcs.items():
+            if name not in heads.get(other, {}):
+                moved[name] = max(moved.get(name, 0), info[0])
+    return moved
+
+
 def find_deltas(base_map, moved_map, head_map):
     """(crossed, grew): lists of (name, base ccn or None for a new function, head ccn, start,
-    end). A name missing from this file's base takes its CCN from moved_map (another changed or
+    end). The base CCN is the higher of this file's base and moved_map (another changed or
     removed file's base), so a moved function is not new."""
     crossed, grew = [], []
     for name, (head_ccn, start, end) in head_map.items():
-        before = base_map.get(name, moved_map.get(name))
+        known = [ccn for ccn in (base_map.get(name), moved_map.get(name)) if ccn is not None]
+        before = max(known) if known else None
         prev = before if before is not None else 0
         entry = (name, before, head_ccn, start, end)
         if prev < LOUD <= head_ccn:
@@ -231,9 +245,7 @@ def main(argv):
     crossed, grew, comments = [], [], []
     for path in changed:
         own = {name: info[0] for name, info in bases[path].items()}
-        moved = {name: info[0] for other, funcs in bases.items() if other != path
-                 for name, info in funcs.items() if name not in heads.get(other, {})}
-        hits, soft = find_deltas(own, moved, heads[path])
+        hits, soft = find_deltas(own, moved_ccn(bases, heads, path), heads[path])
         crossed += [(path, hit) for hit in sorted(hits)]
         grew += [(path, hit) for hit in sorted(soft)]
         ranges = changed_lines(path) if hits else []

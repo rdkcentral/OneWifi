@@ -36,10 +36,14 @@ class Deltas(unittest.TestCase):
             ({"fn": 10}, {}, 16, False, False),     # grew 6 but below the floor
             ({}, {"fn": 31}, 31, False, False),     # moved from another file: not new
             ({"fn": 31}, {}, 40, False, True),      # already above 30: grew, not crossed
+            ({"fn": 12}, {"fn": 40}, 40, False, False),  # moved over a namesake: the higher base
         ]
         for own, moved, head, crossed, grew in cases:
             hits, soft = cx.find_deltas(own, moved, {"fn": (head, 1, 9)})
             self.assertEqual((bool(hits), bool(soft)), (crossed, grew), (own, moved, head))
+        # two files lose a `helper`: the higher CCN counts, whatever the file order
+        bases = {"a.c": {"helper": (40, 1, 9)}, "b.c": {"helper": (12, 1, 9)}, "new.c": {}}
+        self.assertEqual(cx.moved_ccn(bases, {"new.c": {}}, "new.c"), {"helper": 40})
 
 
 class Main(unittest.TestCase):

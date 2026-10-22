@@ -362,6 +362,9 @@ red" — a plumbing hiccup should not falsely block a PR.
   variants of one name in a file count as the most complex one (e.g. the C function
   `mgmt_wifi_frame_recv` in `wifi_ctrl.c`, two variants at CCN 5 and 19). A smaller one crossing 30
   can be missed; a crossing that did not happen is never reported.
+- Complexity inline comment on a renamed file: the changed lines are read from the new path
+  alone, so the anchor can fall outside GitHub's rename diff; the poster then skips that one
+  comment (HTTP 422) and the summary entry still shows.
 - Workflow steps have no tests of their own: the `run:` blocks get shellcheck (workflows only;
   composite actions get yamllint's structural check), but their logic is not exercised by
   `.github/scripts/tests`.
