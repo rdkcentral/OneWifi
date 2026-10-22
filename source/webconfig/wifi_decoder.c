@@ -3224,7 +3224,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_integer(obj_radio, "DtimPeriod", param);
     radio_info->dtimPeriod = param->valuedouble;
     if (radio_info->dtimPeriod == 0) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,
+        wifi_util_error_print(WIFI_WEBCONFIG,
             "%s:%d: Invalid DTIM period 0 decoded; defaulting to 1\n", __func__, __LINE__);
         radio_info->dtimPeriod = 1;
     }
