@@ -12400,9 +12400,9 @@ WPS_SetParamBoolValue
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: WPS not enabled for %s, cancel session not supported\n",__func__, __LINE__, vapInfo->vap_name);
             return FALSE;
         }
-        instance_number -= 1;
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WPS cancel for vap %d\n",__func__, __LINE__, instance_number);
-        push_event_to_ctrl_queue(&instance_number, sizeof(instance_number), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);
+        INT vap_index = (INT)(instance_number - 1);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WPS cancel for vap %d\n",__func__, __LINE__, vap_index);
+        push_event_to_ctrl_queue(&vap_index, sizeof(vap_index), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);
         return TRUE;
     }
 #else
