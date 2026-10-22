@@ -1579,7 +1579,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         return webconfig_error_translate_to_easymesh;
                     }
 
-                    memset(em_sta_dev_info, 0, sizeof(em_sta_dev_info));
+                    memset(em_sta_dev_info, 0, sizeof(em_sta_info_t));
 
                     em_radio_info_t *radio_info = proto->get_radio_info(proto->data_model, vap->radio_index);
                     em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, rdk_vap_info->vap_index);

@@ -4791,7 +4791,7 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
     int rc = bus_error_success;
     char *component_name = "WifiCtrl";
     int num_of_radio = getNumberRadios();
-    int num_of_vaps = getTotalNumberVAPs(NULL);
+    int num_of_vaps = getTotalNumberVAPs();
     int num_elements;
     bus_data_element_t dataElements[] = {
                                 { WIFI_WEBCONFIG_DOC_DATA_SOUTH, bus_element_type_method,
