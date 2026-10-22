@@ -122,12 +122,13 @@ lanes and fails closed (a skipped lane passes, a failed detector does not); it i
 to mark required. Tool versions are pinned in the workflow.
 
 **f) Complexity nudge** — `complexity_delta.py`, changed `.c`/`.cpp` files, `bpi` only; never fails
-the build. lizard (pinned) measures each function's cyclomatic complexity (CCN) at the PR base and
-head, so only what the PR adds counts. A function the PR pushes over CCN 30 gets a ❗ inline comment
-on its first changed line and a summary entry; one that grew by 5 or more and ends at 20 or above is
-listed in the summary only. A function moved out of another changed or removed file keeps its old
-CCN. If lizard cannot analyze a file, nothing is compared and the summary says so. Replayed over 85
-develop commits (2026-07..10): 1 crossed 30, 5 grew.
+the build. lizard (pinned, `-Ecpre`: `#else` branches are skipped) measures each function's
+cyclomatic complexity (CCN) at the PR base and head, so only what the PR adds counts. A function
+the PR pushes over CCN 30 gets a ❗ inline comment on its first changed line and a summary entry;
+one that grew by 5 or more and ends at 20 or above is listed in the summary only. A function moved
+out of another changed or removed file keeps its old CCN. If lizard cannot analyze a file, nothing
+is compared and the summary says so. Replayed over the 85 develop commits 2026-08..10 that changed
+a .c: 2 crossed 30 (3 functions), 7 more grew.
 
 **g) Source-coverage nudge** — `source_coverage.py`, files a PR adds, `bpi` only; never fails the
 build. A `.c`/`.cpp` that a `Makefile.am` builds but neither `build/linux/{bpi,rpi}/makefile`
@@ -358,10 +359,11 @@ red" — a plumbing hiccup should not falsely block a PR.
   patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
   builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
   `()`-declared functions called with an argument; `-std=gnu17` removes them.
-- Complexity nudge, a deliberate limit: functions are keyed by name, so C++ overloads and `#ifdef`
-  variants of one name in a file count as the most complex one (e.g. the C function
-  `mgmt_wifi_frame_recv` in `wifi_ctrl.c`, two variants at CCN 5 and 19). A smaller one crossing 30
-  can be missed; a crossing that did not happen is never reported.
+- Complexity nudge, deliberate limits: lizard skips `#else` branches (`-Ecpre`), so code only there
+  is not measured (2026-10: 104 functions, 2 at CCN 20 or above, both in `wifi_db.c`; without the
+  flag, `#ifdef`/`#else` pairs that each open a brace hid 344 functions in 8 core files). Functions
+  are keyed by name, so C++ overloads count as the most complex one: a smaller one crossing 30 can
+  be missed, a crossing that did not happen is never reported.
 - Complexity inline comment on a renamed file: the changed lines are read from the new path
   alone, so the anchor can fall outside GitHub's rename diff; the poster then skips that one
   comment (HTTP 422) and the summary entry still shows.

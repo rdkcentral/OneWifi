@@ -28,6 +28,10 @@ head, so only complexity the PR adds is reported:
 A function the PR moved out of another changed or removed file (gone from that file's head)
 keeps its base CCN there, so moving code is not "new complexity".
 
+lizard runs with -Ecpre, which skips #else branches: without it, an #ifdef/#else pair that
+opens a brace in each branch derails lizard and hides the rest of the file (2026-10: 344
+functions in 8 core files, e.g. half of wifi_ctrl.c). Code only in an #else branch is not measured.
+
 A file lizard cannot analyze (base or head) stops the comparison: an empty side would make
 existing functions look new. Nothing is reported, the summary names the file(s), status 'partial'.
 
@@ -96,7 +100,7 @@ def analyze(path, text=None):
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 fh.write(text)
             target = tmp
-        proc = subprocess.run([LIZARD, "--csv", target], capture_output=True, text=True,
+        proc = subprocess.run([LIZARD, "-Ecpre", "--csv", target], capture_output=True, text=True,
                               errors="replace", timeout=120)
         return parse_lizard_csv(proc.stdout) if proc.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):
