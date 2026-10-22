@@ -145,6 +145,12 @@ typedef struct {
     bool                   is_started;
     int                    ranked_count;
     bool                   is_vap_started[MAX_NUM_RADIOS];
+#ifdef UWM_EXT_WPS_SUPPORT
+    /* VAP that is running WPS onboarding; its supplicant is the one to reinitialize
+     * once credentials arrive. */
+    unsigned int           wps_onboarding_vap_index;
+    bool                   wps_reonboard_active;
+#endif
 }__attribute__((packed)) vap_svc_ext_t;
 
 typedef struct vap_svc {
@@ -197,6 +203,8 @@ extern int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_e
 extern bool vap_svc_is_mesh_ext(unsigned int vap_index);
 #ifdef UWM_EXT_WPS_SUPPORT
 extern int vap_svc_mesh_ext_wps_credentials_received(vap_svc_t *svc, unsigned int vap_index);
+extern int vap_svc_mesh_ext_wps_reonboard_started(vap_svc_t *svc, unsigned int vap_index);
+extern int vap_svc_mesh_ext_wps_reonboard_aborted(vap_svc_t *svc, unsigned int vap_index);
 #endif
 
 vap_svc_t *get_svc_by_type(wifi_ctrl_t *ctrl, vap_svc_type_t type);

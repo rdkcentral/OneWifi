@@ -1339,29 +1339,10 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
         case connection_state_set_wps_sta_mode_completed:
             // Deinit and reinit wpa_supplicant, then set state to disconnected_scan_list_none
             {
-                unsigned int vap_index = 0;
-                unsigned char num_of_radios = getNumberRadios();
-                unsigned char radio_index = 0;
-                wifi_vap_info_map_t *vap_map = NULL;
-
-                // Find the STA VAP index
-                for (radio_index = 0; radio_index < num_of_radios; radio_index++) {
-                    vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
-                    if (vap_map == NULL) {
-                        continue;
-                    }
-                    unsigned int j;
-                    for (j = 0; j < vap_map->num_vaps; j++) {
-                        if (vap_svc_is_mesh_ext(vap_map->vap_array[j].vap_index) == true &&
-                            vap_map->vap_array[j].vap_mode == wifi_vap_mode_sta) {
-                            vap_index = vap_map->vap_array[j].vap_index;
-                            break;
-                        }
-                    }
-                    if (vap_index != 0) {
-                        break;
-                    }
-                }
+                /* Reinitialize the supplicant of the VAP that ran WPS. Searching the radios for
+                 * the first mesh STA would pick the 2.4GHz VAP, which never took part in the
+                 * onboarding and holds no credentials. */
+                unsigned int vap_index = ext->wps_onboarding_vap_index;
 
                 if (vap_index != 0) {
                     wifi_util_info_print(WIFI_CTRL, "%s:%d: Deinitializing and reinitializing wpa_supplicant for vap_index %d\n",
@@ -1372,7 +1353,7 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
                         wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to reinitialize wpa_supplicant\n", __func__, __LINE__);
                     }
                 } else {
-                    wifi_util_error_print(WIFI_CTRL, "%s:%d: Could not find STA VAP index\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d: No WPS onboarding STA VAP recorded\n", __func__, __LINE__);
                 }
 
                 ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
@@ -2658,6 +2639,53 @@ int process_ext_channel_change(vap_svc_t *svc, void *arg)
 }
 
 #ifdef UWM_EXT_WPS_SUPPORT
+int vap_svc_mesh_ext_wps_reonboard_started(vap_svc_t *svc, unsigned int vap_index)
+{
+    vap_svc_ext_t *ext = &svc->u.ext;
+    wifi_vap_info_t *vap = get_wifidb_vap_parameters(vap_index);
+
+    if (vap == NULL || vap->vap_mode != wifi_vap_mode_sta ||
+        vap_svc_is_mesh_ext(vap_index) == false) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d: Invalid mesh STA VAP index %u for WPS re-onboarding\n",
+            __func__, __LINE__, vap_index);
+        return -1;
+    }
+
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: Restarting WPS onboarding on VAP %u\n", __func__, __LINE__, vap_index);
+
+    /* The HAL has already dropped the link and cleared the stored credentials, so enter the
+     * same state the service uses at startup when no backhaul credentials are present and let
+     * the existing onboarding flow take over. The VAP configuration is deliberately left
+     * untouched: it is what the connection algorithm uses to pick a backhaul once WPS
+     * delivers the credentials. */
+    ext->wps_onboarding_vap_index = vap_index;
+    ext->wps_reonboard_active = true;
+    ext_set_conn_state(ext, connection_state_set_wps_sta_mode_started, __func__, __LINE__);
+    schedule_connect_sm(svc);
+
+    return 0;
+}
+
+int vap_svc_mesh_ext_wps_reonboard_aborted(vap_svc_t *svc, unsigned int vap_index)
+{
+    vap_svc_ext_t *ext = &svc->u.ext;
+
+    if (!ext->wps_reonboard_active || ext->wps_onboarding_vap_index != vap_index) {
+        return 0;
+    }
+
+    wifi_util_info_print(WIFI_CTRL,
+        "%s:%d: WPS re-onboarding aborted on VAP %u; restoring previous backhaul\n",
+        __func__, __LINE__, vap_index);
+
+    ext->wps_reonboard_active = false;
+    ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+    schedule_connect_sm(svc);
+    return 0;
+}
+
 /**
  * @brief Handle WPS credentials received event for station interface
  * @param svc VAP service pointer
@@ -2680,6 +2708,8 @@ int vap_svc_mesh_ext_wps_credentials_received(vap_svc_t *svc, unsigned int vap_i
             "(current state: %s)\n", __func__, __LINE__,
             ext_conn_state_to_str(ext->conn_state));
 
+        ext->wps_onboarding_vap_index = vap_index;
+        ext->wps_reonboard_active = false;
         ext_set_conn_state(ext, connection_state_set_wps_sta_mode_completed, __func__, __LINE__);
 
         /* Schedule connect algorithm to process the state change */
