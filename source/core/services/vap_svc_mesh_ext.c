@@ -2590,6 +2590,12 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         }
     } else if((found_candidate == false) && (ext->conn_state != connection_state_connected)
 #ifdef UWM_EXT_WPS_SUPPORT
+              /* A WPS session owns the station while it is being set up or running. The
+               * disconnect of the previous backhaul link that re-onboarding triggers must
+               * not drop the state machine back into the regular connection algorithm,
+               * which would start competing with the WPS supplicant for the interface. */
+              && (ext->conn_state != connection_state_set_wps_sta_mode_started)
+              && (ext->conn_state != connection_state_set_wps_sta_mode)
               && (ext->conn_state != connection_state_set_wps_sta_mode_completed)
 #endif
 	      ) {
