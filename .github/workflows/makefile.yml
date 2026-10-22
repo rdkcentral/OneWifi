@@ -279,12 +279,15 @@ jobs:
       if: always() && matrix.platform.clang_tidy
       working-directory: easymesh_project/OneWifi
       run: |
-        # Two-tier clang-tidy over PR-changed .c/.cpp files (see .clang-tidy):
+        # clang-tidy over PR-changed .c/.cpp files (see .clang-tidy and EXTRA_CHECKS below):
         #   * WarningsAsErrors checks    -> `error:`   -> FATAL (this step fails the job)
-        #   * rest of enabled bugprone-* -> `warning:` -> advisory only
-        # clang-diagnostic-* (most false positives and most noisy) is filtered out so it can NEVER
-        # gate. The gate is changed-LINES-scoped: a PR can only fail on a .c/.cpp LINE it touched
-        # (the per-file `lines=` filter below), so pre-existing findings on untouched lines never red it.
+        #   * rest of enabled bugprone-* -> `warning:` -> reported (summary + inline)
+        #   * unreachable code           -> `warning:` -> summary + annotations only, never inline
+        #     (reachability depends on the build configuration's #ifdefs)
+        # clang-diagnostic-* (most false positives and most noisy) is filtered out, except the
+        # armed unreachable-code group; none of it can gate (it prints `warning:`). The gate is
+        # changed-LINES-scoped: a PR can only fail on a .c/.cpp LINE it touched (the per-file
+        # ranges filter below), so pre-existing findings on untouched lines never red it.
         mkdir -p ci-out
         if [ ! -f compile_commands.json ]; then
           echo "#### 🔎 clang-tidy: no compile DB" >> "$GITHUB_STEP_SUMMARY"
@@ -334,10 +337,16 @@ jobs:
         # scope because the awk filter below runs on output, not input.
         # See clang-tidy-hal-extra-mechanism memory for the proof + HAL usage.
         EXTRA_WAE=''       # comma-separated bugprone checks to gate (empty = baseline only)
-        EXTRA_CHECKS=''    # checks to ENABLE that .clang-tidy doesn't (e.g. clang-analyzer-*)
+        # Checks to ENABLE that .clang-tidy doesn't. The unreachable-code group is the dead-code
+        # proxy: clang reports nothing for it unless the warning is on, hence the extra args
+        # (-aggressive adds dead returns and loops). No compile DB entry carries a bare -Werror
+        # today; -Wno-error= keeps a future one from turning these into gated `error:` lines.
+        EXTRA_CHECKS='clang-diagnostic-unreachable-code*'
         extra=()
         [ -n "$EXTRA_WAE" ]    && extra+=(--warnings-as-errors="$EXTRA_WAE")
         [ -n "$EXTRA_CHECKS" ] && extra+=(--checks="$EXTRA_CHECKS")
+        extra+=('--extra-arg=-Wunreachable-code' '--extra-arg=-Wunreachable-code-aggressive'
+                '--extra-arg=-Wno-error=unreachable-code-aggressive')
         : > tidy.log
         # Changed files clang-tidy could not fully analyze: a crash or missing binary
         # (exit >= 2), or a compile error in a file the build compiled. A file outside
@@ -395,9 +404,13 @@ jobs:
           err="$RUNNER_TEMP/tidy-err.txt"
           rc=0
           clang-tidy-18 -p . "${extra[@]}" --quiet "$f" > "$out" 2> "$err" || rc=$?
+          # Unreachable-code findings only from a file that parsed with its own flags: a
+          # misparse (borrowed flags outside the DB, or a compile error) reports false ones.
+          dead=$indb
           if [ "$rc" -ge 2 ]; then
             echo "$f: clang-tidy exit $rc" >> "$tfail_list"
           elif grep -q 'clang-diagnostic-error' "$out"; then
+            dead=false
             dest="$tfail_list"; [ "$indb" = true ] || dest="$bfail_list"
             grep -m1 'clang-diagnostic-error' "$out" \
               | sed -E 's#^[^ ]*/OneWifi/+##; s# \[clang-diagnostic-error\]$##' >> "$dest"
@@ -411,15 +424,20 @@ jobs:
           # clang-tidy runs one file at a time -> every finding is this file's, so keep only the
           # ones whose LINE the PR changed. Filter on the line number alone: matching the
           # sed-normalized display path against git-diff paths is fragile (silently drops all).
-          grep -E ': (warning|error):' "$out" | grep -v clang-diagnostic \
+          grep -E ': (warning|error):' "$out" \
+            | awk -v dead="$dead" '!/clang-diagnostic/ || (dead == "true" && /\[clang-diagnostic-unreachable-code/)' \
             | awk -F: 'NR==FNR{lo[NR]=$1;hi[NR]=$2;r=NR;next}
                        {l=$2+0; a=1; b=r                  # ranges are sorted: binary search
                         while(a<=b){m=int((a+b)/2); if(l<lo[m])b=m-1; else if(l>hi[m])a=m+1; else {print; next}}}' \
                   "$ranges" - >> tidy.log || true
         done
-        # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`.
-        gated=$(grep -E ': error:'   tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
-        advis=$(grep -E ': warning:' tidy.log | sed -E 's#[^ ]*/OneWifi/+##; s#//#/#g' | sort -u || true)
+        # WarningsAsErrors-promoted checks print as `error:`; everything else as `warning:`,
+        # with the unreachable-code findings in their own bucket (summary only, never inline).
+        norm='s#[^ ]*/OneWifi/+##; s#//#/#g'
+        unreach='\[clang-diagnostic-unreachable-code'
+        gated=$(grep -E ': error:' tidy.log | sed -E "$norm" | sort -u || true)
+        advis=$(grep -E ': warning:' tidy.log | grep -vE "$unreach" | sed -E "$norm" | sort -u || true)
+        deadc=$(grep -E ': warning:' tidy.log | grep -E "$unreach" | sed -E "$norm" | sort -u || true)
         tfail=$(sort -u "$tfail_list")
         nbfail=$(wc -l < "$bfail_list")   # best-effort files that did not compile
         if [ -n "$tfail" ]; then
@@ -433,10 +451,15 @@ jobs:
           head -10 <<< "$advis" | sed 's/%/%25/g; s/\r/%0D/g' \
             | while IFS= read -r l; do echo "::warning::$l"; done
         fi
+        # Unreachable code is not posted inline, so annotations are its per-line surface.
+        if [ -n "$deadc" ]; then
+          head -10 <<< "$deadc" | sed 's/%/%25/g; s/\r/%0D/g' \
+            | while IFS= read -r l; do echo "::warning::$l"; done
+        fi
         {
           if   [ -z "$CHANGED$tfail" ]; then echo "#### 🔎 clang-tidy: no changed .c/.cpp to scan"
-          elif [ -z "$gated$advis$tfail" ] && [ "$nbfail" -eq 0 ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
-          elif [ -z "$gated$advis$tfail" ]; then
+          elif [ -z "$gated$advis$deadc$tfail" ] && [ "$nbfail" -eq 0 ]; then echo "#### 🔎 clang-tidy: clean on changed lines"
+          elif [ -z "$gated$advis$deadc$tfail" ]; then
             # Nothing found, but not every file compiled: not "clean".
             echo "#### 🔎 clang-tidy: no findings on changed lines, best-effort only ($nbfail file(s) did not compile)"
           else
@@ -449,6 +472,11 @@ jobs:
               echo "#### ❗ clang-tidy warnings — $(printf '%s\n' "$advis" | wc -l) on changed lines"
               echo '```'; head -100 <<< "$advis"; echo '```'
             fi
+            if [ -n "$deadc" ]; then
+              echo "#### ❗ clang-tidy unreachable code — $(printf '%s\n' "$deadc" | wc -l) on changed lines"
+              echo "_Not posted inline: whether code is reachable can depend on the build configuration._"
+              echo '```'; head -100 <<< "$deadc"; echo '```'
+            fi
             if [ -n "$tfail" ]; then
               echo "#### ⚠️ clang-tidy: coverage incomplete"
               echo '```'; head -100 <<< "$tfail"; echo '```'
@@ -456,7 +484,7 @@ jobs:
           fi
           if [ "$besteffort" -gt 0 ]; then
             # The count goes here only when the heading above does not already carry it.
-            note=; [ "$nbfail" -gt 0 ] && [ -n "$gated$advis$tfail" ] && note=" ($nbfail did not compile)"
+            note=; [ "$nbfail" -gt 0 ] && [ -n "$gated$advis$deadc$tfail" ] && note=" ($nbfail did not compile)"
             echo; echo "ℹ️ $besteffort changed file(s) are only covered by a best-effort clang-tidy run$note."
           fi
         } | tee ci-out/tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
@@ -477,7 +505,8 @@ jobs:
       # PR's changed LINES only, without promoting them tree-wide (the tree still carries a
       # backlog: -Wvla 18, -Wreturn-type 11, dead-code family). The script recompiles each changed
       # .c/.cpp from compile_commands.json with the candidate warnings enabled (non-fatal) and keeps
-      # only findings on lines the PR touched -> a PR can only fail on a class that fires on a changed line.
+      # only findings on lines the PR touched that the file's base version did not already have
+      # -> a PR can only fail on a finding it introduced on a changed line.
       # The silent baseline (and the build-summary that relies on it) is unaffected. bpi leg only
       # (it owns the compile DB). Runs AFTER clang-tidy so both gate independently.
       if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
@@ -491,19 +520,42 @@ jobs:
         #      with NO "mechanism error" summary line (the try/except fail-open);
         #   2. >= 1 advisory finding (the -Wunused-* classes fire on ordinary
         #      refactors) hand-checked against the diff -> line attribution correct;
-        #   3. zero false positives on the GATE classes.
+        #   3. zero false positives on the GATE classes;
+        #   4. the hidden backlog stays out of the way: makefile.common's -Wno-<class>
+        #      silences several GATE classes (bpi DB, 2026-10: 431 implicit-function-
+        #      declaration, 14 incompatible-pointer-types, 9 return-type, 1 int-conversion).
+        #      The script drops a finding the file had before the PR, so a PR that edits
+        #      such a line for an unrelated reason does not gate; confirm on real PRs.
         # Gate on that evidence, not the calendar. Silence of the GATE classes alone
         # proves nothing (they're rarely introduced) -- the advisory classes are what
         # exercise the recompile + line-scoping machinery.
         ENFORCE: 'false'
+        # Optimization level for the recompile ONLY (not the build product): production
+        # bpi/rpi are -Os but the compile DB is -O0, so middle-end warnings are dormant.
+        # -Os wakes them on the changed files at production's level. The script strips the
+        # DB's own -Werror=<class> promotions (incl. -Werror=array-bounds/-maybe-uninitialized
+        # that -Os trips) so no class can abort the analysis; a real error still exits nonzero.
+        OPT: '-Os'
         # GATE = fail the job (when ENFORCE=true) if introduced on a changed line.
-        # ADVISORY = report only. -Wvla (stack-overflow) + -Wreturn-type (UB) are
-        # high-impact + reliable -> first to gate. The dead-code family is
-        # diff-scope-reliable but kept ADVISORY (promote a class into GATE_WARNINGS
-        # once quiet on real PRs). (-Wunreachable-code-* are clang-only; the "moved
-        # code left set-but-unused vars" case is -Wunused-but-set-variable.)
-        GATE_WARNINGS: "-Wvla -Wreturn-type"
-        ADVISORY_WARNINGS: "-Wunused-but-set-variable -Wunused-value -Wunused-label"
+        # ADVISORY = report only. Both are posted inline (❌ / ❗) and in the ci-summary.
+        # GATE picks: front-end, ~0-FP, crash/RCE/UB classes.
+        #   -Wvla (stack overflow), -Wreturn-type (UB). -Wint-conversion,
+        #   -Wimplicit-function-declaration, -Wimplicit-int, -Wincompatible-pointer-types:
+        #   wrong call ABI / int-pointer confusion, and errors by default from gcc-14.
+        #   makefile.common silences three of them (a -Wno-<class> also turns the gcc-14
+        #   error off), so the tree keeps building but hides a backlog (see 4. above);
+        #   the gate keeps new code from adding to it. -Wsizeof-pointer-memaccess
+        #   (truncated mem*/str* copy), -Wformat-security (uncontrolled format -> leak /
+        #   %n write; armed by the DB's -Wall). The four C-only classes are auto-dropped on
+        #   C++ TUs by the script. gcc-14's other two default errors have no gcc-13 flag:
+        #   -Wreturn-mismatch is covered by -Wreturn-type here (it is what actually breaks
+        #   this build on gcc-14: 5 sites), -Wdeclaration-missing-parameter-type is new.
+        GATE_WARNINGS: "-Wvla -Wreturn-type -Wint-conversion -Wimplicit-function-declaration -Wimplicit-int -Wincompatible-pointer-types -Wsizeof-pointer-memaccess -Wformat-security"
+        # ADVISORY: measured quiet over the compile DB at -Os (each 0-4 findings tree-wide,
+        # so they only fire on something genuinely new). -Wpointer-sign (33) and
+        # -Wdiscarded-qualifiers (14) were DROPPED as too noisy. Middle-end classes need
+        # the -Os above to fire.
+        ADVISORY_WARNINGS: "-Wunused-function -Wunused-but-set-variable -Wunused-variable -Wunused-value -Wunused-label -Waddress -Wstringop-overflow -Wstringop-overread -Warray-bounds -Wdangling-pointer -Wuse-after-free"
         # Inline-review candidates (Commit 5) for the stage-2 'inline' job. Lands in
         # ci-out/ (uploaded as ci-summary-bpi). Absent/unset -> the script writes none.
         INLINE_JSON: "ci-out/inline-gcc.json"
