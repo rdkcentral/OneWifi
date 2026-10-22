@@ -295,8 +295,8 @@ jobs:
           set -uo pipefail
           # The sticky action cuts the whole body from the tail at 60000 bytes, which after a
           # noisy build would drop the diff-scoped section. Each section is capped here instead:
-          # the two diff-scoped summaries at 22000 bytes each, each nudge at 6000, the build section to
-          # what is left.
+          # the two diff-scoped summaries at 22000 bytes each, each nudge at 6000 or its share of what
+          # the diff section leaves above a 4000-byte build minimum, the build section to what is left.
           # cut_md FILE BYTES WHAT [KEEP_RE]: drop a character the cut split (iconv -c then
           # exits 1, expected), close an open code fence, say where the full output is, and
           # re-append the lines matching KEEP_RE that fell after the cut (at most 12 of up to
@@ -398,20 +398,31 @@ jobs:
               echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
             fi
           } > diff-section.md
+          # The diff-scoped section reaches ~48100 bytes (two capped summaries, their cut notices and
+          # kept status lines), so two 6000-byte nudges would not fit the 57000 budget: the nudges
+          # present split what is left above the build minimum (200 bytes each for the cut notice
+          # and separators), so each keeps its heading.
+          build_min=4000
+          nudges=0
+          for f in ci-summary-bpi/source-coverage.md ci-summary-bpi/complexity.md; do
+            if [ -s "$f" ]; then nudges=$((nudges + 1)); fi
+          done
+          cap=$(( (57000 - build_min - $(wc -c < diff-section.md)) / (nudges > 0 ? nudges : 1) - 200 ))
+          if [ "$cap" -gt 6000 ]; then cap=6000; elif [ "$cap" -lt 0 ]; then cap=0; fi
           {
-            # --- Nudges (source coverage, complexity): each file exists only when something fired. Capped
-            # at 6000 bytes each, so the build budget below stays positive. ---
+            # --- Nudges (source coverage, complexity): each file exists only when something fired
+            # (complexity.md also when lizard could not analyze a file). ---
             for part in "source-coverage:source coverage" "complexity:complexity"; do
               f="ci-summary-bpi/${part%%:*}.md"
               [ -s "$f" ] || continue
-              if [ "$(wc -c < "$f")" -gt 6000 ]; then cut_md "$f" 6000 "${part#*:} output"; fi
+              if [ "$(wc -c < "$f")" -gt "$cap" ]; then cut_md "$f" "$cap" "${part#*:} output"; fi
               echo "---"
               echo
               cat "$f"; echo
             done
           } > nudge-section.md
-          # The diff-scoped and nudge sections stay under ~52000 bytes, so this budget stays positive.
           budget=$(( 57000 - $(wc -c < diff-section.md) - $(wc -c < nudge-section.md) ))
+          if [ "$budget" -lt "$build_min" ]; then budget=$build_min; fi
           # Keep the per-leg headings and counts after a cut, so no leg's outcome is lost.
           if [ "$(wc -c < build-section.md)" -gt "$budget" ]; then
             cut_md build-section.md "$budget" "build output" '^####? '

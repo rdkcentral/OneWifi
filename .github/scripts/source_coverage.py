@@ -26,15 +26,17 @@ autotools builds but no CI leg compiles: CI stays green while never compiling th
 
 This flags exactly that for the files a PR ADDS: a `.c/.cpp/.cc` in some `*_SOURCES` but in
 neither leg's compile list, in a directory a leg already compiles from (a new file in a directory
-no leg compiles is a platform area, left alone). It is textual: the OneWifi sources are listed
-explicitly in both leg makefiles (no wildcard covers `source/`), so no build is needed. It cannot
-tell an intentional platform exclusion (XB-only, feature-gated) from a forgotten entry, so it
-only reports: a `::warning` per file and a summary section in OUT.
+no leg compiles is a platform area, left alone). It is textual, so no build is needed: a leg
+compiles its explicit `$(ONE_WIFI_HOME)/source|lib/...` entries plus the files its `$(wildcard ...)`
+patterns match in the checkout, minus `$(filter-out ...)` exclusions; `if`/`ifeq` blocks are
+ignored on both sides. It cannot tell an intentional platform exclusion (XB-only, feature-gated)
+from a forgotten entry, so it only reports: a `::warning` per file and a summary section in OUT.
 
 Usage:  source_coverage.py <added-files.txt>   (the PR's added paths, one per line)
 Env:    REPO_ROOT ('.'), OUT ('ci-out/source-coverage.md', written only on a finding).
 """
 
+import glob
 import os
 import re
 import subprocess
@@ -43,13 +45,15 @@ import sys
 TOP_SRCDIR = "$(top_srcdir)/"
 SRC_EXT = (".c", ".cpp", ".cc")
 
-# OneWifi's own sources in the leg makefiles are ALWAYS $(ONE_WIFI_HOME)/source|lib/…
-# (verified: 64 such .c per leg, no wildcard under source/). Requiring that exact
-# prefix ignores sibling-repo trees ($(WIFI_CCSP_COMMON_LIB)/source/…, hostap, HAL)
+# OneWifi's own sources in the leg makefiles are ALWAYS $(ONE_WIFI_HOME)/source|lib/…,
+# listed one by one or as a $(wildcard …) pattern (e.g. source/apps/*.c). Requiring that
+# exact prefix ignores sibling-repo trees ($(WIFI_CCSP_COMMON_LIB)/source/…, hostap, HAL)
 # whose paths would otherwise collide on a bare `source/…` suffix.
 LEG_SRC_RE = re.compile(
     r"\$\(ONE_WIFI_HOME\)/((?:source|lib)/[A-Za-z0-9_./-]+\.(?:c|cpp|cc))\b"
 )
+LEG_WILDCARD_RE = re.compile(r"\$\(wildcard\s+\$\(ONE_WIFI_HOME\)/((?:source|lib)/[A-Za-z0-9_./*-]+)\)")
+FILTER_OUT_RE = re.compile(r"\$\(filter-out\s+([^,]*),")
 SOURCES_RE = re.compile(r"^\s*[A-Za-z0-9_]+_SOURCES\s*\+?=(.*)$")
 
 
@@ -66,18 +70,18 @@ def _join_continuations(text):
 def normalize_am_token(tok, am_dir):
     """A Makefile.am _SOURCES token → repo-relative source path, or None.
 
-    Handles `$(top_srcdir)/source/db/wifi_db.c` (→ source/db/wifi_db.c) and a bare
-    `wifi_mgr.c` (→ <am_dir>/wifi_mgr.c). Tokens with any other unresolved make
-    variable or automake substitution are skipped (can't place them textually)."""
+    Handles `$(top_srcdir)/source/db/wifi_db.c` (→ source/db/wifi_db.c); any other
+    token is relative to the Makefile.am (`wifi_mgr.c`, `./sub/x.c` → <am_dir>/…).
+    Tokens with any other unresolved make variable or automake substitution are
+    skipped (can't place them textually)."""
+    base = am_dir
     if tok.startswith(TOP_SRCDIR):
-        tok = tok[len(TOP_SRCDIR):]
+        base, tok = "", tok[len(TOP_SRCDIR):]
     if "$(" in tok or "@" in tok:
         return None
     if not tok.endswith(SRC_EXT):
         return None
-    if "/" in tok:
-        return os.path.normpath(tok)
-    return os.path.normpath(os.path.join(am_dir, tok))
+    return os.path.normpath(os.path.join(base, tok))
 
 
 def parse_makefile_am_sources(root, am_paths):
@@ -101,14 +105,22 @@ def parse_makefile_am_sources(root, am_paths):
 
 def parse_leg_compiled(root, mk_paths):
     """Set of repo-relative OneWifi .c/.cpp/.cc paths compiled by the given
-    build/linux leg makefiles (only $(ONE_WIFI_HOME)/source|lib/… entries)."""
+    build/linux leg makefiles (only $(ONE_WIFI_HOME)/source|lib/… entries): the
+    explicit ones, plus what each $(wildcard …) matches under root minus the
+    names a $(filter-out …) drops (those are excluded, not compiled entries)."""
     compiled = set()
     for mk in mk_paths:
         full = os.path.join(root, mk)
         if not os.path.isfile(full):
             continue
-        for match in LEG_SRC_RE.finditer(_read(full)):
-            compiled.add(os.path.normpath(match.group(1)))
+        text = _read(full)
+        excluded = {os.path.normpath(hit.group(1))
+                    for drop in FILTER_OUT_RE.finditer(text) for hit in LEG_SRC_RE.finditer(drop.group(1))}
+        text = FILTER_OUT_RE.sub("$(filter-out ,", text)
+        compiled.update(os.path.normpath(hit.group(1)) for hit in LEG_SRC_RE.finditer(text))
+        for pattern in LEG_WILDCARD_RE.finditer(text):
+            matched = glob.glob(os.path.join(glob.escape(root), pattern.group(1)))
+            compiled.update({os.path.relpath(hit, root) for hit in matched} - excluded)
     return compiled
 
 

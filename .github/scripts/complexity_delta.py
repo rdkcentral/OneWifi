@@ -28,9 +28,13 @@ head, so only complexity the PR adds is reported:
 A function the PR moved out of another changed or removed file (gone from that file's head)
 keeps its base CCN there, so moving code is not "new complexity".
 
+A file lizard cannot analyze (base or head) stops the comparison: an empty side would make
+existing functions look new. Nothing is reported, the summary names the file(s), status 'partial'.
+
 Env: REPO_ROOT ('.'), BASE (diff base ref), OUT ('ci-out/complexity.md', written only when
-     something fires), INLINE_JSON ('ci-out/inline-complexity.json', always written: the
-     review poster deletes stale comments only when every candidate file is present and 'ok'),
+     something fires or a file could not be analyzed), INLINE_JSON
+     ('ci-out/inline-complexity.json', always written: the review poster deletes stale
+     comments only when every candidate file is present and 'ok'),
      LOUD (30), SOFT_DELTA (5), SOFT_FLOOR (20), LIZARD ('lizard', the CLI it shells out to).
 Usage: complexity_delta.py <changed-files.txt> [<removed-files.txt>]   (repo-relative paths;
        removed = files the PR deleted or renamed away, read on the base side only)
@@ -180,6 +184,16 @@ def write_inline(status, comments):
         print(f"complexity: could not write {INLINE_JSON}: {exc}")
 
 
+def write_md(text):
+    """OUT (the summary section); never raises."""
+    try:
+        os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
+        with open(OUT, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    except OSError as exc:
+        print(f"complexity: could not write {OUT}: {exc}")
+
+
 def read_list(path):
     try:
         with open(path, encoding="utf-8") as fh:
@@ -195,17 +209,25 @@ def main(argv):
         write_inline("skipped", [])
         print(f"complexity: skipped ({'no BASE' if not BASE else LIZARD + ' not found'}).")
         return 0
-    failed = False  # a lizard failure leaves the set incomplete: the poster then deletes nothing
+    failed = []  # files lizard could not analyze: an empty side would make old functions look new
     bases, heads = {}, {}
     for path in changed + removed:
-        text = git_text("show", f"{BASE}:{path}")
+        text = git_text("show", f"{BASE}:{path}")  # None: the file is new in the PR
         found = analyze(path, text) if text is not None else {}
-        failed |= found is None
+        if found is None:
+            failed.append(path)
         bases[path] = found or {}
     for path in changed:
         found = analyze(os.path.join(REPO_ROOT, path))
-        failed |= found is None
+        if found is None:
+            failed.append(path)
         heads[path] = found or {}
+    if failed:
+        names = ", ".join(f"`{path}`" for path in sorted(set(failed)))
+        write_inline("partial", [])
+        write_md(f"### 🧮 Complexity\n\n_Not compared for this commit: lizard could not analyze {names}._\n")
+        print(f"complexity: not compared, lizard failed on {names}.")
+        return 0
     crossed, grew, comments = [], [], []
     for path in changed:
         own = {name: info[0] for name, info in bases[path].items()}
@@ -225,15 +247,10 @@ def main(argv):
                                      "is hard to test and review; consider splitting it."})
             print(f"::warning file={path},line={line}::complexity: {name} crossed {LOUD} "
                   f"({describe(before, after)})")
-    write_inline("partial" if failed else "ok", comments)
+    write_inline("ok", comments)
     md = render_md(crossed, grew)
     if md:
-        try:
-            os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
-            with open(OUT, "w", encoding="utf-8") as fh:
-                fh.write(md)
-        except OSError as exc:
-            print(f"complexity: could not write {OUT}: {exc}")
+        write_md(md)
     print(f"complexity: {len(crossed)} crossed {LOUD}, {len(grew)} grew by >= {SOFT_DELTA} "
           f"(ending >= {SOFT_FLOOR}) in {len(changed)} changed file(s).")
     return 0

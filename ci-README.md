@@ -126,7 +126,8 @@ the build. lizard (pinned) measures each function's cyclomatic complexity (CCN) 
 head, so only what the PR adds counts. A function the PR pushes over CCN 30 gets a ❗ inline comment
 on its first changed line and a summary entry; one that grew by 5 or more and ends at 20 or above is
 listed in the summary only. A function moved out of another changed or removed file keeps its old
-CCN. Replayed over 85 develop commits (2026-07..10): 1 crossed 30, 5 grew.
+CCN. If lizard cannot analyze a file, nothing is compared and the summary says so. Replayed over 85
+develop commits (2026-07..10): 1 crossed 30, 5 grew.
 
 **g) Source-coverage nudge** — `source_coverage.py`, files a PR adds, `bpi` only; never fails the
 build. A `.c`/`.cpp` that a `Makefile.am` builds but neither `build/linux/{bpi,rpi}/makefile`
@@ -357,6 +358,10 @@ red" — a plumbing hiccup should not falsely block a PR.
   patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
   builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
   `()`-declared functions called with an argument; `-std=gnu17` removes them.
+- Complexity nudge, a deliberate limit: functions are keyed by name, so C++ overloads and `#ifdef`
+  variants of one name in a file count as the most complex one (e.g. the C function
+  `mgmt_wifi_frame_recv` in `wifi_ctrl.c`, two variants at CCN 5 and 19). A smaller one crossing 30
+  can be missed; a crossing that did not happen is never reported.
 - Workflow steps have no tests of their own: the `run:` blocks get shellcheck (workflows only;
   composite actions get yamllint's structural check), but their logic is not exercised by
   `.github/scripts/tests`.

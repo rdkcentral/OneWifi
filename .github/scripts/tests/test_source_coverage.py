@@ -18,6 +18,7 @@ class Tokens(unittest.TestCase):
         cases = [
             ("$(top_srcdir)/source/db/wifi_db.c", "source/core", "source/db/wifi_db.c"),
             ("wifi_mgr.c", "source/core", "source/core/wifi_mgr.c"),
+            ("./sub/new.c", "source/core", "source/core/sub/new.c"),  # relative to the Makefile.am
             ("$(SRC_DIR)/x.c", "source/core", None),      # unresolved make variable
             ("@EXTRA@", "source/core", None),             # automake substitution
             ("wifi_mgr.h", "source/core", None),          # not a source
@@ -33,7 +34,12 @@ class Drift(unittest.TestCase):
         files = {
             "source/core/Makefile.am": "OneWifi_SOURCES = old.c \\\n    new.c\n",
             "source/xb/Makefile.am": "xb_SOURCES = xb.c\n",          # no leg compiles source/xb
-            "build/linux/bpi/makefile": "SRC = $(ONE_WIFI_HOME)/source/core/old.c\n",
+            "source/svc/Makefile.am": "svc_SOURCES = auto.c skip.c\n",
+            "source/svc/auto.c": "",
+            "source/svc/skip.c": "",
+            "build/linux/bpi/makefile": ("SRC = $(ONE_WIFI_HOME)/source/core/old.c \\\n"
+                                         "    $(filter-out $(ONE_WIFI_HOME)/source/svc/skip.c,"
+                                         "$(wildcard $(ONE_WIFI_HOME)/source/svc/*.c))\n"),
         }
         for rel, text in files.items():
             os.makedirs(os.path.join(root, os.path.dirname(rel)), exist_ok=True)
@@ -45,6 +51,7 @@ class Drift(unittest.TestCase):
             # (added files, flagged in the summary)
             ("source/core/new.c\nsource/core/old.c\nsource/xb/xb.c\nREADME.md\n", ["source/core/new.c"]),
             ("source/core/old.c\n", []),                                   # compiled: nothing written
+            ("source/svc/auto.c\nsource/svc/skip.c\n", ["source/svc/skip.c"]),  # wildcard, filter-out
         ]
         for listing, flagged in cases:
             with open(added, "w") as fh:

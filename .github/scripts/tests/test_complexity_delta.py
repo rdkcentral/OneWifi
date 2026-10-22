@@ -69,8 +69,11 @@ class Main(unittest.TestCase):
         doc, md = self._run(head, {"source/a.c": {"fn": (12, 30, 50)}})
         self.assertEqual((doc["status"], [comment["line"] for comment in doc["comments"]]), ("ok", [41]))
         self.assertIn("`fn` in `source/a.c` crossed cyclomatic complexity 30 (12 -> 34)", md)
-        doc, md = self._run({"source/a.c": None}, {"source/a.c": {}})       # lizard failed
-        self.assertEqual((doc["status"], md), ("partial", ""))
+        # lizard failed on the head, or on the base (an empty base made fn look new at 34)
+        for heads, bases in [({"source/a.c": None}, {"source/a.c": {}}), (head, {"source/a.c": None})]:
+            doc, md = self._run(heads, bases)
+            self.assertEqual((doc["status"], doc["comments"]), ("partial", []))
+            self.assertIn("Not compared for this commit: lizard could not analyze `source/a.c`", md)
         doc, _md = self._run(head, {}, which=None)                         # lizard missing
         self.assertEqual(doc["status"], "skipped")
 
