@@ -362,8 +362,10 @@ red" — a plumbing hiccup should not falsely block a PR.
 - Complexity nudge, deliberate limits: lizard skips `#else` branches (`-Ecpre`), so code only there
   is not measured (2026-10: 104 functions, 2 at CCN 20 or above, both in `wifi_db.c`; without the
   flag, `#ifdef`/`#else` pairs that each open a brace hid 344 functions in 8 core files). Functions
-  are keyed by name, so C++ overloads count as the most complex one: a smaller one crossing 30 can
-  be missed, a crossing that did not happen is never reported.
+  are keyed by name, so C++ overloads count as the most complex one: this can only miss a smaller
+  one crossing 30, never invent a crossing.
+- Complexity nudge: a function renamed in place (`foo` -> `foo_v2`) reads as new, so one at CCN 30
+  or above is reported as crossing although its complexity did not change.
 - Complexity inline comment on a renamed file: the changed lines are read from the new path
   alone, so the anchor can fall outside GitHub's rename diff; the poster then skips that one
   comment (HTTP 422) and the summary entry still shows.
