@@ -4844,6 +4844,28 @@ webconfig_error_t decode_csi_object(queue_t** csi_queue, cJSON *object)
     }
 
     csi_data->enabled = (value_object->type & cJSON_True) ? true:false;
+
+    value_object = cJSON_GetObjectItem(object, "Stream");
+    if (value_object != NULL) {
+        if (cJSON_IsNumber(value_object)) {
+            uint32_t stream_mode = (uint32_t)value_object->valuedouble;
+            if (stream_mode > WIFI_CSI_STREAM_MODE_LIVE) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: Invalid stream mode %u expected 0/1/2\n",
+                    __func__, __LINE__, stream_mode);
+                free(csi_data);
+                return webconfig_error_decode;
+            }
+            csi_data->stream = stream_mode;
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            free(csi_data);
+            return webconfig_error_decode;
+        }
+    } else {
+        csi_data->stream = WIFI_CSI_STREAM_MODE_OFF;
+    }
+
     if (*csi_queue == NULL) {
         *csi_queue = queue_create();
     }

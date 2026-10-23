@@ -236,6 +236,8 @@ endif
 
 OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 
+OneWifi_CPPFLAGS += -DWITH_EXTERNAL_DELEGATE
+
 AM_CFLAGS += -DCONFIG_WPS -DCONFIG_IEEE80211R_AP -DCONFIG_IEEE80211R -DCONFIG_ETH_P_OUI -DCONFIG_IEEE80211W
 AM_CFLAGS += -DEAP_SERVER_FAST
 
@@ -261,5 +263,6 @@ OneWifi_LDFLAGS += -lwifi_webconfig
 OneWifi_LDFLAGS += -lwifi_bus
 if WIFI_SENSING_APP_SUPPORT
 OneWifi_LDFLAGS += -ltensorflowlite_c
+OneWifi_LDFLAGS += -lssl -lcrypto
 endif
 #OneWifi_LDFLAGS += -llibnl-3.la llibnl-genl-3.la llibnl-route-3.la llibnl-nf-3.la llibnl-idiag-3

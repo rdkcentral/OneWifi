@@ -2284,6 +2284,7 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
         cJSON_AddItemToArray(csi_obj, object);
         cJSON_AddNumberToObject(object, "SessionID", csi_data->csi_session_num);
         cJSON_AddBoolToObject(object, "Enabled", csi_data->enabled);
+        cJSON_AddNumberToObject(object, "Stream", csi_data->stream);
 
         obj_array = cJSON_CreateArray();
         if (obj_array == NULL) {
