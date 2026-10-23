@@ -5004,8 +5004,9 @@ bool interworking_serv_set_param_string_value(void *obj_ins_context, char *param
                     __LINE__, pcfg->vap_name);
                 return false;
             }
-            STR_COPY((char *)p_dm_interworking_info->anqp.anqpParameters,
-                (char *)output_value->buff);
+            snprintf((char *)p_dm_interworking_info->anqp.anqpParameters,
+                     sizeof(p_dm_interworking_info->anqp.anqpParameters),
+                     "%s", (char *)output_value->buff);
             set_dml_cache_vap_config_changed(instance_number - 1);
             cJSON_Delete(p_root);
             wifi_util_info_print(WIFI_DMCLI, "%s:%d: interwoking serv param set success\n",
