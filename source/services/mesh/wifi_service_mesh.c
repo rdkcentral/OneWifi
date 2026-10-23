@@ -1069,7 +1069,8 @@ void process_ext_connected_scan_results(wifi_service_node_t *node, wifi_core_dat
     }
 
     for (i = 0; (i < num) && (tmp_bss != NULL) ; i++) {
-        convert_freq_to_channel(tmp_bss->freq, (unsigned char *) &channel);
+        convert_freq_to_channel((wifi_freq_bands_t)band, tmp_bss->freq,
+            (unsigned char *) &channel);
         if (channel == ext->go_to_channel)
         {
             found_candidate =  true;

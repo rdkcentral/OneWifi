@@ -1064,9 +1064,20 @@ void ext_try_connecting(vap_svc_t *svc)
     bss_candidate_t *new_bss = NULL;
     bss_candidate_t *last_connected_bss = NULL;
     bool found_at_least_one_candidate = false;
+    bool candidate_valid;
     wifi_ctrl_t *ctrl;
+    wifi_mgr_t *mgr;
+    wifi_radio_operationParam_t *radio_params;
+    wifi_radio_operationParam_t *candidate_params;
+    unsigned char candidate_channel;
 
     ctrl = svc->ctrl;
+    mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to get wifi manager\n",
+            __func__, __LINE__);
+        return;
+    }
     ext = &svc->u.ext;
 
     if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
@@ -1161,6 +1172,85 @@ void ext_try_connecting(vap_svc_t *svc)
             return;
         }
         vap_index = get_sta_vap_index_for_radio(svc->prop, radio_index);
+        radio_params = get_wifidb_radio_map(radio_index);
+        if (radio_params == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: failed to get radio parameters for radio index %d\n", __func__, __LINE__,
+                radio_index);
+            return;
+        }
+
+        candidate_channel = 0;
+        convert_freq_to_channel(candidate->radio_freq_band, candidate->external_ap.freq,
+            &candidate_channel);
+        candidate_params = (wifi_radio_operationParam_t *)malloc(sizeof(wifi_radio_operationParam_t));
+        if (candidate_params == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to allocate candidate radio parameters\n",
+                __func__, __LINE__);
+            schedule_connect_sm(svc);
+            return;
+        }
+
+        pthread_mutex_lock(&mgr->data_cache_lock);
+        memcpy(candidate_params, radio_params, sizeof(wifi_radio_operationParam_t));
+        pthread_mutex_unlock(&mgr->data_cache_lock);
+
+        candidate_params->channel = candidate_channel;
+        /*
+         * When AP width is unknown, retain the configured STA width so DFS
+         * validation does not assume a narrower channel block.
+         */
+        if (candidate->external_ap.oper_chan_bw != 0) {
+            if ((candidate->radio_freq_band == WIFI_FREQUENCY_5_BAND ||
+                    candidate->radio_freq_band == WIFI_FREQUENCY_5L_BAND ||
+                    candidate->radio_freq_band == WIFI_FREQUENCY_5H_BAND) &&
+                candidate->external_ap.oper_chan_bw == WIFI_CHANNELBANDWIDTH_80_80MHZ) {
+                if (radio_params->channelWidth <= WIFI_CHANNELBANDWIDTH_80MHZ) {
+                    candidate_params->channelWidth = radio_params->channelWidth;
+                } else {
+                    /*
+                     * BSS information does not provide the second 80 MHz
+                     * segment, so its DFS/NOP state cannot be validated.
+                     */
+                    candidate_params->channelWidth = WIFI_CHANNELBANDWIDTH_80_80MHZ;
+                }
+            } else {
+                if (radio_params->channelWidth == WIFI_CHANNELBANDWIDTH_80_80MHZ) {
+                    candidate_params->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+                }
+                if (candidate->external_ap.oper_chan_bw < candidate_params->channelWidth) {
+                    candidate_params->channelWidth = candidate->external_ap.oper_chan_bw;
+                }
+            }
+        }
+
+        candidate_valid = (candidate_channel != 0) &&
+            (wifi_radio_operationParam_validation(&mgr->hal_cap, candidate_params) == RETURN_OK);
+        free(candidate_params);
+        candidate_params = NULL;
+
+        if (!candidate_valid) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: rejecting backhaul candidate bssid:%s freq:%d; channel is unavailable\n",
+                __func__, __LINE__, to_mac_str(candidate->external_ap.bssid, bssid_str),
+                candidate->external_ap.freq);
+
+            if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
+                memset(&ext->new_bss, 0, sizeof(ext->new_bss));
+                ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                    __LINE__);
+            } else if (ext->conn_state == connection_state_connection_to_lcb_in_progress) {
+                memset(&ext->last_connected_bss, 0, sizeof(ext->last_connected_bss));
+                ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                    __LINE__);
+            } else {
+                candidate->conn_attempt = connection_attempt_failed;
+                candidate->conn_retry_attempt = STA_MAX_CONNECT_ATTEMPT;
+            }
+
+            schedule_connect_sm(svc);
+            return;
+        }
         if (ctrl->rf_status_down == true) {
             hotspot_timing_target_detected();
         }
@@ -1776,7 +1866,8 @@ void process_ext_connected_scan_results(vap_svc_t *svc, void *arg)
     }
 
     for (i = 0; (i < num) && (tmp_bss != NULL) ; i++) {
-        convert_freq_to_channel(tmp_bss->freq, (unsigned char *) &channel);
+        convert_freq_to_channel((wifi_freq_bands_t)band, tmp_bss->freq,
+            (unsigned char *) &channel);
         if (channel == ext->go_to_channel)
         {
             found_candidate =  true;
