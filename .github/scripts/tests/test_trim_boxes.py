@@ -36,7 +36,10 @@ class Trim(unittest.TestCase):
         work = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, work)
         path = os.path.join(work, "section.md")
-        for lines, links in [(["#### ❌ a", *box(11), "#### ❗ b", *box(6)], 1), (["#### ❗ b", *box(2)], 0)]:
+        cases = [(["#### ❌ a", *box(11), "#### ❗ b", *box(6)], 1),       # trimmed here: one link
+                 (["#### ❗ b", *box(2), "_… 3 more not shown._"], 1),       # trimmed by an earlier pass
+                 (["#### ❗ b", *box(2)], 0)]                                 # nothing trimmed
+        for lines, links in cases:
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write("\n".join(lines) + "\n")
             tb.main(["trim_boxes.py", path, "https://example.invalid/run"])

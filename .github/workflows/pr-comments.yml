@@ -291,6 +291,8 @@ jobs:
           RUN_NAME: ${{ needs.resolve.outputs.run_name }}
           RUN_NUMBER: ${{ needs.resolve.outputs.run_number }}
           RUN_URL: ${{ needs.resolve.outputs.run_url }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # develop's latest Build Check, on a red build
         run: |
           set -uo pipefail
           # Each section is first shortened by trim_boxes.py: a code box or list under a ❌ heading
@@ -327,6 +329,16 @@ jobs:
             echo
             echo "_Commit \`${HEAD_SHA:0:7}\` · [\`${RUN_NAME}\` #${RUN_NUMBER}](${RUN_URL})_"
             echo
+            # On a red build (a leg's own heading says "build failure"), say whether develop's
+            # latest Build Check is red too. Any API or jq failure leaves the line out.
+            if grep -qE '^### .* build failure$' summaries/ci-summary-*/build-summary.md 2>/dev/null; then
+              dev=$(gh api "/repos/${REPO}/actions/workflows/makefile.yml/runs?branch=develop&event=push&status=completed&per_page=1" \
+                    --jq '.workflow_runs[0] | "\(.conclusion) \(.updated_at)"' 2>/dev/null || true)
+              case "$dev" in
+                failure\ *) echo "❗ develop's latest Build Check failed too (${dev#* }): this PR is probably not the cause."; echo ;;
+                success\ *) echo "develop's latest Build Check passed (${dev#* })."; echo ;;
+              esac
+            fi
             # The legs makefile.yml uploads a summary for (bpi rpi; keep in sync with its
             # "Upload CI summary artifact" step), then any other that uploaded one. Each
             # per-leg file carries its own "### <platform> — build <outcome>" heading +
@@ -338,6 +350,12 @@ jobs:
               f="summaries/ci-summary-$leg/build-summary.md"
               if [ -f "$f" ]; then
                 cp "$f" "leg-$leg.md"
+                # The leg's build failure attribution, when its build step failed. Only bpi decides
+                # (it has the compile DB); another leg's path guess shows only when bpi has no answer.
+                attr="summaries/ci-summary-$leg/build-attribution.md"
+                bpi_attr="summaries/ci-summary-bpi/build-attribution.md"
+                if [ "$leg" != bpi ] && [ -s "$bpi_attr" ] && ! grep -q 'cause unclear' "$bpi_attr"; then attr=""; fi
+                if [ -n "$attr" ] && [ -s "$attr" ]; then { echo; cat "$attr"; } >> "leg-$leg.md"; fi
                 python3 .github/scripts/trim_boxes.py "leg-$leg.md" "$RUN_URL" || true
                 cat "leg-$leg.md"
               else
