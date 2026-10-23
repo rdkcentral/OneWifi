@@ -1851,7 +1851,7 @@ int init_wireless_interface_mac()
     return RETURN_OK;
 }
 
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+#if defined(CONFIG_IEEE80211BE)
 /**
  * Called after init_wireless_interface_mac() so mgr cache BSSIDs are populated.
  * Updates mld_enable/mld_addr in the mgr cache and writes changed radios to DB.
@@ -1933,7 +1933,7 @@ void init_wifi_mld_groups(void)
         }
     }
 }
-#endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
+#endif /* CONFIG_IEEE80211BE */
 
 int validate_and_sync_private_vap_credentials()
 {
@@ -2021,7 +2021,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     init_wireless_interface_mac();
 
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
+#if defined(CONFIG_IEEE80211BE)
     init_wifi_mld_groups();
 #endif
 
@@ -3482,8 +3482,8 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
     return wifi_mgr->radio_config[radioIndex].vaps.num_vaps;
 }
 
-#if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
-
+#if defined(CONFIG_IEEE80211BE)
+#if !defined(CONFIG_GENERIC_MLO)
 static int set_mlo_rfc_task(void *arg)
 {
     mlo_rfc_status_params_t *mlo_rfc_status = (mlo_rfc_status_params_t *)arg;
@@ -3604,6 +3604,7 @@ void update_mlo_rfc_enable(bool init)
         }
     }
 }
+#endif /* !CONFIG_GENERIC_MLO */
 
 /* A radio is MLO-capable only if it is enabled, not in EcoPowerDown, and running 802.11be. */
 static bool is_radio_mlo_capable(unsigned int radio_index)
@@ -3642,6 +3643,7 @@ static bool is_mlo_security_mode_compatible(wifi_security_modes_t mode_a,
 bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
     wifi_dbg_type_t log_type)
 {
+    bool result = true;
     /* Compare SSID */
     if (strncmp(main_vap->u.bss_info.ssid, vap->u.bss_info.ssid, sizeof(ssid_t)) != 0) {
         wifi_util_info_print(log_type,
@@ -3649,18 +3651,7 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
             "SSID '%s' != '%s'\n",
             __func__, __LINE__, vap->vap_index, main_vap->vap_index,
             vap->u.bss_info.ssid, main_vap->u.bss_info.ssid);
-        return false;
-    }
-
-    /* Compare Password/Key */
-    if (strncmp(main_vap->u.bss_info.security.u.key.key,
-                vap->u.bss_info.security.u.key.key,
-                sizeof(main_vap->u.bss_info.security.u.key.key)) != 0) {
-        wifi_util_info_print(log_type,
-            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
-            "password/key does not match\n",
-            __func__, __LINE__, vap->vap_index, main_vap->vap_index);
-        return false;
+        result = false;
     }
 
     /* Compare Security Mode — WPA3 variants are MLO-compatible across bands */
@@ -3669,12 +3660,35 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
         wifi_util_info_print(log_type,
             "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
             "security mode %d != %d\n",
-            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
-            vap->u.bss_info.security.mode, main_vap->u.bss_info.security.mode);
-        return false;
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index, vap->u.bss_info.security.mode,
+            main_vap->u.bss_info.security.mode);
+        result = false;
     }
 
-    return true;
+    /* Compare Password/Key */
+    if (!security_mode_support_radius(main_vap->u.bss_info.security.mode) &&
+        !security_mode_support_radius(vap->u.bss_info.security.mode) &&
+        (strncmp(main_vap->u.bss_info.security.u.key.key, vap->u.bss_info.security.u.key.key,
+             sizeof(main_vap->u.bss_info.security.u.key.key)) != 0)) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
+            "password/key does not match\n",
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index);
+        result = false;
+    }
+
+    /* Compare Security Mode — WPA3 variants are MLO-compatible across bands */
+    if ((main_vap->u.bss_info.security.encr != vap->u.bss_info.security.encr) ||
+        ((main_vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) ||
+            (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256))) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
+            "encryption type %d != %d\n",
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
+            vap->u.bss_info.security.encr, main_vap->u.bss_info.security.encr);
+    }
+
+    return result;
 }
 
 static wifi_vap_info_t *webconfig_find_vap_by_name(webconfig_subdoc_decoded_data_t *data, char *vap_name)
@@ -3707,6 +3721,7 @@ typedef struct {
  *
  * @return The private VAP's mld_link_id, or UNDEFINED_MLD_LINK_ID when no private VAP exists.
  */
+#ifndef CONFIG_GENERIC_MLO
 static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_map,
     webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int vap_names_size)
 {
@@ -3737,8 +3752,9 @@ static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_m
 
     return UNDEFINED_MLD_LINK_ID;
 }
-
+#endif
 /**
+ * update_mld_groups - Common MLO group validation and propagation.
  * update_mld_groups - Common MLO group validation and propagation.
  *
  * Iterates all MLD units (0..MLD_UNIT_COUNT-1). For each unit, walks all
@@ -3760,7 +3776,9 @@ static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_m
 void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
     unsigned int vap_names_size, wifi_dbg_type_t log_type)
 {
+#ifndef CONFIG_GENERIC_MLO
     const mac_address_t zero_mac = { 0 };
+#endif
     mac_address_t mlo_mac = { 0 };
     mac_addr_str_t mac_str = { 0 };
     unsigned int i;
@@ -3778,15 +3796,16 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
         /* --- STEP 1: Seed MLD Address and Collect Candidates for this unit --- */
         for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
             wifi_vap_info_map_t *mgr_vap_map = get_wifidb_vap_map(r_idx);
+#ifndef CONFIG_GENERIC_MLO
             unsigned int radio_mld_link_id = UNDEFINED_MLD_LINK_ID;
-
+#endif
             if (mgr_vap_map == NULL) {
                 continue;
             }
-
+#ifndef CONFIG_GENERIC_MLO
             radio_mld_link_id = get_radio_private_mld_link_id(mgr_vap_map, data, vap_names,
                 vap_names_size);
-
+#endif
             for (k = 0; k < mgr_vap_map->num_vaps; k++) {
                 wifi_vap_info_t *mgr_vap = &mgr_vap_map->vap_array[k];
                 wifi_vap_info_t *target_vap = NULL;
@@ -3819,6 +3838,7 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 
                 /* MLD link id is a per-radio setting; take the authoritative value from
                  * the private VAP and apply it to every VAP on this radio. */
+#ifndef CONFIG_GENERIC_MLO
                 if (mld_conf->mld_link_id != radio_mld_link_id) {
                     wifi_util_dbg_print(log_type,
                         "%s:%d: vap_index=%d mld_link_id=%u overridden by private VAP value %u\n",
@@ -3826,7 +3846,7 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                         radio_mld_link_id);
                     mld_conf->mld_link_id = radio_mld_link_id;
                 }
-
+#endif // CONFIG_GENERIC_MLO
                 /* Seed mld_addr and disable MLD on first pass only.
                  * Subsequent group iterations must not overwrite values
                  * already propagated by an earlier group.*/
@@ -3841,9 +3861,15 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                 }
 
                 /* Validate MLD configuration bounds */
-                if (mld_conf->mld_id >= MLD_UNIT_COUNT || mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
+                if (mld_conf->mld_id >= MLD_UNIT_COUNT) {
                     continue;
                 }
+
+#ifndef CONFIG_GENERIC_MLO
+                if (mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
+                    continue;
+                }
+#endif // CONFIG_GENERIC_MLO
 
                 /* Only collect VAPs belonging to the current MLD unit */
                 if (mld_conf->mld_id != i) {
@@ -3859,11 +3885,15 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                     continue;
                 }
 
-                /* Main link (link_id == 0) provides the shared MLD MAC address */
+                /* Main link (link_id == 0) provides the shared MLD MAC address
+                 * For generic MLO, the main link concept does not apply as in Broadcom
+                 * and on compatibility check level, it does not matter which link it actually is */
+#ifndef CONFIG_GENERIC_MLO
                 if (mld_conf->mld_link_id == 0) {
                     main_link_vap = target_vap;
                     memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
                 }
+#endif // CONFIG_GENERIC_MLO
 
                 /* Store candidate */
                 if (total_candidates < MAX_NUM_RADIOS) {
@@ -3875,6 +3905,7 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
             }
         }
 
+#ifndef CONFIG_GENERIC_MLO
         /* --- STEP 2: Tag Entries as Compatible with the Main Link --- */
         if (main_link_vap != NULL) {
             unsigned int j;
@@ -3903,6 +3934,60 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
             }
             continue;
         }
+#else
+        /* --- STEP 2a: Find first matching set of compatible VAPs for Generic MLO --- */
+        // Target for this is to find group a first matching set of compatible VAPs for creating MLD
+        // Since no authoritative "main link" concept exists here, we attempt to find first
+        // subset of compatible VAPs to create a group with.
+        // After finding it, we "select" one of VAPs to pretend to be a "main link"
+        // for further checks and compatibility tagging.
+        unsigned int j, it;
+        for (j = 0; j < total_candidates; j++) {
+            unsigned int compat_counter = 1;
+            mld_group_entry_t *candidate = &entries[j];
+            for (it = 0; it < total_candidates; it++) {
+                mld_group_entry_t *affiliate = &entries[it];
+                if (affiliate == candidate) {
+                    continue;
+                }
+
+                if (is_mlo_config_matching(candidate->vap_info, affiliate->vap_info, log_type)) {
+                    ++compat_counter;
+                    if (main_link_vap == NULL) {
+                        main_link_vap = candidate->vap_info;
+                        candidate->is_compatible = true;
+                    }
+                    affiliate->is_compatible = true;
+                }
+            }
+
+            if (compat_counter >= MIN_MLO_GROUP_SIZE) {
+                main_link_vap = candidate->vap_info;
+                compatible_count = compat_counter;
+                break;
+            }
+        }
+
+        /* --- STEP 2b: Validate Group --- */
+        if (compatible_count < MIN_MLO_GROUP_SIZE) {
+            if (total_candidates > 0) {
+                wifi_util_info_print(log_type,
+                    "%s:%d: MLO group %d disabled (compatible_count=%u, main_link=%s)\n", __func__,
+                    __LINE__, i, compatible_count, main_link_vap ? "Found" : "Missing");
+            }
+            continue;
+        }
+
+        /* --- STEP 3: Emit compatibility warnings --- */
+        for (j = 0; j < total_candidates; j++) {
+            mld_group_entry_t *entry = &entries[j];
+            if (entry->is_compatible == false) {
+                wifi_util_info_print(log_type, "%s:%d: vap_index=%d excluded from MLO group %d\n",
+                    __func__, __LINE__, entry->vap_info->vap_index, i);
+            }
+        }
+
+#endif // CONFIG_GENERIC_MLO
 
         to_mac_str(mlo_mac, mac_str);
         {
@@ -3915,7 +4000,9 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                 }
 
                 entry->mld_conf->mld_enable = true;
+#ifndef CONFIG_GENERIC_MLO
                 memcpy(entry->mld_conf->mld_addr, mlo_mac, sizeof(mac_address_t));
+#endif
 
                 wifi_util_info_print(log_type,
                     "%s:%d: MLO Enabled! mld_addr=%s for vap_index=%d (link_id=%d, mld_id=%d)\n",
@@ -3926,7 +4013,7 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
     }
 }
 
-#endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
+#endif /* CONFIG_IEEE80211BE */
 
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc)
 {

@@ -62,7 +62,7 @@ in the cloned OneWifi cwd, but the diff must run against the HAL checkout). Net 
 adds its own enforcement by pointing shared tooling at itself — OneWifi's pipeline needs no change
 for this to work.**
 
-## 3. The four check types
+## 3. The check types
 
 **a) Formatter (clang-format)** — advisory, PR-changed-lines only. `clang-format.yml` runs
 `git-clang-format` over the PR's changed C/C++ lines and records a diff; `diff_to_suggestions.py` turns
@@ -82,8 +82,10 @@ time is the intent.
 **c) clang-tidy** — two-tier, changed-lines scoped, `bpi` only. Governed by `.clang-tidy`:
 `WarningsAsErrors` checks (a short `bugprone-*` list verified at zero occurrences across both
 trees) print `error:` and fail the job; the rest of the enabled `bugprone-*` checks print
-`warning:` and are advisory only. `clang-diagnostic-*` is filtered out entirely, so it can never
-gate. Findings are scoped to lines the PR changed, so a pre-existing finding on an untouched line
+`warning:` and are advisory only. `clang-diagnostic-*` is filtered out, so it can never gate, except
+the unreachable-code group (`-Wunreachable-code-aggressive`, the dead-code proxy): its findings go
+to the summary and annotations only, never inline, because reachability can depend on the build
+configuration, and they are dropped for a file that did not parse with its own flags. Findings are scoped to lines the PR changed, so a pre-existing finding on an untouched line
 never fails a PR. The HAL layers its own extra checks (`HAL_EXTRA_WAE` / `HAL_EXTRA_CHECKS`, in
 the HAL's `makefile.yml`) on top of this shared config, for checks clean in the HAL but not yet in
 OneWifi.
@@ -92,10 +94,27 @@ OneWifi.
 `gcc_diff_gate.py` recompiles each PR-changed `.c`/`.cpp` from `compile_commands.json` with extra
 candidate `-W` flags (non-fatal), keeping only findings on lines the PR touched — so a class with
 a tree-wide backlog can still gate *new* code, without a tree-wide `-Werror` that would red every
-unrelated PR. Per the workflow's env: `GATE_WARNINGS="-Wvla -Wreturn-type"` (would fail the job),
-`ADVISORY_WARNINGS="-Wunused-but-set-variable -Wunused-value -Wunused-label"` (report only). The
+unrelated PR. It also compiles each file's base version and drops a finding the file already had
+before the PR (matched by class and message), so editing a line that calls an old undeclared
+function does not count. The lists live in the workflow's env. `GATE_WARNINGS` (would fail the
+job): `-Wvla`, `-Wreturn-type`, the four classes gcc-14 makes errors by default
+(`-Wint-conversion`, `-Wimplicit-function-declaration`, `-Wimplicit-int`,
+`-Wincompatible-pointer-types`: wrong call ABI and int/pointer confusion; `makefile.common`
+silences three of them, hiding a backlog that new code should not add to), plus
+`-Wsizeof-pointer-memaccess` and `-Wformat-security`. `ADVISORY_WARNINGS` (report only): the `-Wunused-*` family and classes measured
+quiet over the tree (`-Waddress`, `-Wstringop-*`, `-Warray-bounds`, `-Wdangling-pointer`,
+`-Wuse-after-free`). The recompile runs at `-Os` like the production build (the compile DB is
+`-O0`), so the optimizer-dependent classes can fire, and with the DB's `-Werror=` flags removed. The
 whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the ❌ block
 renders, but the job is not actually reddened by it yet.
+
+**e) CI Lint (the CI files themselves)** — `ci-lint.yml`, on every PR and on pushes to `develop`.
+Each lane runs only when its surface changed: actionlint over the workflows (with a pinned
+shellcheck on their `run:` blocks), yamllint over the workflows and composite actions (structural
+rules only, `.github/.yamllint`), and for `.github/scripts` compileall, ruff (pyflakes rules,
+`.github/ruff.toml`) and the unit tests under `.github/scripts/tests`. `lint-gate` aggregates the
+lanes and fails closed (a skipped lane passes, a failed detector does not); it is the one check
+to mark required. Tool versions are pinned in the workflow.
 
 ## 4. Two-stage design (why, and how)
 
@@ -312,9 +331,15 @@ red" — a plumbing hiccup should not falsely block a PR.
   pinned commit (`rdkcentral/OneWifi/.github/actions/hostap-tree@<sha>`).
 - Heavier analyzers (`gcc -fanalyzer`, more `clang-analyzer-core.*` checks) are candidates, kept
   diff-scoped only — too noisy tree-wide.
-- gcc-14 watch: CI runs on `ubuntu-24.04` (gcc 13.x), so nothing breaks today; a future move to
-  gcc 14 is worth revisiting since newer gcc releases have sometimes promoted optional warnings to
-  default errors — not yet audited against this tree specifically.
+- gcc-14 / gcc-15 watch: CI builds with gcc 13. Measured 2026-10 on the bpi compile DB, gcc 14
+  (also on the `ubuntu-24.04` image) fails 4 of 380 C files: 5 `return` mismatches in OneWifi
+  (`source/apps/em/wifi_em.c`, `source/platform/linux/misc.c`) and 2 implicit declarations in the
+  patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
+  builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
+  `()`-declared functions called with an argument; `-std=gnu17` removes them.
+- Workflow steps have no tests of their own: the `run:` blocks get shellcheck (workflows only;
+  composite actions get yamllint's structural check), but their logic is not exercised by
+  `.github/scripts/tests`.
 - Rebase/adapt this system onto `develop` as the various proposal branches land — this doc
   describes the merged end-state, not any one branch's current diff.
 
