@@ -20,12 +20,10 @@
 """Shorten one section of the CI summary comment: its code boxes and bullet lists.
 
 A box (code fence) or bullet run under a heading with ❌ keeps its first 10 lines, any other
-its first 5, and a trimmed one is followed by a "… N more" line. When anything was trimmed and
-a link is given, one closing line points at it: the run summary, which holds the lists in full
-(up to 100 lines each). A "… N more" line from an earlier pass also counts, so a section whose
-parts were trimmed one by one still gets its one link. The headings carry the totals.
+its first 5, and a trimmed one is followed by a "… N more not shown" line; the headings keep the
+totals. The compose step adds one "check the full log" link when any such line is in the comment.
 
-Usage: trim_boxes.py <section.md> [<link>]   (rewrites the file; any error leaves it unchanged)
+Usage: trim_boxes.py <section.md>   (rewrites the file; any error leaves it unchanged)
 """
 import sys
 
@@ -67,14 +65,10 @@ def trim(lines):
 
 
 def main(argv):
-    path, link = (argv + ["", ""])[1:3]
+    path = (argv + [""])[1]
     try:
         with open(path, encoding="utf-8") as fh:
-            lines = fh.read().splitlines()
-        out, cuts = trim(lines)
-        more_before = any(line.startswith("_… ") and line.endswith(" more not shown._") for line in lines)
-        if link and (cuts or more_before):
-            out += ["", f"_Longer lists, up to 100 lines each: [run summary]({link})._", ""]
+            out, _cuts = trim(fh.read().splitlines())
         with open(path, "w", encoding="utf-8") as fh:
             fh.write("\n".join(out) + "\n")
     except (OSError, UnicodeDecodeError) as exc:
