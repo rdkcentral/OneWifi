@@ -1514,6 +1514,27 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         return -1;
     }
 
+    // An old-parent replay must not replace a pending target.
+    if (is_bssid_valid(candidate->external_ap.bssid) &&
+        candidate->vap_index != vap_info->vap_index &&
+        ext->connected_vap_index == vap_info->vap_index &&
+        is_bssid_valid(ext->last_connected_bss.external_ap.bssid) &&
+        memcmp(vap_info->u.sta_info.bssid, ext->last_connected_bss.external_ap.bssid,
+            sizeof(bssid_t)) == 0 &&
+        (ext->conn_state == connection_state_disconnection_in_progress ||
+         ext->conn_state == connection_state_disconnected_scan_list_none ||
+         ext->conn_state == connection_state_disconnected_scan_list_in_progress ||
+         ext->conn_state == connection_state_disconnected_scan_list_all ||
+         ext->conn_state == connection_state_connection_in_progress ||
+         ext->conn_state == connection_state_connection_to_nb_in_progress)) {
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d: parent_bssid_guard ignored last-connected BSSID from vap %s (%d); "
+            "pending target vap %d, state %s\n",
+            __func__, __LINE__, vap_info->vap_name, (int)vap_info->vap_index,
+            (int)candidate->vap_index, ext_conn_state_to_str(ext->conn_state));
+        return 0;
+    }
+
     ext->new_bss_delayed = false;
     memset(candidate, 0, sizeof(bss_candidate_t));
     memcpy(candidate->external_ap.bssid, vap_info->u.sta_info.bssid, sizeof(bssid_t));
