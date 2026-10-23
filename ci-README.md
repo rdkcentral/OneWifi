@@ -219,9 +219,9 @@ validates every downloaded artifact, so the trust boundary is unchanged.
   comment instead of adding a new one. It replaces the two older stickies (`build-summary`,
   `clang-tidy`), which the job retires on its first run. Each section stays short: a code box or
   list under a ❌ heading shows its first 10 lines, any other its first 5, then "… N more not
-  shown" (`trim_boxes.py`); the headings keep the totals. A shortened section (each leg's build,
-  the diff-scoped checks with the nudges) ends with one link to the run summary, which has the
-  lists (up to 100 lines each). Byte caps behind that keep the body under the comment limit.
+  shown" (`trim_boxes.py`); the headings keep the totals. When anything was shortened, one line at
+  the end links the run summary, which has the lists (up to 100 lines each). Byte caps behind that
+  keep the body under the comment limit.
 - inline review comments for the gcc diff-gate, clang-tidy and complexity findings, on the exact
   changed lines they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks
   (job `format`).

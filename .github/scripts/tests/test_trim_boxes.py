@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 RDK Management — Apache-2.0 (see trim_boxes.py header).
-"""Unit tests for trim_boxes.py: box and bullet limits by heading, the "more" line, one link."""
+"""Unit tests for trim_boxes.py: box and bullet limits by heading, the "more" line."""
 import os
 import shutil
 import sys
@@ -32,19 +32,15 @@ class Trim(unittest.TestCase):
                              [f"_… {num} more not shown._" for num in more], lines[0])
             self.assertEqual((cuts, out.count("```") % 2), (len(more), 0), lines[0])
 
-    def test_main_link_once(self):
+    def test_main_rewrites_file(self):
         work = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, work)
         path = os.path.join(work, "section.md")
-        cases = [(["#### ❌ a", *box(11), "#### ❗ b", *box(6)], 1),       # trimmed here: one link
-                 (["#### ❗ b", *box(2), "_… 3 more not shown._"], 1),       # trimmed by an earlier pass
-                 (["#### ❗ b", *box(2)], 0)]                                 # nothing trimmed
-        for lines, links in cases:
-            with open(path, "w", encoding="utf-8") as fh:
-                fh.write("\n".join(lines) + "\n")
-            tb.main(["trim_boxes.py", path, "https://example.invalid/run"])
-            with open(path, encoding="utf-8") as fh:
-                self.assertEqual(fh.read().count("(https://example.invalid/run)"), links)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(["#### ❗ b", *box(7)]) + "\n")
+        tb.main(["trim_boxes.py", path])
+        with open(path, encoding="utf-8") as fh:
+            self.assertIn("_… 2 more not shown._", fh.read())
 
 
 if __name__ == "__main__":

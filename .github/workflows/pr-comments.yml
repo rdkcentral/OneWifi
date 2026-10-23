@@ -296,8 +296,8 @@ jobs:
         run: |
           set -uo pipefail
           # Each section is first shortened by trim_boxes.py: a code box or list under a ❌ heading
-          # keeps 10 lines, any other 5, with a "… N more" line and one link per section (each
-          # leg's build, the diff-scoped checks) to the run summary, which holds the lists in full.
+          # keeps 10 lines, any other 5, with a "… N more" line; when anything was cut, one line at
+          # the end links the run summary, which holds the lists (up to 100 lines each).
           # The byte caps below are the safety net: the sticky action cuts the whole body from the
           # tail at 60000 bytes, so the two diff-scoped summaries are capped at 22000 bytes each,
           # each nudge at 6000 or its share of what the diff section leaves above a 4000-byte build
@@ -333,10 +333,11 @@ jobs:
             # latest Build Check is red too. Any API or jq failure leaves the line out.
             if grep -qE '^### .* build failure$' summaries/ci-summary-*/build-summary.md 2>/dev/null; then
               dev=$(gh api "/repos/${REPO}/actions/workflows/makefile.yml/runs?branch=develop&event=push&status=completed&per_page=1" \
-                    --jq '.workflow_runs[0] | "\(.conclusion) \(.updated_at)"' 2>/dev/null || true)
+                    --jq '.workflow_runs[0] | "\(.conclusion) \(.updated_at) \(.html_url)"' 2>/dev/null || true)
+              when=$(printf '%s' "$dev" | cut -d' ' -f2)
               case "$dev" in
-                failure\ *) echo "❗ develop's latest Build Check failed too (${dev#* }): this PR is probably not the cause."; echo ;;
-                success\ *) echo "develop's latest Build Check passed (${dev#* })."; echo ;;
+                failure\ *) echo "❗ develop's latest Build Check [failed too](${dev##* }) (${when}): this PR is probably not the cause."; echo ;;
+                success\ *) echo "develop's latest Build Check [passed](${dev##* }) (${when})."; echo ;;
               esac
             fi
             # The legs makefile.yml uploads a summary for (bpi rpi; keep in sync with its
@@ -356,7 +357,7 @@ jobs:
                 bpi_attr="summaries/ci-summary-bpi/build-attribution.md"
                 if [ "$leg" != bpi ] && [ -s "$bpi_attr" ] && ! grep -q 'cause unclear' "$bpi_attr"; then attr=""; fi
                 if [ -n "$attr" ] && [ -s "$attr" ]; then { echo; cat "$attr"; } >> "leg-$leg.md"; fi
-                python3 .github/scripts/trim_boxes.py "leg-$leg.md" "$RUN_URL" || true
+                python3 .github/scripts/trim_boxes.py "leg-$leg.md" || true
                 cat "leg-$leg.md"
               else
                 echo "### $leg leg — no build summary uploaded (the leg stopped first; see the run)"
@@ -422,8 +423,6 @@ jobs:
               echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
             fi
           } > diff-section.md
-          # The two summaries were trimmed above; this pass adds the section's one link.
-          python3 .github/scripts/trim_boxes.py diff-section.md "$RUN_URL" || true
           # The diff-scoped section reaches ~48100 bytes (two capped summaries, their cut notices and
           # kept status lines), so two 6000-byte nudges would not fit the 57000 budget: the nudges
           # present split what is left above the build minimum (200 bytes each for the cut notice
@@ -448,10 +447,6 @@ jobs:
               cat "$f"; echo
             done
           } > nudge-section.md
-          # The nudges share the diff-scoped link; they carry it only when that section has none.
-          if ! grep -qF '_Longer lists' diff-section.md; then
-            python3 .github/scripts/trim_boxes.py nudge-section.md "$RUN_URL" || true
-          fi
           budget=$(( 57000 - $(wc -c < diff-section.md) - $(wc -c < nudge-section.md) ))
           if [ "$budget" -lt "$build_min" ]; then budget=$build_min; fi
           # Keep the per-leg headings and counts after a cut, so no leg's outcome is lost.
@@ -459,6 +454,9 @@ jobs:
             cut_md build-section.md "$budget" "build output" '^####? '
           fi
           cat build-section.md diff-section.md nudge-section.md > ci-summary-comment.md
+          if grep -qF ' more not shown._' ci-summary-comment.md; then
+            printf '\n_Check the full log: [%s #%s](%s)._\n' "$RUN_NAME" "$RUN_NUMBER" "$RUN_URL" >> ci-summary-comment.md
+          fi
           echo "wrote ci-summary-comment.md ($(wc -l < ci-summary-comment.md) lines)"
 
       # One sticky comment, marker 'ci-summary'. retire-markers deletes the old
