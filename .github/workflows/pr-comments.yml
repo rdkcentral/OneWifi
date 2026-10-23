@@ -455,7 +455,7 @@ jobs:
   # and nothing deleted; posting never reds the PR.
   # ---------------------------------------------------------------------------
   inline:
-    name: inline gcc + clang-tidy review
+    name: inline review (gcc, clang-tidy, complexity)
     runs-on: ubuntu-24.04
     needs: resolve
     concurrency:
