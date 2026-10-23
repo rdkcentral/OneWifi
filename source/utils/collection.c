@@ -56,6 +56,31 @@ int8_t     queue_push      (queue_t *q, void *data)
     return 0;    
 }
 
+int8_t queue_push_back(queue_t *q, void *data)
+{
+    element_t *e, *tmp, *last;
+    e = (element_t *)malloc(sizeof(element_t));
+    if (e == NULL) {
+        return -1;
+    }
+    memset(e, 0, sizeof(element_t));
+    e->data = data;
+    e->next = NULL;
+
+    if (q->head == NULL) {
+        q->head = e;
+    } else {
+        tmp = q->head;
+        while (tmp != NULL) {
+            last = tmp;
+            tmp = tmp->next;
+        }
+        last->next = e;
+    }
+    q->count++;
+    return 0;
+}
+
 void    *queue_pop      (queue_t *q)
 {
     element_t *e, *tmp = NULL;
@@ -166,6 +191,7 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
     map->itr = NULL;
     e = (hash_element_t *)malloc(sizeof(hash_element_t));
     if (e == NULL) {
+        free(key);
         return -1;
     }
     memset(e, 0, sizeof(hash_element_t));
@@ -173,6 +199,36 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
     e->data = data;
 
     if (queue_push(map->queue, e) < 0) {
+        free(key);
+        key = NULL;
+        if (e->data != NULL) {
+            free(e->data);
+            e->data = NULL;
+        }
+        free(e);
+        return -1;
+    }
+    return 0;
+}
+
+int8_t hash_map_put_back(hash_map_t *map, char *key, void *data)
+{
+    hash_element_t *e;
+
+    if (map == NULL || map->queue == NULL || key == NULL) {
+        return -1;
+    }
+    map->itr = NULL;
+    e = (hash_element_t *)malloc(sizeof(hash_element_t));
+    if (e == NULL) {
+        free(key);
+        return -1;
+    }
+    memset(e, 0, sizeof(hash_element_t));
+    e->key = key;
+    e->data = data;
+
+    if (queue_push_back(map->queue, e) < 0) {
         free(key);
         key = NULL;
         if (e->data != NULL) {
