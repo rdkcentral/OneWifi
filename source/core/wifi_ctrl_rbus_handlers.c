@@ -25,6 +25,7 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_monitor.h"
+#include "wifi_em.h"
 #include "wifi_webconfig.h"
 #include "run_qmgr.h"
 #include "wifi_stubs.h"
@@ -1157,6 +1158,15 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
                 }
             }
         }
+
+#ifdef EM_APP
+        if (!wifi_em_is_tx_power_ready() && !wifi_em_handle_monitor_done()) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d transmit power refresh failed; refusing to encode DML subdoc\n",
+                __func__, __LINE__);
+            return bus_error_general;
+        }
+#endif
     }
 
     data = malloc(sizeof(webconfig_subdoc_data_t));
