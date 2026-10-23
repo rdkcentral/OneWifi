@@ -4242,6 +4242,7 @@ static void process_monitor_init_command(void)
 void process_send_action_frame_command(void *data, unsigned int len)
 {
     action_frame_params_t *params;
+    size_t frame_data_len;
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NUll data Pointer\n", __func__, __LINE__);
@@ -4254,6 +4255,11 @@ void process_send_action_frame_command(void *data, unsigned int len)
     }
 
     params = (action_frame_params_t *)data;
+    frame_data_len = (size_t)len - sizeof(action_frame_params_t);
+    if (params->frame_len > frame_data_len) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid frame length for payload \r\n", __func__, __LINE__);
+        return;
+    }
 
     if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
             params->wait_time_ms, params->frame_data, params->frame_len)) {
