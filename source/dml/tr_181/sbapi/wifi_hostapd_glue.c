@@ -107,7 +107,7 @@ void greylist_cache_timeout (struct hostapd_data *hapd)
 {
 
     FILE *fptr;
-    char date[10] = {0}, get_time[10] = {0}, mac[18] = {0};
+    char date[11] = {0}, get_time[10] = {0}, mac[18] = {0};
     char buffer1[26] = {0}, time_buf[26] = {0};
     struct tm time1, time2;
     time_t newtime;
@@ -124,7 +124,7 @@ void greylist_cache_timeout (struct hostapd_data *hapd)
         return;
     }
     /* Read each mac from the file and add the mac to the greylist*/
-    while ((fscanf(fptr, "%s %s %s %d", date, get_time, mac, &index)) == 4) {  // Read the time and mac from the file
+    while ((fscanf(fptr, "%10s %9s %17s %d", date, get_time, mac, &index)) == 4) {  // Read the time and mac from the file
         mac_data = os_zalloc(sizeof(*mac_data));
         if (mac_data == NULL) {
             wpa_printf(MSG_DEBUG, "unable to allocate memory "
