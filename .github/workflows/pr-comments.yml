@@ -293,10 +293,13 @@ jobs:
           RUN_URL: ${{ needs.resolve.outputs.run_url }}
         run: |
           set -uo pipefail
-          # The sticky action cuts the whole body from the tail at 60000 bytes, which after a
-          # noisy build would drop the diff-scoped section. Each section is capped here instead:
-          # the two diff-scoped summaries at 22000 bytes each, each nudge at 6000 or its share of what
-          # the diff section leaves above a 4000-byte build minimum, the build section to what is left.
+          # Each section is first shortened by trim_boxes.py: a code box or list under a ❌ heading
+          # keeps 10 lines, any other 5, with a "… N more" line and one link per section (each
+          # leg's build, the diff-scoped checks) to the run summary, which holds the lists in full.
+          # The byte caps below are the safety net: the sticky action cuts the whole body from the
+          # tail at 60000 bytes, so the two diff-scoped summaries are capped at 22000 bytes each,
+          # each nudge at 6000 or its share of what the diff section leaves above a 4000-byte build
+          # minimum, the build section to what is left.
           # cut_md FILE BYTES WHAT [KEEP_RE]: drop a character the cut split (iconv -c then
           # exits 1, expected), close an open code fence, say where the full output is, and
           # re-append the lines matching KEEP_RE that fell after the cut (at most 12 of up to
@@ -315,6 +318,7 @@ jobs:
           # ℹ️ best-effort count), which a tail cut would hide: keep those.
           for part in "ci-summary-bpi/tidy-summary.md:clang-tidy output" "ci-summary-bpi/gcc-gate-summary.md:gcc diff-gate output"; do
             f="${part%%:*}"
+            if [ -s "$f" ]; then python3 .github/scripts/trim_boxes.py "$f" || true; fi
             if [ -s "$f" ] && [ "$(wc -c < "$f")" -gt 22000 ]; then cut_md "$f" 22000 "${part#*:}" '^(#### ⚠|ℹ)'; fi
           done
           {
@@ -333,7 +337,9 @@ jobs:
             for leg in $legs; do
               f="summaries/ci-summary-$leg/build-summary.md"
               if [ -f "$f" ]; then
-                cat "$f"
+                cp "$f" "leg-$leg.md"
+                python3 .github/scripts/trim_boxes.py "leg-$leg.md" "$RUN_URL" || true
+                cat "leg-$leg.md"
               else
                 echo "### $leg leg — no build summary uploaded (the leg stopped first; see the run)"
               fi
@@ -398,6 +404,8 @@ jobs:
               echo "_🔬 Diff-scoped checks did not run for this commit (no compile database; see the build section)._"
             fi
           } > diff-section.md
+          # The two summaries were trimmed above; this pass adds the section's one link.
+          python3 .github/scripts/trim_boxes.py diff-section.md "$RUN_URL" || true
           # The diff-scoped section reaches ~48100 bytes (two capped summaries, their cut notices and
           # kept status lines), so two 6000-byte nudges would not fit the 57000 budget: the nudges
           # present split what is left above the build minimum (200 bytes each for the cut notice
@@ -410,17 +418,22 @@ jobs:
           cap=$(( (57000 - build_min - $(wc -c < diff-section.md)) / (nudges > 0 ? nudges : 1) - 200 ))
           if [ "$cap" -gt 6000 ]; then cap=6000; elif [ "$cap" -lt 0 ]; then cap=0; fi
           {
-            # --- Nudges (source coverage, complexity): each file exists only when something fired
-            # (complexity.md also when lizard could not analyze a file). ---
+            # --- Nudges (source coverage, complexity), trimmed like the rest. Each file exists only
+            # when something fired (complexity.md also when lizard could not analyze a file). ---
             for part in "source-coverage:source coverage" "complexity:complexity"; do
               f="ci-summary-bpi/${part%%:*}.md"
               [ -s "$f" ] || continue
+              python3 .github/scripts/trim_boxes.py "$f" || true
               if [ "$(wc -c < "$f")" -gt "$cap" ]; then cut_md "$f" "$cap" "${part#*:} output"; fi
               echo "---"
               echo
               cat "$f"; echo
             done
           } > nudge-section.md
+          # The nudges share the diff-scoped link; they carry it only when that section has none.
+          if ! grep -qF '_Longer lists' diff-section.md; then
+            python3 .github/scripts/trim_boxes.py nudge-section.md "$RUN_URL" || true
+          fi
           budget=$(( 57000 - $(wc -c < diff-section.md) - $(wc -c < nudge-section.md) ))
           if [ "$budget" -lt "$build_min" ]; then budget=$build_min; fi
           # Keep the per-leg headings and counts after a cut, so no leg's outcome is lost.

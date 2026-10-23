@@ -206,9 +206,14 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 - one sticky `ci-summary` comment (job `summary`), folding the build summary and the diff-scoped
   gcc/clang-tidy findings into a single comment keyed on one marker, so a re-push replaces that same
   comment instead of adding a new one. It replaces the two older stickies (`build-summary`,
-  `clang-tidy`), which the job retires on its first run.
-- inline review comments for the gcc diff-gate and clang-tidy findings, on the exact changed lines
-  they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks (job `format`).
+  `clang-tidy`), which the job retires on its first run. Each section stays short: a code box or
+  list under a ❌ heading shows its first 10 lines, any other its first 5, then "… N more not
+  shown" (`trim_boxes.py`); the headings keep the totals. A shortened section (each leg's build,
+  the diff-scoped checks with the nudges) ends with one link to the run summary, which has the
+  lists (up to 100 lines each). Byte caps behind that keep the body under the comment limit.
+- inline review comments for the gcc diff-gate, clang-tidy and complexity findings, on the exact
+  changed lines they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks
+  (job `format`).
   Both post through `.github/scripts/review_poster.py`, which reconciles against what is already on
   the PR instead of reposting everything on every run (§8).
 
@@ -312,12 +317,12 @@ red" — a plumbing hiccup should not falsely block a PR.
   A stage-1 step (`map_head_lines.py`) maps each finding to its PR-head line; one on a line the head
   does not have (the base changed it) is dropped and makes the set `partial`. The summary comment
   and the check annotations still show merge-ref line numbers.
-- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what
-  each `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run,
-  not per PR: the inline job (gcc-gate first, then clang-tidy) and the clang-format job each post up
-  to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to lower the cap.
-  Any other POST failure (403, 429, 5xx) stops that run's posting with a warning, without failing
-  the job; the next run posts what is missing.
+- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what each
+  `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run, not
+  per PR: the inline job (gcc-gate first, then clang-tidy, then complexity) and the clang-format job
+  each post up to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to
+  lower the cap. Any other POST failure (403, 429, 5xx) stops that run's posting with a warning,
+  without failing the job; the next run posts what is missing.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).
