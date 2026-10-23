@@ -4576,6 +4576,15 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
     }
 
     len = p_data->raw_data_len;
+
+    if (len >= sizeof(unsigned int)) {
+        unsigned int validated_ap_index = (unsigned int)(idx - 1);
+        memcpy(pTmp, &validated_ap_index, sizeof(unsigned int));
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d action frame payload too small to set ap_index\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
     push_event_to_ctrl_queue((char *)pTmp, len, wifi_event_type_command,
         wifi_event_type_send_action_frame, NULL);
 
