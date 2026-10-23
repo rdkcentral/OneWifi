@@ -136,6 +136,16 @@ compiles, in a directory a leg already compiles from, is reported in the summary
 annotation: CI would never compile it. XB-only or feature-gated files are the legitimate exception,
 which a text check cannot tell apart, so it never fails the build.
 
+**h) Build failure attribution** — `build_attribution.py`, only when a leg's build step failed;
+never fails the build itself. It says whether this PR caused the failure. Tier 1 (both legs) guesses
+from each error path: a sibling tree the PR cannot edit points at the environment, a file the PR
+changed at the PR. Tier 2 (`bpi`, which has the compile DB) decides: it reverts the PR in the
+working tree, recompiles each failing object on base sources and restores the tree; still failing
+means a dependency moved or develop was already broken, compiling means this PR. It runs after
+every other step that reads the PR tree. The summary shows bpi's verdict under its build (rpi's
+path guess only when bpi has no answer), and on a red build says whether develop's latest Build
+Check is red too.
+
 ## 4. Two-stage design (why, and how)
 
 Posting to a PR needs `pull-requests: write`. Building a PR's code means running a fork author's
@@ -197,7 +207,8 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 **Stage 1 to stage 2:**
 - `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `pr-meta.env`.
 - `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
-  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
+  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`, and on a failed build
+  `build-errors.txt` and `build-attribution.md`.
   The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
   `gcc-gate-summary.md`, `inline-tidy.json`, `inline-gcc.json`, `inline-complexity.json` and, when
   they found something, `complexity.md` and `source-coverage.md`.
