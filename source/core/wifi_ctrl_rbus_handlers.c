@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stddef.h>
 #include <errno.h>
@@ -2354,6 +2355,24 @@ static uint32_t wei_compute_rfc_mask(wei_rfc_dml_parameters_t *cfg)
     return mask;
 }
 
+/* Gates wei_start: the daemon is only launched while a pillar can actually score. */
+static void wei_update_start_trigger(const wei_rfc_dml_parameters_t *cfg)
+{
+    if (cfg->wei_enable || g_wei_ignite_enable) {
+        int fd = open(WEI_START_TRIGGER_FILE,
+            O_CREAT | O_WRONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC, 0644);
+        if (fd < 0) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d open(%s) failed errno=%d\n", __func__,
+                __LINE__, WEI_START_TRIGGER_FILE, errno);
+            return;
+        }
+        close(fd);
+    } else if (unlink(WEI_START_TRIGGER_FILE) != 0 && errno != ENOENT) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d unlink(%s) failed errno=%d\n", __func__,
+            __LINE__, WEI_START_TRIGGER_FILE, errno);
+    }
+}
+
 static void wei_apply_field_update(wei_rfc_dml_parameters_t *cfg, wei_rfc_field_update_t *upd)
 {
     if (upd->field_id < 0 || upd->field_id >= (int)WEI_PARAM_TABLE_COUNT) {
@@ -2421,6 +2440,10 @@ void process_wei_rfc_config_update(wei_rfc_field_update_t *upd)
          * to OVSDB -- keep the DB-mirror struct in sync purely so the next
          * get_ctrl_rfc_parameters() refresh doesn't clobber it back to stale. */
         get_wifi_db_rfc_parameters()->wei_rfc_mask = (int)mask;
+    }
+
+    if (status == 0) {
+        wei_update_start_trigger(cfg);
     }
 
     if (upd != NULL && upd->completion != NULL) {
