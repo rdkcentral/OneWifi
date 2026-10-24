@@ -167,12 +167,20 @@ void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *tracePare
     }
 
     pthread_mutex_lock(&webpa_interface.lock);
+    if(webpa_interface.queue == NULL){
+        pthread_mutex_unlock(&webpa_interface.lock);
+        free(payload);
+        return;
+    }
 
     snprintf(source, sizeof(source), "mac:%s/%s", webpa_interface.deviceMAC, serviceName);
 
     wrp_msg = (wrp_msg_t *)malloc(sizeof(wrp_msg_t));
     if (wrp_msg == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d - wrp_msg allocation failed\n", __func__, __LINE__);
+        if (payload) {
+            free(payload);
+        }
         pthread_mutex_unlock(&webpa_interface.lock);
         return;
     }
@@ -216,6 +224,10 @@ void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *tracePare
         if (wrp_msg->u.event.headers == NULL) {
             wifi_util_error_print(WIFI_MON, "%s:%d:wrp headers allocation failed \n", __func__,
                 __LINE__);
+            free(wrp_msg->u.event.source);
+            free(wrp_msg->u.event.dest);
+            free(wrp_msg->u.event.content_type);
+            free(payload);
             free(wrp_msg);
             pthread_mutex_unlock(&webpa_interface.lock);
             return;
