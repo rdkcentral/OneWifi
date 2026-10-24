@@ -28,6 +28,8 @@
 #include "wifi_monitor.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
+#include "wifi_hal.h"
+#include "misc.h"
 
 int validate_vap_args(wifi_mon_stats_args_t *args)  
 {
@@ -88,20 +90,50 @@ int execute_vap_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *
         return RETURN_ERR;  
     }  
     args = c_elem->args;  
+    if (getVAPArrayIndexFromVAPIndex(args->vap_index, &vap_array_index) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d invalid vap_index %d\n", __func__, __LINE__,
+            args->vap_index);
+        return RETURN_ERR;
+    }
+
     vap_stats = (vap_traffic_stats_t *)calloc(1, sizeof(vap_traffic_stats_t));  
     if (vap_stats == NULL) {  
         wifi_util_error_print(WIFI_MON, "%s:%d calloc failed\n", __func__, __LINE__);
         return RETURN_ERR;  
     }
 
-    /*
-    if (wifi_getxxx(args->vap_index, vap_stats) != RETURN_OK) {  
-        wifi_util_error_print(WIFI_MON, "%s:%d wifi_getxxx failed for vap_index %d\n",  
-            __func__, __LINE__, args->vap_index);  
-        free(vap_stats);  
-        return RETURN_ERR;  
-    } */
-    getVAPArrayIndexFromVAPIndex(args->vap_index, &vap_array_index);
+    wifi_ssidTrafficStats2_t hal_stats;
+    memset(&hal_stats, 0, sizeof(hal_stats));
+    if (get_misc_descriptor()->wifi_getSSIDTrafficStats2_fn(args->vap_index, &hal_stats) !=
+        RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d wifi_getSSIDTrafficStats2 failed for vap_index %d\n",
+            __func__, __LINE__, args->vap_index);
+        free(vap_stats);
+        return RETURN_ERR;
+    }
+    vap_stats->ssid_BytesSent = hal_stats.ssid_BytesSent;
+    vap_stats->ssid_BytesReceived = hal_stats.ssid_BytesReceived;
+    vap_stats->ssid_PacketsSent = hal_stats.ssid_PacketsSent;
+    vap_stats->ssid_PacketsReceived = hal_stats.ssid_PacketsReceived;
+    vap_stats->ssid_ErrorsSent = hal_stats.ssid_ErrorsSent;
+    vap_stats->ssid_ErrorsReceived = hal_stats.ssid_ErrorsReceived;
+    vap_stats->ssid_UnicastPacketsSent = hal_stats.ssid_UnicastPacketsSent;
+    vap_stats->ssid_UnicastPacketsReceived = hal_stats.ssid_UnicastPacketsReceived;
+    vap_stats->ssid_DiscardPacketsSent = hal_stats.ssid_DiscardedPacketsSent;
+    vap_stats->ssid_DiscardPacketsReceived = hal_stats.ssid_DiscardedPacketsReceived;
+    vap_stats->ssid_MulticastPacketsSent = hal_stats.ssid_MulticastPacketsSent;
+    vap_stats->ssid_MulticastPacketsReceived = hal_stats.ssid_MulticastPacketsReceived;
+    vap_stats->ssid_BroadcastPacketsSent = hal_stats.ssid_BroadcastPacketsSent;
+    vap_stats->ssid_BroadcastPacketsReceived = hal_stats.ssid_BroadcastPacketsRecevied;
+    vap_stats->ssid_UnknownProtoPacketsReceived = hal_stats.ssid_UnknownPacketsReceived;
+    vap_stats->ssid_RetransCount = hal_stats.ssid_RetransCount;
+    vap_stats->ssid_FailedRetransCount = hal_stats.ssid_FailedRetransCount;
+    vap_stats->ssid_RetryCount = hal_stats.ssid_RetryCount;
+    vap_stats->ssid_MultipleRetryCount = hal_stats.ssid_MultipleRetryCount;
+    vap_stats->ssid_ACKFailureCount = hal_stats.ssid_ACKFailureCount;
+    vap_stats->ssid_AggregatedPacketCount = hal_stats.ssid_AggregatedPacketCount;
+    /* ssid_{Unicast,Multicast,Broadcast}Bytes{Sent,Received} stay 0: wifi_getSSIDTrafficStats2()
+     * has no per-cast byte fields to source them from. */
 
     pthread_mutex_lock(&mon_data->data_lock);  
     memcpy(&mon_data->bssid_data[vap_array_index].vap_traffic, vap_stats, sizeof(vap_traffic_stats_t));
@@ -147,13 +179,21 @@ int copy_vap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats,
 {
     vap_traffic_stats_t *out;
     unsigned int vap_array_index;
-    if ((p_elem == NULL) || (mon_cache == NULL) || (p_elem->mon_stats_config == NULL)) {  
+    if ((p_elem == NULL) || (stats == NULL) || (stat_array_size == NULL) || (mon_cache == NULL) ||
+        (p_elem->mon_stats_config == NULL)) {
         wifi_util_error_print(WIFI_MON, "%s:%d invalid arguments\n", __func__, __LINE__);  
         return RETURN_ERR;  
     }
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d copy_vap_stats_from_cache for vap index: %d\n", __func__, __LINE__, 
     p_elem->mon_stats_config->args.vap_index);
+
+    if (getVAPArrayIndexFromVAPIndex(p_elem->mon_stats_config->args.vap_index, &vap_array_index) !=
+        RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d invalid vap_index %d\n", __func__, __LINE__,
+            p_elem->mon_stats_config->args.vap_index);
+        return RETURN_ERR;
+    }
 
     pthread_mutex_lock(&mon_cache->data_lock);  
     out = calloc(1, sizeof(vap_traffic_stats_t));  
@@ -162,7 +202,6 @@ int copy_vap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats,
         return RETURN_ERR;  
     }
 
-    getVAPArrayIndexFromVAPIndex(p_elem->mon_stats_config->args.vap_index, &vap_array_index);
     memcpy(out, &mon_cache->bssid_data[vap_array_index].vap_traffic, sizeof(vap_traffic_stats_t));
     pthread_mutex_unlock(&mon_cache->data_lock);  
 
