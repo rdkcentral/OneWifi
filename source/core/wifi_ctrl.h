@@ -185,6 +185,7 @@ typedef struct kick_details {
     int vap_index;
     int timer_id;
     bool cancelled_by_unblock;
+    bool is_whitelist;
 }kick_details_t;
 
 typedef struct {
