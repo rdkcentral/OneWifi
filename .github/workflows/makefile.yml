@@ -239,6 +239,12 @@ jobs:
         errs=$(grep -hE ': (error|fatal error):|undefined reference to|Error [0-9]+' "$LOG" \
                | sed -E 's#[^ ]*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/#\1/#; s#//#/#g' \
                | sort -u || true)
+        # make's own "*** [target] Error N" lines go last and are not counted: they repeat the
+        # failures above (one per failed target, one per parent make).
+        make_re='\*\*\* .*Error [0-9]+'
+        errs=$( { grep -vE "$make_re" <<< "$errs"; grep -E "$make_re" <<< "$errs"; } || true)
+        nerr=$(grep -cvE "$make_re" <<< "$errs" || true)
+        [ "$nerr" -gt 0 ] || nerr=$(printf '%s\n' "$errs" | wc -l)
         # The normalized error list, for the build failure attribution step.
         printf '%s\n' "$errs" > ci-out/build-errors.txt
         # Surface the top errors as ANNOTATIONS (the box at the top of the failed
@@ -250,7 +256,7 @@ jobs:
         {
           echo "### ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
           if [ -n "$errs" ]; then
-            echo "#### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo "#### ❌ Errors (${nerr} unique)"
             echo '```'
             head -100 <<< "$errs"
             echo '```'
