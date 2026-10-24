@@ -650,6 +650,7 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         tmp = new_rec->secondary_channels_list;
         while ((ptr = strchr(tmp, ',')) != NULL)
         {
+            if (i >= 7) break;
             ptr++;
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config Secondary Channel list %d \t",__func__, __LINE__,atoi(tmp));
             l_radio_cfg->channelSecondary[i] = atoi(tmp);
@@ -662,6 +663,7 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         tmp = new_rec->amsdu_tid;
         while ((ptr = strchr(tmp, ',')) != NULL)
         {
+            if (i >= 8) break;
             ptr++;
             l_radio_cfg->amsduTid[i] = atoi(tmp);
             tmp = ptr;
@@ -2468,6 +2470,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     tmp = cfg->secondary_channels_list;
     while ((ptr = strchr(tmp, ',')) != NULL)
     {
+        if (i >= 7) break;
         ptr++;
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config Secondary Channel list %d \t",__func__, __LINE__,atoi(tmp));
         config->channelSecondary[i] = atoi(tmp);
@@ -2480,6 +2483,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     tmp = cfg->amsdu_tid;
     while ((ptr = strchr(tmp, ',')) != NULL)
     {
+        if (i >= 8) break;
         ptr++;
         config->amsduTid[i] = atoi(tmp);
         tmp = ptr;
@@ -2937,7 +2941,7 @@ void wifidb_get_wifi_macfilter_config()
                 str_to_mac_bytes(tmp_mac, mac);
                 memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
 
-                strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
+                snprintf(tmp_acl_entry->device_name, sizeof(tmp_acl_entry->device_name), "%s", pcfg->device_name);
                 tmp_acl_entry->reason = pcfg->reason;
                 tmp_acl_entry->expiry_time = pcfg->expiry_time;
 
@@ -2948,7 +2952,7 @@ void wifidb_get_wifi_macfilter_config()
                 str_to_mac_bytes(tmp_mac, mac);
                 memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
 
-                strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
+                snprintf(tmp_acl_entry->device_name, sizeof(tmp_acl_entry->device_name), "%s", pcfg->device_name);
                 tmp_acl_entry->reason = pcfg->reason;
                 tmp_acl_entry->expiry_time = pcfg->expiry_time;
             }
