@@ -399,7 +399,8 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
     elem_node_map_t* current_node = root;
     elem_node_map_t* next_node    = NULL;
     int tokenFound               = 0;
-    bool isWildcard              = false;
+    elem_node_map_t *sibling      = NULL;
+    int exact_instance            = 0;
 
     if(current_node == NULL || elmentName == NULL)
     {
@@ -417,6 +418,7 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
     {
         wifi_util_dbg_print(WIFI_BUS,"Token = [%s]\n", token);
         tokenFound = 0;
+        exact_instance = 0;
 
         if(next_node == NULL)
         {
@@ -458,18 +460,16 @@ elem_node_map_t* retrieve_instance_elem_node(elem_node_map_t* root, const char* 
 
         if(token && next_node && next_node->parent && next_node->parent->type == bus_element_type_table)
         {
-            bus_callback_table_t *user_cb = NULL;
-            bus_mux_reg_node_data_t *reg_node_data = next_node->parent->node_elem_data;
-
-            if (reg_node_data != NULL) {
-                user_cb = &reg_node_data->cb_table;
+            //If token is an Instance Number, lookup for its value in Sibling
+            for (sibling = next_node->parent->child; sibling != NULL; sibling = sibling->nextSibling) {
+                if (strcmp(sibling->name, token) == 0) {
+                    exact_instance = 1;
+                    break;
+                }
             }
 
-            if (!isWildcard && !strcmp(token,"*")) {
-                isWildcard = true;
-            }
-
-            if (isWildcard || (user_cb && user_cb->get_handler)) {
+            if(!exact_instance) {
+                wifi_util_dbg_print(WIFI_BUS, "%s:%d: remap token [%s] -> {i}\n", __func__, __LINE__, token);
                 token = "{i}";
             }
         }
