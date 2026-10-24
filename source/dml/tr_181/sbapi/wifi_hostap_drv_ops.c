@@ -68,14 +68,15 @@ static u8 wifi_get_snr_value(char *ifname,unsigned char *assoc_cli_mac)
                 if(strcmp((char *)assoc_cli_mac,(char *)cli_macaddr) ==0 ) {
                     cli_SNR = sta_info->cli_RSSI;
                     wpa_printf(MSG_DEBUG,"%s:%d SNR :%d\n", __func__, __LINE__,cli_SNR);
-                    return cli_SNR;
+                    break;
                 }
             }
             free(wifi_associated_dev_array);    //freeing heap memory allocated in hal
+            return cli_SNR;
         } else {
+            free(wifi_associated_dev_array);
             return 1;
         }
-        return 0;
 }
 #endif //(FEATURE_SUPPORT_RADIUSGREYLIST)
 
