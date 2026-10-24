@@ -136,6 +136,18 @@ compiles, in a directory a leg already compiles from, is reported in the summary
 annotation: CI would never compile it. XB-only or feature-gated files are the legitimate exception,
 which a text check cannot tell apart, so it never fails the build.
 
+**h) Build failure attribution** — `build_attribution.py`, only when a leg's build step failed;
+never fails the build itself. It says whether this PR caused the failure. Tier 1 (both legs) guesses
+from each error path: a sibling tree the PR cannot edit points at the environment, a file the PR
+changed at the PR. Tier 2 (`bpi`, which has the compile DB) decides: it reverts the PR in the
+working tree, recompiles each failing object on base sources and restores the tree; still failing
+means a dependency moved or develop was already broken, compiling means this PR. The recompile keeps
+the PR's flags and dependency trees, so tier 2 never clears a PR that changes build inputs
+(`build/`, the pins, the build workflow or its actions), nor a failure with an object it cannot
+judge. It runs after every other step that reads the PR tree. The summary shows bpi's verdict under
+its build (rpi's path guess only when bpi has no answer), and on a red build says whether develop's
+latest Build Check is red too.
+
 ## 4. Two-stage design (why, and how)
 
 Posting to a PR needs `pull-requests: write`. Building a PR's code means running a fork author's
@@ -197,7 +209,8 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 **Stage 1 to stage 2:**
 - `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `pr-meta.env`.
 - `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
-  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
+  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`, and on a failed build
+  `build-errors.txt` and `build-attribution.md`.
   The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
   `gcc-gate-summary.md`, `inline-tidy.json`, `inline-gcc.json`, `inline-complexity.json` and, when
   they found something, `complexity.md` and `source-coverage.md`.
@@ -206,9 +219,14 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 - one sticky `ci-summary` comment (job `summary`), folding the build summary and the diff-scoped
   gcc/clang-tidy findings into a single comment keyed on one marker, so a re-push replaces that same
   comment instead of adding a new one. It replaces the two older stickies (`build-summary`,
-  `clang-tidy`), which the job retires on its first run.
-- inline review comments for the gcc diff-gate and clang-tidy findings, on the exact changed lines
-  they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks (job `format`).
+  `clang-tidy`), which the job retires on its first run. Each section stays short: a code box or
+  list under a ❌ heading shows its first 10 lines, any other its first 5, then "… N more not
+  shown" (`trim_boxes.py`); the headings keep the totals. When anything was shortened, one line at
+  the end links the run summary, which has the lists (up to 100 lines each). Byte caps behind that
+  keep the body under the comment limit.
+- inline review comments for the gcc diff-gate, clang-tidy and complexity findings, on the exact
+  changed lines they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks
+  (job `format`).
   Both post through `.github/scripts/review_poster.py`, which reconciles against what is already on
   the PR instead of reposting everything on every run (§8).
 
@@ -312,12 +330,12 @@ red" — a plumbing hiccup should not falsely block a PR.
   A stage-1 step (`map_head_lines.py`) maps each finding to its PR-head line; one on a line the head
   does not have (the base changed it) is dropped and makes the set `partial`. The summary comment
   and the check annotations still show merge-ref line numbers.
-- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what
-  each `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run,
-  not per PR: the inline job (gcc-gate first, then clang-tidy) and the clang-format job each post up
-  to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to lower the cap.
-  Any other POST failure (403, 429, 5xx) stops that run's posting with a warning, without failing
-  the job; the next run posts what is missing.
+- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what each
+  `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run, not
+  per PR: the inline job (gcc-gate first, then clang-tidy, then complexity) and the clang-format job
+  each post up to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to
+  lower the cap. Any other POST failure (403, 429, 5xx) stops that run's posting with a warning,
+  without failing the job; the next run posts what is missing.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).
@@ -358,12 +376,15 @@ red" — a plumbing hiccup should not falsely block a PR.
   (`source/apps/em/wifi_em.c`, `source/platform/linux/misc.c`) and 2 implicit declarations in the
   patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
   builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
-  `()`-declared functions called with an argument; `-std=gnu17` removes them.
+  `()`-declared functions called with an argument; `-std=gnu17` removes them. Details, clang-tidy 20
+  and how to re-measure: `ci-toolchain-update.md`.
 - Complexity nudge, deliberate limits: lizard skips `#else` branches (`-Ecpre`), so code only there
   is not measured (2026-10: 104 functions, 2 at CCN 20 or above, both in `wifi_db.c`; without the
   flag, `#ifdef`/`#else` pairs that each open a brace hid 344 functions in 8 core files). Functions
-  are keyed by name, so C++ overloads count as the most complex one: a smaller one crossing 30 can
-  be missed, a crossing that did not happen is never reported.
+  are keyed by name, so C++ overloads count as the most complex one: this can only miss a smaller
+  one crossing 30, never invent a crossing.
+- Complexity nudge: a function renamed in place (`foo` -> `foo_v2`) reads as new, so one at CCN 30
+  or above is reported as crossing although its complexity did not change.
 - Complexity inline comment on a renamed file: the changed lines are read from the new path
   alone, so the anchor can fall outside GitHub's rename diff; the poster then skips that one
   comment (HTTP 422) and the summary entry still shows.

@@ -239,6 +239,14 @@ jobs:
         errs=$(grep -hE ': (error|fatal error):|undefined reference to|Error [0-9]+' "$LOG" \
                | sed -E 's#[^ ]*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/#\1/#; s#//#/#g' \
                | sort -u || true)
+        # make's own "*** [target] Error N" lines go last and are not counted: they repeat the
+        # failures above (one per failed target, one per parent make).
+        make_re='\*\*\* .*Error [0-9]+'
+        errs=$( { grep -vE "$make_re" <<< "$errs"; grep -E "$make_re" <<< "$errs"; } || true)
+        nerr=$(grep -cvE "$make_re" <<< "$errs" || true)
+        [ "$nerr" -gt 0 ] || nerr=$(printf '%s\n' "$errs" | wc -l)
+        # The normalized error list, for the build failure attribution step.
+        printf '%s\n' "$errs" > ci-out/build-errors.txt
         # Surface the top errors as ANNOTATIONS (the box at the top of the failed
         # check, which people actually check) — not only the run-summary page.
         if [ -n "$errs" ]; then
@@ -248,7 +256,7 @@ jobs:
         {
           echo "### ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
           if [ -n "$errs" ]; then
-            echo "#### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo "#### ❌ Errors (${nerr} unique)"
             echo '```'
             head -100 <<< "$errs"
             echo '```'
@@ -671,6 +679,30 @@ jobs:
           echo "::warning::Could not map inline findings to PR-head lines; none are posted this run."
           rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json ci-out/inline-complexity.json
         fi
+
+    # Build failure attribution, only when this leg's build step failed: did this PR break it?
+    # Runs after every step that reads the PR tree (clang-tidy, the gcc gate, the nudges, the
+    # line mapping): tier 2 reverts the PR in the working tree to recompile the failing files on
+    # base sources, then restores it. Never fails the build: the script always exits 0. Tier 2
+    # runs only where a compile DB exists (HAVE_DB: the bpi leg); other legs get the tier-1 guess.
+    - name: Build failure attribution for ${{ matrix.platform.name }}
+      if: always() && steps.build.outcome == 'failure' && github.event_name == 'pull_request' && matrix.platform.id != 'mock'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        # 'true' only on a leg that built compile_commands.json (bpi runs bear). Tier 2 keys on
+        # this, never on the file existing: a stale DB elsewhere would recompile with the wrong flags.
+        HAVE_DB: ${{ matrix.platform.clang_tidy && 'true' || '' }}
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        # A missing script (partial cherry-pick) skips instead of failing the leg.
+        if [ ! -f .github/scripts/build_attribution.py ]; then
+          echo "#### 🧭 Build failure attribution: script not present, skipped" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        python3 .github/scripts/build_attribution.py >> "$GITHUB_STEP_SUMMARY" || true
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
     # Record the PR identity as passive data for the workflow_run poster to
