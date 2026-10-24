@@ -34,7 +34,10 @@ leaves an "attribution skipped" line and exits 0 (the build step already failed 
   in a sibling header reached through a OneWifi .c), matches each to its compile DB entry by its
   -o argument, reverts the PR in the working tree (git apply -R of the PR diff) and recompiles
   each on base sources: still failing -> environment, compiling -> pr. The tree is restored
-  afterwards (git apply forward, then a `git status` check); a mismatch is reported.
+  afterwards (git apply forward, then a `git status` check); a mismatch is reported. The
+  recompile keeps the PR's flags and dependency trees, so a PR that changes build inputs
+  (build/, the pins, the build workflow or its actions) gets no environment verdict. "Not caused by
+  this PR" needs every failing object judged environment.
 
 effective_base() and db_args() follow gcc_diff_gate.py's (this file also ships in the HAL on its
 own): keep them in sync.
@@ -75,6 +78,9 @@ MAKE_TARGET_RE = re.compile(r"\*\*\* \[(?:.*[:\s])?([^\s\]]+\.o)\] Error \d+")
 UNDEF_REF_RE = re.compile(r"undefined reference to [`']([^`']+)'")
 ERROR_PATH_RE = re.compile(r"^(\S+?):\d+(?::\d+)?: (?:error|fatal error):")
 SHOWN_RE = re.compile(r"^\S*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/+")
+# What the build itself reads besides sources: makefiles, setup scripts and patch lists, the pins,
+# the build workflow and its actions.
+BUILD_INPUT_RE = re.compile(r"^(build/|\.github/(ci-pins\.env$|actions/|workflows/makefile\.yml$))")
 
 
 def run_git(args):
@@ -211,6 +217,19 @@ def recompile_on_base(db, targets, diff_base):
     return verdicts, "" if restored else "WARNING: the PR tree was not cleanly restored after tier 2"
 
 
+def discount_build_inputs(verdicts, changed):
+    """(verdicts, note): environment -> unknown when the PR changes a build input, since tier 2
+    rebuilt the base sources with this PR's flags and dependency trees."""
+    inputs = sorted(path for path in changed if BUILD_INPUT_RE.match(path))
+    if not inputs or "environment" not in verdicts.values():
+        return verdicts, ""
+    more = f" and {len(inputs) - 1} more" if len(inputs) > 1 else ""
+    discounted = {target: "unknown" if verdict == "environment" else verdict
+                  for target, verdict in verdicts.items()}
+    return discounted, (f"This PR changes build inputs ({inputs[0]}{more}), so a failure on the base "
+                        "sources is not judged: they were rebuilt with this PR's flags and trees.")
+
+
 def shown(path):
     """A path as the build summary shows it: from the repo directory on, without '//'."""
     return re.sub(r"/{2,}", "/", SHOWN_RE.sub(r"\1/", path))
@@ -233,10 +252,9 @@ def render(rows, verdicts, note, trees):
     env_tus = sorted(target for target, verdict in verdicts.items() if verdict == "environment")
     pr_tus = sorted(target for target, verdict in verdicts.items() if verdict == "pr")
     unknown = sum(verdict == "unknown" for verdict in verdicts.values())
-    if env_tus and not pr_tus and not note.startswith("WARNING"):
-        caveat = f" ({unknown} not in the compile DB, not judged)" if unknown else ""
+    if env_tus and not pr_tus and not unknown and not note.startswith("WARNING"):
         md = [f"{HEADING}Not caused by this PR",
-              f"{len(env_tus)} failing file(s) fail on the PR base too{caveat}: a dependency moved "
+              f"{len(env_tus)} failing file(s) fail on the PR base too: a dependency moved "
               "or develop was already broken.",
               f"Trees: {', '.join(sorted(trees)) or 'the failing tree(s)'}. Check whether develop "
               "is red or an unpinned input moved (unified-wifi-mesh, rdk-wifi-hal, halinterface, "
@@ -252,7 +270,7 @@ def render(rows, verdicts, note, trees):
             md.append(f"_{note}_")
         return md, "Red build caused by this PR: the errors go away when it is reverted."
     md = [f"{HEADING}Build failure: cause unclear",
-          "Mixed results, no compile DB on this leg, or the check could not run."]
+          "Mixed results, files not judged, no compile DB on this leg, or the check could not run."]
     if note:
         md.append(f"_{note}_")
     if rows:
@@ -276,6 +294,8 @@ def main():
             with open(DB, encoding="utf-8") as fh:
                 db = json.load(fh)
             verdicts, note = recompile_on_base(db, parse_make_targets(read_text(BUILD_LOG)), diff_base)
+            verdicts, inputs_note = discount_build_inputs(verdicts, changed)
+            note = " ".join(filter(None, [note, inputs_note]))
         except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
             note = f"tier 2 skipped (mechanism error: {exc})"
     md, notice = render(rows, verdicts, note, trees_of(rows))

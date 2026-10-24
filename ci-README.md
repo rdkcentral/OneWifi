@@ -141,10 +141,12 @@ never fails the build itself. It says whether this PR caused the failure. Tier 1
 from each error path: a sibling tree the PR cannot edit points at the environment, a file the PR
 changed at the PR. Tier 2 (`bpi`, which has the compile DB) decides: it reverts the PR in the
 working tree, recompiles each failing object on base sources and restores the tree; still failing
-means a dependency moved or develop was already broken, compiling means this PR. It runs after
-every other step that reads the PR tree. The summary shows bpi's verdict under its build (rpi's
-path guess only when bpi has no answer), and on a red build says whether develop's latest Build
-Check is red too.
+means a dependency moved or develop was already broken, compiling means this PR. The recompile keeps
+the PR's flags and dependency trees, so tier 2 never clears a PR that changes build inputs
+(`build/`, the pins, the build workflow or its actions), nor a failure with an object it cannot
+judge. It runs after every other step that reads the PR tree. The summary shows bpi's verdict under
+its build (rpi's path guess only when bpi has no answer), and on a red build says whether develop's
+latest Build Check is red too.
 
 ## 4. Two-stage design (why, and how)
 

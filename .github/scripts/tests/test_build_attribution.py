@@ -98,6 +98,22 @@ class Tier2(unittest.TestCase):
             self.assertEqual(verdicts.get("gone.o"), "unknown")             # not in the DB
             self.assertTrue(got_note.startswith(note), got_note)
 
+    def test_discount_build_inputs(self):
+        cases = [
+            # (PR changed files, verdicts in, verdicts out, note start)
+            ({"build/linux/bpi/makefile"}, {"a.o": "environment"}, {"a.o": "unknown"},
+             "This PR changes build inputs (build/linux/bpi/makefile)"),
+            ({".github/ci-pins.env", "source/foo.c"}, {"a.o": "environment", "b.o": "pr"},
+             {"a.o": "unknown", "b.o": "pr"}, "This PR changes build inputs (.github/ci-pins.env)"),
+            ({"build/linux/bpi/makefile"}, {"a.o": "pr"}, {"a.o": "pr"}, ""),        # pr stands
+            ({"source/foo.c", ".github/workflows/pr-comments.yml"}, {"a.o": "environment"},
+             {"a.o": "environment"}, ""),                                           # not an input
+        ]
+        for changed, verdicts, expected, note in cases:
+            got, got_note = ba.discount_build_inputs(verdicts, changed)
+            self.assertEqual(got, expected, changed)
+            self.assertTrue(got_note.startswith(note) and bool(got_note) == bool(note), got_note)
+
 
 class Render(unittest.TestCase):
     def test_render(self):
@@ -108,6 +124,7 @@ class Render(unittest.TestCase):
             ({"source/foo.o": "environment"}, "WARNING: x", "Build failure: cause unclear"),
             ({"source/foo.o": "pr", "bar.o": "environment"}, "", "Build failure: cause unclear"),
             ({}, "", "Build failure: cause unclear"),          # no compile DB on this leg
+            ({"source/foo.o": "environment", "gone.o": "unknown"}, "", "Build failure: cause unclear"),
         ]
         for verdicts, note, heading in cases:
             md, notice = ba.render(rows, verdicts, note, {"rdk-wifi-hal"})

@@ -336,7 +336,7 @@ jobs:
                     --jq '.workflow_runs[0] | "\(.conclusion) \(.updated_at) \(.html_url)"' 2>/dev/null || true)
               when=$(printf '%s' "$dev" | cut -d' ' -f2)
               case "$dev" in
-                failure\ *) echo "❗ develop's latest Build Check [failed too](${dev##* }) (${when}): this PR is probably not the cause."; echo ;;
+                failure\ *) echo "❗ develop's latest Build Check [failed too](${dev##* }) (${when})."; echo ;;
                 success\ *) echo "develop's latest Build Check [passed](${dev##* }) (${when})."; echo ;;
               esac
             fi
