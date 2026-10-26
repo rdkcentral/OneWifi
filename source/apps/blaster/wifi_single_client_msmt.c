@@ -1945,7 +1945,7 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
             ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
             upload_single_client_active_msmt_data(sta);
         } else if (ctrl->network_mode == rdk_dev_mode_type_ext ||
-                   ctrl->network_mode == rdk_dev_mode_type_em_node) {
+            ctrl->network_mode == rdk_dev_mode_type_em_node) {
             pod_upload_single_client_active_msmt_data(sta);
         }
     }
