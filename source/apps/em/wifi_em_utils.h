@@ -20,24 +20,24 @@
 #ifndef EASYMESH_UTILS_H
 #define EASYMESH_UTILS_H
 
-#include "wifi_base.h"
-#include "wifi_util.h"
-#include "wifi_ctrl.h"
-#include "ds_dlist.h"
 #include "dpp_types.h"
+#include "ds_dlist.h"
+#include "wifi_base.h"
+#include "wifi_ctrl.h"
+#include "wifi_util.h"
 #include <wifi_hal_generic.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MSEC_IN_SEC  (1000ULL)
+#define MSEC_IN_SEC (1000ULL)
 #define NSEC_IN_MSEC (1000000ULL)
 #define USEC_IN_MSEC (1000ULL)
 
 /* conversion */
-char* survey_type_to_str(survey_type_t survey_type);
-char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
+char *survey_type_to_str(survey_type_t survey_type);
+char *neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
 
 /* time utils*/
 uint64_t get_real_ms();
