@@ -145,9 +145,9 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
         wifi_util_info_print(WIFI_CTRL, "%s %d POD MOde Activated. Sending Blaster status to cloud\n", __func__, __LINE__);
         mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
         webconfig_send_blaster_status(ctrl);
-    }
-    else if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-            wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
+    } else if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
+        wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
     }
 
     return RETURN_OK;
