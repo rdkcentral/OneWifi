@@ -2288,7 +2288,8 @@ int webconfig_blaster_app_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data
     mgr->blaster_config_global = data->blaster;
 
     /* If Device operating in POD mode, Send the blaster status as new to the cloud */
-    if (ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->network_mode == rdk_dev_mode_type_em_node) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         /* MQTT Topic is required to publish data to QM */
         if (strcmp((char *)mgr->blaster_config_global.blaster_mqtt_topic, "") == 0)
         {

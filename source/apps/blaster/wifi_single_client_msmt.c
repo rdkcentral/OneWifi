@@ -74,7 +74,10 @@ static void to_plan_char(unsigned char *plan, unsigned char *key)
 {
     int i = 0;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int size = (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) ? 16 : 36;
+    int size = (ctrl->network_mode == rdk_dev_mode_type_gw ||
+                   ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) ?
+        16 :
+        36;
     for(i=0; i<size; i++)
     {
         sscanf((char*)plan,"%c",(char*)&key[i]);
