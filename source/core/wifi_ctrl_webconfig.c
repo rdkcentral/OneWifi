@@ -1916,10 +1916,30 @@ int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     webconfig_subdoc_type_t doc_type)
 {
     unsigned int num_vaps = 0;
-    char *vap_names[MAX_NUM_VAP_PER_RADIO];
+    unsigned int scan_radio_index;
+    unsigned int scan_vap_index;
+    char *vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     wifi_mgr_t *mgr = get_wifimgr_obj();
     rdk_wifi_vap_map_t *mgr_vap_map = NULL;
+    rdk_wifi_radio_t *scan_radio;
     int radio_index = -1;
+
+    if (doc_type == webconfig_subdoc_type_vap_5G) {
+        for (scan_radio_index = 0; scan_radio_index < getNumberRadios();
+             scan_radio_index++) {
+            scan_radio = &data->radios[scan_radio_index];
+            for (scan_vap_index = 0; scan_vap_index < scan_radio->vaps.vap_map.num_vaps;
+                 scan_vap_index++) {
+                if (scan_radio->vaps.rdk_vap_array[scan_vap_index].force_apply == true) {
+                    vap_names[num_vaps++] =
+                        scan_radio->vaps.vap_map.vap_array[scan_vap_index].vap_name;
+                }
+            }
+        }
+        if (num_vaps != 0) {
+            return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+        }
+    }
 
     switch (doc_type) {
     case webconfig_subdoc_type_vap_24G:

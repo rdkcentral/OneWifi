@@ -4060,6 +4060,8 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int *subdoc)
         *subdoc = webconfig_subdoc_type_vap_24G;
         break;
     case WIFI_FREQUENCY_5_BAND:
+    case WIFI_FREQUENCY_5L_BAND:
+    case WIFI_FREQUENCY_5H_BAND:
         *subdoc = webconfig_subdoc_type_vap_5G;
         break;
     case WIFI_FREQUENCY_6_BAND:
