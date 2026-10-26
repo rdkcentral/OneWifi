@@ -17,13 +17,13 @@
   limitations under the License.
  **************************************************************************/
 
-#include "const.h"
 #include "scheduler.h"
 #include "wifi_em_utils.h"
 #include "wifi_em.h"
 #include "wifi_hal.h"
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
+#include "common/ieee802_11_common.h"
 #include "common/ieee802_11_defs.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -82,7 +82,7 @@ typedef struct {
     client_assoc_data_t client_assoc_data[MAX_NUM_VAP_PER_RADIO];
     unsigned int assoc_stats_vap_presence_mask;
     unsigned int req_stats_vap_mask;
-} client_assoc_stats_t;
+} em_client_assoc_stats_t;
 
 typedef struct {
     wifi_associated_dev3_t associated_dev3;
@@ -109,7 +109,7 @@ typedef struct {
 
 //em_ap_metrics_report_cache_t em_ap_metrics_report_cache[MAX_NUM_RADIOS] = { 0 };
 em_ap_metrics_report_cache_t em_ap_metrics_report_cache = { 0 };
-client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
+em_client_assoc_stats_t em_client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
 client_type_data_t client_type_info = { 0 };
 
 /* Internal helper that carries the fields for a failed-connection event.
@@ -159,10 +159,9 @@ static int em_get_radio_index_from_mac(mac_addr_t ruuid)
 
     to_mac_str(ruuid, rad_str);
 
-    for (int i = 0; i < num_of_radios; i++) {
+    for (unsigned int i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
-
-        for (int j = 0; vap_map && j < vap_map->num_vaps; j++) {
+        for (unsigned int j = 0; vap_map && j < vap_map->num_vaps; j++) {
             to_mac_str(vap_map->vap_array[j].u.bss_info.bssid, bss_str);
             //wifi_util_dbg_print(WIFI_EM, "%s:%d comparing ruuid[%s] with bss mac: %s\n", __func__, __LINE__, rad_str, bss_str);
             if (memcmp(ruuid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) == 0) {
@@ -234,7 +233,7 @@ static int em_match_radio_index_to_policy_index(radio_metrics_policies_t *radio_
     radio_interface_mapping_t *radio_iface_map = NULL;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
-    unsigned int i = 0, k = 0;
+    unsigned int k = 0;
 
     // Testing the code for RCPI-based link metrics is required.
     // Will reassess this block during that process.
@@ -246,7 +245,7 @@ static int em_match_radio_index_to_policy_index(radio_metrics_policies_t *radio_
     } */
     for (k = 0;
         k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
-        if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
+        if (wifi_prop->radio_interface_map[k].radio_index == (unsigned int)radio_index) {
             radio_iface_map = &(wifi_prop->radio_interface_map[k]);
             break;
         }
@@ -303,7 +302,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
     wifi_associated_dev3_timestamp_t *stats = NULL;
     wifi_associated_dev3_timestamp_t *new_stats = NULL;
     mac_addr_str_t mac_str = { 0 }, bss_str = { 0 };
-    unsigned char key[64] = { 0 };
+    char key[64] = { 0 };
     int arr_vap_index = -1;
     unsigned int i = 0;
     wifi_vap_info_t *vap_info = NULL;
@@ -323,7 +322,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
     for (i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
         wifi_util_dbg_print(WIFI_EM, "%s:%d vap_index=%d, radio_index=%d and cache[%d]'s Vap index = %d\n",
             __func__, __LINE__, vap_index, radio_index, i, em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index);
-        if (vap_index == em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index) {
+        if (vap_index == (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index) {
             arr_vap_index = i;
             break;
         } else {
@@ -443,8 +442,7 @@ static int prepare_sta_lins_metrics_data(per_sta_metrics_t *data, wifi_associate
     to_mac_str(stats->associated_dev3.cli_MACAddress, key);
     cli_data = hash_map_get(client_type_info.sta_client_type.client_type_map, key);
     if (cli_data != NULL) {
-        strncpy((char *)data->client_type, (const char *)cli_data->client_type, sizeof(data->client_type) - 1);
-        data->client_type[sizeof(data->client_type) - 1] = '\0';
+        memcpy(data->client_type, cli_data->client_type, sizeof(cli_data->client_type));
     }
 
     data->assoc_sta_link_metrics.num_bssid = 1; // must be changed for STA multiple associations
@@ -500,12 +498,12 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
 
     for (int i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
         stats[i].hit_count = 0;
-        for (int j = 0; j < stats[i].stat_array_size; j++) {
+        for (unsigned int j = 0; j < stats[i].stat_array_size; j++) {
             if (stats[i].threshold_hit[j] == true) {
                 stats[i].threshold_hit[j] = false;
                 prepare_sta_lins_metrics_data(
                     data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics,
-                    &stats[i].assoc_stats[j].dev_stats, vap_index);
+                    (wifi_associated_dev3_timestamp_t *)&stats[i].assoc_stats[j].dev_stats, vap_index);
             }
         }
     }
@@ -535,7 +533,7 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
     }
 
     for (int i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
-        for (int j = 0; j < stats[i].stat_array_size; j++) {
+        for (unsigned int j = 0; j < stats[i].stat_array_size; j++) {
             stats[i].threshold_hit[j] = false;
         }
     }
@@ -635,7 +633,7 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
 
     return RETURN_OK;
 }
-
+#if 0
 static int em_stop_metrics_report(int radio_index, wifi_app_t *app)
 {
     wifi_monitor_data_t *data;
@@ -675,8 +673,9 @@ static int em_stop_metrics_report(int radio_index, wifi_app_t *app)
         data = NULL;
     }
 }
+#endif 
 
-int assoc_client_response(wifi_app_t *app, wifi_provider_response_t *provider_response)
+int em_assoc_client_response(wifi_app_t *app, wifi_provider_response_t *provider_response)
 {
     unsigned int radio_index = 0;
     unsigned int vap_index = 0;
@@ -709,26 +708,26 @@ int assoc_client_response(wifi_app_t *app, wifi_provider_response_t *provider_re
         return RETURN_ERR;
     }
 
-    memset(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats, 0,
-        sizeof(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats));
-    memcpy(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats,
+    memset(em_client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats, 0,
+        sizeof(em_client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats));
+    memcpy(em_client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats,
         provider_response->stat_pointer, (sizeof(sta_data_t) * provider_response->stat_array_size));
-    client_assoc_stats[radio_index].client_assoc_data[vap_array_index].stat_array_size =
+    em_client_assoc_stats[radio_index].client_assoc_data[vap_array_index].stat_array_size =
         provider_response->stat_array_size;
-    client_assoc_stats[radio_index].assoc_stats_vap_presence_mask |= (1 << vap_index);
+    em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask |= (1 << vap_index);
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d: vap_index : %d client array size : %d \r\n", __func__,
         __LINE__, vap_index, provider_response->stat_array_size);
 
-    if (client_assoc_stats[radio_index].assoc_stats_vap_presence_mask ==
-            (client_assoc_stats[radio_index].req_stats_vap_mask & client_assoc_stats[radio_index].assoc_stats_vap_presence_mask)) {
+    if (em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask ==
+            (em_client_assoc_stats[radio_index].req_stats_vap_mask & em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask)) {
         wifi_util_dbg_print(WIFI_EM, "%s:%d: push stats for radio_index : %d \r\n", __func__,
             __LINE__, radio_index);
-        handle_ready_client_stats(app, client_assoc_stats[radio_index].client_assoc_data,
-            MAX_NUM_VAP_PER_RADIO, client_assoc_stats[radio_index].assoc_stats_vap_presence_mask,
+        handle_ready_client_stats(app, em_client_assoc_stats[radio_index].client_assoc_data,
+            MAX_NUM_VAP_PER_RADIO, em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask,
             radio_index, vap_index, provider_response->args.app_info,
             provider_response->stat_array_size);
-        client_assoc_stats[radio_index].assoc_stats_vap_presence_mask = 0;
+        em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask = 0;
     }
 
     return RETURN_OK;
@@ -747,6 +746,7 @@ static void config_em_neighbour_scan(wifi_monitor_data_t *data, unsigned int rad
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 }
 
+#if 0
 static void config_em_chan_util(wifi_monitor_data_t *data, unsigned int radioIndex)
 {
     wifi_event_route_t route;
@@ -759,6 +759,20 @@ static void config_em_chan_util(wifi_monitor_data_t *data, unsigned int radioInd
         route.u.inst_bit_map);
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+}
+#endif
+
+static int em_freq_to_op_class(unsigned int freq)
+{
+    u8 op_class = 0, channel = 0;
+
+    if (ieee80211_freq_to_channel_ext(freq, 0, 0, &op_class, &channel) == NUM_HOSTAPD_MODES) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Failed to get op class for freq : %u\n", __func__,
+            __LINE__, freq);
+        return 0;
+    }
+
+    return op_class;
 }
 
 static int em_prepare_scan_response_data(wifi_provider_response_t *provider_response,
@@ -812,10 +826,10 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
 
     get_formatted_time(time_str);
 
-    for (int i = 0; i < scan_count; i++) {
+    for (unsigned int i = 0; i < scan_count; i++) {
         wifi_neighbor_ap2_t *src = &wifi_scan_data[i];
 
-        int op_class = wifi_freq_to_op_class(src->ap_freq);
+        int op_class = em_freq_to_op_class(src->ap_freq);
         if (op_class <= 0) {
             wifi_util_error_print(WIFI_EM, "%s:%d : Invalid op_class (%d). Skipping scan result.\n",
                 __func__, __LINE__, op_class);
@@ -829,7 +843,7 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
         }
 
         int res_index = -1;
-        for (int j = 0; j < scan_response->num_results; j++) {
+        for (unsigned int j = 0; j < scan_response->num_results; j++) {
             if (scan_response->results[j].operating_class == op_class &&
                 scan_response->results[j].channel == src->ap_Channel) {
                 res_index = j;
@@ -1005,6 +1019,7 @@ static int em_stop_neighbor_scan(wifi_provider_response_t *provider_response)
         free(data);
         data = NULL;
     }
+    return RETURN_OK;
 }
 
 static inline bool ssid_in_local_list(const char *ssid,
@@ -1199,7 +1214,6 @@ static int em_process_chan_stats_data(wifi_provider_response_t *provider_respons
 {
     radio_chan_data_t *chan_scan_data = NULL;
     chan_scan_data = (radio_chan_data_t *)provider_response->stat_pointer;
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
     if (chan_scan_data == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: chan_scan_data is NULL\n", __func__, __LINE__);
@@ -1254,7 +1268,7 @@ int vap_stats_response(wifi_provider_response_t *provider_response)
     }
 
     for (i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
-        if (vap_index == em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index) {
+        if (vap_index == (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index) {
             arr_vap_index = i;
             break;
         }
@@ -1327,12 +1341,11 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
     ap_metrics_data_t *ap_data = NULL;
     ap_metrics_t *ap_metrics = NULL;
     wifi_vap_info_t *vap = NULL;
-    int j = 0;
     mac_addr_t radio_mac;
     mac_addr_str_t radio_str;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
-    unsigned int i = 0, k = 0;
+    unsigned int k = 0;
     radio_metrics_t *radio_metrics = NULL;
     em_chan_survey_prev_t *survey_prev = NULL;
     unsigned long long d_total = 0, d_tx = 0, d_self = 0, d_rx = 0, d_busy = 0;
@@ -1354,7 +1367,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
     radio = find_radio_config_by_index(radio_index);
     if (radio == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: NULL Pointer\n", __func__, __LINE__);
-        return;
+        return RETURN_ERR;
     }
 
     vap_map = &radio->vaps.vap_map;
@@ -1384,7 +1397,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
 
         for (k = 0;
             k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
-            if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
+            if (wifi_prop->radio_interface_map[k].radio_index == (unsigned int)radio_index) {
                 radio_iface_map = &(wifi_prop->radio_interface_map[k]);
                 break;
             }
@@ -1454,7 +1467,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
         radio_metrics->noise = (unsigned char)anpi;
 
         // now save radio channel util for each vap
-        for (j = 0; j < radio->vaps.num_vaps; j++) {
+        for (unsigned j = 0; j < radio->vaps.num_vaps; j++) {
             vap = &vap_map->vap_array[j];
             if (vap == NULL) {
                 wifi_util_dbg_print(WIFI_EM, "%s:%d NULL VAP\r\n", __func__, __LINE__);
@@ -1480,7 +1493,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
                     __LINE__);
             } else {
                 ap_data = &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[j];
-                if (ap_data->vap_index != vap->vap_index){
+                if ((unsigned int)ap_data->vap_index != vap->vap_index){
                     wifi_util_dbg_print(WIFI_EM,
                         "%s:%d vap index not mathing %d\r\n", __func__, __LINE__, vap->vap_index);
                     continue;
@@ -1506,7 +1519,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
     return RETURN_OK;
 }
 
-int handle_monitor_provider_response(wifi_app_t *app, wifi_event_t *event)
+int em_handle_monitor_provider_response(wifi_app_t *app, wifi_event_t *event)
 {
     wifi_provider_response_t *provider_response;
     provider_response = (wifi_provider_response_t *)event->u.provider_response;
@@ -1521,7 +1534,7 @@ int handle_monitor_provider_response(wifi_app_t *app, wifi_event_t *event)
 
     case em_app_event_type_assoc_stats_rcpi_monitor:
     case em_app_event_type_assoc_dev_stats_periodic:
-        ret = assoc_client_response(app, provider_response);
+        ret = em_assoc_client_response(app, provider_response);
         break;
     case em_app_event_type_neighbor_stats:
         ret = em_process_neighbour_data(provider_response);
@@ -1546,7 +1559,7 @@ int handle_monitor_provider_response(wifi_app_t *app, wifi_event_t *event)
 int handle_sta_client_info(wifi_app_t *app, void *data)
 {
     sta_client_info_t *sta_info = (sta_client_info_t *)data;
-    unsigned char client_mac[32] = { 0 };
+    char client_mac[32] = { 0 };
     sta_client_info_t *cli_data = NULL;
 
     if (sta_info == NULL) {
@@ -1567,7 +1580,7 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
         }
         memset(cli_data, 0, sizeof(sta_client_info_t));
         memcpy(cli_data->mac_addr, sta_info->mac_addr, sizeof(mac_address_t));
-        strncpy((char *)cli_data->client_type, (const char *)sta_info->client_type, sizeof(cli_data->client_type) - 1);
+        memcpy(cli_data->client_type, sta_info->client_type, sizeof(cli_data->client_type));
         cli_data->client_type[sizeof(cli_data->client_type) - 1] = '\0';
 
         hash_map_put(client_type_info.sta_client_type.client_type_map, strdup(client_mac),
@@ -1597,8 +1610,8 @@ static int em_publish_failed_connection(const wifi_em_failed_conn_t *fc)
     int n;
     bus_error_t rc;
 
-    to_mac_str(fc->bssid,   bssid_str);
-    to_mac_str(fc->sta_mac, sta_str);
+    to_mac_str((unsigned char *)fc->bssid,   bssid_str);
+    to_mac_str((unsigned char *)fc->sta_mac, sta_str);
 
     n = snprintf(json_buf, sizeof(json_buf),
         "{\"bssid\":\"%s\",\"sta_mac\":\"%s\",\"status\":%u,\"reason\":%u}",
@@ -1670,11 +1683,10 @@ static int em_handle_failed_connection(wifi_app_t *app, void *arg)
 
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 {
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
     char client_mac[32];
     int vap_index = assoc_data->ap_index;
-    unsigned char key[64] = { 0 };
+    char key[64] = { 0 };
     mac_addr_str_t sta_mac_str, bss_str;
     int i = 0;
     int radio_index = -1;
@@ -1767,6 +1779,7 @@ static int em_handle_sta_conn_status(wifi_app_t *app, void *data)
     snprintf(path, sizeof(path), WIFI_EM_ASSOCIATION_STATUS);
     get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle, path, &rdata);
     free(rdata.raw_data.bytes);
+    return RETURN_OK;
 }
 
 int monitor_event_em(wifi_app_t *app, wifi_event_t *event)
@@ -1780,7 +1793,7 @@ int monitor_event_em(wifi_app_t *app, wifi_event_t *event)
 
     switch (event->sub_type) {
     case wifi_event_monitor_provider_response:
-        ret = handle_monitor_provider_response(app, event);
+        ret = em_handle_monitor_provider_response(app, event);
         break;
 
     default:
@@ -1792,7 +1805,7 @@ int monitor_event_em(wifi_app_t *app, wifi_event_t *event)
     return ret;
 }
 
-int generate_vap_mask_for_radio_index(unsigned int radio_index)
+int em_generate_vap_mask_for_radio_index(unsigned int radio_index)
 {
     rdk_wifi_vap_map_t *rdk_vap_map = NULL;
     unsigned int count = 0;
@@ -1804,7 +1817,7 @@ int generate_vap_mask_for_radio_index(unsigned int radio_index)
     }
     for (count = 0; count < rdk_vap_map->num_vaps; count++) {
         if (!isVapSTAMesh(rdk_vap_map->rdk_vap_array[count].vap_index)) {
-            client_assoc_stats[radio_index].req_stats_vap_mask |= (1
+            em_client_assoc_stats[radio_index].req_stats_vap_mask |= (1
                 << rdk_vap_map->rdk_vap_array[count].vap_index);
         }
     }
@@ -1812,14 +1825,14 @@ int generate_vap_mask_for_radio_index(unsigned int radio_index)
     return RETURN_OK;
 }
 
-int client_diag_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *data,
+int em_client_diag_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *data,
     em_app_event_type_t app_etype)
 {
     unsigned int vapArrayIndex = 0;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_event_route_t route;
     int radio_count = -1;
-    unsigned int i = 0;
+    int i = 0;
 
     em_route(&route);
     if (em_common_config_to_monitor_queue(app, data) != RETURN_OK) {
@@ -1827,18 +1840,17 @@ int client_diag_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *da
             stats_type_client);
         return RETURN_ERR;
     }
-
     radio_count = app->data.u.em_data.em_config.radio_metrics_policies.radio_count;
 
     for (i = 0; i < radio_count; i++) {
         data[i].u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
 
-        if (client_assoc_stats[data[i].u.mon_stats_config.args.radio_index].req_stats_vap_mask ==
+        if (em_client_assoc_stats[data[i].u.mon_stats_config.args.radio_index].req_stats_vap_mask ==
             0) {
-            if (generate_vap_mask_for_radio_index(data[i].u.mon_stats_config.args.radio_index) ==
+            if (em_generate_vap_mask_for_radio_index(data[i].u.mon_stats_config.args.radio_index) ==
                 RETURN_ERR) {
                 wifi_util_error_print(WIFI_EM,
-                    "%s:%d generate_vap_mask_for_radio_index failed \r\n", __func__, __LINE__);
+                    "%s:%d em_generate_vap_mask_for_radio_index failed \r\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
         }
@@ -1900,8 +1912,8 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
     wifi_vap_info_t *vap_info = NULL;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     raw_data_t rdata;
-    unsigned int i = 0, j = 0, k = 0, cnt = 0;
-    int cache_vap_index = -1;
+    unsigned int j = 0, k = 0;
+    int cache_vap_index = -1, cnt = 0;
     mac_addr_str_t radio_str;
     em_config_t *em_config = &args->app->data.u.em_data.em_config;
     int req_radio_count = em_config->radio_metrics_policies.radio_count;
@@ -1952,7 +1964,7 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                 wifi_util_dbg_print(WIFI_EM, \
                     "%s:%d Cache's Vap Data at k=%d, radio %d's vapIndex:%d and ap_metrics vap index: %d\n", \
                     __func__, __LINE__, k, radio_index, vap_info->vap_index , em_ap_metrics_report_cache.radio_report[radio_index].ap_data[k].vap_index);
-                if (vap_info->vap_index == em_ap_metrics_report_cache.radio_report[radio_index].ap_data[k].vap_index) {
+                if (vap_info->vap_index == (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index].ap_data[k].vap_index) {
                     // in em_cache_store, data is stored against the vapindex in the array
                     cache_vap_index = k;
                     break;
@@ -2213,7 +2225,7 @@ int em_ap_report_config_task(wifi_app_t *app, em_config_t *em_config, wifi_mon_s
     task_args->policy_config = *em_config;
 
     rc = scheduler_add_timer_task(app->ctrl->sched, FALSE, &(em_ap_metrics_report_cache.args.sched_id),
-        ap_report_push_cb, task_args, interval * 1000, 0, FALSE);
+        (void*)ap_report_push_cb, task_args, interval * 1000, 0, FALSE);
     if (rc != RETURN_OK) {
         wifi_util_error_print(WIFI_EM, "%s:%d: failed to add timer task\n", __func__, __LINE__);
     }
@@ -2228,11 +2240,9 @@ int ap_metrics_collector_config(wifi_app_t *app, wifi_monitor_data_t *data,
     wifi_mon_stats_request_state_t state, em_config_t *em_config, em_policy_req_type_t policy_type)
 {
     wifi_event_route_t route;
-    radio_metrics_policy_t *metrics_pol = NULL;
-    em_policy_req_type_t ap_metrics_inclusion;
     int radio_index = -1;
     int radio_count = -1;
-    unsigned int i = 0;
+    int i = 0;
     unsigned int vapArrayIndex = 0;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
@@ -2326,7 +2336,6 @@ int ap_metrics_collector_config(wifi_app_t *app, wifi_monitor_data_t *data,
 int ap_metrics_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *data,
     wifi_mon_stats_request_state_t state, em_config_t *em_config)
 {
-    int interval = em_config->ap_metric_policy.interval;
     radio_metrics_policy_t *metrics_pol = NULL;
     em_policy_req_type_t ap_metrics_inclusion = em_ap_metrics_none;
     int rad_cnt = em_config->radio_metrics_policies.radio_count;
@@ -2364,7 +2373,7 @@ int ap_metrics_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *dat
     case em_ap_metrics_link:
     case em_ap_metrics_traffic:
     case em_ap_metrics_link_and_traffic:
-        client_diag_config_to_monitor_queue(app, data, em_app_event_type_assoc_dev_stats_periodic);
+        em_client_diag_config_to_monitor_queue(app, data, em_app_event_type_assoc_dev_stats_periodic);
 
         wifi_util_dbg_print(WIFI_EM, "%s:%d collect link/trafic/both as part of AP Metrics\r\n",
             __func__, __LINE__);
@@ -2401,7 +2410,7 @@ int push_em_config_event_to_monitor_queue(wifi_app_t *app, wifi_mon_stats_reques
     switch (policy) {
     case em_policy_req_type_link_metrics:
         wifi_util_dbg_print(WIFI_EM, "%s:%d em_policy_req_type_link_metrics\n", __func__, __LINE__);
-        ret = client_diag_config_to_monitor_queue(app, data,
+        ret = em_client_diag_config_to_monitor_queue(app, data,
             em_app_event_type_assoc_stats_rcpi_monitor);
         break;
 
@@ -2440,13 +2449,13 @@ static void ap_report_cache_init()
         }
     }
 
-    for (int i = 0; i < num_of_radios; i++) {
+    for (unsigned int i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         if (!vap_map) {
             continue;
         }
 
-        for (int j = 0; j < vap_map->num_vaps; j++) {
+        for (unsigned int j = 0; j < vap_map->num_vaps; j++) {
             vap_info = &vap_map->vap_array[j];
             if (vap_info == NULL) {
                 wifi_util_dbg_print(WIFI_EM, "%s:%d NULL VAP\r\n", __func__, __LINE__);
@@ -2466,12 +2475,9 @@ int handle_em_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 {
     em_config_t *current_policy_cfg = &app->data.u.em_data.em_config;
     int temp_count = 0;
-    bool size_change;
     webconfig_subdoc_data_t *webconfig_data = NULL;
-    radio_metrics_policy_t *metrics_pol = NULL;
     em_config_t *new_policy_cfg = NULL;
     int rad_cnt = -1;
-    em_policy_req_type_t ap_metrics_inclusion;
     bool interval_changed = false;
     bool metrics_different = false;
 
@@ -2504,7 +2510,6 @@ int handle_em_webconfig_event(wifi_app_t *app, wifi_event_t *event)
     // check for em_app_policy_req_type_ap_metrics
     // only update ap metrics related data to app data's config
     for (int i = 0; i < rad_cnt; i++) {
-        metrics_pol = &new_policy_cfg->radio_metrics_policies.radio_metrics_policy[i];
         interval_changed = false;
         metrics_different = false;
         if (new_policy_cfg->ap_metric_policy.interval != current_policy_cfg->ap_metric_policy.interval) {
@@ -2628,8 +2633,8 @@ static int em_process_scan_init_command(unsigned int radio_index, channel_scan_r
      * scan. If no channels are present in the request.
      * the scan falls back to FULL scan mode.
      */
-    for (int i = 0; i < scan_req->num_operating_classes; i++) {
-        for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
+    for (unsigned int i = 0; i < scan_req->num_operating_classes; i++) {
+        for (unsigned int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
             if (valid_chan_count >= MAX_CHANNELS) {
                 wifi_util_dbg_print(WIFI_EM,
                                      "%s:%d channel list full (%d). Ignoring extra channels from controller\n",
@@ -2725,7 +2730,6 @@ static void em_config_channel_scan(void *data, unsigned int len)
 
 static int em_start_btm_neighbor_scan(frame_data_t *mgmt)
 {
-    mac_addr_str_t mac_str;
     unsigned int radio_index;
     channel_scan_request_t scan_req;
     wifi_vap_info_t *vap_info = NULL;
@@ -2752,7 +2756,7 @@ static void em_parse_btm_query_neighbor_ies(uint8_t *ies, uint32_t ies_len, em_b
 {
     while (ies_len >= 2 && btm->num_neighbors < EM_MAX_NEIGHBORS) {
         uint8_t ie_id  = ies[0];
-        uint8_t ie_len = ies[1];
+        uint32_t ie_len = ies[1];
 
         if (2 + ie_len > ies_len) {
             break;
@@ -2796,9 +2800,9 @@ static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
     bool neighbor_list_present = false;
 
     frame_data_t *mgmt = (frame_data_t *)data;
-    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN + 4) {
+    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN_EM + 4) {
         wifi_util_error_print(WIFI_EM, "%s:%d Invalid mgmt frame: mgmt=%p len=%zu, required_min=%d\n",
-                     __func__, __LINE__, mgmt, mgmt ? mgmt->frame.len : 0, IEEE80211_HDRLEN + 4);
+                     __func__, __LINE__, mgmt, mgmt ? mgmt->frame.len : 0, IEEE80211_HDRLEN_EM + 4);
         return RETURN_ERR;
     }
 
@@ -2812,10 +2816,10 @@ static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
     // [Query Reason] (1)
 
     // Parse fixed BTM Query fields
-    category     = frame[IEEE80211_HDRLEN];
-    action       = frame[IEEE80211_HDRLEN + 1];
-    dialog_token = frame[IEEE80211_HDRLEN + 2];
-    query_reason = frame[IEEE80211_HDRLEN + 3];
+    category     = frame[IEEE80211_HDRLEN_EM];
+    action       = frame[IEEE80211_HDRLEN_EM + 1];
+    dialog_token = frame[IEEE80211_HDRLEN_EM + 2];
+    query_reason = frame[IEEE80211_HDRLEN_EM + 3];
 
     if (category != WNM_CATEGORY || action != WNM_EM_WNM_BTM_QUERY) {
         wifi_util_error_print(WIFI_EM, "%s:%d unsupported Category or action received for BTM query,"
@@ -2824,15 +2828,15 @@ static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
     }
 
     // Parse optional IEs
-    ies     = &frame[IEEE80211_HDRLEN + 4];
-    ies_len = len - (IEEE80211_HDRLEN + 4);
+    ies     = &frame[IEEE80211_HDRLEN_EM + 4];
+    ies_len = len - (IEEE80211_HDRLEN_EM + 4);
 
     uint8_t *ies_start = ies;
     uint32_t ies_start_len = ies_len;
 
     while (ies_len >= 2) {
         uint8_t ie_id  = ies[0];
-        uint8_t ie_len = ies[1];
+        uint32_t ie_len = ies[1];
 
         if (2 + ie_len > ies_len) {
             break;
@@ -2899,15 +2903,15 @@ static int em_handle_wnm_action_frame(wifi_app_t *app, void *data) {
 
     frame_data_t *mgmt = (frame_data_t *)data;
 
-    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN + 2) {
+    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN_EM + 2) {
         return RETURN_ERR;
     }
 
     frame = mgmt->data;
 
     // Minimum length: 24 (802.11 hdr) + 1 (category) + 1 (action) + 1 (dialog token) + 1 (query reason)
-    category = frame[IEEE80211_HDRLEN];
-    action   = frame[IEEE80211_HDRLEN + 1];
+    category = frame[IEEE80211_HDRLEN_EM];
+    action   = frame[IEEE80211_HDRLEN_EM + 1];
 
     // Return if category is not WNM
     if (category != WNM_CATEGORY) {
@@ -2926,7 +2930,7 @@ static int em_handle_wnm_action_frame(wifi_app_t *app, void *data) {
     return RETURN_OK;
 }
 
-static void em_toggle_disconn_steady_state(void *data, unsigned int len)
+static int em_toggle_disconn_steady_state(void *data, unsigned int len)
 {
 
     vap_svc_t* ext_svc = NULL;
@@ -2935,11 +2939,11 @@ static void em_toggle_disconn_steady_state(void *data, unsigned int len)
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d NUll data Pointer\n", __func__, __LINE__);
-        return;
+        return bus_error_general;
     }
     if (len < sizeof(bool)) {
         wifi_util_error_print(WIFI_EM, "%s:%d Invalid parameter size \r\n", __func__, __LINE__);
-        return;
+        return bus_error_general;
     }
     
     do_set = *(bool *)data;
@@ -3042,7 +3046,6 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
 static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
 {
     int rc;
-    sta_beacon_report_reponse_t *temp_data_t = NULL;
     webconfig_subdoc_data_t *wb_data = NULL;
     wifi_ctrl_t *ctrl = NULL;
     raw_data_t p_data;
@@ -3204,8 +3207,8 @@ static int em_handle_connection_status(wifi_app_t *app, void *data)
 {
     const em_connection_status_event_t *conn_status = (const em_connection_status_event_t *)data;
     raw_data_t rdata = { 0 };
-    mac_addr_str_t sta_mac_str, bssid_str;
     bus_error_t rc;
+    mac_addr_str_t sta_mac_str, bssid_str;
 
     if ((app == NULL) || (conn_status == NULL)) {
         return RETURN_ERR;
@@ -3635,7 +3638,7 @@ static bus_error_t parse_client_assoc_ctrl_json(const char *json_str, bssid_t *b
     return bus_error_success;
 }
 
-static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_data, void *userData)
+static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_data, bus_user_data_t *userData)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received Client Assoc Ctrl Event from Agent\n", __func__, __LINE__);
 

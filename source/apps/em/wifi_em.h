@@ -42,7 +42,7 @@ extern "C" {
 #define WIFI_EM_FAILED_CONNECTION             "Device.WiFi.EM.FailedConnection"
 
 #define WNM_CATEGORY               10
-#define IEEE80211_HDRLEN           24
+#define IEEE80211_HDRLEN_EM        24
 #define IEEE80211_EID_NEIGHBOR     52
 #define IEEE80211_NEIGHBOR_REPORT_MIN_LEN  13
 

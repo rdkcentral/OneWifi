@@ -1322,7 +1322,9 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
             em_radio_info->band = em_freq_band_24;
-        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
+        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND ||
+                   oper_param->band == WIFI_FREQUENCY_5L_BAND ||
+                   oper_param->band == WIFI_FREQUENCY_5H_BAND) {
             em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
             em_radio_info->band = em_freq_band_6;
