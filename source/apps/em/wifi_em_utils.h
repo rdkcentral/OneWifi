@@ -20,11 +20,11 @@
 #ifndef EASYMESH_UTILS_H
 #define EASYMESH_UTILS_H
 
-#include "dpp_types.h"
-#include "ds_dlist.h"
 #include "wifi_base.h"
-#include "wifi_ctrl.h"
 #include "wifi_util.h"
+#include "wifi_ctrl.h"
+#include "ds_dlist.h"
+#include "dpp_types.h"
 #include <wifi_hal_generic.h>
 
 #ifdef __cplusplus
