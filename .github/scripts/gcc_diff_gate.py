@@ -86,6 +86,16 @@ DB = "compile_commands.json"
 # files at production's exact level, without touching the build product or the silent
 # baseline the build-summary relies on. Empty (the default) keeps the DB's own -O.
 OPT = os.environ.get("OPT", "").strip()
+# Compilers for the recompile (head and base alike, so their findings compare), e.g. 'gcc-14' /
+# 'g++-14'. Empty keeps the compile DB's own compiler. Set them together with any list entry
+# that only gcc 14 knows (-Wreturn-mismatch, -Wdeclaration-missing-parameter-type,
+# -Wcalloc-transposed-args): gcc 13 rejects those, and every file would fail to recompile.
+GATE_CC = os.environ.get("GATE_CC", "").strip()
+GATE_CXX = os.environ.get("GATE_CXX", "").strip()
+# Ubuntu's gcc defines _FORTIFY_SOURCE when optimizing: an overflowing memcpy/strcpy then warns
+# inside string_fortified.h, a header line no changed-line filter matches. Undefined, the same
+# overflow is reported on the .c call line ([-Wstringop-overflow=] / [-Warray-bounds=]).
+NO_FORTIFY = ["-U_FORTIFY_SOURCE"]
 # When set, write inline-review candidates here (Commit 5). Same envelope
 # review_poster.py reads; source 'gcc-gate' gives it top posting priority.
 INLINE_JSON = os.environ.get("INLINE_JSON", "").strip()
@@ -98,10 +108,11 @@ ALL_FLAGS = GATE + ADVISORY
 # C++") — harmless (g++ warns and continues, exit 0) but noisy; drop them on C++ TUs.
 CXX_EXT = (".cpp", ".cc", ".cxx")
 # Flags gcc accepts for C only. Kept explicit (not probed) so a reader sees which
-# classes protect C sources; verified on gcc 13.3.0.
+# classes protect C sources; verified on gcc 13.3.0 and g++ 14.2.0.
 C_ONLY = {
     "-Wint-conversion", "-Wimplicit-function-declaration", "-Wimplicit-int",
     "-Wincompatible-pointer-types", "-Wpointer-sign", "-Wdiscarded-qualifiers",
+    "-Wreturn-mismatch", "-Wdeclaration-missing-parameter-type",
     "-Wjump-misses-init",
 }
 LINE_RE = re.compile(r"\.(?:c|cc|cpp|cxx):(\d+):")
@@ -184,14 +195,16 @@ def recompile_cmd(args, path):
 
     A genuine error (missing header, killed compiler) is not a -Werror promotion and
     still exits nonzero -> the caller's failed[] path. -Os is added when OPT is set;
-    the C-only flags are dropped for C++ TUs (g++ rejects them).
+    the C-only flags are dropped for C++ TUs (g++ rejects them); GATE_CC / GATE_CXX
+    replace the DB's compiler (args[0]); _FORTIFY_SOURCE is undefined (NO_FORTIFY).
     """
     is_cxx = path.endswith(CXX_EXT)
     flags = [flag for flag in ALL_FLAGS if not (is_cxx and flag in C_ONLY)]
     no_error = [f"-Wno-error={flag[2:]}" for flag in flags]
     opt = [OPT] if OPT else []
-    kept = [arg for arg in args if not arg.startswith("-Werror")]
-    return kept + opt + ["-c", "-o", os.devnull] + flags + no_error
+    compiler = (GATE_CXX if is_cxx else GATE_CC) or args[0]
+    kept = [compiler] + [arg for arg in args[1:] if not arg.startswith("-Werror")]
+    return kept + opt + NO_FORTIFY + ["-c", "-o", os.devnull] + flags + no_error
 
 
 def effective_base():
