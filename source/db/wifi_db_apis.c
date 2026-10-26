@@ -8392,8 +8392,6 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
 
 #ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
     cfg.device_network_mode = ONEWIFI_DEFAULT_NETWORKING_MODE;
-#elif defined EASY_MESH_NODE
-    cfg.device_network_mode = rdk_dev_mode_type_em_colocated_node;
 #else
     cfg.device_network_mode = rdk_dev_mode_type_gw;
 #endif
