@@ -4926,12 +4926,12 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     }
 
     frame = &assoc_data.sta_data.msg_data;
-    if (frame->frame.len != 0) {
+    if ((frame->frame.len > ASSOC_REQ_MAC_HEADER_LEN) && (frame->frame.len <= MAX_FRAME_SZ)){
         parse_assoc_ies((uint8_t *)(frame->data + ASSOC_REQ_MAC_HEADER_LEN),
             (size_t)(frame->frame.len - ASSOC_REQ_MAC_HEADER_LEN), &assoc_data);
-    }
-    else {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len is 0\n", __func__, __LINE__);
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len [%d] smaller than required header len [%d]\n",
+            __func__, __LINE__, frame->frame.len, ASSOC_REQ_MAC_HEADER_LEN);
     }
 
     // Updating MLDAddr from STA MAC if MLD is enabled but MLDAddr is not populated.

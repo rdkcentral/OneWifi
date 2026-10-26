@@ -4243,6 +4243,7 @@ static void process_monitor_init_command(void)
 void process_send_action_frame_command(void *data, unsigned int len)
 {
     action_frame_params_t *params;
+    size_t frame_data_len;
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NUll data Pointer\n", __func__, __LINE__);
@@ -4255,6 +4256,19 @@ void process_send_action_frame_command(void *data, unsigned int len)
     }
 
     params = (action_frame_params_t *)data;
+    frame_data_len = (size_t)len - sizeof(action_frame_params_t);
+    if (params->frame_len > frame_data_len) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d Invalid frame length %u for payload size %u (total=%u, header=%u)\r\n",
+            __func__, __LINE__, params->frame_len, frame_data_len, len, sizeof(action_frame_params_t));
+        return;
+    }
+
+    unsigned int max_vaps = getNumberRadios() * MAX_NUM_VAP_PER_RADIO;
+    if (params->ap_index >= max_vaps) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid ap_index %u (max %u)\n", __func__, __LINE__, params->ap_index, max_vaps);
+            return;
+    }
 
     if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
             params->wait_time_ms, params->frame_data, params->frame_len)) {
