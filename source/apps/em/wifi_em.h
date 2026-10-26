@@ -21,6 +21,7 @@
 #define WIFI_EM_H
 
 #include <stdint.h>
+#include "wifi_hal.h"
 #include "collection.h"
 #include "wifi_base.h"
 
@@ -102,7 +103,8 @@ typedef enum {
     em_app_event_type_max
 } em_app_event_type_t;
 
-
+void wifi_em_update_radio_operating_class_max_tx_power(wifi_radio_operationParam_t *oper,
+    int radio_index);
 
 #ifdef __cplusplus
 }

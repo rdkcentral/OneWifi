@@ -22,6 +22,9 @@
 #include "wifi_db.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#ifdef EM_APP
+#include "wifi_em.h"
+#endif
 
 #ifdef ONEWIFI_DB_SUPPORT
 extern void init_wifidb(void);
@@ -239,6 +242,9 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     /* Call the function to update the operating classes based on Country code and Radio */
     update_radio_operating_classes(&cfg);
+#ifdef EM_APP
+    wifi_em_update_radio_operating_class_max_tx_power(config, radio_index);
+#endif
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&cfg,sizeof(cfg));
     memcpy(feat_config, &Fcfg, sizeof(Fcfg));
@@ -761,6 +767,9 @@ int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *confi
 
     /* Call the function to update the operating classes based on Country code and Radio */
     update_radio_operating_classes(config);
+#ifdef EM_APP
+    wifi_em_update_radio_operating_class_max_tx_power(config, radio_index);
+#endif
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(radio_oper_conf, config, sizeof(wifi_radio_operationParam_t));
     memcpy(radio_feat_conf, feat_config, sizeof(wifi_radio_feature_param_t));
