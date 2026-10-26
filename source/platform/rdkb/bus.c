@@ -599,6 +599,9 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
         case bus_data_type_uint32:
             rbusValue_SetUInt32(value, bus_data->raw_data.u32);
         break;
+        case bus_data_type_uint64:
+            rbusValue_SetUInt64(value, bus_data->raw_data.u64);
+        break;
         case bus_data_type_uint8:
             rbusValue_SetUInt8(value, bus_data->raw_data.u8);
         break;
@@ -631,6 +634,9 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
                         break;
                     case bus_data_type_uint32:
                         rbusProperty_AppendUInt32(property, data_prop->name, prop_value->raw_data.u32);
+                        break;
+                    case bus_data_type_uint64:
+                        rbusProperty_AppendUInt64(property, data_prop->name, prop_value->raw_data.u64);
                         break;
                     case bus_data_type_uint8:
                         rbusProperty_AppendUInt8(property, data_prop->name, prop_value->raw_data.u8);
