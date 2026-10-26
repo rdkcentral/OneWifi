@@ -110,16 +110,7 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"svc-g-ap-u50", "hotspot_secure_5gh"},
     {"svc-g-ap-50",  "hotspot_secure_5g"},
     {"svc-g-ap-60",  "hotspot_secure_6g"},
-}; 
-#elif defined (_MERCURY_PRODUCT_REQ_)
-struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
-    {"bhaul-sta-24",   "mesh_sta_2g"},
-    {"home-ap-24", "private_ssid_2g"},
-    {"bhaul-ap-24", "mesh_backhaul_2g"},
-    {"bhaul-sta-50",   "mesh_sta_5g"},
-    {"home-ap-50", "private_ssid_5g"},
-    {"bhaul-ap-50", "mesh_backhaul_5g"},
-}
+};
 #elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map cloud_vif_map[] = {
        {"wl0",   "private_ssid_2g"},
