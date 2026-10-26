@@ -1,13 +1,15 @@
 #include "const.h"
 #include "scheduler.h"
 #include "wifi_em_utils.h"
+#include "wifi_em.h"
 #include "wifi_hal.h"
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
-#include <cjson/cJSON.h>
-#include <netinet/ether.h>
+#include "common/ieee802_11_defs.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <cjson/cJSON.h>
+#include <netinet/ether.h>
 
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
