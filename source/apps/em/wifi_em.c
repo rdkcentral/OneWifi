@@ -23,8 +23,8 @@
 #include "wifi_hal.h"
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
-#include "common/ieee802_11_common.h"
 #include "common/ieee802_11_defs.h"
+#include "common/ieee802_11_common.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <cjson/cJSON.h>
@@ -248,8 +248,8 @@ static int em_match_radio_index_to_policy_index(radio_metrics_policies_t *radio_
         if (found_index == radio_index)
             return i;
     } */
-    for (k = 0;
-        k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
+    for (k = 0; k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t));
+         k++) {
         if (wifi_prop->radio_interface_map[k].radio_index == (unsigned int)radio_index) {
             radio_iface_map = &(wifi_prop->radio_interface_map[k]);
             break;
@@ -329,7 +329,9 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
             __LINE__, vap_index, radio_index, i,
             em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index);
         if (vap_index ==
-            (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index) {
+            (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index]
+                .ap_data[i]
+                .vap_index) {
             arr_vap_index = i;
             break;
         } else {
@@ -511,10 +513,15 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
         stats[i].hit_count = 0;
         for (unsigned int j = 0; j < stats[i].stat_array_size; j++) {
             if (stats[i].threshold_hit[j] == true) {
+                wifi_associated_dev3_timestamp_t sta_stats;
+
                 stats[i].threshold_hit[j] = false;
+                memset(&sta_stats, 0, sizeof(sta_stats));
+                sta_stats.associated_dev3 = stats[i].assoc_stats[j].dev_stats;
+                sta_stats.last_update_time = stats[i].assoc_stats[j].timestamp;
                 prepare_sta_lins_metrics_data(
-                    data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics,
-                    (wifi_associated_dev3_timestamp_t *)&stats[i].assoc_stats[j].dev_stats, vap_index);
+                    data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics, &sta_stats,
+                    vap_index);
             }
         }
     }
@@ -684,7 +691,7 @@ static int em_stop_metrics_report(int radio_index, wifi_app_t *app)
         data = NULL;
     }
 }
-#endif 
+#endif
 
 int em_assoc_client_response(wifi_app_t *app, wifi_provider_response_t *provider_response)
 {
@@ -732,7 +739,8 @@ int em_assoc_client_response(wifi_app_t *app, wifi_provider_response_t *provider
         __LINE__, vap_index, provider_response->stat_array_size);
 
     if (em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask ==
-            (em_client_assoc_stats[radio_index].req_stats_vap_mask & em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask)) {
+        (em_client_assoc_stats[radio_index].req_stats_vap_mask &
+            em_client_assoc_stats[radio_index].assoc_stats_vap_presence_mask)) {
         wifi_util_dbg_print(WIFI_EM, "%s:%d: push stats for radio_index : %d \r\n", __func__,
             __LINE__, radio_index);
         handle_ready_client_stats(app, em_client_assoc_stats[radio_index].client_assoc_data,
@@ -1295,7 +1303,9 @@ int vap_stats_response(wifi_provider_response_t *provider_response)
 
     for (i = 0; i < MAX_NUM_VAP_PER_RADIO; i++) {
         if (vap_index ==
-            (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index].ap_data[i].vap_index) {
+            (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index]
+                .ap_data[i]
+                .vap_index) {
             arr_vap_index = i;
             break;
         }
@@ -1648,7 +1658,7 @@ static int em_publish_failed_connection(const wifi_em_failed_conn_t *fc)
     int n;
     bus_error_t rc;
 
-    to_mac_str((unsigned char *)fc->bssid,   bssid_str);
+    to_mac_str((unsigned char *)fc->bssid, bssid_str);
     to_mac_str((unsigned char *)fc->sta_mac, sta_str);
 
     n = snprintf(json_buf, sizeof(json_buf),
@@ -2011,7 +2021,9 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
                     __func__, __LINE__, k, radio_index, vap_info->vap_index,
                     em_ap_metrics_report_cache.radio_report[radio_index].ap_data[k].vap_index);
                 if (vap_info->vap_index ==
-                    (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index].ap_data[k].vap_index) {
+                    (unsigned int)em_ap_metrics_report_cache.radio_report[radio_index]
+                        .ap_data[k]
+                        .vap_index) {
                     // in em_cache_store, data is stored against the vapindex in the array
                     cache_vap_index = k;
                     break;
@@ -2297,8 +2309,8 @@ int em_ap_report_config_task(wifi_app_t *app, em_config_t *em_config,
     task_args->policy_config = *em_config;
 
     rc = scheduler_add_timer_task(app->ctrl->sched, FALSE,
-        &(em_ap_metrics_report_cache.args.sched_id), (void*)ap_report_push_cb, task_args, interval * 1000,
-        0, FALSE);
+        &(em_ap_metrics_report_cache.args.sched_id), (void *)ap_report_push_cb, task_args,
+        interval * 1000, 0, FALSE);
     if (rc != RETURN_OK) {
         wifi_util_error_print(WIFI_EM, "%s:%d: failed to add timer task\n", __func__, __LINE__);
     }
@@ -2451,7 +2463,8 @@ int ap_metrics_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *dat
     case em_ap_metrics_link:
     case em_ap_metrics_traffic:
     case em_ap_metrics_link_and_traffic:
-        em_client_diag_config_to_monitor_queue(app, data, em_app_event_type_assoc_dev_stats_periodic);
+        em_client_diag_config_to_monitor_queue(app, data,
+            em_app_event_type_assoc_dev_stats_periodic);
 
         wifi_util_dbg_print(WIFI_EM, "%s:%d collect link/trafic/both as part of AP Metrics\r\n",
             __func__, __LINE__);
@@ -2839,7 +2852,7 @@ static void em_parse_btm_query_neighbor_ies(uint8_t *ies, uint32_t ies_len,
     em_btm_req_ctrl_msg_t *btm)
 {
     while (ies_len >= 2 && btm->num_neighbors < EM_MAX_NEIGHBORS) {
-        uint8_t ie_id  = ies[0];
+        uint8_t ie_id = ies[0];
         uint32_t ie_len = ies[1];
 
         if (2 + ie_len > ies_len) {
@@ -2883,10 +2896,10 @@ static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
     bool neighbor_list_present = false;
 
     frame_data_t *mgmt = (frame_data_t *)data;
-    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN_EM_EM + 4) {
+    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN_EM + 4) {
         wifi_util_error_print(WIFI_EM,
             "%s:%d Invalid mgmt frame: mgmt=%p len=%zu, required_min=%d\n", __func__, __LINE__,
-            mgmt, mgmt ? mgmt->frame.len : 0, IEEE80211_HDRLEN_EM_EM + 4);
+            mgmt, mgmt ? mgmt->frame.len : 0, IEEE80211_HDRLEN_EM + 4);
         return RETURN_ERR;
     }
 
@@ -2921,7 +2934,7 @@ static int em_handle_btm_query_frame(wifi_app_t *app, void *data)
     uint32_t ies_start_len = ies_len;
 
     while (ies_len >= 2) {
-        uint8_t ie_id  = ies[0];
+        uint8_t ie_id = ies[0];
         uint32_t ie_len = ies[1];
 
         if (2 + ie_len > ies_len) {
@@ -2992,7 +3005,7 @@ static int em_handle_wnm_action_frame(wifi_app_t *app, void *data)
 
     frame_data_t *mgmt = (frame_data_t *)data;
 
-    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN_EM_EM + 2) {
+    if (!mgmt || mgmt->frame.len < IEEE80211_HDRLEN_EM + 2) {
         return RETURN_ERR;
     }
 
@@ -3734,7 +3747,8 @@ static bus_error_t parse_client_assoc_ctrl_json(const char *json_str, bssid_t *b
     return bus_error_success;
 }
 
-static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_data, bus_user_data_t *userData)
+static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_data,
+    bus_user_data_t *userData)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received Client Assoc Ctrl Event from Agent\n", __func__,
         __LINE__);
