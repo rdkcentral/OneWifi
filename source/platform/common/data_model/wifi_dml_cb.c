@@ -2391,7 +2391,7 @@ bool ssid_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
         }
 
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && \
-    !defined(_GREXT02ACTS_PRODUCT_REQ_)
+    !defined(_MERCURY_PRODUCT_REQ_)
         if (output_value == false) {
             wifi_util_error_print(WIFI_DMCLI,
                 "%s:%d User is Trying to disable SSID for vap_index=%d\n", __func__, __LINE__,
@@ -5238,7 +5238,7 @@ bool pre_conn_ctrl_get_param_string_value(void *obj_ins_context, char *param_nam
     wifi_preassoc_control_t *p_pre_assoc = &vap_pcfg->u.bss_info.preassoc;
 
     if (STR_CMP(param_name, "RssiUpThresholdSupported")) {
-        set_output_string(output_value, "disabled, -50 to -95");
+        set_output_string(output_value, "disabled, 10 to 100");
     } else if (STR_CMP(param_name, "SnrThresholdSupported")) {
         set_output_string(output_value, "disabled, 1 to 100");
     } else if (STR_CMP(param_name, "RssiUpThreshold")) {

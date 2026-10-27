@@ -2214,7 +2214,7 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
     }
     else {
     }
-#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+#elif defined (_MERCURY_PRODUCT_REQ_)
     if (radio_index == 0) {
         snprintf(str, str_len, "qca5332");
     }
@@ -3834,8 +3834,10 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             is_valid = true;
         }
 
-        //If radar was detected on the selected DFS channel, return error
-        if( (oper->channel >= 52  &&  oper->channel <=144) ) {
+        //If radar was detected in the selected 5GHz operating block, return error
+        if (is_valid &&
+            (is_5g_20M_channel_in_dfs(oper->channel) ||
+             oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ)) {
             UINT inputChannelBlock = 0;
             UINT firstChannelInBand = 36;
             int blockStartChannel = 0;

@@ -3392,6 +3392,51 @@ bool active_sta_connection_status(int ap_index, char *mac)
     return true;
 }
 
+#ifdef CONFIG_IEEE80211BE
+/* For an MLD AP, mgmt frames arrive on the MLD primary interface while the STA
+ * may be tracked on another affiliated link VAP. Returns that VAP index or -1. */
+static int get_mld_sta_active_ap_index(int ap_index, char *mac)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_front_haul_bss_t *bss = Get_wifi_object_bss_parameter(ap_index);
+    wifi_front_haul_bss_t *link_bss;
+    sta_data_t *sta;
+    hash_map_t *sta_map;
+    unsigned int vap_array_index;
+    unsigned int i;
+
+    if (bss == NULL || mac == NULL || bss->mld_info.common_info.mld_enable == false) {
+        return -1;
+    }
+
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        if ((int)vap_index == ap_index) {
+            continue;
+        }
+        link_bss = Get_wifi_object_bss_parameter(vap_index);
+        if (link_bss == NULL || link_bss->mld_info.common_info.mld_enable == false ||
+            link_bss->mld_info.common_info.mld_id != bss->mld_info.common_info.mld_id) {
+            continue;
+        }
+
+        getVAPArrayIndexFromVAPIndex(vap_index, &vap_array_index);
+        pthread_mutex_lock(&g_monitor_module.data_lock);
+        sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+        str_tolower(mac);
+        sta = sta_map != NULL ? (sta_data_t *)hash_map_get(sta_map, mac) : NULL;
+        bool active_mld_sta = sta != NULL && sta->connection_authorized == true &&
+            sta->dev_stats.cli_MLDEnable == true;
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+        if (active_mld_sta) {
+            return vap_index;
+        }
+    }
+    return -1;
+}
+#endif
+
 int increment_reason_count(interop_data_t *telemetry, wifi_reason_code_t code, int ap) {
     if (ap == 0) {
         switch (code) {
@@ -4126,6 +4171,17 @@ int device_disassociated(int ap_index, char *src_mac, char *dest_mac, int type, 
     }
 
     is_sta_active = active_sta_connection_status(ap_index, sta_mac);
+#ifdef CONFIG_IEEE80211BE
+    if (is_sta_active == false) {
+        int mld_ap_index = get_mld_sta_active_ap_index(ap_index, sta_mac);
+        if (mld_ap_index >= 0) {
+            wifi_util_info_print(WIFI_MON, "%s:%d: MLD sta[%s] disassoc on ap:%d, active on link ap:%d\n",
+                __func__, __LINE__, sta_mac, ap_index, mld_ap_index);
+            ap_index = mld_ap_index;
+            is_sta_active = true;
+        }
+    }
+#endif
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     if (data == NULL) {
@@ -4186,12 +4242,29 @@ int device_frame_drop_unencrypted(int ap_index, char *src_mac, unsigned short et
         return RETURN_ERR;
     }
 
+#ifdef CONFIG_IEEE80211BE
+    if (active_sta_connection_status(ap_index, src_mac) == false) {
+        int mld_ap_index = get_mld_sta_active_ap_index(ap_index, src_mac);
+        if (mld_ap_index >= 0) {
+            wifi_util_info_print(WIFI_MON,
+                "%s:%d: [FC_WEP] MLD client[%s] active on link ap:%d instead of ap:%d\n",
+                __func__, __LINE__, src_mac, mld_ap_index, ap_index);
+            ap_index = mld_ap_index;
+        } else {
+            wifi_util_dbg_print(WIFI_MON,
+                "%s:%d: [FC_WEP] client[%s] not active on ap:%d - ignoring\n",
+                __func__, __LINE__, src_mac, ap_index);
+            return RETURN_OK;
+        }
+    }
+#else
     if (active_sta_connection_status(ap_index, src_mac) == false) {
         wifi_util_dbg_print(WIFI_MON,
             "%s:%d: [FC_WEP] client[%s] not active on ap:%d - ignoring\n",
             __func__, __LINE__, src_mac, ap_index);
         return RETURN_OK;
     }
+#endif
 
     str_to_mac_bytes(src_mac, sta_mac);
 
@@ -4481,6 +4554,17 @@ int device_deauthenticated(int ap_index, char *src_mac, char *dest_mac, int type
     }
 
     is_sta_active = active_sta_connection_status(ap_index, sta_mac);
+#ifdef CONFIG_IEEE80211BE
+    if (is_sta_active == false) {
+        int mld_ap_index = get_mld_sta_active_ap_index(ap_index, sta_mac);
+        if (mld_ap_index >= 0) {
+            wifi_util_info_print(WIFI_MON, "%s:%d: MLD sta[%s] deauth on ap:%d, active on link ap:%d\n",
+                __func__, __LINE__, sta_mac, ap_index, mld_ap_index);
+            ap_index = mld_ap_index;
+            is_sta_active = true;
+        }
+    }
+#endif
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     if (data == NULL) {

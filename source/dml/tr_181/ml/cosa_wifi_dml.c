@@ -5844,7 +5844,7 @@ SSID_SetParamBoolValue
             rdk_vap_info->exists = bValue;
         }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
         if (bValue == false) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d User is Trying to disable SSID for vap_index=%d\n",__FUNCTION__,__LINE__,vapInfo->vap_index);
         }
@@ -10489,7 +10489,7 @@ PreAssocDeny_GetParamStringValue
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
     {
-        snprintf(pValue, *pUlSize, "disabled, -50 to -95");
+        snprintf(pValue, *pUlSize, "disabled, 10 to 100");
         return 0;
     }
 
@@ -20531,9 +20531,11 @@ InterworkingService_SetParamStringValue
             else
             {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Input string too long for vap %s\n", __FUNCTION__, __LINE__, pcfg->vap_name);
+                cJSON_Delete(p_root);
                 return FALSE;
             }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+            cJSON_Delete(p_root);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
     }

@@ -1,6 +1,6 @@
 name: clang-format
 
-# Stage 1/2  (stage 2 = clang-format-suggestions.yml).
+# Stage 1/2  (stage 2 = the format job in pr-comments.yml).
 # Runs the formatter over the PR's changed C lines. It is deliberately
 # read-only with no secrets: it may run over untrusted fork code, but it holds
 # no write token and can change nothing in the repo. It only records what
@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   clang-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -99,7 +99,7 @@ jobs:
 
       # Record + upload metadata *always* (not only when changed==true). When the
       # changed lines become clang-format clean there is no diff, but stage 2
-      # still needs the PR identity so it can dismiss any now-obsolete review it
+      # still needs the PR identity so it can remove any now-obsolete suggestion it
       # posted on an earlier push. clang-format.diff is present only when
       # changed==true; if-no-files-found: ignore lets the clean case upload just
       # pr-meta.env.
