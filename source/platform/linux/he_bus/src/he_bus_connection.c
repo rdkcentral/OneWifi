@@ -213,8 +213,20 @@ static int recv_bus_scratch_data(he_bus_connection_info_t *client,
             total_recv_data_len = *(uint32_t *)p_data;
             he_bus_conn_info_print("%s:%d total data needs to recv:%ld client identity:%s\r\n",
                 __func__, __LINE__, total_recv_data_len, client->identity);
+            if (total_recv_data_len == 0 || total_recv_data_len > HE_BUS_MAX_RECV_DATA_SIZE) {
+                he_bus_conn_error_print(
+                    "recv data size is invalid:%d for client identity:%s\r\n", total_recv_data_len,
+                    client->identity);
+                return HE_BUS_ERROR_MSG_VARIFICATION;
+            }
             p_recv_data->buff_len = total_recv_data_len;
             p_recv_data->buff = he_bus_malloc(total_recv_data_len);
+            if (p_recv_data->buff == NULL) {
+                he_bus_conn_error_print(
+                    "recv data memory allocation failed for client identity:%s\r\n",
+                    client->identity);
+                return HE_BUS_ERROR_MSG_VARIFICATION;
+            }
             if (bytes_read <= total_recv_data_len) {
                     memcpy(p_recv_data->buff, read_buffer, bytes_read);
                     p_data = p_recv_data->buff;
