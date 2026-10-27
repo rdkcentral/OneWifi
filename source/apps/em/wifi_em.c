@@ -1536,6 +1536,7 @@ static int radio_chan_stats_response(wifi_provider_response_t *provider_response
                 wifi_util_dbg_print(WIFI_EM, "%s:%d AP METRICS REPORT cache array Updated\n",
                     __func__, __LINE__);
             } else {
+                ap_data = &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[j];
                 if ((unsigned int)ap_data->vap_index != vap->vap_index) {
                     wifi_util_dbg_print(WIFI_EM, "%s:%d vap index not mathing %d\r\n", __func__,
                         __LINE__, vap->vap_index);
