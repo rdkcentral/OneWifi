@@ -2214,7 +2214,7 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
     }
     else {
     }
-#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+#elif defined (_MERCURY_PRODUCT_REQ_)
     if (radio_index == 0) {
         snprintf(str, str_len, "qca5332");
     }
