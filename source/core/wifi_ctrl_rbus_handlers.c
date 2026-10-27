@@ -2563,6 +2563,28 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
     data_ptr = (frame_data_t *)p_data->value.raw_data.bytes;
 
     if (data_ptr != NULL && len != 0) {
+        size_t frame_hdr_len = sizeof(frame_data_t) - MAX_FRAME_SZ;
+        size_t payload_len;
+
+        if (len < frame_hdr_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame blob len:%u\n", 
+                __func__, __LINE__, len);
+            return;
+        }
+
+        if (data_ptr->frame.len > MAX_FRAME_SZ) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len too large:%u\n", 
+                __func__, __LINE__, data_ptr->frame.len);
+            return;
+        }
+
+        payload_len = len - frame_hdr_len;
+        if ((size_t)data_ptr->frame.len > payload_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len:%u exceeds payload:%zu\n", 
+                __func__, __LINE__, data_ptr->frame.len, payload_len);
+            return;
+        }
+
         memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&data_ptr->frame.sta_mac,
             sizeof(mac_address_t));
         frame_data.frame.ap_index = data_ptr->frame.ap_index;
