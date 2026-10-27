@@ -18,7 +18,8 @@
 # limitations under the License.
 #
 """Convert a git-clang-format unified diff (read from stdin) into GitHub PR review
-suggestions, scoped to lines the PR actually changed.
+suggestions, scoped to lines the PR actually changed. A suggestion that only moves line
+breaks, with no line over LINE_LIMIT, is not posted (see reflow_only).
 
 Writes one candidate-JSON file (default /tmp/fmt-candidates.json) consumed by
 review_poster.py, which owns dedup, the cap and the posting:
@@ -101,6 +102,35 @@ MAX_FILE_BYTES = 64 * 1024 * 1024
 # which the pr-comments.yml handler absorbs as an advisory. Set to 0 to recover strict
 # containment-in-changed-lines.
 DIFF_CONTEXT = 3
+
+# The line length in CODE_STYLE.md, also .clang-format's ColumnLimit: change all three together.
+LINE_LIMIT = 120
+
+
+def _split_gaps(text):
+    """(non-whitespace characters, whitespace runs): runs[0] leads, runs[i] follows the i-th character."""
+    parts = re.split(r"(\S)", text)
+    return parts[1::2], parts[0::2]
+
+
+def reflow_only(removed, added):
+    """True when a suggestion only moves line breaks and no current line is over LINE_LIMIT:
+    clang-format joining lines to fill up to the limit, or wrapping a line that already fits.
+    Spacing inside a line, indentation alone and blank lines still count as changes."""
+    if not removed or max(len(line.expandtabs(8)) for line in removed) > LINE_LIMIT:
+        return False
+    old_chars, old_gaps = _split_gaps("".join(line + "\n" for line in removed))
+    new_chars, new_gaps = _split_gaps("".join(line + "\n" for line in added))
+    if old_chars != new_chars or old_gaps[0] != new_gaps[0]:
+        return False
+    moved = False
+    for old, new in zip(old_gaps[1:], new_gaps[1:]):
+        old_breaks, new_breaks = old.count("\n"), new.count("\n")
+        if {old_breaks, new_breaks} == {0, 1}:
+            moved = True
+        elif old_breaks != new_breaks or (old_breaks == 0 and old != new):
+            return False
+    return moved
 
 
 def load_changed_lines(path):
@@ -193,6 +223,8 @@ def parse(diff_text):
             "body": body,
             "line": start + len(removed) - 1,
         }
+        if reflow_only(removed, added):
+            c["reflow"] = True
         if len(removed) > 1:
             c["start_line"] = start
             c["start_side"] = "RIGHT"
@@ -263,6 +295,15 @@ def main():
         dropped = before - len(comments)
         if dropped:
             print(f"Line-scoping: dropped {dropped} suggestion(s) off the PR's changed/commentable lines")
+
+    # Where a statement breaks within the limit is the author's call (CODE_STYLE.md), so a
+    # suggestion that only moves line breaks is not posted. Logged, not counted in `dropped`
+    # (which the summary reads as "not commentable").
+    reflows = sum(1 for comment in comments if comment.get("reflow"))
+    comments = [comment for comment in comments if not comment.pop("reflow", False)]
+    if reflows:
+        print(f"Reflow: dropped {reflows} suggestion(s) that only move line breaks "
+              f"(no line over {LINE_LIMIT})")
 
     # Emit the shared-poster candidate envelope. review_poster.py owns the cap,
     # dedup and posting; this script only produces findings. A

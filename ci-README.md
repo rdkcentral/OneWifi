@@ -67,7 +67,9 @@ for this to work.**
 **a) Formatter (clang-format)** — advisory, PR-changed-lines only. `clang-format.yml` runs
 `git-clang-format` over the PR's changed C/C++ lines and records a diff; `diff_to_suggestions.py` turns
 it into GitHub review `suggestion` blocks, dropping any suggestion outside the PR's actual changed
-lines (git-clang-format can reformat adjacent lines it didn't need to). It currently only posts
+lines (git-clang-format can reformat adjacent lines it didn't need to) and any that only moves line
+breaks while every line fits in 120 columns (clang-format refills a touched statement up to the
+limit; `CODE_STYLE.md` leaves line breaks within the limit to the author). It currently only posts
 suggestions — the `exit 1` that would fail the job is present but commented out, so this does
 **not** block merge today.
 

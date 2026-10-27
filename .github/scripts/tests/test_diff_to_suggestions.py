@@ -58,6 +58,22 @@ class Parse(unittest.TestCase):
         self.assertEqual(d2s.parse(diff), [])
 
 
+class Reflow(unittest.TestCase):
+    def test_reflow_only(self):
+        fits, over = "x" * 90, "x" * 120
+        cases = [   # (current lines, suggested lines, dropped)
+            (["foo(a,", "    b);"], ["foo(a, b);"], True),                       # join to fill
+            ([f"foo({fits}, b);"], [f"foo({fits},", "    b);"], True),            # wrap a line that fits
+            ([f"foo({over}, b);"], [f"foo({over},", "    b);"], False),           # wrap a line over 120
+            (['f(M,"s",', "    a);"], ['f(M, "s", a);'], False),                # join + spacing fix
+            (["foo(a,", "  b);"], ["foo(a,", "    b);"], False),                 # re-indent only
+            (["foo(a,", "    b);", ""], ["foo(a, b);"], False),                 # join + blank line removed
+        ]
+        for removed, added, dropped in cases:
+            with self.subTest(removed=removed):
+                self.assertEqual(d2s.reflow_only(removed, added), dropped)
+
+
 class Scoping(unittest.TestCase):
     def test_commentable_intervals_grow_and_merge(self):
         self.assertEqual(d2s._commentable_intervals([(5, 6)], 3), [[2, 9]])
@@ -104,6 +120,10 @@ class Envelope(unittest.TestCase):
                          ("formatter", "ok", 0, 1))
         out = self._run_main(DIFF, changed_line="a.c:100-100\n")   # suggestion off the PR's lines
         self.assertEqual((out["comments"], out["dropped"]), ([], 1))
+        reflow = DIFF.replace("@@ -5,2 +5,2 @@\n-int  x=1;\n-int  y=2;\n+int x = 1;\n+int y = 2;\n",
+                              "@@ -5,2 +5,1 @@\n-foo(a,\n-    b);\n+foo(a, b);\n")
+        out = self._run_main(reflow, changed_line="a.c:5-6\n")        # line breaks only: not posted
+        self.assertEqual((out["comments"], out["dropped"]), ([], 0))
         out = self._run_main("")                                     # clang-format clean
         self.assertEqual((out["status"], out["comments"]), ("ok", []))
 
