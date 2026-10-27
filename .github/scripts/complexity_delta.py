@@ -184,7 +184,8 @@ def render_md(crossed, grew):
     if grew:
         if crossed:
             lines.append("")
-        lines.append(f"Grew by {SOFT_DELTA} or more and now at {SOFT_FLOOR} or above:")
+        lines.append(f"Functions whose cyclomatic complexity (CCN) grew by {SOFT_DELTA} or more "
+                     f"and is now {SOFT_FLOOR} or above:")
         lines += [f"- `{name}` in `{path}` ({describe(before, after)})"
                   for path, (name, before, after, _start, _end) in grew]
     lines.append("")
