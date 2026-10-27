@@ -653,6 +653,8 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
     return RETURN_OK;
 }
 #if 0
+/* Function is not called anywhere and causing compilation error
+ * Previous call was removed here RDKB-59539 */
 static int em_stop_metrics_report(int radio_index, wifi_app_t *app)
 {
     wifi_monitor_data_t *data;
@@ -768,6 +770,8 @@ static void config_em_neighbour_scan(wifi_monitor_data_t *data, unsigned int rad
 }
 
 #if 0
+/* Causing compilation issue since function call was commented out by RDKB-
+59209 */
 static void config_em_chan_util(wifi_monitor_data_t *data, unsigned int radioIndex)
 {
     wifi_event_route_t route;
