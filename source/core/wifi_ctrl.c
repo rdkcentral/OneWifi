@@ -513,7 +513,7 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
         //In case of reboot/FR, Non DFS channel will be selected and radio will switch to DFS Channel after 1 min.
         if( (wifi_radio_oper_param->band == WIFI_FREQUENCY_5_BAND ) || ( wifi_radio_oper_param->band == WIFI_FREQUENCY_5L_BAND ) || ( wifi_radio_oper_param->band == WIFI_FREQUENCY_5H_BAND)) {
             if (wifi_radio_oper_param->channel >= 52 && wifi_radio_oper_param->channel <= 144) {
-                if (mode == rdk_dev_mode_type_gw) {
+                if (mode == rdk_dev_mode_type_gw || mode == rdk_dev_mode_type_em_colocated_node) {
                     dfs_channel_data_t *dfs_channel_data = (dfs_channel_data_t *)malloc(
                         sizeof(dfs_channel_data_t));
                     memset(dfs_channel_data, 0, sizeof(dfs_channel_data_t));
@@ -668,7 +668,6 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #endif
         } else {
 #if defined EASY_MESH_NODE
-        wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
         int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
         /* Initially assign this to em_node mode to start with */
         *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
@@ -4060,6 +4059,8 @@ void get_subdoc_type_name_from_ap_index(uint8_t vap_index, int *subdoc)
         *subdoc = webconfig_subdoc_type_vap_24G;
         break;
     case WIFI_FREQUENCY_5_BAND:
+    case WIFI_FREQUENCY_5L_BAND:
+    case WIFI_FREQUENCY_5H_BAND:
         *subdoc = webconfig_subdoc_type_vap_5G;
         break;
     case WIFI_FREQUENCY_6_BAND:

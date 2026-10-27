@@ -140,13 +140,14 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     mgr->blaster_config_global = data->blaster;
 
     /* If Device operating in POD mode, Send the blaster status as new to the cloud */
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         wifi_util_info_print(WIFI_CTRL, "%s %d POD MOde Activated. Sending Blaster status to cloud\n", __func__, __LINE__);
         mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
         webconfig_send_blaster_status(ctrl);
-    }
-    else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
+    } else if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
+        wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
     }
 
     return RETURN_OK;
@@ -1916,10 +1917,30 @@ int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     webconfig_subdoc_type_t doc_type)
 {
     unsigned int num_vaps = 0;
-    char *vap_names[MAX_NUM_VAP_PER_RADIO];
+    unsigned int scan_radio_index;
+    unsigned int scan_vap_index;
+    char *vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     wifi_mgr_t *mgr = get_wifimgr_obj();
     rdk_wifi_vap_map_t *mgr_vap_map = NULL;
+    rdk_wifi_radio_t *scan_radio;
     int radio_index = -1;
+
+    if (doc_type == webconfig_subdoc_type_vap_5G) {
+        for (scan_radio_index = 0; scan_radio_index < getNumberRadios();
+             scan_radio_index++) {
+            scan_radio = &data->radios[scan_radio_index];
+            for (scan_vap_index = 0; scan_vap_index < scan_radio->vaps.vap_map.num_vaps;
+                 scan_vap_index++) {
+                if (scan_radio->vaps.rdk_vap_array[scan_vap_index].force_apply == true) {
+                    vap_names[num_vaps++] =
+                        scan_radio->vaps.vap_map.vap_array[scan_vap_index].vap_name;
+                }
+            }
+        }
+        if (num_vaps != 0) {
+            return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+        }
+    }
 
     switch (doc_type) {
     case webconfig_subdoc_type_vap_24G:
@@ -3092,7 +3113,8 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_blaster:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 /* If Device is operating in POD Mode, send the status to cloud */
-                if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+                    ctrl->network_mode == rdk_dev_mode_type_em_node) {
                     if (ctrl->webconfig_state & ctrl_webconfig_state_blaster_cfg_init_rsp_pending) {
                         wifi_util_info_print(WIFI_CTRL, "%s:%d: Blaster Status updated as new\n", __func__, __LINE__);
                         ctrl->webconfig_state &= ~ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
@@ -3103,7 +3125,8 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                         ret = webconfig_bus_apply(ctrl, &data->u.encoded);
 
                     }
-                } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+                } else if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+                    ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
                     ctrl->webconfig_state &= ~(ctrl_webconfig_state_blaster_cfg_init_rsp_pending | ctrl_webconfig_state_blaster_cfg_complete_rsp_pending);
                     wifi_util_error_print(WIFI_CTRL, "%s:%d: Device is in GW Mode. No need to send blaster status\n", __func__, __LINE__);
                 }
