@@ -3310,7 +3310,7 @@ bus_error_t apply_ignite_config(char *paramName,
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
         data->u.decoded.num_radios = num_of_radios;
 
-        if (num_of_radios > MAX_NUM_RADIOS) {
+    if (num_of_radios > MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         pthread_mutex_unlock(&g_apply_ignite_config.lock);
         free(data);
