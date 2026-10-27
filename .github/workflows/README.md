@@ -379,7 +379,7 @@ red" — a plumbing hiccup should not falsely block a PR.
   patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
   builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
   `()`-declared functions called with an argument; `-std=gnu17` removes them. Details, clang-tidy 20
-  and how to re-measure: `ci-toolchain-update.md`.
+  and how to re-measure: `ci-maintenance.md` (this directory).
 - Complexity nudge, deliberate limits: lizard skips `#else` branches (`-Ecpre`), so code only there
   is not measured (2026-10: 104 functions, 2 at CCN 20 or above, both in `wifi_db.c`; without the
   flag, `#ifdef`/`#else` pairs that each open a brace hid 344 functions in 8 core files). Functions

@@ -18,7 +18,7 @@ concurrency:
 # (the "Verify pin manifest" step enforces the match — a mismatch errors).
 # setup.sh fallbacks keep `make setup` working locally without the workflow;
 # HAL CI clones OneWifi/develop and runs its setup.sh, so those fallbacks are the
-# cross-repo truth. See ci-README.md §7.
+# cross-repo truth. See README.md §7 (this directory).
 
 # Stage 1 is deliberately read-only: it builds PR-controlled makefiles, so it
 # must hold no write scope. The PR-comment posting (writes) happens only in the
@@ -186,7 +186,7 @@ jobs:
     #
     # NOTE: the local `uses:` path is ./easymesh_project/OneWifi/… NOT ./.github/… —
     # the checkout lands at OneWifi/ then is mv'd under easymesh_project/OneWifi
-    # (above), so the action only exists at that sub-path (ci-README §10).
+    # (above), so the action only exists at that sub-path (README.md §10).
     - name: Provide patched hostap tree (cached)
       if: matrix.platform.id != 'mock'
       uses: ./easymesh_project/OneWifi/.github/actions/hostap-tree

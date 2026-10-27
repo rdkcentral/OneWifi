@@ -1,8 +1,8 @@
-# Toolchain update notes (gcc 14 / 15, clang-tidy 20)
+# CI maintenance: toolchain updates (gcc 14 / 15, clang-tidy 20)
 
 The to-do list for when the compiler moves. Measured 2026-10-20 on the bpi compile DB (OneWifi
 develop a6acf829, rdk-wifi-hal develop 626c1f6, hostap 2.11 at the pin, patched). CI itself is
-described in `ci-README.md`.
+described in `README.md` (this directory).
 
 ## 1. Why this exists
 - Yocto 5.0 (scarthgap): gcc 13.2, LLVM 18.1, the same majors as CI today. No compiler break
@@ -11,9 +11,11 @@ described in `ci-README.md`.
   Production builds use bare -Werror (Yocto flag capture, 2026-08), so every new warning class
   that fires is a build break. #1448 already fixed three `()` declarations for wrynose.
 - GitHub runner: ubuntu-24.04 has gcc 12/13/14 and clang-tidy 16/17/18. ubuntu-26.04's lowest
-  clang-tidy is 20.1.8, so moving the runner forces clang-tidy 20 (section 5).
+  clang-tidy is 20.1.8, so moving the runner forces clang-tidy 20 (section 5). Its image lists
+  g++ 13.4, 14.3 and 15.2 (default 15.2) and CMake 4.4 (2026-10), so `CC=gcc-13` keeps the
+  build on scarthgap's compiler major without `-fpermissive`.
 - CI builds with gcc 13; the diff-scoped gcc gate recompiles changed files with gcc 14
-  (`ci-README.md` 3d), so a PR that adds a gcc-14 error class (e.g. `-Wreturn-mismatch`) is
+  (`README.md` 3d), so a PR that adds a gcc-14 error class (e.g. `-Wreturn-mismatch`) is
   flagged on its changed lines today.
 
 ## 2. Production flags measured
