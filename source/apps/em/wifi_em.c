@@ -24,11 +24,13 @@
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
 #include "common/ieee802_11_defs.h"
-#include "common/ieee802_11_common.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <cjson/cJSON.h>
 #include <netinet/ether.h>
+
+// Needs BIT() from utils/common.h, which ieee802_11_defs.h pulls in above.
+#include "common/ieee802_11_common.h"
 
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
@@ -520,8 +522,7 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, int
                 sta_stats.associated_dev3 = stats[i].assoc_stats[j].dev_stats;
                 sta_stats.last_update_time = stats[i].assoc_stats[j].timestamp;
                 prepare_sta_lins_metrics_data(
-                    data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics, &sta_stats,
-                    vap_index);
+                    data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics, &sta_stats, vap_index);
             }
         }
     }
