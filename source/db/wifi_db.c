@@ -937,6 +937,12 @@ int update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config,rdk_wifi_vap_inf
     return 0;
 }
 
+int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
+    rdk_wifi_vap_info_t *rdk_config)
+{
+    return 0;
+}
+
 int update_wifi_interworking_config(char *vap_name, wifi_interworking_t *config)
 {
     return 0;
