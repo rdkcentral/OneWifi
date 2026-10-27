@@ -146,7 +146,9 @@ int link_quality_event_exec_start(wifi_app_t *apps, void *arg)
 #ifdef EM_APP
         if (get_lq_descriptor()->start_link_metrics_fn)
             get_lq_descriptor()->start_link_metrics_fn();
+#if defined(_PLATFORM_BANANAPI_R4_)
         qmgr_register_batch_callback(publish_qmgr_subdoc);
+#endif /* _PLATFORM_BANANAPI_R4_ */
          wifi_util_info_print(WIFI_APPS, "%s:%d ctrl->network_mode=%d\n",
             __func__, __LINE__, ctrl->network_mode);
 #endif
@@ -485,7 +487,7 @@ int link_quality_apps_auth_event(wifi_app_t *app, bool req, int sub_event,void *
 
 int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *arg)
 {
-    wifi_util_info_print(WIFI_APPS,"Enter %s:%d sub_event=%d req=%d\n",__func__,__LINE__, sub_event, req);
+    wifi_util_dbg_print(WIFI_APPS,"Enter %s:%d sub_event=%d req=%d\n",__func__,__LINE__, sub_event, req);
     if (!arg) {
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL arg\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -572,7 +574,7 @@ int link_quality_apps_assoc_event(wifi_app_t *app, bool req,int sub_event,void *
  * existing vocabulary and needs no change - WEI only ever receives stats_arg_t. */
 int link_quality_apps_status_code_event(wifi_app_t *app, int sub_event, void *arg)
 {
-    wifi_util_info_print(WIFI_APPS,"Enter %s:%d sub_event=%d\n",__func__,__LINE__,sub_event);
+    wifi_util_dbg_print(WIFI_APPS,"Enter %s:%d sub_event=%d\n",__func__,__LINE__,sub_event);
 
     if (!arg) {
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL arg\n", __func__, __LINE__);
@@ -631,8 +633,8 @@ int link_quality_apps_status_code_event(wifi_app_t *app, int sub_event, void *ar
 
 int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,void *arg)
 {
-    wifi_util_info_print(WIFI_APPS,"Enter %s:%d\n",__func__,__LINE__);
-    
+    wifi_util_dbg_print(WIFI_APPS, "Enter %s:%d\n", __func__, __LINE__);
+
     if (!arg) {
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL arg\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -686,7 +688,7 @@ int link_quality_apps_disassoc_event(wifi_app_t *app, bool req,int sub_event,voi
  * for open networks) - the reliable "STA fully connected" signal for WEI GC. */
 int link_quality_apps_assoc_device_event(wifi_app_t *app, int sub_event, void *arg)
 {
-    wifi_util_info_print(WIFI_APPS, "Enter %s:%d\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_APPS, "Enter %s:%d\n", __func__, __LINE__);
     if (!arg) {
         wifi_util_error_print(WIFI_APPS, "%s:%d NULL arg\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -752,17 +754,17 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             break;
 
         case wifi_event_exec_stop:
-            wifi_util_info_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
+            wifi_util_dbg_print(WIFI_APPS, " %s:%d\n", __func__, __LINE__);
             link_quality_hal_disconnect(apps, arg);
             break;
 
         case  wifi_event_exec_timeout:
-            wifi_util_info_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
             link_quality_hal_rapid_connect(apps, arg);
             break;
 
         case wifi_event_hal_auth_frame:
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_auth_event(apps,true,sub_type,arg);
             break;
         
@@ -770,11 +772,11 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
 	    /* deauth delivers assoc_dev_data_t (802.11 reason), not frame_data_t —
              * route through the disassoc handler so the reason reaches WEI. */
 	    link_quality_apps_disassoc_event(apps,true,sub_type,arg);
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             break;
      
         case wifi_event_hal_assoc_req_frame:
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_assoc_event(apps,true,sub_type,arg);
             break;
  
@@ -782,17 +784,17 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
             /* arg is frame_data_t (raw frame from mgmt_wifi_frame_recv's ctrl-queue
              * broadcast), not assoc_dev_data_t -- must go through the frame_data_t-aware
              * parser (req=false) or status_code is read from the wrong struct layout. */
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_assoc_event(apps,false,sub_type,arg);
             break;
 
         case wifi_event_hal_reassoc_req_frame:
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_assoc_event(apps,true,sub_type,arg);
             break;
         case wifi_event_hal_reassoc_rsp_frame:
             /* Same as assoc_rsp_frame above: arg is frame_data_t, not assoc_dev_data_t. */
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_assoc_event(apps,false,sub_type,arg);
             break;
      
@@ -803,18 +805,18 @@ int exec_event_hal_ind(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *ar
         case wifi_event_hal_assoc_rsp_frame_status_code:
         case wifi_event_hal_reassoc_rsp_frame_status_code:
         case wifi_event_hal_eap_status_code:
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_status_code_event(apps,sub_type,arg);
             break;
 
         case wifi_event_hal_assoc_device:
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_assoc_device_event(apps, sub_type, arg);
             break;
 
         case wifi_event_hal_disassoc_device:
             //may be here new function has to be used in this case the station has to be moved to disconnect/removed. 
-            wifi_util_info_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
+            wifi_util_dbg_print(WIFI_APPS," %s:%d event = %d\n",__func__,__LINE__,sub_type);
             link_quality_apps_disassoc_event(apps,true,sub_type,arg);
             break;
         

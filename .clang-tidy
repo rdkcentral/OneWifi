@@ -9,13 +9,14 @@
 # When sources get cleaned, move a proven-clean check from advisory into
 # WarningsAsErrors (e.g. 'bugprone-not-null-terminated-result' once its sites
 # are fixed). 'clang-diagnostic-*' is filtered out by the workflow so compiler
-# frontend noise (incl. clang-vs-gcc parse errors) can never act as gate.
+# frontend noise (incl. clang-vs-gcc parse errors) can never act as gate, except
+# 'clang-diagnostic-unreachable-code*' (armed via the workflow's EXTRA_CHECKS as the
+# dead-code proxy): summary-only, and as a `warning:` it cannot gate either.
 #
 # A deliberate hit on a gated check is waived inline: // NOLINT(<check-name>).
 # NOTE: findings are limited to changed .c/.cpp files (no HeaderFilterRegex), so
-# a violation introduced only in a header is not gated. An unbuilt changed file
-# (absent from compile_commands.json) can't resolve its includes and self-filters
-# to clang-diagnostic noise, so effectively only built files are judged.
+# a violation introduced only in a header is not gated. A changed file absent from
+# compile_commands.json gets a best-effort run with borrowed flags (the summary says so).
 Checks: >
   -*,
   bugprone-*,
