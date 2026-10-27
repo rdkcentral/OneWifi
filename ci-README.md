@@ -97,14 +97,19 @@ a tree-wide backlog can still gate *new* code, without a tree-wide `-Werror` tha
 unrelated PR. It also compiles each file's base version and drops a finding the file already had
 before the PR (matched by class and message), so editing a line that calls an old undeclared
 function does not count. The lists live in the workflow's env. `GATE_WARNINGS` (would fail the
-job): `-Wvla`, `-Wreturn-type`, the four classes gcc-14 makes errors by default
+job): `-Wvla`, `-Wreturn-type`, the six classes gcc 14 makes errors by default
 (`-Wint-conversion`, `-Wimplicit-function-declaration`, `-Wimplicit-int`,
-`-Wincompatible-pointer-types`: wrong call ABI and int/pointer confusion; `makefile.common`
+`-Wincompatible-pointer-types`, `-Wreturn-mismatch`, `-Wdeclaration-missing-parameter-type`: wrong
+call ABI, int/pointer confusion, a `return` that does not match the function; `makefile.common`
 silences three of them, hiding a backlog that new code should not add to), plus
-`-Wsizeof-pointer-memaccess` and `-Wformat-security`. `ADVISORY_WARNINGS` (report only): the `-Wunused-*` family and classes measured
-quiet over the tree (`-Waddress`, `-Wstringop-*`, `-Warray-bounds`, `-Wdangling-pointer`,
-`-Wuse-after-free`). The recompile runs at `-Os` like the production build (the compile DB is
-`-O0`), so the optimizer-dependent classes can fire, and with the DB's `-Werror=` flags removed. The
+`-Wsizeof-pointer-memaccess` and `-Wformat-security`. `ADVISORY_WARNINGS` (report only): the
+`-Wunused-*` family and classes measured quiet over the tree (`-Waddress`, `-Wstringop-*`,
+`-Warray-bounds`, `-Wdangling-pointer`, `-Wuse-after-free`, `-Wcalloc-transposed-args`). The
+recompile uses gcc 14 (`GATE_CC` / `GATE_CXX`; preinstalled on `ubuntu-24.04`, while the build
+itself stays on gcc 13), runs at `-Os` like the production build (the compile DB is `-O0`) so the
+optimizer-dependent classes can fire, undefines `_FORTIFY_SOURCE` so an overflowing
+`memcpy`/`strcpy` is reported on the `.c` line rather than inside a glibc header, and removes the
+DB's `-Werror=` flags. The
 whole mechanism is currently in its rollout window (`ENFORCE: 'false'`): the ❌ block
 renders, but the job is not actually reddened by it yet.
 
@@ -115,6 +120,21 @@ rules only, `.github/.yamllint`), and for `.github/scripts` compileall, ruff (py
 `.github/ruff.toml`) and the unit tests under `.github/scripts/tests`. `lint-gate` aggregates the
 lanes and fails closed (a skipped lane passes, a failed detector does not); it is the one check
 to mark required. Tool versions are pinned in the workflow.
+
+**f) Complexity nudge** — `complexity_delta.py`, changed `.c`/`.cpp` files, `bpi` only; never fails
+the build. lizard (pinned, `-Ecpre`: `#else` branches are skipped) measures each function's
+cyclomatic complexity (CCN) at the PR base and head, so only what the PR adds counts. A function
+the PR pushes over CCN 30 gets a ❗ inline comment on its first changed line and a summary entry;
+one that grew by 5 or more and ends at 20 or above is listed in the summary only. A function moved
+out of another changed or removed file keeps its old CCN. If lizard cannot analyze a file, nothing
+is compared and the summary says so. Replayed over the 85 develop commits 2026-08..10 that changed
+a .c: 2 crossed 30 (3 functions), 7 more grew.
+
+**g) Source-coverage nudge** — `source_coverage.py`, files a PR adds, `bpi` only; never fails the
+build. A `.c`/`.cpp` that a `Makefile.am` builds but neither `build/linux/{bpi,rpi}/makefile`
+compiles, in a directory a leg already compiles from, is reported in the summary with a file
+annotation: CI would never compile it. XB-only or feature-gated files are the legitimate exception,
+which a text check cannot tell apart, so it never fails the build.
 
 ## 4. Two-stage design (why, and how)
 
@@ -128,7 +148,8 @@ makefiles/scripts. Doing both in one job is a classic "pwn-request." So the syst
  STAGE 1 (pull_request, untrusted PR code, NO write token)
    clang-format.yml -> clang-format.diff, changed-lines.txt, pr-meta.env
    makefile.yml      -> build-summary.md, tidy-summary.md, gcc-gate-summary.md,
-                         inline-gcc.json, inline-tidy.json, pr-meta.env
+                         inline-gcc.json, inline-tidy.json, complexity.md,
+                         inline-complexity.json, source-coverage.md, pr-meta.env
         | (artifacts only)
         v
  STAGE 2 (workflow_run, trusted base-repo context, write token)
@@ -178,7 +199,8 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 - `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
   is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
   The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
-  `gcc-gate-summary.md`, `inline-tidy.json` and `inline-gcc.json`.
+  `gcc-gate-summary.md`, `inline-tidy.json`, `inline-gcc.json`, `inline-complexity.json` and, when
+  they found something, `complexity.md` and `source-coverage.md`.
 
 **Posted back to the PR:**
 - one sticky `ci-summary` comment (job `summary`), folding the build summary and the diff-scoped
@@ -337,6 +359,14 @@ red" — a plumbing hiccup should not falsely block a PR.
   patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
   builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
   `()`-declared functions called with an argument; `-std=gnu17` removes them.
+- Complexity nudge, deliberate limits: lizard skips `#else` branches (`-Ecpre`), so code only there
+  is not measured (2026-10: 104 functions, 2 at CCN 20 or above, both in `wifi_db.c`; without the
+  flag, `#ifdef`/`#else` pairs that each open a brace hid 344 functions in 8 core files). Functions
+  are keyed by name, so C++ overloads count as the most complex one: a smaller one crossing 30 can
+  be missed, a crossing that did not happen is never reported.
+- Complexity inline comment on a renamed file: the changed lines are read from the new path
+  alone, so the anchor can fall outside GitHub's rename diff; the poster then skips that one
+  comment (HTTP 422) and the summary entry still shows.
 - Workflow steps have no tests of their own: the `run:` blocks get shellcheck (workflows only;
   composite actions get yamllint's structural check), but their logic is not exercised by
   `.github/scripts/tests`.
