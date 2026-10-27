@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-#define MSEC_IN_SEC  (1000ULL)
+#define MSEC_IN_SEC (1000ULL)
 #define NSEC_IN_MSEC (1000000ULL)
 #define USEC_IN_MSEC (1000ULL)
 
