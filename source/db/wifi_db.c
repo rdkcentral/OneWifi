@@ -721,7 +721,6 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.mld_info.common_info.mld_enable  = 0;
             cfg.u.bss_info.mld_info.common_info.mld_id      = 255;
             cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
-            cfg.u.bss_info.mld_info.common_info.mld_apply   = 1;
             wifi_util_info_print(WIFI_DB,
                 "%s:%d: dedicated onboarding VAP defaults applied: vap_index=%d vap_name=%s ssid=%s\n",
                 __func__, __LINE__, vap_index, vap_name, cfg.u.bss_info.ssid);

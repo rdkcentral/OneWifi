@@ -265,7 +265,7 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
             return webconfig_error_invalid_subdoc;
         }
 
-        for (j = 0; j < size; j++) {
+        for (j = 0; j < num_private_ssid; j++) {
             if (strncmp(cJSON_GetStringValue(obj), vap_names[j], strlen(vap_names[j])) == 0) {
                 presence_count++;
             }
