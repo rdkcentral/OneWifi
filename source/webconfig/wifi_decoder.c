@@ -250,6 +250,11 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += strlen(anqpParam->valuestring);
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
+        if (anqpParam == NULL || (cJSON_IsString(anqpParam) == false)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Venue name in ANQP entry\n", __func__, __LINE__);
+            cJSON_Delete(passPointStats);
+            return webconfig_error_decode;
+        }
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
 	    cJSON_Delete(passPointStats);
@@ -444,6 +449,11 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                     authBuf->length = 1;
                     authBuf->val[0] = subParam_1->valuedouble;
                 } else {
+                    if(subParam_1->valuestring == NULL){
+                        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid AuthenticationParameter Value type. Expected string value. Discarding Configuration\n", __func__, __LINE__);
+                        cJSON_Delete(passPointStats);
+                        return webconfig_error_auth_param;
+                    }
                     authStrLen = strlen(subParam_1->valuestring);
                     if((authStrLen != 2) && (authStrLen != 14)){
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
@@ -1716,7 +1726,11 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     // Bridge Name
     decode_param_allow_empty_string(vap, "BridgeName", param);
-    strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
+    if (param != NULL && param->valuestring != NULL) {
+        snprintf(vap_info->bridge_name, WIFI_BRIDGE_NAME_LEN, "%s", param->valuestring);
+    } else {
+        vap_info->bridge_name[0] = '\0';
+    }
 
     //Repurposed Bridge Name
     decode_param_allow_optional_string(vap, "RepurposedBridgeName", param);
