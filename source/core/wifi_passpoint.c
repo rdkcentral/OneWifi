@@ -209,7 +209,7 @@ void process_passpoint_event(wifi_anqp_context_t *anqpReq)
         anqpList = anqpReq->head;
     }
 
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
     UINT prevRealmCnt = g_interworking_data[apIns].anqp.realmRespCount;
     UINT prevDomainCnt = g_interworking_data[apIns].anqp.domainRespCount;
     UINT prev3gppCnt = g_interworking_data[apIns].anqp.gppRespCount;
@@ -513,7 +513,7 @@ void process_passpoint_event(wifi_anqp_context_t *anqpReq)
         }
         anqpList = anqpList->next;
     }
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
     if(respLength == 0){
            wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Requested ANQP parameter is NULL\n", __func__, __LINE__);
     }
@@ -560,7 +560,7 @@ void anqpRequest_callback(UINT apIndex, mac_address_t sta, unsigned char token, 
 
 int init_passpoint (void)
 {
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
     wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Initializing Passpoint\n", __func__, __LINE__);
 
     if(RETURN_OK != wifi_anqp_request_callback_register((wifi_anqp_request_callback_t)anqpRequest_callback)) {
@@ -617,12 +617,12 @@ void WiFi_GetGasConfig(char *pString)
     wifi_GASConfiguration_t gasConfig_struct;
     char JSON_STR[512] = {0};
 
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
     if(RETURN_OK != get_wifidb_obj()->desc.get_gas_config_fn(0,&gasConfig_struct)){
 #endif  
         copy_string(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
         return;
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
     }
 #endif
     
@@ -650,7 +650,7 @@ void WiFi_GetGasConfig(char *pString)
 
 INT WiFi_SetGasConfig(char *JSON_STR)
 {
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
     wifi_GASConfiguration_t gasConfig_struct = {0, 0, 0, 0, 0, 0};
     wifi_validation_error_t execRetVal;
     wifi_GASConfiguration_t *p_gas_config = Get_wifi_gas_conf_object();
@@ -756,7 +756,7 @@ INT WiFi_DefaultGasConfig(void)
 
 INT WiFi_InitGasConfig(void)
 {
-#if defined (FEATURE_SUPPORT_PASSPOINT)  
+#if defined(FEATURE_SUPPORT_PASSPOINT)  
     char *JSON_STR = NULL;
    
 #if defined(ENABLE_FEATURE_MESHWIFI)
@@ -889,7 +889,7 @@ INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
     if (memcmp(&g_interworking_data[apIns].roamingConsortium,
             &anqpData.roamingConsortium,
         sizeof(anqpData.roamingConsortium)) != 0) {
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
         if (RETURN_OK != wifi_pushApRoamingConsortiumElement(apIns, 
                      &anqpData.roamingConsortium)) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s: Failed to push Roaming Consotrium to hal for wlan %d\n",
@@ -1046,8 +1046,8 @@ void WiFi_UpdateANQPVenueInfo(uint8_t vapIndex)
 
 INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 {
-#if defined (FEATURE_SUPPORT_PASSPOINT)
-    wifi_validation_error_t execRetVal;
+#if defined(FEATURE_SUPPORT_PASSPOINT)
+    Err execRetVal;
     BOOL apEnable = FALSE;
     int apIns = vapIndex - 1;
     if((apIns < 0) || (apIns > 15)){
@@ -1149,7 +1149,7 @@ INT WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM)
 	return RETURN_ERR;
     }
 
-#if defined (FEATURE_SUPPORT_PASSPOINT)    
+#if defined(FEATURE_SUPPORT_PASSPOINT)    
     
     if(RETURN_OK == enablePassPointSettings (apIns-1, bValue, g_interworking_data[apIns-1].passpoint.gafDisable, g_interworking_data[apIns-1].passpoint.p2pDisable, g_interworking_data[apIns-1].passpoint.l2tif)){
         pCfg->passpoint.enable = g_interworking_data[apIns-1].passpoint.enable = bValue;//ONE_WIFI
@@ -1342,7 +1342,7 @@ void WiFi_GetHS2Stats(uint8_t vapIndex)
 
 INT WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_data, int apIns)
 {
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
 
     if(!interworking_data) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"NULL Interworking Configuration\n");
@@ -1438,7 +1438,7 @@ Description : Check for Saved Configuration.
 ***********************************************************************/
 INT WiFi_InitInterworkingElement (uint8_t vapIndex)
 {
-#if defined (FEATURE_SUPPORT_PASSPOINT)
+#if defined(FEATURE_SUPPORT_PASSPOINT)
     wifi_interworking_t *pCfg = Get_wifi_object_interworking_parameter(vapIndex);
     if(pCfg == NULL)
     {
