@@ -230,17 +230,17 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
 
 /*
  * The translation table is selected at run time from the subdoc descriptor flags.
- * The ovsdb translator is always linked; the easymesh translator only when EasyMesh is enabled.
+ * A translator that is not linked into this build resolves to NULL (weak symbol).
  */
 static webconfig_error_t translate_to_proto(webconfig_subdoc_type_t type,
     webconfig_subdoc_data_t *data)
 {
-#if defined EASY_MESH_NODE
-    if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) != 0) {
+    if (((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) != 0) &&
+        (translate_to_easymesh_tables != NULL)) {
         return translate_to_easymesh_tables(type, data);
     }
-#endif
-    if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) != 0) {
+    if (((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) != 0) &&
+        (translate_to_ovsdb_tables != NULL)) {
         return translate_to_ovsdb_tables(type, data);
     }
     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no translator for descriptor:0x%x\n", __func__,
@@ -251,12 +251,12 @@ static webconfig_error_t translate_to_proto(webconfig_subdoc_type_t type,
 static webconfig_error_t translate_from_proto(webconfig_subdoc_type_t type,
     webconfig_subdoc_data_t *data)
 {
-#if defined EASY_MESH_NODE
-    if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) != 0) {
+    if (((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) != 0) &&
+        (translate_from_easymesh_tables != NULL)) {
         return translate_from_easymesh_tables(type, data);
     }
-#endif
-    if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) != 0) {
+    if (((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) != 0) &&
+        (translate_from_ovsdb_tables != NULL)) {
         return translate_from_ovsdb_tables(type, data);
     }
     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no translator for descriptor:0x%x\n", __func__,

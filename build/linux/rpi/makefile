@@ -363,8 +363,6 @@ HEBUS_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/platform/linux/he_bus/src/*.c
 INCLUDE_HE_LIB_DIRS = \
     -I$(ONE_WIFI_HOME)/source/platform/linux/he_bus/inc \
 
-WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_ovsdb_translator.c
-
 ifdef EASY_MESH_NODE
     INCLUDEDIRS +=  -I$(ONE_WIFI_EM_HOME)/inc
     WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_easymesh_translator.c 
