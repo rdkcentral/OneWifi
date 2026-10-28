@@ -68,6 +68,7 @@ class Reflow(unittest.TestCase):
             (['f(M,"s",', "    a);"], ['f(M, "s", a);'], False),                # join + spacing fix
             (["foo(a,", "  b);"], ["foo(a,", "    b);"], False),                 # re-indent only
             (["foo(a,", "    b);", ""], ["foo(a, b);"], False),                 # join + blank line removed
+            (["foo(a,", "    b);", "  bar();"], ["foo(a, b);", "    bar();"], False),   # join + re-indent
         ]
         for removed, added, dropped in cases:
             with self.subTest(removed=removed):

@@ -116,7 +116,7 @@ def _split_gaps(text):
 def reflow_only(removed, added):
     """True when a suggestion only moves line breaks and no current line is over LINE_LIMIT:
     clang-format joining lines to fill up to the limit, or wrapping a line that already fits.
-    Spacing inside a line, indentation alone and blank lines still count as changes."""
+    Any other whitespace change (spacing, indentation, blank lines) keeps the suggestion."""
     if not removed or max(len(line.expandtabs(8)) for line in removed) > LINE_LIMIT:
         return False
     old_chars, old_gaps = _split_gaps("".join(line + "\n" for line in removed))
@@ -128,7 +128,7 @@ def reflow_only(removed, added):
         old_breaks, new_breaks = old.count("\n"), new.count("\n")
         if {old_breaks, new_breaks} == {0, 1}:
             moved = True
-        elif old_breaks != new_breaks or (old_breaks == 0 and old != new):
+        elif old != new:
             return False
     return moved
 
