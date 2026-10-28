@@ -415,6 +415,20 @@ typedef struct {
     bool neighbor_list_present;
 } em_btm_req_ctrl_msg_t;
 
+#define EM_MAC_ADDR_LEN 6
+#define EM_MAX_RADIO_PER_AGENT         4
+
+typedef struct {
+    uint8_t ruid[EM_MAC_ADDR_LEN];
+    uint8_t reserved[2];
+    int32_t tx_power;
+} em_tx_power_radio_t;
+
+typedef struct {
+    uint32_t radio_count;
+    em_tx_power_radio_t radios[EM_MAX_RADIO_PER_AGENT];
+} em_tx_power_response_t;
+
 typedef struct {
     wifi_mon_stats_type_t  data_type;
     wifi_mon_stats_args_t     args;
