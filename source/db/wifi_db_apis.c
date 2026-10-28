@@ -650,7 +650,8 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         tmp = new_rec->secondary_channels_list;
         while ((ptr = strchr(tmp, ',')) != NULL)
         {
-            if (i >= MAXNUMSECONDARYCHANNELS) break;
+            if (i >= MAXNUMSECONDARYCHANNELS)
+                break;
             ptr++;
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config Secondary Channel list %d \t",__func__, __LINE__,atoi(tmp));
             l_radio_cfg->channelSecondary[i] = atoi(tmp);
