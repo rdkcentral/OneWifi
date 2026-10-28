@@ -79,7 +79,6 @@ libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
 libwifi_utils_la_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -static
 if WEBCONFIG_FRAMEWORK
 libwifi_utils_la_LDFLAGS += -lwebconfig_framework
-libwifi_utils_la_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG -DONEWIFI_RDKB_APP_SUPPORT
 endif
 
 if ONEWIFI_DML_SUPPORT

@@ -227,7 +227,6 @@ OneWifi_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_
 
 if WEBCONFIG_FRAMEWORK
 OneWifi_LDFLAGS += -lwebconfig_framework
-OneWifi_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG -DONEWIFI_RDKB_APP_SUPPORT
 endif
 
 

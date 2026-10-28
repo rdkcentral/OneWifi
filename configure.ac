@@ -70,7 +70,7 @@ AM_CONDITIONAL([WITH_EASYMESH], [test x$EASYMESH_ENABLED = xtrue])
 
 
 AC_ARG_ENABLE([webconfig-framework],
-             AS_HELP_STRING([--disable-webconfig-framework],[disable linking libwebconfig_framework and its feature flags (default is yes)]),
+             AS_HELP_STRING([--disable-webconfig-framework],[do not link libwebconfig_framework; FEATURE_SUPPORT_WEBCONFIG and ONEWIFI_RDKB_APP_SUPPORT must then not be set in CFLAGS (default is enabled)]),
              [
               case "${enableval}" in
                yes) WEBCONFIG_FRAMEWORK_ENABLED=true;;
