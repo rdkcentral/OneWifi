@@ -69,6 +69,12 @@ class Reflow(unittest.TestCase):
             (["foo(a,", "  b);"], ["foo(a,", "    b);"], False),                 # re-indent only
             (["foo(a,", "    b);", ""], ["foo(a, b);"], False),                 # join + blank line removed
             (["foo(a,", "    b);", "  bar();"], ["foo(a, b);", "    bar();"], False),   # join + re-indent
+            (["x =", "    y + z;"], ["x = y + z;"], True),                         # after an operator
+            (["a[i]", "    .b = 1;"], ["a[i].b = 1;"], True),                      # member access
+            (["if (a)", "{"], ["if (a) {"], False),                                # brace to the if
+            (["int f(void) {"], ["int f(void)", "{"], False),                      # function brace
+            (["if (fd) fclose(fp);"], ["if (fd)", "    fclose(fp);"], False),     # one statement a line
+            (['f("(",', "    b);"], ['f("(", b);'], True),                         # paren in a string
         ]
         for removed, added, dropped in cases:
             with self.subTest(removed=removed):

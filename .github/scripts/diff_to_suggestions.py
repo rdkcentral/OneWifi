@@ -113,20 +113,60 @@ def _split_gaps(text):
     return parts[1::2], parts[0::2]
 
 
+# A wrapped statement may break after these; any other break at depth 0 is structural.
+WRAP_AFTER = set("=+-/%|&^?<>,")
+
+
+def _depth_after(chars):
+    """Parenthesis/bracket depth after each character, string and char literals skipped."""
+    depths, depth, quote, escaped = [], 0, None, False
+    for char in chars:
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char in "\"'":
+            quote = char
+        elif char in "([":
+            depth += 1
+        elif char in ")]":
+            depth -= 1
+        depths.append(depth)
+    return depths
+
+
+def _wrap_break(chars, depths, idx):
+    """A break after chars[idx] that only wraps a statement: inside parentheses or brackets, after
+    an operator, or before a member access (`.`, `->`). Never next to a brace, or where a
+    statement or control header ends: those are CODE_STYLE.md's brace and one-statement-per-line
+    rules."""
+    after = "".join(chars[idx + 1:idx + 3])
+    if chars[idx] in "{}" or after[:1] in "{}":
+        return False
+    member = after[:1] == "." or after == "->"
+    return depths[idx] > 0 or chars[idx] in WRAP_AFTER or member
+
+
 def reflow_only(removed, added):
-    """True when a suggestion only moves line breaks and no current line is over LINE_LIMIT:
-    clang-format joining lines to fill up to the limit, or wrapping a line that already fits.
-    Any other whitespace change (spacing, indentation, blank lines) keeps the suggestion."""
+    """True when a suggestion only moves line breaks that wrap a statement, and no current line is
+    over LINE_LIMIT: clang-format joining lines to fill up to the limit, or wrapping a line that
+    already fits. Any other whitespace change (spacing, indentation, blank lines, a brace or a
+    statement moving to or from its own line) keeps the suggestion."""
     if not removed or max(len(line.expandtabs(8)) for line in removed) > LINE_LIMIT:
         return False
     old_chars, old_gaps = _split_gaps("".join(line + "\n" for line in removed))
     new_chars, new_gaps = _split_gaps("".join(line + "\n" for line in added))
     if old_chars != new_chars or old_gaps[0] != new_gaps[0]:
         return False
+    depths = _depth_after(old_chars)
     moved = False
-    for old, new in zip(old_gaps[1:], new_gaps[1:]):
-        old_breaks, new_breaks = old.count("\n"), new.count("\n")
-        if {old_breaks, new_breaks} == {0, 1}:
+    for idx, (old, new) in enumerate(zip(old_gaps[1:], new_gaps[1:])):
+        if {old.count("\n"), new.count("\n")} == {0, 1}:
+            if not _wrap_break(old_chars, depths, idx):
+                return False
             moved = True
         elif old != new:
             return False
