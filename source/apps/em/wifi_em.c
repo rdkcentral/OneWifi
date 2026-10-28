@@ -24,6 +24,8 @@
 #include "wifi_hal_ap.h"
 #include "wifi_mgr.h"
 #include "common/ieee802_11_defs.h"
+#include <limits.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <cjson/cJSON.h>
@@ -47,6 +49,51 @@
 static bool is_monitor_done = false;
 static bool g_btm_pending_valid = false;
 static em_btm_req_ctrl_msg_t g_pending_btm;
+
+static bool wifi_em_refresh_tx_power(void)
+{
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    unsigned int num_radios = getNumberRadios();
+    UINT tx_power[MAX_NUM_RADIOS];
+
+    if (num_radios == 0 || num_radios > MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: invalid radio count %u\n", __func__, __LINE__,
+            num_radios);
+        return false;
+    }
+
+    wifi_util_info_print(WIFI_EM, "%s:%d: refreshing transmit power from HAL for %u radios\n",
+        __func__, __LINE__, num_radios);
+
+    for (unsigned int i = 0; i < num_radios; i++) {
+        ULONG curr_txpower = 0;
+        int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
+        if (rc != RETURN_OK) {
+            wifi_util_error_print(WIFI_EM,
+                "%s:%d: failed to read tx power for radio_index=%u (rc=%d)\n", __func__, __LINE__,
+                i, rc);
+            return false;
+        }
+        if (curr_txpower == 0 || curr_txpower > UINT_MAX) {
+            wifi_util_error_print(WIFI_EM,
+                "%s:%d: invalid tx power %lu for radio_index=%u\n", __func__, __LINE__,
+                curr_txpower, i);
+            return false;
+        }
+
+        tx_power[i] = (UINT)curr_txpower;
+        wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n", __func__,
+            __LINE__, i, curr_txpower);
+    }
+
+    pthread_mutex_lock(&wifi_mgr->data_cache_lock);
+    for (unsigned int i = 0; i < num_radios; i++) {
+        wifi_mgr->radio_config[i].oper.transmitPower = tx_power[i];
+    }
+    pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
+
+    return true;;
+}
 
 // Structure to track pending block timers
 typedef struct pending_block_node {
@@ -3111,32 +3158,6 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
     switch (event->sub_type) {
     case wifi_event_type_notify_monitor_done:
         is_monitor_done = TRUE;
-        {
-            wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-            unsigned int num_radios = getNumberRadios();
-            for (unsigned int i = 0; i < num_radios; i++) {
-                ULONG curr_txpower = 0;
-                int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
-                if (rc != RETURN_OK) {
-                    wifi_util_error_print(WIFI_EM,
-                        "%s:%d: failed to read tx power for radio_index=%u (rc=%d)\n", __func__,
-                        __LINE__, i, rc);
-                    continue;
-                }
-                if (curr_txpower == 0) {
-                    wifi_util_error_print(WIFI_EM,
-                        "%s:%d: tx power reported as 0 for radio_index=%u; defaulting to 100\n",
-                        __func__, __LINE__, i);
-                    curr_txpower = 100;
-                }
-
-                pthread_mutex_lock(&wifi_mgr->data_cache_lock);
-                wifi_mgr->radio_config[i].oper.transmitPower = (UINT)curr_txpower;
-                pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
-                wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n", __func__,
-                    __LINE__, i, curr_txpower);
-            }
-        }
         break;
 
     case wifi_event_type_start_channel_scan:
@@ -3420,6 +3441,35 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data, bus_user_data_t *
     push_event_to_ctrl_queue((char *)pTmp, len, wifi_event_type_command,
         wifi_event_type_start_channel_scan, NULL);
 
+    return bus_error_success;
+}
+
+bus_error_t get_tx_power(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)user_data;
+
+    wifi_util_error_print(WIFI_EM, "%s:%d: --------->>>> transmit power GET\n",
+            __func__, __LINE__);
+
+    if (event_name == NULL || p_data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: invalid TX power GET arguments\n", __func__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+    if (strcmp(event_name, WIFI_EM_INIT_TX_POWER_READY) != 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: unsupported TX power property %s\n", __func__,
+            __LINE__, event_name);
+        return bus_error_invalid_namespace;
+    }
+    if (!wifi_em_refresh_tx_power()) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: --------->>>> transmit power unavailable; retry GET\n",
+            __func__, __LINE__);
+        return bus_error_general;
+    }
+
+    p_data->data_type = bus_data_type_uint32;
+    p_data->raw_data.u32 = 1;
+    p_data->raw_data_len = sizeof(p_data->raw_data.u32);
     return bus_error_success;
 }
 
@@ -4264,6 +4314,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     em_config_t *policy_config = &app->data.u.em_data.em_config;
 
     bus_data_element_t dataElements[] = {
+        { WIFI_EM_INIT_TX_POWER_READY,      bus_element_type_property,
+         { get_tx_power, NULL, NULL, NULL, NULL, NULL },                                                     slow_speed, ZERO_TABLE,
+         { bus_data_type_uint32, false, 0, 0, 0, NULL }                                                                                                                             },
         { WIFI_EM_CHANNEL_SCAN_REQUEST,     bus_element_type_method,
          { NULL, start_channel_scan, NULL, NULL, NULL, NULL },                                               slow_speed, ZERO_TABLE,
          { bus_data_type_bytes, true, 0, 0, 0, NULL }                                                                                                                               },
