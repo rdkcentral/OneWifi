@@ -243,9 +243,12 @@ static webconfig_error_t translate_to_proto(webconfig_subdoc_type_t type,
         (translate_to_ovsdb_tables != NULL)) {
         return translate_to_ovsdb_tables(type, data);
     }
-    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no translator for descriptor:0x%x\n", __func__,
-        __LINE__, data->descriptor);
-    return webconfig_error_none;
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: translator not available for descriptor:0x%x\n",
+        __func__, __LINE__, data->descriptor);
+    if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) != 0) {
+        return webconfig_error_translate_to_easymesh;
+    }
+    return webconfig_error_translate_to_ovsdb;
 }
 
 static webconfig_error_t translate_from_proto(webconfig_subdoc_type_t type,
@@ -259,9 +262,12 @@ static webconfig_error_t translate_from_proto(webconfig_subdoc_type_t type,
         (translate_from_ovsdb_tables != NULL)) {
         return translate_from_ovsdb_tables(type, data);
     }
-    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no translator for descriptor:0x%x\n", __func__,
-        __LINE__, data->descriptor);
-    return webconfig_error_none;
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: translator not available for descriptor:0x%x\n",
+        __func__, __LINE__, data->descriptor);
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) != 0) {
+        return webconfig_error_translate_from_easymesh;
+    }
+    return webconfig_error_translate_from_ovsdb;
 }
 
 webconfig_error_t webconfig_init(webconfig_t *config)

@@ -343,8 +343,8 @@ __attribute__((weak)) webconfig_error_t translate_from_ovsdb_tables(webconfig_su
     webconfig_subdoc_data_t *data);
 __attribute__((weak)) webconfig_error_t translate_to_easymesh_tables(webconfig_subdoc_type_t type,
     webconfig_subdoc_data_t *data);
-__attribute__((weak)) webconfig_error_t translate_from_easymesh_tables(
-    webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data);
+__attribute__((weak)) webconfig_error_t translate_from_easymesh_tables(webconfig_subdoc_type_t type,
+    webconfig_subdoc_data_t *data);
 
 webconfig_error_t webconfig_multi_doc_init();
 webconfig_error_t webconfig_single_doc_init();
