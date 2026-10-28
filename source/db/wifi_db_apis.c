@@ -664,7 +664,8 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         tmp = new_rec->amsdu_tid;
         while ((ptr = strchr(tmp, ',')) != NULL)
         {
-            if (i >= MAX_AMSDU_TID) break;
+            if (i >= MAX_AMSDU_TID)
+                break;
             ptr++;
             l_radio_cfg->amsduTid[i] = atoi(tmp);
             tmp = ptr;
