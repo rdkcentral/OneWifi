@@ -6433,7 +6433,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     const cJSON *policy_obj, *local_steering_policy, *btm_steering_policy, *backhaul_policy,
         *channel_scan_policy, *radio_metrics_array;
     const cJSON *unsuccess_assoc_policy, *qos_mgt_policy, *def_8021q_policy;
-    const cJSON *traffic_sep_policy, *client_filters_policy, *radio_steer_array, *radio_steer_obj;
+    const cJSON *radio_steer_array, *radio_steer_obj;
 
     policy_obj = cJSON_GetObjectItem(em_cfg, "Policy");
     if (policy_obj == NULL) {
@@ -6652,7 +6652,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                     int mscs_count = cJSON_GetArraySize(mscs_arr);
                     em_config->qos_mgt_policy[qi].num_mscs = (mscs_count < EM_MAX_QOS_MAC) ? mscs_count : EM_MAX_QOS_MAC;
                     for (int i = 0; i < em_config->qos_mgt_policy[qi].num_mscs; i++) {
-                        const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
+                        cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
                         str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                             em_config->qos_mgt_policy[qi].mscs_mac[i]);
                     }
@@ -6662,7 +6662,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                     int scs_count = cJSON_GetArraySize(scs_arr);
                     em_config->qos_mgt_policy[qi].num_scs = (scs_count < EM_MAX_QOS_MAC) ? scs_count : EM_MAX_QOS_MAC;
                     for (int i = 0; i < em_config->qos_mgt_policy[qi].num_scs; i++) {
-                        const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
+                        cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
                         str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                             em_config->qos_mgt_policy[qi].scs_mac[i]);
                     }
@@ -6676,7 +6676,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                 int mscs_count = cJSON_GetArraySize(mscs_arr);
                 em_config->qos_mgt_policy[0].num_mscs = (mscs_count < EM_MAX_QOS_MAC) ? mscs_count : EM_MAX_QOS_MAC;
                 for (int i = 0; i < em_config->qos_mgt_policy[0].num_mscs; i++) {
-                    const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
+                    cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
                     str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                         em_config->qos_mgt_policy[0].mscs_mac[i]);
                 }
@@ -6686,7 +6686,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                 int scs_count = cJSON_GetArraySize(scs_arr);
                 em_config->qos_mgt_policy[0].num_scs = (scs_count < EM_MAX_QOS_MAC) ? scs_count : EM_MAX_QOS_MAC;
                 for (int i = 0; i < em_config->qos_mgt_policy[0].num_scs; i++) {
-                    const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
+                    cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
                     str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                         em_config->qos_mgt_policy[0].scs_mac[i]);
                 }
@@ -6747,7 +6747,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
         return webconfig_error_decode;
     }
 
-    for (int i = 0; i < sta_link_metrics->sta_count; i++)
+    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++)
     {
         array_item = cJSON_GetArrayItem(em_sta_link, i);
 
@@ -6755,7 +6755,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
         str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].sta_mac);
 
         decode_param_allow_empty_string(array_item, "Client Type", param);
-        strncpy(sta_link_metrics->per_sta_metrics[i].client_type, param->valuestring, strlen(param->valuestring));
+        memcpy(sta_link_metrics->per_sta_metrics[i].client_type, param->valuestring, strlen(param->valuestring));
         sta_link_metrics->per_sta_metrics[i].client_type[strlen(param->valuestring)] = '\0';
 
         // Associated STA Link Metrics
@@ -6801,7 +6801,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
                 return webconfig_error_decode;
             }else {
                 decode_param_integer(error_code_obj, "Reason Code", param);
-                sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuestring;
+                sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuedouble;
 
                 decode_param_allow_optional_string(sta_link_metrics_obj, "STA MAC", param);
                 str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
@@ -6851,7 +6851,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
 {
     cJSON *vap_obj, *param_arr, *param_obj, *value_object, *assoc_sta_arr, *link_metrics_obj,
         *bssid_arr, *bssid_obj;
-    int j = 0, i = 0;
+    int j = 0;
     int sta_cnt = 0;
     assoc_sta_link_metrics_data_t *sta_link_metrics_data = NULL;
     assoc_sta_ext_link_metrics_data_t *sta_ext_link_metrics_data = NULL;
@@ -7025,7 +7025,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                     radio_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
 
                 decode_param_allow_optional_string(link_metrics_obj, "Client Type", value_object);
-                strncpy(radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
+                memcpy(radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
                     value_object->valuestring, strlen(value_object->valuestring));
                 radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
 

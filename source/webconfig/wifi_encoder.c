@@ -757,9 +757,10 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //VlanCfgVersion
     cJSON_AddNumberToObject(global_obj, "VlanCfgVersion", global_info->vlan_cfg_version);
 
+#ifndef EASY_MESH_NODE
     //WpsPin
     cJSON_AddSafeStringToObject(global_obj, "WpsPin", global_info->wps_pin, sizeof(global_info->wps_pin));
-    
+#endif    
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
 
@@ -805,6 +806,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //FixedWmmParams
     cJSON_AddNumberToObject(global_obj, "FixedWmmParams", global_info->fixed_wmm_params);
 
+#ifndef EASY_MESH_NODE
     //WifiRegionCode
     cJSON_AddSafeStringToObject(global_obj, "WifiRegionCode", global_info->wifi_region_code, sizeof(global_info->wifi_region_code));
 
@@ -828,7 +830,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     //TxRxRateList
     cJSON_AddStringToObject(global_obj, "TxRxRateList", global_info->txrx_rate_list);
-
+#endif
     // MgtFrameRateLimitEnable
     cJSON_AddBoolToObject(global_obj, "MgtFrameRateLimitEnable",
         global_info->mgt_frame_rate_limit_enable);
@@ -3399,7 +3401,7 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
     char mac_str[32];
     cJSON *assoc_sta_link_metrics_obj, *error_code_obj, *assoc_sta_ext_link_metrics_obj, *param_obj, *temp_obj, *param_arr;
 
-    for (int i = 0; i < sta_link_metrics->sta_count; i++)
+    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++)
     {
         param_obj = cJSON_CreateObject();
         if (param_obj == NULL) {
@@ -3410,7 +3412,7 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
 
         uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].sta_mac, mac_str);
         cJSON_AddStringToObject(param_obj, "STA MAC", mac_str);
-        cJSON_AddStringToObject(param_obj, "Client Type", sta_link_metrics->per_sta_metrics[i].client_type);
+        cJSON_AddStringToObject(param_obj, "Client Type", (const char *)sta_link_metrics->per_sta_metrics[i].client_type);
 
         // Associated STA Link Metrics
         if (sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid != 0)
@@ -3554,6 +3556,7 @@ webconfig_error_t encode_em_sta_traffic_stats_object(int sta_cnt,
         cJSON_AddNumberToObject(param_obj, "RxPacketsErrors", sta_traffic_stats[i].rx_packtes_errs);
         cJSON_AddNumberToObject(param_obj, "RetransmissionCount", sta_traffic_stats[i].retrans_cnt);
     }
+    return webconfig_error_none;
 }
 
 // merge with existing one, later
@@ -3577,7 +3580,7 @@ webconfig_error_t encode_sta_link_metrics_object(per_sta_metrics_t *sta_metrics,
 
         uint8_mac_to_string_mac(sta_metrics[i].sta_mac, mac_str);
         cJSON_AddStringToObject(param_obj, "STA MAC", mac_str);
-        cJSON_AddStringToObject(param_obj, "Client Type", sta_metrics[i].client_type);
+        cJSON_AddStringToObject(param_obj, "Client Type", (const char *)sta_metrics[i].client_type);
 
         // Associated STA Link Metrics
         if (sta_metrics[i].assoc_sta_link_metrics.num_bssid != 0) {
@@ -3704,8 +3707,7 @@ webconfig_error_t encode_sta_link_metrics_object(per_sta_metrics_t *sta_metrics,
 webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
     em_per_radio_report_t *radio_report, cJSON *emap_metrics_report_obj)
 {
-    cJSON *error_code_obj, *param_obj, *temp_obj, *param_arr;
-    int radio_index = radio_report->radio_index;
+    cJSON *param_obj, *temp_obj, *param_arr;
     wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_t *vap = NULL;
     em_vap_metrics_t *ap_metrics = NULL;
@@ -3753,7 +3755,7 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
     }
     cJSON_AddItemToObject(emap_metrics_report_obj, "Vap Info", param_arr);
 
-    for (int j = 0; j < radio->vaps.num_vaps; j++) {
+    for (unsigned int j = 0; j < radio->vaps.num_vaps; j++) {
         vap = &vap_map->vap_array[j];
         if (vap == NULL) {
             continue;
