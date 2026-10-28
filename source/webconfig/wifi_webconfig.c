@@ -27,7 +27,6 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
-#include "webconfig_external_proto.h"
 
 #if 0
 static webconfig_error_map_t    g_webconfig_erors[] =
@@ -229,34 +228,40 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
 
 }
 
-static webconfig_error_t translate_to_proto(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
+/*
+ * The translation table is selected at run time from the subdoc descriptor flags.
+ * The ovsdb translator is always linked; the easymesh translator only when EasyMesh is enabled.
+ */
+static webconfig_error_t translate_to_proto(webconfig_subdoc_type_t type,
+    webconfig_subdoc_data_t *data)
 {
-    webconfig_external_easymesh_t *proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
-
-    if (proto == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_to_easymesh;
-    }
-
-    if (proto->get_device_info != NULL) {
+#if defined EASY_MESH_NODE
+    if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) != 0) {
         return translate_to_easymesh_tables(type, data);
     }
-    return translate_to_ovsdb_tables(type, data);
+#endif
+    if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) != 0) {
+        return translate_to_ovsdb_tables(type, data);
+    }
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no translator for descriptor:0x%x\n", __func__,
+        __LINE__, data->descriptor);
+    return webconfig_error_none;
 }
 
-static webconfig_error_t translate_from_proto(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
+static webconfig_error_t translate_from_proto(webconfig_subdoc_type_t type,
+    webconfig_subdoc_data_t *data)
 {
-    webconfig_external_easymesh_t *proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
-
-    if (proto == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_to_easymesh;
-    }
-
-    if (proto->get_device_info != NULL) {
+#if defined EASY_MESH_NODE
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) != 0) {
         return translate_from_easymesh_tables(type, data);
     }
-    return translate_from_ovsdb_tables(type, data);
+#endif
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) != 0) {
+        return translate_from_ovsdb_tables(type, data);
+    }
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no translator for descriptor:0x%x\n", __func__,
+        __LINE__, data->descriptor);
+    return webconfig_error_none;
 }
 
 webconfig_error_t webconfig_init(webconfig_t *config)
