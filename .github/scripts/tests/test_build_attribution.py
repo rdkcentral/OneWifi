@@ -58,15 +58,17 @@ class Tier1(unittest.TestCase):
         log = ("make: *** [build/linux/bpi/makefile:697: /w/OneWifi//source/apps/em/wifi_em.o] Error 1\n"
                "make[1]: *** [Makefile:88: bar.o] Error 2\n"
                "*** [bar.o] Error 1\n"            # repeat
-               "make: *** [all] Error 2\n")       # not an object
-        self.assertEqual(ba.parse_make_targets(log), ["/w/OneWifi//source/apps/em/wifi_em.o", "bar.o"])
+               "make: *** [all] Error 2\n"        # not an object
+               "make[1]: *** No rule to make target 'source/del.c', needed by 'source/del.o'.  Stop.\n")
+        self.assertEqual(ba.parse_make_targets(log),
+                         ["/w/OneWifi//source/apps/em/wifi_em.o", "bar.o", "source/del.c"])
         self.assertIs(ba.entry_for_object(DB, "source/foo.o"), DB[0])
         self.assertIsNone(ba.entry_for_object(DB, "oo.o"))                   # path boundary
         self.assertEqual(ba.db_args(DB, DB[0]["file"]), ("/w/OneWifi", ["cc", "source/foo.c", "-Wall"]))
 
 
 class Tier2(unittest.TestCase):
-    def run_tier2(self, compile_rc, apply_rcs, status_after="", exists=True):
+    def run_tier2(self, compile_rc, apply_rcs, status_after="", exists=True, added=""):
         """Drive recompile_on_base with git and the compiler stubbed; returns (verdicts, note)."""
         applies = iter(apply_rcs)
 
@@ -74,6 +76,8 @@ class Tier2(unittest.TestCase):
             if args[0] == "status":
                 fake_git.calls += 1
                 return done(out="" if fake_git.calls == 1 else status_after)
+            if "--diff-filter=A" in args:
+                return done(out=added)
             if args[0] == "diff":
                 return done(out="diff --git a/source/foo.c b/source/foo.c\n")
             return done(next(applies))   # apply -R, then apply
@@ -85,15 +89,16 @@ class Tier2(unittest.TestCase):
 
     def test_recompile_on_base(self):
         cases = [
-            # (compile rc, git apply rcs, status after restore, source exists, verdict, note start)
-            (1, [0, 0], "", True, "environment", ""),        # fails on base too
-            (0, [0, 0], "", True, "pr", ""),                 # the revert fixes it
-            (1, [0, 0], "", False, "pr", ""),                # the PR added the file
-            (1, [0, 0], " M x.c\n", True, "environment", "WARNING"),   # tree not restored
-            (1, [1], "", True, None, "could not revert"),    # apply -R failed: nothing judged
+            # (compile rc, git apply rcs, status after restore, source exists, PR-added, verdict, note)
+            (1, [0, 0], "", True, "", "environment", ""),       # fails on base too
+            (0, [0, 0], "", True, "", "pr", ""),                # the revert fixes it
+            (1, [0, 0], "", False, "source/foo.c\n", "pr", ""),  # the PR added the file
+            (1, [0, 0], "", False, "", "unknown", ""),          # the PR renamed it
+            (1, [0, 0], " M x.c\n", True, "", "environment", "WARNING"),   # tree not restored
+            (1, [1], "", True, "", None, "could not revert"),   # apply -R failed: nothing judged
         ]
-        for compile_rc, applies, status, exists, verdict, note in cases:
-            verdicts, got_note = self.run_tier2(compile_rc, applies, status, exists)
+        for compile_rc, applies, status, exists, added, verdict, note in cases:
+            verdicts, got_note = self.run_tier2(compile_rc, applies, status, exists, added)
             self.assertEqual(verdicts.get("source/foo.o"), verdict, (compile_rc, applies, status))
             self.assertEqual(verdicts.get("gone.o"), "unknown")             # not in the DB
             self.assertTrue(got_note.startswith(note), got_note)

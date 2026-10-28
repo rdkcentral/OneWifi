@@ -30,7 +30,8 @@ leaves an "attribution skipped" line and exits 0 (the build step already failed 
   the PR diff, else environment-likely.
 
   Tier 2 (only where a compile DB exists: the bpi leg) decides. It takes the failing objects from
-  make's `*** [x.o] Error N` lines, not from gcc's error paths (in the drift case the error sits
+  make's `*** [x.o] Error N` lines (plus any prerequisite make had no rule for, which never matches
+  the DB and so stays unknown), not from gcc's error paths (in the drift case the error sits
   in a sibling header reached through a OneWifi .c), matches each to its compile DB entry by its
   -o argument, reverts the PR in the working tree (git apply -R of the PR diff) and recompiles
   each on base sources: still failing -> environment, compiling -> pr. The tree is restored
@@ -75,6 +76,7 @@ MAX_ROWS = 12
 # ...) keep the checkout-root prefix "OneWifi/easymesh_project/<tree>/".
 SIBLING_PREFIXES = ("rdk-wifi-hal/", "rdk-wifi-libhostap/", "OneWifi/easymesh_project/")
 MAKE_TARGET_RE = re.compile(r"\*\*\* \[(?:.*[:\s])?([^\s\]]+\.o)\] Error \d+")
+MISSING_RULE_RE = re.compile(r"No rule to make target [`']([^`']+)'")
 UNDEF_REF_RE = re.compile(r"undefined reference to [`']([^`']+)'")
 ERROR_PATH_RE = re.compile(r"^(\S+?):\d+(?::\d+)?: (?:error|fatal error):")
 SHOWN_RE = re.compile(r"^\S*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/+")
@@ -133,12 +135,13 @@ def entry_for_object(db, obj):
     return None
 
 
-def judge_tu(cwd, args, source):
-    """Verdict for one failing file, with the PR reverted. Gone after the revert: the PR added
-    (or renamed) it -> pr. Otherwise recompile: still failing -> environment, compiling -> pr."""
+def judge_tu(cwd, args, source, added):
+    """Verdict for one failing file, with the PR reverted. Gone after the revert: pr when the PR
+    added it, unknown when it renamed it (the old path is not recompiled). Otherwise recompile:
+    still failing -> environment, compiling -> pr. added holds repo-relative paths."""
     src = source if os.path.isabs(source) else os.path.join(cwd, source)
     if not os.path.exists(src):
-        return "pr"
+        return "pr" if any(src == path or src.endswith("/" + path) for path in added) else "unknown"
     return "environment" if run_cmd(args + ["-c", "-o", os.devnull], cwd).returncode else "pr"
 
 
@@ -178,9 +181,10 @@ def tier1(err_lines, changed, header_changed, diff_text):
 
 
 def parse_make_targets(log_text):
-    """The .o targets make reported as failed, first seen first (not `[all] Error N` lines).
-    Tolerates GNU make 4's `[makefile:line: target]` form."""
-    return unique(hit.group(1) for hit in MAKE_TARGET_RE.finditer(log_text))
+    """The .o targets make reported as failed, first seen first (not `[all] Error N` lines), then
+    the prerequisites make had no rule for. Tolerates GNU make 4's `[makefile:line: target]` form."""
+    return unique([*(hit.group(1) for hit in MAKE_TARGET_RE.finditer(log_text)),
+                   *(hit.group(1) for hit in MISSING_RULE_RE.finditer(log_text))])
 
 
 def recompile_on_base(db, targets, diff_base):
@@ -197,6 +201,8 @@ def recompile_on_base(db, targets, diff_base):
     if not resolved:
         return verdicts, "no failing file matched the compile DB"
     snapshot = run_git(["status", "--porcelain"]).stdout
+    added = set(run_git(["diff", "--name-only", "--diff-filter=A", "-M", diff_base,
+                         "HEAD"]).stdout.splitlines())
     patch = run_git(["diff", "--binary", diff_base, "HEAD"]).stdout
     if not patch.strip():
         return verdicts, "empty PR diff, nothing to revert"
@@ -208,7 +214,7 @@ def recompile_on_base(db, targets, diff_base):
             return verdicts, "could not revert the PR diff (git apply -R failed), tier 2 skipped"
         try:
             for target, cwd, args, source in resolved:
-                verdicts[target] = judge_tu(cwd, args, source)
+                verdicts[target] = judge_tu(cwd, args, source, added)
         finally:
             restored = (run_git(["apply", patch_path]).returncode == 0
                         and run_git(["status", "--porcelain"]).stdout == snapshot)

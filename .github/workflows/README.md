@@ -146,7 +146,7 @@ working tree, recompiles each failing object on base sources and restores the tr
 means a dependency moved or develop was already broken, compiling means this PR. The recompile keeps
 the PR's flags and dependency trees, so tier 2 never clears a PR that changes build inputs
 (`build/`, the pins, the build workflow or its actions), nor a failure with an object it cannot
-judge. It runs after every other step that reads the PR tree. The summary shows bpi's verdict under
+judge (a renamed source, or a prerequisite make had no rule for). It runs after every other step that reads the PR tree. The summary shows bpi's verdict under
 its build (rpi's path guess only when bpi has no answer), and on a red build says whether develop's
 latest Build Check is red too.
 
