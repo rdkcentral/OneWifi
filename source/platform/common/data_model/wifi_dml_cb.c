@@ -669,7 +669,7 @@ bool wifi_set_param_string_value(void *obj_ins_context, char *param_name,
     }
 
     if (STR_CMP(param_name, "X_CISCO_COM_RadioPower")) {
-        STR_COPY(p_global_def->RadioPower, output_value->buff);
+        snprintf(p_global_def->RadioPower, sizeof(p_global_def->RadioPower), "%s", output_value->buff);
     } else if (STR_CMP(param_name, "X_CISCO_COM_FactoryResetRadioAndAp")) {
         fprintf(stderr, "-- %s X_CISCO_COM_FactoryResetRadioAndAp %s\n", __func__,
             (char *)output_value->buff);
@@ -1512,7 +1512,7 @@ bool radio_set_param_string_value(void *obj_ins_context, char *param_name,
         if (STR_CMP(dm_radio_default->Alias, output_value->buff)) {
             return true;
         }
-        STR_COPY(dm_radio_default->Alias, output_value->buff);
+        snprintf(dm_radio_default->Alias, sizeof(dm_radio_default->Alias), "%s", output_value->buff);
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -2391,7 +2391,7 @@ bool ssid_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
         }
 
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && \
-    !defined(_GREXT02ACTS_PRODUCT_REQ_)
+    !defined(_MERCURY_PRODUCT_REQ_)
         if (output_value == false) {
             wifi_util_error_print(WIFI_DMCLI,
                 "%s:%d User is Trying to disable SSID for vap_index=%d\n", __func__, __LINE__,
@@ -5004,8 +5004,7 @@ bool interworking_serv_set_param_string_value(void *obj_ins_context, char *param
                     __LINE__, pcfg->vap_name);
                 return false;
             }
-            STR_COPY((char *)p_dm_interworking_info->anqp.anqpParameters,
-                (char *)output_value->buff);
+            snprintf((char *)p_dm_interworking_info->anqp.anqpParameters, sizeof(p_dm_interworking_info->anqp.anqpParameters), "%s", (char *)output_value->buff);
             set_dml_cache_vap_config_changed(instance_number - 1);
             cJSON_Delete(p_root);
             wifi_util_info_print(WIFI_DMCLI, "%s:%d: interwoking serv param set success\n",
@@ -5163,8 +5162,7 @@ bool passpoint_set_param_string_value(void *obj_ins_context, char *param_name,
                     __LINE__, pcfg->vap_name);
                 return false;
             }
-            STR_COPY((char *)p_dm_interworking_info->passpoint.hs2Parameters,
-                (char *)output_value->buff);
+            snprintf((char *)p_dm_interworking_info->passpoint.hs2Parameters, sizeof(p_dm_interworking_info->passpoint.hs2Parameters), "%s", (char *)output_value->buff);
             set_dml_cache_vap_config_changed(instance_number - 1);
             cJSON_Delete(p_root);
             wifi_util_info_print(WIFI_DMCLI, "%s:%d: passpoint param set success\n", __func__,
@@ -5238,7 +5236,7 @@ bool pre_conn_ctrl_get_param_string_value(void *obj_ins_context, char *param_nam
     wifi_preassoc_control_t *p_pre_assoc = &vap_pcfg->u.bss_info.preassoc;
 
     if (STR_CMP(param_name, "RssiUpThresholdSupported")) {
-        set_output_string(output_value, "disabled, -50 to -95");
+        set_output_string(output_value, "disabled, 10 to 100");
     } else if (STR_CMP(param_name, "SnrThresholdSupported")) {
         set_output_string(output_value, "disabled, 1 to 100");
     } else if (STR_CMP(param_name, "RssiUpThreshold")) {
@@ -5317,7 +5315,7 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
                 return false;
             }
 
-            STR_COPY(p_dm_pre_assoc->rssi_up_threshold, p_input_str);
+            snprintf(p_dm_pre_assoc->rssi_up_threshold, sizeof(p_dm_pre_assoc->rssi_up_threshold), "%s", p_input_str);
         }
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else if (STR_CMP(param_name, "SnrThreshold")) {
@@ -5472,7 +5470,7 @@ bool pre_conn_ctrl_set_param_string_value(void *obj_ins_context, char *param_nam
         } else if (STR_CMP(p_input_str, "disabled")) {
             STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, "disabled");
         } else {
-            STR_COPY(p_dm_pre_assoc->sixGOpInfoMinRate, p_input_str);
+            snprintf(p_dm_pre_assoc->sixGOpInfoMinRate, sizeof(p_dm_pre_assoc->sixGOpInfoMinRate), "%s", p_input_str);
         }
         set_dml_cache_vap_config_changed(instance_number - 1);
     } else {

@@ -71,9 +71,9 @@ MAX_BODY_BYTES = 4096
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_ENTRIES = 1_000_000
 # Lower number = posted first when the cap bites. The cap and this order apply per
-# invocation: the inline slot (gcc + clang-tidy) and the fmt slot (formatter) are
+# invocation: the inline slot (gcc + clang-tidy + complexity) and the fmt slot (formatter) are
 # separate runs, each with its own MAX_COMMENTS.
-PRIORITY = {"gcc-gate": 0, "clang-tidy": 1, "formatter": 2}
+PRIORITY = {"gcc-gate": 0, "clang-tidy": 1, "complexity": 2, "formatter": 3}
 
 
 def run_gh(args, input_text=None):
