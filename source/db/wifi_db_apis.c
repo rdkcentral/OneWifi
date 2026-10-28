@@ -2472,7 +2472,8 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     tmp = cfg->secondary_channels_list;
     while ((ptr = strchr(tmp, ',')) != NULL)
     {
-        if (i >= MAXNUMSECONDARYCHANNELS) break;
+        if (i >= MAXNUMSECONDARYCHANNELS)
+            break;
         ptr++;
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config Secondary Channel list %d \t",__func__, __LINE__,atoi(tmp));
         config->channelSecondary[i] = atoi(tmp);
