@@ -6747,15 +6747,15 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
         return webconfig_error_decode;
     }
 
-    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++)
-    {
+    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++) {
         array_item = cJSON_GetArrayItem(em_sta_link, i);
 
         decode_param_allow_optional_string(array_item, "STA MAC", param);
         str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].sta_mac);
 
         decode_param_allow_empty_string(array_item, "Client Type", param);
-        memcpy(sta_link_metrics->per_sta_metrics[i].client_type, param->valuestring, strlen(param->valuestring));
+        memcpy(sta_link_metrics->per_sta_metrics[i].client_type, param->valuestring,
+            strlen(param->valuestring));
         sta_link_metrics->per_sta_metrics[i].client_type[strlen(param->valuestring)] = '\0';
 
         // Associated STA Link Metrics

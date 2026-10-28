@@ -760,7 +760,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 #ifndef EASY_MESH_NODE
     //WpsPin
     cJSON_AddSafeStringToObject(global_obj, "WpsPin", global_info->wps_pin, sizeof(global_info->wps_pin));
-#endif    
+#endif
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
 
@@ -3401,8 +3401,7 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
     char mac_str[32];
     cJSON *assoc_sta_link_metrics_obj, *error_code_obj, *assoc_sta_ext_link_metrics_obj, *param_obj, *temp_obj, *param_arr;
 
-    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++)
-    {
+    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++) {
         param_obj = cJSON_CreateObject();
         if (param_obj == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
@@ -3412,7 +3411,8 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
 
         uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].sta_mac, mac_str);
         cJSON_AddStringToObject(param_obj, "STA MAC", mac_str);
-        cJSON_AddStringToObject(param_obj, "Client Type", (const char *)sta_link_metrics->per_sta_metrics[i].client_type);
+        cJSON_AddStringToObject(param_obj, "Client Type",
+            (const char *)sta_link_metrics->per_sta_metrics[i].client_type);
 
         // Associated STA Link Metrics
         if (sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid != 0)
