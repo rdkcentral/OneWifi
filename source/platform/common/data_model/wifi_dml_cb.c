@@ -775,7 +775,7 @@ bool radio_get_param_bool_value(void *obj_ins_context, char *param_name, bool *o
         *output_value = pcfg->EcoPowerDown;
 #else
         *output_value = false;
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -1130,7 +1130,7 @@ bool radio_set_param_bool_value(void *obj_ins_context, char *param_name, bool ou
             __LINE__, dm_radio_param->EcoPowerDown, dm_radio_param->enable);
 #endif // FEATURE_SUPPORT_ECOPOWERDOWN
         is_radio_config_changed = true;
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
