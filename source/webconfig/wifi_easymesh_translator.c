@@ -374,7 +374,7 @@ populate_device_mlo_capabilities(em_device_info_t *device_info,
     for (i = 0; i < num_radios; i++) {
         radio = &decoded_params->radios[i];
 
-        radio_index = convert_radio_name_to_radio_index((char*)radio->name);
+        radio_index = convert_radio_name_to_radio_index((char *)radio->name);
         if (radio_index < 0 || (unsigned int)radio_index >= MAX_NUM_RADIOS) {
             continue;
         }
@@ -402,11 +402,11 @@ populate_device_mlo_capabilities(em_device_info_t *device_info,
 // This routine converts DML webconfig subdoc values to em_device_info_t,em_network_info_t easymesh structures
 webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc_data_t *data)
 {
-    em_device_info_t  *device_info = NULL;
+    em_device_info_t *device_info = NULL;
     em_network_info_t *network_info = NULL;
     em_ieee_1905_security_info_t *security_info = NULL;
 
-    webconfig_external_easymesh_t *proto= NULL;
+    webconfig_external_easymesh_t *proto = NULL;
     rdk_wifi_radio_t *radio;
     bool dfs_enable = false;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
@@ -570,7 +570,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
             em_op_class_info->op_class = oper_param->operatingClasses[i].opClass;
             em_op_class_info->max_tx_power = oper_param->operatingClasses[i].maxTxPower;
             em_op_class_info->num_channels = oper_param->operatingClasses[i].numberOfNonOperChan;
-            for(unsigned int k = 0; k < oper_param->operatingClasses[i].numberOfNonOperChan; k++) {
+            for (unsigned int k = 0; k < oper_param->operatingClasses[i].numberOfNonOperChan; k++) {
                 em_op_class_info->channels[k] = oper_param->operatingClasses[i].nonOperable[k];
             }
             no_of_opclass++;
@@ -1351,7 +1351,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             em_op_class_info->op_class = oper_param->operatingClasses[j].opClass;
             em_op_class_info->max_tx_power = oper_param->operatingClasses[j].maxTxPower;
             em_op_class_info->num_channels = oper_param->operatingClasses[j].numberOfNonOperChan;
-            for(unsigned int i = 0; i < oper_param->operatingClasses[j].numberOfNonOperChan; i++) {
+            for (unsigned int i = 0; i < oper_param->operatingClasses[j].numberOfNonOperChan; i++) {
                 em_op_class_info->channels[i] = oper_param->operatingClasses[j].nonOperable[i];
             }
 			op_class_count++;
@@ -3571,7 +3571,7 @@ webconfig_error_t   translate_radio_object_from_easymesh_to_dml(webconfig_subdoc
 //translate_vap_object_from_easymesh_to_dml() converts data elements of em_bss_info_t of  easymesh to Onewifi
 webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_data_t *data)
 {
-    em_bss_info_t     *em_vap_info = NULL;
+    em_bss_info_t *em_vap_info = NULL;
     em_bss_info_t     *vap_info_row;
     wifi_vap_info_map_t *vap_map;
     webconfig_external_easymesh_t *proto;
