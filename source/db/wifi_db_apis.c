@@ -5018,7 +5018,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.levl_enabled_rfc = false;
     rfc_config.memwraptool_app_rfc = true;
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
-    defined (_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
     rfc_config.wpa3_rfc = true;
 #else
     rfc_config.wpa3_rfc = false;
@@ -7658,7 +7658,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else
             cfg->variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #endif
-#if defined (NEWPLATFORM_PORT) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(NEWPLATFORM_PORT) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
 
@@ -7672,14 +7672,14 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* defined(CONFIG_IEEE80211BE) */
 
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
 #endif
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg->operatingClass = 128;
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
 #endif
             if (ctrl->network_mode == rdk_dev_mode_type_em_node)
@@ -7687,13 +7687,13 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             else
                 cfg->channel = 44;
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->DfsEnabled = true;
-#elif defined (_MERCURY_PRODUCT_REQ_)
+#elif defined(_MERCURY_PRODUCT_REQ_)
         cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
         cfg->DfsEnabled = true;
-#elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+#elif defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
@@ -7706,7 +7706,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->operatingClass = 128;
             cfg->channel = 157;
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->beaconInterval = 200;
             cfg->DfsEnabled = true;
@@ -8093,7 +8093,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
-    defined(_PLATFORM_BANANAPI_R4_) || defined (_XER2_PRODUCT_REQ_)
+    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_)
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -8287,7 +8287,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 strncpy(cfg->u.bss_info.security.u.key.key, INVALID_KEY, sizeof(cfg->u.bss_info.security.u.key.key));
             }
         }
-#if defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_PP203X_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_) //NEED _SCER11BEL_PRODUCT_REQ_ XER10 is GW..  STA is NOT needed ????
+#if defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_) //NEED _SCER11BEL_PRODUCT_REQ_ XER10 is GW..  STA is NOT needed ????
         //Disabling all vaps except STA Vaps by default in XLE
         cfg->u.bss_info.enabled = false;
         exists = false;
@@ -9340,7 +9340,7 @@ void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationPar
     get_wifidb_obj()->desc.init_radio_config_default_fn((instance_number - 1), radio_cfg, radio_feat_cfg);
 
 
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
     //5GH and 6G can be added later after support is added
     if (is_radio_band_5G(radio_cfg->band)) {
         memset(recName, 0, sizeof(recName));
