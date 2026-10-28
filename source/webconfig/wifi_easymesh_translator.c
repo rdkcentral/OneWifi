@@ -3608,20 +3608,20 @@ webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_d
         radio = &decoded_params->radios[i];
 
         vap_map = &radio->vaps.vap_map;
-        // em_vap_info = em_radio_data[i].bss_info;//Please add NULL check TBD-P
-        if (em_vap_info == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_vap_info is NULL\n", __func__, __LINE__);
-            return webconfig_error_translate_from_easymesh;
-        }
         count = 0;
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
 
-            em_vap_info = proto->get_bss_info(proto->data_model, j);//Please add NULL check TBD-P
+            em_vap_info = proto->get_bss_info(proto->data_model, j);
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s \r\n", __func__, __LINE__, vap->vap_name);
             if (is_vap_hotspot(wifi_prop,vap->vap_index) == true) {
                 continue;
+            }
+
+            if (em_vap_info == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_vap_info is NULL\n", __func__, __LINE__);
+                return webconfig_error_translate_from_easymesh;
             }
 
             // please move this code to specific vap function like ovsdb_translator
