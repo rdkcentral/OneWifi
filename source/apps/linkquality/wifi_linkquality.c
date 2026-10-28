@@ -42,7 +42,7 @@
 #define NOISE_FLOOR (-95)
 
 
-#ifdef EM_APP
+#if defined(EM_APP) && !defined(QCOM_ATH12K_PORT)
 /* Register callback BEFORE starting qmgr */
 void publish_qmgr_subdoc(const report_batch_t* report)
 {
