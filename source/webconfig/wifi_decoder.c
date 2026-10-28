@@ -3851,7 +3851,7 @@ static webconfig_error_t decode_mlo_associated_clients_object(webconfig_subdoc_d
         }
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decoded %u MLO clients for '%s'\n", __func__,
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded %u MLO clients for '%s'\n", __func__,
         __LINE__, size, vap_name);
     return webconfig_error_none;
 }
