@@ -400,21 +400,21 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
     while (buff < (attrib+len))
     {
         if ((size_t)(end - buff) < sizeof(wifi_anqp_element_format_t)) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid ANQP length\n", __func__, __LINE__);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse ANQP element\n", __func__, __LINE__);
             break;
         }
         anqp_info = (wifi_anqp_element_format_t *)buff;
 
         if (anqp_info->len > (size_t)(end - buff) - sizeof(wifi_anqp_element_format_t)) {
-             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: ANQP payload exceeds frame length\n", __func__, __LINE__);
-             break;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse ANQP element\n", __func__, __LINE__);
+            break;
         }
 
         if (anqp_info->info_id == wifi_anqp_element_name_vendor_specific)
         {
             anqp_hs_2_info = (wifi_hs_2_anqp_element_format_t *)buff;
             if (anqp_hs_2_info->len < ANQP_HS2_MIN_LEN) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid HS2.0 length\n", __func__, __LINE__);
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse HS2.0 element\n", __func__, __LINE__);
                 break;
             }
 
@@ -464,7 +464,7 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
         else if (anqp_info->info_id == wifi_anqp_element_name_query_list)
         {
             if (anqp_info->len % sizeof(unsigned short) != 0) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Malformed query_list\n", __func__, __LINE__);
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse ANQP query list\n", __func__, __LINE__);
                 break;
             }
             anqp_queries_len = anqp_info->len;
@@ -3362,7 +3362,7 @@ void process_device_mode_command_event(int device_mode)
         global_param->device_network_mode = device_mode;
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
-        if (device_mode == rdk_dev_mode_type_ext) {
+        if (device_mode == rdk_dev_mode_type_ext || device_mode == rdk_dev_mode_type_em_node) {
             if (rfc_param->multiap_rfc) {
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             }
@@ -3372,7 +3372,8 @@ void process_device_mode_command_event(int device_mode)
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
-        } else if (device_mode == rdk_dev_mode_type_gw) {
+        } else if (device_mode == rdk_dev_mode_type_gw ||
+            device_mode == rdk_dev_mode_type_em_colocated_node) {
             if (rfc_param->multiap_rfc && is_device_type_xle()) {
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
             }
@@ -4233,7 +4234,7 @@ static void process_monitor_init_command(void)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-#if defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_MERCURY_PRODUCT_REQ_)
             if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
                 push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);

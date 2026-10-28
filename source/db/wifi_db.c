@@ -563,6 +563,9 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg.u.bss_info.mld_info.common_info.mld_id = 0;
+        } else {
+            cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
+            cfg.u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
         }
 #else
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
@@ -1018,6 +1021,13 @@ int get_all_param_from_psm_and_set_into_db(void)
 {
    return 0;
 }
+
+int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
+    rdk_wifi_vap_info_t *rdk_config)
+{
+    return 0;
+}
+
 #endif
 
 void wifidb_init(wifi_db_t *db)
