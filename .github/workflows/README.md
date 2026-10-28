@@ -67,9 +67,10 @@ for this to work.**
 **a) Formatter (clang-format)** — advisory, PR-changed-lines only. `clang-format.yml` runs
 `git-clang-format` over the PR's changed C/C++ lines and records a diff; `diff_to_suggestions.py` turns
 it into GitHub review `suggestion` blocks, dropping any suggestion outside the PR's actual changed
-lines (git-clang-format can reformat adjacent lines it didn't need to) and any that only moves line
-breaks while every line fits in 120 columns (clang-format refills a touched statement up to the
-limit; `CODE_STYLE.md` leaves line breaks within the limit to the author). It currently only posts
+lines (git-clang-format can reformat adjacent lines it didn't need to) and any that only re-wraps
+a statement while every line fits in 120 columns (clang-format refills a touched statement up to
+the limit; `CODE_STYLE.md` leaves line breaks within the limit to the author). Brace placement and
+one statement per line still post. It currently only posts
 suggestions — the `exit 1` that would fail the job is present but commented out, so this does
 **not** block merge today.
 
@@ -141,9 +142,11 @@ which a text check cannot tell apart, so it never fails the build.
 **h) Build failure attribution** — `build_attribution.py`, only when a leg's build step failed;
 never fails the build itself. It says whether this PR caused the failure. Tier 1 (both legs) guesses
 from each error path: a sibling tree the PR cannot edit points at the environment, a file the PR
-changed at the PR. Tier 2 (`bpi`, which has the compile DB) decides: it reverts the PR in the
-working tree, recompiles each failing object on base sources and restores the tree; still failing
-means a dependency moved or develop was already broken, compiling means this PR. The recompile keeps
+changed at the PR. Tier 2 (`bpi`, which has the compile DB) decides: it recompiles each failing
+object on the PR tree first (a failure that does not reproduce, say a compiler killed under the
+parallel build, is not judged), then reverts the PR in the working tree, recompiles on base sources
+and restores the tree; still failing means a dependency moved or develop was already broken,
+compiling means this PR, and a compiler killed or crashing gives no verdict. The recompile keeps
 the PR's flags and dependency trees, so tier 2 never clears a PR that changes build inputs
 (`build/`, the pins, the build workflow or its actions), nor a failure with an object it cannot
 judge (a renamed source, or a prerequisite make had no rule for). It runs after every other step that reads the PR tree. The summary shows bpi's verdict under

@@ -33,8 +33,10 @@ leaves an "attribution skipped" line and exits 0 (the build step already failed 
   make's `*** [x.o] Error N` lines (plus any prerequisite make had no rule for, which never matches
   the DB and so stays unknown), not from gcc's error paths (in the drift case the error sits
   in a sibling header reached through a OneWifi .c), matches each to its compile DB entry by its
-  -o argument, reverts the PR in the working tree (git apply -R of the PR diff) and recompiles
-  each on base sources: still failing -> environment, compiling -> pr. The tree is restored
+  -o argument, recompiles each on the PR tree first (a compile killed under the parallel build
+  can pass a serial retry: not reproduced -> unknown), then reverts the PR in the working tree
+  (git apply -R of the PR diff) and recompiles each on base sources: still failing ->
+  environment, compiling -> pr; a compiler killed by a signal or crashing -> unknown. The tree is restored
   afterwards (git apply forward, then a `git status` check); a mismatch is reported. The
   recompile keeps the PR's flags and dependency trees, so a PR that changes build inputs
   (build/, the pins, the build workflow or its actions) gets no environment verdict. "Not caused by
@@ -77,6 +79,8 @@ MAX_ROWS = 12
 SIBLING_PREFIXES = ("rdk-wifi-hal/", "rdk-wifi-libhostap/", "OneWifi/easymesh_project/")
 MAKE_TARGET_RE = re.compile(r"\*\*\* \[(?:.*[:\s])?([^\s\]]+\.o)\] Error \d+")
 MISSING_RULE_RE = re.compile(r"No rule to make target [`']([^`']+)'")
+# gcc's driver survives a killed or crashed cc1 and exits 1 with one of these.
+COMPILER_DIED_RE = re.compile(r"signal terminated program|internal compiler error|out of memory")
 UNDEF_REF_RE = re.compile(r"undefined reference to [`']([^`']+)'")
 ERROR_PATH_RE = re.compile(r"^(\S+?):\d+(?::\d+)?: (?:error|fatal error):")
 SHOWN_RE = re.compile(r"^\S*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/+")
@@ -135,14 +139,23 @@ def entry_for_object(db, obj):
     return None
 
 
+def compile_once(cwd, args):
+    """'fails' | 'compiles' | 'died' (killed by a signal, a crash or no memory: no evidence)."""
+    result = run_cmd(args + ["-c", "-o", os.devnull], cwd)
+    if result.returncode < 0 or COMPILER_DIED_RE.search(result.stderr or ""):
+        return "died"
+    return "fails" if result.returncode else "compiles"
+
+
 def judge_tu(cwd, args, source, added):
     """Verdict for one failing file, with the PR reverted. Gone after the revert: pr when the PR
     added it, unknown when it renamed it (the old path is not recompiled). Otherwise recompile:
-    still failing -> environment, compiling -> pr. added holds repo-relative paths."""
+    still failing -> environment, compiling -> pr, compiler died -> unknown. added holds
+    repo-relative paths."""
     src = source if os.path.isabs(source) else os.path.join(cwd, source)
     if not os.path.exists(src):
         return "pr" if any(src == path or src.endswith("/" + path) for path in added) else "unknown"
-    return "environment" if run_cmd(args + ["-c", "-o", os.devnull], cwd).returncode else "pr"
+    return {"fails": "environment", "compiles": "pr"}.get(compile_once(cwd, args), "unknown")
 
 
 def read_text(path):
@@ -200,12 +213,20 @@ def recompile_on_base(db, targets, diff_base):
             verdicts[target] = "unknown"   # not in the compile DB: cannot judge it
     if not resolved:
         return verdicts, "no failing file matched the compile DB"
-    snapshot = run_git(["status", "--porcelain"]).stdout
-    added = set(run_git(["diff", "--name-only", "--diff-filter=A", "-M", diff_base,
-                         "HEAD"]).stdout.splitlines())
     patch = run_git(["diff", "--binary", diff_base, "HEAD"]).stdout
     if not patch.strip():
         return verdicts, "empty PR diff, nothing to revert"
+    # The failure must reproduce on the PR tree, serially: a compile killed under the parallel
+    # build (memory) can pass a retry and would then read as "the revert fixed it".
+    flaky = [item for item in resolved if compile_once(item[1], item[2]) != "fails"]
+    for target, *_rest in flaky:
+        verdicts[target] = "unknown"
+    resolved = [item for item in resolved if item not in flaky]
+    if not resolved:
+        return verdicts, "the failure did not reproduce on a serial retry of the PR tree"
+    snapshot = run_git(["status", "--porcelain"]).stdout
+    added = set(run_git(["diff", "--name-only", "--diff-filter=A", "-M", diff_base,
+                         "HEAD"]).stdout.splitlines())
     fd, patch_path = tempfile.mkstemp(suffix=".patch", dir=os.environ.get("RUNNER_TEMP") or None)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:

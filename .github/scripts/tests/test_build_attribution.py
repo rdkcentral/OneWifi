@@ -68,9 +68,11 @@ class Tier1(unittest.TestCase):
 
 
 class Tier2(unittest.TestCase):
-    def run_tier2(self, compile_rc, apply_rcs, status_after="", exists=True, added=""):
-        """Drive recompile_on_base with git and the compiler stubbed; returns (verdicts, note)."""
-        applies = iter(apply_rcs)
+    def run_tier2(self, compiles, apply_rcs, status_after="", exists=True, added=""):
+        """Drive recompile_on_base with git and the compiler stubbed; returns (verdicts, note).
+        compiles: one result per recompile, PR tree first: an exit code, or the stderr of a
+        compile that exits 1."""
+        applies, results = iter(apply_rcs), iter(compiles)
 
         def fake_git(args):
             if args[0] == "status":
@@ -81,25 +83,36 @@ class Tier2(unittest.TestCase):
             if args[0] == "diff":
                 return done(out="diff --git a/source/foo.c b/source/foo.c\n")
             return done(next(applies))   # apply -R, then apply
+
+        def fake_cmd(_cmd, _cwd):
+            result = next(results)
+            if isinstance(result, int):
+                return done(result)
+            return subprocess.CompletedProcess([], 1, stdout="", stderr=result)
         fake_git.calls = 0
         with mock.patch.object(ba, "run_git", fake_git), \
-             mock.patch.object(ba, "run_cmd", lambda _cmd, _cwd: done(compile_rc)), \
+             mock.patch.object(ba, "run_cmd", fake_cmd), \
              mock.patch.object(ba.os.path, "exists", lambda _path: exists):
             return ba.recompile_on_base(DB, ["source/foo.o", "gone.o"], "base")
 
     def test_recompile_on_base(self):
+        killed = "gcc: fatal error: Killed signal terminated program cc1"
         cases = [
-            # (compile rc, git apply rcs, status after restore, source exists, PR-added, verdict, note)
-            (1, [0, 0], "", True, "", "environment", ""),       # fails on base too
-            (0, [0, 0], "", True, "", "pr", ""),                # the revert fixes it
-            (1, [0, 0], "", False, "source/foo.c\n", "pr", ""),  # the PR added the file
-            (1, [0, 0], "", False, "", "unknown", ""),          # the PR renamed it
-            (1, [0, 0], " M x.c\n", True, "", "environment", "WARNING"),   # tree not restored
-            (1, [1], "", True, "", None, "could not revert"),   # apply -R failed: nothing judged
+            # (recompiles: PR tree, base; git apply rcs; status after restore; source exists;
+            #  PR-added; verdict; note start)
+            ([1, 1], [0, 0], "", True, "", "environment", ""),          # fails on base too
+            ([1, 0], [0, 0], "", True, "", "pr", ""),                   # the revert fixes it
+            ([1], [0, 0], "", False, "source/foo.c\n", "pr", ""),       # the PR added the file
+            ([1], [0, 0], "", False, "", "unknown", ""),                # the PR renamed it
+            ([1, 1], [0, 0], " M x.c\n", True, "", "environment", "WARNING"),   # tree not restored
+            ([1], [1], "", True, "", None, "could not revert"),         # apply -R failed
+            ([0], [], "", True, "", "unknown", "the failure did not reproduce"),   # passes a retry
+            ([1, -9], [0, 0], "", True, "", "unknown", ""),             # base recompile killed
+            ([1, killed], [0, 0], "", True, "", "unknown", ""),         # cc1 killed, driver exits 1
         ]
-        for compile_rc, applies, status, exists, added, verdict, note in cases:
-            verdicts, got_note = self.run_tier2(compile_rc, applies, status, exists, added)
-            self.assertEqual(verdicts.get("source/foo.o"), verdict, (compile_rc, applies, status))
+        for compiles, applies, status, exists, added, verdict, note in cases:
+            verdicts, got_note = self.run_tier2(compiles, applies, status, exists, added)
+            self.assertEqual(verdicts.get("source/foo.o"), verdict, (compiles, applies, status))
             self.assertEqual(verdicts.get("gone.o"), "unknown")             # not in the DB
             self.assertTrue(got_note.startswith(note), got_note)
 
