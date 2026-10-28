@@ -250,6 +250,11 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += strlen(anqpParam->valuestring);
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
+        if (anqpParam == NULL || (cJSON_IsString(anqpParam) == false)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Venue name in ANQP entry\n", __func__, __LINE__);
+            cJSON_Delete(passPointStats);
+            return webconfig_error_decode;
+        }
         if(strlen(anqpParam->valuestring) > 255){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
 	    cJSON_Delete(passPointStats);
@@ -440,15 +445,19 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Auth Parameter Value not prensent in NAIRealmANQPElement EAP Data. Discarding Configuration\n", __func__, __LINE__);
 		    cJSON_Delete(passPointStats);
                     return webconfig_error_auth_param;
-                } else if (subParam_1->valuedouble) {
+                }else if(cJSON_IsNumber(subParam_1)){
                     authBuf->length = 1;
                     authBuf->val[0] = subParam_1->valuedouble;
-                } else {
+                }else if(cJSON_IsString(subParam_1)){
                     authStrLen = strlen(subParam_1->valuestring);
                     if((authStrLen != 2) && (authStrLen != 14)){
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
-			cJSON_Delete(passPointStats);
+                        cJSON_Delete(passPointStats);
                         return webconfig_error_eap_length;
+                }else{
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid EAP Value type in NAIRealmANQPElement Data. Expected number or string. Discarding Configuration\n", __func__, __LINE__);
+                        cJSON_Delete(passPointStats);
+                        return webconfig_error_decode;
                     }
                     snprintf((char*)authStr, sizeof(authStr), "%s", subParam_1->valuestring);
 
@@ -1716,7 +1725,12 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     // Bridge Name
     decode_param_allow_empty_string(vap, "BridgeName", param);
-    strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
+    if (param != NULL && param->valuestring != NULL) {
+        strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
+        vap_info->bridge_name[WIFI_BRIDGE_NAME_LEN - 1] = '\0';
+    } else {
+        vap_info->bridge_name[0] = '\0';
+    }
 
     //Repurposed Bridge Name
     decode_param_allow_optional_string(vap, "RepurposedBridgeName", param);
