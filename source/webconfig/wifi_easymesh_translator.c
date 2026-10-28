@@ -3620,7 +3620,8 @@ webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_d
             }
 
             if (em_vap_info == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_vap_info is NULL\n", __func__, __LINE__);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_vap_info is NULL\n", __func__,
+                    __LINE__);
                 return webconfig_error_translate_from_easymesh;
             }
 
