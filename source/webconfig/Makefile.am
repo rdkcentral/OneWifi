@@ -85,7 +85,7 @@ endif
 
 libwifi_webconfig_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
 
-libwifi_webconfig_la_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -lssl -lcrypto -shared
+libwifi_webconfig_la_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -lssl -lcrypto -shared
 if WEBCONFIG_FRAMEWORK
 libwifi_webconfig_la_LDFLAGS += -lwebconfig_framework
 libwifi_webconfig_la_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG -DONEWIFI_RDKB_APP_SUPPORT

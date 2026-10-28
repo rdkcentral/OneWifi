@@ -39,7 +39,6 @@ typedef struct {
     char ErrorMsg[128];
 } wifi_validation_error_t;
 
-
 #define MAX_NAME_LEN 32
 
 #ifdef __cplusplus

@@ -1196,7 +1196,7 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
         return RETURN_OK;
 }
 
-int validate_ssid_name(char *ssid_name, wifi_validation_error_t *execRetVal) 
+int validate_ssid_name(char *ssid_name, wifi_validation_error_t *execRetVal)
 {
     int i =0, ssid_len;
 

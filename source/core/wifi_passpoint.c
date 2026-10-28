@@ -1047,7 +1047,7 @@ void WiFi_UpdateANQPVenueInfo(uint8_t vapIndex)
 INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 {
 #if defined(FEATURE_SUPPORT_PASSPOINT)
-    Err execRetVal;
+    wifi_validation_error_t execRetVal;
     BOOL apEnable = FALSE;
     int apIns = vapIndex - 1;
     if((apIns < 0) || (apIns > 15)){

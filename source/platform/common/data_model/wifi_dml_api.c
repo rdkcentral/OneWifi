@@ -1316,7 +1316,7 @@ int detach_onewifi_main_process(void)
         fclose(fd);
     }
     breakpad_ExceptionHandler();
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     /* Inform Webconfig framework if component is coming after crash */
     check_component_crash("/tmp/wifi_initialized");
 #endif
