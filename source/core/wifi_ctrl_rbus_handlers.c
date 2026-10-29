@@ -1319,13 +1319,15 @@ bus_error_t webconfig_set_subdoc(char *event_name, raw_data_t *p_data, bus_user_
     char *pTmp = NULL;
 
     pTmp = (char *)p_data->raw_data.bytes;
-    if ((p_data->data_type != bus_data_type_string) || (pTmp == NULL)) {
+    if ((p_data == NULL) || (pTmp == NULL) ||
+        (p_data->data_type != bus_data_type_string) ||
+        (p_data->raw_data_len == 0)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d wrong data_type::%d\n", __func__,
             __LINE__, p_data->data_type);
         return bus_error_invalid_input;
     }
 
-    push_event_to_ctrl_queue((cJSON *)pTmp, (strlen(pTmp) + 1), wifi_event_type_webconfig,
+    push_event_to_ctrl_queue((cJSON *)pTmp, p_data->raw_data_len, wifi_event_type_webconfig,
         wifi_event_webconfig_set_data_ovsm, NULL);
 
     return bus_error_success;
@@ -2552,6 +2554,11 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
     memset(&frame_data, 0, sizeof(frame_data));
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n", __func__, __LINE__);
+
+    if (p_data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d invalid p_data\n", __func__, __LINE__);
+        return;
+    }
 
     if (p_data->value.data_type != bus_data_type_bytes) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s Unsupported data type:%x\n", __func__,
@@ -4586,6 +4593,11 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
         return bus_error_element_name_missing;
     }
 
+    if (p_data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d invalid p_data\r\n", __func__, __LINE__);
+        return bus_error_invalid_input;
+    }
+
     pTmp = (char *)p_data->raw_data.bytes;
     if ((p_data->data_type != bus_data_type_bytes) || (pTmp == NULL)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
@@ -4600,6 +4612,11 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
     }
 
     len = p_data->raw_data_len;
+    if (len == 0 || len > MAX_FRAME_SZ) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame payload len:%u\r\n", __func__, __LINE__, len);
+        return bus_error_invalid_input;
+    }
+
     push_event_to_ctrl_queue((char *)pTmp, len, wifi_event_type_command,
         wifi_event_type_send_action_frame, NULL);
 
