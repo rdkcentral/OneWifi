@@ -6740,7 +6740,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
     }
     sta_link_metrics->sta_count = cJSON_GetArraySize(em_sta_link);
 
-    sta_link_metrics->per_sta_metrics = (per_sta_metrics_t *)malloc(sta_link_metrics->sta_count * sizeof(per_sta_metrics_t));
+    sta_link_metrics->per_sta_metrics = (per_sta_metrics_t *)calloc(sta_link_metrics->sta_count, sizeof(per_sta_metrics_t));
     if (sta_link_metrics->per_sta_metrics == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Error in allocating table for decode stats\n", __func__,
             __LINE__);
@@ -6779,7 +6779,10 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
 
                 decode_param_allow_optional_string(bssid_metrics_arr_item, "BSSID", param);
                 if (param != NULL) {
-                    str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].bssid);
+                    str_to_mac_bytes(param->valuestring,
+                        sta_link_metrics->per_sta_metrics[i]
+                            .assoc_sta_link_metrics.assoc_sta_link_metrics_data[j]
+                            .bssid);
                 }
     
                 decode_param_integer(bssid_metrics_arr_item, "Time Delta", param);
@@ -6808,7 +6811,8 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
 
                 decode_param_allow_optional_string(error_code_obj, "STA MAC", param);
                 if (param != NULL) {
-                    str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
+                    str_to_mac_bytes(param->valuestring,
+                        sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
                 }
             }
         }
@@ -6833,7 +6837,10 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
 
                 decode_param_allow_optional_string(bssid_metrics_arr_item, "BSSID", param);
                 if (param != NULL) {
-                    str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].bssid);
+                    str_to_mac_bytes(param->valuestring,
+                        sta_link_metrics->per_sta_metrics[i]
+                            .assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j]
+                            .bssid);
                 }
 
                 decode_param_integer(bssid_metrics_arr_item, "Last Data Downlink Rate", param);
@@ -7014,8 +7021,8 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
         // Decode AP Extended Metrics
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Link Metrics Report");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
-            radio_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)malloc(
-                radio_report->vap_reports[j].sta_cnt * sizeof(per_sta_metrics_t));
+            radio_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)calloc(
+                radio_report->vap_reports[j].sta_cnt, sizeof(per_sta_metrics_t));
             for (sta_cnt = 0; sta_cnt < cJSON_GetArraySize(assoc_sta_arr); sta_cnt++) {
                 link_metrics_obj = cJSON_GetArrayItem(assoc_sta_arr, sta_cnt);
                 if (link_metrics_obj == NULL) {
