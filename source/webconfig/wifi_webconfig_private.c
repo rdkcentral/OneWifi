@@ -254,27 +254,33 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
         return webconfig_error_invalid_subdoc;
     }
 
+    /*
+     * Count each expected private SSID at most once. The private subdoc may
+     * also carry dedicated onboarding VAPs; a nested strncmp loop would
+     * over-count when a short private name is a prefix of another entry and
+     * then fail presence_count != num_private_ssid, rejecting the apply.
+     */
     presence_count = 0;
-
-    for (i = 0; i < size; i++) {
-        obj_vap = cJSON_GetArrayItem(obj_vaps, i);
-        // check presence of all vap names
-        if ((obj = cJSON_GetObjectItem(obj_vap, "VapName")) == NULL) {
-            cJSON_Delete(json);
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
-            return webconfig_error_invalid_subdoc;
-        }
-
-        for (j = 0; j < num_private_ssid; j++) {
-            if (strncmp(cJSON_GetStringValue(obj), vap_names[j], strlen(vap_names[j])) == 0) {
+    for (j = 0; j < num_private_ssid; j++) {
+        for (i = 0; i < size; i++) {
+            obj_vap = cJSON_GetArrayItem(obj_vaps, i);
+            obj = cJSON_GetObjectItem(obj_vap, "VapName");
+            if (obj == NULL || cJSON_GetStringValue(obj) == NULL) {
+                cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+                return webconfig_error_invalid_subdoc;
+            }
+            if (strcmp(cJSON_GetStringValue(obj), vap_names[j]) == 0) {
                 presence_count++;
+                break;
             }
         }
     }
-//    if (presence_count < MIN_NUM_RADIOS || presence_count > MAX_NUM_RADIOS) {
-    if (presence_count != num_private_ssid) {
+    if (presence_count < num_private_ssid) {
         cJSON_Delete(json);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: vap object not present (found %u of %u)\n",
+            __func__, __LINE__, presence_count, num_private_ssid);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
