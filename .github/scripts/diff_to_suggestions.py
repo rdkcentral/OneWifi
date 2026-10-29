@@ -33,6 +33,8 @@ Environment:
                       suggestions are kept (fail-open, same as before this filter).
   CANDIDATES_OUT      optional - output path for the candidate JSON
                       (default /tmp/fmt-candidates.json).
+  GITHUB_REPOSITORY,  set by Actions; link CODE_STYLE.md in the line above each
+  GITHUB_SERVER_URL   suggestion box (see intro).
 
 Line scoping rationale: git-clang-format can reformat lines adjacent to the
 actual change. The primary mechanism (verified in git_clang_format 18.1.8,
@@ -301,6 +303,16 @@ def parse(diff_text):
     return comments
 
 
+def intro():
+    """The line above every suggestion box: a bare box did not say what it is or what to do."""
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    style = f"[CODE_STYLE.md]({server}/{repo}/blob/HEAD/CODE_STYLE.md)" if repo else "CODE_STYLE.md"
+    return (f"**Code style:** you are asked to bring the lines this PR changes up to {style}. "
+            "The box below is clang-format's fix: **Commit suggestion** applies it, "
+            "**Add suggestion to batch** collects several into one commit.")
+
+
 def main():
     comments = parse(sys.stdin.read())
     raw_total = len(comments)
@@ -344,6 +356,9 @@ def main():
     if reflows:
         print(f"Reflow: dropped {reflows} suggestion(s) that only move line breaks "
               f"(no line over {LINE_LIMIT})")
+
+    for comment in comments:
+        comment["body"] = intro() + "\n\n" + comment["body"]
 
     # Emit the shared-poster candidate envelope. review_poster.py owns the cap,
     # dedup and posting; this script only produces findings. A

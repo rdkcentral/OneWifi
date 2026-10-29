@@ -99,10 +99,12 @@ class Scoping(unittest.TestCase):
 
 
 class Envelope(unittest.TestCase):
-    def _run_main(self, diff, changed_line=None):
+    def _run_main(self, diff, changed_line=None, repo=None):
         out_fd, out_path = tempfile.mkstemp(suffix=".json"); os.close(out_fd)
         self.addCleanup(os.unlink, out_path)
         env = {"CANDIDATES_OUT": out_path}
+        if repo:
+            env["GITHUB_REPOSITORY"] = repo
         if changed_line is not None:
             cl_fd, cl_path = tempfile.mkstemp(); os.close(cl_fd)
             self.addCleanup(os.unlink, cl_path)
@@ -113,6 +115,7 @@ class Envelope(unittest.TestCase):
         try:
             sys.stdin = io.StringIO(diff)
             os.environ.pop("CHANGED_LINES_FILE", None)
+            os.environ.pop("GITHUB_REPOSITORY", None)
             os.environ.update(env)
             d2s.main()
         finally:
@@ -125,6 +128,11 @@ class Envelope(unittest.TestCase):
         out = self._run_main(DIFF, changed_line="a.c:5-6\n")
         self.assertEqual((out["source"], out["status"], out["dropped"], len(out["comments"])),
                          ("formatter", "ok", 0, 1))
+        body = out["comments"][0]["body"]
+        self.assertTrue(body.startswith("**Code style:**") and body.endswith("```"))   # text, then the box
+        self.assertIn("CODE_STYLE.md. The box", body)                                  # no repo: no link
+        out = self._run_main(DIFF, changed_line="a.c:5-6\n", repo="rdkcentral/OneWifi")
+        self.assertIn("(https://github.com/rdkcentral/OneWifi/blob/HEAD/CODE_STYLE.md)", out["comments"][0]["body"])
         out = self._run_main(DIFF, changed_line="a.c:100-100\n")   # suggestion off the PR's lines
         self.assertEqual((out["comments"], out["dropped"]), ([], 1))
         reflow = DIFF.replace("@@ -5,2 +5,2 @@\n-int  x=1;\n-int  y=2;\n+int x = 1;\n+int y = 2;\n",

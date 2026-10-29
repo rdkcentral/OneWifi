@@ -70,9 +70,10 @@ it into GitHub review `suggestion` blocks, dropping any suggestion outside the P
 lines (git-clang-format can reformat adjacent lines it didn't need to) and any that only re-wraps
 a statement while every line fits in 120 columns (clang-format refills a touched statement up to
 the limit; `CODE_STYLE.md` leaves line breaks within the limit to the author). Brace placement and
-one statement per line still post. It currently only posts
-suggestions — the `exit 1` that would fail the job is present but commented out, so this does
-**not** block merge today.
+one statement per line still post. Each suggestion box comes with one line of text above it
+(what it is, a link to `CODE_STYLE.md`, and the Commit suggestion / Add suggestion to batch
+buttons). It currently only posts suggestions — the `exit 1` that would fail the job is present
+but commented out, so this does **not** block merge today.
 
 **b) Tree-wide clean-baseline enforcement** — mixed gate/report, whole tree. The build runs with a
 Yocto-derived baseline (`-Wall -Wextra` plus explicit `-Wno-*` suppressions for known backlog
@@ -326,7 +327,11 @@ red" — a plumbing hiccup should not falsely block a PR.
 - **Re-runs don't duplicate comments.** The poster fingerprints every comment it owns (path, line
   range, body) and per run: skips findings already posted, deletes its own comments that GitHub
   marked outdated (`line: null`) or whose finding is gone, collapses duplicate copies to the oldest,
-  and never deletes a comment someone replied to. If any producer reports `status: skipped` (e.g. no
+  and never deletes a comment someone replied to or resolved. Resolved means seen: when a resolved
+  comment goes outdated because its line changed, the same finding (same file and text) is not
+  posted again on its new line. Each resolved comment holds back one such finding, so a second
+  identical one elsewhere in the file still posts. The resolved state comes from GraphQL (REST has
+  none); if that query fails, every thread counts as unresolved. If any producer reports `status: skipped` (e.g. no
   compile DB) or `partial` (a changed file failed to recompile, clang-tidy could not fully analyze
   it, or `.clang-tidy` did not load), that run deletes no "finding gone" comments, so an incomplete run never reads as fixed.
   Comments are posted individually, not as one review: a submitted review can't be deleted later,
