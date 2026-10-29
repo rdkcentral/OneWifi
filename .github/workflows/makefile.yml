@@ -18,7 +18,7 @@ concurrency:
 # (the "Verify pin manifest" step enforces the match — a mismatch errors).
 # setup.sh fallbacks keep `make setup` working locally without the workflow;
 # HAL CI clones OneWifi/develop and runs its setup.sh, so those fallbacks are the
-# cross-repo truth. See ci-README.md §7.
+# cross-repo truth. See README.md §7 (this directory).
 
 # Stage 1 is deliberately read-only: it builds PR-controlled makefiles, so it
 # must hold no write scope. The PR-comment posting (writes) happens only in the
@@ -186,7 +186,7 @@ jobs:
     #
     # NOTE: the local `uses:` path is ./easymesh_project/OneWifi/… NOT ./.github/… —
     # the checkout lands at OneWifi/ then is mv'd under easymesh_project/OneWifi
-    # (above), so the action only exists at that sub-path (ci-README §10).
+    # (above), so the action only exists at that sub-path (README.md §10).
     - name: Provide patched hostap tree (cached)
       if: matrix.platform.id != 'mock'
       uses: ./easymesh_project/OneWifi/.github/actions/hostap-tree
@@ -239,6 +239,14 @@ jobs:
         errs=$(grep -hE ': (error|fatal error):|undefined reference to|Error [0-9]+' "$LOG" \
                | sed -E 's#[^ ]*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/#\1/#; s#//#/#g' \
                | sort -u || true)
+        # make's own "*** [target] Error N" lines go last and are not counted: they repeat the
+        # failures above (one per failed target, one per parent make).
+        make_re='\*\*\* .*Error [0-9]+'
+        errs=$( { grep -vE "$make_re" <<< "$errs"; grep -E "$make_re" <<< "$errs"; } || true)
+        nerr=$(grep -cvE "$make_re" <<< "$errs" || true)
+        [ "$nerr" -gt 0 ] || nerr=$(printf '%s\n' "$errs" | wc -l)
+        # The normalized error list, for the build failure attribution step.
+        printf '%s\n' "$errs" > ci-out/build-errors.txt
         # Surface the top errors as ANNOTATIONS (the box at the top of the failed
         # check, which people actually check) — not only the run-summary page.
         if [ -n "$errs" ]; then
@@ -248,7 +256,7 @@ jobs:
         {
           echo "### ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
           if [ -n "$errs" ]; then
-            echo "#### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo "#### ❌ Errors (${nerr} unique)"
             echo '```'
             head -100 <<< "$errs"
             echo '```'
@@ -671,6 +679,30 @@ jobs:
           echo "::warning::Could not map inline findings to PR-head lines; none are posted this run."
           rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json ci-out/inline-complexity.json
         fi
+
+    # Build failure attribution, only when this leg's build step failed: did this PR break it?
+    # Runs after every step that reads the PR tree (clang-tidy, the gcc gate, the nudges, the
+    # line mapping): tier 2 reverts the PR in the working tree to recompile the failing files on
+    # base sources, then restores it. Never fails the build: the script always exits 0. Tier 2
+    # runs only where a compile DB exists (HAVE_DB: the bpi leg); other legs get the tier-1 guess.
+    - name: Build failure attribution for ${{ matrix.platform.name }}
+      if: always() && steps.build.outcome == 'failure' && github.event_name == 'pull_request' && matrix.platform.id != 'mock'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        # 'true' only on a leg that built compile_commands.json (bpi runs bear). Tier 2 keys on
+        # this, never on the file existing: a stale DB elsewhere would recompile with the wrong flags.
+        HAVE_DB: ${{ matrix.platform.clang_tidy && 'true' || '' }}
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        # A missing script (partial cherry-pick) skips instead of failing the leg.
+        if [ ! -f .github/scripts/build_attribution.py ]; then
+          echo "#### 🧭 Build failure attribution: script not present, skipped" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        python3 .github/scripts/build_attribution.py >> "$GITHUB_STEP_SUMMARY" || true
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
     # Record the PR identity as passive data for the workflow_run poster to

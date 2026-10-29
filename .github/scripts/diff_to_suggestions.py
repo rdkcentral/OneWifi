@@ -18,7 +18,8 @@
 # limitations under the License.
 #
 """Convert a git-clang-format unified diff (read from stdin) into GitHub PR review
-suggestions, scoped to lines the PR actually changed.
+suggestions, scoped to lines the PR actually changed. A suggestion that only moves line
+breaks, with no line over LINE_LIMIT, is not posted (see reflow_only).
 
 Writes one candidate-JSON file (default /tmp/fmt-candidates.json) consumed by
 review_poster.py, which owns dedup, the cap and the posting:
@@ -101,6 +102,75 @@ MAX_FILE_BYTES = 64 * 1024 * 1024
 # which the pr-comments.yml handler absorbs as an advisory. Set to 0 to recover strict
 # containment-in-changed-lines.
 DIFF_CONTEXT = 3
+
+# The line length in CODE_STYLE.md, also .clang-format's ColumnLimit: change all three together.
+LINE_LIMIT = 120
+
+
+def _split_gaps(text):
+    """(non-whitespace characters, whitespace runs): runs[0] leads, runs[i] follows the i-th character."""
+    parts = re.split(r"(\S)", text)
+    return parts[1::2], parts[0::2]
+
+
+# A wrapped statement may break after these; any other break at depth 0 is structural.
+WRAP_AFTER = set("=+-/%|&^?<>,")
+
+
+def _depth_after(chars):
+    """Parenthesis/bracket depth after each character, string and char literals skipped."""
+    depths, depth, quote, escaped = [], 0, None, False
+    for char in chars:
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char in "\"'":
+            quote = char
+        elif char in "([":
+            depth += 1
+        elif char in ")]":
+            depth -= 1
+        depths.append(depth)
+    return depths
+
+
+def _wrap_break(chars, depths, idx):
+    """A break after chars[idx] that only wraps a statement: inside parentheses or brackets, after
+    an operator, or before a member access (`.`, `->`). Never next to a brace, or where a
+    statement or control header ends: those are CODE_STYLE.md's brace and one-statement-per-line
+    rules."""
+    after = "".join(chars[idx + 1:idx + 3])
+    if chars[idx] in "{}" or after[:1] in "{}":
+        return False
+    member = after[:1] == "." or after == "->"
+    return depths[idx] > 0 or chars[idx] in WRAP_AFTER or member
+
+
+def reflow_only(removed, added):
+    """True when a suggestion only moves line breaks that wrap a statement, and no current line is
+    over LINE_LIMIT: clang-format joining lines to fill up to the limit, or wrapping a line that
+    already fits. Any other whitespace change (spacing, indentation, blank lines, a brace or a
+    statement moving to or from its own line) keeps the suggestion."""
+    if not removed or max(len(line.expandtabs(8)) for line in removed) > LINE_LIMIT:
+        return False
+    old_chars, old_gaps = _split_gaps("".join(line + "\n" for line in removed))
+    new_chars, new_gaps = _split_gaps("".join(line + "\n" for line in added))
+    if old_chars != new_chars or old_gaps[0] != new_gaps[0]:
+        return False
+    depths = _depth_after(old_chars)
+    moved = False
+    for idx, (old, new) in enumerate(zip(old_gaps[1:], new_gaps[1:])):
+        if {old.count("\n"), new.count("\n")} == {0, 1}:
+            if not _wrap_break(old_chars, depths, idx):
+                return False
+            moved = True
+        elif old != new:
+            return False
+    return moved
 
 
 def load_changed_lines(path):
@@ -193,6 +263,8 @@ def parse(diff_text):
             "body": body,
             "line": start + len(removed) - 1,
         }
+        if reflow_only(removed, added):
+            c["reflow"] = True
         if len(removed) > 1:
             c["start_line"] = start
             c["start_side"] = "RIGHT"
@@ -263,6 +335,15 @@ def main():
         dropped = before - len(comments)
         if dropped:
             print(f"Line-scoping: dropped {dropped} suggestion(s) off the PR's changed/commentable lines")
+
+    # Where a statement breaks within the limit is the author's call (CODE_STYLE.md), so a
+    # suggestion that only moves line breaks is not posted. Logged, not counted in `dropped`
+    # (which the summary reads as "not commentable").
+    reflows = sum(1 for comment in comments if comment.get("reflow"))
+    comments = [comment for comment in comments if not comment.pop("reflow", False)]
+    if reflows:
+        print(f"Reflow: dropped {reflows} suggestion(s) that only move line breaks "
+              f"(no line over {LINE_LIMIT})")
 
     # Emit the shared-poster candidate envelope. review_poster.py owns the cap,
     # dedup and posting; this script only produces findings. A
