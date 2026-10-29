@@ -68,9 +68,9 @@ struct ovs_vapname_cloudvifname_map {
     char vapname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_) || \
-    defined (_SCER11BEL_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_) || \
-    defined (_SCXF11BFL_PRODUCT_REQ_) || defined (_XER2_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_) || \
+    defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
     {"bhaul-ap-l50", "mesh_backhaul_5gl"},
@@ -111,7 +111,7 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"svc-g-ap-50",  "hotspot_secure_5g"},
     {"svc-g-ap-60",  "hotspot_secure_6g"},
 };
-#elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+#elif defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map cloud_vif_map[] = {
        {"wl0",   "private_ssid_2g"},
        {"wl1",   "private_ssid_5g"},
@@ -167,7 +167,7 @@ struct ovs_radioname_cloudradioname_map {
     char cloudradioname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
 struct ovs_radioname_cloudradioname_map cloud_radio_map[] = {
     {0, "wifi0"},
     {1, "wifi1"},
@@ -1551,7 +1551,7 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
         return webconfig_error_translate_to_ovsdb;
     }
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_) 
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_) 
     char country_id[4] = {};
 
     if (country_id_conversion((wifi_countrycode_type_t *)&oper_param->countryCode, country_id, sizeof(country_id), ENUM_TO_STRING) != RETURN_OK) {
