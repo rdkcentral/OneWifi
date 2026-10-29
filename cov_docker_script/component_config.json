@@ -146,7 +146,7 @@
             "git fetch --all --tags",
             "git checkout 20ef1f925b007f170ab1c257e4aa61fdd0927773",
             "mkdir -p build && cd build",
-            "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr -DCMAKE_CXX_FLAGS=\"-std=c++11 -Wno-error=nonnull -Wno-error=class-memaccess\"",
+            "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr -DMSGPACK_BUILD_TESTS=OFF -DMSGPACK_BUILD_EXAMPLES=OFF -DCMAKE_CXX_FLAGS=\"-std=c++11 -Wno-error=nonnull -Wno-error=class-memaccess\"",
             "make && make install"
           ]
         }
