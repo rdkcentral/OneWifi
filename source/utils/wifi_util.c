@@ -41,6 +41,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <unistd.h>
+#ifdef UWM_CTRL_WPS_SUPPORT
+#include <sys/random.h>
+#endif
 
 #define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 /* enable PID in debug logs */
@@ -5080,4 +5084,47 @@ int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsi
    dev->cli_LastDataDownlinkRate = assoc_dev->cli_LastDataDownlinkRate;  
    dev->cli_LastDataUplinkRate = assoc_dev->cli_LastDataUplinkRate;  
    dev->cli_sleepTime = assoc_dev->cli_sleepTime;
- } 
+ }
+
+#ifdef UWM_CTRL_WPS_SUPPORT
+/*
+ * Cached per-process passphrase for dedicated onboarding VAPs. WPS still
+ * pushes the real mesh backhaul credentials to the enrollee; this key only
+ * satisfies WPA2-Personal on the temporary registrar BSS so a well-known
+ * constant cannot be used to join the LAN during the button window.
+ */
+void wifi_fill_onboarding_psk(char *key, size_t key_len)
+{
+    static char cached[33];
+    static int ready;
+    unsigned char rnd[16];
+    size_t i;
+
+    if (key == NULL || key_len == 0) {
+        return;
+    }
+
+    if (!ready) {
+        if (getrandom(rnd, sizeof(rnd), 0) != (ssize_t)sizeof(rnd)) {
+            int fd = open("/dev/urandom", O_RDONLY);
+            if (fd < 0 || read(fd, rnd, sizeof(rnd)) != (ssize_t)sizeof(rnd)) {
+                /* Last-resort unique-ish fallback; still not a public constant. */
+                unsigned long mix = (unsigned long)time(NULL) ^ (unsigned long)getpid();
+                for (i = 0; i < sizeof(rnd); i++) {
+                    mix = mix * 1103515245UL + 12345UL;
+                    rnd[i] = (unsigned char)(mix >> 16);
+                }
+            }
+            if (fd >= 0) {
+                close(fd);
+            }
+        }
+        for (i = 0; i < sizeof(rnd); i++) {
+            snprintf(&cached[i * 2], 3, "%02x", rnd[i]);
+        }
+        ready = 1;
+    }
+
+    snprintf(key, key_len, "%s", cached);
+}
+#endif /* UWM_CTRL_WPS_SUPPORT */

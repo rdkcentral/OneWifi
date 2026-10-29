@@ -121,7 +121,7 @@ webconfig_error_t encode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
              * "private" subdoc so a rdk-wps-monitor flip of
              * Device.WiFi.AccessPoint.{5,6}.Enable +
              * ApplyAccessPointSettings carries the cached
-             * SSID="onboarding" / WPA2-PSK / key="onboarding"
+             * onboarding SSID / WPA2-PSK / per-process random key
              * payload to webconfig_hal_private_vap_apply ->
              * vap_svc_private_update -> wifi_hal_createVAP. Without
              * this branch encode_private_subdoc skips them, the

@@ -160,15 +160,15 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                 sizeof(onboarding_vap->u.bss_info.ssid), "%s",
                 (band == WIFI_FREQUENCY_2_4_BAND) ?
                     "onboarding_2G" : "onboarding_5G");
-            snprintf((char *)onboarding_vap->u.bss_info.security.u.key.key,
-                sizeof(onboarding_vap->u.bss_info.security.u.key.key), "%s",
-                "onboarding");
+            wifi_fill_onboarding_psk((char *)onboarding_vap->u.bss_info.security.u.key.key,
+                sizeof(onboarding_vap->u.bss_info.security.u.key.key));
             onboarding_vap->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
             onboarding_vap->u.bss_info.security.encr = wifi_encryption_aes;
             onboarding_vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
             onboarding_vap->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
             onboarding_vap->u.bss_info.security.wpa3_transition_disable = false;
             onboarding_vap->u.bss_info.showSsid = true;
+            onboarding_vap->u.bss_info.isolation = 1;
             onboarding_vap->u.bss_info.mld_info.common_info.mld_enable = 0;
             onboarding_vap->u.bss_info.mld_info.common_info.mld_id = 255;
             onboarding_vap->u.bss_info.mld_info.common_info.mld_link_id = 255;

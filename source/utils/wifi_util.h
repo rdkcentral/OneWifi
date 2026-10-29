@@ -373,6 +373,9 @@ static inline BOOL is_vap_onboarding(wifi_platform_property_t *wifi_prop,
 
     return FALSE;
 }
+
+/* Per-process random PSK for the dedicated onboarding BSS (not the mesh key). */
+void wifi_fill_onboarding_psk(char *key, size_t key_len);
 #endif /* UWM_CTRL_WPS_SUPPORT */
 
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len,

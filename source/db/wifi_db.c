@@ -691,13 +691,12 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
          * Dedicated onboarding: dedicated EasyMesh onboarding VAPs (e.g. wifi0.4 /
          * wifi1.4 with vap_name = "onboarding_*"). These VAPs exist in
          * dmcli at boot but stay disabled (no createVAP) until the WPS
-         * button enables them via TR-181. Pin a deterministic on-boot
-         * configuration here so neither HAL defaults nor the persistent
-         * DB can deviate from {SSID=onboarding, key=onboarding,
-         * WPA2-Personal+AES, MFP optional, MLO off, Enabled=false,
-         * WPS.Enable=false}. The private identity is copied immediately
-         * before activation. Replaces the previous EM_WPS_FH_HACK that
-         * hijacked the private fronthaul SSID.
+         * button enables them via TR-181. Pin on-boot defaults so neither
+         * HAL nor the persistent DB can deviate from {SSID=onboarding_*,
+         * random per-process PSK, client isolation, WPA2-Personal+AES,
+         * MFP optional, MLO off, Enabled=false, WPS.Enable=false}. Bridge
+         * is bronboard (InterfaceMap). Mesh backhaul credentials are
+         * copied onto the registrar immediately before activation.
          */
         if (is_vap_onboarding(&wifi_hal_cap_obj->wifi_prop, vap_index)) {
             const char *onboarding_ssid =
@@ -708,8 +707,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                     "onboarding_5G" : "onboarding");
             strncpy(cfg.u.bss_info.ssid, onboarding_ssid, sizeof(cfg.u.bss_info.ssid)-1);
             cfg.u.bss_info.ssid[sizeof(cfg.u.bss_info.ssid)-1] = '\0';
-            strncpy(cfg.u.bss_info.security.u.key.key, "onboarding", sizeof(cfg.u.bss_info.security.u.key.key)-1);
-            cfg.u.bss_info.security.u.key.key[sizeof(cfg.u.bss_info.security.u.key.key)-1] = '\0';
+            wifi_fill_onboarding_psk(cfg.u.bss_info.security.u.key.key,
+                sizeof(cfg.u.bss_info.security.u.key.key));
             cfg.u.bss_info.security.mode       = wifi_security_mode_wpa2_personal;
             cfg.u.bss_info.security.encr       = wifi_encryption_aes;
             cfg.u.bss_info.security.mfp        = wifi_mfp_cfg_optional;
@@ -720,6 +719,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.enabled             = false;
             cfg.u.bss_info.showSsid            = true;
             cfg.u.bss_info.bssHotspot          = false;
+            cfg.u.bss_info.isolation           = 1;
             cfg.u.bss_info.bssMaxSta           = BSS_MAX_NUM_STA_COMMON;
             cfg.u.bss_info.mld_info.common_info.mld_enable  = 0;
             cfg.u.bss_info.mld_info.common_info.mld_id      = 255;
