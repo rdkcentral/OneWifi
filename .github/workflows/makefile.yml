@@ -78,14 +78,19 @@ jobs:
 
     - name: Set up dependencies
       run: |
+        # The runner's Ubuntu mirror sometimes stalls: apt waits 30 s per stuck package
+        # by default, and one Build Check run in four had a leg over 2 min here
+        # (Oct 2026). Give up on a stalled connection sooner and retry.
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "10";\n' \
+          | sudo tee /etc/apt/apt.conf.d/80-ci-retries > /dev/null
         sudo apt-get update
         # Pruned: removed mariadb-server (100MB, unused — OneWifi doesn't build the
         # mesh agent that links -lmariadb), golang (runner has Go in toolcache),
-        # libmysqlcppconn-dev (0 includes/linkage), vim (CI doesn't need an editor).
+        # libmysqlcppconn-dev (0 includes/linkage), vim (CI doesn't need an editor),
+        # cmake (11 MB; the image's own CMake in /usr/local/bin comes first in PATH).
         # --no-install-recommends avoids pulling unneeded transitive packages.
         sudo apt-get install -y --no-install-recommends \
                                 build-essential \
-                                cmake \
                                 python3 \
                                 python3-pip \
                                 git \
@@ -174,7 +179,7 @@ jobs:
         fi
         $ok || exit 1
 
-    # Perf: each device leg (bpi, rpi) clones + patches hostap from upstream.
+    # Perf: every leg clones + patches hostap from upstream in its setup.sh.
     # The patched tree is a pure function of the pins in setup.sh plus the patch
     # inputs, so the hostap-tree composite action caches it keyed on those files
     # (patched-<leg> mode). On a hit, setup.sh's .hostap_patched flag skips the
@@ -182,16 +187,16 @@ jobs:
     # can never be slower than today. The key logic (files hash + the one unpinned
     # patch source per leg: bpi's meta-cmf-bananapi kernel_6_6 tree SHA, rpi's
     # hostap-patches tip) lives in the action so Coverity (native-build.yml, plain
-    # mode) shares the same cache machinery. mock never clones hostap.
+    # mode) shares the same cache machinery. mock's `make setup` runs rpi/setup.sh,
+    # so mock uses rpi's mode and shares rpi's cache entry.
     #
     # NOTE: the local `uses:` path is ./easymesh_project/OneWifi/… NOT ./.github/… —
     # the checkout lands at OneWifi/ then is mv'd under easymesh_project/OneWifi
     # (above), so the action only exists at that sub-path (README.md §10).
     - name: Provide patched hostap tree (cached)
-      if: matrix.platform.id != 'mock'
       uses: ./easymesh_project/OneWifi/.github/actions/hostap-tree
       with:
-        mode: patched-${{ matrix.platform.id }}
+        mode: patched-${{ matrix.platform.id == 'bpi' && 'bpi' || 'rpi' }}
         path: easymesh_project/rdk-wifi-libhostap
         github-token: ${{ github.token }}
 

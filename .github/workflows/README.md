@@ -245,7 +245,8 @@ patch-apply), so it is provided by one composite action, `.github/actions/hostap
   **key** combines a hash of the local setup files (`setup.sh`, plus the patch list on `bpi`) with
   the current tip of the relevant upstream patch source (`git ls-remote`, or a GitHub API tree-SHA
   on `bpi`), so a real upstream patch change invalidates the key. The clone and patch-apply itself
-  is still `setup.sh`'s job; a cache hit just lets its own guard skip that work.
+  is still `setup.sh`'s job; a cache hit just lets its own guard skip that work. `mock` uses
+  `patched-rpi`: its `make setup` runs `rpi/setup.sh`, so it shares the `rpi` cache entry.
 - `plain`: an unpatched tree keyed only on the pinned commit SHA (§7), used by `native-build.yml`
   (Coverity). On a miss it shallow-fetches just that one commit from `git.w1.fi` instead of a full
   clone. A step after the cache asserts the checked-out tree's `HEAD` equals the pin, then resets
@@ -299,8 +300,11 @@ on a commit that reintroduces it.
 
 `native-build.yml` also clones 24 further dependencies listed in
 `cov_docker_script/component_config.json`, mostly at branch tips (msgpack-c is pinned to a SHA
-inside that file). That is the Coverity setup's own surface: it is not covered by this manifest,
-and the verify step above only checks `native-build.yml` itself.
+inside that file). msgpack-c and dbus are built without their own tests (and examples), and dbus
+with parallel make: those took about 2 minutes and 15 s. That is the Coverity setup's own
+surface: it is not covered by this manifest, and the verify step above only checks
+`native-build.yml` itself. The build step gets no token: its scripts never read one and every
+clone is public.
 
 **Why pin:** an unpinned input can red CI overnight with zero code change (see the ucode FFI
 incident, 2026-08-27). Pin the rest as their next bump surfaces a natural SHA to lock.
@@ -310,9 +314,10 @@ incident, 2026-08-27). Pin the rest as their next bump surfaces a natural SHA to
 `ubuntu-latest`, so the image (and with it the default compiler) only moves when someone bumps it
 on purpose. The build uses the image's default gcc (gcc-13 on `ubuntu-24.04`), so the warning
 baseline (§3) is tied to that version: bumping the image is the one change that can shift it
-without any pin moving. `clang-tidy-18` and `bear` (the compile-DB wrapper) come from apt;
-`clang-format` is pinned to `18.1.8` via pip in `clang-format.yml`. None of these are
-source-dependency SHAs, so they are not in `ci-pins.env`.
+without any pin moving. `clang-tidy-18` and `bear` (the compile-DB wrapper) come from apt, with
+retries and a 10 s stall timeout, since the runner's Ubuntu mirror sometimes stalls. CMake is the
+image's own (`/usr/local/bin`), not apt's. `clang-format` is pinned to `18.1.8` via pip in
+`clang-format.yml`. None of these are source-dependency SHAs, so they are not in `ci-pins.env`.
 
 ## 8. Edge cases & failure modes
 Where things get weird. The pipeline leans advisory, so most of these resolve to "warn, don't
@@ -344,6 +349,10 @@ red" — a plumbing hiccup should not falsely block a PR.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).
+- **"Unable to reserve cache" warning.** `rpi` and `mock` share the `patched-rpi` key (§6). When
+  the key changes (a new hostap-patches tip, an edited `rpi/setup.sh`), both legs miss in the same
+  run and both try to save; the second gets this actions/cache warning. Harmless: the first save
+  wins and both trees are identical.
 - **Sticky-comment duplicates, self-healing.** Concurrent stage-2 runs for the same PR could
   leave duplicate marker comments behind (delete-then-post is not atomic). `sticky-comment` looks up
   every comment it owns for a marker, not just the first, so each run reconciles: recreate mode
