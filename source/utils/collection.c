@@ -159,6 +159,7 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 {
     hash_element_t *e;
     
+    /* On failure key and data are left untouched; the caller still owns and must free them. */
     if (map == NULL || map->queue == NULL || key == NULL) {
         return -1;
     }
@@ -173,12 +174,6 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
     e->data = data;
 
     if (queue_push(map->queue, e) < 0) {
-        free(key);
-        key = NULL;
-        if (e->data != NULL) {
-            free(e->data);
-            e->data = NULL;
-        }
         free(e);
         return -1;
     }
@@ -436,6 +431,8 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
         }
 
         if (hash_map_put(dst_map, key, data) == -1) {
+            free(key);
+            free(data);
             hash_map_destroy(dst_map);
             return NULL;
         }
