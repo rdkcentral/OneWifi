@@ -213,8 +213,8 @@
             "type": "commands",
             "commands": [
                 "mkdir -p build && cd build",
-                "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr",
-                "make && make install"
+                "cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/usr -DDBUS_BUILD_TESTS=OFF",
+                "make -j$(nproc) && make install"
             ]
         }
       },

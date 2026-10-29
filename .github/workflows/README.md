@@ -300,9 +300,11 @@ on a commit that reintroduces it.
 
 `native-build.yml` also clones 24 further dependencies listed in
 `cov_docker_script/component_config.json`, mostly at branch tips (msgpack-c is pinned to a SHA
-inside that file, and built without its own tests and examples, which took about 2 minutes).
-That is the Coverity setup's own surface: it is not covered by this manifest, and the verify
-step above only checks `native-build.yml` itself.
+inside that file). msgpack-c and dbus are built without their own tests (and examples), and dbus
+with parallel make: those took about 2 minutes and 15 s. That is the Coverity setup's own
+surface: it is not covered by this manifest, and the verify step above only checks
+`native-build.yml` itself. The build step gets no token: its scripts never read one and every
+clone is public.
 
 **Why pin:** an unpinned input can red CI overnight with zero code change (see the ucode FFI
 incident, 2026-08-27). Pin the rest as their next bump surfaces a natural SHA to lock.
