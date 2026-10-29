@@ -6740,7 +6740,8 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
     }
     sta_link_metrics->sta_count = cJSON_GetArraySize(em_sta_link);
 
-    sta_link_metrics->per_sta_metrics = (per_sta_metrics_t *)calloc(sta_link_metrics->sta_count, sizeof(per_sta_metrics_t));
+    sta_link_metrics->per_sta_metrics = (per_sta_metrics_t *)calloc(sta_link_metrics->sta_count,
+        sizeof(per_sta_metrics_t));
     if (sta_link_metrics->per_sta_metrics == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Error in allocating table for decode stats\n", __func__,
             __LINE__);
