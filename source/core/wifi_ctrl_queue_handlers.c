@@ -1492,8 +1492,24 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
     mac_addr_str_t mac_str;
     kick_details_t *kick_details = NULL;
     bool has_successful_operations = false;
+    uint32_t dev_count = 0;
+    size_t maclist_size = 0;
+    size_t offset = 0;
 
-    assoc_maclist = (char *)malloc(2048);
+    if (rdk_vap_info == NULL || rdk_vap_info->associated_devices_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Associated devices map is NULL for vap %d\n",
+            __func__, __LINE__, vap_index);
+        goto cleanup;
+    }
+
+    dev_count = hash_map_count(rdk_vap_info->associated_devices_map);
+    /* 17 chars per MAC + 1 char ',' + 1 char null terminator */
+    maclist_size = (dev_count * 18) + 1;
+    if (maclist_size < 2048) {
+        maclist_size = 2048;
+    }
+
+    assoc_maclist = (char *)malloc(maclist_size);
     kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
 
     if (assoc_maclist == NULL || kick_details == NULL) {
@@ -1502,14 +1518,8 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         goto cleanup;
     }
 
-    memset(assoc_maclist, 0, 2048);
+    memset(assoc_maclist, 0, maclist_size);
     memset(kick_details, 0, sizeof(kick_details_t));
-
-    if (rdk_vap_info->associated_devices_map == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Associated devices map is NULL for vap %d\n",
-            __func__, __LINE__, vap_index);
-        goto cleanup;
-    }
 
     assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
     while (assoc_dev_data != NULL) {
@@ -1517,9 +1527,15 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
 
         if (handle_acl_operation(vap_index, mac_str, vap_info, rdk_vap_info, true) == RETURN_OK) {
-            strcat(assoc_maclist, mac_str);
-            strcat(assoc_maclist, ",");
-            has_successful_operations = true;
+            int written = snprintf(assoc_maclist + offset, maclist_size - offset, "%s,", mac_str);
+            if (written > 0 && (size_t)written < (maclist_size - offset)) {
+                offset += written;
+                has_successful_operations = true;
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d maclist buffer truncated for vap %d\n",
+                    __func__, __LINE__, vap_index);
+                break;
+            }
         }
 
         assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);

@@ -31,11 +31,6 @@
 #include <pthread.h>
 #include "ieee80211.h"
 #include "misc.h"
-#ifdef CMWIFI_RDKB
-#define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
-#else
-#define FILE_SYSTEM_UPTIME         "/tmp/systemUptime.txt"
-#endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 #include "run_qmgr.h"
 #define EASYMESH_OFF_FLAG "/nvram/rdkb_user_easymesh_off"
@@ -431,12 +426,11 @@ int init_wifi_global_config(void)
 
 unsigned int get_Uptime(void)
 {
-    char cmd[BUF_SIZE] = {0};
     FILE *fp = NULL;
     unsigned int upSecs = 0;
-    snprintf(cmd, sizeof(cmd), "/bin/cat /proc/uptime > %s", FILE_SYSTEM_UPTIME);
-    system(cmd);
-    fp = fopen(FILE_SYSTEM_UPTIME, "r");
+
+    /* Read /proc/uptime directly; no shell redirection through a shared temp file (CWE-59). */
+    fp = fopen("/proc/uptime", "r");
     if (fp != NULL) {
         if (fscanf(fp, "%u", &upSecs) != 1) {
             wifi_util_error_print(WIFI_CTRL,"%s : failed to read uptime\n", __FUNCTION__);
