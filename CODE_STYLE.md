@@ -78,25 +78,26 @@ if (a) {
 
 ## Line length
 
-- Use 100 characters line length. Reason: avoid horizontal scrolling while reading the code.
+- Use 120 characters line length. Reason: avoid horizontal scrolling while reading the code.
+- Where a statement breaks within the limit is up to the author: lines that fit need not be joined or re-wrapped.
 ```c
 /* OK */
-printf("parameter1: %d parameter2: %d parameter3: %d parameter4: %d", parameter1,
-    parameter2, parameter3, parameter4);
+printf("parameter1: %d parameter2: %d parameter3: %d parameter4: %d parameter5: %d", parameter1, parameter2,
+    parameter3, parameter4, parameter5);
 
 /* Wrong */
-printf("parameter1: %d parameter2: %d parameter3: %d parameter4: %d", parameter1, parameter2, parameter3, parameter4);
+printf("parameter1: %d parameter2: %d parameter3: %d parameter4: %d parameter5: %d", parameter1, parameter2, parameter3, parameter4, parameter5);
 ```
 
 - Constant strings longer than one line should be closed on each line by a quote and opened again on the next line.
 ```c
 /* OK */
 printf("Hello world, this is a long string that we want to print "
-    "and is more than 100 chars long so we need to split it");
+    "and is more than 120 chars long so we need to split it");
 
 /* Wrong */
 printf("Hello world, this is a long string that we want to print and \
-    is more than 100 chars long so we need to split it");
+    is more than 120 chars long so we need to split it");
 ```
 
 ## Spaces

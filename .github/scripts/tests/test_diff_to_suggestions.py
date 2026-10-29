@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-# Copyright 2026 RDK Management — Apache-2.0 (see diff_to_suggestions.py header).
+#
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 """Unit tests for diff_to_suggestions.py: parse(), line-scoping, and the candidate
 envelope main() now emits for review_poster.py."""
 import io
@@ -39,6 +56,29 @@ class Parse(unittest.TestCase):
         diff = ("diff --git a/a.c b/a.c\n--- a/a.c\n+++ b/a.c\n"
                 "@@ -5,0 +6,1 @@\n+int added;\n")
         self.assertEqual(d2s.parse(diff), [])
+
+
+class Reflow(unittest.TestCase):
+    def test_reflow_only(self):
+        fits, over = "x" * 90, "x" * 120
+        cases = [   # (current lines, suggested lines, dropped)
+            (["foo(a,", "    b);"], ["foo(a, b);"], True),                       # join to fill
+            ([f"foo({fits}, b);"], [f"foo({fits},", "    b);"], True),            # wrap a line that fits
+            ([f"foo({over}, b);"], [f"foo({over},", "    b);"], False),           # wrap a line over 120
+            (['f(M,"s",', "    a);"], ['f(M, "s", a);'], False),                # join + spacing fix
+            (["foo(a,", "  b);"], ["foo(a,", "    b);"], False),                 # re-indent only
+            (["foo(a,", "    b);", ""], ["foo(a, b);"], False),                 # join + blank line removed
+            (["foo(a,", "    b);", "  bar();"], ["foo(a, b);", "    bar();"], False),   # join + re-indent
+            (["x =", "    y + z;"], ["x = y + z;"], True),                         # after an operator
+            (["a[i]", "    .b = 1;"], ["a[i].b = 1;"], True),                      # member access
+            (["if (a)", "{"], ["if (a) {"], False),                                # brace to the if
+            (["int f(void) {"], ["int f(void)", "{"], False),                      # function brace
+            (["if (fd) fclose(fp);"], ["if (fd)", "    fclose(fp);"], False),     # one statement a line
+            (['f("(",', "    b);"], ['f("(", b);'], True),                         # paren in a string
+        ]
+        for removed, added, dropped in cases:
+            with self.subTest(removed=removed):
+                self.assertEqual(d2s.reflow_only(removed, added), dropped)
 
 
 class Scoping(unittest.TestCase):
@@ -87,6 +127,10 @@ class Envelope(unittest.TestCase):
                          ("formatter", "ok", 0, 1))
         out = self._run_main(DIFF, changed_line="a.c:100-100\n")   # suggestion off the PR's lines
         self.assertEqual((out["comments"], out["dropped"]), ([], 1))
+        reflow = DIFF.replace("@@ -5,2 +5,2 @@\n-int  x=1;\n-int  y=2;\n+int x = 1;\n+int y = 2;\n",
+                              "@@ -5,2 +5,1 @@\n-foo(a,\n-    b);\n+foo(a, b);\n")
+        out = self._run_main(reflow, changed_line="a.c:5-6\n")        # line breaks only: not posted
+        self.assertEqual((out["comments"], out["dropped"]), ([], 0))
         out = self._run_main("")                                     # clang-format clean
         self.assertEqual((out["status"], out["comments"]), ("ok", []))
 
