@@ -121,6 +121,7 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
     acl_entry_t *acl_entry;
     uint8_t i = 0, vap_index = 0;
 
+    pthread_mutex_lock(&wifi_acl_map_lock);
     for (i = 0; i < tgt_vap_map->num_vaps; i++) {
         vap_index = tgt_vap_map->vap_array[i].vap_index;
 #ifdef NL80211_ACL
@@ -131,6 +132,7 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
         vap_info = get_wifidb_rdk_vap_info(vap_index);
 
         if ((vap_info == NULL) || (vap_info->acl_map == NULL)) {
+            pthread_mutex_unlock(&wifi_acl_map_lock);
             return RETURN_ERR;
         }
 
@@ -153,6 +155,7 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
         vap_info->is_mac_filter_initialized = true;
     }
 
+    pthread_mutex_unlock(&wifi_acl_map_lock);
     return RETURN_OK;
 }
 

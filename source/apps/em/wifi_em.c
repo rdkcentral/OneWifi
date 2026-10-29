@@ -3757,7 +3757,135 @@ static bus_error_t kick_cacr_blocked_sta(int vap_index, const char *sta_mac)
     return bus_error_success;
 }
 
-static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_data, void *userData)
+/* Asks the control thread to publish the mac-filter subdoc so the DML ACL cache picks up
+ * whitelist changes made here; a later DML ACL edit would otherwise overwrite them. */
+static int request_mac_filter_publish(void)
+{
+    bool publish = true;
+
+    if (push_event_to_ctrl_queue(&publish, sizeof(publish), wifi_event_type_command,
+            wifi_event_type_publish_mac_filter, NULL) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to queue mac filter publish\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
+static int update_persistent_whitelist_entry(int vap_index, char *sta_mac, bool add)
+{
+    rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+    wifi_db_t *wifidb = get_wifidb_obj();
+    acl_entry_t *acl_entry = NULL;
+    acl_entry_t *removed_entry = NULL;
+    char macfilter_key[128] = { 0 };
+    char *map_key = NULL;
+    int db_ret = RETURN_OK;
+    int result = RETURN_ERR;
+    bool map_created = false;
+
+    if (rdk_vap_info == NULL || wifidb == NULL || sta_mac == NULL ||
+        wifidb->desc.update_wifi_macfilter_config_fn == NULL) {
+        return RETURN_ERR;
+    }
+
+    pthread_mutex_lock(&wifi_acl_map_lock);
+    str_tolower(sta_mac);
+    if (rdk_vap_info->acl_map == NULL && add) {
+        map_created = true;
+        rdk_vap_info->acl_map = hash_map_create();
+        if (rdk_vap_info->acl_map == NULL) {
+            goto done;
+        }
+    }
+
+    if (rdk_vap_info->acl_map != NULL) {
+        acl_entry = hash_map_get(rdk_vap_info->acl_map, sta_mac);
+    }
+
+    if (add) {
+        if (acl_entry != NULL) {
+            if (wifi_hal_addApAclDevice(vap_index, sta_mac) == RETURN_OK) {
+                result = request_mac_filter_publish();
+            }
+            goto done;
+        }
+
+        acl_entry = (acl_entry_t *)calloc(1, sizeof(acl_entry_t));
+        if (acl_entry == NULL) {
+            goto done;
+        }
+        str_to_mac_bytes(sta_mac, acl_entry->mac);
+
+        if (wifi_hal_addApAclDevice(vap_index, sta_mac) != RETURN_OK) {
+            free(acl_entry);
+            goto done;
+        }
+
+        map_key = strdup(sta_mac);
+        if (map_key == NULL) {
+            wifi_hal_delApAclDevice(vap_index, sta_mac);
+            free(acl_entry);
+            goto done;
+        }
+        /* hash_map_put frees map_key and acl_entry itself when it fails */
+        if (hash_map_put(rdk_vap_info->acl_map, map_key, acl_entry) != RETURN_OK) {
+            wifi_hal_delApAclDevice(vap_index, sta_mac);
+            goto done;
+        }
+
+        snprintf(macfilter_key, sizeof(macfilter_key), "%s-%s", rdk_vap_info->vap_name,
+            sta_mac);
+        db_ret = wifidb->desc.update_wifi_macfilter_config_fn(macfilter_key, acl_entry, true);
+        if (db_ret != RETURN_OK) {
+            removed_entry = hash_map_remove(rdk_vap_info->acl_map, sta_mac);
+            wifi_hal_delApAclDevice(vap_index, sta_mac);
+            free(removed_entry);
+            goto done;
+        }
+        result = request_mac_filter_publish();
+        goto done;
+    }
+
+    if (acl_entry == NULL) {
+        if (wifi_hal_delApAclDevice(vap_index, sta_mac) == RETURN_OK) {
+            result = request_mac_filter_publish();
+        }
+        goto done;
+    }
+
+    if (wifi_hal_delApAclDevice(vap_index, sta_mac) != RETURN_OK) {
+        goto done;
+    }
+
+    snprintf(macfilter_key, sizeof(macfilter_key), "%s-%s", rdk_vap_info->vap_name, sta_mac);
+    db_ret = wifidb->desc.update_wifi_macfilter_config_fn(macfilter_key, acl_entry, false);
+    if (db_ret < 0) {
+        wifi_hal_addApAclDevice(vap_index, sta_mac);
+        goto done;
+    }
+
+    removed_entry = hash_map_remove(rdk_vap_info->acl_map, sta_mac);
+    if (removed_entry == NULL) {
+        wifidb->desc.update_wifi_macfilter_config_fn(macfilter_key, acl_entry, true);
+        wifi_hal_addApAclDevice(vap_index, sta_mac);
+        goto done;
+    }
+    free(removed_entry);
+    result = request_mac_filter_publish();
+
+done:
+    if (map_created && rdk_vap_info->acl_map != NULL &&
+        hash_map_count(rdk_vap_info->acl_map) == 0) {
+        hash_map_destroy(rdk_vap_info->acl_map);
+        rdk_vap_info->acl_map = NULL;
+    }
+    pthread_mutex_unlock(&wifi_acl_map_lock);
+    return result;
+}
+
+static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_data,
+    bus_user_data_t *userData)
 {
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received Client Assoc Ctrl Event from Agent\n", __func__,
         __LINE__);
@@ -3849,7 +3977,8 @@ static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_dat
         bool add_acl_entry = (assoc_control == 0x00) != whitelist_mode;
 
         if (add_acl_entry && whitelist_mode) {
-            if (wifi_hal_addApAclDevice(vap_index, sta_mac_list[i]) != RETURN_OK) {
+            int acl_ret = update_persistent_whitelist_entry(vap_index, sta_mac_list[i], true);
+            if (acl_ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to add STA to whitelist on vap %d\n",
                     __func__, __LINE__, vap_index);
                 ret = bus_error_general;
@@ -3884,13 +4013,13 @@ static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_dat
             }
             pthread_mutex_unlock(&pending_blocks_lock);
 
-                if (scheduler_update_timer_task_interval(ctrl->sched, existing_timer_id,
-                        validity_period * 1000) != RETURN_OK ||
-                    scheduler_update_timeout(ctrl->sched, existing_timer_id, now) != RETURN_OK) {
+            if (existing) {
+                if (timer_update_failed) {
                     ret = bus_error_general;
                     goto cleanup;
                 }
-                continue;
+                /* Already blocked: still retry the disassociation, it may have failed earlier */
+                goto kick_blocked_sta;
             }
 
             kick_details = (kick_details_t *)calloc(1, sizeof(kick_details_t));
@@ -3974,7 +4103,8 @@ static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_dat
             kick_details = NULL;
         } else if (whitelist_mode) {
             /* Whitelist mode: remove STA from accept list to disallow */
-            if (wifi_hal_delApAclDevice(vap_index, sta_mac_list[i]) != RETURN_OK) {
+            int acl_ret = update_persistent_whitelist_entry(vap_index, sta_mac_list[i], false);
+            if (acl_ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL,
                     "%s:%d Failed to remove STA from whitelist on vap %d\n", __func__, __LINE__,
                     vap_index);
@@ -4044,6 +4174,7 @@ static bus_error_t cacr_set_client_acl_rules(char *event_name, raw_data_t *p_dat
             }
         }
 
+kick_blocked_sta:
         if (assoc_control == 0x00 &&
             kick_cacr_blocked_sta(vap_index, sta_mac_list[i]) != bus_error_success) {
             ret = bus_error_general;

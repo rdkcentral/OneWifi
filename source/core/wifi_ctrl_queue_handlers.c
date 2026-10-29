@@ -240,6 +240,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
             l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
+            pthread_mutex_lock(&wifi_acl_map_lock);
             if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                 acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
@@ -270,6 +271,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
                     }
                 }
             }
+            pthread_mutex_unlock(&wifi_acl_map_lock);
        }
     }
 
@@ -1216,7 +1218,9 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Entering function for vap_index = %d\n", __func__,
         __LINE__, vap_index);
 
+    pthread_mutex_lock(&wifi_acl_map_lock);
     if (!l_rdk_vap_array || !l_rdk_vap_array->acl_map) {
+        pthread_mutex_unlock(&wifi_acl_map_lock);
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d l_rdk_vap_array is NULL or acl_map is NULL\n",
             __func__, __LINE__);
         return false;
@@ -1236,10 +1240,12 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
             to_mac_str(acl_entry->mac, key); // Call function first
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Found a matching ACL entry %s\n", __func__,
                 __LINE__, key);
+            pthread_mutex_unlock(&wifi_acl_map_lock);
             return true;
         }
         acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
     }
+    pthread_mutex_unlock(&wifi_acl_map_lock);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d No matching ACL entry found\n", __func__, __LINE__);
     return false;
@@ -1459,13 +1465,6 @@ static int schedule_maclist_timeout_task(wifi_ctrl_t *ctrl, rdk_wifi_vap_info_t 
             "scheduler\n",
             __func__, __LINE__, vap_index);
         return RETURN_ERR;
-    }
-
-    if (vap_info->u.bss_info.mac_filter_enable &&
-        vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list) {
-        free(assoc_maclist);
-        free(kick_details);
-        return RETURN_OK;
     }
 
     int len = strlen(assoc_maclist);
@@ -1788,11 +1787,14 @@ int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int
         return RETURN_ERR;
     }
 
+    // Also called from the monitor thread; the live map is shared with other threads.
+    pthread_mutex_lock(&wifi_acl_map_lock);
     if (rdk_vap_info->acl_map == NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Creating ACL map for vap_index %d\n", __func__,
             __LINE__, vap_index);
         rdk_vap_info->acl_map = hash_map_create();
         if (rdk_vap_info->acl_map == NULL) {
+            pthread_mutex_unlock(&wifi_acl_map_lock);
             return RETURN_ERR;
         }
     }
@@ -1805,6 +1807,7 @@ int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int
     if (temp_acl_entry != NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d MAC %s already present in ACL map\n", __func__,
             __LINE__, mac_str);
+        pthread_mutex_unlock(&wifi_acl_map_lock);
         return RETURN_ERR;
     }
 
@@ -1813,6 +1816,7 @@ int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int
     acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
     if (acl_entry == NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Failed to allocate ACL entry\n", __func__, __LINE__);
+        pthread_mutex_unlock(&wifi_acl_map_lock);
         return RETURN_ERR;
     }
 
@@ -1828,6 +1832,7 @@ int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int
         wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_addApAclDevice failed. vap_index %d, MAC %s\n",
             __func__, __LINE__, vap_index, mac_str);
         free(acl_entry);
+        pthread_mutex_unlock(&wifi_acl_map_lock);
         return RETURN_ERR;
     }
 
@@ -1835,6 +1840,7 @@ int add_acl_entry_to_vap(char *mac_str, int vap_index, int reason, long long int
 
     snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, mac_str);
     get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, acl_entry, true);
+    pthread_mutex_unlock(&wifi_acl_map_lock);
 
     wifi_util_dbg_print(WIFI_CTRL,
         "%s:%d Successfully added ACL entry for MAC %s on vap_index %d\n", __func__, __LINE__,
@@ -4574,6 +4580,11 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_send_btm_req:
         process_btm_request_send_event(data, len);
         break; 
+    case wifi_event_type_publish_mac_filter:
+        // Raised from other threads (e.g. EasyMesh ACL updates) so the webconfig state is
+        // only modified on the control thread.
+        ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+        break;
     case wifi_event_type_multiap_rfc:
         process_multiap_rfc(*(bool *)data);
         break;
@@ -4901,8 +4912,11 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             sizeof(wifi_hal_capability_t));
         data->u.decoded.num_radios = getNumberRadios();
 
-        // tell webconfig to encode
-        webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+        // tell webconfig to encode, from a private copy of the ACL maps
+        if (webconfig_snapshot_acl_maps(data) == RETURN_OK) {
+            webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+        }
+        webconfig_release_acl_snapshot(data);
         webconfig_data_free(data);
         break;
 
