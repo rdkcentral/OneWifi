@@ -5406,7 +5406,7 @@ long get_sys_uptime()
  unsigned int get_upload_period  (int oldInterval)
  {
      FILE *fp;
-     char buff[64];
+     char buff[64] = {0};
      char *ptr;
      int logInterval=oldInterval;
      struct timeval polling_time = {0};
@@ -5431,7 +5431,12 @@ long get_sys_uptime()
      }
      fclose(fp);
 
-     return atoi(buff);
+     /* /tmp is world-writable: accept only values within the same limits as the WiFi DB value */
+     logInterval = atoi(buff);
+     if ((logInterval < Min_LogInterval) || (logInterval > Max_LogInterval)) {
+         return readLogInterval();
+     }
+     return logInterval;
 }
 
 wifi_monitor_t *get_wifi_monitor()
