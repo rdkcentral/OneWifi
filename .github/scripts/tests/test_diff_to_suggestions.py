@@ -99,23 +99,29 @@ class Scoping(unittest.TestCase):
 
 
 class Envelope(unittest.TestCase):
-    def _run_main(self, diff, changed_line=None, repo=None):
+    def _file(self, content):
+        fd, path = tempfile.mkstemp(); os.close(fd)
+        self.addCleanup(os.unlink, path)
+        with open(path, "w") as fh:
+            fh.write(content)
+        return path
+
+    def _run_main(self, diff, changed_line=None, repo=None, deleted_lines=None):
         out_fd, out_path = tempfile.mkstemp(suffix=".json"); os.close(out_fd)
         self.addCleanup(os.unlink, out_path)
         env = {"CANDIDATES_OUT": out_path}
         if repo:
             env["GITHUB_REPOSITORY"] = repo
         if changed_line is not None:
-            cl_fd, cl_path = tempfile.mkstemp(); os.close(cl_fd)
-            self.addCleanup(os.unlink, cl_path)
-            with open(cl_path, "w") as fh:
-                fh.write(changed_line)
-            env["CHANGED_LINES_FILE"] = cl_path
+            env["CHANGED_LINES_FILE"] = self._file(changed_line)
+        if deleted_lines is not None:
+            env["DELETED_LINES_FILE"] = self._file(deleted_lines)
         old_stdin, old_env = sys.stdin, dict(os.environ)
         try:
             sys.stdin = io.StringIO(diff)
             os.environ.pop("CHANGED_LINES_FILE", None)
             os.environ.pop("GITHUB_REPOSITORY", None)
+            os.environ.pop("DELETED_LINES_FILE", None)
             os.environ.update(env)
             d2s.main()
         finally:
@@ -130,7 +136,7 @@ class Envelope(unittest.TestCase):
                          ("formatter", "ok", 0, 1))
         body = out["comments"][0]["body"]
         self.assertTrue(body.startswith("**Code style:**") and body.endswith("```"))   # text, then the box
-        self.assertIn("CODE_STYLE.md. The box", body)                                  # no repo: no link
+        self.assertIn("(see CODE_STYLE.md)", body)                                     # no repo: no link
         out = self._run_main(DIFF, changed_line="a.c:5-6\n", repo="rdkcentral/OneWifi")
         self.assertIn("(https://github.com/rdkcentral/OneWifi/blob/HEAD/CODE_STYLE.md)", out["comments"][0]["body"])
         out = self._run_main(DIFF, changed_line="a.c:100-100\n")   # suggestion off the PR's lines
@@ -141,6 +147,20 @@ class Envelope(unittest.TestCase):
         self.assertEqual((out["comments"], out["dropped"]), ([], 0))
         out = self._run_main("")                                     # clang-format clean
         self.assertEqual((out["status"], out["comments"]), ("ok", []))
+
+    def test_deleted_lines(self):
+        # DIFF's suggestion spans lines 5-6; "a.c:N" = deleted lines shown right after line N.
+        cases = [   # (deleted-lines file, suggestions posted)
+            ("a.c:5\n", 0),           # shown between 5 and 6: inside, GitHub cannot apply
+            ("a.c:4\n", 1),           # shown before line 5: outside the range
+            ("a.c:6\n", 1),           # shown after line 6: outside
+            ("b.c:5\n", 1),           # another file
+            ("", 1),                  # no deletions
+            ("a.c:five\n", 1),        # unparseable: nothing dropped
+        ]
+        for deleted, posted in cases:
+            out = self._run_main(DIFF, changed_line="a.c:5-6\n", deleted_lines=deleted)
+            self.assertEqual(len(out["comments"]), posted, deleted)
 
 
 if __name__ == "__main__":

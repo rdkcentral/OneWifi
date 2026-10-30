@@ -203,6 +203,7 @@ jobs:
         if: steps.ctx.outputs.found == 'true'
         env:
           CHANGED_LINES_FILE: clang-format-suggestions/changed-lines.txt
+          DELETED_LINES_FILE: clang-format-suggestions/deleted-lines.txt   # absent before stage 1 wrote it
           CANDIDATES_OUT: /tmp/fmt-candidates.json
         run: |
           # The converter lives in a checked-out script (trusted base branch). When the

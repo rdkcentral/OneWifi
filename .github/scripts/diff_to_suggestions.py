@@ -33,6 +33,11 @@ Environment:
                       suggestions are kept (fail-open, same as before this filter).
   CANDIDATES_OUT      optional - output path for the candidate JSON
                       (default /tmp/fmt-candidates.json).
+  DELETED_LINES_FILE  optional - "path:N" per line: the PR deleted lines that GitHub
+                      shows right after new-side line N. A suggestion with such lines
+                      inside its range is dropped: GitHub cannot apply it ("Applying
+                      suggestions on deleted lines is currently not supported").
+                      Absent or unparseable: no suggestion is dropped for this.
   GITHUB_REPOSITORY,  set by Actions; link CODE_STYLE.md in the line above each
   GITHUB_SERVER_URL   suggestion box (see intro).
 
@@ -74,6 +79,7 @@ HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 # itself contain ':' (legal on POSIX). A greedy '.+' with the anchored numeric
 # tail backtracks to the right delimiter; '[^:]+' would drop colon-in-path files.
 CHANGED_LINE = re.compile(r"^(.+):(\d+)-(\d+)$")
+DELETED_AT = re.compile(r"^(.+):(\d+)$")
 
 # Upper bound on records loaded from CHANGED_LINES_FILE. That file is a stage-1
 # artifact built over untrusted fork PR code (clang-format.yml runs on
@@ -220,6 +226,32 @@ def load_changed_lines(path):
         return None
 
 
+def load_deleted_lines(path):
+    """Load {file: [N, ...]} from a deleted-lines file ("path:N", see DELETED_LINES_FILE).
+    Same bounds as load_changed_lines; returns None on any error (nothing is dropped)."""
+    try:
+        deleted, records = {}, 0
+        with open(path) as fh:
+            if os.fstat(fh.fileno()).st_size > MAX_FILE_BYTES:
+                raise ValueError(f"deleted-lines file exceeds {MAX_FILE_BYTES} bytes")
+            for raw in fh:
+                line = raw.strip()
+                if not line:
+                    continue
+                hit = DELETED_AT.match(line)
+                if not hit:
+                    raise ValueError(f"unparseable deleted-lines record: {line!r}")
+                records += 1
+                if records > MAX_CHANGED_RECORDS:
+                    raise ValueError(f"deleted-lines file exceeds {MAX_CHANGED_RECORDS} records")
+                deleted.setdefault(hit.group(1), []).append(int(hit.group(2)))
+        return deleted
+    except (OSError, ValueError) as exc:
+        print(f"::warning::Could not load deleted-lines file {path}: {exc} "
+              "(not dropping suggestions over deleted lines)", file=sys.stderr)
+        return None
+
+
 def _commentable_intervals(intervals, ctx):
     """Changed intervals grown by `ctx` and merged — the line ranges GitHub will accept a
     review comment on (a hunk's changed lines plus the context lines rendered around them).
@@ -308,9 +340,8 @@ def intro():
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
     repo = os.environ.get("GITHUB_REPOSITORY")
     style = f"[CODE_STYLE.md]({server}/{repo}/blob/HEAD/CODE_STYLE.md)" if repo else "CODE_STYLE.md"
-    return (f"**Code style:** you are asked to bring the lines this PR changes up to {style}. "
-            "The box below is clang-format's fix: **Commit suggestion** applies it, "
-            "**Add suggestion to batch** collects several into one commit.")
+    return (f"**Code style:** you are asked to fix formatting of lines you changed (see {style}). "
+            "As with Copilot review, clicking 'Apply suggestion' will commit it.")
 
 
 def main():
@@ -347,6 +378,20 @@ def main():
         dropped = before - len(comments)
         if dropped:
             print(f"Line-scoping: dropped {dropped} suggestion(s) off the PR's changed/commentable lines")
+
+    # GitHub cannot apply a suggestion whose range has PR-deleted lines shown inside it, so
+    # its button would only ever fail. Logged, not counted in `dropped` (not commentable).
+    dl_path = os.environ.get("DELETED_LINES_FILE", "")
+    deleted = load_deleted_lines(dl_path) if dl_path and os.path.exists(dl_path) else None
+    if deleted:
+        def spans_deletion(comment):
+            start = comment.get("start_line", comment["line"])
+            return any(start <= after < comment["line"] for after in deleted.get(comment["path"], ()))
+        over_deleted = sum(1 for comment in comments if spans_deletion(comment))
+        comments = [comment for comment in comments if not spans_deletion(comment)]
+        if over_deleted:
+            print(f"Deleted lines: dropped {over_deleted} suggestion(s) with a line the PR deleted "
+                  "inside their range (GitHub cannot apply those)")
 
     # Where a statement breaks within the limit is the author's call (CODE_STYLE.md), so a
     # suggestion that only moves line breaks is not posted. Logged, not counted in `dropped`

@@ -70,9 +70,11 @@ it into GitHub review `suggestion` blocks, dropping any suggestion outside the P
 lines (git-clang-format can reformat adjacent lines it didn't need to) and any that only re-wraps
 a statement while every line fits in 120 columns (clang-format refills a touched statement up to
 the limit; `CODE_STYLE.md` leaves line breaks within the limit to the author). Brace placement and
-one statement per line still post. Each suggestion box comes with one line of text above it
-(what it is, a link to `CODE_STYLE.md`, and the Commit suggestion / Add suggestion to batch
-buttons). It currently only posts suggestions — the `exit 1` that would fail the job is present
+one statement per line still post. A suggestion whose range has a line the PR deleted inside
+it is dropped too: GitHub refuses to apply those ("Applying suggestions on deleted lines is
+currently not supported"); stage 1 records where the PR deleted lines in `deleted-lines.txt`.
+Each suggestion box comes with one line of text above it (what to do, a link to
+`CODE_STYLE.md`, and that applying it commits it). It currently only posts suggestions — the `exit 1` that would fail the job is present
 but commented out, so this does **not** block merge today.
 
 **b) Tree-wide clean-baseline enforcement** — mixed gate/report, whole tree. The build runs with a
@@ -164,7 +166,7 @@ makefiles/scripts. Doing both in one job is a classic "pwn-request." So the syst
         |
         v
  STAGE 1 (pull_request, untrusted PR code, NO write token)
-   clang-format.yml -> clang-format.diff, changed-lines.txt, pr-meta.env
+   clang-format.yml -> clang-format.diff, changed-lines.txt, deleted-lines.txt, pr-meta.env
    makefile.yml      -> build-summary.md, tidy-summary.md, gcc-gate-summary.md,
                          inline-gcc.json, inline-tidy.json, complexity.md,
                          inline-complexity.json, source-coverage.md, pr-meta.env
@@ -213,7 +215,8 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 ## 5. Artifacts
 
 **Stage 1 to stage 2:**
-- `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `pr-meta.env`.
+- `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `deleted-lines.txt`,
+  `pr-meta.env`.
 - `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
   is named as such in the summary comment): `build-summary.md`, `pr-meta.env`, and on a failed build
   `build-errors.txt` and `build-attribution.md`.
