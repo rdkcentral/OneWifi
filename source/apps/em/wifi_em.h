@@ -47,8 +47,8 @@ extern "C" {
 #define IEEE80211_EID_NEIGHBOR     52
 #define IEEE80211_NEIGHBOR_REPORT_MIN_LEN  13
 
-#define WNM_EM_WNM_BTM_QUERY    6
-#define WNM_EM_WNM_BTM_REQ      7
+#define WNM_EM_WNM_BTM_QUERY 6
+#define WNM_EM_WNM_BTM_REQ 7
 
 #define MAX_LOCAL_SSIDS 16
 #define MAX_SSID_LEN 33
