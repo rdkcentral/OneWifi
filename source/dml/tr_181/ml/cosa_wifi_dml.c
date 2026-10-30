@@ -5459,10 +5459,11 @@ SSID_GetParamIntValue
             *pInt = -1;
             return TRUE;
         }
-        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE) {
+
+        if (pcfg->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
             *pInt = -1;
         } else {
-            *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
+            *pInt = (int)pcfg->u.bss_info.mld_info.common_info.mld_id;
         }
         return TRUE;
     }
@@ -5988,10 +5989,7 @@ SSID_SetParamIntValue
         return FALSE;
     }
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "MLDUnit", TRUE))
-    {
-        BOOL tmp_mld_enable = FALSE;
-
+    if (AnscEqualString(ParamName, "MLDUnit", TRUE)) {
         if (isVapSTAMesh(pcfg->vap_index)) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
             return FALSE;
@@ -6000,21 +5998,15 @@ SSID_SetParamIntValue
             wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,__LINE__,iValue);
             return FALSE;
         }
-        wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
-        tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
 
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
-            if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
-                return TRUE;
-            if (tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)iValue)
-                return TRUE;
+        UINT new_id = (iValue == -1) ? UNDEFINED_MLD_ID : (UINT)iValue;
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_id == new_id) {
+            return TRUE;
         }
+
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Updating MLD Unit to value %d\n", __FUNCTION__, __LINE__, iValue);
-        vapInfo->u.bss_info.mld_info.common_info.mld_enable = tmp_mld_enable;
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable)
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = iValue;
-        else
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
+        vapInfo->u.bss_info.mld_info.common_info.mld_id = new_id;
 
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
