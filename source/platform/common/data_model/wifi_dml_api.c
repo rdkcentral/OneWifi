@@ -1500,6 +1500,18 @@ int is_sec_mode_open_for_private_ap(uint32_t vap_index)
     wifi_vap_info_t *p_vap_info = NULL;
     wifi_util_dbg_print(WIFI_DMCLI, "%s for vap_index:%d\n", __func__, vap_index);
 
+#ifdef UWM_CTRL_WPS_SUPPORT
+    // WPS is supported on private APs and dedicated onboarding APs.
+    if (isVapPrivate(vap_index) != true &&
+        !is_vap_onboarding(get_wifi_hal_cap_prop(), vap_index)) {
+        wifi_util_error_print(WIFI_DMCLI, "%s vap_index %d is not WPS-capable VAP\n", __func__,
+            vap_index);
+        return RETURN_ERR;
+    }
+
+    p_vap_info = is_vap_onboarding(get_wifi_hal_cap_prop(), vap_index) ?
+        get_dml_cache_vap_info(vap_index) : getVapInfo(vap_index);
+#else
     // Check is the Vap is private
     if (isVapPrivate(vap_index) != true) {
         wifi_util_error_print(WIFI_DMCLI, "%s vap_index %d is not private VAP\n", __func__,
@@ -1508,6 +1520,7 @@ int is_sec_mode_open_for_private_ap(uint32_t vap_index)
     }
 
     p_vap_info = getVapInfo(vap_index);
+#endif /* UWM_CTRL_WPS_SUPPORT */
     if (p_vap_info == NULL) {
         wifi_util_error_print(WIFI_DMCLI, "%s Unable to get VAP info for vap_index : %d\n",
             __func__, vap_index);

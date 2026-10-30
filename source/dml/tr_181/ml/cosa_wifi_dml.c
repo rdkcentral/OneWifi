@@ -11921,10 +11921,12 @@ WPS_GetParamBoolValue
         return FALSE;
     }
 
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+#endif
 
     if( AnscEqualString(ParamName, "Enable", TRUE))
     {
@@ -12373,10 +12375,14 @@ WPS_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
         return FALSE;
     }
+
+#if !defined(UWM_EXT_WPS_SUPPORT)
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
+#endif
+
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
         if (vapInfo->u.bss_info.wps.enable != bValue) {
@@ -12679,6 +12685,26 @@ WPS_SetParamIntValue
                 __FUNCTION__, __LINE__, instance_number);
             return FALSE;
         }
+#ifdef UWM_CTRL_WPS_SUPPORT
+        /*
+         * Dedicated onboarding VAPs are materialized in the DML cache before
+         * activation and pinned to WPA2/AES with push-button capability.
+         * They are not private VAPs, so bypass the legacy private-only check.
+         */
+        if (is_vap_onboarding(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+                wlanIndex)) {
+            wifi_util_info_print(WIFI_DMCLI,
+                "%s:%d validating dedicated onboarding VAP %d\n",
+                __func__, __LINE__, wlanIndex);
+            return TRUE;
+        }
+#endif /* UWM_CTRL_WPS_SUPPORT */
+#ifdef UWM_EXT_WPS_SUPPORT
+        /* STA interface (extender backhaul): skip private AP validation - WPS client is allowed */
+        if (isVapSTAMesh((UINT)wlanIndex) || pcfg->vap_mode == wifi_vap_mode_sta) {
+            return TRUE;
+        }
+#endif
         if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }
@@ -12737,7 +12763,13 @@ WPS_SetParamIntValue
             1;
         INT wlanIndex = instance_number - 1;
         wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
+#ifdef UWM_CTRL_WPS_SUPPORT
+        if ((vapInfo != NULL) && (vapInfo->u.bss_info.wpsPushButton == true) &&
+            !is_vap_onboarding(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+                wlanIndex)) {
+#else
         if ((vapInfo != NULL) && (vapInfo->u.bss_info.wpsPushButton == true)) {
+#endif /* UWM_CTRL_WPS_SUPPORT */
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:Activate push button for vap %d\n", __func__,
                 __LINE__, wlanIndex);
             push_event_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), wifi_event_type_command,

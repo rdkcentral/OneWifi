@@ -41,6 +41,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <unistd.h>
 
 #define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 /* enable PID in debug logs */
@@ -5080,4 +5081,4 @@ int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsi
    dev->cli_LastDataDownlinkRate = assoc_dev->cli_LastDataDownlinkRate;  
    dev->cli_LastDataUplinkRate = assoc_dev->cli_LastDataUplinkRate;  
    dev->cli_sleepTime = assoc_dev->cli_sleepTime;
- } 
+ }

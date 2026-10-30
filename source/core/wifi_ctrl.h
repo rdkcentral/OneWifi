@@ -115,6 +115,9 @@ extern "C" {
 #define MESH_STA 0b10000
 #define MESH_BACKHAUL 0b100000
 #define LNF 0b1000000
+#ifdef UWM_CTRL_WPS_SUPPORT
+#define ONBOARDING 0b10000000
+#endif /* UWM_CTRL_WPS_SUPPORT */
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
 #define BUS_WFA_DML_CONFIG_FILE "Data_Elements_JSON_Schema_v3.0.json"

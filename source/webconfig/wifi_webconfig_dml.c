@@ -275,6 +275,33 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                     return webconfig_error_encode;
 
                 }
+#ifdef UWM_CTRL_WPS_SUPPORT
+            } else if (strncmp("onboarding", vap_name, strlen("onboarding")) == 0) {
+                /*
+                 * Dedicated onboarding: dedicated EasyMesh onboarding VAPs (AP.5 / AP.6)
+                 * are WPA2-Personal AP VAPs that share the on-the-wire shape
+                 * of private/iot. Without this branch the dml subdoc OneWifi
+                 * pushes NB to em_agent silently drops the onboarding slot
+                 * (the existing chain has no else clause). That leaves
+                 * radio[N].vaps.vap_array[X] zeroed on the agent
+                 * (vap_name="", vap_index=0, security.mode=0). Downstream
+                 * symptoms are translate_vap_object_to_easymesh_for_dml
+                 * failing at translate_private_vap_info_to_em_bss_config:
+                 * "security mode 0x0", and the subsequent agent->OneWifi
+                 * vap_24G / vap_5G subdoc encode hitting "Unknown vap:" in
+                 * encode_multivap_subdoc, which is what blocks the EasyMesh
+                 * agent from applying the M2-derived mesh config south.
+                 */
+                obj = cJSON_CreateObject();
+                cJSON_AddItemToArray(obj_array, obj);
+                if (encode_private_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,
+                        "%s:%d: Failed to encode onboarding vap object (%s)\n",
+                        __func__, __LINE__, vap_name);
+                    cJSON_Delete(json);
+                    return webconfig_error_encode;
+                }
+#endif /* UWM_CTRL_WPS_SUPPORT */
             }
         }
     }
@@ -519,10 +546,17 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     params->hal_cap.wifi_prop.numRadios = size;
 
     /* get the vap names interested */
+#ifdef UWM_CTRL_WPS_SUPPORT
+    num_vaps = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+                                     9, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+                                     VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
+                                     VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT, "onboarding");
+#else
     num_vaps = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
                                      8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
                                      VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
                                      VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);
+#endif /* UWM_CTRL_WPS_SUPPORT */
 
     // decode VAP objects
     obj_vaps = cJSON_GetObjectItem(json, "WifiVapConfig");
@@ -651,6 +685,32 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
+#ifdef UWM_CTRL_WPS_SUPPORT
+        } else if (strncmp(name, "onboarding", strlen("onboarding")) == 0) {
+            /*
+             * Dedicated onboarding: dedicated EasyMesh onboarding VAPs (AP.5/AP.6)
+             * decode through the same private-VAP shape as their encoder
+             * branch (encode_private_vap_object). Without this dispatch
+             * decode_dml_subdoc returns webconfig_error_invalid_subdoc:
+             * the presence_mask check above passes only when "onboarding"
+             * is the 9th prefix in get_list_of_vap_names, and at runtime
+             * each onboarding entry must still be decoded into the
+             * matching radio[N].vaps.vap_array slot or downstream EM
+             * translators see a zeroed slot (security mode 0x0).
+             * Pre-fix symptom chain: OneWifi self-roundtrip
+             * webconfig_set:214 "Subdocument decode failed" ~3ms after
+             * encode_dml_subdoc success, then onewifi_em_agent
+             * webconfig_easymesh_decode:107 fail and "No of BSS=0
+             * No of Radios=0" -> agent never applies M2 mesh config.
+             */
+            if (decode_private_vap_object(obj_vap, vap_info, rdk_vap_info, wifi_prop) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed (onboarding %s)\n",
+                        __func__, __LINE__, name);
+                cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+                return webconfig_error_decode;
+            }
+#endif /* UWM_CTRL_WPS_SUPPORT */
         }
     }
 
