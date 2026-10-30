@@ -2218,7 +2218,7 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     return false;
 }
 
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
 #define ECOMODE_COMPLETE_MARKER_FILE "/tmp/ecomode_operation_done"
 #define MAX_RETRY_VALUE 15
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
@@ -2253,7 +2253,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     scheduler_add_timer_task(ctrl->sched, TRUE, NULL, reboot_device, ctrl, 0, 1, TRUE);
 #endif
 }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
 
 
 void radio_param_config_changed_event_logging(wifi_radio_operationParam_t *old , wifi_radio_operationParam_t *new,char name[16])
@@ -2435,7 +2435,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 #if defined(CONFIG_IEEE80211BE)
     unsigned int mlo_changed_radio_bitmap = 0;
 #endif
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
     bool old_ecomode = false;
     bool new_ecomode = false;
 #endif
@@ -2514,7 +2514,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     }
                 }
             }
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             // Save the ECO mode state before update to the DB
             old_ecomode = mgr_radio_data->oper.EcoPowerDown;
             new_ecomode = radio_data->oper.EcoPowerDown;
@@ -2522,7 +2522,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 radio_data->oper.enable = ((new_ecomode) ? false : true);
                 wifi_util_info_print(WIFI_MGR, "%s:%d:Changing radio enable status:radio_data->oper.enable= %d\n",__func__,__LINE__, radio_data->oper.enable);
             }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
 
             if (wifi_radio_operationParam_validation(&mgr->hal_cap, &radio_data->oper) !=
@@ -2557,7 +2557,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             memcpy(&mgr_radio_data->oper, &radio_data->oper, sizeof(wifi_radio_operationParam_t));
 #endif
 
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             //Upload the telemetry marker and reboot the device
             //only if there is a change in the DM Device.WiFi.Radio.{i}.X_RDK_EcoPowerDown
             wifi_util_info_print(WIFI_MGR, "%s:%d: oldEco = %d  newEco = %d\n", __func__, __LINE__, old_ecomode, new_ecomode);
@@ -2566,7 +2566,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 // write the value to database and reboot
                 ecomode_telemetry_update_and_reboot(i, new_ecomode);
             }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             if (is_radio_6g_modified) {
                 pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
                 if (pub_svc->event_fn != NULL) {
@@ -2713,7 +2713,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
                 "%s:%d:Changing radio enable status:radio_data->oper.enable= %d\n", __func__,
                 __LINE__, radio_data->oper.enable);
         }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",
             __FUNCTION__);
 
@@ -2759,7 +2759,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
             ecomode_telemetry_update_and_reboot(radio_index, new_ecomode);
         }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         if (is_radio_6g_modified) {
             pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
             if (pub_svc->event_fn != NULL) {

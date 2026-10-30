@@ -32,7 +32,8 @@ GitHub rejects dismissal of COMMENTED reviews anyway, so long-lived PRs grew
 stacks of identical suggestions. This script instead does a comment-level
 set-reconcile: post only findings that are missing, delete only ones that are
 outdated / duplicated / no longer produced, and never touch a comment a human
-has replied to.
+has replied to or resolved. A resolved finding is not posted again after its line
+moves (GitHub marks the old comment outdated): resolved means seen.
 
 It is a *trusted* stage-2 script: it runs in the base-repo context with a
 `pull-requests: write` token and only ever reads passive artifact data (the
@@ -65,7 +66,7 @@ import os
 import re
 import subprocess
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 MAX_BODY_BYTES = 4096
 MAX_FILE_BYTES = 64 * 1024 * 1024
@@ -112,6 +113,46 @@ def _strip_marker(body, slot):
 
 def _fp(path, start_line, line, body, slot):
     return (path, start_line or None, line, _strip_marker(body, slot))
+
+
+SUGGESTION_RE = re.compile(r"```suggestion\n(.*?)```", re.S)
+
+
+def _finding_text(body, slot):
+    """What a finding says, wherever it sits: the suggested code for a formatter comment
+    (so a fence-only comment from before the text line above it still matches), else
+    the body without our marker."""
+    text = _strip_marker(body, slot)
+    hit = SUGGESTION_RE.search(text) if slot == "fmt" else None
+    return hit.group(1) if hit else text
+
+
+RESOLVED_QUERY = """
+query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { isResolved comments(first: 1) { nodes { databaseId } } }
+      }
+    }
+  }
+}"""
+
+
+def fetch_resolved(repo, pr):
+    """Ids of the comments that open a resolved review thread (REST has no resolved
+    state). On failure an empty set: the run then treats every thread as unresolved,
+    as before this existed."""
+    owner, name = repo.split("/", 1)
+    rc, out, err = run_gh(["api", "graphql", "--paginate", "-f", f"query={RESOLVED_QUERY}",
+                          "-f", f"owner={owner}", "-f", f"name={name}", "-F", f"number={pr}",
+                          "--jq", ".data.repository.pullRequest.reviewThreads.nodes[]"
+                                  " | select(.isResolved) | .comments.nodes[0].databaseId"])
+    if rc != 0:
+        warn(f"could not read resolved review threads: {err.strip()} (treating all as unresolved)")
+        return set()
+    return {int(token) for token in out.split() if token.isdigit()}
 
 
 def _validate_entry(entry):
@@ -225,12 +266,12 @@ def fetch_ours(repo, pr, bot_login, slot):
     return all_comments, ours
 
 
-def reconcile(all_comments, ours, candidates, all_ok, slot, cap):
+def reconcile(all_comments, ours, candidates, all_ok, slot, cap, resolved_ids=frozenset()):
     """Decide what to delete and what to post. Returns
     (to_delete_ids, to_post, n_outdated, overflow, n_shown)."""
     our_ids = {comment["id"] for comment in ours}
     replied_to = {comment.get("in_reply_to_id") for comment in all_comments if comment.get("in_reply_to_id")}
-    protected_ids = our_ids & replied_to        # a human replied — never delete
+    protected_ids = our_ids & (replied_to | set(resolved_ids))   # a human replied or resolved — never delete
 
     protected = [comment for comment in ours if comment["id"] in protected_ids]
     live = [comment for comment in ours if comment["id"] not in protected_ids]
@@ -273,13 +314,33 @@ def reconcile(all_comments, ours, candidates, all_ok, slot, cap):
 
     # present = what stays visible (survivors + protected); never re-post those.
     present_fps = {fp(comment) for comment in survivors} | protected_fps
+    # A resolved comment whose line changed is outdated, so the same finding comes back
+    # as a candidate on its new line: do not post it again. Each such comment holds back
+    # one candidate with the same file and text, so a second identical finding still posts.
+    resolved_moved = Counter((comment["path"], _finding_text(comment.get("body"), slot))
+                             for comment in protected
+                             if comment["id"] in resolved_ids and comment.get("line") is None)
+    # A protected comment is never replaced, so match it on what it says, not its exact body:
+    # one posted before the text line above the suggestion box must not get a copy beside it.
+    protected_text = {(comment["path"], comment.get("start_line") or None, comment["line"],
+                       _finding_text(comment.get("body"), slot))
+                      for comment in protected if comment.get("line") is not None}
     # Also dedupe within this run: an envelope may list one finding twice.
-    to_post = []
+    to_post, held_back = [], 0
     for cand in candidates:
         cand_fp = _fp(cand["path"], cand.get("start_line"), cand["line"], cand["body"], slot)
-        if cand_fp not in present_fps:
-            present_fps.add(cand_fp)
-            to_post.append(cand)
+        text = _finding_text(cand["body"], slot)
+        if cand_fp in present_fps or (cand["path"], cand.get("start_line") or None, cand["line"], text) in protected_text:
+            continue
+        present_fps.add(cand_fp)
+        key = (cand["path"], text)
+        if resolved_moved[key]:
+            resolved_moved[key] -= 1
+            held_back += 1
+            continue
+        to_post.append(cand)
+    if held_back:
+        print(f"{held_back} finding(s) not posted again: resolved earlier, before their line moved")
     to_post.sort(key=lambda cand: PRIORITY.get(cand["source"], 99))
     overflow = max(0, len(to_post) - cap)
     to_post = to_post[:cap]
@@ -361,8 +422,9 @@ def main():
         warn("posting nothing this run (could not read existing comments — fail open)")
         return 0
 
+    resolved_ids = fetch_resolved(repo, pr)
     to_delete, to_post, n_outdated, overflow, n_shown = reconcile(
-        all_comments, ours, candidates, all_ok, slot, cap)
+        all_comments, ours, candidates, all_ok, slot, cap, resolved_ids)
     delete_comments(repo, to_delete)
 
     # Counts go to the log — there is no review-level body to carry them now. For the

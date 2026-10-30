@@ -80,7 +80,7 @@
 #include "../../../stubs/wifi_stubs.h"
 #include "wifi_monitor.h"
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 //#include "../sbapi/wifi_webconfig.h"
 #include "wifi_webconfig_old.h"
 #include "wifi_webconfig.h"//ONE_WIFI
@@ -331,7 +331,7 @@ WiFi_GetParamBoolValue
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList", TRUE))
     {
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
         *pBool = rfc_pcfg->radiusgreylist_rfc;
 #else
         *pBool = FALSE;
@@ -393,7 +393,7 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi-OffChannelScan-APP", TRUE)) {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         *pBool = rfc_pcfg->wifi_offchannelscan_app_rfc;
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
         *pBool = FALSE;
@@ -1094,7 +1094,7 @@ WiFi_SetParamBoolValue
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList", TRUE))
     {
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
         if(bValue != rfc_pcfg->radiusgreylist_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_radius_grey_list_rfc);
         }
@@ -1401,7 +1401,7 @@ WiFi_SetParamStringValue
     rc = strcmp_s("X_RDK_RadioData", strlen("X_RDK_RadioData"), ParamName, &ind);
     ERR_CHK(rc);
     if((rc == EOK) && (!ind)) {
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     if (CosaDmlWiFi_setWebConfig(pString,strlen(pString), WIFI_RADIO_CONFIG) == ANSC_STATUS_SUCCESS) {
         CcspTraceWarning(("Success in parsing Radio Config\n"));
             return TRUE;
@@ -1988,11 +1988,11 @@ Radio_GetParamBoolValue
     if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
     {
         /* collect value */
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         *pBool = pcfg->EcoPowerDown;
 #else
         *pBool = false;
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         return TRUE;
     }
 
@@ -3353,7 +3353,7 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
     {
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: EcoPowerDown = %d bValue = %d  \n", __func__, __LINE__, wifiRadioOperParam->EcoPowerDown, bValue);
         if (wifiRadioOperParam->EcoPowerDown == bValue)
         {
@@ -3367,7 +3367,7 @@ Radio_SetParamBoolValue
 #endif // FEATURE_SUPPORT_ECOPOWERDOWN
         is_radio_config_changed = TRUE;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s EcoPowerDown : %d\n", __FUNCTION__, wifiRadioOperParam->EcoPowerDown);
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         return TRUE;
     }
     return FALSE;
@@ -3965,7 +3965,7 @@ Radio_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_OffChannelTscan", TRUE))
     {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
@@ -3986,7 +3986,7 @@ Radio_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_OffChannelNscan", TRUE))
     {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
@@ -4020,7 +4020,7 @@ Radio_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_OffChannelTidle", TRUE))
     {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
@@ -6914,7 +6914,7 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
-#if defined (FEATURE_SUPPORT_INTERWORKING)
+#if defined(FEATURE_SUPPORT_INTERWORKING)
 
     if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceCapability", TRUE))
     {
@@ -12827,7 +12827,7 @@ IsValidMacAddress(char *mac)
 }
 
 
-#if defined (FEATURE_SUPPORT_INTERWORKING)
+#if defined(FEATURE_SUPPORT_INTERWORKING)
 
 /***********************************************************************
 
