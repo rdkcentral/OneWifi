@@ -18,7 +18,7 @@ concurrency:
 # (the "Verify pin manifest" step enforces the match — a mismatch errors).
 # setup.sh fallbacks keep `make setup` working locally without the workflow;
 # HAL CI clones OneWifi/develop and runs its setup.sh, so those fallbacks are the
-# cross-repo truth. See ci-README.md §7.
+# cross-repo truth. See README.md §7 (this directory).
 
 # Stage 1 is deliberately read-only: it builds PR-controlled makefiles, so it
 # must hold no write scope. The PR-comment posting (writes) happens only in the
@@ -78,14 +78,19 @@ jobs:
 
     - name: Set up dependencies
       run: |
+        # The runner's Ubuntu mirror sometimes stalls: apt waits 30 s per stuck package
+        # by default, and one Build Check run in four had a leg over 2 min here
+        # (Oct 2026). Give up on a stalled connection sooner and retry.
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "10";\n' \
+          | sudo tee /etc/apt/apt.conf.d/80-ci-retries > /dev/null
         sudo apt-get update
         # Pruned: removed mariadb-server (100MB, unused — OneWifi doesn't build the
         # mesh agent that links -lmariadb), golang (runner has Go in toolcache),
-        # libmysqlcppconn-dev (0 includes/linkage), vim (CI doesn't need an editor).
+        # libmysqlcppconn-dev (0 includes/linkage), vim (CI doesn't need an editor),
+        # cmake (11 MB; the image's own CMake in /usr/local/bin comes first in PATH).
         # --no-install-recommends avoids pulling unneeded transitive packages.
         sudo apt-get install -y --no-install-recommends \
                                 build-essential \
-                                cmake \
                                 python3 \
                                 python3-pip \
                                 git \
@@ -174,7 +179,7 @@ jobs:
         fi
         $ok || exit 1
 
-    # Perf: each device leg (bpi, rpi) clones + patches hostap from upstream.
+    # Perf: every leg clones + patches hostap from upstream in its setup.sh.
     # The patched tree is a pure function of the pins in setup.sh plus the patch
     # inputs, so the hostap-tree composite action caches it keyed on those files
     # (patched-<leg> mode). On a hit, setup.sh's .hostap_patched flag skips the
@@ -182,16 +187,16 @@ jobs:
     # can never be slower than today. The key logic (files hash + the one unpinned
     # patch source per leg: bpi's meta-cmf-bananapi kernel_6_6 tree SHA, rpi's
     # hostap-patches tip) lives in the action so Coverity (native-build.yml, plain
-    # mode) shares the same cache machinery. mock never clones hostap.
+    # mode) shares the same cache machinery. mock's `make setup` runs rpi/setup.sh,
+    # so mock uses rpi's mode and shares rpi's cache entry.
     #
     # NOTE: the local `uses:` path is ./easymesh_project/OneWifi/… NOT ./.github/… —
     # the checkout lands at OneWifi/ then is mv'd under easymesh_project/OneWifi
-    # (above), so the action only exists at that sub-path (ci-README §10).
+    # (above), so the action only exists at that sub-path (README.md §10).
     - name: Provide patched hostap tree (cached)
-      if: matrix.platform.id != 'mock'
       uses: ./easymesh_project/OneWifi/.github/actions/hostap-tree
       with:
-        mode: patched-${{ matrix.platform.id }}
+        mode: patched-${{ matrix.platform.id == 'bpi' && 'bpi' || 'rpi' }}
         path: easymesh_project/rdk-wifi-libhostap
         github-token: ${{ github.token }}
 
@@ -239,6 +244,14 @@ jobs:
         errs=$(grep -hE ': (error|fatal error):|undefined reference to|Error [0-9]+' "$LOG" \
                | sed -E 's#[^ ]*/(OneWifi|rdk-wifi-hal|rdk-wifi-libhostap)/#\1/#; s#//#/#g' \
                | sort -u || true)
+        # make's own "*** [target] Error N" lines go last and are not counted: they repeat the
+        # failures above (one per failed target, one per parent make).
+        make_re='\*\*\* .*Error [0-9]+'
+        errs=$( { grep -vE "$make_re" <<< "$errs"; grep -E "$make_re" <<< "$errs"; } || true)
+        nerr=$(grep -cvE "$make_re" <<< "$errs" || true)
+        [ "$nerr" -gt 0 ] || nerr=$(printf '%s\n' "$errs" | wc -l)
+        # The normalized error list, for the build failure attribution step.
+        printf '%s\n' "$errs" > ci-out/build-errors.txt
         # Surface the top errors as ANNOTATIONS (the box at the top of the failed
         # check, which people actually check) — not only the run-summary page.
         if [ -n "$errs" ]; then
@@ -248,7 +261,7 @@ jobs:
         {
           echo "### ${{ matrix.platform.name }} — build ${{ steps.build.outcome }}"
           if [ -n "$errs" ]; then
-            echo "#### ❌ Errors ($(printf '%s\n' "$errs" | wc -l) unique)"
+            echo "#### ❌ Errors (${nerr} unique)"
             echo '```'
             head -100 <<< "$errs"
             echo '```'
@@ -536,6 +549,11 @@ jobs:
         # DB's own -Werror=<class> promotions (incl. -Werror=array-bounds/-maybe-uninitialized
         # that -Os trips) so no class can abort the analysis; a real error still exits nonzero.
         OPT: '-Os'
+        # Recompile with gcc 14 (preinstalled on ubuntu-24.04), base and head alike: it knows the
+        # classes gcc 14 made default errors and reports them under their own names. The script
+        # also undefines _FORTIFY_SOURCE so an overflowing memcpy/strcpy is reported on the .c line.
+        GATE_CC: gcc-14
+        GATE_CXX: g++-14
         # GATE = fail the job (when ENFORCE=true) if introduced on a changed line.
         # ADVISORY = report only. Both are posted inline (❌ / ❗) and in the ci-summary.
         # GATE picks: front-end, ~0-FP, crash/RCE/UB classes.
@@ -546,16 +564,18 @@ jobs:
         #   error off), so the tree keeps building but hides a backlog (see 4. above);
         #   the gate keeps new code from adding to it. -Wsizeof-pointer-memaccess
         #   (truncated mem*/str* copy), -Wformat-security (uncontrolled format -> leak /
-        #   %n write; armed by the DB's -Wall). The four C-only classes are auto-dropped on
-        #   C++ TUs by the script. gcc-14's other two default errors have no gcc-13 flag:
-        #   -Wreturn-mismatch is covered by -Wreturn-type here (it is what actually breaks
-        #   this build on gcc-14: 5 sites), -Wdeclaration-missing-parameter-type is new.
-        GATE_WARNINGS: "-Wvla -Wreturn-type -Wint-conversion -Wimplicit-function-declaration -Wimplicit-int -Wincompatible-pointer-types -Wsizeof-pointer-memaccess -Wformat-security"
+        #   %n write; armed by the DB's -Wall). gcc 14's other two default errors:
+        #   -Wreturn-mismatch (`return` with/without a value in the wrong kind of function;
+        #   what actually breaks this build on gcc 14: 5 sites) and
+        #   -Wdeclaration-missing-parameter-type. The C-only classes are auto-dropped on C++
+        #   TUs by the script. -Wreturn-mismatch, -Wdeclaration-missing-parameter-type and
+        #   -Wcalloc-transposed-args need GATE_CC (gcc 13 rejects them).
+        GATE_WARNINGS: "-Wvla -Wreturn-type -Wreturn-mismatch -Wint-conversion -Wimplicit-function-declaration -Wimplicit-int -Wincompatible-pointer-types -Wdeclaration-missing-parameter-type -Wsizeof-pointer-memaccess -Wformat-security"
         # ADVISORY: measured quiet over the compile DB at -Os (each 0-4 findings tree-wide,
         # so they only fire on something genuinely new). -Wpointer-sign (33) and
         # -Wdiscarded-qualifiers (14) were DROPPED as too noisy. Middle-end classes need
-        # the -Os above to fire.
-        ADVISORY_WARNINGS: "-Wunused-function -Wunused-but-set-variable -Wunused-variable -Wunused-value -Wunused-label -Waddress -Wstringop-overflow -Wstringop-overread -Warray-bounds -Wdangling-pointer -Wuse-after-free"
+        # the -Os above to fire. -Wcalloc-transposed-args (gcc 14; 1 site): calloc(size, n).
+        ADVISORY_WARNINGS: "-Wunused-function -Wunused-but-set-variable -Wunused-variable -Wunused-value -Wunused-label -Waddress -Wstringop-overflow -Wstringop-overread -Warray-bounds -Wdangling-pointer -Wuse-after-free -Wcalloc-transposed-args"
         # Inline-review candidates (Commit 5) for the stage-2 'inline' job. Lands in
         # ci-out/ (uploaded as ci-summary-bpi). Absent/unset -> the script writes none.
         INLINE_JSON: "ci-out/inline-gcc.json"
@@ -582,8 +602,74 @@ jobs:
         tee -a ci-out/gcc-gate-summary.md < gcc-gate.md >> "$GITHUB_STEP_SUMMARY"
         exit "$rc"
 
+    - name: Source-coverage nudge for ${{ matrix.platform.name }}
+      # Never fails the build: a source file this PR ADDS that a Makefile.am builds but neither
+      # leg compiles (a likely-forgotten build/linux makefile entry; XB-only files are the
+      # legitimate exception, so it only reports). Textual, no build needed; writes
+      # ci-out/source-coverage.md only on a finding. bpi leg only (its checkout has both legs'
+      # makefiles).
+      if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        # Same effective base as the gcc gate (HEAD^1 on a merge ref when BASE leads into it).
+        DIFF_BASE="$BASE"
+        if git rev-parse --verify --quiet HEAD^2 >/dev/null \
+           && git merge-base --is-ancestor "$BASE" HEAD^1 2>/dev/null; then
+          DIFF_BASE=HEAD^1
+        fi
+        git diff --name-only --diff-filter=A "$DIFF_BASE" HEAD -- '*.c' '*.cpp' '*.cc' \
+          > "$RUNNER_TEMP/added-sources.txt" 2>/dev/null || : > "$RUNNER_TEMP/added-sources.txt"
+        python3 .github/scripts/source_coverage.py "$RUNNER_TEMP/added-sources.txt" || true
+        if [ -s ci-out/source-coverage.md ]; then
+          cat ci-out/source-coverage.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Complexity nudge for ${{ matrix.platform.name }}
+      # Never fails the build. lizard compares per-function cyclomatic complexity between the
+      # PR base and head of each changed .c/.cpp: a function the PR pushes over CCN 30 gets an
+      # inline ❗ (ci-out/inline-complexity.json, always written) plus a summary entry; one that
+      # grew by >= 5 to >= 20 is listed in the summary (ci-out/complexity.md). Functions moved
+      # out of another changed or removed file keep their old CCN. bpi leg only, ~0.5 s/file.
+      if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        LIZARD_VERSION: 1.24.0
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        # Not on the runner image; pure python. A failed install makes the script write a
+        # 'skipped' candidate file (no inline deletes) and nothing else.
+        pipx install "lizard==${LIZARD_VERSION}" >/dev/null 2>&1 || echo "::warning::lizard install failed"
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        # Same effective base as the gcc gate (HEAD^1 on a merge ref when BASE leads into it).
+        DIFF_BASE="$BASE"
+        if git rev-parse --verify --quiet HEAD^2 >/dev/null \
+           && git merge-base --is-ancestor "$BASE" HEAD^1 2>/dev/null; then
+          DIFF_BASE=HEAD^1
+        fi
+        : > "$RUNNER_TEMP/changed-c.txt"
+        : > "$RUNNER_TEMP/removed-c.txt"
+        if names=$(git diff --name-status -M "$DIFF_BASE" HEAD -- '*.c' '*.cpp' '*.cc' '*.cxx'); then
+          # A M / R<score> old new / D old: changed = what the head has, removed = old paths gone.
+          awk -F'\t' '$1 ~ /^[AM]/ {print $2} $1 ~ /^R/ {print $3}' <<< "$names" > "$RUNNER_TEMP/changed-c.txt"
+          awk -F'\t' '$1 ~ /^D/ {print $2} $1 ~ /^R/ {print $2}' <<< "$names" > "$RUNNER_TEMP/removed-c.txt"
+        else
+          DIFF_BASE=''  # base unreadable: the script writes 'skipped', so no inline comment is deleted
+        fi
+        BASE="$DIFF_BASE" python3 .github/scripts/complexity_delta.py \
+          "$RUNNER_TEMP/changed-c.txt" "$RUNNER_TEMP/removed-c.txt" || true
+        if [ -s ci-out/complexity.md ]; then
+          cat ci-out/complexity.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+
     - name: Map inline findings to PR-head lines for ${{ matrix.platform.name }}
-      # clang-tidy and the gcc gate ran on the merge ref (HEAD = refs/pull/N/merge), so
+      # clang-tidy, the gcc gate and the complexity nudge ran on the merge ref (HEAD = refs/pull/N/merge), so
       # their line numbers are merge-result lines. Review comments anchor to the PR head,
       # where a line moves when the base branch changed the same file above it.
       if: always() && matrix.platform.clang_tidy && github.event_name == 'pull_request'
@@ -591,12 +677,37 @@ jobs:
       env:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: |
-        # A crash must not leave merge-numbered candidates behind: drop both files, which
+        # A crash must not leave merge-numbered candidates behind: drop the files, which
         # the poster reads as "producer skipped" (posts and deletes nothing).
-        if ! python3 .github/scripts/map_head_lines.py "$HEAD_SHA" ci-out/inline-gcc.json ci-out/inline-tidy.json; then
+        if ! python3 .github/scripts/map_head_lines.py "$HEAD_SHA" ci-out/inline-gcc.json ci-out/inline-tidy.json \
+               ci-out/inline-complexity.json; then
           echo "::warning::Could not map inline findings to PR-head lines; none are posted this run."
-          rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json
+          rm -f ci-out/inline-gcc.json ci-out/inline-tidy.json ci-out/inline-complexity.json
         fi
+
+    # Build failure attribution, only when this leg's build step failed: did this PR break it?
+    # Runs after every step that reads the PR tree (clang-tidy, the gcc gate, the nudges, the
+    # line mapping): tier 2 reverts the PR in the working tree to recompile the failing files on
+    # base sources, then restores it. Never fails the build: the script always exits 0. Tier 2
+    # runs only where a compile DB exists (HAVE_DB: the bpi leg); other legs get the tier-1 guess.
+    - name: Build failure attribution for ${{ matrix.platform.name }}
+      if: always() && steps.build.outcome == 'failure' && github.event_name == 'pull_request' && matrix.platform.id != 'mock'
+      working-directory: easymesh_project/OneWifi
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        # 'true' only on a leg that built compile_commands.json (bpi runs bear). Tier 2 keys on
+        # this, never on the file existing: a stale DB elsewhere would recompile with the wrong flags.
+        HAVE_DB: ${{ matrix.platform.clang_tidy && 'true' || '' }}
+      run: |
+        set -uo pipefail
+        mkdir -p ci-out
+        # A missing script (partial cherry-pick) skips instead of failing the leg.
+        if [ ! -f .github/scripts/build_attribution.py ]; then
+          echo "#### 🧭 Build failure attribution: script not present, skipped" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        git fetch --no-tags --depth=1 origin "$BASE" >/dev/null 2>&1 || true
+        python3 .github/scripts/build_attribution.py >> "$GITHUB_STEP_SUMMARY" || true
 
     # ---- Hand-off to the trusted PR-comment stage (pr-comments.yml) ----------
     # Record the PR identity as passive data for the workflow_run poster to

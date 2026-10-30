@@ -187,7 +187,7 @@ hash_map_t **get_mac_psm_map(unsigned char vap_index)
 
 void Psm_Db_Write_Radio_Feat(wifi_radio_feature_param_t *fcfg)
 {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G) //this can be removed and the below macro can be used if additional members are added into wifi_radio_feature_param_t
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G) //this can be removed and the below macro can be used if additional members are added into wifi_radio_feature_param_t
     char recName[256];
     char instanceNumStr[64] = {0};
     wifi_radio_feat_psm_param_t *cfg;

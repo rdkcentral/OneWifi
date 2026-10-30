@@ -336,6 +336,16 @@ typedef struct webconfig {
 // common api for all processes linking with this library
 webconfig_error_t webconfig_init(webconfig_t *config);
 
+// translators are weak so that a build linking only one of them can detect the other is absent
+__attribute__((weak)) webconfig_error_t translate_to_ovsdb_tables(webconfig_subdoc_type_t type,
+    webconfig_subdoc_data_t *data);
+__attribute__((weak)) webconfig_error_t translate_from_ovsdb_tables(webconfig_subdoc_type_t type,
+    webconfig_subdoc_data_t *data);
+__attribute__((weak)) webconfig_error_t translate_to_easymesh_tables(webconfig_subdoc_type_t type,
+    webconfig_subdoc_data_t *data);
+__attribute__((weak)) webconfig_error_t translate_from_easymesh_tables(webconfig_subdoc_type_t type,
+    webconfig_subdoc_data_t *data);
+
 webconfig_error_t webconfig_multi_doc_init();
 webconfig_error_t webconfig_single_doc_init();
 
