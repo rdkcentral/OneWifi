@@ -1523,7 +1523,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
 {
     em_sta_info_t *em_sta_dev_info = NULL;
     unsigned int associated_client_count = 0;
-    unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0;
+    unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0, frame_len = 0;
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     rdk_wifi_radio_t *radio = NULL;
     wifi_vap_info_map_t *vap_map = NULL;
@@ -1616,14 +1616,23 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         return webconfig_error_translate_to_easymesh;
                     }
                     mgmt = (struct ieee80211_mgmt *) assoc_dev_data->sta_data.msg_data.data;
-                    tag_len = assoc_dev_data->sta_data.msg_data.frame.len - IEEE80211_HDRLEN - sizeof(mgmt->u.assoc_req);
                     /* Store the full 802.11 association request frame body:
                      * fixed fields (capab_info 2B + listen_interval 2B) followed by IEs. */
                     fixed_len = (unsigned int)sizeof(mgmt->u.assoc_req);
+                    frame_len = (unsigned int)assoc_dev_data->sta_data.msg_data.frame.len;
+                    if ((frame_len < IEEE80211_HDRLEN + fixed_len) || (frame_len > MAX_FRAME_SZ)) {
+                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid association frame length %u, skipping client\n", __func__, __LINE__, frame_len);
+                        free(em_sta_dev_info);
+                        assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                        continue;
+                    }
+                    tag_len = frame_len - IEEE80211_HDRLEN - fixed_len;
                     if (fixed_len + tag_len > EM_MAX_FRAME_BODY_LEN) {
                         tag_len = EM_MAX_FRAME_BODY_LEN - fixed_len;
                     }
-                    memcpy(em_sta_dev_info->frame_body, &mgmt->u.assoc_req, fixed_len + tag_len);
+                    /* The frame body has no fixed size. It only borrows the stored frame here:
+                     * put_sta_info() copies it into the data model, so there is nothing to free. */
+                    em_sta_dev_info->frame_body = (unsigned char *)&mgmt->u.assoc_req;
                     em_sta_dev_info->frame_body_len = fixed_len + tag_len;
 
                     if (assoc_dev_data->client_state == 0) {
