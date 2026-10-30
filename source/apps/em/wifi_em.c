@@ -121,7 +121,6 @@ static pthread_mutex_t em_client_type_map_lock = PTHREAD_MUTEX_INITIALIZER;
  * invocations, so em_deinit() takes this lock to wait out an invocation already in flight
  * before it destroys the maps the callback reads. */
 static pthread_mutex_t em_ap_report_task_lock = PTHREAD_MUTEX_INITIALIZER;
-client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
 em_client_assoc_stats_t em_client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
 client_type_data_t client_type_info = { 0 };
 
@@ -1817,7 +1816,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 {
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
     char client_mac[32];
-    int vap_index = assoc_data->ap_index;
+    int vap_index;
     char key[64] = { 0 };
     mac_addr_str_t sta_mac_str, bss_str;
     int i = 0;
