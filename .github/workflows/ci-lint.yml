@@ -18,8 +18,9 @@ name: CI Lint
 #
 # Tool versions are pinned in each job's `env:` — NOT in .github/ci-pins.env,
 # whose strict PIN_NAME=<40hex> format (and makefile.yml's verify step) is for
-# source-dependency SHAs, not tool versions. Pinning here still makes the gate
-# hermetic: runner drift can't silently change what it enforces.
+# source-dependency SHAs, not tool versions. The pins fix the linters' own versions
+# (actionlint and shellcheck also by sha256); the runner image, its Python and the
+# packages pipx resolves for yamllint and ruff can still change underneath them.
 
 on:
   pull_request:
@@ -75,12 +76,11 @@ jobs:
           files=$(tr '\t' '\n' <<< "$rows")
           yaml=false
           python=false
-          # .yamllint / ruff.toml are lane configs and don't end in .yml/.py, so a
-          # PR that only tunes one must still re-run its lane — match them too.
+          # Only the paths each lane inspects, plus its config (.yamllint / ruff.toml).
           # Here-strings, not `printf | grep -q`: under pipefail, grep -q exiting at an
           # early match SIGPIPEs printf on a long file list, and the lane would skip.
-          if grep -qE '(\.ya?ml$|\.yamllint$)' <<< "$files"; then yaml=true; fi
-          if grep -qE '(\.py$|ruff\.toml$)' <<< "$files"; then python=true; fi
+          if grep -qE '^\.github/((workflows|actions)/.*\.ya?ml|\.yamllint)$' <<< "$files"; then yaml=true; fi
+          if grep -qE '^\.github/(scripts/.*\.py|ruff\.toml)$' <<< "$files"; then python=true; fi
           printf 'yaml=%s\npython=%s\n' "$yaml" "$python" >> "$GITHUB_OUTPUT"
           echo "changed surfaces: yaml=$yaml python=$python"
 
