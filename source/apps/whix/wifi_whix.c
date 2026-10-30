@@ -1751,7 +1751,7 @@ int associated_device_diagnostics_response(wifi_provider_response_t *provider_re
     return RETURN_OK;
 }
 
-#if defined (DUAL_CORE_XB3)
+#if defined(DUAL_CORE_XB3)
 static BOOL erouterGetIpAddress()
 {
     FILE *f;
