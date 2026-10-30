@@ -75,7 +75,7 @@ webconfig_error_t translate_to_em_sta_link_subdoc(webconfig_t *config, webconfig
 
 webconfig_error_t encode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    cJSON *json, *obj_emstalink, *device_list, *device_obj, *sta_link_obj;
+    cJSON *json, *obj_emstalink;
     char *str;
     webconfig_subdoc_decoded_data_t *params;
 

@@ -207,12 +207,12 @@ static int em_get_vap_index_from_bssid(mac_addr_t bssid)
 
     to_mac_str(bssid, search_str);
 
-    for (int i = 0; i < num_of_radios; i++) {
+    for (unsigned int i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         if (vap_map == NULL) {
             continue;
         }
-        for (int j = 0; j < vap_map->num_vaps; j++) {
+        for (unsigned int j = 0; j < vap_map->num_vaps; j++) {
             if (isVapSTAMesh(vap_map->vap_array[j].vap_index)) {
                 continue;
             }
@@ -1892,7 +1892,7 @@ int em_client_diag_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t 
     int i = 0;
 
     em_route(&route);
-    if (em_common_config_to_monitor_queue(app, data) != RETURN_OK) {
+    if (em_common_config_to_monitor_queue(data, &app->data.u.em_data.em_config) != RETURN_OK) {
         wifi_util_error_print(WIFI_EM, "%s:%d em Config creation failed %d\r\n", __func__, __LINE__,
             stats_type_client);
         return RETURN_ERR;
@@ -3337,8 +3337,8 @@ static int em_handle_connection_status(wifi_app_t *app, void *data)
 
     wifi_util_info_print(WIFI_EM,
         "%s:%d: Connection Status STA=%s BSSID=%s Status=%u Reason Present=%d Reason=%u\n",
-        __func__, __LINE__, to_mac_str(conn_status->sta_mac, sta_mac_str),
-        to_mac_str(conn_status->bssid, bssid_str), conn_status->status_code,
+        __func__, __LINE__, to_mac_str((unsigned char *)conn_status->sta_mac, sta_mac_str),
+        to_mac_str((unsigned char *)conn_status->bssid, bssid_str), conn_status->status_code,
         conn_status->reason_code_present, conn_status->reason_code);
 
     rdata.data_type = bus_data_type_bytes;
@@ -4060,7 +4060,7 @@ static int em_send_action_frame(void *data)
             continue;
         }
 
-        for (int j = 0; j < vap_map->num_vaps; j++) {
+        for (unsigned int j = 0; j < vap_map->num_vaps; j++) {
             if (memcmp(params->bssid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) ==
                 0) {
                 ap_index = vap_map->vap_array[j].vap_index;
