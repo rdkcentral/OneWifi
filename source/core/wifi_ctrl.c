@@ -31,6 +31,7 @@
 #include <pthread.h>
 #include "ieee80211.h"
 #include "misc.h"
+#include "util.h"
 #ifdef CMWIFI_RDKB
 #define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
 #else
@@ -3752,8 +3753,84 @@ static unsigned int get_radio_private_mld_link_id(wifi_vap_info_map_t *mgr_vap_m
     return UNDEFINED_MLD_LINK_ID;
 }
 #endif
+
 /**
- * update_mld_groups - Common MLO group validation and propagation.
+ * log_mld_group_enabled - Emit a single-line summary of an enabled MLD group.
+ *
+ * @param entries          Group candidates (only compatible ones are listed)
+ * @param total_candidates Number of valid entries in the array
+ * @param compatible_count Number of compatible links in the group
+ * @param mld_id           MLD unit of the group
+ * @param mlo_mac          MLD address of the group
+ * @param log_type         Log module (WIFI_MGR, WIFI_DB, etc.)
+ */
+static void log_mld_group_enabled(const mld_group_entry_t *entries, unsigned int total_candidates,
+    unsigned int compatible_count, const unsigned int mld_id, mac_address_t mlo_mac,
+    wifi_dbg_type_t log_type)
+{
+    char out_buf[256] = { 0 };
+    char *buf_ptr = out_buf;
+    size_t buf_remain_len = sizeof(out_buf);
+    bool first = true;
+    mac_addr_str_t mac_str = { 0 };
+    wifi_mgr_t *wifi_mgr = NULL;
+    unsigned int j = 0;
+    int err = 0;
+
+    wifi_mgr = get_wifimgr_obj();
+    to_mac_str(mlo_mac, mac_str);
+
+    if (wifi_mgr == NULL) {
+        wifi_util_error_print(log_type, "%s:%d: Failed to get wifi manager object\n", __func__,
+            __LINE__);
+    }
+
+    err = append_snprintf(&buf_ptr, &buf_remain_len, "MLO enabled MLDUnit: %u nLinks: %u [", mld_id,
+        compatible_count);
+    if (err < 0) {
+        wifi_util_error_print(log_type,
+            "%s:%d: Failed to append MLO group info to buffer, err: %d\n", __func__, __LINE__, err);
+    }
+
+    for (j = 0; j < total_candidates; j++) {
+        const mld_group_entry_t *entry = &entries[j];
+        wifi_interface_name_t *if_name = NULL;
+
+        if (!entry->is_compatible) {
+            continue;
+        }
+
+        if (wifi_mgr != NULL) {
+            if_name = get_interface_name_for_vap_index(entry->vap_info->vap_index,
+                &wifi_mgr->hal_cap.wifi_prop);
+            if (if_name == NULL) {
+                wifi_util_error_print(log_type,
+                    "%s:%d: Interface name not found for vap_index=%d\n", __func__, __LINE__,
+                    entry->vap_info->vap_index);
+            }
+        }
+
+        err = append_snprintf(&buf_ptr, &buf_remain_len, "%slink %d (%s)", first ? "" : ", ",
+            entry->mld_conf->mld_link_id, if_name != NULL ? (char *)*if_name : "N/A");
+        if (err < 0) {
+            wifi_util_error_print(log_type,
+                "%s:%d: Failed to append MLO link info to buffer, err: %d\n", __func__, __LINE__,
+                err);
+        }
+        first = false;
+    }
+
+    err = append_snprintf(&buf_ptr, &buf_remain_len, "] MLDAddr: %s", mac_str);
+    if (err < 0) {
+        wifi_util_error_print(log_type,
+            "%s:%d: Failed to append MLO group address to buffer, err: %d\n", __func__, __LINE__,
+            err);
+    }
+
+    wifi_util_info_print(log_type, "%s:%d: %s\n", __func__, __LINE__, out_buf);
+}
+
+/**
  * update_mld_groups - Common MLO group validation and propagation.
  *
  * Iterates all MLD units (0..MLD_UNIT_COUNT-1). For each unit, walks all
@@ -3779,7 +3856,6 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
     const mac_address_t zero_mac = { 0 };
 #endif
     mac_address_t mlo_mac = { 0 };
-    mac_addr_str_t mac_str = { 0 };
     unsigned int i;
 
     for (i = 0; i < MLD_UNIT_COUNT; i++) {
@@ -3988,7 +4064,6 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 
 #endif // CONFIG_GENERIC_MLO
 
-        to_mac_str(mlo_mac, mac_str);
         {
             unsigned int j;
             for (j = 0; j < total_candidates; j++) {
@@ -4002,13 +4077,10 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 #ifndef CONFIG_GENERIC_MLO
                 memcpy(entry->mld_conf->mld_addr, mlo_mac, sizeof(mac_address_t));
 #endif
-
-                wifi_util_info_print(log_type,
-                    "%s:%d: MLO Enabled! mld_addr=%s for vap_index=%d (link_id=%d, mld_id=%d)\n",
-                    __func__, __LINE__, mac_str, entry->vap_info->vap_index,
-                    entry->mld_conf->mld_link_id, entry->mld_conf->mld_id);
             }
         }
+
+        log_mld_group_enabled(entries, total_candidates, compatible_count, i, mlo_mac, log_type);
     }
 }
 
