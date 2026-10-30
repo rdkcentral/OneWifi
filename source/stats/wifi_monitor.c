@@ -213,7 +213,7 @@ INT deauthCountThreshold = 0;
 INT deauthMonitorDuration = 0;
 INT deauthGateTime = 0;//ONE_WIFI
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
 #define FEATURE_CSI_CALLBACK 1
 #endif
 
@@ -3090,7 +3090,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         frame_len = frame_icmpv4_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
+#if (defined(_XB7_PRODUCT_REQ_) && !defined(_COSA_BCM_ARM_))
             wifi_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,
@@ -3112,7 +3112,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         frame_len = frame_icmpv6_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
+#if (defined(_XB7_PRODUCT_REQ_) && !defined(_COSA_BCM_ARM_))
             wifi_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,

@@ -514,7 +514,7 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
         //In case of reboot/FR, Non DFS channel will be selected and radio will switch to DFS Channel after 1 min.
         if( (wifi_radio_oper_param->band == WIFI_FREQUENCY_5_BAND ) || ( wifi_radio_oper_param->band == WIFI_FREQUENCY_5L_BAND ) || ( wifi_radio_oper_param->band == WIFI_FREQUENCY_5H_BAND)) {
             if (wifi_radio_oper_param->channel >= 52 && wifi_radio_oper_param->channel <= 144) {
-                if (mode == rdk_dev_mode_type_gw) {
+                if (mode == rdk_dev_mode_type_gw || mode == rdk_dev_mode_type_em_colocated_node) {
                     dfs_channel_data_t *dfs_channel_data = (dfs_channel_data_t *)malloc(
                         sizeof(dfs_channel_data_t));
                     memset(dfs_channel_data, 0, sizeof(dfs_channel_data_t));
@@ -669,7 +669,6 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #endif
         } else {
 #if defined EASY_MESH_NODE
-        wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
         int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
         /* Initially assign this to em_node mode to start with */
         *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
@@ -1219,7 +1218,7 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     return RETURN_OK;
 }
 #else
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_CBR_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate, unsigned int recv_freq)
 #else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, unsigned int recv_freq)
@@ -1245,7 +1244,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
     mgmt_frame.frame.type = type;
     mgmt_frame.frame.dir = dir;
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_CBR_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
     mgmt_frame.frame.phy_rate = phy_rate;
 #endif
@@ -1298,7 +1297,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(data->u.msg.frame.sta_mac, sta_mac, sizeof(mac_address_t));
         data->u.msg.frame.type = type;
         data->u.msg.frame.dir = dir;
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_CBR_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
     mgmt_frame.frame.phy_rate = phy_rate;
 #endif
@@ -1559,7 +1558,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     wifi_wpsEvent_callback_register(wps_event_callback);
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     register_with_webconfig_framework();
 #endif
 
@@ -2401,7 +2400,7 @@ void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedul
     }
 }
 
-#if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
+#if defined(FEATURE_SUPPORT_ACL_SELFHEAL)
 int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
 {
     mac_addr_str_t mac_str;
@@ -2470,7 +2469,7 @@ static int bus_check_and_subscribe_events(void* arg)
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-#if defined (ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
+#if defined(ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
     ctrl->mesh_status_subscribed = true;
     ctrl->device_mode_subscribed = true;
     ctrl->mesh_keep_out_chans_subscribed = true;
@@ -2483,7 +2482,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
         (ctrl->hotspot_client_dhcp_failure_subscribed == false)
-#if defined (RDKB_EXTENDER_ENABLED)
+#if defined(RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif
         ) {
@@ -2569,7 +2568,7 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, bus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0, FALSE);
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0, FALSE);
 
-#if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
+#if defined(FEATURE_SUPPORT_ACL_SELFHEAL)
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sync_wifi_hal_hotspot_vap_mac_entry, NULL, (HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC * 1000), 0, FALSE);
 #endif
     wifi_util_dbg_print(WIFI_CTRL, "%s():%d Ctrl queue timeout tasks scheduled\n", __FUNCTION__, __LINE__);

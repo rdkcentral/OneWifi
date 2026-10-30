@@ -42,7 +42,7 @@ This function uses drive ioctl to fetch the SNR value of a client
 @arg2 - assoc_cli_mac - MAC address of connected client
 Return value - SNR of the client
 */
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST) && !defined(_XB7_PRODUCT_REQ_)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST) && !defined(_XB7_PRODUCT_REQ_)
 typedef int (*rdk_greylist_add_del_mac_t)(int apIndex, unsigned char macaddr[ETH_ALEN], int add );
 
 static u8 wifi_get_snr_value(char *ifname,unsigned char *assoc_cli_mac)
@@ -111,7 +111,7 @@ ether_sprintf(const u8 *addr)
  *     own_addr - Source addr - athX interface address.
  *     flags - EAPOL Tx flags information.
  */
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
 int send_eapol(void *priv, const u8 *addr, const u8 *data,
         size_t data_len, int encrypt,
         const u8 *own_addr, u32 flags)
@@ -1015,7 +1015,7 @@ static int sta_get_seqnum(const char *ifname, void *priv, const u8 *addr, int id
 }
 
 #ifdef QCAPATCH_ACLCHECK_HOSTAPD
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
 /*
  * Description:
  *     Callback API to get WPS ACL details
@@ -1033,7 +1033,7 @@ static int wps_acl_get(void *priv, char *buf, size_t *buf_len)
 #endif /* QCAPATCH_ACLCHECK_HOSTAPD */
 
 #ifdef QCAPATCH_WPSACL
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
 /*
  * Description:
  *     Callback API to set WPS ACL details
@@ -1101,18 +1101,18 @@ void update_hostapd_driver(int ap_index, struct hostapd_data *hapd)
     ops->set_ap_wps_ie    = set_ap_wps_ie;
     ops->get_seqnum       = sta_get_seqnum;
     ops->commit           = commit;
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST) && !defined(_XB7_PRODUCT_REQ_)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST) && !defined(_XB7_PRODUCT_REQ_)
     ops->rdk_greylist_get_snr     = wifi_get_snr_value;
     ops->rdk_greylist_add_del_mac = (rdk_greylist_add_del_mac_t )wifi_hostap_greylist_acl_mac;
     ops->rdk_greylist_kick_mac    = wifi_hostap_kick_mac;
 #endif
 #ifdef QCAPATCH_WPSACL
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
     ops->wps_acl_set = wps_acl_set;
 #endif
 #endif
 #ifdef QCAPATCH_ACLCHECK_HOSTAPD
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
     ops->wps_acl_get = (wps_acl_get_t )wps_acl_get;
 #endif
 #endif /* QCAPATCH_ACLCHECK_HOSTAPD */

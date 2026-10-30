@@ -140,13 +140,14 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     mgr->blaster_config_global = data->blaster;
 
     /* If Device operating in POD mode, Send the blaster status as new to the cloud */
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         wifi_util_info_print(WIFI_CTRL, "%s %d POD MOde Activated. Sending Blaster status to cloud\n", __func__, __LINE__);
         mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
         webconfig_send_blaster_status(ctrl);
-    }
-    else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
+    } else if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
+        wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
     }
 
     return RETURN_OK;
@@ -2217,7 +2218,7 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     return false;
 }
 
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
 #define ECOMODE_COMPLETE_MARKER_FILE "/tmp/ecomode_operation_done"
 #define MAX_RETRY_VALUE 15
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
@@ -2252,7 +2253,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     scheduler_add_timer_task(ctrl->sched, TRUE, NULL, reboot_device, ctrl, 0, 1, TRUE);
 #endif
 }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
 
 
 void radio_param_config_changed_event_logging(wifi_radio_operationParam_t *old , wifi_radio_operationParam_t *new,char name[16])
@@ -2434,7 +2435,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 #if defined(CONFIG_IEEE80211BE)
     unsigned int mlo_changed_radio_bitmap = 0;
 #endif
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
     bool old_ecomode = false;
     bool new_ecomode = false;
 #endif
@@ -2513,7 +2514,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     }
                 }
             }
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             // Save the ECO mode state before update to the DB
             old_ecomode = mgr_radio_data->oper.EcoPowerDown;
             new_ecomode = radio_data->oper.EcoPowerDown;
@@ -2521,7 +2522,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 radio_data->oper.enable = ((new_ecomode) ? false : true);
                 wifi_util_info_print(WIFI_MGR, "%s:%d:Changing radio enable status:radio_data->oper.enable= %d\n",__func__,__LINE__, radio_data->oper.enable);
             }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
 
             if (wifi_radio_operationParam_validation(&mgr->hal_cap, &radio_data->oper) !=
@@ -2556,7 +2557,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             memcpy(&mgr_radio_data->oper, &radio_data->oper, sizeof(wifi_radio_operationParam_t));
 #endif
 
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             //Upload the telemetry marker and reboot the device
             //only if there is a change in the DM Device.WiFi.Radio.{i}.X_RDK_EcoPowerDown
             wifi_util_info_print(WIFI_MGR, "%s:%d: oldEco = %d  newEco = %d\n", __func__, __LINE__, old_ecomode, new_ecomode);
@@ -2565,7 +2566,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 // write the value to database and reboot
                 ecomode_telemetry_update_and_reboot(i, new_ecomode);
             }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
             if (is_radio_6g_modified) {
                 pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
                 if (pub_svc->event_fn != NULL) {
@@ -2712,7 +2713,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
                 "%s:%d:Changing radio enable status:radio_data->oper.enable= %d\n", __func__,
                 __LINE__, radio_data->oper.enable);
         }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         wifi_util_dbg_print(WIFI_WEBCONFIG, "[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",
             __FUNCTION__);
 
@@ -2758,7 +2759,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
             ecomode_telemetry_update_and_reboot(radio_index, new_ecomode);
         }
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         if (is_radio_6g_modified) {
             pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
             if (pub_svc->event_fn != NULL) {
@@ -3112,7 +3113,8 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_blaster:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 /* If Device is operating in POD Mode, send the status to cloud */
-                if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+                    ctrl->network_mode == rdk_dev_mode_type_em_node) {
                     if (ctrl->webconfig_state & ctrl_webconfig_state_blaster_cfg_init_rsp_pending) {
                         wifi_util_info_print(WIFI_CTRL, "%s:%d: Blaster Status updated as new\n", __func__, __LINE__);
                         ctrl->webconfig_state &= ~ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
@@ -3123,7 +3125,8 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                         ret = webconfig_bus_apply(ctrl, &data->u.encoded);
 
                     }
-                } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+                } else if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+                    ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
                     ctrl->webconfig_state &= ~(ctrl_webconfig_state_blaster_cfg_init_rsp_pending | ctrl_webconfig_state_blaster_cfg_complete_rsp_pending);
                     wifi_util_error_print(WIFI_CTRL, "%s:%d: Device is in GW Mode. No need to send blaster status\n", __func__, __LINE__);
                 }

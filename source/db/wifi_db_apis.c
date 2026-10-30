@@ -650,6 +650,8 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         tmp = new_rec->secondary_channels_list;
         while ((ptr = strchr(tmp, ',')) != NULL)
         {
+            if (i >= MAXNUMSECONDARYCHANNELS)
+                break;
             ptr++;
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config Secondary Channel list %d \t",__func__, __LINE__,atoi(tmp));
             l_radio_cfg->channelSecondary[i] = atoi(tmp);
@@ -662,6 +664,8 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         tmp = new_rec->amsdu_tid;
         while ((ptr = strchr(tmp, ',')) != NULL)
         {
+            if (i >= MAX_AMSDU_TID)
+                break;
             ptr++;
             l_radio_cfg->amsduTid[i] = atoi(tmp);
             tmp = ptr;
@@ -1145,7 +1149,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             return;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
         if(new_rec->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if(vap_index != 2 && vap_index != 3) {
@@ -1158,7 +1162,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             new_rec->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
         }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
         l_rdk_vap_info->exists = new_rec->exists;
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
@@ -2468,6 +2472,8 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     tmp = cfg->secondary_channels_list;
     while ((ptr = strchr(tmp, ',')) != NULL)
     {
+        if (i >= MAXNUMSECONDARYCHANNELS)
+            break;
         ptr++;
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config Secondary Channel list %d \t",__func__, __LINE__,atoi(tmp));
         config->channelSecondary[i] = atoi(tmp);
@@ -2480,6 +2486,8 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     tmp = cfg->amsdu_tid;
     while ((ptr = strchr(tmp, ',')) != NULL)
     {
+        if (i >= MAX_AMSDU_TID)
+            break;
         ptr++;
         config->amsduTid[i] = atoi(tmp);
         tmp = ptr;
@@ -2937,7 +2945,7 @@ void wifidb_get_wifi_macfilter_config()
                 str_to_mac_bytes(tmp_mac, mac);
                 memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
 
-                strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
+                snprintf(tmp_acl_entry->device_name, sizeof(tmp_acl_entry->device_name), "%s", pcfg->device_name);
                 tmp_acl_entry->reason = pcfg->reason;
                 tmp_acl_entry->expiry_time = pcfg->expiry_time;
 
@@ -2948,7 +2956,7 @@ void wifidb_get_wifi_macfilter_config()
                 str_to_mac_bytes(tmp_mac, mac);
                 memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
 
-                strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
+                snprintf(tmp_acl_entry->device_name, sizeof(tmp_acl_entry->device_name), "%s", pcfg->device_name);
                 tmp_acl_entry->reason = pcfg->reason;
                 tmp_acl_entry->expiry_time = pcfg->expiry_time;
             }
@@ -3016,7 +3024,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     else {
         strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
     }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
     if(rdk_config->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
         if(l_vap_index != 2 && l_vap_index != 3) {
@@ -3028,7 +3036,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         rdk_config->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
     }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_) */
     cfg.exists = rdk_config->exists;
 
     if (isVapSTAMesh(l_vap_index)) {
@@ -5010,7 +5018,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.levl_enabled_rfc = false;
     rfc_config.memwraptool_app_rfc = true;
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
-    defined (_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
     rfc_config.wpa3_rfc = true;
 #else
     rfc_config.wpa3_rfc = false;
@@ -5288,7 +5296,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 is_vap_info_upgrade_needed = true;
             }
         }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
         if (rdk_config[i].exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if (config->vap_array[i].vap_index !=2  &&  config->vap_array[i].vap_index != 3 ) {
@@ -6916,7 +6924,7 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         if (strlen(pcfg->repurposed_vap_name) != 0) {
             strncpy(config->repurposed_vap_name, pcfg->repurposed_vap_name, (strlen(pcfg->repurposed_vap_name) + 1));
         }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
         if(pcfg->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if(vap_index != 2 && vap_index != 3) {
@@ -6928,7 +6936,7 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             pcfg->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
         }
-#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
         rdk_config->exists = pcfg->exists;
 
         if (isVapSTAMesh(vap_index)) {
@@ -7650,12 +7658,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else
             cfg->variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #endif
-#if defined (NEWPLATFORM_PORT) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(NEWPLATFORM_PORT) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
 
 #if defined(CONFIG_IEEE80211BE)
-#if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif
 #if defined(_PLATFORM_BANANAPI_R4_)
@@ -7664,14 +7672,14 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* defined(CONFIG_IEEE80211BE) */
 
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
 #endif
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg->operatingClass = 128;
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
 #endif
             if (ctrl->network_mode == rdk_dev_mode_type_em_node)
@@ -7679,13 +7687,13 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             else
                 cfg->channel = 44;
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->DfsEnabled = true;
-#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+#elif defined(_MERCURY_PRODUCT_REQ_)
         cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
         cfg->DfsEnabled = true;
-#elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+#elif defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
@@ -7698,7 +7706,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->operatingClass = 128;
             cfg->channel = 157;
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg->beaconInterval = 200;
             cfg->DfsEnabled = true;
@@ -8085,7 +8093,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
-    defined(_PLATFORM_BANANAPI_R4_) || defined (_XER2_PRODUCT_REQ_)
+    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_)
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -8279,16 +8287,16 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 strncpy(cfg->u.bss_info.security.u.key.key, INVALID_KEY, sizeof(cfg->u.bss_info.security.u.key.key));
             }
         }
-#if defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) //NEED _SCER11BEL_PRODUCT_REQ_ XER10 is GW..  STA is NOT needed ????
+#if defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_) //NEED _SCER11BEL_PRODUCT_REQ_ XER10 is GW..  STA is NOT needed ????
         //Disabling all vaps except STA Vaps by default in XLE
         cfg->u.bss_info.enabled = false;
         exists = false;
-#endif //_WNXL11BWL_PRODUCT_REQ_ , _PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
+#endif //_WNXL11BWL_PRODUCT_REQ_ , _PP203X_PRODUCT_REQ_ , _MERCURY_PRODUCT_REQ_
     }
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config, cfg, sizeof(*cfg));
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
     if(exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
         if(vap_index != 2 && vap_index != 3) {
@@ -8300,7 +8308,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
     }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
     rdk_config->exists = exists;
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     free(cfg);
@@ -9332,7 +9340,7 @@ void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationPar
     get_wifidb_obj()->desc.init_radio_config_default_fn((instance_number - 1), radio_cfg, radio_feat_cfg);
 
 
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
     //5GH and 6G can be added later after support is added
     if (is_radio_band_5G(radio_cfg->band)) {
         memset(recName, 0, sizeof(recName));
