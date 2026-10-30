@@ -31,6 +31,14 @@
 #include <pthread.h>
 #include "ieee80211.h"
 #include "misc.h"
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <string.h>
+#include <sys/socket.h>
+
 #ifdef CMWIFI_RDKB
 #define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
 #else
@@ -54,6 +62,9 @@ typedef struct mlo_rfc_status_params {
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
+extern int webconfig_fix_usb_tether_ssids(wifi_ctrl_t *ctrl);
+static int check_usb_tether_address(void *arg);
+
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
 void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype);
 int set_bus_bool_param(bus_handle_t *handle, const char *paramNames, bool data_value);
@@ -66,6 +77,71 @@ static int run_analytics_event(void* arg);
 
 static int switch_dfs_channel(void *arg);
 void start_wifi_sched_timer(unsigned int, struct wifi_ctrl *ctrl, wifi_scheduler_type_t type);
+
+
+static int schedule_usb_tether_check(wifi_ctrl_t *ctrl, unsigned int interval_ms,
+    bool start_immediately)
+{
+    int rc = scheduler_add_timer_task(ctrl->sched, FALSE, NULL, check_usb_tether_address,
+        ctrl, interval_ms, 1, start_immediately);
+
+    if (rc != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s: could not schedule USB tether check\n", __func__);
+    }
+    return rc;
+}
+
+static int check_usb_tether_address(void *arg)
+{
+    wifi_ctrl_t *ctrl = arg;
+    struct ifaddrs *interfaces, *entry;
+    bool has_address = false;
+    static bool reconciled = false;
+
+    if (getifaddrs(&interfaces) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s: getifaddrs failed: %s\n", __func__, strerror(errno));
+        schedule_usb_tether_check(ctrl, 5000, FALSE);
+        return TIMER_TASK_COMPLETE;
+    }
+    for (entry = interfaces; entry != NULL; entry = entry->ifa_next) {
+        if (entry->ifa_addr != NULL && strcmp(entry->ifa_name, "usb0") == 0 &&
+            entry->ifa_addr->sa_family == AF_INET &&
+            (entry->ifa_flags & IFF_UP) != 0 &&
+            ((ntohl(((struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr) & 0xff000000U)
+                != 0x7f000000U) &&
+            ((ntohl(((struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr) & 0xffff0000U)
+                != 0xa9fe0000U) &&
+            ((struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr != INADDR_ANY) {
+            has_address = true;
+            wifi_util_info_print(WIFI_CTRL, "USB_TETHER: usb0 has valid IPv4 address\n");
+            break;
+        }
+    }
+    freeifaddrs(interfaces);
+
+    if (!has_address) {
+        wifi_util_info_print(WIFI_CTRL, "USB_TETHER: no valid usb0 IPv4; waiting\n");
+        reconciled = false;
+    } else if (reconciled) {
+        wifi_util_info_print(WIFI_CTRL,
+            "USB_TETHER: already reconciled; skipping RBUS until usb0 loses its address\n");
+    } else {
+        int rc;
+
+        wifi_util_info_print(WIFI_CTRL,
+            "USB_TETHER: starting RBUS reconciliation using VAP roles (no network-mode gate)\n");
+        rc = webconfig_fix_usb_tether_ssids(ctrl);
+        wifi_util_info_print(WIFI_CTRL, "USB_TETHER: reconciliation returned %d\n", rc);
+        if (rc == RETURN_OK) {
+            reconciled = true;
+        }
+    }
+    schedule_usb_tether_check(ctrl, 5000, FALSE);
+    return TIMER_TASK_COMPLETE;
+}
+
+
+
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     if(ctrl->vif_apply_pending_queue != NULL) {
@@ -2553,6 +2629,9 @@ static int pending_states_webconfig_analyzer(void *arg)
 
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
+    //USB_TETHER: polling-only monitor starting, interval=5000ms
+    schedule_usb_tether_check(ctrl, 5000, TRUE);
+
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ANAYLYTICS_PERIOD * 1000), 0, FALSE);
 #endif
