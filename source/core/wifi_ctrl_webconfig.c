@@ -164,6 +164,55 @@ void webconfig_init_subdoc_data(webconfig_subdoc_data_t *data)
     data->u.decoded.num_radios = getNumberRadios();
 }
 
+/* The subdoc data copied from the manager points at the live per-VAP ACL maps, which other
+ * threads (EasyMesh whitelist updates, greylist handling) modify under wifi_acl_map_lock.
+ * Replace them with private clones taken under that lock so encoders never walk entries that
+ * can be freed concurrently. The lock is not held during encoding, which publishes on the bus.
+ * Returns RETURN_ERR if a non-empty map could not be cloned; release the snapshot either way. */
+int webconfig_snapshot_acl_maps(webconfig_subdoc_data_t *data)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    unsigned int r, v;
+    int ret = RETURN_OK;
+
+    pthread_mutex_lock(&wifi_acl_map_lock);
+    for (r = 0; r < data->u.decoded.num_radios; r++) {
+        rdk_wifi_vap_map_t *vaps = &data->u.decoded.radios[r].vaps;
+        for (v = 0; v < vaps->num_vaps; v++) {
+            hash_map_t *live = mgr->radio_config[r].vaps.rdk_vap_array[v].acl_map;
+            vaps->rdk_vap_array[v].acl_map = NULL;
+            if (live == NULL || hash_map_count(live) == 0) {
+                continue;
+            }
+            vaps->rdk_vap_array[v].acl_map = hash_map_clone(live, sizeof(acl_entry_t));
+            if (vaps->rdk_vap_array[v].acl_map == NULL) {
+                ret = RETURN_ERR;
+            }
+        }
+    }
+    pthread_mutex_unlock(&wifi_acl_map_lock);
+
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to snapshot ACL maps\n", __func__, __LINE__);
+    }
+    return ret;
+}
+
+void webconfig_release_acl_snapshot(webconfig_subdoc_data_t *data)
+{
+    unsigned int r, v;
+
+    for (r = 0; r < data->u.decoded.num_radios; r++) {
+        rdk_wifi_vap_map_t *vaps = &data->u.decoded.radios[r].vaps;
+        for (v = 0; v < vaps->num_vaps; v++) {
+            if (vaps->rdk_vap_array[v].acl_map != NULL) {
+                hash_map_destroy(vaps->rdk_vap_array[v].acl_map);
+                vaps->rdk_vap_array[v].acl_map = NULL;
+            }
+        }
+    }
+}
+
 int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable) {
     if (!vap) {
         return RETURN_ERR;
@@ -272,11 +321,18 @@ int webconfig_send_vap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t 
     }
 
     webconfig_init_subdoc_data(data);
+    if (webconfig_snapshot_acl_maps(data) != RETURN_OK) {
+        // Publishing an incomplete ACL would overwrite consumers' caches with it.
+        webconfig_release_acl_snapshot(data);
+        free(data);
+        return RETURN_ERR;
+    }
 
     if (webconfig_encode(&ctrl->webconfig, data, type) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
 
+    webconfig_release_acl_snapshot(data);
     webconfig_data_free(data);
     free(data);
     data = NULL;
@@ -294,10 +350,16 @@ int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
     }
 
     webconfig_init_subdoc_data(data);
+    if (webconfig_snapshot_acl_maps(data) != RETURN_OK) {
+        webconfig_release_acl_snapshot(data);
+        free(data);
+        return RETURN_ERR;
+    }
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
 
+    webconfig_release_acl_snapshot(data);
     webconfig_data_free(data);
     free(data);
     data = NULL;
@@ -2047,17 +2109,21 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 return RETURN_ERR;
             }
 
+            pthread_mutex_lock(&wifi_acl_map_lock);
             if (new_config->acl_map == current_config->acl_map) {
                 wifi_util_dbg_print(WIFI_MGR,"%s %d Same data %d, skipping \n", __func__, __LINE__, vap_index);
+                pthread_mutex_unlock(&wifi_acl_map_lock);
                 continue;
             }
 
             if ((subdoc_type == webconfig_subdoc_type_mesh) && (isVapMeshBackhaul(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) == FALSE) {
+                pthread_mutex_unlock(&wifi_acl_map_lock);
                 continue;
             }
 
             if ((subdoc_type != webconfig_subdoc_type_mac_filter) &&
                 isVapHotspot(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) {
+                pthread_mutex_unlock(&wifi_acl_map_lock);
                 continue;
             }
 
@@ -2142,11 +2208,14 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                     new_acl_entry = hash_map_get_next(new_config->acl_map, new_acl_entry);
                 }
             }
+            pthread_mutex_unlock(&wifi_acl_map_lock);
         }
     }
 
     /* Free all decoded ACL maps that are not aliased to the mgr's live cache */
+    pthread_mutex_lock(&wifi_acl_map_lock);
     webconfig_free_decoded_acl_maps(data);
+    pthread_mutex_unlock(&wifi_acl_map_lock);
     return ret;
 }
 
@@ -2321,6 +2390,11 @@ static void reinject_vap_subdoc(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t subdo
     }
 
     webconfig_init_subdoc_data(data);
+    if (webconfig_snapshot_acl_maps(data) != RETURN_OK) {
+        webconfig_release_acl_snapshot(data);
+        free(data);
+        return;
+    }
 
     if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) == webconfig_error_none) {
         str = data->u.encoded.raw;
@@ -2333,6 +2407,7 @@ static void reinject_vap_subdoc(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t subdo
             __LINE__, subdoc_type);
     }
 
+    webconfig_release_acl_snapshot(data);
     webconfig_data_free(data);
     free(data);
 }

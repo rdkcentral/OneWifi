@@ -53,6 +53,7 @@ typedef struct mlo_rfc_status_params {
 
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
+pthread_mutex_t wifi_acl_map_lock = PTHREAD_MUTEX_INITIALIZER;
 #define BUF_SIZE              256
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
 void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype);
@@ -621,15 +622,18 @@ bool check_for_greylisted_mac_filter(void)
                     vap_index = wifi_vap_map->vap_array[itrj].vap_index;
                     l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
+                    pthread_mutex_lock(&wifi_acl_map_lock);
                     if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
                         acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
                         while(acl_entry != NULL) {
                             if (!is_zero_mac(acl_entry->mac) && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
+                                pthread_mutex_unlock(&wifi_acl_map_lock);
                                 return true;
                             }
                             acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
                         }
                     }
+                    pthread_mutex_unlock(&wifi_acl_map_lock);
                 }
             }
         }
@@ -2411,7 +2415,9 @@ int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
     int ret;
 
     rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+    pthread_mutex_lock(&wifi_acl_map_lock);
     if ((rdk_vap_info == NULL) || (rdk_vap_info->acl_map == NULL)) {
+        pthread_mutex_unlock(&wifi_acl_map_lock);
         wifi_util_error_print(WIFI_CTRL, "%s:%d: idk vap_info get failure for Vap:%d\n", __func__, __LINE__, vap_index);
         return RETURN_ERR;
     }
@@ -2428,6 +2434,7 @@ int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
     }
 
     if ((acl_db_count == 0) || (acl_db_count == acl_hal_count)) {
+        pthread_mutex_unlock(&wifi_acl_map_lock);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: acl_db_count = %d acl_hal_count = %d\r\n", __func__, __LINE__, acl_db_count, acl_hal_count);
         return RETURN_OK;
     }
@@ -2449,6 +2456,7 @@ int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
         acl_entry = hash_map_get_next(rdk_vap_info->acl_map,acl_entry);
         acl_count++;
     }
+    pthread_mutex_unlock(&wifi_acl_map_lock);
 
     return RETURN_OK;
 }
@@ -3685,6 +3693,7 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
             "encryption type %d != %d\n",
             __func__, __LINE__, vap->vap_index, main_vap->vap_index,
             vap->u.bss_info.security.encr, main_vap->u.bss_info.security.encr);
+        result = false;
     }
 
     return result;
