@@ -1621,7 +1621,9 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     fixed_len = (unsigned int)sizeof(mgmt->u.assoc_req);
                     frame_len = (unsigned int)assoc_dev_data->sta_data.msg_data.frame.len;
                     if ((frame_len < IEEE80211_HDRLEN + fixed_len) || (frame_len > MAX_FRAME_SZ)) {
-                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid association frame length %u, skipping client\n", __func__, __LINE__, frame_len);
+                        wifi_util_error_print(WIFI_WEBCONFIG,
+                            "%s:%d: Invalid association frame length %u, skipping client\n",
+                            __func__, __LINE__, frame_len);
                         free(em_sta_dev_info);
                         assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
                         continue;
