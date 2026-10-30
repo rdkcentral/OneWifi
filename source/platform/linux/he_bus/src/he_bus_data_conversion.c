@@ -596,6 +596,13 @@ he_bus_error_t process_bus_sub_event(he_bus_handle_t handle, int socket_fd, char
             get_client_broadcast_fd(handle, comp_name, &socket_fd);
             p_sub_data->socket_fd = socket_fd;
             if (p_obj_data->data.data_type == he_bus_data_type_bytes) {
+                if (p_obj_data->data.raw_data_len > sizeof(sub_payload_data_t)) {
+                    ELM_UNLOCK(node->element_mutex);
+                    he_bus_core_error_print("%s:%d wrong sub action raw data length:%u for %s\r\n",
+                        __func__, __LINE__, p_obj_data->data.raw_data_len, p_obj_data->name);
+                    return he_bus_error_invalid_input;
+                }
+
                 memcpy(&sub_recv_data, p_obj_data->data.raw_data.bytes,
                     p_obj_data->data.raw_data_len);
                 p_sub_data->action = sub_recv_data.action;
