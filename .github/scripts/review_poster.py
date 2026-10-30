@@ -320,18 +320,24 @@ def reconcile(all_comments, ours, candidates, all_ok, slot, cap, resolved_ids=fr
     resolved_moved = Counter((comment["path"], _finding_text(comment.get("body"), slot))
                              for comment in protected
                              if comment["id"] in resolved_ids and comment.get("line") is None)
+    # A protected comment is never replaced, so match it on what it says, not its exact body:
+    # one posted before the text line above the suggestion box must not get a copy beside it.
+    protected_text = {(comment["path"], comment.get("start_line") or None, comment["line"],
+                       _finding_text(comment.get("body"), slot))
+                      for comment in protected if comment.get("line") is not None}
     # Also dedupe within this run: an envelope may list one finding twice.
     to_post, held_back = [], 0
     for cand in candidates:
         cand_fp = _fp(cand["path"], cand.get("start_line"), cand["line"], cand["body"], slot)
-        if cand_fp in present_fps:
+        text = _finding_text(cand["body"], slot)
+        if cand_fp in present_fps or (cand["path"], cand.get("start_line") or None, cand["line"], text) in protected_text:
             continue
-        key = (cand["path"], _finding_text(cand["body"], slot))
+        present_fps.add(cand_fp)
+        key = (cand["path"], text)
         if resolved_moved[key]:
             resolved_moved[key] -= 1
             held_back += 1
             continue
-        present_fps.add(cand_fp)
         to_post.append(cand)
     if held_back:
         print(f"{held_back} finding(s) not posted again: resolved earlier, before their line moved")

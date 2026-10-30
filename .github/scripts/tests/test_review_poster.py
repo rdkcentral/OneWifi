@@ -83,6 +83,9 @@ class Reconcile(unittest.TestCase):
              [cand("a.c", 9, SUG), cand("a.c", 12, SUG)], [], [12]),                           # one held back, one posts
             ("fmt", live(1, "a.c", None, SUG), False, [cand("a.c", 9, SUG)], [1], [9]),        # unresolved: as before
             ("fmt", live(1, "a.c", None, SUG), True, [cand("a.c", 9, intro + SUG)], [], []),   # text line added since
+            ("fmt", live(1, "a.c", 5, SUG), True, [cand("a.c", 5, intro + SUG)], [], []),      # same, line unchanged
+            ("fmt", live(1, "a.c", None, SUG), True,
+             [cand("a.c", 9, SUG), cand("a.c", 9, SUG)], [], []),                              # listed twice: one finding
             ("fmt", live(1, "a.c", None, SUG), True, [cand("b.c", 9, SUG)], [], [9]),          # other file
             ("inline", live(1, "a.c", None, "W1", "inline"), True,
              [cand("a.c", 9, "W1", source="gcc-gate")], [], []),                               # inline slot too
