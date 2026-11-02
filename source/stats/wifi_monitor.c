@@ -5695,10 +5695,7 @@ int coordinator_create_provider_task_delay(void *arg)
 
     int rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
             (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
-    if (rc != RETURN_OK) {
-        /* Keep the delay task id: a stop must still be able to wait for this callback. */
-        wifi_util_error_print(WIFI_MON, "%s:%d: failed to schedule delayed provider task for key : %s\n",
-            __func__, __LINE__, provider_elem->key);
+        return TIMER_TASK_CONTINUE;
     }
     return TIMER_TASK_COMPLETE;
 }
