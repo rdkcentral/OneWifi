@@ -321,7 +321,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
     wifi_associated_dev3_timestamp_t *stats = NULL;
     wifi_associated_dev3_timestamp_t *new_stats = NULL;
     mac_addr_str_t mac_str = { 0 }, bss_str = { 0 }, link_mac_str = { 0 };
-    unsigned char key[64] = { 0 }, link_key[64] = { 0 };
+char key[64] = { 0 }, link_key[64] = { 0 };
     static const mac_address_t zero_mac = { 0 };
     int arr_vap_index = -1;
     unsigned int i = 0;
