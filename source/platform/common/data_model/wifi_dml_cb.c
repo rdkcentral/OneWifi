@@ -2219,11 +2219,19 @@ bool ssid_get_param_int_value(void *obj_ins_context, char *param_name, int *outp
         wifi_mld_common_info_t *mld_common_info = NULL;
 
         if (isVapSTAMesh(pcfg->vap_index)) {
-            mld_common_info = &pcfg->u.sta_info.mld_info.common_info;
+            wifi_util_info_print(WIFI_DMCLI, "%s:%d VAP %d is sta\n", __FUNCTION__, __LINE__,
+                pcfg->vap_index);
+            *output_value = -1;
+            return true;
         } else {
             mld_common_info = &pcfg->u.bss_info.mld_info.common_info;
         }
-        *output_value = mld_common_info->mld_enable ? (int)mld_common_info->mld_id : -1;
+
+        if (mld_common_info->mld_id == UNDEFINED_MLD_ID) {
+            *output_value = -1;
+        } else {
+            *output_value = (int)mld_common_info->mld_id;
+        }
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -2491,8 +2499,6 @@ bool ssid_set_param_int_value(void *obj_ins_context, char *param_name, int input
     }
 
     if (STR_CMP(param_name, "MLDUnit")) {
-        bool tmp_mld_enable = false;
-
         if (isVapSTAMesh(pcfg->vap_index)) {
             wifi_util_error_print(WIFI_DMCLI, "%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
             return false;
@@ -2504,26 +2510,16 @@ bool ssid_set_param_int_value(void *obj_ins_context, char *param_name, int input
         }
         wifi_util_info_print(WIFI_DMCLI, "%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__,
             input_value);
-        tmp_mld_enable = (input_value == -1) ? false : true;
 
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
-            if (tmp_mld_enable == false &&
-                vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
-                return true;
-            }
-            if (tmp_mld_enable == true &&
-                vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)input_value) {
-                return true;
-            }
+        UINT new_id = (input_value == -1) ? UNDEFINED_MLD_ID : (UINT)input_value;
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_id == new_id) {
+            return true;
         }
+
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Updating MLD Unit to value %d\n", __FUNCTION__,
             __LINE__, input_value);
-        vapInfo->u.bss_info.mld_info.common_info.mld_enable = tmp_mld_enable;
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable) {
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = input_value;
-        } else {
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
-        }
+
+        vapInfo->u.bss_info.mld_info.common_info.mld_id = new_id;
 
         set_dml_cache_vap_config_changed(instance_number - 1);
     }
