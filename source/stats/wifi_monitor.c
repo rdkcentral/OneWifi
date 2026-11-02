@@ -3396,7 +3396,7 @@ bool active_sta_connection_status(int ap_index, char *mac)
 #ifdef CONFIG_IEEE80211BE
 /* For an MLD AP, mgmt frames arrive on the MLD primary interface while the STA
  * may be tracked on another affiliated link VAP. Returns that VAP index or -1. */
-static int get_mld_sta_active_ap_index(int ap_index, char *mac)Expand commentComment on line R3398Resolved
+static int get_mld_sta_active_ap_index(int ap_index, char *mac)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
     wifi_front_haul_bss_t *bss = Get_wifi_object_bss_parameter(ap_index);
@@ -3427,7 +3427,7 @@ static int get_mld_sta_active_ap_index(int ap_index, char *mac)Expand commentCom
         str_tolower(mac);
         sta = sta_map != NULL ? (sta_data_t *)hash_map_get(sta_map, mac) : NULL;
         bool active_mld_sta = sta != NULL && sta->connection_authorized == true &&
-            sta->dev_stats.cli_MLDEnable == true;Expand commentComment on lines R3428 to R3429Resolved as Won't fix
+            sta->dev_stats.cli_MLDEnable == true;
         pthread_mutex_unlock(&g_monitor_module.data_lock);
 
         if (active_mld_sta) {
