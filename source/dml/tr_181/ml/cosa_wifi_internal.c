@@ -1023,7 +1023,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     int retPsmGet = CCSP_SUCCESS;
     char *strValue = NULL;
     bool l_interworking_RFC, l_passpoint_RFC;
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
     bool wifi_radius_greylist_status;
 #endif
     wifi_global_config_t *global_wifi_config;
@@ -1066,7 +1066,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     }
 
     push_rfc_dml_cache_to_one_wifidb(l_passpoint_RFC,wifi_event_type_wifi_passpoint_rfc);
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
     bool q_offchannelscan_RFC;
     char *str1 = NULL;
     memset(scan_strValue, 0, sizeof(scan_strValue));
@@ -1095,7 +1095,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     push_rfc_dml_cache_to_one_wifidb(l_offchannelscan_RFC,
         wifi_event_type_wifi_offchannelscan_sm_rfc);
 
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
     CosaDmlWiFiGetEnableRadiusGreylist((BOOLEAN *)&wifi_radius_greylist_status);
     push_rfc_dml_cache_to_one_wifidb(wifi_radius_greylist_status,wifi_event_type_radius_grey_list_rfc);
     wifi_util_info_print(WIFI_DMCLI,"radiusGrey list value=%d preferpriv=%d\n",wifi_radius_greylist_status,global_wifi_config->global_parameters.prefer_private);

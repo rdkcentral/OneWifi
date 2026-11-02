@@ -2200,21 +2200,21 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
     if (str == NULL) {
         return RETURN_ERR;
     }
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_)
     snprintf(str, str_len, "qca4019");
-#elif defined (_XER5_PRODUCT_REQ_)
+#elif defined(_XER5_PRODUCT_REQ_)
     if (radio_index == 0) {
         snprintf(str, str_len, "QCN6124");
     }
     else {
         snprintf(str, str_len, "QCN6224");
     }
-#elif defined (_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#elif defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     if (radio_index == 0) {
     }
     else {
     }
-#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+#elif defined(_MERCURY_PRODUCT_REQ_)
     if (radio_index == 0) {
         snprintf(str, str_len, "qca5332");
     }

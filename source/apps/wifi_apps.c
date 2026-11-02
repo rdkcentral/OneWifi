@@ -429,7 +429,7 @@ wifi_app_descriptor_t app_desc[] = {
         NULL, NULL
     },
 #endif
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
     {
         wifi_app_inst_ocs, 0,
         wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_command,

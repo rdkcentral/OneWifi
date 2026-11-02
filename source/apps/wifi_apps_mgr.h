@@ -98,7 +98,7 @@ typedef struct {
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
         blaster_data_t       blaster;
 #endif
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         off_channel_param_t  ocs[MAX_NUM_RADIOS];
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
