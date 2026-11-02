@@ -326,7 +326,7 @@ int em_client_stats_store(unsigned int radio_index, unsigned int vap_index, int 
     wifi_associated_dev3_timestamp_t *stats = NULL;
     wifi_associated_dev3_timestamp_t *new_stats = NULL;
     mac_addr_str_t mac_str = { 0 }, bss_str = { 0 }, link_mac_str = { 0 };
-char key[64] = { 0 }, link_key[64] = { 0 };
+    char key[64] = { 0 }, link_key[64] = { 0 };
     static const mac_address_t zero_mac = { 0 };
     int arr_vap_index = -1;
     unsigned int i = 0;
@@ -450,8 +450,9 @@ char key[64] = { 0 }, link_key[64] = { 0 };
                     wifi_util_error_print(WIFI_EM, "%s:%d strdup failed for old link_mac_map key\n",
                         __func__, __LINE__);
                     if (new_primary_inserted) {
-                        void *rolled_back = hash_map_remove(
-                            em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map,
+                        void *rolled_back = hash_map_remove(em_ap_metrics_report_cache.radio_report[radio_index]
+                                                                .ap_data[arr_vap_index]
+                                                                .client_stats_map,
                             key);
                         free(rolled_back);
                     }
@@ -481,9 +482,9 @@ char key[64] = { 0 }, link_key[64] = { 0 };
             if (had_old_mapping) {
                 old_primary_key = (char *)hash_map_remove(link_mac_map, link_key);
             }
-            int8_t put_rc = link_mac_map != NULL
-                ? hash_map_put_preserve_on_failure(link_mac_map, dup_link_key, dup_primary_key)
-                : -1;
+            int8_t put_rc = link_mac_map != NULL ?
+                hash_map_put_preserve_on_failure(link_mac_map, dup_link_key, dup_primary_key) :
+                -1;
 
             if (put_rc != 0) {
                 free(dup_link_key);
@@ -1957,8 +1958,8 @@ static bool em_mlo_client_records_exist(const char *primary_mac)
             element = client_stats_map->queue->head;
             while (element != NULL) {
                 hash_element_t *hash_element = (hash_element_t *)element->data;
-                char *key_mac = hash_element != NULL && hash_element->key != NULL
-                    ? strrchr(hash_element->key, '@') : NULL;
+                char *key_mac = hash_element != NULL && hash_element->key != NULL ? strrchr(hash_element->key, '@') :
+                                                                                    NULL;
 
                 if (key_mac != NULL && strcmp(key_mac + 1, primary_mac) == 0) {
                     return true;
@@ -1994,15 +1995,13 @@ static wifi_associated_dev3_timestamp_t *em_remove_mlo_client_records(ap_metrics
     while (element != NULL) {
         element_t *next = element->next;
         hash_element_t *hash_element = (hash_element_t *)element->data;
-        char *key_mac = hash_element != NULL && hash_element->key != NULL
-            ? strrchr(hash_element->key, '@') : NULL;
+        char *key_mac = hash_element != NULL && hash_element->key != NULL ? strrchr(hash_element->key, '@') : NULL;
 
         if (hash_element != NULL && hash_element->key != NULL && key_mac != NULL &&
             strcmp(key_mac + 1, primary_mac_copy) == 0) {
             em_purge_link_mac_map_for_primary_key(ap_data->link_mac_map, hash_element->key);
-            wifi_associated_dev3_timestamp_t *removed_stats =
-                (wifi_associated_dev3_timestamp_t *)hash_map_remove(
-                    ap_data->client_stats_map, hash_element->key);
+            wifi_associated_dev3_timestamp_t *removed_stats = (wifi_associated_dev3_timestamp_t *)hash_map_remove(
+                ap_data->client_stats_map, hash_element->key);
 
             if (removed_stats != NULL) {
                 free(removed_stats);
@@ -2763,7 +2762,7 @@ cleanup:
     pthread_mutex_unlock(&em_ap_report_task_lock);
     /* TIMER_TASK_CONTINUE would re-run immediately; COMPLETE keeps the periodic task and
      * retries on the next interval, which is intended for transient publish failures. */
-			return TIMER_TASK_COMPLETE;
+    return TIMER_TASK_COMPLETE;
 }
 
 int em_ap_report_config_task(wifi_app_t *app, em_config_t *em_config,

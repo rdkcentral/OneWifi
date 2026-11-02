@@ -5693,8 +5693,9 @@ int coordinator_create_provider_task_delay(void *arg)
     wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)arg;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
-    int rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
-            (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
+    int rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority,
+        &provider_elem->provider_task_sched_id, provider_execute_task, (void *)provider_elem,
+        provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
     if (rc != RETURN_OK) {
         return TIMER_TASK_CONTINUE;
     }
@@ -5707,11 +5708,13 @@ int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
     int rc;
 
     if (provider_elem->delay_provider_sec == 0) {
-        rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
-                (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
+        rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority,
+            &provider_elem->provider_task_sched_id, provider_execute_task, (void *)provider_elem,
+            provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
     } else {
-        rc = scheduler_add_timer_task(mon_data->sched, 0, &provider_elem->provider_task_sched_id, coordinator_create_provider_task_delay,
-            (void *)provider_elem, provider_elem->delay_provider_sec * 1000, 1, 0);
+        rc = scheduler_add_timer_task(mon_data->sched, 0, &provider_elem->provider_task_sched_id,
+            coordinator_create_provider_task_delay, (void *)provider_elem, provider_elem->delay_provider_sec * 1000, 1,
+            0);
     }
     return rc;
 }
@@ -5927,9 +5930,8 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
     if (stat_desc->copy_stats_from_cache != NULL) {
         if (coordinator_create_provider_task(provider_elem) != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_task failed\n", __func__,__LINE__);
-            wifi_mon_provider_element_t *removed_provider =
-                (wifi_mon_provider_element_t *)hash_map_remove(
-                    (*collector_elem)->provider_list, provider_elem->key);
+            wifi_mon_provider_element_t *removed_provider = (wifi_mon_provider_element_t *)hash_map_remove(
+                (*collector_elem)->provider_list, provider_elem->key);
             coordinator_free_provider_elem(&removed_provider);
             coordinator_cleanup_failed_collector(collector_elem);
             return RETURN_ERR;
