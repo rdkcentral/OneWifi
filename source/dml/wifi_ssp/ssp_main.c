@@ -47,7 +47,7 @@
 #include "telemetry_busmessage_sender.h"
 #include "secure_wrapper.h"
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 #include "webconfig_framework.h"
 #endif
 
@@ -115,7 +115,7 @@ void* getSyscfgLogLevel( void *arg )
 
     pthread_detach(pthread_self());
 	UNREFERENCED_PARAMETER(arg);
-#if defined(_COSA_INTEL_USG_ATOM_) && !defined (_XB6_PRODUCT_REQ_)
+#if defined(_COSA_INTEL_USG_ATOM_) && !defined(_XB6_PRODUCT_REQ_)
     #define DATA_SIZE 1024
     FILE *fp1;
     char buf[DATA_SIZE] = {0};
@@ -556,7 +556,7 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
     }
 #elif defined(_ANSC_LINUX)
 #if 0
-  #if defined (_CBR_PRODUCT_REQ_) || (defined (_XB6_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_)) //Applicable only for TCHCBR, TCHXB6 & TCHXB7
+  #if defined(_CBR_PRODUCT_REQ_) || (defined(_XB6_PRODUCT_REQ_) && defined(_COSA_BCM_ARM_)) //Applicable only for TCHCBR, TCHXB6 & TCHXB7
     if(!drop_root())
     {
         CcspTraceError(("drop_root function failed!\n"));
@@ -642,7 +642,7 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
         exit(1);
     }
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     /* Inform Webconfig framework if component is coming after crash */
     check_component_crash("/tmp/wifi_initialized");
 #endif

@@ -210,7 +210,7 @@ wifi_lq_descriptor_t* get_lq_descriptor()
     static wifi_lq_descriptor_t desc;
 
     if (!initialized) {
-#if !defined(_PLATFORM_BANANAPI_R4_) &&  (defined(ONEWIFI_RDKB_APP_SUPPORT) || defined(_GREXT02ACTS_PRODUCT_REQ_))
+#if !defined(_PLATFORM_BANANAPI_R4_) &&  (defined(ONEWIFI_RDKB_APP_SUPPORT) || defined(_MERCURY_PRODUCT_REQ_))
         desc.periodic_caffinity_stats_update_fn = periodic_caffinity_stats_update_impl;
         desc.register_station_mac_fn            = register_station_mac_impl;
         desc.unregister_station_mac_fn          = unregister_station_mac_impl;

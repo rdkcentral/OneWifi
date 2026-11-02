@@ -977,7 +977,8 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         return bus_error_out_of_resources;
     }
     
-    if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+    if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT)) {
             if ((is_acs_channel_updated(num_of_radios) == false) ||
                 (check_wifi_radio_sched_timeout_active_status(ctrl) == true)) {
@@ -1038,7 +1039,8 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         p_data->raw_data_len = str_size;
 
         webconfig_data_free(data);
-    } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    } else if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {
             wifi_util_dbg_print(WIFI_CTRL, "%s wifidb and cache are not synced!\n", __FUNCTION__);
             free(data);
@@ -2561,6 +2563,28 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
     data_ptr = (frame_data_t *)p_data->value.raw_data.bytes;
 
     if (data_ptr != NULL && len != 0) {
+        size_t frame_hdr_len = sizeof(frame_data_t) - MAX_FRAME_SZ;
+        size_t payload_len;
+
+        if (len < frame_hdr_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame blob len:%u\n", 
+                __func__, __LINE__, len);
+            return;
+        }
+
+        if (data_ptr->frame.len > MAX_FRAME_SZ) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len too large:%u\n", 
+                __func__, __LINE__, data_ptr->frame.len);
+            return;
+        }
+
+        payload_len = len - frame_hdr_len;
+        if ((size_t)data_ptr->frame.len > payload_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len:%u exceeds payload:%zu\n", 
+                __func__, __LINE__, data_ptr->frame.len, payload_len);
+            return;
+        }
+
         memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&data_ptr->frame.sta_mac,
             sizeof(mac_address_t));
         frame_data.frame.ap_index = data_ptr->frame.ap_index;
@@ -2582,7 +2606,7 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
 #ifdef WIFI_HAL_VERSION_3_PHASE2
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
 #else
-#if defined(_XB7_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
             frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);

@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-# Copyright 2026 RDK Management — Apache-2.0 (see gcc_diff_gate.py header).
+#
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 """Unit tests for gcc_diff_gate.py: build_inline, the envelope status main() writes,
 preexisting / base_findings (findings the base already had) and recompile_cmd (the per-file recompile flags)."""
 import contextlib
@@ -141,20 +158,26 @@ class RecompileCmd(unittest.TestCase):
     def test_recompile_cmd(self):
         flags = ["-Wvla", "-Wint-conversion"]
         cases = [
-            # (DB args, path, OPT, must be in the command, must not be)
-            (["gcc", "-Werror", "-Werror=maybe-uninitialized", "a.c"], "source/a.c", "-Os",
-             ["-Os", "-Wvla", "-Wint-conversion", "-Wno-error=int-conversion", os.devnull],
+            # (DB args, path, OPT, GATE_CC/GATE_CXX, compiler run, must be in the command, must not be)
+            (["gcc", "-Werror", "-Werror=maybe-uninitialized", "a.c"], "source/a.c", "-Os", "",
+             "gcc", ["-Os", "-Wvla", "-Wint-conversion", "-Wno-error=int-conversion", os.devnull],
              ["-Werror", "-Werror=maybe-uninitialized"]),
-            (["g++", "-Werror=return-type", "a.cpp"], "source/a.cpp", "-Os",      # C-only flag dropped
-             ["-Os", "-Wvla", "-Wno-error=vla"],
+            (["g++", "-Werror=return-type", "a.cpp"], "source/a.cpp", "-Os", "",  # C-only flag dropped
+             "g++", ["-Os", "-Wvla", "-Wno-error=vla"],
              ["-Wint-conversion", "-Wno-error=int-conversion", "-Werror=return-type"]),
-            (["gcc", "-Werror=format", "a.c"], "source/a.c", "",                  # OPT unset
-             ["-Wvla"], ["-Os", "-Werror=format"]),
+            (["gcc", "-Werror=format", "a.c"], "source/a.c", "", "",              # OPT unset
+             "gcc", ["-Wvla", "-U_FORTIFY_SOURCE"], ["-Os", "-Werror=format"]),
+            (["/usr/bin/gcc", "a.c"], "source/a.c", "-Os", "-14",                 # compiler swapped
+             "gcc-14", ["-Wint-conversion"], ["/usr/bin/gcc"]),
+            (["/usr/bin/g++", "a.cpp"], "source/a.cpp", "-Os", "-14",
+             "g++-14", ["-Wvla"], ["/usr/bin/g++", "-Wint-conversion"]),
         ]
         with mock.patch.multiple(gcc_gate, ALL_FLAGS=flags, C_ONLY={"-Wint-conversion"}):
-            for args, path, opt, present, absent in cases:
-                with mock.patch.object(gcc_gate, "OPT", opt):
+            for args, path, opt, suffix, compiler, present, absent in cases:
+                swap = {"GATE_CC": "gcc" + suffix if suffix else "", "GATE_CXX": "g++" + suffix if suffix else ""}
+                with mock.patch.multiple(gcc_gate, OPT=opt, **swap):
                     cmd = gcc_gate.recompile_cmd(args, path)
+                self.assertEqual(cmd[0], compiler, (path, suffix))
                 for flag in present:
                     self.assertIn(flag, cmd, (path, opt))
                 for flag in absent:
