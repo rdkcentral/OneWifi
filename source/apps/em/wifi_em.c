@@ -4660,13 +4660,8 @@ int em_deinit(wifi_app_t *app)
         for (int j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
             ap_metrics_data_t *ap_data = &em_ap_metrics_report_cache.radio_report[i].ap_data[j];
 
-            /* hash_map_destroy() frees keys only; values must be freed by the caller first. */
-            tmp_data = hash_map_get_first(ap_data->client_stats_map);
-            while (tmp_data != NULL) {
-                void *next_data = hash_map_get_next(ap_data->client_stats_map, tmp_data);
-                free(tmp_data);
-                tmp_data = next_data;
-            }
+            /* hash_map_cleanup() frees both keys and values. */
+            hash_map_cleanup(ap_data->client_stats_map);
             hash_map_destroy(ap_data->client_stats_map);
             ap_data->client_stats_map = NULL;
 
