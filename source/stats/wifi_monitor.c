@@ -5695,6 +5695,7 @@ int coordinator_create_provider_task_delay(void *arg)
 
     int rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
             (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
+    if (rc != RETURN_OK) {
         return TIMER_TASK_CONTINUE;
     }
     return TIMER_TASK_COMPLETE;
