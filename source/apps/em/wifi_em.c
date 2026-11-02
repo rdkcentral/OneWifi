@@ -17,6 +17,7 @@
   limitations under the License.
  **************************************************************************/
 
+#include <strings.h>
 #include "scheduler.h"
 #include "wifi_em_utils.h"
 #include "wifi_em.h"
@@ -115,6 +116,8 @@ em_ap_metrics_report_cache_t em_ap_metrics_report_cache = { 0 };
 /* Guards all client_stats_map hash maps in em_ap_metrics_report_cache against
  * concurrent put/remove/traversal from the disassoc path and the scheduled
  * AP report task. */
+/* Lock order: em_ap_report_schedule_lock > em_ap_report_task_lock > em_client_stats_map_lock >
+ * em_client_type_map_lock. Never take an earlier lock while holding a later one. */
 static pthread_mutex_t em_client_stats_map_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t em_client_type_map_lock = PTHREAD_MUTEX_INITIALIZER;
 /* Guards the whole ap_report_push_cb() run; scheduler_cancel_timer_task() only stops future
@@ -122,7 +125,9 @@ static pthread_mutex_t em_client_type_map_lock = PTHREAD_MUTEX_INITIALIZER;
  * before it destroys the maps the callback reads. The shutdown flag also rejects callbacks
  * selected before cancellation but blocked on this lock. */
 static pthread_mutex_t em_ap_report_task_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t em_ap_report_schedule_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool em_ap_report_shutting_down = false;
+static bool em_client_type_shutting_down = false;
 em_client_assoc_stats_t em_client_assoc_stats[MAX_NUM_RADIOS] = { 0 };
 client_type_data_t client_type_info = { 0 };
 
@@ -375,6 +380,8 @@ char key[64] = { 0 }, link_key[64] = { 0 };
         __func__, __LINE__, key, arr_vap_index);
 
     pthread_mutex_lock(&em_client_stats_map_lock);
+    bool primary_cache_ready = false;
+    bool new_primary_inserted = false;
     stats = (wifi_associated_dev3_timestamp_t *)hash_map_get(
         em_ap_metrics_report_cache.radio_report[radio_index]
             .ap_data[arr_vap_index]
@@ -395,31 +402,63 @@ char key[64] = { 0 }, link_key[64] = { 0 };
             new_stats->last_update_time = *timestamp;
         }
 
-        hash_map_put(em_ap_metrics_report_cache.radio_report[radio_index]
-                         .ap_data[arr_vap_index]
-                         .client_stats_map,
-            strdup(key), new_stats);
+        hash_map_t *client_stats_map =
+            em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map;
+        char *primary_key = strdup(key);
+        int8_t put_rc = -1;
+
+        if (client_stats_map != NULL && primary_key != NULL) {
+            put_rc = hash_map_put_preserve_on_failure(client_stats_map, primary_key, new_stats);
+        }
+        if (put_rc != 0) {
+            free(primary_key);
+            free(new_stats);
+            wifi_util_error_print(WIFI_EM, "%s:%d failed to update client stats cache\n",
+                __func__, __LINE__);
+            pthread_mutex_unlock(&em_client_stats_map_lock);
+            return RETURN_ERR;
+        }
+        primary_cache_ready = true;
+        new_primary_inserted = true;
     } else {
         memcpy(&stats->associated_dev3, dev3, sizeof(wifi_associated_dev3_t));
         if (timestamp != NULL) {
             stats->last_update_time = *timestamp;
         }
+        primary_cache_ready = true;
     }
 
     /* For MLO clients, dev3->cli_MACAddress is the MLD address; index the per-link
      * STA MAC too so the disassoc path (which only knows the link MAC) can find this entry. */
-    if (memcmp(link_mac, zero_mac, sizeof(mac_address_t)) != 0 &&
+    if (primary_cache_ready && memcmp(link_mac, zero_mac, sizeof(mac_address_t)) != 0 &&
         memcmp(link_mac, dev3->cli_MACAddress, sizeof(mac_address_t)) != 0) {
-        char *old_primary_key = NULL;
         char *dup_link_key = NULL;
         char *dup_primary_key = NULL;
+        char *old_link_key = NULL;
+        char *old_primary_key = NULL;
+        bool had_old_mapping = false;
 
         to_mac_str(link_mac, link_mac_str);
         snprintf(link_key, 64, "%s@%s", bss_str, link_mac_str);
-        old_primary_key = (char *)hash_map_remove(
-            em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].link_mac_map, link_key);
-        if (old_primary_key != NULL) {
-            free(old_primary_key);
+        hash_map_t *link_mac_map =
+            em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].link_mac_map;
+        if (link_mac_map != NULL) {
+            had_old_mapping = hash_map_get(link_mac_map, link_key) != NULL;
+            if (had_old_mapping) {
+                old_link_key = strdup((char *)link_key);
+                if (old_link_key == NULL) {
+                    wifi_util_error_print(WIFI_EM, "%s:%d strdup failed for old link_mac_map key\n",
+                        __func__, __LINE__);
+                    if (new_primary_inserted) {
+                        void *rolled_back = hash_map_remove(
+                            em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map,
+                            key);
+                        free(rolled_back);
+                    }
+                    pthread_mutex_unlock(&em_client_stats_map_lock);
+                    return RETURN_ERR;
+                }
+            }
         }
 
         dup_link_key = strdup((char *)link_key);
@@ -429,14 +468,75 @@ char key[64] = { 0 }, link_key[64] = { 0 };
                 __func__, __LINE__);
             free(dup_link_key);
             free(dup_primary_key);
-        } else if (hash_map_put(
-                       em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].link_mac_map,
-                       dup_link_key, dup_primary_key) != 0) {
-            /* hash_map_put() may already have freed dup_link_key/dup_primary_key on some
-             * failure paths, so they cannot be safely freed here without risking a double
-             * free; accept the leak on this rare OOM path instead of crashing. */
-            wifi_util_error_print(WIFI_EM, "%s:%d hash_map_put failed for link_mac_map entry\n",
-                __func__, __LINE__);
+            free(old_link_key);
+            if (new_primary_inserted) {
+                void *rolled_back = hash_map_remove(
+                    em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map,
+                    key);
+                free(rolled_back);
+            }
+            pthread_mutex_unlock(&em_client_stats_map_lock);
+            return RETURN_ERR;
+        } else {
+            if (had_old_mapping) {
+                old_primary_key = (char *)hash_map_remove(link_mac_map, link_key);
+            }
+            int8_t put_rc = link_mac_map != NULL
+                ? hash_map_put_preserve_on_failure(link_mac_map, dup_link_key, dup_primary_key)
+                : -1;
+
+            if (put_rc != 0) {
+                free(dup_link_key);
+                free(dup_primary_key);
+                if (had_old_mapping) {
+                    int8_t restore_rc = hash_map_put_preserve_on_failure(
+                        link_mac_map, old_link_key, old_primary_key);
+                    if (restore_rc != 0) {
+                        free(old_link_key);
+                        free(old_primary_key);
+                        old_link_key = NULL;
+                        old_primary_key = NULL;
+                    } else {
+                        old_link_key = NULL;
+                        old_primary_key = NULL;
+                    }
+                }
+                free(old_link_key);
+                wifi_util_error_print(WIFI_EM, "%s:%d hash_map_put failed for link_mac_map entry\n",
+                    __func__, __LINE__);
+                if (new_primary_inserted) {
+                    void *rolled_back = hash_map_remove(
+                        em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map,
+                        key);
+                    free(rolled_back);
+                }
+                pthread_mutex_unlock(&em_client_stats_map_lock);
+                return RETURN_ERR;
+            }
+            free(old_link_key);
+            if (old_primary_key != NULL && strcmp(old_primary_key, key) != 0) {
+                /* The link moved to another MLD; drop the old MLD record unless another
+                 * link still maps to it. */
+                bool still_referenced = false;
+                element_t *le = link_mac_map->queue->head;
+
+                while (le != NULL && !still_referenced) {
+                    hash_element_t *lhe = (hash_element_t *)le->data;
+
+                    if (lhe != NULL && lhe->data != NULL &&
+                        strcmp((char *)lhe->data, old_primary_key) == 0) {
+                        still_referenced = true;
+                    }
+                    le = le->next;
+                }
+                if (!still_referenced) {
+                    void *stale = hash_map_remove(
+                        em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map,
+                        old_primary_key);
+                    free(stale);
+                }
+            }
+            free(old_primary_key);
         }
     }
     pthread_mutex_unlock(&em_client_stats_map_lock);
@@ -1673,6 +1773,11 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
     to_mac_str(sta_info->mac_addr, client_mac);
 
     pthread_mutex_lock(&em_client_type_map_lock);
+    if (em_client_type_shutting_down ||
+        client_type_info.sta_client_type.client_type_map == NULL) {
+        pthread_mutex_unlock(&em_client_type_map_lock);
+        return RETURN_ERR;
+    }
     cli_data = (sta_client_info_t *)hash_map_get(
         client_type_info.sta_client_type.client_type_map, client_mac);
     if (cli_data == NULL) {
@@ -1688,8 +1793,25 @@ int handle_sta_client_info(wifi_app_t *app, void *data)
         memcpy(cli_data->client_type, sta_info->client_type, sizeof(cli_data->client_type));
         cli_data->client_type[sizeof(cli_data->client_type) - 1] = '\0';
 
-        hash_map_put(client_type_info.sta_client_type.client_type_map, strdup(client_mac),
-            cli_data);
+        char *client_key = strdup(client_mac);
+        if (client_key == NULL) {
+            free(client_key);
+            free(cli_data);
+            pthread_mutex_unlock(&em_client_type_map_lock);
+            wifi_util_error_print(WIFI_EM, "%s:%d failed to update client type cache\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        int8_t put_rc = hash_map_put_preserve_on_failure(
+            client_type_info.sta_client_type.client_type_map, client_key, cli_data);
+        if (put_rc != 0) {
+            free(client_key);
+            free(cli_data);
+            pthread_mutex_unlock(&em_client_type_map_lock);
+            wifi_util_error_print(WIFI_EM, "%s:%d failed to update client type cache\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
         wifi_util_dbg_print(WIFI_EM, "%s:%d Client Type Updated to stats cache [%s]\n", __func__,
             __LINE__, cli_data->client_type);
     } else {
@@ -1800,18 +1922,52 @@ static void em_purge_link_mac_map_for_primary_key(hash_map_t *link_mac_map, cons
         return;
     }
 
+    /* primary_key may point at a value owned by link_mac_map; keep a private copy since
+     * removing an entry frees its value. */
+    char primary_copy[64];
+
+    snprintf(primary_copy, sizeof(primary_copy), "%s", primary_key);
+
     e = link_mac_map->queue->head;
     while (e != NULL) {
         element_t *next = e->next;
         hash_element_t *he = (hash_element_t *)e->data;
 
         if (he != NULL && he->key != NULL && he->data != NULL &&
-            strcmp((char *)he->data, primary_key) == 0) {
+            strcmp((char *)he->data, primary_copy) == 0) {
             char *stale_value = (char *)hash_map_remove(link_mac_map, he->key);
             free(stale_value);
         }
         e = next;
     }
+}
+
+static bool em_mlo_client_records_exist(const char *primary_mac)
+{
+    for (int i = 0; i < MAX_NUM_RADIOS; i++) {
+        for (int j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
+            hash_map_t *client_stats_map =
+                em_ap_metrics_report_cache.radio_report[i].ap_data[j].client_stats_map;
+            element_t *element;
+
+            if (client_stats_map == NULL || client_stats_map->queue == NULL) {
+                continue;
+            }
+
+            element = client_stats_map->queue->head;
+            while (element != NULL) {
+                hash_element_t *hash_element = (hash_element_t *)element->data;
+                char *key_mac = hash_element != NULL && hash_element->key != NULL
+                    ? strrchr(hash_element->key, '@') : NULL;
+
+                if (key_mac != NULL && strcmp(key_mac + 1, primary_mac) == 0) {
+                    return true;
+                }
+                element = element->next;
+            }
+        }
+    }
+    return false;
 }
 
 /* Remove the affected VAP's MLD record and any duplicate records on that VAP.
@@ -1820,16 +1976,18 @@ static wifi_associated_dev3_timestamp_t *em_remove_mlo_client_records(ap_metrics
     const char *primary_mac, const char *preferred_key)
 {
     wifi_associated_dev3_timestamp_t *stats = NULL;
+    char primary_mac_copy[32];
 
     if (ap_data == NULL || ap_data->client_stats_map == NULL ||
         ap_data->client_stats_map->queue == NULL || primary_mac == NULL) {
         return NULL;
     }
+    snprintf(primary_mac_copy, sizeof(primary_mac_copy), "%s", primary_mac);
 
     if (preferred_key != NULL) {
-        em_purge_link_mac_map_for_primary_key(ap_data->link_mac_map, preferred_key);
         stats = (wifi_associated_dev3_timestamp_t *)hash_map_remove(
             ap_data->client_stats_map, preferred_key);
+        em_purge_link_mac_map_for_primary_key(ap_data->link_mac_map, preferred_key);
     }
 
     element_t *element = ap_data->client_stats_map->queue->head;
@@ -1840,7 +1998,7 @@ static wifi_associated_dev3_timestamp_t *em_remove_mlo_client_records(ap_metrics
             ? strrchr(hash_element->key, '@') : NULL;
 
         if (hash_element != NULL && hash_element->key != NULL && key_mac != NULL &&
-            strcmp(key_mac + 1, primary_mac) == 0) {
+            strcmp(key_mac + 1, primary_mac_copy) == 0) {
             em_purge_link_mac_map_for_primary_key(ap_data->link_mac_map, hash_element->key);
             wifi_associated_dev3_timestamp_t *removed_stats =
                 (wifi_associated_dev3_timestamp_t *)hash_map_remove(
@@ -1854,6 +2012,37 @@ static wifi_associated_dev3_timestamp_t *em_remove_mlo_client_records(ap_metrics
     }
 
     return stats;
+}
+
+/* A secondary-link disassoc is re-routed by the monitor to the active MLD link's VAP, so the
+ * per-link entry may be cached under a different VAP than the event's. Locate it by STA MAC. */
+static ap_metrics_data_t *em_find_mlo_link_cache(const char *sta_mac_str, char **primary_key)
+{
+    for (int i = 0; i < MAX_NUM_RADIOS; i++) {
+        for (int j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
+            ap_metrics_data_t *ap_data = &em_ap_metrics_report_cache.radio_report[i].ap_data[j];
+            hash_map_t *link_mac_map = ap_data->link_mac_map;
+            element_t *e;
+
+            if (link_mac_map == NULL || link_mac_map->queue == NULL) {
+                continue;
+            }
+            for (e = link_mac_map->queue->head; e != NULL; e = e->next) {
+                hash_element_t *he = (hash_element_t *)e->data;
+                const char *sep;
+
+                if (he == NULL || he->key == NULL || he->data == NULL) {
+                    continue;
+                }
+                sep = strrchr(he->key, '@');
+                if (sep != NULL && strcasecmp(sep + 1, sta_mac_str) == 0) {
+                    *primary_key = (char *)he->data;
+                    return ap_data;
+                }
+            }
+        }
+    }
+    return NULL;
 }
 
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
@@ -1870,6 +2059,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     int arr_vap_index = -1;
     wifi_vap_info_t *vap_info = NULL;
     wifi_associated_dev3_timestamp_t *stats = NULL;
+    bool is_mlo = false;
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d : Sta disassoc event \n", __func__, __LINE__);
 
@@ -1926,6 +2116,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     stats = (wifi_associated_dev3_timestamp_t *)hash_map_get(
         em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].client_stats_map, key);
     if (stats != NULL) {
+        is_mlo = stats->associated_dev3.cli_MLDEnable;
         if (stats->associated_dev3.cli_MLDEnable) {
             char *primary_mac = strrchr(key, '@');
 
@@ -1950,13 +2141,19 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
          * only carries the per-link STA MAC, so resolve it via the link_mac_map reverse index. */
         char *primary_key = (char *)hash_map_get(
             em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index].link_mac_map, key);
-        if (primary_key != NULL) {
+        ap_metrics_data_t *link_ap_data =
+            &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index];
+
+        if (primary_key == NULL) {
+            link_ap_data = em_find_mlo_link_cache(sta_mac_str, &primary_key);
+        }
+        if (primary_key != NULL && link_ap_data != NULL) {
+            is_mlo = true;
             char *primary_mac = strrchr(primary_key, '@');
 
             if (primary_mac != NULL) {
-                stats = em_remove_mlo_client_records(
-                    &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index],
-                    primary_mac + 1, primary_key);
+                stats = em_remove_mlo_client_records(link_ap_data, primary_mac + 1,
+                    primary_key);
             } else {
                 wifi_util_error_print(WIFI_EM, "%s:%d: invalid MLO primary key %s\n",
                     __func__, __LINE__, primary_key);
@@ -1974,10 +2171,15 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
             __LINE__, sta_mac_str);
     }
 
-    int publish_rc = em_publish_client_disassoc_stats(app, vap_info, assoc_data);
-    if (publish_rc != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Failed to publish %s\n", __func__, __LINE__,
-            WIFI_EM_CLIENT_DISASSOC_STATS);
+    int publish_rc = RETURN_OK;
+
+    /* Without cached counters the event carries no valid traffic stats; do not publish zeros. */
+    if (stats != NULL) {
+        publish_rc = em_publish_client_disassoc_stats(app, vap_info, assoc_data);
+        if (publish_rc != RETURN_OK) {
+            wifi_util_error_print(WIFI_EM, "%s:%d Failed to publish %s\n", __func__, __LINE__,
+                WIFI_EM_CLIENT_DISASSOC_STATS);
+        }
     }
 
     if (stats != NULL) {
@@ -1985,6 +2187,15 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     }
 
     to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
+    if (is_mlo) {
+        pthread_mutex_lock(&em_client_stats_map_lock);
+        bool mlo_record_remains = em_mlo_client_records_exist(client_mac);
+        pthread_mutex_unlock(&em_client_stats_map_lock);
+        if (mlo_record_remains) {
+            return publish_rc;
+        }
+    }
+
     pthread_mutex_lock(&em_client_type_map_lock);
     sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_remove(
         client_type_info.sta_client_type.client_type_map, client_mac);
@@ -2005,14 +2216,11 @@ static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *va
     assoc_dev_data_t *assoc_data)
 {
 #define DISASSOC_JSON_BUF_SZ 1536
-#define DISASSOC_AFF_BUF_SZ (256 * MAX_NUM_RADIOS)
 
     wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
     raw_data_t rdata = { 0 };
     char *json_buf = NULL;
-    char *affiliated_buf = NULL;
-    mac_addr_str_t bssid_str, sta_str, mld_str;
-    size_t aff_pos;
+    mac_addr_str_t bssid_str, sta_str;
     int rc = RETURN_ERR;
 
     if ((vap_info == NULL) || (assoc_data == NULL)) {
@@ -2026,62 +2234,15 @@ static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *va
         return RETURN_ERR;
     }
 
-    affiliated_buf = (char *)malloc(DISASSOC_AFF_BUF_SZ);
-    if (affiliated_buf == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: malloc failed for affiliated_buf\n", __func__,
-            __LINE__);
-        free(json_buf);
-        return RETURN_ERR;
-    }
-
     to_mac_str(vap_info->u.bss_info.bssid, bssid_str);
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, sta_str);
-
-    /*
-     * Affiliated STA Metrics, Wi-Fi 7 MLO.
-     * mld_info.cli_LinkInfo[].cli_Valid is never populated on the disassoc
-     * path (HAL producers only set AP index, STA MAC, and reason code), so
-     * it cannot be used here. dev_stats.cli_MLDEnable/cli_MLDAddr are
-     * restored earlier from the cached per-STA stats and reliably reflect
-     * the MLD state recorded at connect time, so we use those instead.
-     * TODO: replace the zeroed traffic counters with actual per-link values.
-     */
-    aff_pos = 0;
-    affiliated_buf[aff_pos++] = '[';
-    affiliated_buf[aff_pos] = '\0';
-
-    if (assoc_data->dev_stats.cli_MLDEnable) {
-        to_mac_str(assoc_data->dev_stats.cli_MLDAddr, mld_str);
-        int written = snprintf(affiliated_buf + aff_pos, DISASSOC_AFF_BUF_SZ - aff_pos,
-            "{\"MLD MacAddress\":\"%s\","
-            "\"BytesSent\":0,\"BytesReceived\":0,"
-            "\"PacketsSent\":0,\"PacketsReceived\":0,"
-            "\"PacketsSentErrors\":0}",
-            mld_str);
-        if (written < 0 || (size_t)written >= (DISASSOC_AFF_BUF_SZ - aff_pos)) {
-            /* truncation or error - no room for more entries */
-            wifi_util_error_print(WIFI_EM, "%s:%d : no room in affiliated_buf\n", __func__,
-                __LINE__);
-            aff_pos = DISASSOC_AFF_BUF_SZ - 1;
-        } else {
-            aff_pos += (size_t)written;
-        }
-    }
-
-    /* reserve the last bytes for ']' + '\0' */
-    if (aff_pos > DISASSOC_AFF_BUF_SZ - 2) {
-        aff_pos = DISASSOC_AFF_BUF_SZ - 2;
-    }
-    affiliated_buf[aff_pos++] = ']';
-    affiliated_buf[aff_pos] = '\0';
 
     snprintf(json_buf, DISASSOC_JSON_BUF_SZ,
         "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
         "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u,"
         "\"Traffic Stats\":{\"BytesSent\":%llu,\"BytesReceived\":%llu,"
         "\"PacketsSent\":%llu,\"PacketsReceived\":%llu,\"TxPacketsErrors\":%llu,"
-        "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu},"
-        "\"Affiliated STA Metrics\":%s}",
+        "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu}}",
         bssid_str, sta_str, (unsigned int)assoc_data->reason,
         (unsigned long long)assoc_data->dev_stats.cli_BytesSent,
         (unsigned long long)assoc_data->dev_stats.cli_BytesReceived,
@@ -2089,10 +2250,7 @@ static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *va
         (unsigned long long)assoc_data->dev_stats.cli_PacketsReceived,
         (unsigned long long)assoc_data->dev_stats.cli_ErrorsSent,
         (unsigned long long)assoc_data->dev_stats.cli_RxErrors,
-        (unsigned long long)assoc_data->dev_stats.cli_RetransCount, affiliated_buf);
-
-    free(affiliated_buf);
-    affiliated_buf = NULL;
+        (unsigned long long)assoc_data->dev_stats.cli_RetransCount);
 
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)json_buf;
@@ -2112,7 +2270,6 @@ static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *va
     return rc;
 
 #undef DISASSOC_JSON_BUF_SZ
-#undef DISASSOC_AFF_BUF_SZ
 }
 
 static int em_handle_sta_conn_status(wifi_app_t *app, void *data)
@@ -2258,9 +2415,9 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
 {
     int rc = RETURN_OK;
     int radio_index = 0;
-    em_policy_req_type_t policy_type = em_ap_metrics_report_cache.args.policy_type;
+    em_policy_req_type_t policy_type;
     webconfig_subdoc_data_t *data = NULL;
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_ctrl_t *ctrl;
     em_vap_metrics_t *vap_report = NULL;
     wifi_associated_dev3_timestamp_t *stats = NULL;
     mac_addr_str_t bss_str, bss_str1;
@@ -2270,19 +2427,24 @@ static int ap_report_push_cb(em_ap_report_callback_arg_t *args)
     rdk_wifi_radio_t *radio = NULL;
     wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_t *vap_info = NULL;
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_mgr_t *wifi_mgr;
     raw_data_t rdata;
     unsigned int j = 0, k = 0;
     int cache_vap_index = -1, cnt = 0;
     mac_addr_str_t radio_str;
-    em_config_t *em_config = &args->app->data.u.em_data.em_config;
-    int req_radio_count = em_config->radio_metrics_policies.radio_count;
+    em_config_t *em_config;
+    int req_radio_count;
 
     pthread_mutex_lock(&em_ap_report_task_lock);
-    if (em_ap_report_shutting_down) {
+    if (args == NULL || em_ap_report_shutting_down) {
         pthread_mutex_unlock(&em_ap_report_task_lock);
         return RETURN_OK;
     }
+    policy_type = args->policy_type;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_mgr = get_wifimgr_obj();
+    em_config = &args->app->data.u.em_data.em_config;
+    req_radio_count = em_config->radio_metrics_policies.radio_count;
 
     wifi_util_error_print(WIFI_EM, "%s:%d: requested radio count %d\n",
                 __func__, __LINE__, req_radio_count);
@@ -2599,7 +2761,9 @@ cleanup:
     }
 
     pthread_mutex_unlock(&em_ap_report_task_lock);
-    return rc;
+    /* TIMER_TASK_CONTINUE would re-run immediately; COMPLETE keeps the periodic task and
+     * retries on the next interval, which is intended for transient publish failures. */
+			return TIMER_TASK_COMPLETE;
 }
 
 int em_ap_report_config_task(wifi_app_t *app, em_config_t *em_config,
@@ -2609,35 +2773,64 @@ int em_ap_report_config_task(wifi_app_t *app, em_config_t *em_config,
     int interval = em_config->ap_metric_policy.interval;
     em_ap_report_callback_arg_t *task_args = &em_ap_metrics_report_cache.args;
 
+    /* The callback argument is the static cache entry (never heap-owned by the scheduler), and
+     * the scheduler callbacks run on the controller thread, as do these config/deinit paths. */
+    pthread_mutex_lock(&em_ap_report_schedule_lock);
+
     if (state == mon_stats_request_state_stop) {
-        rc = scheduler_cancel_timer_task(app->ctrl->sched,
-            em_ap_metrics_report_cache.args.sched_id);
+        if (task_args->sched_id == 0) {
+            /* Nothing scheduled: stop is idempotent. */
+            pthread_mutex_unlock(&em_ap_report_schedule_lock);
+            return RETURN_OK;
+        }
+        rc = scheduler_cancel_timer_task(app->ctrl->sched, task_args->sched_id);
         if (rc != 0) {
             wifi_util_error_print(WIFI_EM,
                 "%s:%d: Schedular task removal failure for sched id %d\n", __func__, __LINE__,
-                em_ap_metrics_report_cache.args.sched_id);
+                task_args->sched_id);
+            pthread_mutex_unlock(&em_ap_report_schedule_lock);
             return RETURN_ERR;
         }
         wifi_util_dbg_print(WIFI_EM, "%s:%d: Schedular task removal success for sched_id:%d\n",
-            __func__, __LINE__, em_ap_metrics_report_cache.args.sched_id);
-        em_ap_metrics_report_cache.args.sched_id = 0;
+            __func__, __LINE__, task_args->sched_id);
+        pthread_mutex_lock(&em_ap_report_task_lock);
+        task_args->sched_id = 0;
+        pthread_mutex_unlock(&em_ap_report_task_lock);
+        pthread_mutex_unlock(&em_ap_report_schedule_lock);
 
         return RETURN_OK;
     }
 
+    if (em_ap_report_shutting_down) {
+        pthread_mutex_unlock(&em_ap_report_schedule_lock);
+        return RETURN_ERR;
+    }
+
+    /* Reconfiguration: retire the previous timer instead of overwriting its id, which would
+     * leave two timers running. */
+    if (task_args->sched_id > 0) {
+        (void)scheduler_cancel_timer_task(app->ctrl->sched, task_args->sched_id);
+        task_args->sched_id = 0;
+    }
+
+    pthread_mutex_lock(&em_ap_report_task_lock);
     task_args->app = app;
     task_args->policy_type = policy_type;
     task_args->policy_config = *em_config;
+    pthread_mutex_unlock(&em_ap_report_task_lock);
 
-    rc = scheduler_add_timer_task(app->ctrl->sched, FALSE,
-        &(em_ap_metrics_report_cache.args.sched_id), (void *)ap_report_push_cb, task_args,
-        interval * 1000, 0, FALSE);
+    rc = scheduler_add_timer_task(app->ctrl->sched, FALSE, &(task_args->sched_id),
+        (void *)ap_report_push_cb, task_args, interval * 1000, 0, FALSE);
     if (rc != RETURN_OK) {
+        task_args->sched_id = 0;
         wifi_util_error_print(WIFI_EM, "%s:%d: failed to add timer task\n", __func__, __LINE__);
+        pthread_mutex_unlock(&em_ap_report_schedule_lock);
+        return rc;
     }
+    pthread_mutex_unlock(&em_ap_report_schedule_lock);
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d: added timer task %d with interval=%d for radio index %d\n",
-        __func__, __LINE__, em_ap_metrics_report_cache.args.sched_id, interval, radio_index);
+        __func__, __LINE__, task_args->sched_id, interval, radio_index);
 
     return RETURN_OK;
 }
@@ -4581,6 +4774,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     pthread_mutex_lock(&em_ap_report_task_lock);
     em_ap_report_shutting_down = false;
     pthread_mutex_unlock(&em_ap_report_task_lock);
+    pthread_mutex_lock(&em_client_type_map_lock);
+    em_client_type_shutting_down = false;
+    pthread_mutex_unlock(&em_client_type_map_lock);
 
     bus_data_element_t dataElements[] = {
         { WIFI_EM_CHANNEL_SCAN_REQUEST,     bus_element_type_method,
@@ -4690,37 +4886,24 @@ int em_deinit(wifi_app_t *app)
 
     wifi_util_info_print(WIFI_EM, "%s:%d: em-app deinit\n", __func__, __LINE__);
 
-    /* Cancel the scheduled AP-report task first and quiesce any run already in flight,
-     * before taking any lock also acquired by ap_report_push_cb() (directly or via
-     * prepare_sta_lins_metrics_data()), to keep lock ordering consistent and avoid deadlock. */
-    if (em_ap_metrics_report_cache.args.sched_id > 0) {
-        if (scheduler_cancel_timer_task(ctrl->sched, em_ap_metrics_report_cache.args.sched_id) != 0) {
+    /* Serialize cancellation with task creation, then invalidate callbacks and tear down
+     * the maps they access while holding the lifecycle lock. */
+    pthread_mutex_lock(&em_ap_report_schedule_lock);
+    pthread_mutex_lock(&em_ap_report_task_lock);
+    int sched_id = em_ap_metrics_report_cache.args.sched_id;
+    pthread_mutex_unlock(&em_ap_report_task_lock);
+    if (sched_id > 0) {
+        if (scheduler_cancel_timer_task(ctrl->sched,
+                sched_id) != 0) {
             wifi_util_error_print(WIFI_EM, "%s:%d: Schedular task removal failure for sched id %d\n",
-                __func__, __LINE__, em_ap_metrics_report_cache.args.sched_id);
-            return RETURN_ERR;
+                __func__, __LINE__, sched_id);
+            /* The task may already have completed and been removed. Continue
+             * teardown; the lifecycle gate below still invalidates callbacks. */
         }
-        em_ap_metrics_report_cache.args.sched_id = 0;
     }
     pthread_mutex_lock(&em_ap_report_task_lock);
+    em_ap_metrics_report_cache.args.sched_id = 0;
     em_ap_report_shutting_down = true;
-
-    pthread_mutex_lock(&em_client_type_map_lock);
-    sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_get_first(
-        client_type_info.sta_client_type.client_type_map);
-    while (t_sta_data != NULL) {
-        memset(mac_str, 0, sizeof(mac_addr_str_t));
-        to_mac_str((unsigned char *)t_sta_data->mac_addr, mac_str);
-        tmp_data = (sta_client_info_t *)hash_map_remove(
-            client_type_info.sta_client_type.client_type_map, mac_str);
-        if (tmp_data != NULL) {
-            free(tmp_data);
-        }
-        /* hash_map_remove() frees t_sta_data and leaves the map iterator dangling; restart it. */
-        t_sta_data = (sta_client_info_t *)hash_map_get_first(
-            client_type_info.sta_client_type.client_type_map);
-    }
-    hash_map_destroy(client_type_info.sta_client_type.client_type_map);
-    pthread_mutex_unlock(&em_client_type_map_lock);
 
     pthread_mutex_lock(&em_client_stats_map_lock);
     for (int i = 0; i < MAX_NUM_RADIOS; i++) {
@@ -4738,7 +4921,28 @@ int em_deinit(wifi_app_t *app)
         }
     }
     pthread_mutex_unlock(&em_client_stats_map_lock);
+    pthread_mutex_lock(&em_client_type_map_lock);
+    em_client_type_shutting_down = true;
+    sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_get_first(
+        client_type_info.sta_client_type.client_type_map);
+    while (t_sta_data != NULL) {
+        memset(mac_str, 0, sizeof(mac_addr_str_t));
+        to_mac_str((unsigned char *)t_sta_data->mac_addr, mac_str);
+        tmp_data = (sta_client_info_t *)hash_map_remove(
+            client_type_info.sta_client_type.client_type_map, mac_str);
+        if (tmp_data != NULL) {
+            free(tmp_data);
+        }
+        /* hash_map_remove() frees t_sta_data and leaves the map iterator dangling; restart it. */
+        t_sta_data = (sta_client_info_t *)hash_map_get_first(
+            client_type_info.sta_client_type.client_type_map);
+    }
+    hash_map_destroy(client_type_info.sta_client_type.client_type_map);
+    client_type_info.sta_client_type.client_type_map = NULL;
+    pthread_mutex_unlock(&em_client_type_map_lock);
+
     pthread_mutex_unlock(&em_ap_report_task_lock);
+    pthread_mutex_unlock(&em_ap_report_schedule_lock);
 
     // Cancel and free any pending block timers/entries before destroying the mutex
     pthread_mutex_lock(&pending_blocks_lock);
