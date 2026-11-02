@@ -101,7 +101,7 @@
 #include "wifi_util.h"
 #include "dml_onewifi_api.h"
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 #include "wifi_webconfig.h"
 #endif
 #include "wifi_passpoint.h"
@@ -143,7 +143,7 @@
 #define OnboardLog(...)
 #endif
 
-#if defined (_PLATFORM_RASPBERRYPI_) || defined(_PLATFORM_TURRIS_)
+#if defined(_PLATFORM_RASPBERRYPI_) || defined(_PLATFORM_TURRIS_)
 #define MAX_BUF_SIZE 128
 #endif
 
@@ -271,7 +271,7 @@ extern char        g_Subsystem[32];
 #define WIFI_BUS					"/com/cisco/spvtg/ccsp/wifi"
 #define HOTSPOT_DEVICE_NAME	"AP_steering"
 #ifndef WIFI_HAL_VERSION_3
-#if defined(_CBR_PRODUCT_REQ_) || defined (_BWG_PRODUCT_REQ_)
+#if defined(_CBR_PRODUCT_REQ_) || defined(_BWG_PRODUCT_REQ_)
 #define HOTSPOT_NO_OF_INDEX			5
 static const int Hotspot_Index[HOTSPOT_NO_OF_INDEX]={5,6,9,10,16};
 #else
@@ -615,7 +615,7 @@ CosaDmlWiFi_GetRapidReconnectCountEnable(ULONG vAPIndex, BOOLEAN *pbReconnectCou
 /*********************************************************************************/
 void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
 {
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
     char *psmStrValue = NULL;
 
     *pbEnableRadiusGreyList = FALSE;
@@ -633,7 +633,7 @@ void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
 #endif
 }
 
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : CosaDmlWiFiCheckEnableRadiusGreylist                          */
@@ -651,7 +651,7 @@ void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
 ANSC_STATUS
 CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
 
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
     CcspTraceInfo(("[%s] Enter\n",__FUNCTION__));
     char recName[256];
     static char *MacFilterMode      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterMode";

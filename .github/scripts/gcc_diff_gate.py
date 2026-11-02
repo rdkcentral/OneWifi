@@ -501,8 +501,7 @@ def main():
         print("\n".join(failed[:100]))
         print("```")
         print("_A nonzero compiler exit means these files were NOT analyzed (an unrecognized -W flag, "
-              "a missing generated header, or a killed compiler) — the result above is partial. This is "
-              "a mechanism warning, not a code finding, so it never reds the job on its own._")
+              "a missing generated header, or a killed compiler) — the result above is partial._")
     if note:
         print(note)
     # In advisory mode the ❌ block above still renders, but we never red the job.

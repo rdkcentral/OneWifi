@@ -2743,7 +2743,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_B);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_G);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
-#if !defined (_PP203X_PRODUCT_REQ_)
+#if !defined(_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
 #endif
 #ifdef CONFIG_IEEE80211BE
@@ -2759,7 +2759,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_H);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AC);
-#if !defined (_PP203X_PRODUCT_REQ_)
+#if !defined(_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
 #endif
 #ifdef CONFIG_IEEE80211BE
@@ -3851,7 +3851,7 @@ static webconfig_error_t decode_mlo_associated_clients_object(webconfig_subdoc_d
         }
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decoded %u MLO clients for '%s'\n", __func__,
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded %u MLO clients for '%s'\n", __func__,
         __LINE__, size, vap_name);
     return webconfig_error_none;
 }

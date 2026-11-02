@@ -43,14 +43,14 @@
 static int is_eloop_init_done = 0;
 
 void hapd_reset_ap_interface(int apIndex);
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
 void hapd_wpa_deinit(int ap_index);
 #endif
 void libhostapd_wpa_deinit(int ap_index);
 void convert_apindex_to_interface(int idx, char *iface, int len);
 
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
-#if !defined (_XB7_PRODUCT_REQ_)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
+#if !defined(_XB7_PRODUCT_REQ_)
 char *cmmac; //Global variable to get the cmmac of the gateway
 #endif
 
@@ -95,7 +95,7 @@ int _syscmd(char *cmd, char *retBuf, int retBufSize)
 }
 #endif //FEATURE_SUPPORT_RADIUSGREYLIST
 
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST) && !defined(_XB7_PRODUCT_REQ_)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST) && !defined(_XB7_PRODUCT_REQ_)
 extern void wifi_del_mac_handler(void *eloop_ctx, void *timeout_ctx);
 extern void wifi_add_mac_handler(char *addr, struct hostapd_data *hapd);
 
@@ -107,7 +107,7 @@ void greylist_cache_timeout (struct hostapd_data *hapd)
 {
 
     FILE *fptr;
-    char date[10] = {0}, get_time[10] = {0}, mac[18] = {0};
+    char date[11] = {0}, get_time[10] = {0}, mac[18] = {0};
     char buffer1[26] = {0}, time_buf[26] = {0};
     struct tm time1, time2;
     time_t newtime;
@@ -124,7 +124,7 @@ void greylist_cache_timeout (struct hostapd_data *hapd)
         return;
     }
     /* Read each mac from the file and add the mac to the greylist*/
-    while ((fscanf(fptr, "%s %s %s %d", date, get_time, mac, &index)) == 4) {  // Read the time and mac from the file
+    while ((fscanf(fptr, "%10s %9s %17s %d", date, get_time, mac, &index)) == 4) {  // Read the time and mac from the file
         mac_data = os_zalloc(sizeof(*mac_data));
         if (mac_data == NULL) {
             wpa_printf(MSG_DEBUG, "unable to allocate memory "
@@ -194,7 +194,7 @@ int linux_set_iface_flags(const char *ifname, int dev_up)
 int hapd_process_assoc_req_frame(unsigned int ap_index, mac_address_t sta, unsigned char *frame, unsigned int frame_len)
 {
     struct hostapd_data *hapd;
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd = g_hapd_glue[ap_index].hapd;
 #else
     hapd = &g_hapd_glue[ap_index].hapd;
@@ -280,7 +280,7 @@ int hapd_process_assoc_rsp_frame(unsigned int ap_index, mac_address_t sta, unsig
 #if 0
 int hapd_process_disassoc_frame(unsigned int ap_index, mac_address_t sta, int reason)
 {
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
     struct hostapd_data *hapd;
     hapd = &g_hapd_glue[ap_index].hapd;
 
@@ -309,7 +309,7 @@ int hapd_process_disassoc_frame(unsigned int ap_index, mac_address_t sta, int re
 #if 0
 int hapd_process_auth_frame(unsigned int ap_index, mac_address_t sta, unsigned char *frame, unsigned int frame_len, wifi_direction_t dir)
 {
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     struct hostapd_data *hapd = g_hapd_glue[ap_index].hapd;
 #else
     struct hostapd_data *hapd = &g_hapd_glue[ap_index].hapd;
@@ -365,7 +365,7 @@ int hapd_process_auth_frame(unsigned int ap_index, mac_address_t sta, unsigned c
 #if 0
 int hapd_process_eapol_frame(unsigned int ap_index, mac_address_t sta, unsigned char *data, unsigned int data_len)
 {
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     struct hostapd_data *hapd = g_hapd_glue[ap_index].hapd;
 #else
     struct hostapd_data *hapd = &g_hapd_glue[ap_index].hapd;
@@ -484,7 +484,7 @@ void update_default_oem_configs(int apIndex, struct hostapd_bss_config *bss)
             jsonObj = cJSON_GetObjectItem(json, "BSS");
             if (jsonObj != NULL)
             {
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
                 jsonData = cJSON_GetObjectItem(jsonObj, "ap_vlan");
                 if (jsonData != NULL && cJSON_GetArraySize(jsonData))
                     bss->ap_vlan = cJSON_GetArrayItem(jsonData, apIndex)->valueint;
@@ -635,7 +635,7 @@ static int hostapd_tr181_config_parse_key_mgmt(int modeEnabled)
     else if (os_strcmp(conf_value, "WPA-EAP-SHA256") == 0)
          val |= WPA_KEY_MGMT_IEEE8021X_SHA256;
 #endif /* CONFIG_IEEE80211W */
-#if defined (CONFIG_SAE) && defined (WIFI_HAL_VERSION_3)
+#if defined(CONFIG_SAE) && defined(WIFI_HAL_VERSION_3)
     else if (os_strcmp(conf_value, "WPA-PSK SAE") == 0) {
          val |= WPA_KEY_MGMT_PSK;
          val |= WPA_KEY_MGMT_SAE;
@@ -972,7 +972,7 @@ void update_hostapd_iconf(int ap_index, struct hostapd_config *conf)
     /* The third octet of the country string uses an ASCII space character
      * by default to indicate that the regulations encompass all
      * environments for the current frequency band in the country. */
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     snprintf(conf->country, sizeof(conf->country), "US");
 #else
     wifi_getRadioCountryCode(ap_index, conf->country);
@@ -986,7 +986,7 @@ void update_hostapd_iconf(int ap_index, struct hostapd_config *conf)
     conf->airtime_update_interval = AIRTIME_DEFAULT_UPDATE_INTERVAL;
     conf->airtime_mode = AIRTIME_MODE_STATIC;
 #endif /* CONFIG_AIRTIME_POLICY */
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     conf->ieee80211h = 1;
     conf->ieee80211d = 1;
 #else
@@ -1142,7 +1142,7 @@ void update_hostapd_bss_config(int ap_index, struct hostapd_bss_config *bss)
  */
 void update_config_defaults(int ap_index, struct hostapd_data *hapd, int ModeEnabled)
 {
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd->iconf = g_hapd_glue[ap_index].conf;
     hapd->iface = g_hapd_glue[ap_index].iface;
     hapd->conf = g_hapd_glue[ap_index].bss_conf;
@@ -1163,7 +1163,7 @@ void update_config_defaults(int ap_index, struct hostapd_data *hapd, int ModeEna
     dl_list_init(&hapd->l2_queue);
     dl_list_init(&hapd->l2_oui_queue);
 #endif /* CONFIG_IEEE80211R_AP */
-#if defined (CONFIG_SAE) && defined (WIFI_HAL_VERSION_3)
+#if defined(CONFIG_SAE) && defined(WIFI_HAL_VERSION_3)
 //Not Defined
     dl_list_init(&hapd->sae_commit_queue);
 #endif /* CONFIG_SAE */
@@ -1245,7 +1245,7 @@ void convert_apindex_to_interface(int idx, char *iface, int len)
  *      pWifiRadioFull  Device.WiFi.Radio.{i} cache structure.
  */
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
 #ifndef HOSTAPD_CLEANUP_INTERVAL
 #define HOSTAPD_CLEANUP_INTERVAL 10
 #endif /* HOSTAPD_CLEANUP_INTERVAL */
@@ -1303,7 +1303,7 @@ int libhostapd_global_init()
 //customized equivalent of hostapd_config_read
 struct hostapd_config * libhostapd_config_read(const char *fname, int apIndex)
 {
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     char ifname[8] = {0};
 #endif
 
@@ -1322,7 +1322,7 @@ struct hostapd_config * libhostapd_config_read(const char *fname, int apIndex)
 
     g_hapd_glue[apIndex].conf->last_bss = g_hapd_glue[apIndex].conf->bss[0];
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     convert_apindex_to_interface(apIndex, ifname, sizeof(ifname));
 
     os_strlcpy(g_hapd_glue[apIndex].conf->bss[0]->iface, ifname,sizeof(g_hapd_glue[apIndex].conf->bss[0]->iface));
@@ -1452,7 +1452,7 @@ void libhostapd_global_deinit()
        wpa_debug_close_file();
 #endif
 
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
        wifi_callback_deinit();
 #endif
 
@@ -1483,7 +1483,7 @@ void hapd_wpa_deinit(int ap_index)
     struct hostapd_data *hapd;
     struct driver_data *drv;
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd = g_hapd_glue[ap_index].hapd;
 #else
     hapd = &g_hapd_glue[ap_index].hapd;
@@ -1499,7 +1499,7 @@ void hapd_wpa_deinit(int ap_index)
     hapd->started = 0;
     hapd->beacon_set_done = 0;
 
-#if defined (CONFIG_SAE) && defined (WIFI_HAL_VERSION_3)
+#if defined(CONFIG_SAE) && defined(WIFI_HAL_VERSION_3)
 /* SAE is not defined now, but will be needed in feature for WPA3 support */
     {
         struct hostapd_sae_commit_queue *q;
@@ -1572,7 +1572,7 @@ void hapd_wpa_deinit(int ap_index)
 }
 #endif /* _XB7_PRODUCT_REQ_ */
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
 void libhostap_eloop_deinit()
 {
        if (is_eloop_init_done) {
@@ -1649,15 +1649,15 @@ void deinit_eloop()
 #endif
 #endif
     wpa_debug_close_file();
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
     wifi_callback_deinit();
 #endif
 }
 
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
 void init_lib_hostapd_greylisting()
 {
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
     //RDKB-30263 Grey List control from RADIUS 
     cmmac = (char *) malloc (MAC_LEN*sizeof(char));
     memset(cmmac, '\0', MAC_LEN);
@@ -1670,7 +1670,7 @@ void init_lib_hostapd_greylisting()
 
 void deinit_lib_hostapd_greylisting()
 {
-#if !defined (_XB7_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_)
         os_free(cmmac);
 #endif
 }
@@ -1681,7 +1681,7 @@ int hapd_reload_ssid(int apIndex, char *ssid)
     struct hostapd_data *hapd;
     struct hostapd_bss_config *conf;
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd = g_hapd_glue[apIndex].hapd;
 #else
     hapd = &g_hapd_glue[apIndex].hapd;
@@ -1722,7 +1722,7 @@ int hapd_reload_authentication(int apIndex, char *keyPassphrase)
     struct hostapd_data *hapd;
     struct hostapd_bss_config *conf;
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd = g_hapd_glue[apIndex].hapd;
 #else
     hapd = &g_hapd_glue[apIndex].hapd;
@@ -1778,7 +1778,7 @@ int hapd_reload_encryption_method(int apIndex, int encryptionMethod)
     struct hostapd_data *hapd;
     struct hostapd_bss_config *conf;
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd = g_hapd_glue[apIndex].hapd;
 #else
     hapd = &g_hapd_glue[apIndex].hapd;
@@ -1840,7 +1840,7 @@ void hapd_reload_bss_transition(int apIndex, BOOL bss_transition)
 {
    struct hostapd_data *hapd;
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd = g_hapd_glue[apIndex].hapd;
 #else
     hapd = &g_hapd_glue[apIndex].hapd;
@@ -1859,7 +1859,7 @@ void hapd_reset_ap_interface(int apIndex)
     int radio_index = -1;
 
     wpa_printf(MSG_INFO,"%s - %d Resetting the ap :%d interface\n", __func__, __LINE__,apIndex);
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
     hapd = g_hapd_glue[apIndex].hapd;
 #else
     hapd = &g_hapd_glue[apIndex].hapd;
