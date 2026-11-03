@@ -242,6 +242,8 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
                 wifi_util_error_print(WIFI_APPS, "%s:%d CSI map insert failed for mac %s\n",
                     __func__, __LINE__, mac_str);
                 wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, FALSE);
+                free(map_key);
+                free(to_hash_map);
                 pthread_mutex_unlock(&g_csi_map_lock);
                 update_pinger_config(ap_index, mac_addr, true);
                 return -1;

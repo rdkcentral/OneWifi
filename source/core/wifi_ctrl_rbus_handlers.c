@@ -1015,8 +1015,16 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
         data->u.decoded.num_radios = num_of_radios;
-        // tell webconfig to encode
-	    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
+        // encode from a private copy of the ACL maps; see webconfig_snapshot_acl_maps()
+        if (webconfig_snapshot_acl_maps(data) != RETURN_OK) {
+            webconfig_release_acl_snapshot(data);
+            free(data);
+            data = NULL;
+            return bus_error_general;
+        }
+        webconfig_error_t enc_ret = webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+        webconfig_release_acl_snapshot(data);
+	    if (enc_ret != webconfig_error_none) {
 	        wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
 	        webconfig_data_free(data);
             free(data);
@@ -1057,7 +1065,16 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
 	if (ctrl->dev_type != dev_subtype_pod) {
 		memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config,
 				sizeof(wifi_global_config_t));
-		if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) != webconfig_error_none) {
+        // encode from a private copy of the ACL maps; see webconfig_snapshot_acl_maps()
+        if (webconfig_snapshot_acl_maps(data) != RETURN_OK) {
+            webconfig_release_acl_snapshot(data);
+            free(data);
+            data = NULL;
+            return bus_error_general;
+        }
+        webconfig_error_t enc_ret = webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+        webconfig_release_acl_snapshot(data);
+		if (enc_ret != webconfig_error_none) {
 			wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
 			webconfig_data_free(data);
             free(data);
@@ -1175,9 +1192,15 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
         sizeof(wifi_hal_capability_t));
     data->u.decoded.num_radios = getNumberRadios();
-    // tell webconfig to encode
-    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml) !=
-        webconfig_error_none) {
+    // encode from a private copy of the ACL maps; see webconfig_snapshot_acl_maps()
+    if (webconfig_snapshot_acl_maps(data) != RETURN_OK) {
+        webconfig_release_acl_snapshot(data);
+        free(data);
+        return bus_error_general;
+    }
+    webconfig_error_t enc_ret = webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_dml);
+    webconfig_release_acl_snapshot(data);
+    if (enc_ret != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
         webconfig_data_free(data);
         free(data);
@@ -1814,8 +1837,15 @@ bus_error_t get_acl_device_data(char *name, raw_data_t *p_data, bus_user_data_t 
 
     data->u.decoded.num_radios = getNumberRadios();
 
-    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mac_filter) ==
-        webconfig_error_none) {
+    // encode from a private copy of the ACL maps; see webconfig_snapshot_acl_maps()
+    if (webconfig_snapshot_acl_maps(data) != RETURN_OK) {
+        webconfig_release_acl_snapshot(data);
+        free(data);
+        return bus_error_general;
+    }
+    webconfig_error_t enc_ret = webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_mac_filter);
+    webconfig_release_acl_snapshot(data);
+    if (enc_ret == webconfig_error_none) {
 
         uint32_t str_size = strlen(data->u.encoded.raw) + 1;
         p_data->data_type = bus_data_type_string;

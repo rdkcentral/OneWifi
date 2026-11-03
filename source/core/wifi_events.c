@@ -168,6 +168,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_sta_client_info)
         DOC2S(wifi_event_type_sm_app_enable)
         DOC2S(wifi_event_type_send_btm_req)
+        DOC2S(wifi_event_type_publish_mac_filter)
         DOC2S(wifi_event_command_max)
         DOC2S(wifi_event_monitor_diagnostics)
         DOC2S(wifi_event_monitor_connect)
@@ -228,6 +229,7 @@ bool is_high_priority_event(wifi_event_subtype_t sub_type)
     case wifi_event_type_eth_bh_status:
     case wifi_event_type_xfinity_enable:
     case wifi_event_type_prefer_private_rfc:
+    case wifi_event_type_publish_mac_filter:
     case wifi_event_exec_start:
     case wifi_event_exec_stop:
     case wifi_event_exec_timeout:

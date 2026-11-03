@@ -36,6 +36,8 @@ extern "C" {
 #include "wifi_apps_mgr.h"
 #include "wifi_ctrl_wei_rfc.h"
 
+extern pthread_mutex_t wifi_acl_map_lock;
+
 #define WIFI_WEBCONFIG_PRIVATESSID         1
 #define WIFI_WEBCONFIG_HOMESSID            2
 
@@ -185,6 +187,7 @@ typedef struct kick_details {
     int vap_index;
     int timer_id;
     bool cancelled_by_unblock;
+    bool permanent;
 }kick_details_t;
 
 typedef struct {
@@ -452,6 +455,8 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl);
 bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 bool check_for_greylisted_mac_filter(void);
+int webconfig_snapshot_acl_maps(webconfig_subdoc_data_t *data);
+void webconfig_release_acl_snapshot(webconfig_subdoc_data_t *data);
 int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable);
 void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
 bool is_sta_enabled(void);

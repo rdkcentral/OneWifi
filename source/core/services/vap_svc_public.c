@@ -87,6 +87,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
                 continue;
             }
 
+            pthread_mutex_lock(&wifi_acl_map_lock);
             if (rdk_vap_info->acl_map == NULL) {
                 wifi_util_dbg_print(WIFI_CTRL,"PreferPrivate acl_map is NULL\n");
                 rdk_vap_info->acl_map = hash_map_create();
@@ -95,17 +96,23 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             wifi_util_dbg_print(WIFI_CTRL,"acl_count =%d \n",acl_count);
 
             if (acl_count >= MAX_ACL_COUNT) {
+                pthread_mutex_unlock(&wifi_acl_map_lock);
                 wifi_util_info_print(WIFI_CTRL,"acl_count =%d greater than max acl entry\n",acl_count);
                 continue;
             }
             temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,new_mac_str);
 
             if (temp_acl_entry != NULL) {
+                pthread_mutex_unlock(&wifi_acl_map_lock);
                 wifi_util_dbg_print(WIFI_CTRL,"Mac is already present in macfilter \n");
                 return;
             }
 
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+            if (acl_entry == NULL) {
+                pthread_mutex_unlock(&wifi_acl_map_lock);
+                return;
+            }
             memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
             to_mac_str(acl_entry->mac, new_mac_str);
             str_tolower(new_mac_str);
@@ -125,6 +132,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
             get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, acl_entry, true);
+            pthread_mutex_unlock(&wifi_acl_map_lock);
             wifi_util_dbg_print(WIFI_CTRL,"add %s mac to %s\n",new_mac_str,rdk_vap_info->vap_name);
         }
     }
@@ -314,6 +322,7 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
 	   wifi_delApAclDevices(vap_index);
 #endif
 
+            pthread_mutex_lock(&wifi_acl_map_lock);
             acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
             while(acl_entry != NULL && acl_count < MAX_ACL_COUNT ) {
                 memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
@@ -330,6 +339,7 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
                 acl_count++;
             }
             rdk_vap_info->is_mac_filter_initialized = true;
+            pthread_mutex_unlock(&wifi_acl_map_lock);
         }
     }
     return RETURN_OK;

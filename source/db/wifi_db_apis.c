@@ -2870,6 +2870,8 @@ void wifidb_reset_macfilter_hashmap()
             continue;
         }
 
+        // Runs on the control thread at factory reset as well as at init.
+        pthread_mutex_lock(&wifi_acl_map_lock);
         if (l_rdk_vap_array->acl_map != NULL) {
             acl_entry = (acl_entry_t *)hash_map_get_first(l_rdk_vap_array->acl_map);
 
@@ -2882,6 +2884,7 @@ void wifidb_reset_macfilter_hashmap()
                 }
             }
         }
+        pthread_mutex_unlock(&wifi_acl_map_lock);
     }
 
     return;
@@ -2932,12 +2935,14 @@ void wifidb_get_wifi_macfilter_config()
                 return;
             }
             str_tolower(tmp_mac);
+            pthread_mutex_lock(&wifi_acl_map_lock);
             tmp_acl_entry = hash_map_get(l_rdk_vap_array->acl_map, tmp_mac);
             if (tmp_acl_entry == NULL) {
                 tmp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
                 if (tmp_acl_entry == NULL) {
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
                     free(tmp_mac);
+                    pthread_mutex_unlock(&wifi_acl_map_lock);
                     return;
                 }
                 memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
@@ -2960,6 +2965,7 @@ void wifidb_get_wifi_macfilter_config()
                 tmp_acl_entry->reason = pcfg->reason;
                 tmp_acl_entry->expiry_time = pcfg->expiry_time;
             }
+            pthread_mutex_unlock(&wifi_acl_map_lock);
 
             if(tmp_mac) {
                 free(tmp_mac);
@@ -7201,17 +7207,20 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         str_tolower(tmp_mac_str);
         snprintf(l_mac_entry.device_name, sizeof(l_mac_entry.device_name), "%s", config->device_name);
         snprintf(l_mac_entry.mac, sizeof(l_mac_entry.mac), "%s", tmp_mac_str);
+
+        if (ret != 1) {
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to delete table_Wifi_MacFilter_Config\n",__func__, __LINE__);
+            return -1;
+        }
+        // Mirror the deletion to PSM only once OVSDB has removed the entry, so a failed
+        // deletion leaves the persistent permission intact.
 #if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
         p_desc->push_data_to_ssp_queue_fn(&l_mac_entry, sizeof(l_mac_entry), ssp_event_type_psm_write, mac_config_delete);
 #endif // NEWPLATFORM_PORT
 #endif
-
-        if (ret != 1) {
-            wifidb_print("%s:%d WIFI DB update error !!!. Failed to delete table_Wifi_MacFilter_Config\n",__func__, __LINE__);
-            return -1;
-        }
+        ret = RETURN_OK;
         wifidb_print("%s:%d Updated WIFI DB. Deleted entry and updated Wifi_MacFilter Config table successfully\n",__func__, __LINE__);
     } else {
 
@@ -7248,21 +7257,25 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         l_mac_entry.acl_map = l_rdk_vap_array->acl_map;
         snprintf(l_mac_entry.device_name, sizeof(l_mac_entry.device_name), "%s", cfg_mac.device_name);
         snprintf(l_mac_entry.mac, sizeof(l_mac_entry.mac), "%s", cfg_mac.device_mac);
-#if ONEWIFI_DML_SUPPORT
-#ifndef NEWPLATFORM_PORT
-        wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
-        p_desc->push_data_to_ssp_queue_fn(&l_mac_entry, sizeof(l_mac_entry), ssp_event_type_psm_write, mac_config_add);
-#endif // NEWPLATFORM_PORT
-#endif
         if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, &cfg_mac, false, filter_mac, SCHEMA_TABLE(Wifi_VAP_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_VAP_Config, mac_filter)) ==  false) {
             wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_MacFilter Config table \n",__func__, __LINE__);
+            ret = -1;
         }
         else {
+            ret = RETURN_OK;
             wifidb_print("%s:%d Updated WIFI DB. Wifi_MacFilter Config table updated successful\n",__func__, __LINE__);
+            // Mirror the addition to PSM only once OVSDB has stored it, so a failed (and
+            // rolled back) addition is not persisted.
+#if ONEWIFI_DML_SUPPORT
+#ifndef NEWPLATFORM_PORT
+            wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
+            p_desc->push_data_to_ssp_queue_fn(&l_mac_entry, sizeof(l_mac_entry), ssp_event_type_psm_write, mac_config_add);
+#endif // NEWPLATFORM_PORT
+#endif
         }
     }
 
-    return 0;
+    return ret;
 }
 
 /************************************************************************************
