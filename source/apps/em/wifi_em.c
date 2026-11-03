@@ -2026,7 +2026,7 @@ static wifi_associated_dev3_timestamp_t *em_remove_mlo_by_primary_key(ap_metrics
 /* Removes and returns the cached stats for a disassociating client, resolving per-link MACs to
  * their MLD record. Caller holds em_client_stats_map_lock. */
 static wifi_associated_dev3_timestamp_t *em_remove_cached_client(ap_metrics_data_t *ap_data,
-    const char *key, const char *sta_mac_str, bool *is_mlo)
+    const char *key, const char *sta_mac_str, bool *is_mlo, int *resolved_vap_index)
 {
     wifi_associated_dev3_timestamp_t *stats =
         (wifi_associated_dev3_timestamp_t *)hash_map_get(ap_data->client_stats_map, key);
@@ -2053,6 +2053,7 @@ static wifi_associated_dev3_timestamp_t *em_remove_cached_client(ap_metrics_data
         return NULL;
     }
     *is_mlo = true;
+    *resolved_vap_index = ap_data->vap_index;
     return em_remove_mlo_by_primary_key(ap_data, primary_key);
 }
 
@@ -2083,6 +2084,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     wifi_associated_dev3_timestamp_t *stats;
     bool is_mlo = false;
     int vap_index, radio_index, arr_vap_index, publish_rc = RETURN_OK;
+    int resolved_vap_index;
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d : Sta disassoc event \n", __func__, __LINE__);
 
@@ -2100,6 +2102,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
         return RETURN_ERR;
     }
 
+    resolved_vap_index = vap_index;
     arr_vap_index = em_find_cache_vap_index(radio_index, vap_index);
     if (arr_vap_index == -1) {
         wifi_util_dbg_print(WIFI_EM, "%s:%d Vap map not found\n", __func__, __LINE__);
@@ -2113,8 +2116,17 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     pthread_mutex_lock(&em_client_stats_map_lock);
     stats = em_remove_cached_client(
         &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index], key,
-        sta_mac_str, &is_mlo);
+        sta_mac_str, &is_mlo, &resolved_vap_index);
     pthread_mutex_unlock(&em_client_stats_map_lock);
+
+    /* Report the BSSID of the VAP whose counters were actually found. */
+    if (resolved_vap_index != vap_index) {
+        wifi_vap_info_t *resolved_vap = getVapInfo(resolved_vap_index);
+
+        if (resolved_vap != NULL) {
+            vap_info = resolved_vap;
+        }
+    }
 
     /* Without cached counters the event carries no valid traffic stats; do not publish zeros. */
     if (stats != NULL) {
