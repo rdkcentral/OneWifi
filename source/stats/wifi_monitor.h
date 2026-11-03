@@ -324,7 +324,7 @@ struct wifi_mon_provider_element{
     unsigned long   provider_task_interval_ms;
     bool            start_immediately;
     unsigned int    delay_provider_sec;
-    bool            delay_task_pending; //provider_task_sched_id currently refers to the startup delay task
+    bool delay_task_pending; // provider_task_sched_id currently refers to the startup delay task
     union {
         neighbour_stats_data_t  neighbour_data;
         radio_channel_stats_data_t radio_channel_data;
