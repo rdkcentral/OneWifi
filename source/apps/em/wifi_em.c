@@ -1873,7 +1873,7 @@ static int em_handle_failed_connection(wifi_app_t *app, void *arg)
 }
 
 static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *vap_info,
-    assoc_dev_data_t *assoc_data);
+    assoc_dev_data_t *assoc_data, bool has_traffic_stats);
 
 /* link_mac_map only exposes values via hash_map_get_first/next, so walk the underlying
  * queue directly to find and remove every entry whose value is primary_key. */
@@ -2136,12 +2136,12 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
         memcpy(&pub_data.dev_stats, &stats->associated_dev3, sizeof(wifi_associated_dev3_t));
     } else {
         /* No cached sample (no AP-report policy, or disconnect before the first sample): still
-         * notify, using the counters carried by the event rather than dropping the disconnect. */
-        wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s has no cached stats, using event data\n",
+         * notify, but without traffic counters, which the event does not carry reliably. */
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s has no cached stats, omitting counters\n",
             __func__, __LINE__, sta_mac_str);
     }
 
-    publish_rc = em_publish_client_disassoc_stats(app, vap_info, &pub_data);
+    publish_rc = em_publish_client_disassoc_stats(app, vap_info, &pub_data, stats != NULL);
     if (publish_rc != RETURN_OK) {
         wifi_util_error_print(WIFI_EM, "%s:%d Failed to publish %s\n", __func__, __LINE__,
             WIFI_EM_CLIENT_DISASSOC_STATS);
@@ -2164,7 +2164,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 }
 
 static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *vap_info,
-    assoc_dev_data_t *assoc_data)
+    assoc_dev_data_t *assoc_data, bool has_traffic_stats)
 {
 #define DISASSOC_JSON_BUF_SZ 1536
 
@@ -2188,20 +2188,28 @@ static int em_publish_client_disassoc_stats(wifi_app_t *app, wifi_vap_info_t *va
     to_mac_str(vap_info->u.bss_info.bssid, bssid_str);
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, sta_str);
 
-    snprintf(json_buf, DISASSOC_JSON_BUF_SZ,
-        "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
-        "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u,"
-        "\"Traffic Stats\":{\"BytesSent\":%llu,\"BytesReceived\":%llu,"
-        "\"PacketsSent\":%llu,\"PacketsReceived\":%llu,\"TxPacketsErrors\":%llu,"
-        "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu}}",
-        bssid_str, sta_str, (unsigned int)assoc_data->reason,
-        (unsigned long long)assoc_data->dev_stats.cli_BytesSent,
-        (unsigned long long)assoc_data->dev_stats.cli_BytesReceived,
-        (unsigned long long)assoc_data->dev_stats.cli_PacketsSent,
-        (unsigned long long)assoc_data->dev_stats.cli_PacketsReceived,
-        (unsigned long long)assoc_data->dev_stats.cli_ErrorsSent,
-        (unsigned long long)assoc_data->dev_stats.cli_RxErrors,
-        (unsigned long long)assoc_data->dev_stats.cli_RetransCount);
+    if (has_traffic_stats) {
+        snprintf(json_buf, DISASSOC_JSON_BUF_SZ,
+            "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
+            "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u,"
+            "\"Traffic Stats\":{\"BytesSent\":%llu,\"BytesReceived\":%llu,"
+            "\"PacketsSent\":%llu,\"PacketsReceived\":%llu,\"TxPacketsErrors\":%llu,"
+            "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu}}",
+            bssid_str, sta_str, (unsigned int)assoc_data->reason,
+            (unsigned long long)assoc_data->dev_stats.cli_BytesSent,
+            (unsigned long long)assoc_data->dev_stats.cli_BytesReceived,
+            (unsigned long long)assoc_data->dev_stats.cli_PacketsSent,
+            (unsigned long long)assoc_data->dev_stats.cli_PacketsReceived,
+            (unsigned long long)assoc_data->dev_stats.cli_ErrorsSent,
+            (unsigned long long)assoc_data->dev_stats.cli_RxErrors,
+            (unsigned long long)assoc_data->dev_stats.cli_RetransCount);
+    } else {
+        /* No cached counters: omit Traffic Stats rather than report zero usage. */
+        snprintf(json_buf, DISASSOC_JSON_BUF_SZ,
+            "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
+            "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u}",
+            bssid_str, sta_str, (unsigned int)assoc_data->reason);
+    }
 
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)json_buf;
