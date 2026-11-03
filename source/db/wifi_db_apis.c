@@ -5589,9 +5589,22 @@ void wifidb_vap_config_correction(uint8_t r_index, wifi_vap_info_map_t *l_vap_ma
         if (isVapPrivate(vap_config->vap_index) &&
             is_sec_mode_personal(vap_config->u.bss_info.security.mode)) {
 #if defined(FEATURE_SUPPORT_WPS) &&  !defined(_HUB4_PRODUCT_REQ_)
+#ifdef UWM_CTRL_WPS_SUPPORT
+            /*
+             * Only the dedicated onboarding VAPs act as WPS registrars. A private
+             * VAP advertising WPS makes an enrollee see two registrars with
+             * different UUIDs while onboarding is open, and it aborts with a PBC
+             * session overlap instead of enrolling.
+             */
+            if (vap_config->u.bss_info.wps.enable == true) {
+                vap_config->u.bss_info.wps.enable = false;
+                vap_config->u.bss_info.wpsPushButton = false;
+                wifi_util_info_print(WIFI_DB, "%s:%d: force wps disabled for private_vap:%d\r\n",
+#else
             if (vap_config->u.bss_info.wps.enable == false) {
                 vap_config->u.bss_info.wps.enable = true;
                 wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",
+#endif /* UWM_CTRL_WPS_SUPPORT */
                     __func__, __LINE__, vap_config->vap_index);
             }
             continue;

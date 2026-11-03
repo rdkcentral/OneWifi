@@ -356,6 +356,28 @@ vap_svc_t *get_svc_by_name(wifi_ctrl_t *ct, char *vap_name)
         type = vap_svc_type_private;
     } else if (strstr(vap_name, "lnf") != NULL) {
         type = vap_svc_type_private;
+#ifdef UWM_CTRL_WPS_SUPPORT
+    } else if (strncmp(vap_name, "onboarding", strlen("onboarding")) == 0) {
+        /*
+         * Dedicated onboarding: dedicated EasyMesh onboarding VAPs (vap_name
+         * prefix "onboarding_", AP.5 / AP.6) ride the private VAP
+         * service -- consistent with vap_svc_is_private() and
+         * get_subdoc_name_from_vap_index() which already route them
+         * through the PRIVATE pipeline. Without this match
+         * webconfig_hal_vap_apply_by_name() short-circuits with
+         * "if ((svc = get_svc_by_name(...)) == NULL) continue;"
+         * and skips the onboarding VAPs entirely -- the apply
+         * pass runs (private VAPs DO go through wifi_hal_createVAP),
+         * but onboarding entries are silently dropped before the
+         * vap_svc_private_update() -> wifi_hal_createVAP() call.
+         * Symptom: rdk-wps-monitor sets Enable=true on AP.{5,6}
+         * + ApplyAccessPointSettings, the encode/decode now
+         * carries the cached SSID/security correctly, but the
+         * BSSes never come up because the apply loop never
+         * reaches HAL for onboarding.
+         */
+        type = vap_svc_type_private;
+#endif /* UWM_CTRL_WPS_SUPPORT */
     } else if (strstr(vap_name, "xfinity") != NULL) {
         type = vap_svc_type_public;
     } else if (strstr(vap_name, "hotspot") != NULL) {

@@ -320,6 +320,27 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
                 cJSON_Delete(json);
                 return webconfig_error_encode;
             }
+#ifdef UWM_CTRL_WPS_SUPPORT
+        } else if (is_vap_onboarding(&params->hal_cap.wifi_prop, vap->vap_index)) {
+            /*
+             * Dedicated onboarding: dedicated EasyMesh onboarding VAPs (vap_name
+             * prefix "onboarding_", AP.5 / AP.6) are not part of the
+             * EasyMesh fronthaul/backhaul subdoc. They are owned by
+             * the local OneWifi side and only come up when
+             * rdk-wps-monitor toggles Device.WiFi.AccessPoint.{5,6}
+             * .Enable + WPS.X_CISCO_COM_ActivatePushButton, which
+             * lands in vap_svc_private_update -> wifi_hal_createVAP
+             * via the AccessPoint webconfig pass. The agent->OneWifi
+             * Vap_2.4G / Vap_5G subdoc emitted here must not carry
+             * their state, or the agent would clobber what
+             * rdk-wps-monitor just programmed. See em_agent.log
+             * "Private subdoc encode failure" pre-fix.
+             */
+            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                "%s:%d: Dedicated onboarding: skipping onboarding VAP %s (idx %d) "
+                "in multivap encode (subdoc type %d)\n", __func__,
+                __LINE__, vap->vap_name, vap->vap_index, data->type);
+#endif /* UWM_CTRL_WPS_SUPPORT */
         } else {
             wifi_util_error_print(WIFI_WEBCONFIG,
                 "%s:%d: Unknown vap:%s unable to encode for Radio index: %d\n", __func__, __LINE__,

@@ -510,7 +510,14 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     cJSON_AddBoolToObject(vap_object, "WpsEnable", vap_info->u.bss_info.wps.enable);
 
     //wpsConfigMethodsEnabled
-    if(strstr(vap_info->vap_name, "private") != NULL) {
+    /*
+     * Private and dedicated onboarding VAPs both carry WPS registrar
+     * config. Restricting encode to "*private*" left onboarding methods at
+     * 0 after decode, so hostapd never set wps_state and PBC failed with
+     * "WPS is not enabled".
+     */
+    if (strstr(vap_info->vap_name, "private") != NULL ||
+        strstr(vap_info->vap_name, "onboarding") != NULL) {
         cJSON_AddNumberToObject(vap_object, "WpsConfigMethodsEnabled", vap_info->u.bss_info.wps.methods);
         //WpsConfigPin
         cJSON_AddStringToObject(vap_object, "WpsConfigPin", vap_info->u.bss_info.wps.pin);

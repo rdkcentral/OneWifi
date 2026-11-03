@@ -43,8 +43,14 @@ AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
 AM_LDFLAGS += -L$(top_builddir)/source/utils/
 AM_LDFLAGS += -lwifi_utils
+if PLATFORM_BANANAPI
 AM_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
 AM_LDFLAGS += -lwifi_math_utils
+endif
+if LIBWEBCONFIG
+AM_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
+AM_LDFLAGS += -lwifi_math_utils
+endif
 if PLATFORM_BANANAPI
 AM_LDFLAGS += -L$(top_builddir)/source/utils/quality_mgr/
 AM_LDFLAGS += -lwifi_quality_manager
@@ -250,9 +256,13 @@ OneWifi_LDFLAGS += -lwifi_utils
 if PLATFORM_BANANAPI
 OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/quality_mgr/
 OneWifi_LDFLAGS += -lwifi_quality_manager
-endif
 OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
 OneWifi_LDFLAGS += -lwifi_math_utils
+endif
+if LIBWEBCONFIG
+OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/math_utils/
+OneWifi_LDFLAGS += -lwifi_math_utils
+endif
 if WITH_LIBWEBCONFIG
 OneWifi_LDFLAGS += -L$(top_builddir)/source/platform/
 OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
