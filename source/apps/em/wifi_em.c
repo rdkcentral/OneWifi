@@ -2123,6 +2123,13 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
                 stats = em_remove_mlo_client_records(
                     &em_ap_metrics_report_cache.radio_report[radio_index].ap_data[arr_vap_index],
                     primary_mac + 1, key);
+                for (int r = 0; r < MAX_NUM_RADIOS; r++) {
+                    for (int v = 0; v < MAX_NUM_VAP_PER_RADIO; v++) {
+                        em_remove_mlo_client_records(
+                            &em_ap_metrics_report_cache.radio_report[r].ap_data[v],
+                            primary_mac + 1, NULL);
+                    }
+                }
             } else {
                 wifi_util_error_print(WIFI_EM, "%s:%d: invalid MLO primary key %s\n",
                     __func__, __LINE__, key);
