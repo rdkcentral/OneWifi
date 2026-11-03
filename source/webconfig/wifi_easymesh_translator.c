@@ -814,7 +814,12 @@ static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
 
     memset(eht_ops_bss, 0, sizeof(*eht_ops_bss));
 
-    bool is_eht = ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
+    bool is_eht =
+#ifdef CONFIG_IEEE80211BE
+        ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
+#else /* !CONFIG_IEEE80211BE */
+        false;
+#endif /* CONFIG_IEEE80211BE */
     if (!is_eht) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,
             "%s:%d: Radio is not operating in EHT (Wi-Fi 7) mode: wifi7_supported=%d variant=0x%x is_eht=%d\n",
