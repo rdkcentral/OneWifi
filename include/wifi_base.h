@@ -1450,6 +1450,23 @@ typedef struct {
     radio_metrics_policy_t radio_metrics_policy[EM_MAX_RADIO_POLICY];
 } radio_metrics_policies_t;
 
+#ifndef EM_MAX_SSID_LEN
+#define EM_MAX_SSID_LEN 33
+#endif /* EM_MAX_SSID_LEN */
+typedef struct {
+    unsigned char  ssid_len;
+    char  ssid[EM_MAX_SSID_LEN];
+    unsigned short vlan_id;
+} traffic_sep_policy_ssid_t;
+
+#ifndef EM_MAX_TRAFFIC_SEP_POLICY
+#define EM_MAX_TRAFFIC_SEP_POLICY 5
+#endif /* EM_MAX_TRAFFIC_SEP_POLICY */
+typedef struct {
+    unsigned char  ssids_num;
+    traffic_sep_policy_ssid_t  ssids[EM_MAX_TRAFFIC_SEP_POLICY];
+} traffic_sep_policy_t;
+
 typedef struct {
     bool report_unassoc_sta;
     unsigned int max_reporting_rate;
@@ -1504,8 +1521,8 @@ typedef struct {
     int num_qos_mgt;
     qos_mgt_policy_t qos_mgt_policy[EM_MAX_QOS_POLICY];
     default_8021q_policy_t default_8021q_policy;
-    // traffic_separation_policy_t traffic_separation_policy;
     radio_steering_policies_t radio_steering_policies;
+    traffic_sep_policy_t traffic_separation_policy;
 } em_config_t;
 
 typedef struct {
