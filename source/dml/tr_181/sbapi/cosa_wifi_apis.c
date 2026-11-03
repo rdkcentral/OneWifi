@@ -109,7 +109,7 @@
 #include "ovsdb_table.h"
 #include "wifi_db.h"
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(QCOM_ATH12K_PORT) || defined(_PLATFORM_TURRIS_)
 #include "cJSON.h"
 #include <ctype.h>
 #endif
@@ -129,7 +129,7 @@
 #define WLAN_WAIT_LIMIT 3
 #endif
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(QCOM_ATH12K_PORT) || defined(_PLATFORM_TURRIS_)
 #define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
 #define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
 #define BOOTSTRAP_INFO_FILE_BACKUP      "/nvram/bootstrap.json"
