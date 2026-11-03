@@ -5699,7 +5699,9 @@ int coordinator_create_provider_task_delay(void *arg)
     int rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority,
         &provider_elem->provider_task_sched_id, provider_execute_task, (void *)provider_elem,
         provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
-    if (rc != RETURN_OK) {
+    if (rc == RETURN_OK) {
+        provider_elem->delay_task_pending = false;
+    } else {
         /* The delay task has several repetitions, so it fires again after another delay period:
          * a bounded retry with backoff instead of re-running immediately. */
         wifi_util_error_print(WIFI_MON, "%s:%d: failed to schedule provider task for key : %s\n",
@@ -5723,6 +5725,7 @@ int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
         rc = scheduler_add_timer_task(mon_data->sched, 0, &provider_elem->provider_task_sched_id,
             coordinator_create_provider_task_delay, (void *)provider_elem, provider_elem->delay_provider_sec * 1000,
             PROVIDER_DELAY_MAX_ATTEMPTS, 0);
+        provider_elem->delay_task_pending = (rc == RETURN_OK);
     }
     return rc;
 }
@@ -5972,7 +5975,9 @@ int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned lo
     provider_elem->provider_task_interval_ms = *new_provider_interval;
 
     wifi_util_info_print(WIFI_MON, "%s:%d: New Provider interval : %d for key : %s\n", __func__,__LINE__, provider_elem->provider_task_interval_ms, provider_elem->key);
-    if (provider_elem->provider_task_sched_id != 0) {
+    /* While the startup delay task is pending its id must not be retimed with the provider
+     * interval; the delay callback schedules the real task with the updated interval. */
+    if (provider_elem->provider_task_sched_id != 0 && !provider_elem->delay_task_pending) {
         scheduler_update_timer_task_interval(mon_data->sched, provider_elem->provider_task_sched_id, provider_elem->provider_task_interval_ms);
     }
 

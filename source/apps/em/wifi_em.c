@@ -2128,21 +2128,28 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
         }
     }
 
-    /* Without cached counters the event carries no valid traffic stats; do not publish zeros. */
+    /* The HAL event is shared with other apps: publish from a private copy so their view of the
+     * per-link STA MAC and counters is not rewritten with the cached MLD record. */
+    assoc_dev_data_t pub_data = *assoc_data;
+
     if (stats != NULL) {
-        memcpy(&assoc_data->dev_stats, &stats->associated_dev3, sizeof(wifi_associated_dev3_t));
-        publish_rc = em_publish_client_disassoc_stats(app, vap_info, assoc_data);
-        if (publish_rc != RETURN_OK) {
-            wifi_util_error_print(WIFI_EM, "%s:%d Failed to publish %s\n", __func__, __LINE__,
-                WIFI_EM_CLIENT_DISASSOC_STATS);
-        }
-        free(stats);
+        memcpy(&pub_data.dev_stats, &stats->associated_dev3, sizeof(wifi_associated_dev3_t));
     } else {
-        wifi_util_error_print(WIFI_EM, "%s:%d: Sta Mac %s not present in hash map\n", __func__,
-            __LINE__, sta_mac_str);
+        /* No cached sample (no AP-report policy, or disconnect before the first sample): still
+         * notify, using the counters carried by the event rather than dropping the disconnect. */
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s has no cached stats, using event data\n",
+            __func__, __LINE__, sta_mac_str);
     }
 
-    to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
+    publish_rc = em_publish_client_disassoc_stats(app, vap_info, &pub_data);
+    if (publish_rc != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Failed to publish %s\n", __func__, __LINE__,
+            WIFI_EM_CLIENT_DISASSOC_STATS);
+    }
+    free(stats);
+
+    /* The client-type cache is keyed by the client (MLD) address, not the per-link STA MAC. */
+    to_mac_str((unsigned char *)pub_data.dev_stats.cli_MACAddress, client_mac);
     if (is_mlo && strcasecmp(sta_mac_str, client_mac) != 0) {
         pthread_mutex_lock(&em_client_stats_map_lock);
         bool mlo_record_remains = em_mlo_client_records_exist(client_mac);
