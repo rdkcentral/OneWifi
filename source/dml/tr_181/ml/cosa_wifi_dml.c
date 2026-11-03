@@ -88,7 +88,7 @@
 
 #if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || \
     defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || \
-    defined(_XER2_PRODUCT_REQ_)
+    defined(_XER2_PRODUCT_REQ_) ||  defined(QCOM_ATH12K_PORT)
 #include "ccsp_base_api.h"
 #include "messagebus_interface_helper.h"
 
@@ -3827,6 +3827,42 @@ Radio_SetParamUlongValue
             return FALSE;
         }
 
+        /* Validate GI value against current operating mode (variant).
+         *
+         * EHT (BE) / HE (AX) : 800ns, 1600ns, 3200ns, Auto  — 400ns NOT supported
+         * VHT (AC) / HT  (N) : 400ns, 800ns, Auto            — 1600ns/3200ns NOT supported
+         * Legacy (A/B/G)      : Auto only                     — all specific GI NOT supported
+         */
+        if (tmpGuardInterval != wifi_guard_interval_auto) {
+            wifi_ieee80211Variant_t variant = wifiRadioOperParam->variant;
+            bool is_eht_he = (variant & WIFI_80211_VARIANT_BE) || (variant & WIFI_80211_VARIANT_AX);
+            bool is_vht_ht = (variant & WIFI_80211_VARIANT_AC) || (variant & WIFI_80211_VARIANT_N);
+
+            if (is_eht_he && (tmpGuardInterval == wifi_guard_interval_400)) {
+                /* EHT/HE: 800ns, 1600ns, 3200ns only */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval 400ns not supported for EHT/HE mode (variant=0x%x)\n",
+                    __func__, __LINE__, variant);
+                return FALSE;
+            } else if (!is_eht_he && is_vht_ht &&
+                       ((tmpGuardInterval == wifi_guard_interval_1600) ||
+                        (tmpGuardInterval == wifi_guard_interval_3200))) {
+                /* HT/VHT: 400ns (SGI) and 800ns (LGI) only */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval %dns not supported for HT/VHT mode (variant=0x%x)\n",
+                    __func__, __LINE__,
+                    (tmpGuardInterval == wifi_guard_interval_1600) ? 1600 : 3200,
+                    variant);
+                return FALSE;
+            } else if (!is_eht_he && !is_vht_ht) {
+                /* Legacy (A/B/G): GI not applicable — only Auto is valid */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval not applicable for legacy mode (variant=0x%x), only Auto allowed\n",
+                    __func__, __LINE__, variant);
+                return FALSE;
+            }
+        }
+
         if(wifiRadioOperParam->guardInterval == tmpGuardInterval)
         {
             return TRUE;
@@ -5459,10 +5495,11 @@ SSID_GetParamIntValue
             *pInt = -1;
             return TRUE;
         }
-        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE) {
+
+        if (pcfg->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
             *pInt = -1;
         } else {
-            *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
+            *pInt = (int)pcfg->u.bss_info.mld_info.common_info.mld_id;
         }
         return TRUE;
     }
@@ -5988,10 +6025,7 @@ SSID_SetParamIntValue
         return FALSE;
     }
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "MLDUnit", TRUE))
-    {
-        BOOL tmp_mld_enable = FALSE;
-
+    if (AnscEqualString(ParamName, "MLDUnit", TRUE)) {
         if (isVapSTAMesh(pcfg->vap_index)) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
             return FALSE;
@@ -6000,21 +6034,15 @@ SSID_SetParamIntValue
             wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,__LINE__,iValue);
             return FALSE;
         }
-        wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
-        tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
 
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
-            if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
-                return TRUE;
-            if (tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)iValue)
-                return TRUE;
+        UINT new_id = (iValue == -1) ? UNDEFINED_MLD_ID : (UINT)iValue;
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_id == new_id) {
+            return TRUE;
         }
+
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Updating MLD Unit to value %d\n", __FUNCTION__, __LINE__, iValue);
-        vapInfo->u.bss_info.mld_info.common_info.mld_enable = tmp_mld_enable;
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable)
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = iValue;
-        else
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
+        vapInfo->u.bss_info.mld_info.common_info.mld_id = new_id;
 
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
