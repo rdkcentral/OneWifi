@@ -100,17 +100,17 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
-#if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
+#if defined(CONFIG_IEEE80211BE) && (defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT))
             cfg.variant |= WIFI_80211_VARIANT_BE;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
-#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+#endif /* defined(CONFIG_IEEE80211BE) && (defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT)) */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg.operatingClass = 128;
             cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+#if defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
@@ -563,6 +563,9 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg.u.bss_info.mld_info.common_info.mld_id = 0;
+        } else {
+            cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
+            cfg.u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
         }
 #else
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
@@ -1018,6 +1021,13 @@ int get_all_param_from_psm_and_set_into_db(void)
 {
    return 0;
 }
+
+int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
+    rdk_wifi_vap_info_t *rdk_config)
+{
+    return 0;
+}
+
 #endif
 
 void wifidb_init(wifi_db_t *db)

@@ -32,7 +32,7 @@
 
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
-#define BUS_SM_APP_ENABLE "Device.X_RDK_MeshAgent.SM_APP.Enable"
+#define BUS_SM_APP_DISABLE "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.SM_APP.Disable"
 #define SM_APP_ENABLE_TIMER_INTERVAL_SEC 5
 
 typedef struct {
@@ -828,14 +828,15 @@ static void sm_app_enable_handler(char *event_name, bus_data_prop_t *p_data)
 
     wifi_util_dbg_print(WIFI_SM, "%s:%d recvd event\n", __func__, __LINE__);
 
-    if ((strcmp(event_name, BUS_SM_APP_ENABLE) != 0) ||
+     if ((event_name == NULL) || (p_data == NULL) ||
+        (strcmp(event_name, BUS_SM_APP_DISABLE) != 0) ||
         (p_data->value.data_type != bus_data_type_boolean)) {
         wifi_util_error_print(WIFI_SM, "%s:%d invalid event received,%s:%x\n", __func__, __LINE__,
             event_name, p_data->value.data_type);
         return;
     }
 
-    sm_app_enable = p_data->value.raw_data.b;
+    sm_app_enable =!p_data->value.raw_data.b;
 
     push_event_to_ctrl_queue(&sm_app_enable, sizeof(sm_app_enable), wifi_event_type_command,
         wifi_event_type_sm_app_enable, NULL);
@@ -855,15 +856,15 @@ static void sm_events_subscribe(wifi_app_t *app)
     bool add_timer_task = false;
 
     if (app->data.u.sm_data.sm_app_enable_subscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_SM_APP_ENABLE, sm_app_enable_handler,
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_SM_APP_DISABLE, sm_app_enable_handler,
                 NULL, 0) != bus_error_success) {
             wifi_util_dbg_print(WIFI_SM, "%s:%d: event:%s subscribe failed\n", __FUNCTION__,
-                __LINE__, BUS_SM_APP_ENABLE);
+                __LINE__, BUS_SM_APP_DISABLE);
             add_timer_task = true;
         } else {
             app->data.u.sm_data.sm_app_enable_subscribed = true;
             wifi_util_info_print(WIFI_SM, "%s:%d: event:%s subscribe success\n", __FUNCTION__,
-                __LINE__, BUS_SM_APP_ENABLE);
+                __LINE__, BUS_SM_APP_DISABLE);
         }
     }
 

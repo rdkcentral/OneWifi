@@ -195,6 +195,7 @@ AC_ARG_ENABLE([libwebconfig],
                   *) AC_MSG_ERROR([bad value ${enableval} for --enable-libwebconfig]) ;;
             esac],[libwebconfig=true])
 AM_CONDITIONAL([LIBWEBCONFIG], [test x$libwebconfig = xtrue])
+AM_CONDITIONAL([ENABLE_MATHUTIL], [test "x$PLATFORM_BANANAPI" = "xtrue" || test "x$libwebconfig" = "xtrue"])
 
 AC_ARG_ENABLE([rdk-wifi-libhostap],
     [AS_HELP_STRING([--enable-rdk-wifi-libhostap],[enable])],
@@ -262,6 +263,16 @@ AC_ARG_ENABLE([notify],
 
 AC_SUBST(SYSTEMD_CFLAGS)
 AC_SUBST(SYSTEMD_LDFLAGS)
+
+# msgpack-c 6.0 renamed the C library from libmsgpackc to libmsgpack-c.
+# Probe for the new name first and fall back to the old one so the tree can build with either version.
+MSGPACK_LIBS=
+AC_CHECK_LIB([msgpack-c], [msgpack_unpack_next],
+    [MSGPACK_LIBS=-lmsgpack-c],
+    [AC_CHECK_LIB([msgpackc], [msgpack_unpack_next],
+        [MSGPACK_LIBS=-lmsgpackc],
+        [AC_MSG_ERROR([msgpack C library not found (tried -lmsgpack-c and -lmsgpackc)])])])
+AC_SUBST(MSGPACK_LIBS)
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
