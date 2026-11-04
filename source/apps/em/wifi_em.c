@@ -92,7 +92,8 @@ static bool wifi_em_refresh_tx_power(void)
     }
     pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
 
-    return true;;
+    return true;
+    ;
 }
 
 // Structure to track pending block timers
@@ -3448,7 +3449,7 @@ bus_error_t get_tx_power(char *event_name, raw_data_t *p_data, bus_user_data_t *
 {
     (void)user_data;
 
-    wifi_util_error_print(WIFI_EM, "%s:%d: --------->>>> transmit power GET\n",
+    wifi_util_error_print(WIFI_EM, "%s:%d: transmit power GET\n",
             __func__, __LINE__);
 
     if (event_name == NULL || p_data == NULL) {
@@ -3462,7 +3463,7 @@ bus_error_t get_tx_power(char *event_name, raw_data_t *p_data, bus_user_data_t *
         return bus_error_invalid_namespace;
     }
     if (!wifi_em_refresh_tx_power()) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: --------->>>> transmit power unavailable; retry GET\n",
+        wifi_util_error_print(WIFI_EM, "%s:%d: transmit power unavailable; retry GET\n",
             __func__, __LINE__);
         return bus_error_general;
     }
@@ -4314,12 +4315,10 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     em_config_t *policy_config = &app->data.u.em_data.em_config;
 
     bus_data_element_t dataElements[] = {
-        { WIFI_EM_INIT_TX_POWER_READY,      bus_element_type_property,
-         { get_tx_power, NULL, NULL, NULL, NULL, NULL },                                                     slow_speed, ZERO_TABLE,
-         { bus_data_type_uint32, false, 0, 0, 0, NULL }                                                                                                                             },
-        { WIFI_EM_CHANNEL_SCAN_REQUEST,     bus_element_type_method,
-         { NULL, start_channel_scan, NULL, NULL, NULL, NULL },                                               slow_speed, ZERO_TABLE,
-         { bus_data_type_bytes, true, 0, 0, 0, NULL }                                                                                                                               },
+        { WIFI_EM_INIT_TX_POWER_READY,      bus_element_type_property, { get_tx_power, NULL, NULL, NULL, NULL, NULL },
+         slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_uint32, false, 0, 0, 0, NULL } },
+        { WIFI_EM_CHANNEL_SCAN_REQUEST,     bus_element_type_method,   { NULL, start_channel_scan, NULL, NULL, NULL, NULL },
+         slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_bytes, true, 0, 0, 0, NULL }   },
         { WIFI_SET_DISCONN_STEADY_STATE,    bus_element_type_method,
          { NULL, set_disconn_steady_state, NULL, NULL, NULL, NULL },                                         slow_speed, ZERO_TABLE,
          { bus_data_type_none, true, 0, 0, 0, NULL }                                                                                                                                },
