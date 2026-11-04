@@ -1515,6 +1515,29 @@ static webconfig_error_t fill_assoc_sta_mld_info_from_assoc_dev(
     return webconfig_error_none;
 }
 
+/* em_sta_info_t.frame_body is a fixed array in older unified-wifi-mesh and a pointer to a
+ * variable sized body in newer ones. Support both so the build does not depend on merge order. */
+static void easymesh_sta_set_frame_body(em_sta_info_t *info, unsigned char *body, unsigned int len)
+{
+    /* The array is far larger than a pointer, so its size tells the two layouts apart. */
+    if (sizeof(info->frame_body) == sizeof(unsigned char *)) {
+        /* The pointer only borrows the caller's frame, the receiver copies it. */
+        memcpy(&info->frame_body, &body, sizeof(body));
+        info->frame_body_len = (body != NULL) ? len : 0;
+    } else {
+        size_t copy_len = (body != NULL) ? len : 0;
+
+        if (copy_len > sizeof(info->frame_body)) {
+            copy_len = sizeof(info->frame_body);
+        }
+        memset(&info->frame_body, 0, sizeof(info->frame_body));
+        if (copy_len > 0) {
+            memcpy(&info->frame_body, body, copy_len);
+        }
+        info->frame_body_len = (unsigned int)copy_len;
+    }
+}
+
 //Converting data elements of assoc client stats to em_sta_info_t of easymesh
 webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_subdoc_data_t *data)
 {
@@ -1619,8 +1642,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         /* Removal records, and some connect records, carry no FrameData. Still
                          * forward the client state, with the empty frame body the receiver
                          * expects (NULL body, zero length). */
-                        em_sta_dev_info->frame_body = NULL;
-                        em_sta_dev_info->frame_body_len = 0;
+                        easymesh_sta_set_frame_body(em_sta_dev_info, NULL, 0);
                     } else if ((frame_len < IEEE80211_HDRLEN + fixed_len) || (frame_len > MAX_FRAME_SZ)) {
                         wifi_util_error_print(WIFI_WEBCONFIG,
                             "%s:%d: Invalid association frame length %u, skipping client\n",
@@ -1633,10 +1655,10 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         if (fixed_len + tag_len > EM_MAX_FRAME_BODY_LEN) {
                             tag_len = EM_MAX_FRAME_BODY_LEN - fixed_len;
                         }
-                        /* The frame body has no fixed size. It only borrows the stored frame here:
-                         * put_sta_info() copies it into the data model, so there is nothing to free. */
-                        em_sta_dev_info->frame_body = (unsigned char *)&mgmt->u.assoc_req;
-                        em_sta_dev_info->frame_body_len = fixed_len + tag_len;
+                        /* put_sta_info() copies the frame into the data model, so the stored
+                         * frame is only borrowed here and nothing needs to be freed. */
+                        easymesh_sta_set_frame_body(em_sta_dev_info,
+                            (unsigned char *)&mgmt->u.assoc_req, fixed_len + tag_len);
                     }
 
                     if (assoc_dev_data->client_state == 0) {
