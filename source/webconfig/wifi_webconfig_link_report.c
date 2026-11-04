@@ -149,7 +149,9 @@ webconfig_error_t decode_link_report_subdoc(webconfig_t *config, webconfig_subdo
     if (decode_link_report(json, &data->u.decoded.qmgr_report) != webconfig_error_none) {
         /* use qmgr_report */
          wifi_util_error_print(WIFI_WEBCONFIG," %s:%d Failed in decoding link report\n",__func__,__LINE__);
+        cJSON_Delete(json);
         return webconfig_error_decode;
     }
+    cJSON_Delete(json);
     return webconfig_error_none;
 }

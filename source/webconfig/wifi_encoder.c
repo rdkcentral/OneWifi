@@ -757,9 +757,10 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //VlanCfgVersion
     cJSON_AddNumberToObject(global_obj, "VlanCfgVersion", global_info->vlan_cfg_version);
 
+#ifndef EASY_MESH_NODE
     //WpsPin
     cJSON_AddSafeStringToObject(global_obj, "WpsPin", global_info->wps_pin, sizeof(global_info->wps_pin));
-    
+#endif
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
 
@@ -805,6 +806,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //FixedWmmParams
     cJSON_AddNumberToObject(global_obj, "FixedWmmParams", global_info->fixed_wmm_params);
 
+#ifndef EASY_MESH_NODE
     //WifiRegionCode
     cJSON_AddSafeStringToObject(global_obj, "WifiRegionCode", global_info->wifi_region_code, sizeof(global_info->wifi_region_code));
 
@@ -828,7 +830,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     //TxRxRateList
     cJSON_AddStringToObject(global_obj, "TxRxRateList", global_info->txrx_rate_list);
-
+#endif
     // MgtFrameRateLimitEnable
     cJSON_AddBoolToObject(global_obj, "MgtFrameRateLimitEnable",
         global_info->mgt_frame_rate_limit_enable);
@@ -1879,6 +1881,7 @@ void encode_assoc_dev_stats(cJSON *obj, const assoc_dev_data_t *dev)
     cJSON_AddNumberToObject(obj, "MaxRSSI", dev->dev_stats.cli_MaxRSSI);
     cJSON_AddNumberToObject(obj, "Disassociations", dev->dev_stats.cli_Disassociations);
     cJSON_AddNumberToObject(obj, "AuthenticationFailures", dev->dev_stats.cli_AuthenticationFailures);
+    cJSON_AddNumberToObject(obj, "CapableNumSpatialStreams", dev->dev_stats.cli_capableNumSpatialStreams);
     cJSON_AddNumberToObject(obj, "ActiveNumSpatialStreams", dev->dev_stats.cli_activeNumSpatialStreams);
     cJSON_AddNumberToObject(obj, "PacketsSent", dev->dev_stats.cli_PacketsSent);
     cJSON_AddNumberToObject(obj, "PacketsReceived", dev->dev_stats.cli_PacketsReceived);
@@ -2432,6 +2435,10 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
 #ifdef CONFIG_IEEE80211BE
         /* WiFi7 (EHT) capabilities */
         cJSON_AddBoolToObject(object, "WiFi7Supported", wifi_prop->radiocap[i].wifi7_supported);
+        cJSON_AddNumberToObject(object, "MLOOperationalCap",
+            wifi_prop->radiocap[i].mldOperationalCap);
+        cJSON_AddBoolToObject(object, "TIDLinkMapNegotiation",
+            wifi_prop->radiocap[i].TIDLinkMapNegotiation);
 
         cJSON_AddNumberToObject(object, "EHTMACCap", wifi_prop->radiocap[i].eht_mac_cap);
 
@@ -2941,6 +2948,7 @@ webconfig_error_t encode_assocdevice_params(wifi_provider_response_t *assoc_dev_
         cJSON_AddNumberToObject(client_stats_obj, "cli_MultipleRetryCount", client_stats[count].dev_stats.cli_MultipleRetryCount);
         cJSON_AddNumberToObject(client_stats_obj, "cli_MaxDownlinkRate", client_stats[count].dev_stats.cli_MaxDownlinkRate);
         cJSON_AddNumberToObject(client_stats_obj, "cli_MaxUplinkRate", client_stats[count].dev_stats.cli_MaxUplinkRate);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_capableNumSpatialStreams", client_stats[count].dev_stats.cli_capableNumSpatialStreams);
         cJSON_AddNumberToObject(client_stats_obj, "cli_activeNumSpatialStreams", client_stats[count].dev_stats.cli_activeNumSpatialStreams);
         cJSON_AddNumberToObject(client_stats_obj, "cli_TxFrames", client_stats[count].dev_stats.cli_TxFrames);
         cJSON_AddNumberToObject(client_stats_obj, "cli_RxRetries", client_stats[count].dev_stats.cli_RxRetries);
@@ -3035,7 +3043,6 @@ void print_hex_dump(unsigned int length, unsigned char *buffer)
 webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_data,
     cJSON **beacon_report_obj)
 {
-    char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
     if (sta_data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
@@ -3047,16 +3054,23 @@ webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_d
         return webconfig_error_encode;
     }
 
-    memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
-    if (sta_data->data_len != 0) {
-        // print_hex_dump(sta_data->data_len, sta_data->data);
-        hextostring(sta_data->data_len, sta_data->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
-        // printf("assoc_frame_string:%s\n", assoc_frame_string);
-    } else {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
+    if (sta_data->data_len == 0 || sta_data->data == NULL || sta_data->data_len > MAX_FRAME_SZ) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid Report Data (len=%u)\n", __func__,
+            __LINE__, sta_data->data_len);
         return webconfig_error_encode;
     }
+
+    size_t hex_buf_len = (size_t)sta_data->data_len * 2 + 1;
+    char *assoc_frame_string = (char *)malloc(hex_buf_len);
+    if (assoc_frame_string == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to allocate hex buffer\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+    memset(assoc_frame_string, 0, hex_buf_len);
+    hextostring(sta_data->data_len, sta_data->data, hex_buf_len, assoc_frame_string);
     cJSON_AddStringToObject(*beacon_report_obj, "ReportData", assoc_frame_string);
+    free(assoc_frame_string);
     return webconfig_error_none;
 }
 #endif
@@ -3387,8 +3401,7 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
     char mac_str[32];
     cJSON *assoc_sta_link_metrics_obj, *error_code_obj, *assoc_sta_ext_link_metrics_obj, *param_obj, *temp_obj, *param_arr;
 
-    for (int i = 0; i < sta_link_metrics->sta_count; i++)
-    {
+    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++) {
         param_obj = cJSON_CreateObject();
         if (param_obj == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
@@ -3398,7 +3411,8 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
 
         uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].sta_mac, mac_str);
         cJSON_AddStringToObject(param_obj, "STA MAC", mac_str);
-        cJSON_AddStringToObject(param_obj, "Client Type", sta_link_metrics->per_sta_metrics[i].client_type);
+        cJSON_AddStringToObject(param_obj, "Client Type",
+            (const char *)sta_link_metrics->per_sta_metrics[i].client_type);
 
         // Associated STA Link Metrics
         if (sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid != 0)
@@ -3542,6 +3556,7 @@ webconfig_error_t encode_em_sta_traffic_stats_object(int sta_cnt,
         cJSON_AddNumberToObject(param_obj, "RxPacketsErrors", sta_traffic_stats[i].rx_packtes_errs);
         cJSON_AddNumberToObject(param_obj, "RetransmissionCount", sta_traffic_stats[i].retrans_cnt);
     }
+    return webconfig_error_none;
 }
 
 // merge with existing one, later
@@ -3565,7 +3580,7 @@ webconfig_error_t encode_sta_link_metrics_object(per_sta_metrics_t *sta_metrics,
 
         uint8_mac_to_string_mac(sta_metrics[i].sta_mac, mac_str);
         cJSON_AddStringToObject(param_obj, "STA MAC", mac_str);
-        cJSON_AddStringToObject(param_obj, "Client Type", sta_metrics[i].client_type);
+        cJSON_AddStringToObject(param_obj, "Client Type", (const char *)sta_metrics[i].client_type);
 
         // Associated STA Link Metrics
         if (sta_metrics[i].assoc_sta_link_metrics.num_bssid != 0) {
@@ -3692,8 +3707,7 @@ webconfig_error_t encode_sta_link_metrics_object(per_sta_metrics_t *sta_metrics,
 webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
     em_per_radio_report_t *radio_report, cJSON *emap_metrics_report_obj)
 {
-    cJSON *error_code_obj, *param_obj, *temp_obj, *param_arr;
-    int radio_index = radio_report->radio_index;
+    cJSON *param_obj, *temp_obj, *param_arr;
     wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_t *vap = NULL;
     em_vap_metrics_t *ap_metrics = NULL;
@@ -3741,7 +3755,7 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
     }
     cJSON_AddItemToObject(emap_metrics_report_obj, "Vap Info", param_arr);
 
-    for (int j = 0; j < radio->vaps.num_vaps; j++) {
+    for (unsigned int j = 0; j < radio->vaps.num_vaps; j++) {
         vap = &vap_map->vap_array[j];
         if (vap == NULL) {
             continue;

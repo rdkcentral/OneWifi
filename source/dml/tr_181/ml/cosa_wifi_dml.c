@@ -80,14 +80,15 @@
 #include "../../../stubs/wifi_stubs.h"
 #include "wifi_monitor.h"
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 //#include "../sbapi/wifi_webconfig.h"
 #include "wifi_webconfig_old.h"
 #include "wifi_webconfig.h"//ONE_WIFI
 #endif
 
 #if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_) || \
-    defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+    defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || \
+    defined(_XER2_PRODUCT_REQ_) ||  defined(QCOM_ATH12K_PORT)
 #include "ccsp_base_api.h"
 #include "messagebus_interface_helper.h"
 
@@ -330,7 +331,7 @@ WiFi_GetParamBoolValue
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList", TRUE))
     {
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
         *pBool = rfc_pcfg->radiusgreylist_rfc;
 #else
         *pBool = FALSE;
@@ -369,11 +370,6 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->csi_analytics_enabled_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        *pBool = rfc_pcfg->link_quality_rfc;
-        return TRUE;
-    }
 
     if (AnscEqualString(ParamName, "MultiAp_RFC", TRUE))
     {
@@ -397,7 +393,7 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi-OffChannelScan-APP", TRUE)) {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         *pBool = rfc_pcfg->wifi_offchannelscan_app_rfc;
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
         *pBool = FALSE;
@@ -1098,7 +1094,7 @@ WiFi_SetParamBoolValue
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList", TRUE))
     {
-#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+#if defined(FEATURE_SUPPORT_RADIUSGREYLIST)
         if(bValue != rfc_pcfg->radiusgreylist_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_radius_grey_list_rfc);
         }
@@ -1202,14 +1198,6 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->csi_analytics_enabled_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_csi_analytics_rfc);
-        }
-
-        return TRUE;
-    }
-    if (AnscEqualString(ParamName, "LinkQuality", TRUE))
-    {
-        if(bValue != rfc_pcfg->link_quality_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_link_quality_rfc);
         }
 
         return TRUE;
@@ -1413,7 +1401,7 @@ WiFi_SetParamStringValue
     rc = strcmp_s("X_RDK_RadioData", strlen("X_RDK_RadioData"), ParamName, &ind);
     ERR_CHK(rc);
     if((rc == EOK) && (!ind)) {
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     if (CosaDmlWiFi_setWebConfig(pString,strlen(pString), WIFI_RADIO_CONFIG) == ANSC_STATUS_SUCCESS) {
         CcspTraceWarning(("Success in parsing Radio Config\n"));
             return TRUE;
@@ -2000,11 +1988,11 @@ Radio_GetParamBoolValue
     if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
     {
         /* collect value */
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         *pBool = pcfg->EcoPowerDown;
 #else
         *pBool = false;
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         return TRUE;
     }
 
@@ -3365,7 +3353,7 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
     {
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: EcoPowerDown = %d bValue = %d  \n", __func__, __LINE__, wifiRadioOperParam->EcoPowerDown, bValue);
         if (wifiRadioOperParam->EcoPowerDown == bValue)
         {
@@ -3379,7 +3367,7 @@ Radio_SetParamBoolValue
 #endif // FEATURE_SUPPORT_ECOPOWERDOWN
         is_radio_config_changed = TRUE;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s EcoPowerDown : %d\n", __FUNCTION__, wifiRadioOperParam->EcoPowerDown);
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         return TRUE;
     }
     return FALSE;
@@ -3839,6 +3827,42 @@ Radio_SetParamUlongValue
             return FALSE;
         }
 
+        /* Validate GI value against current operating mode (variant).
+         *
+         * EHT (BE) / HE (AX) : 800ns, 1600ns, 3200ns, Auto  — 400ns NOT supported
+         * VHT (AC) / HT  (N) : 400ns, 800ns, Auto            — 1600ns/3200ns NOT supported
+         * Legacy (A/B/G)      : Auto only                     — all specific GI NOT supported
+         */
+        if (tmpGuardInterval != wifi_guard_interval_auto) {
+            wifi_ieee80211Variant_t variant = wifiRadioOperParam->variant;
+            bool is_eht_he = (variant & WIFI_80211_VARIANT_BE) || (variant & WIFI_80211_VARIANT_AX);
+            bool is_vht_ht = (variant & WIFI_80211_VARIANT_AC) || (variant & WIFI_80211_VARIANT_N);
+
+            if (is_eht_he && (tmpGuardInterval == wifi_guard_interval_400)) {
+                /* EHT/HE: 800ns, 1600ns, 3200ns only */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval 400ns not supported for EHT/HE mode (variant=0x%x)\n",
+                    __func__, __LINE__, variant);
+                return FALSE;
+            } else if (!is_eht_he && is_vht_ht &&
+                       ((tmpGuardInterval == wifi_guard_interval_1600) ||
+                        (tmpGuardInterval == wifi_guard_interval_3200))) {
+                /* HT/VHT: 400ns (SGI) and 800ns (LGI) only */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval %dns not supported for HT/VHT mode (variant=0x%x)\n",
+                    __func__, __LINE__,
+                    (tmpGuardInterval == wifi_guard_interval_1600) ? 1600 : 3200,
+                    variant);
+                return FALSE;
+            } else if (!is_eht_he && !is_vht_ht) {
+                /* Legacy (A/B/G): GI not applicable — only Auto is valid */
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: GuardInterval not applicable for legacy mode (variant=0x%x), only Auto allowed\n",
+                    __func__, __LINE__, variant);
+                return FALSE;
+            }
+        }
+
         if(wifiRadioOperParam->guardInterval == tmpGuardInterval)
         {
             return TRUE;
@@ -3977,7 +4001,7 @@ Radio_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_OffChannelTscan", TRUE))
     {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
@@ -3998,7 +4022,7 @@ Radio_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_OffChannelNscan", TRUE))
     {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
@@ -4032,7 +4056,7 @@ Radio_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_OffChannelTidle", TRUE))
     {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
@@ -4642,7 +4666,7 @@ Stats3_GetParamIntValue
         pthread_mutex_lock(&monitor_param->data_lock);
         radio_activity_factor =
             monitor_param->radio_data[instance_number].RadioActivityFactor;
-        while ((i++) < monitor_param->radio_chan_stats_data[instance_number]
+        while (i < monitor_param->radio_chan_stats_data[instance_number]
                            .num_channels) {
             utilization_rx +=
                 monitor_param->radio_chan_stats_data[instance_number]
@@ -4652,6 +4676,7 @@ Stats3_GetParamIntValue
                 monitor_param->radio_chan_stats_data[instance_number]
                     .chan_data[i]
                     .ch_utilization_busy_tx;
+            i++;
         }
         pthread_mutex_unlock(&monitor_param->data_lock);
         utilization_total = utilization_rx + utilization_tx;
@@ -5063,7 +5088,7 @@ AMSDU_TID_GetEntry(ANSC_HANDLE hInsContext, ULONG nIndex, ULONG *pInsNumber)
 
 BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_)
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_) && !defined(_XER2_PRODUCT_REQ_)	
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;
@@ -5146,7 +5171,7 @@ BOOL AMSDU_TID_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL 
 
 BOOL AMSDU_TID_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
 {
-#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_)
+#if !defined(_XB8_PRODUCT_REQ_) && !defined(_XB10_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_SCXF11BFL_PRODUCT_REQ_) && !defined(_XER2_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d AMSDU not supported on the device\n", __func__,
         __LINE__);
     return FALSE;
@@ -5470,10 +5495,11 @@ SSID_GetParamIntValue
             *pInt = -1;
             return TRUE;
         }
-        if (pcfg->u.bss_info.mld_info.common_info.mld_enable == FALSE) {
+
+        if (pcfg->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID) {
             *pInt = -1;
         } else {
-            *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
+            *pInt = (int)pcfg->u.bss_info.mld_info.common_info.mld_id;
         }
         return TRUE;
     }
@@ -5855,7 +5881,7 @@ SSID_SetParamBoolValue
             rdk_vap_info->exists = bValue;
         }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
         if (bValue == false) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d User is Trying to disable SSID for vap_index=%d\n",__FUNCTION__,__LINE__,vapInfo->vap_index);
         }
@@ -5999,10 +6025,7 @@ SSID_SetParamIntValue
         return FALSE;
     }
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "MLDUnit", TRUE))
-    {
-        BOOL tmp_mld_enable = FALSE;
-
+    if (AnscEqualString(ParamName, "MLDUnit", TRUE)) {
         if (isVapSTAMesh(pcfg->vap_index)) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP is sta VAP\n", __FUNCTION__, __LINE__);
             return FALSE;
@@ -6011,21 +6034,15 @@ SSID_SetParamIntValue
             wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid MLDUnit value %d\n", __FUNCTION__,__LINE__,iValue);
             return FALSE;
         }
-        wifi_util_info_print(WIFI_DMCLI,"%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
-        tmp_mld_enable = (iValue == -1) ? FALSE : TRUE;
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d MLD Unit %d\n", __FUNCTION__, __LINE__, iValue);
 
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable == tmp_mld_enable) {
-            if (!tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == UNDEFINED_MLD_ID)
-                return TRUE;
-            if (tmp_mld_enable && vapInfo->u.bss_info.mld_info.common_info.mld_id == (UINT)iValue)
-                return TRUE;
+        UINT new_id = (iValue == -1) ? UNDEFINED_MLD_ID : (UINT)iValue;
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_id == new_id) {
+            return TRUE;
         }
+
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Updating MLD Unit to value %d\n", __FUNCTION__, __LINE__, iValue);
-        vapInfo->u.bss_info.mld_info.common_info.mld_enable = tmp_mld_enable;
-        if (vapInfo->u.bss_info.mld_info.common_info.mld_enable)
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = iValue;
-        else
-            vapInfo->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
+        vapInfo->u.bss_info.mld_info.common_info.mld_id = new_id;
 
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
@@ -6091,39 +6108,29 @@ SSID_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_RDK_MLDLinkID", TRUE))
     {
-        if (isVapSTAMesh(pcfg->vap_index)) {
+        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
+         * MLD_Link_ID can be updated only for private VAP, other VAPs populated automatically from the same radio.
+         */
+        if (!isVapPrivate(pcfg->vap_index)) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+            return FALSE;
+        }
+
+        if (uValue != UNDEFINED_MLD_LINK_ID && uValue >= MAX_NUM_MLD_LINKS) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d Invalid X_RDK_MLDLinkID value %lu\n", __func__,
+                __LINE__, uValue);
+            return FALSE;
+        }
+
+        wifi_util_dbg_print(WIFI_DMCLI,
+            "%s:%d Updating mld_link_id radio_index %d vap name %s old val %u new val %lu\n",
+            __FUNCTION__, __LINE__, vapInfo->radio_index, pcfg->vap_name,
+            vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
+        if (vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
             return TRUE;
         }
-
-        /* MLD_Link_ID is per radio configuration. In current design, we store it in each VAP structure.
-         * So when MLD_Link_ID is updated for one VAP, we need to update it for all VAPs of the same radio.
-         */
-        unsigned int total_vaps = getTotalNumberVAPs();
-
-        for (unsigned int vap_idx = 0; vap_idx < total_vaps; vap_idx++) {
-            wifi_vap_info_t *temp_vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(vap_idx);
-            if (temp_vapInfo == NULL) {
-                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for vap index:%d\n",
-                    __FUNCTION__, __LINE__, vap_idx);
-                continue;
-            }
-            if (temp_vapInfo->radio_index != pcfg->radio_index) {
-                continue;
-            }
-            if (isVapSTAMesh(vap_idx)) {
-                continue;
-            }
-            wifi_util_dbg_print(WIFI_DMCLI,
-                "%s:%d Updating mld_link_id radio_index %d vap index:%d old val %u new val %u\n",
-                __FUNCTION__, __LINE__, temp_vapInfo->radio_index, vap_idx,
-                temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id, uValue);
-            if (temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue) {
-                continue;
-            }
-            temp_vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
-            set_dml_cache_vap_config_changed(vap_idx);
-        }
+        vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
@@ -6943,7 +6950,7 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
-#if defined (FEATURE_SUPPORT_INTERWORKING)
+#if defined(FEATURE_SUPPORT_INTERWORKING)
 
     if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceCapability", TRUE))
     {
@@ -9301,15 +9308,17 @@ Security_SetParamStringValue
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa_personal:
-				l_security_cfg->u.key.type = wifi_security_key_type_psk;
-				l_security_cfg->mfp = wifi_mfp_cfg_disabled;
-				break;
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
             case wifi_security_mode_wpa2_personal:
-				l_security_cfg->u.key.type = wifi_security_key_type_psk;
-				l_security_cfg->mfp = wifi_mfp_cfg_optional;
-				break;
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Preserve AES/AES+TKIP and normalize invalid carry-over values. */
+                apply_wpa2_personal_encr_policy(l_security_cfg);
+                break;
             case wifi_security_mode_wpa_wpa2_personal:
-				l_security_cfg->u.key.type = wifi_security_key_type_psk;
+                l_security_cfg->u.key.type = wifi_security_key_type_psk;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa_enterprise:
@@ -9327,6 +9336,8 @@ Security_SetParamStringValue
             case wifi_security_mode_wpa3_transition:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                /* Restore platform default encryption when switching back to WPA3-Transition. */
+                apply_wpa3_transition_encr_policy(l_security_cfg);
                 break;
             case wifi_security_mode_enhanced_open:
                 l_security_cfg->mfp = wifi_mfp_cfg_required;
@@ -10506,7 +10517,7 @@ PreAssocDeny_GetParamStringValue
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
     {
-        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        snprintf(pValue, *pUlSize, "disabled, 10 to 100");
         return 0;
     }
 
@@ -12852,7 +12863,7 @@ IsValidMacAddress(char *mac)
 }
 
 
-#if defined (FEATURE_SUPPORT_INTERWORKING)
+#if defined(FEATURE_SUPPORT_INTERWORKING)
 
 /***********************************************************************
 
@@ -16780,6 +16791,14 @@ AssociatedDevice1_GetParamUlongValue
     if( AnscEqualString(ParamName, "X_RDK_CapSpaStr", TRUE))
     {
         /* collect value */
+        *puLong = assoc_dev_data->dev_stats.cli_capableNumSpatialStreams;
+        free(assoc_dev_data);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_ActiveSpaStr", TRUE))
+    {
+        /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_activeNumSpatialStreams;
         free(assoc_dev_data);
         return TRUE;
@@ -20540,9 +20559,11 @@ InterworkingService_SetParamStringValue
             else
             {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Input string too long for vap %s\n", __FUNCTION__, __LINE__, pcfg->vap_name);
+                cJSON_Delete(p_root);
                 return FALSE;
             }
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+            cJSON_Delete(p_root);
+            set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }
     }
@@ -20915,6 +20936,7 @@ Passpoint_SetParamStringValue
                 cJSON_Delete(p_root);
                 return FALSE;
             }
+            cJSON_Delete(p_root);
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
         }

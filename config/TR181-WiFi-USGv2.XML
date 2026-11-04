@@ -290,12 +290,6 @@
             <writable>true</writable>
         </parameter>
         <parameter>
-            <name>LinkQuality</name>
-            <type>boolean</type>
-            <syntax>bool</syntax>
-            <writable>true</writable>
-        </parameter>
-        <parameter>
             <name>MultiAp_RFC</name>
             <type>boolean</type>
             <syntax>bool</syntax>
@@ -3436,6 +3430,11 @@ INSTMSMT_PH2 -->
                         	</parameter>
                         	<parameter>
                             	    <name>X_RDK_CapSpaStr</name>
+                            	    <type>unsignedInt[0:8]</type>
+                            	    <syntax>uint32</syntax>
+                        	</parameter>
+                            <parameter>
+                            	    <name>X_RDK_ActiveSpaStr</name>
                             	    <type>unsignedInt[0:8]</type>
                             	    <syntax>uint32</syntax>
                         	</parameter>

@@ -68,9 +68,9 @@ struct ovs_vapname_cloudvifname_map {
     char vapname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_) || \
-    defined (_SCER11BEL_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) || \
-    defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_) || \
+    defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
     {"bhaul-ap-l50", "mesh_backhaul_5gl"},
@@ -110,17 +110,8 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"svc-g-ap-u50", "hotspot_secure_5gh"},
     {"svc-g-ap-50",  "hotspot_secure_5g"},
     {"svc-g-ap-60",  "hotspot_secure_6g"},
-}; 
-#elif defined (TARGET_GEMINI7_2)
-struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
-    {"bhaul-sta-24",   "mesh_sta_2g"},
-    {"home-ap-24", "private_ssid_2g"},
-    {"bhaul-ap-24", "mesh_backhaul_2g"},
-    {"bhaul-sta-50",   "mesh_sta_5g"},
-    {"home-ap-50", "private_ssid_5g"},
-    {"bhaul-ap-50", "mesh_backhaul_5g"},
-}
-#elif defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+};
+#elif defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map cloud_vif_map[] = {
        {"wl0",   "private_ssid_2g"},
        {"wl1",   "private_ssid_5g"},
@@ -176,7 +167,7 @@ struct ovs_radioname_cloudradioname_map {
     char cloudradioname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
 struct ovs_radioname_cloudradioname_map cloud_radio_map[] = {
     {0, "wifi0"},
     {1, "wifi1"},
@@ -933,13 +924,15 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         default_vap_info->u.bss_info.interworking.interworking.venueType = 0;
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
-    defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+    defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || \
+    defined(_XER2_PRODUCT_REQ_)	
         if (!is_vap_mesh_sta(&hal_cap->wifi_prop, vapIndex)) {
             default_vap_info->u.bss_info.hostap_mgt_frame_ctrl = true;
         }
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
        // defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+       // _XER2_PRODUCT_REQ_
         if (is_vap_private(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             default_vap_info->u.bss_info.network_initiated_greylist = false;
             default_vap_info->u.bss_info.vapStatsEnable = true;
@@ -956,7 +949,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
 #endif /* CONFIG_IEEE80211BE */
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             } else {
-#if defined(_XB8_PRODUCT_REQ_)||defined(_PP203X_PRODUCT_REQ_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_XB8_PRODUCT_REQ_)||defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 default_vap_info->u.bss_info.security.wpa3_transition_disable = false;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -1134,6 +1127,34 @@ static void free_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *radio)
     }
 }
 
+static void copy_current_acl_maps(rdk_wifi_radio_t *radio,
+    hash_map_t *prev_acl_maps[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO])
+{
+    unsigned int i = 0, j = 0;
+
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        for (j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
+            prev_acl_maps[i][j] = radio[i].vaps.rdk_vap_array[j].acl_map;
+        }
+    }
+}
+
+static void free_prev_acl_maps(rdk_wifi_radio_t *radio,
+    hash_map_t *prev_acl_maps[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO])
+{
+    unsigned int i = 0, j = 0;
+
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        for (j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
+            if (prev_acl_maps[i][j] != NULL &&
+                prev_acl_maps[i][j] != radio[i].vaps.rdk_vap_array[j].acl_map) {
+                hash_map_destroy(prev_acl_maps[i][j]);
+                prev_acl_maps[i][j] = NULL;
+            }
+        }
+    }
+}
+
 webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     const webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t type, char **str)
 {
@@ -1183,8 +1204,10 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No change in config for subdoc type : %d\n",
             __func__, __LINE__, type);
         *str = NULL;
+        webconfig_data_free(&webconfig_ovsdb_data);
         free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
+        webconfig_data_free(&webconfig_ovsdb_data);
         pthread_mutex_unlock(&webconfig_data_lock);
         return webconfig_error_translate_from_ovsdb_cfg_no_change;
     }
@@ -1205,8 +1228,14 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
     pthread_mutex_lock(&webconfig_data_lock);
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_to_ovsdb;
+    hash_map_t *prev_acl_maps[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
+    webconfig_error_t ret;
 
-    if (webconfig_decode(config, &webconfig_ovsdb_data, str) != webconfig_error_none) {
+    copy_current_acl_maps(webconfig_ovsdb_data.u.decoded.radios, prev_acl_maps);
+    ret = webconfig_decode(config, &webconfig_ovsdb_data, str);
+    free_prev_acl_maps(webconfig_ovsdb_data.u.decoded.radios, prev_acl_maps);
+
+    if (ret != webconfig_error_none) {
         //        *data = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode failed\n", __func__, __LINE__);
         pthread_mutex_unlock(&webconfig_data_lock);
@@ -1551,7 +1580,7 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
         return webconfig_error_translate_to_ovsdb;
     }
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined(_GREXT02ACTS_PRODUCT_REQ_) 
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_) 
     char country_id[4] = {};
 
     if (country_id_conversion((wifi_countrycode_type_t *)&oper_param->countryCode, country_id, sizeof(country_id), ENUM_TO_STRING) != RETURN_OK) {
@@ -2568,7 +2597,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
             vap = &vap_map->vap_array[j];
             rdk_vap = &radio->vaps.rdk_vap_array[j];
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if (rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -2580,7 +2609,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                 rdk_vap->exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -3600,7 +3629,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                     "conversion failed for %s\n", __func__, __LINE__, rdk_vap->vap_name);
                 return webconfig_error_translate_to_ovsdb;
             }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if(rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -3612,7 +3641,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                 rdk_vap->exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_) */
             proto->vap_info[proto->num_vaps].exists = rdk_vap->exists;
             proto->num_vaps++;
 
@@ -5657,6 +5686,7 @@ webconfig_error_t   translate_blaster_config_to_ovsdb_for_blaster(webconfig_subd
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     active_msmt_t *blaster_info = NULL;
     webconfig_external_ovsdb_t *proto = NULL;
+    unsigned int *row_count = NULL;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -5689,6 +5719,10 @@ webconfig_error_t   translate_blaster_config_to_ovsdb_for_blaster(webconfig_subd
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of Blaster to ovsdb failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    count++;
+    row_count = (unsigned int *)&proto->blaster_state_row_count;
+    *row_count = count;
 
     return webconfig_error_none;
 }
@@ -5770,7 +5804,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                     "conversion failed for %s\n", __func__, __LINE__, rdk_vap->vap_name);
                 return webconfig_error_translate_to_ovsdb;
             }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if(rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -5782,7 +5816,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 rdk_vap->exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
             proto->vap_info[proto->num_vaps].exists = rdk_vap->exists;
             proto->num_vaps++;
 
@@ -5964,7 +5998,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if (rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -5976,7 +6010,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
                 rdk_vap->exists = true;
 #endif /* _SR213_PRODUCT_REQ_*/
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_) */
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6296,7 +6330,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if (rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -6308,7 +6342,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
                 rdk_vap->exists = true;
 #endif /* _SR213_PRODUCT_REQ_*/
             }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6422,7 +6456,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if (rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -6434,7 +6468,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
                 rdk_vap->exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_) */
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6559,7 +6593,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
                 continue;
             }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if (rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -6571,7 +6605,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
                 rdk_vap->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6687,7 +6721,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if (rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -6699,7 +6733,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
                 rdk_vap->exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6816,7 +6850,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if (rdk_vap->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap->vap_index != 2 && vap->vap_index != 3) {
@@ -6828,7 +6862,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
                 rdk_vap->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
             }
-#endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
+#endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_) */
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;

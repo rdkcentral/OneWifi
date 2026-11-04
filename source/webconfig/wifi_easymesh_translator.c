@@ -41,7 +41,6 @@
 #include <cjson/cJSON.h>
 #include "wifi_webconfig.h"
 #include "ctype.h"
-#include "const.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "schema.h"
@@ -54,6 +53,25 @@ static webconfig_subdoc_data_t  webconfig_easymesh_data;
 /* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to  */
 static char *webconfig_easymesh_raw_data_ptr = NULL;
 
+static wifi_radio_capabilities_t *
+get_radio_cap_from_radio_index(wifi_platform_property_t *wifi_prop,
+    unsigned int radio_index)
+{
+    unsigned int i;
+
+    if (wifi_prop == NULL) {
+        return NULL;
+    }
+
+    for (i = 0; i < wifi_prop->numRadios; i++) {
+        if (wifi_prop->radiocap[i].rdk_radio_index == radio_index) {
+            return &wifi_prop->radiocap[i];
+        }
+    }
+
+    return NULL;
+}
+
 void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
 {
         if (strncmp("private_ssid", vapname, strlen("private_ssid")) == 0) {
@@ -62,6 +80,8 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
                 *haultype = em_haul_type_hotspot;
         } else if (strncmp("iot_ssid", vapname, strlen("iot_ssid")) == 0) {
                 *haultype = em_haul_type_iot;
+        } else if (strncmp("lnf_radius", vapname, strlen("lnf_radius")) == 0) {
+                *haultype = em_haul_type_configurator;
         } else if (strncmp("lnf_psk", vapname, strlen("lnf_psk")) == 0) {
                 *haultype = em_haul_type_configurator;
         } else if (strncmp("mesh_backhaul", vapname, strlen("mesh_backhaul")) == 0) {
@@ -74,6 +94,9 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
 unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
 {
     switch (authtype) {
+        case EM_AUTH_OPEN:
+            return wifi_security_mode_none;
+
         case EM_AUTH_WPAPSK:
             return wifi_security_mode_wpa_personal;
 
@@ -82,6 +105,12 @@ unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
 
         case EM_AUTH_WPA:
             return wifi_security_mode_wpa_enterprise;
+
+        case EM_AUTH_WPA2:
+            return wifi_security_mode_wpa2_enterprise;
+
+        case EM_AUTH_ENHANCED_OPEN:
+            return wifi_security_mode_enhanced_open;
 
         case EM_AUTH_WPA3_PERSONAL:
             return wifi_security_mode_wpa3_personal;
@@ -92,6 +121,120 @@ unsigned int translate_auth_type_from_easymesh(unsigned int authtype)
         default:
             return wifi_security_mode_wpa3_personal;
     }
+}
+
+/* Apply the M2 derived security settings shared by the AP and mesh STA
+   branches. The union is read as RADIUS settings for the open modes (None,
+   Enhanced Open) and the enterprise modes, and as the key otherwise. */
+static void update_security_from_easymesh(wifi_vap_security_t *security, const char *password)
+{
+    switch (security->mode) {
+        case wifi_security_mode_none:
+            memset(&security->u, 0, sizeof(security->u));
+            security->encr = wifi_encryption_none;
+            break;
+        case wifi_security_mode_enhanced_open:
+            /* OWE encrypts with AES and requires PMF. */
+            memset(&security->u, 0, sizeof(security->u));
+            security->encr = wifi_encryption_aes;
+            security->mfp = wifi_mfp_cfg_required;
+            break;
+        case wifi_security_mode_wpa_enterprise:
+        case wifi_security_mode_wpa_wpa2_enterprise:
+        case wifi_security_mode_wpa2_enterprise:
+        case wifi_security_mode_wpa3_enterprise:
+            /* RADIUS settings live in the union and M2 carries none; keep them. */
+            if (!is_valid_encr_for_mode(security->mode, security->encr)) {
+                security->encr = wifi_encryption_aes;
+            }
+            break;
+        default:
+            memset(&security->u, 0, sizeof(security->u));
+            snprintf(security->u.key.key, sizeof(security->u.key.key), "%s", password);
+            if (!is_valid_encr_for_mode(security->mode, security->encr)) {
+                security->encr = wifi_encryption_aes;
+            }
+            /* Clear a PMF requirement left over from a previous WPA3 mode. */
+            security->mfp = wifi_mfp_cfg_disabled;
+            break;
+    }
+    /* PMF is required in the pure WPA3 modes but stays optional in transition
+       mode so that WPA2 clients can still associate. */
+    if (security->mode == wifi_security_mode_wpa3_transition) {
+        security->mfp = wifi_mfp_cfg_optional;
+    } else if (security->mode == wifi_security_mode_wpa3_personal ||
+               security->mode == wifi_security_mode_wpa3_enterprise) {
+        security->mfp = wifi_mfp_cfg_required;
+    }
+}
+
+#ifdef EM_APP
+// the ap metrics report decoder mallocs per-vap sta arrays into the decoded
+// params (see decode_em_ap_metrics_report_object); webconfig_data_free only
+// frees u.encoded.raw, so they must be freed here after translation
+static void webconfig_easymesh_free_ap_metrics_report(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded = &data->u.decoded;
+    int i, j;
+
+    if (data->type != webconfig_subdoc_type_em_ap_metrics_report) {
+        return;
+    }
+
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        for (j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
+            em_vap_metrics_t *vap_report = &decoded->em_ap_metrics_report.radio_reports[i].vap_reports[j];
+
+            if (vap_report->sta_traffic_stats != NULL) {
+                free(vap_report->sta_traffic_stats);
+                vap_report->sta_traffic_stats = NULL;
+            }
+            if (vap_report->sta_link_metrics != NULL) {
+                free(vap_report->sta_link_metrics);
+                vap_report->sta_link_metrics = NULL;
+            }
+        }
+    }
+}
+#endif
+
+static void webconfig_easymesh_free_assoc_maps(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded = &data->u.decoded;
+    unsigned int i, j;
+
+    if (data->type != webconfig_subdoc_type_associated_clients) {
+        return;
+    }
+
+    for (i = 0; i < decoded->num_radios && i < MAX_NUM_RADIOS; i++) {
+        rdk_wifi_vap_map_t *vap_map = &decoded->radios[i].vaps;
+        for (j = 0; j < vap_map->num_vaps && j < MAX_NUM_VAP_PER_RADIO; j++) {
+            rdk_wifi_vap_info_t *vap = &vap_map->rdk_vap_array[j];
+
+            if (vap->associated_devices_map != NULL) {
+                hash_map_destroy(vap->associated_devices_map);
+                vap->associated_devices_map = NULL;
+            }
+
+            if (vap->associated_devices_diff_map != NULL) {
+                hash_map_destroy(vap->associated_devices_diff_map);
+                vap->associated_devices_diff_map = NULL;
+            }
+        }
+    }
+}
+
+/* Free all decoder-allocated memory that webconfig_data_free does not cover.
+ * Each individual free function is type-guarded, so this is safe to call
+ * unconditionally regardless of subdoc type. Add new per-subdoc free functions
+ * here as needed. */
+static void webconfig_easymesh_free_decoded(webconfig_subdoc_data_t *data)
+{
+#ifdef EM_APP
+    webconfig_easymesh_free_ap_metrics_report(data);
+#endif
+    webconfig_easymesh_free_assoc_maps(data);
 }
 
 // webconfig_easymesh_decode() will convert the onewifi structures to easymesh structures
@@ -105,12 +248,15 @@ webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str
     if (webconfig_decode(config, &webconfig_easymesh_data, str) != webconfig_error_none) {
         //        *data = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode failed\n", __func__, __LINE__);
+        webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
+        /* note: webconfig_data_free is called internally by webconfig_decode on error */
         return webconfig_error_decode;
     }
 
     wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Easymesh decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_easymesh_data.type);
     *type = webconfig_easymesh_data.type;
     //debug_external_protos(&webconfig_easymesh_data, __func__, __LINE__);
+    webconfig_easymesh_free_decoded(&webconfig_easymesh_data);
     webconfig_data_free(&webconfig_easymesh_data);
     return webconfig_error_none;
 }
@@ -204,14 +350,63 @@ void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_securit
 
 }
 
+static void
+populate_device_mlo_capabilities(em_device_info_t *device_info,
+    const webconfig_subdoc_decoded_data_t *decoded_params,
+    wifi_platform_property_t *wifi_prop)
+{
+    const rdk_wifi_radio_t *radio;
+    wifi_radio_capabilities_t *radio_cap;
+    unsigned char mlo_capable_radio_count = 0;
+    unsigned char tid_link_mapping_cap = 0;
+    unsigned int i, num_radios;
+    int radio_index;
+
+    if (device_info == NULL || decoded_params == NULL || wifi_prop == NULL) {
+        return;
+    }
+
+    num_radios = decoded_params->num_radios;
+    if (num_radios > MAX_NUM_RADIOS) {
+        num_radios = MAX_NUM_RADIOS;
+    }
+
+    for (i = 0; i < num_radios; i++) {
+        radio = &decoded_params->radios[i];
+
+        radio_index = convert_radio_name_to_radio_index((char *)radio->name);
+        if (radio_index < 0 || (unsigned int)radio_index >= MAX_NUM_RADIOS) {
+            continue;
+        }
+
+        radio_cap = get_radio_cap_from_radio_index(wifi_prop, (unsigned int)radio_index);
+        if (radio_cap == NULL || !radio_cap->wifi7_supported) {
+            continue;
+        }
+
+        if (radio_cap->mldOperationalCap != 0 && mlo_capable_radio_count < MAX_NUM_MLD_LINKS) {
+            mlo_capable_radio_count++;
+        }
+
+        if (radio_cap->TIDLinkMapNegotiation) {
+            tid_link_mapping_cap = 1;
+        }
+    }
+
+    device_info->max_nummlds = (mlo_capable_radio_count > 0) ? MLD_UNIT_COUNT : 0;
+    device_info->apmld_maxlinks = mlo_capable_radio_count;
+    device_info->bstamld_maxlinks = mlo_capable_radio_count;
+    device_info->tidlink_map = (unsigned char)(tid_link_mapping_cap & 0x3);
+}
+
 // This routine converts DML webconfig subdoc values to em_device_info_t,em_network_info_t easymesh structures
 webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc_data_t *data)
 {
-    em_device_info_t  *device_info;
-    em_network_info_t *network_info;
-    em_ieee_1905_security_info_t *security_info;
+    em_device_info_t *device_info = NULL;
+    em_network_info_t *network_info = NULL;
+    em_ieee_1905_security_info_t *security_info = NULL;
 
-    webconfig_external_easymesh_t *proto;
+    webconfig_external_easymesh_t *proto = NULL;
     rdk_wifi_radio_t *radio;
     bool dfs_enable = false;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
@@ -255,7 +450,16 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     memcpy(device_info->backhaul_alid.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
     interfacename_from_mac((const mac_address_t *)device_info->backhaul_alid.mac,device_info->backhaul_alid.name);
     //proto->set_num_radio(proto->data_model, wifi_prop->numRadios);
+    /* Report the device's regulatory country as Network.Device.{i}.CountryCode.
+       Default to US, override only for an in range enum (conversion does not bounds check). */
     snprintf(device_info->country_code, sizeof(device_info->country_code), "US");
+    if (decoded_params->num_radios > 0) {
+        wifi_countrycode_type_t cc_enum = decoded_params->radios[0].oper.countryCode;
+        if ((unsigned int)cc_enum < MAX_WIFI_COUNTRYCODE) {
+            country_code_conversion(&cc_enum, device_info->country_code,
+                                    sizeof(device_info->country_code), ENUM_TO_STRING);
+        }
+    }
     for (unsigned int i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         dfs_enable  = radio->oper.DfsEnabled;
@@ -264,6 +468,7 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     }
     device_info->dfs_enable = dfs_enable;
     default_em_device_info(device_info,security_info);
+    populate_device_mlo_capabilities(device_info, decoded_params, wifi_prop);
 
     // Fill the network_info structure
     memcpy(network_info->colocated_agent_id.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
@@ -280,15 +485,13 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
 {
     em_radio_info_t *em_radio_info;
     em_op_class_info_t *em_op_class_info;
-    unsigned int radio_index = 0, bss_count = 0, per_radio_subdoc = 0, freq_band = 0, radio_count = 0;
+    unsigned int radio_index = 0, per_radio_subdoc = 0, freq_band = 0, radio_count = 0;
     rdk_wifi_radio_t *radio;
-    wifi_vap_info_t *vap;
-    wifi_vap_info_map_t *vap_map;
     radio_interface_mapping_t *radio_iface_map;
     webconfig_external_easymesh_t *proto;
     wifi_radio_operationParam_t *oper_param;
     webconfig_subdoc_decoded_data_t *decoded_params;
-    unsigned int no_of_opclass = 0, i = 0, j = 0, index = 0;
+    unsigned int no_of_opclass = 0, i = 0;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -367,7 +570,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
             em_op_class_info->op_class = oper_param->operatingClasses[i].opClass;
             em_op_class_info->max_tx_power = oper_param->operatingClasses[i].maxTxPower;
             em_op_class_info->num_channels = oper_param->operatingClasses[i].numberOfNonOperChan;
-            for(int k = 0; k < oper_param->operatingClasses[i].numberOfNonOperChan; k++) {
+            for (unsigned int k = 0; k < oper_param->operatingClasses[i].numberOfNonOperChan; k++) {
                 em_op_class_info->channels[k] = oper_param->operatingClasses[i].nonOperable[k];
             }
             no_of_opclass++;
@@ -747,7 +950,7 @@ static void fill_scan_cap_op_classes(const wifi_radio_capabilities_t *hal_radio_
 }
 /* Helper function to translate radio capabilities from OneWifi to EasyMesh */
 static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_property_t *wifi_prop,
-    int radio_index,
+    unsigned int radio_index,
     em_radio_cap_info_t *cap_info,
     const wifi_radio_operationParam_t *oper_param)
 {
@@ -765,11 +968,16 @@ static webconfig_error_t translate_radio_capability_to_easymesh(wifi_platform_pr
     uint16_t rx_map = 0, tx_map = 0, rx_mcs = 0, tx_mcs = 0;
 
     if (cap_info == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer or get_radio_cap not set\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL cap_info pointer\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
 
-    radio_cap = &wifi_prop->radiocap[radio_index];
+    radio_cap = get_radio_cap_from_radio_index(wifi_prop, radio_index);
+    if (radio_cap == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap lookup failed for radio_index:%u\n",
+            __func__, __LINE__, radio_index);
+        return webconfig_error_translate_to_easymesh;
+    }
     em_ht_cap = &cap_info->ht_cap;
     em_vht_cap = &cap_info->vht_cap;
     em_he_cap = &cap_info->he_cap;
@@ -1063,6 +1271,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
     wifi_radio_operationParam_t *oper_param;
     webconfig_subdoc_decoded_data_t *decoded_params;
     mac_addr_str_t mac_str;
+    wifi_radio_capabilities_t *hal_radio_cap;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -1112,7 +1321,9 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
             em_radio_info->band = em_freq_band_24;
-        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
+        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND ||
+            oper_param->band == WIFI_FREQUENCY_5L_BAND ||
+            oper_param->band == WIFI_FREQUENCY_5H_BAND) {
             em_radio_info->band = em_freq_band_5;
         } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
             em_radio_info->band = em_freq_band_6;
@@ -1140,7 +1351,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             em_op_class_info->op_class = oper_param->operatingClasses[j].opClass;
             em_op_class_info->max_tx_power = oper_param->operatingClasses[j].maxTxPower;
             em_op_class_info->num_channels = oper_param->operatingClasses[j].numberOfNonOperChan;
-            for(int i = 0; i < oper_param->operatingClasses[j].numberOfNonOperChan; i++) {
+            for (unsigned int i = 0; i < oper_param->operatingClasses[j].numberOfNonOperChan; i++) {
                 em_op_class_info->channels[i] = oper_param->operatingClasses[j].nonOperable[i];
             }
 			op_class_count++;
@@ -1174,21 +1385,32 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_radio_info->associated_sta_link_mterics_inclusion_policy = 0;
         snprintf(em_radio_info->chip_vendor, sizeof(em_radio_info->chip_vendor), "%s", wifi_prop->manufacturer);
 
-        em_radio_cap_info_t *radio_cap = proto->get_radio_cap(proto->data_model, wifi_prop->radiocap[index].rdk_radio_index);
+        em_radio_cap_info_t *radio_cap = proto->get_radio_cap(proto->data_model, radio_iface_map->radio_index);
         if (radio_cap == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap not found\n", __func__, __LINE__);
             return webconfig_error_translate_to_easymesh;
         }
-        if (radio_iface_map->radio_index == wifi_prop->radiocap[index].rdk_radio_index) {
-            memcpy(radio_cap->ruid.mac, em_radio_info->intf.mac, sizeof(mac_address_t));
-            uint8_mac_to_string_mac(radio_cap->ruid.mac, mac_str);
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %d and mac:%s and radio_index:%d\n", __func__,
-                __LINE__, index, mac_str, radio_index);
+        memcpy(radio_cap->ruid.mac, em_radio_info->intf.mac, sizeof(mac_address_t));
+        uint8_mac_to_string_mac(radio_cap->ruid.mac, mac_str);
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: radio_cap index: %u and mac:%s and radio_index:%u\n", __func__,
+            __LINE__, index, mac_str, radio_index);
 
-            translate_radio_capability_to_easymesh(wifi_prop, radio_index, radio_cap, oper_param);
+        if (translate_radio_capability_to_easymesh(wifi_prop, radio_iface_map->radio_index, radio_cap, oper_param) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: Failed to translate radio capabilities for radio_index:%u\n",
+                __func__, __LINE__, radio_iface_map->radio_index);
+            return webconfig_error_translate_to_easymesh;
+        }
 
-            // Populate ch_scan.op_classes[] for Channel Scan Capabilities.
-            fill_scan_cap_op_classes(&wifi_prop->radiocap[radio_index], oper_param, &radio_cap->ch_scan);
+        // Populate ch_scan.op_classes[] for Channel Scan Capabilities.
+        hal_radio_cap = get_radio_cap_from_radio_index(wifi_prop, radio_iface_map->radio_index);
+        if (hal_radio_cap != NULL) {
+            fill_scan_cap_op_classes(hal_radio_cap, oper_param, &radio_cap->ch_scan);
+        } else {
+            radio_cap->ch_scan.op_classes_num = 0;
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: Missing HAL radio capabilities for radio_index:%u, marking channel scan op classes unavailable\n",
+                __func__, __LINE__, radio_iface_map->radio_index);
         }
     }
 
@@ -1287,7 +1509,7 @@ static webconfig_error_t fill_assoc_sta_mld_info_from_assoc_dev(
     // One affiliated STA entry per link (one entry per VAP visit)
     sta_mld_info->num_affiliated_sta = 1;
     memcpy(sta_mld_info->affiliated_sta[0].bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
-    memcpy(sta_mld_info->affiliated_sta[0].mac_addr, assoc_dev_data->link_address,
+    memcpy(sta_mld_info->affiliated_sta[0].link_addr, assoc_dev_data->link_address,
         sizeof(mac_address_t));
 
     return webconfig_error_none;
@@ -1306,7 +1528,6 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
     assoc_dev_data_t *assoc_dev_data = NULL;
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     webconfig_external_easymesh_t *proto = NULL;
-    mac_addr_str_t sta_str, bss_str, radio_str;
     struct ieee80211_mgmt *mgmt = NULL;
 
     decoded_params = &data->u.decoded;
@@ -1358,10 +1579,9 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         return webconfig_error_translate_to_easymesh;
                     }
 
-                    memset(em_sta_dev_info, 0, sizeof(em_sta_dev_info));
+                    memset(em_sta_dev_info, 0, sizeof(em_sta_info_t));
 
                     em_radio_info_t *radio_info = proto->get_radio_info(proto->data_model, vap->radio_index);
-                    em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, rdk_vap_info->vap_index);
                     proto->set_num_radio(proto->data_model, decoded_params->num_radios);
                     proto->set_num_bss(proto->data_model, radio->vaps.num_vaps);
                     printf("%s:%d: client_state: %d\n", __func__, __LINE__, assoc_dev_data->client_state);
@@ -1387,6 +1607,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
 
                     if (assoc_dev_data->sta_data.msg_data.data == NULL) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Association frame data not present\n", __func__, __LINE__);
+                        free(em_sta_dev_info);
                         return webconfig_error_translate_to_easymesh;
                     }
                     mgmt = (struct ieee80211_mgmt *) assoc_dev_data->sta_data.msg_data.data;
@@ -1482,7 +1703,7 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
         return webconfig_error_translate_to_easymesh;
     }
 
-    for (unsigned int count = 0; count < sta_size; count++) {
+    for (int count = 0; count < sta_size; count++) {
         radio_info = proto->get_radio_info(proto->data_model, radio_index);
         bss_info = proto->get_bss_info(proto->data_model, vap_index);
         em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, \
@@ -1516,9 +1737,6 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
 #ifdef EM_APP
 webconfig_error_t translate_sta_link_metrics_object_to_easy_mesh_sta_info(webconfig_subdoc_data_t *data)
 {
-    time_t response_time;
-    struct tm *local_time;
-    char time_str[32] = {0};
     int sta_size = 0;
     em_sta_info_t *em_sta_dev_info;
     webconfig_external_easymesh_t *proto;
@@ -1551,7 +1769,7 @@ webconfig_error_t translate_sta_link_metrics_object_to_easy_mesh_sta_info(webcon
         return webconfig_error_translate_to_easymesh;
     }
 
-    for (unsigned int count = 0; count < sta_size; count++) {
+    for (int count = 0; count < sta_size; count++) {
         sta_stats = params->em_sta_link_metrics_rsp.per_sta_metrics[count];
         radio_info = proto->get_radio_info(proto->data_model, radio_index);
         bss_info = proto->get_bss_info(proto->data_model, vap_index);
@@ -1600,7 +1818,6 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
     em_radio_info_t *radio_info = NULL;
     em_sta_info_t *em_sta_dev_info = NULL;
     radio_metrics_t *radio_metrics = NULL;
-    mac_addr_str_t bss_str;
     uint32_t v;
 
     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: translate_ap_metrics_report_to_easy_mesh_bss_info enter\n", __func__, __LINE__);
@@ -1628,7 +1845,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
 
     em_ap_report = &decoded_params->em_ap_metrics_report;
 
-    for (unsigned int i = 0; i < em_ap_report->radio_count; i++) {
+    for (int i = 0; i < em_ap_report->radio_count; i++) {
         radio_index = decoded_params->em_ap_metrics_report.radio_reports[i].radio_index;
         radio_metrics = &decoded_params->em_ap_metrics_report.radio_reports[i].radio_metrics;
 
@@ -1862,8 +2079,6 @@ webconfig_error_t translate_private_vap_info_to_em_bss_config(wifi_vap_info_t *v
 // translate_xhs_vap_info_to_em_bss_config() converts xhs data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_xhs_vap_info_to_em_bss_config(wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t      *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map,  wifi_platform_property_t *wifi_prop)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
     if (translate_vap_info_to_em_common(vap, iface_map, vap_row, ssid_vid_map, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
@@ -1889,8 +2104,6 @@ webconfig_error_t translate_xhs_vap_info_to_em_bss_config(wifi_vap_info_t *vap, 
 // translate_lnf_psk_vap_info_to_em_bss_config() converts lnf_psk data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_lnf_psk_vap_info_to_em_bss_config(wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t      *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map, wifi_platform_property_t *wifi_prop)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
     if (translate_vap_info_to_em_common(vap, iface_map, vap_row,ssid_vid_map, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
@@ -1914,8 +2127,6 @@ webconfig_error_t translate_lnf_psk_vap_info_to_em_bss_config(wifi_vap_info_t *v
 // translate_lnf_radius_vap_info_to_em_bss_config() converts lnf_radio data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_lnf_radius_vap_info_to_em_bss_config(wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t      *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map, wifi_platform_property_t *wifi_prop)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
     if (translate_vap_info_to_em_common(vap, iface_map, vap_row, ssid_vid_map,wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
@@ -1962,8 +2173,6 @@ webconfig_error_t translate_mesh_backhaul_vap_info_to_em_bss_config(wifi_vap_inf
 // translate_mesh_sta_info_to_em_bss_config() converts mesh_sta data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_mesh_sta_info_to_em_bss_config(wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t      *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map,wifi_platform_property_t *wifi_prop)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
     if (translate_sta_info_to_em_common(vap, iface_map, vap_row, ssid_vid_map, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
@@ -1974,9 +2183,13 @@ webconfig_error_t translate_mesh_sta_info_to_em_bss_config(wifi_vap_info_t *vap,
 }
 
 webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_info_t *vap,
-    radio_interface_mapping_t *radio_iface_map)
+    radio_interface_mapping_t *radio_iface_map, wifi_platform_property_t *wifi_prop)
 {
     mac_addr_str_t mld_mac_str, bssid_str;
+    static const mac_address_t zero_mac = { 0 };
+    wifi_multi_link_modes_t mld_modes;
+    wifi_radio_capabilities_t *radio_cap;
+    em_affiliated_ap_info_t *aff;
 
     if (ap_info == NULL || vap == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -1986,7 +2199,9 @@ webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_
     memset(ap_info, 0, sizeof(em_ap_mld_info_t));
 
     to_mac_str(vap->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
-    if (WiFi_IsValidMacAddr(mld_mac_str)) {
+    if (WiFi_IsValidMacAddr(mld_mac_str) &&
+        memcmp(vap->u.bss_info.mld_info.common_info.mld_addr, zero_mac, sizeof(mac_address_t)) !=
+            0) {
         ap_info->mac_addr_valid = true;
     } else {
         ap_info->mac_addr_valid = false;
@@ -1994,19 +2209,42 @@ webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_
     memcpy(&ap_info->mac_addr, vap->u.bss_info.mld_info.common_info.mld_addr,
         sizeof(mac_address_t));
     snprintf(ap_info->ssid, sizeof(ap_info->ssid), "%s", vap->u.bss_info.ssid);
+    ap_info->haul_type = em_haul_type_max;
+    convert_vap_name_to_hault_type(&ap_info->haul_type, (char *)vap->vap_name);
+    if (ap_info->haul_type >= em_haul_type_max) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot determine haul type for vap %s\n",
+            __func__, __LINE__, vap->vap_name);
+        return webconfig_error_translate_to_easymesh;
+    }
 
-    // Todo: VAP structure currently does not have below details, so set it to default for testing.
-    ap_info->str = true;
-    ap_info->nstr = false;
-    ap_info->emlsr = true;
-    ap_info->emlmr = false;
+    if (wifi_prop != NULL) {
+        radio_cap = get_radio_cap_from_radio_index(wifi_prop, vap->radio_index);
+        if (radio_cap != NULL) {
+            mld_modes = radio_cap->mldOperationalCap;
+            ap_info->str = (mld_modes & STR) != 0;
+            ap_info->nstr = (mld_modes & NSTR) != 0;
+            ap_info->emlsr = (mld_modes & eMLSR) != 0;
+            ap_info->emlmr = (mld_modes & eMLMR) != 0;
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: No radio capabilities found for radio_index=%u\n", __func__, __LINE__,
+                vap->radio_index);
+        }
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: Updating AP info for ssid=\"%s\" bssid=%s vap_name=%s str=%d nstr=%d emlsr=%d "
+        "emlmr=%d\n",
+        __func__, __LINE__, vap->u.bss_info.ssid, mld_mac_str, vap->vap_name, ap_info->str,
+        ap_info->nstr, ap_info->emlsr, ap_info->emlmr);
 
     ap_info->num_affiliated_ap++;
-    em_affiliated_ap_info_t *aff = &ap_info->affiliated_ap[0];
+    aff = &ap_info->affiliated_ap[0];
     memset(aff, 0, sizeof(*aff));
 
     to_mac_str(vap->u.bss_info.bssid, bssid_str);
-    if (WiFi_IsValidMacAddr(bssid_str)) {
+    if (WiFi_IsValidMacAddr(bssid_str) &&
+        memcmp(vap->u.bss_info.bssid, zero_mac, sizeof(mac_address_t)) != 0) {
         aff->mac_addr_valid = true;
     } else {
         aff->mac_addr_valid = false;
@@ -2027,29 +2265,54 @@ webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_
 }
 
 webconfig_error_t update_vap_with_ap_mld_info(wifi_vap_info_t *vap,
-    webconfig_external_easymesh_t *proto)
+    webconfig_external_easymesh_t *proto, radio_interface_mapping_t *radio_iface_map)
 {
     char bssid_mac_str[32] = {};
+    em_haul_type_t haul_type;
+    em_ap_mld_info_t *ap_mld_info;
+    mac_address_t vap_ruid_mac;
+    unsigned int i;
+
     uint8_mac_to_string_mac(vap->u.bss_info.bssid, bssid_mac_str);
 
-    em_ap_mld_info_t *ap_mld_info = proto->get_ap_mld_frm_bssid(proto->data_model,
-        vap->u.bss_info.bssid);
-    if (!ap_mld_info) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No AP MLD information available for bssid %s\n",
-            __func__, __LINE__, bssid_mac_str);
+    // Default to disabled; based on AP MLD info enable MLD.
+    vap->u.bss_info.mld_info.common_info.mld_enable = false;
+
+    haul_type = em_haul_type_max;
+    convert_vap_name_to_hault_type(&haul_type, (char *)vap->vap_name);
+    if (haul_type >= em_haul_type_max) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: No valid haul type for vap_name=%s\n",
+            __func__, __LINE__, vap->vap_name);
         return webconfig_error_translate_from_easymesh;
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Found AP MLD information for bssid=%s\n", __func__,
-        __LINE__, bssid_mac_str);
-
-    if (ap_mld_info->mac_addr_valid) {
-        vap->u.bss_info.mld_info.common_info.mld_enable = true;
+    ap_mld_info = proto->get_ap_mld_frm_haul_type(proto->data_model, haul_type);
+    if (ap_mld_info == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: No AP MLD information available for haul_type=%d vap_name=%s bssid=%s\n",
+            __func__, __LINE__, haul_type, vap->vap_name, bssid_mac_str);
+        return webconfig_error_translate_from_easymesh;
     }
 
-    for (int i = 0; i < ap_mld_info->num_affiliated_ap; i++) {
-        if (memcmp(ap_mld_info->affiliated_ap[i].mac_addr, vap->u.bss_info.bssid,
-                sizeof(mac_address_t)) == 0) {
+    // Require at least one advertised MLD mode before enabling this VAP.
+    if (!ap_mld_info->str && !ap_mld_info->nstr && !ap_mld_info->emlsr && !ap_mld_info->emlmr) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,
+            "%s:%d: No AP MLD modes for haul_type=%d vap_name=%s; leaving MLD disabled\n", __func__,
+            __LINE__, haul_type, vap->vap_name);
+        return webconfig_error_none;
+    }
+
+    // Match this radio to an affiliated AP and apply its valid link ID.
+    if (mac_address_from_name(radio_iface_map->interface_name, vap_ruid_mac) != 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: Unable to resolve radio interface %s\n", __func__, __LINE__,
+            radio_iface_map->interface_name);
+        return webconfig_error_translate_from_easymesh;
+    }
+    for (i = 0; i < ap_mld_info->num_affiliated_ap; i++) {
+        if (memcmp(ap_mld_info->affiliated_ap[i].ruid.mac, vap_ruid_mac, sizeof(mac_address_t)) ==
+            0) {
+            vap->u.bss_info.mld_info.common_info.mld_enable = true;
             if (ap_mld_info->affiliated_ap[i].link_id_valid) {
                 vap->u.bss_info.mld_info.common_info.mld_link_id =
                     ap_mld_info->affiliated_ap[i].link_id;
@@ -2057,7 +2320,14 @@ webconfig_error_t update_vap_with_ap_mld_info(wifi_vap_info_t *vap,
             break;
         }
     }
-    // str, nstr, emlsr, emlmr parameters are not updated currently since vap structure doesn't support this now.
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: AP MLD update: haul_type=%d vap_name=%s ssid=%s bssid=%s radio_index=%d "
+        "mld_enable=%d link_id=%d modes(str=%d nstr=%d emlsr=%d emlmr=%d)\n",
+        __func__, __LINE__, haul_type, vap->vap_name, vap->u.bss_info.ssid, bssid_mac_str,
+        vap->radio_index, vap->u.bss_info.mld_info.common_info.mld_enable,
+        vap->u.bss_info.mld_info.common_info.mld_link_id, ap_mld_info->str, ap_mld_info->nstr,
+        ap_mld_info->emlsr, ap_mld_info->emlmr);
 
     return webconfig_error_none;
 }
@@ -2065,22 +2335,18 @@ webconfig_error_t update_vap_with_ap_mld_info(wifi_vap_info_t *vap,
 // translate_vap_object_to_easymesh_for_dml() converts DML data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data_t *data)
 {
-    em_radio_info_t *em_radio_info;
     em_bss_info_t *em_bss_info;
     wifi_vap_info_map_t *vap_map;
     em_ssid_2_vid_map_info_t *ssid_vid_map = NULL;
-    em_ssid_2_vid_map_info_t *ssid_vid_row;
+    em_ssid_2_vid_map_info_t *ssid_vid_row = NULL;
     webconfig_external_easymesh_t *proto;
     webconfig_subdoc_decoded_data_t *decoded_params;
-    wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     radio_interface_mapping_t *radio_iface_map;
-    unsigned int count = 0;
     wifi_vap_info_t *vap;
     unsigned int i = 0,j = 0, k = 0, num_bss = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
     mac_address_t rmac;
-    webconfig_error_t ret = webconfig_error_none;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -2192,28 +2458,6 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                     (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
                     &em_bss_info->eht_ops);
             }
-
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
-                // details for STA
-                // em_bsta_info_t *bsta_info;
-                // fill_bsta_info_from_vap(&bsta_info, vap, radio_iface_map);
-                // proto->update_bsta_info(proto->data_model, bsta_info);
-            } else {
-                if (vap->u.bss_info.mld_info.common_info.mld_enable == true) {
-                    em_ap_mld_info_t ap_info;
-                    ret = fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map);
-                    if (ret == webconfig_error_none) {
-                        proto->update_ap_mld_info(proto->data_model, &ap_info);
-                        wifi_util_dbg_print(WIFI_WEBCONFIG,
-                            "%s:%d: AP MLD info updated successfully for vap %s\n", __func__,
-                            __LINE__, vap->vap_name);
-                    }
-                } else {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: AP MLD is not enabled on vap %s\n",
-                        __func__, __LINE__, vap->vap_name);
-                }
-            }
         }
     }
     return webconfig_error_none;
@@ -2223,12 +2467,11 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
 webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_data_t *data,char *vap_name)
 {
     em_bss_info_t *vap_info_row;
-    em_ssid_2_vid_map_info_t *ssid_vid_row;
+    em_ssid_2_vid_map_info_t *ssid_vid_row = NULL;
     mac_address_t rmac;
     wifi_vap_info_map_t *vap_map;
     webconfig_external_easymesh_t *proto;
     webconfig_subdoc_decoded_data_t *decoded_params;
-    wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     radio_interface_mapping_t *radio_iface_map;
     wifi_vap_info_t *vap;
@@ -2242,7 +2485,6 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
     }
 
     proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
-    hal_cap = &data->u.decoded.hal_cap;
     if (proto == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
@@ -2351,14 +2593,12 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
 //translate_per_radio_vap_object_to_easymesh_bss_info() converts data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_subdoc_data_t *data, wifi_freq_bands_t freq_band)
 {
-    em_bss_info_t *em_vap_info;
     em_bss_info_t *vap_info_row;
-    em_ssid_2_vid_map_info_t *ssid_vid_row;
+    em_ssid_2_vid_map_info_t *ssid_vid_row = NULL;
     wifi_vap_info_map_t *vap_map;
     webconfig_external_easymesh_t *proto;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
-    wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     radio_interface_mapping_t *radio_iface_map;
     mac_address_t rmac;
@@ -2374,7 +2614,6 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
     }
 
     proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
-    hal_cap = &data->u.decoded.hal_cap;
     if (proto == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
@@ -2416,6 +2655,11 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            /* Hotspot vaps have no dispatch branch below and would abort the
+               whole subdoc; skip them like the DML loop does. */
+            if (is_vap_hotspot(wifi_prop, vap->vap_index) == TRUE) {
+                continue;
+            }
             iface_map = NULL;
             for (k = 0; k < (sizeof(wifi_prop->interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
                 if (wifi_prop->interface_map[k].index == vap->vap_index) {
@@ -2486,7 +2730,7 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
             } else {
                 if (vap->u.bss_info.mld_info.common_info.mld_enable == true) {
                     em_ap_mld_info_t ap_info;
-                    ret = fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map);
+                    ret = fill_ap_mld_info_from_vap(&ap_info, vap, radio_iface_map, wifi_prop);
                     if (ret == webconfig_error_none) {
                         proto->update_ap_mld_info(proto->data_model, &ap_info);
                         wifi_util_dbg_print(WIFI_WEBCONFIG,
@@ -2510,15 +2754,11 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
 {
     em_sta_info_t em_sta_dev_info;
     webconfig_external_easymesh_t *proto;
-    em_radio_info_t *radio_info;
-    em_bss_info_t *bss_info;
-    int vap_index = 0, radio_index = 0;
-    wifi_platform_property_t *wifi_prop;
+    em_bss_info_t *bss_info = NULL;
+    em_bss_info_t *candidate;
+    int vap_index = 0;
+    unsigned int num_bss = 0, i = 0;
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
-    rdk_wifi_radio_t *radio = NULL;
-    wifi_vap_info_t *vap = NULL;
-    wifi_vap_info_map_t *vap_map = NULL;
-    int i = 0;
 
     if (params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
@@ -2527,50 +2767,41 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     }
 
     vap_index = params->sta_beacon_report.ap_index;
-    wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
-    radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
 
     proto = (webconfig_external_easymesh_t *)params->external_protos;
     if (proto == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_sta_info_t is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__,
+            __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
 
-    radio = &params->radios[radio_index];
-    vap_map = &radio->vaps.vap_map;
-
-    for (i = 0; i < radio->vaps.num_vaps; i++) {
-        vap = &vap_map->vap_array[i];
-        if (vap->vap_index == vap_index) {
+    /* Iterate UWM BSS list matching on vap_index (not array index) */
+    num_bss = proto->get_num_bss(proto->data_model);
+    for (i = 0; i < num_bss; i++) {
+        candidate = proto->get_bss_info(proto->data_model, i);
+        if (candidate != NULL && (int)candidate->vap_index == vap_index) {
+            bss_info = candidate;
             break;
         }
     }
 
-    if (vap == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_to_easymesh;
-    }
-
-    if (vap->vap_mode != wifi_vap_mode_ap) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap_mode:%d is not wifi_vap_mode_ap\n",
-            __func__, __LINE__, vap->vap_mode);
-        return webconfig_error_translate_to_easymesh;
-    }
-
-    bss_info = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
-
     if (bss_info == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: bss_info is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: no BSS found for vap_index %d (num_bss=%u)\n",
+            __func__, __LINE__, vap_index, num_bss);
         return webconfig_error_translate_to_easymesh;
     }
 
+    memset(&em_sta_dev_info, 0, sizeof(em_sta_info_t));
     memcpy(em_sta_dev_info.id, params->sta_beacon_report.mac_addr, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.bssid, bss_info->bssid.mac, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.radiomac, bss_info->ruid.mac, sizeof(mac_address_t));
     em_sta_dev_info.beacon_report_len = params->sta_beacon_report.data_len;
     em_sta_dev_info.num_beacon_meas_report = params->sta_beacon_report.num_br_data;
 
-    memcpy(em_sta_dev_info.beacon_report_elem, params->sta_beacon_report.data, params->sta_beacon_report.data_len);
+    if (params->sta_beacon_report.data != NULL && params->sta_beacon_report.data_len > 0) {
+        memcpy(em_sta_dev_info.beacon_report_elem, params->sta_beacon_report.data,
+            params->sta_beacon_report.data_len);
+    }
 
     proto->put_sta_info(proto->data_model, &em_sta_dev_info, em_target_sta_map_consolidated);
 
@@ -2606,10 +2837,6 @@ webconfig_error_t translate_em_common_to_vap_info_common( wifi_vap_info_t *vap, 
 webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
 
-    wifi_security_modes_t enum_sec;
-    int len = 0;
-    unsigned k = 0;
-    radio_interface_mapping_t *radio_iface_map = NULL;
 
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -2639,8 +2866,6 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
 // translate_em_bss_to_private_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for private vaps
 webconfig_error_t translate_em_bss_to_private_vap_info(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
     if (translate_em_common_to_vap_info_common(vap, vap_row) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_easymesh;
@@ -2666,8 +2891,6 @@ webconfig_error_t translate_em_bss_to_private_vap_info(wifi_vap_info_t *vap, con
 // translate_em_bss_to_xhs_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for xhs vaps
 webconfig_error_t translate_em_bss_to_xhs_vap_info(wifi_vap_info_t *vap,  const em_bss_info_t *vap_row)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
     if (translate_em_common_to_vap_info_common(vap, vap_row) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_easymesh;
@@ -2692,8 +2915,6 @@ webconfig_error_t translate_em_bss_to_xhs_vap_info(wifi_vap_info_t *vap,  const 
 // translate_em_bss_to_lnf_psk_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for lnf_psk vaps
 webconfig_error_t translate_em_bss_to_lnf_psk_vap_info(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
     if (translate_em_common_to_vap_info_common(vap, vap_row) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
@@ -2719,8 +2940,6 @@ webconfig_error_t translate_em_bss_to_lnf_psk_vap_info(wifi_vap_info_t *vap, con
 // translate_em_bss_to_lnf_radius_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for lnf_radius vaps
 webconfig_error_t translate_em_bss_to_lnf_radius_vap_info(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
     if (translate_em_common_to_vap_info_common(vap, vap_row) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
@@ -2745,8 +2964,6 @@ webconfig_error_t translate_em_bss_to_lnf_radius_vap_info(wifi_vap_info_t *vap, 
 // translate_em_bss_to_mesh_backhaul_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for mesh_backhaul vaps
 webconfig_error_t translate_em_bss_to_mesh_backhaul_vap_info(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
     if (translate_em_common_to_vap_info_common(vap, vap_row) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
@@ -2770,8 +2987,6 @@ webconfig_error_t translate_em_bss_to_mesh_backhaul_vap_info(wifi_vap_info_t *va
 // translate_em_bss_to_mesh_sta_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for mesh_sta vaps
 webconfig_error_t translate_em_bss_to_mesh_sta_info(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
-    wifi_security_modes_t enum_sec;
-    int len = 0;
 
 
     if (translate_em_common_to_sta_info_common(vap, vap_row) != webconfig_error_none) {
@@ -2826,19 +3041,16 @@ webconfig_error_t translate_em_bss_to_mesh_sta_info(wifi_vap_info_t *vap, const 
 //translating easymesh bss info to onewifi for each vap in a radio
 webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_subdoc_data_t *data)
 {
-    em_bss_info_t *em_vap_info;
     em_bss_info_t *vap_info_row;
     wifi_vap_info_map_t *vap_map;
     webconfig_external_easymesh_t *proto;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
-    unsigned int i = 0,j = 0, k = 0, count = 0, radio_index = 0;
+    unsigned int j = 0, k = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
-    wifi_hal_capability_t *hal_cap;
     decoded_params = &data->u.decoded;
     radio_interface_mapping_t *radio_iface_map;
     m2ctrl_radioconfig *radio_config;
-    mac_address_t mac;
     em_haul_type_t haultype;
     webconfig_error_t ret = webconfig_error_none;
 
@@ -2865,7 +3077,6 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
 
     radio_config = proto->m2ctrl_radioconfig;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
-    hal_cap =&data->u.decoded.hal_cap;
 
     if (data->type == webconfig_subdoc_type_vap_24G) {
         radio_index = 0;
@@ -2952,21 +3163,13 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                         vap->vap_mode, radio_config->ssid[k], radio_config->authtype[k]);
                     if (vap->vap_mode == wifi_vap_mode_ap) {
                         vap->u.bss_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
-                        if(vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
-                            vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                        }
                         snprintf(vap->u.bss_info.ssid, sizeof(vap->u.bss_info.ssid), "%s", radio_config->ssid[k]);
-                        snprintf(vap->u.bss_info.security.u.key.key,
-                            sizeof(vap->u.bss_info.security.u.key.key), "%s", radio_config->password[k]);
+                        update_security_from_easymesh(&vap->u.bss_info.security, radio_config->password[k]);
                         vap->u.bss_info.enabled = radio_config->enable[k];
                     } else if (vap->vap_mode == wifi_vap_mode_sta) {
                         vap->u.sta_info.security.mode = translate_auth_type_from_easymesh(radio_config->authtype[k]);
-                        if(vap->u.sta_info.security.mode == wifi_security_mode_wpa3_transition) {
-                            vap->u.sta_info.security.mfp = wifi_mfp_cfg_optional;
-                        }
                         snprintf(vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid), "%s", radio_config->ssid[k]);
-                        snprintf(vap->u.sta_info.security.u.key.key,
-                            sizeof(vap->u.sta_info.security.u.key.key), "%s", radio_config->password[k]);
+                        update_security_from_easymesh(&vap->u.sta_info.security, radio_config->password[k]);
                         vap->u.sta_info.enabled = radio_config->enable[k];
                     } else {
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: unhandled vap_mode:%d\n",
@@ -2977,7 +3180,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
         }
 
         if (vap->vap_mode == wifi_vap_mode_ap) {
-            ret = update_vap_with_ap_mld_info(vap, proto);
+            ret = update_vap_with_ap_mld_info(vap, proto, radio_iface_map);
             if (ret == webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Updated VAP %s with AP MLD info\n",
                     __func__, __LINE__, vap->vap_name);
@@ -3000,7 +3203,7 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
 {
     channel_scan_response_t *channel_st;
     webconfig_external_easymesh_t *proto;
-    int i, j, count = 0;
+    int j, count = 0;
 
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
     if (params == NULL) {
@@ -3021,7 +3224,7 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
         return webconfig_error_translate_to_easymesh;
     }
 
-    for (i = 0; i < channel_st->num_results; i++) {
+    for (unsigned i = 0; i < channel_st->num_results; i++) {
 
         em_scan_result_t em_scan_result;
         channel_scan_result_t *src = &channel_st->results[i];
@@ -3086,7 +3289,6 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
 // translate_from_easymesh_bssinfo_to_vap_object() converts data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc_data_t *data,char *vap_name)
 {
-    em_bss_info_t     *em_vap_info;
     em_bss_info_t     *vap_info_row;
     wifi_vap_info_map_t *vap_map;
     webconfig_external_easymesh_t *proto;
@@ -3094,7 +3296,6 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
     wifi_vap_info_t *vap;
     unsigned int i = 0,j = 0, k = 0, count = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
-    wifi_hal_capability_t *hal_cap;
     decoded_params = &data->u.decoded;
     radio_interface_mapping_t *radio_iface_map;
     m2ctrl_radioconfig *radio_config;
@@ -3123,7 +3324,6 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
 
     radio_config = proto->m2ctrl_radioconfig;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
-    hal_cap =&data->u.decoded.hal_cap;
     //Get the number of radios
     for (i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
@@ -3240,7 +3440,6 @@ webconfig_error_t translate_radio_object_from_easymesh_to_radio(webconfig_subdoc
     wifi_radio_operationParam_t  *oper_param;
     webconfig_external_easymesh_t *proto;
     unsigned int i,j,radio_index, freq_band = 0, per_radio_subdoc = 0;
-    rdk_wifi_radio_t *radio;
     em_op_class_info_t *em_op_class_info;
     radio_interface_mapping_t *radio_iface_map;
     unsigned int num;
@@ -3282,7 +3481,6 @@ webconfig_error_t translate_radio_object_from_easymesh_to_radio(webconfig_subdoc
     }
 
     for (i = 0; i < decoded_params->num_radios; i++) {
-        radio = &decoded_params->radios[i];
         oper_param = &decoded_params->radios[i].oper;
         if ((per_radio_subdoc > 0) && (oper_param->band != freq_band)) {
             continue;
@@ -3373,7 +3571,7 @@ webconfig_error_t   translate_radio_object_from_easymesh_to_dml(webconfig_subdoc
 //translate_vap_object_from_easymesh_to_dml() converts data elements of em_bss_info_t of  easymesh to Onewifi
 webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_data_t *data)
 {
-    em_bss_info_t     *em_vap_info;
+    em_bss_info_t *em_vap_info = NULL;
     em_bss_info_t     *vap_info_row;
     wifi_vap_info_map_t *vap_map;
     webconfig_external_easymesh_t *proto;
@@ -3410,20 +3608,21 @@ webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_d
         radio = &decoded_params->radios[i];
 
         vap_map = &radio->vaps.vap_map;
-        // em_vap_info = em_radio_data[i].bss_info;//Please add NULL check TBD-P
-        if (em_vap_info == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_vap_info is NULL\n", __func__, __LINE__);
-            return webconfig_error_translate_from_easymesh;
-        }
         count = 0;
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
 
-            em_vap_info = proto->get_bss_info(proto->data_model, j);//Please add NULL check TBD-P
+            em_vap_info = proto->get_bss_info(proto->data_model, j);
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s \r\n", __func__, __LINE__, vap->vap_name);
             if (is_vap_hotspot(wifi_prop,vap->vap_index) == true) {
                 continue;
+            }
+
+            if (em_vap_info == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_vap_info is NULL\n", __func__,
+                    __LINE__);
+                return webconfig_error_translate_from_easymesh;
             }
 
             // please move this code to specific vap function like ovsdb_translator
@@ -3897,7 +4096,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac,
         ext_proto_put_scan_results_t put_scan_res, ext_proto_update_ap_mld_info_t update_ap_mld,
         ext_proto_update_bsta_mld_info_t update_bsta_mld, ext_proto_update_assoc_sta_mld_info_t update_assoc_sta_mld,
-        ext_proto_get_ap_mld_frm_bssid_t get_ap_mld_frm_bssid, ext_proto_get_radio_cap_t get_radio_cap)
+        ext_proto_get_ap_mld_frm_haul_type_t get_ap_mld_frm_haul_type, ext_proto_get_radio_cap_t get_radio_cap)
 {
     proto->data_model = data_model;
     proto->m2ctrl_radioconfig = m2ctrl_radioconfig;
@@ -3923,6 +4122,6 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
     proto->update_ap_mld_info = update_ap_mld;
     proto->update_bsta_mld_info = update_bsta_mld;
     proto->update_assoc_sta_mld_info = update_assoc_sta_mld;
-    proto->get_ap_mld_frm_bssid = get_ap_mld_frm_bssid;
+    proto->get_ap_mld_frm_haul_type = get_ap_mld_frm_haul_type;
     proto->get_radio_cap = get_radio_cap;
 }

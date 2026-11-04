@@ -2,3 +2,7 @@ install/
 *.o
 *.so
 .vscode/
+
+# Python bytecode (CI scripts under .github/scripts)
+__pycache__/
+*.pyc

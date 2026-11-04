@@ -172,14 +172,16 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
         return -1;
     }
-    p_tgt_created_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
+
+    p_tgt_created_vap_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
     if (p_tgt_created_vap_map == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
         free(p_tgt_vap_map);
         return -1;
     }
     memset((unsigned char *)p_tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
     p_tgt_created_vap_map->num_vaps = 0;
+
     wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (rfc_info) {
         greylist_rfc = rfc_info->radiusgreylist_rfc;
@@ -206,7 +208,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         }
         // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP entries are
         // saved to VAP_Config with exist flag set to 0 and default values.
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
         if(rdk_vap_info[i].exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if(map->vap_array[i].vap_index != 2 && map->vap_array[i].vap_index != 3) {
@@ -218,7 +220,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             rdk_vap_info[i].exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
         }
-#endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
         if (wifi_hal_createVAP(radio_index, p_tgt_vap_map) != RETURN_OK) {
@@ -252,10 +254,12 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                    p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = true;
                 }
         }
-        wifi_util_error_print(WIFI_CTRL,"%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
+        wifi_util_error_print(WIFI_CTRL, "%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,
+            p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
-                    sizeof(wifi_vap_info_t));
-        memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+            sizeof(wifi_vap_info_t));
+        memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i],
+            (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
         get_wifidb_obj()->desc.update_wifi_vap_info_fn(map->vap_array[i].vap_name, &map->vap_array[i],
             &rdk_vap_info[i]);
         get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(map->vap_array[i].vap_name,

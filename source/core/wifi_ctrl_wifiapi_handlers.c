@@ -645,7 +645,7 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
               " cli_PacketsSent: %lu cli_PacketsReceived: %lu cli_ErrorsSent: %lu"
               " cli_RetransCount: %lu cli_FailedRetransCount: %lu cli_RetryCount: %lu"
               " cli_MultipleRetryCount: %lu cli_MaxDownlinkRate: %d cli_MaxUplinkRate: %d"
-              " cli_activeNumSpatialStreams: %d cli_TxFrames: %llu cli_RxRetries: %llu"
+              " cli_capableNumSpatialStreams: %d cli_activeNumSpatialStreams: %d cli_TxFrames: %llu cli_RxRetries: %llu"
               " cli_RxErrors: %llu\n",
               to_sta_key(dev_array[i].cli_MACAddress, sta_key),
               to_sta_key(dev_array[i].cli_MLDAddr, mld_sta_key), dev_array[i].cli_MLDEnable,
@@ -662,7 +662,8 @@ static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsign
               dev_array[i].cli_ErrorsSent, dev_array[i].cli_RetransCount,
               dev_array[i].cli_FailedRetransCount, dev_array[i].cli_RetryCount,
               dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
-              dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
+              dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_capableNumSpatialStreams,
+              dev_array[i].cli_activeNumSpatialStreams,
               dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
       }
       if (dev_array != NULL) {
@@ -686,7 +687,8 @@ void process_wifiapi_command(char *command, unsigned int len)
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     FILE *json_file;
-    long fsize;
+    struct stat st;
+    size_t bytes_read;
     char *raw = NULL;
     wifi_vap_info_map_t *vap_map;
     rdk_wifi_radio_t *radio;
@@ -752,23 +754,34 @@ void process_wifiapi_command(char *command, unsigned int len)
             snprintf(buff, sizeof(buff), "%s: failed to open file '%s'", args[0], args[2]);
             goto publish;
         }
-        fseek(json_file, 0, SEEK_END);
-        fsize = ftell(json_file);
-        fseek(json_file, 0, SEEK_SET);
-        if (fsize == 0) {
-            snprintf(buff, sizeof(buff), "%s: Invalid content size (0). file '%s'", args[0], args[2]);
+
+        if (fstat(fileno(json_file), &st) != 0 || !S_ISREG(st.st_mode)) {
+            snprintf(buff, sizeof(buff), "%s: invalid input file type '%s'", args[0], args[2]);
             fclose(json_file);
             goto publish;
         }
-        raw = malloc(fsize + 1);
+
+        if (st.st_size <= 0) {
+            snprintf(buff, sizeof(buff), "%s: invalid content size (%ld). file '%s'", args[0], (long)st.st_size, args[2]);
+            fclose(json_file);
+            goto publish;
+        }
+
+        raw = malloc((size_t)st.st_size + 1);
         if(raw == NULL) {
             snprintf(buff, sizeof(buff), "%s: failed to allocate memory", args[0]);
             fclose(json_file);
             goto publish;
         }
-        fread(raw, fsize, 1, json_file);
+        memset(raw, 0, (size_t)st.st_size + 1);
+
+        bytes_read = fread(raw,1, (size_t)st.st_size, json_file);
         fclose(json_file);
-        raw[fsize] = '\0';
+        if (bytes_read != (size_t)st.st_size) {
+            snprintf(buff, sizeof(buff), "%s: failed to read complete file '%s'", args[0], args[2]);
+            goto publish;
+        }
+        raw[bytes_read] = '\0';
 
         //webconfig decode
         config = &ctrl->webconfig;
@@ -831,23 +844,34 @@ void process_wifiapi_command(char *command, unsigned int len)
             snprintf(buff, sizeof(buff), "%s: failed to open file '%s'", args[0], args[2]);
             goto publish;
         }
-        fseek(json_file, 0, SEEK_END);
-        fsize = ftell(json_file);
-        fseek(json_file, 0, SEEK_SET);
-        if (fsize == 0) {
-            snprintf(buff, sizeof(buff), "%s: Invalid content size (0). file '%s'", args[0], args[2]);
+
+        if (fstat(fileno(json_file), &st) != 0 || !S_ISREG(st.st_mode)) {
+            snprintf(buff, sizeof(buff), "%s: invalid input file type '%s'", args[0], args[2]);
             fclose(json_file);
             goto publish;
         }
-        raw = malloc(fsize + 1);
+
+        if (st.st_size <= 0) {
+            snprintf(buff, sizeof(buff), "%s: invalid content size (%ld). file '%s'", args[0], (long)st.st_size, args[2]);
+            fclose(json_file);
+            goto publish;
+        }
+
+        raw = malloc((size_t)st.st_size + 1);
         if(raw == NULL) {
             snprintf(buff, sizeof(buff), "%s: failed to allocate memory", args[0]);
             fclose(json_file);
             goto publish;
         }
-        fread(raw, fsize, 1, json_file);
+        memset(raw, 0, (size_t)st.st_size + 1);
+
+        bytes_read = fread(raw, 1, (size_t)st.st_size, json_file);
         fclose(json_file);
-        raw[fsize] = '\0';
+        if (bytes_read != (size_t)st.st_size) {
+            snprintf(buff, sizeof(buff), "%s: failed to read complete file '%s'", args[0], args[2]);
+            goto publish;
+        }
+        raw[bytes_read] = '\0';
 
         //webconfig decode
         config = &ctrl->webconfig;

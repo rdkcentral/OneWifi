@@ -27,6 +27,7 @@ extern "C" {
 #include "collection.h"
 #include <pthread.h>
 #include <sys/time.h>
+#include <stdint.h>
 #include "wifi_hal.h"
 
 #define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
@@ -90,8 +91,16 @@ extern "C" {
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
+
 #define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
 #define WIFI_RADIO_START_ACS                "Device.WiFi.X_RDKCENTRAL-COM_StartACS"
+
+#define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
+#define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
+#define WIFI_NETWORKDEVICESSTATUS_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.NetworkDevicesStatus.MloRfcEnable"
+#define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
+    "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
 
 #ifndef MAX_NUM_MLD_LINKS
 #define MAX_NUM_MLD_LINKS 15
@@ -336,6 +345,11 @@ typedef struct {
 } __attribute__((packed)) wifi_csi_dev_t;
 
 #ifdef EM_APP
+typedef struct {
+    mac_address_t sta_mac;
+    wifi_BeaconRequest_t data;
+} beacon_query_params_t;
+
 typedef struct wifi_hal_rrm_request {
     uint8_t dialog_token;
     uint8_t duration;
@@ -535,9 +549,79 @@ typedef struct {
 } link_report_t;
 
 typedef struct {
+    unsigned long cli_PacketsSent;
+    unsigned long cli_PacketsReceived;
+    unsigned long cli_RetransCount;
+    unsigned long long cli_RxRetries;
+    int cli_SNR;
+    unsigned int   cli_MaxDownlinkRate;
+    unsigned int cli_MaxUplinkRate;
+    unsigned int cli_LastDataDownlinkRate;
+    unsigned int cli_LastDataUplinkRate;
+    unsigned long cli_sleepTime;
+} dev_stats_t;
+
+typedef struct {
     size_t link_count;
     link_report_t *links;
 } report_batch_t;
+
+/* Unassociated STA (NaSta) query/response structures */
+#define MAX_NASTA_OPCLASS_ENTRIES   8
+#define MAX_NASTA_CHANNELS          8
+#define MAX_NASTA_STA_PER_CHANNEL   8
+#define MAX_NASTA_RESPONSE_STAS     (MAX_NASTA_OPCLASS_ENTRIES * MAX_NASTA_CHANNELS * MAX_NASTA_STA_PER_CHANNEL)
+
+typedef struct {
+    unsigned int num_sta;
+    wifi_na_sta_info_t sta_list[MAX_NASTA_RESPONSE_STAS];
+} nasta_response_t;
+
+typedef struct {
+    mac_address_t sta_macs[MAX_NASTA_STA_PER_CHANNEL];
+    unsigned int sta_list_length;
+    unsigned int channel;
+} nasta_channel_entry_t;
+
+typedef struct {
+    unsigned int opclass;
+    unsigned int channels_length;
+    nasta_channel_entry_t channels[MAX_NASTA_CHANNELS];
+} nasta_opclass_entry_t;
+
+typedef struct {
+    unsigned int vap_index;
+    unsigned int num_opclass;
+    nasta_opclass_entry_t opclass_list[MAX_NASTA_OPCLASS_ENTRIES];
+} nasta_query_t;
+
+typedef struct {
+    mac_addr_str_t mac_str;
+    mac_addr_str_t ap_mac_str;
+    unsigned int vap_index;
+    unsigned int radio_index;
+    int channel_utilization;
+    dev_stats_t dev;
+    bool is_be;
+    struct timespec total_connected_time;
+    struct timespec total_disconnected_time;
+    int event;
+    unsigned int status_code;
+    int dhcp_event;
+    int dhcp_msg_type;
+    char dhcp_hostname[256];
+    char dhcp_vendor_class[256];
+    char dhcp_param_list[512];
+    unsigned int eapol_m1_count;
+    unsigned int eapol_m2_count;
+    unsigned int eapol_m3_count;
+    unsigned int eapol_m4_count;
+    unsigned int eapol_attempts;
+    unsigned int eapol_failures;
+    /* True only when STA_CONN (4WAY complete) has fired for this session.
+     * Populated by wifi_stats_assoc_client from sta_data_t::connection_authorized. */
+    bool connection_authorized;
+} stats_arg_t;
 
 typedef struct {
     unsigned int rss_check_interval; //minutes
@@ -584,7 +668,9 @@ typedef struct {
     bool wpa3_compatibility_enable;
     bool memwraptool_app_rfc;
     bool csi_analytics_enabled_rfc;
-    bool link_quality_rfc;
+    /* In-memory only (not an OVSDB column): derived exclusively from
+     * Wifi_Wei_Rfc_Config by wei_compute_rfc_mask(), never persisted itself. */
+    int  wei_rfc_mask;
     bool xfi_tel_enable_rfc;
     bool multiap_rfc;
 } wifi_rfc_dml_parameters_t;
@@ -1036,6 +1122,26 @@ typedef struct {
 } wifi_mld_unit_t;
 #endif /* CONFIG_IEEE80211BE */
 
+/* Carries the 802.11 status/reason code for a failed connection event.
+ * For pre-association failures (auth/assoc reject): set status, leave reason=0.
+ * For post-association failures (deauth/disassoc):  set reason, leave status=0.
+ * Fields are ordered to minimise internal padding between members; trailing
+ * tail-padding (if any) is compiler-controlled and not part of the payload size
+ * contract — always use sizeof(sta_fail_data_t) for queue operations.
+ * The struct is a host-local representation copied into the ctrl-queue event buffer.
+ * Consumers may cast `event->u.core_data.msg` to `const sta_fail_data_t *` when
+ * `event->u.core_data.len == sizeof(sta_fail_data_t)`; alternatively, memcpy into a
+ *  local `sta_fail_data_t` is also acceptable.
+ * If a serialized "wire" layout becomes required
+ * later, introduce a distinct packed wire-struct and perform explicit
+ * serialization/deserialization. */
+typedef struct {
+    int32_t        ap_index;
+    uint16_t       status;
+    uint16_t       reason;
+    mac_address_t  sta_mac;
+} sta_fail_data_t;
+
 struct active_msmt_data;
 
 typedef struct {
@@ -1061,6 +1167,10 @@ typedef struct {
     bool            rapid_disconnect_flag;
     assoc_req_elem_t assoc_frame_data;
     struct timespec timestamp;
+    unsigned int    eapol_m1_count;
+    unsigned int    eapol_m2_count;
+    unsigned int    eapol_m3_count;
+    unsigned int    eapol_m4_count;
 
     /* wifi7 client specific data */
     bool            assoc_link; /* TRUE for auth/primary link, FALSE for secondary links */
@@ -1278,6 +1388,22 @@ typedef struct {
     unsigned int            radio_Temperature;
 } radio_data_t;
 
+typedef struct {
+    assoc_dev_data_t *affiliated_sta[MAX_NUM_RADIOS];
+    UINT affiliated_sta_count;
+} stamld_data_t;
+
+typedef struct {
+    wifi_vap_info_t *mld_vaps[MAX_NUM_RADIOS];
+    UINT mld_vap_count;
+} mld_group_t;
+
+typedef struct {
+    mld_group_t mld_groups[MLD_UNIT_COUNT];
+    UINT mld_group_count;
+    hash_map_t *stamld[MLD_UNIT_COUNT]; /* Hash map keyed by MLD MAC address, contains stamld_data_t */
+} apmld_map_t;
+
 #ifdef EM_APP
 
 #define EM_MAX_OPERATING_CLASS 48
@@ -1445,11 +1571,10 @@ typedef struct {
     wifi_BeaconReport_t *beacon_repo;
 } wifi_hal_rrm_report_t;
 
-#define EM_MAX_BR_DATA 400
 typedef struct {
     mac_address_t mac_addr;
     unsigned int data_len;
-    unsigned char data[EM_MAX_BR_DATA];
+    unsigned char *data;
     unsigned int ap_index;
     unsigned int num_br_data;
     int sched_handler_id;
@@ -1474,14 +1599,6 @@ typedef struct {
     UINT num_operating_classes;
     operating_class_t operating_classes[EM_MAX_OPERATING_CLASS];
 } channel_scan_request_t;
-
-typedef struct {
-    bssid_t    bssid;
-    unsigned char assoc_control;
-    unsigned short validity_period;
-    unsigned char count;
-    mac_address_t sta_mac;
-} client_assoc_ctrl_req_t;
 
 typedef struct {
     bssid_t bssid;

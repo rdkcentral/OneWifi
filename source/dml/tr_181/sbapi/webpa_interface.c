@@ -44,7 +44,7 @@ static void checkComponentHealthStatus(char *compName, char *dbusPath, char *sta
     size_t status_len, int *retStatus);
 static void waitForEthAgentComponentReady();
 static int check_ethernet_wan_status();
-static void *handle_parodus();
+static void *handle_parodus(void *arg);
 
 #define CCSP_AGENT_WEBPA_SUBSYSTEM "eRT."
 
