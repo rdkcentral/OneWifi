@@ -1069,7 +1069,8 @@ void process_ext_connected_scan_results(wifi_service_node_t *node, wifi_core_dat
     }
 
     for (i = 0; (i < num) && (tmp_bss != NULL) ; i++) {
-        convert_freq_to_channel(tmp_bss->freq, (unsigned char *) &channel);
+        convert_freq_to_channel((wifi_freq_bands_t)band, tmp_bss->freq,
+            (unsigned char *) &channel);
         if (channel == ext->go_to_channel)
         {
             found_candidate =  true;
@@ -1736,6 +1737,11 @@ int process_sta_hal_ind(wifi_service_node_t *node, wifi_event_subtype_t sub_type
         process_ext_channel_change(node, data);
         break;
 
+    case wifi_event_hal_pre_assoc_fail:
+    case wifi_event_hal_post_assoc_fail:
+        wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: Ignored HAL event: %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     default:
         wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: assert - sub_type:%s\r\n", __func__, __LINE__,
             wifi_event_subtype_to_string(sub_type));

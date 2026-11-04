@@ -172,9 +172,19 @@ typedef struct {
     char *result;
 } wifiapi_t;
 
+#define MAX_TRACKED_VAPS (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)
+
+typedef struct {
+    int active_blocks;
+    int original_filter_mode;
+    bool mode_saved;
+} vap_acl_state_t;
+
 typedef struct kick_details {
     char *kick_list;
     int vap_index;
+    int timer_id;
+    bool cancelled_by_unblock;
 }kick_details_t;
 
 typedef struct {
@@ -464,13 +474,15 @@ int publish_endpoint_enable(void);
 int get_mld_mac_from_link_mac(mac_address_t in_addr, mac_address_t mld_addr);
 void hotspot_timing_start(void);
 void hotspot_timing_stop(void);
+int reboot_device(void* arg);
+void convert_freq_to_channel(wifi_freq_bands_t band, unsigned int freq,
+    unsigned char *channel);
 
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
 void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
     unsigned int vap_names_size, wifi_dbg_type_t log_type);
 void update_mlo_rfc_enable(bool init);
 #endif /* CONFIG_IEEE80211BE && !CONFIG_GENERIC_MLO */
-
 wifi_vap_info_t *get_mlo_partner_link_by_link_id(wifi_vap_info_t *vapInfo, UINT link_id);
 wifi_mld_common_info_t *get_mld_from_vap_info(wifi_vap_info_t *vap);
 void update_apmld_map(apmld_map_t *apmld_map);

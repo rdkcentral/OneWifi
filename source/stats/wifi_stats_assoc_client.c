@@ -305,9 +305,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 	    if (radioOperation != NULL && (radioOperation->variant & WIFI_80211_VARIANT_BE))
 	    {
 	      link_data[i].stats.is_be = true;
-	      wifi_util_dbg_print(WIFI_MON,"%s:%d This is a BE Radio\n",__func__,__LINE__);
 	    } else {
-	      wifi_util_dbg_print(WIFI_MON,"%s:%d This is a not an BE Radio\n",__func__,__LINE__);
 	      link_data[i].stats.is_be = false;
 	    }
 #else 
@@ -401,6 +399,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             sta->updated = true;
             sta->dev_stats.cli_Active = true;
             sta->dev_stats.cli_SignalStrength = hal_sta->cli_SignalStrength;
+            sta->timestamp.tv_sec = tv_now.tv_sec;
+            sta->timestamp.tv_nsec = tv_now.tv_nsec;
 
             if (timespeccmp(&(sta->last_connected_time),
                     &(mon_data->bssid_data[vap_array_index].last_sta_update_time),
@@ -452,7 +452,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 link_data[i].stats.eapol_m4_count = sta->eapol_m4_count;
                 /* Reflects STA_CONN completion: false for 4WAY-fail clients even if conn_time > 0. */
                 link_data[i].stats.connection_authorized = sta->connection_authorized;
-                wifi_util_info_print(WIFI_MON,
+                wifi_util_dbg_print(WIFI_MON,
                     "%s:%d PERIODIC_STATS MAC=%s conn_time=%llds authorized=%d\n",
                     __func__, __LINE__,
                     link_data[i].stats.mac_str,
@@ -483,7 +483,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     // This triggers BOTH link_quality_event_exec_timeout (for add_stats_metrics) 
     // AND link_quality_periodic_stats_update (for caffinity timing updates)
     if (link_data && num_devs != 0 && ((link_quality_measurement) || (rf_down_mesh_sta))) {
-        wifi_util_info_print(WIFI_MON, "%s:%d timestats Sending periodic link quality event for %d clients\n", __func__, __LINE__, num_devs);
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d timestats Sending periodic link quality event for %d clients\n", __func__,
+            __LINE__, num_devs);
         apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, link_data, num_devs);
     }
 
@@ -567,11 +569,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 				 disconnect_link_data->stats.ap_mac_str);
 
                             if (rf_down_mesh_sta) {
-			         wifi_util_dbg_print(WIFI_MON,"%s:%d\n",__func__,__LINE__);
                                 apps_mgr_link_quality_event(&ctrl->apps_mgr,
                                     wifi_event_type_hal_ind, wifi_event_exec_stop, disconnect_link_data, 0);
                             } else {
-			         wifi_util_dbg_print(WIFI_MON,"%s:%d\n",__func__,__LINE__);
                                 sta->rapid_disconnect_flag = true;
                                 apps_mgr_link_quality_event(&ctrl->apps_mgr,
                                     wifi_event_type_hal_ind, wifi_event_exec_timeout, disconnect_link_data, 0);
@@ -621,7 +621,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     }
 	            to_mac_str(bss_param->bssid, remove_link_data->stats.ap_mac_str);
                     wifi_util_dbg_print(WIFI_MON, "%s:%d:  diag client disassociated  sta mac=%s vap_index:%d ap_mac=%s\n", __func__, __LINE__,remove_link_data->stats.mac_str,remove_link_data->stats.vap_index,remove_link_data->stats.ap_mac_str);
-			         wifi_util_dbg_print(WIFI_MON,"%s:%d\n",__func__,__LINE__);
                     apps_mgr_link_quality_event(&ctrl->apps_mgr,wifi_event_type_hal_ind, wifi_event_exec_stop, remove_link_data, 0);
                 }
             }
