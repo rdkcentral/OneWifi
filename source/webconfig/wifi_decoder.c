@@ -6448,7 +6448,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     const cJSON *policy_obj, *local_steering_policy, *btm_steering_policy, *backhaul_policy,
         *channel_scan_policy, *radio_metrics_array;
     const cJSON *unsuccess_assoc_policy, *qos_mgt_policy, *def_8021q_policy;
-    const cJSON *traffic_sep_policy, *client_filters_policy, *radio_steer_array, *radio_steer_obj;
+    const cJSON *radio_steer_array, *radio_steer_obj;
 
     policy_obj = cJSON_GetObjectItem(em_cfg, "Policy");
     if (policy_obj == NULL) {
@@ -6667,7 +6667,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                     int mscs_count = cJSON_GetArraySize(mscs_arr);
                     em_config->qos_mgt_policy[qi].num_mscs = (mscs_count < EM_MAX_QOS_MAC) ? mscs_count : EM_MAX_QOS_MAC;
                     for (int i = 0; i < em_config->qos_mgt_policy[qi].num_mscs; i++) {
-                        const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
+                        cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
                         str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                             em_config->qos_mgt_policy[qi].mscs_mac[i]);
                     }
@@ -6677,7 +6677,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                     int scs_count = cJSON_GetArraySize(scs_arr);
                     em_config->qos_mgt_policy[qi].num_scs = (scs_count < EM_MAX_QOS_MAC) ? scs_count : EM_MAX_QOS_MAC;
                     for (int i = 0; i < em_config->qos_mgt_policy[qi].num_scs; i++) {
-                        const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
+                        cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
                         str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                             em_config->qos_mgt_policy[qi].scs_mac[i]);
                     }
@@ -6691,7 +6691,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                 int mscs_count = cJSON_GetArraySize(mscs_arr);
                 em_config->qos_mgt_policy[0].num_mscs = (mscs_count < EM_MAX_QOS_MAC) ? mscs_count : EM_MAX_QOS_MAC;
                 for (int i = 0; i < em_config->qos_mgt_policy[0].num_mscs; i++) {
-                    const cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
+                    cJSON *mac_item = cJSON_GetArrayItem(mscs_arr, i);
                     str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                         em_config->qos_mgt_policy[0].mscs_mac[i]);
                 }
@@ -6701,7 +6701,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
                 int scs_count = cJSON_GetArraySize(scs_arr);
                 em_config->qos_mgt_policy[0].num_scs = (scs_count < EM_MAX_QOS_MAC) ? scs_count : EM_MAX_QOS_MAC;
                 for (int i = 0; i < em_config->qos_mgt_policy[0].num_scs; i++) {
-                    const cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
+                    cJSON *mac_item = cJSON_GetArrayItem(scs_arr, i);
                     str_to_mac_bytes(cJSON_GetStringValue(mac_item),
                         em_config->qos_mgt_policy[0].scs_mac[i]);
                 }
@@ -6755,23 +6755,25 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
     }
     sta_link_metrics->sta_count = cJSON_GetArraySize(em_sta_link);
 
-    sta_link_metrics->per_sta_metrics = (per_sta_metrics_t *)malloc(sta_link_metrics->sta_count * sizeof(per_sta_metrics_t));
+    sta_link_metrics->per_sta_metrics = (per_sta_metrics_t *)calloc(sta_link_metrics->sta_count,
+        sizeof(per_sta_metrics_t));
     if (sta_link_metrics->per_sta_metrics == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Error in allocating table for decode stats\n", __func__,
             __LINE__);
         return webconfig_error_decode;
     }
 
-    for (int i = 0; i < sta_link_metrics->sta_count; i++)
-    {
+    for (unsigned int i = 0; i < sta_link_metrics->sta_count; i++) {
         array_item = cJSON_GetArrayItem(em_sta_link, i);
 
         decode_param_allow_optional_string(array_item, "STA MAC", param);
-        str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].sta_mac);
+        if (param != NULL) {
+            str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].sta_mac);
+        }
 
         decode_param_allow_empty_string(array_item, "Client Type", param);
-        strncpy(sta_link_metrics->per_sta_metrics[i].client_type, param->valuestring, strlen(param->valuestring));
-        sta_link_metrics->per_sta_metrics[i].client_type[strlen(param->valuestring)] = '\0';
+        snprintf((char *)sta_link_metrics->per_sta_metrics[i].client_type,
+            sizeof(sta_link_metrics->per_sta_metrics[i].client_type), "%s", param->valuestring);
 
         // Associated STA Link Metrics
         sta_link_metrics_obj = cJSON_GetObjectItem(array_item, "Associated STA Link Metrics");
@@ -6792,7 +6794,12 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
                 bssid_metrics_arr_item = cJSON_GetArrayItem(per_bssid_metrics, j);
 
                 decode_param_allow_optional_string(bssid_metrics_arr_item, "BSSID", param);
-                str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].bssid);
+                if (param != NULL) {
+                    str_to_mac_bytes(param->valuestring,
+                        sta_link_metrics->per_sta_metrics[i]
+                            .assoc_sta_link_metrics.assoc_sta_link_metrics_data[j]
+                            .bssid);
+                }
     
                 decode_param_integer(bssid_metrics_arr_item, "Time Delta", param);
                 sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].time_delta = param->valuedouble;
@@ -6816,10 +6823,13 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
                 return webconfig_error_decode;
             }else {
                 decode_param_integer(error_code_obj, "Reason Code", param);
-                sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuestring;
+                sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuedouble;
 
-                decode_param_allow_optional_string(sta_link_metrics_obj, "STA MAC", param);
-                str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
+                decode_param_allow_optional_string(error_code_obj, "STA MAC", param);
+                if (param != NULL) {
+                    str_to_mac_bytes(param->valuestring,
+                        sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
+                }
             }
         }
 
@@ -6842,7 +6852,12 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
                 bssid_metrics_arr_item = cJSON_GetArrayItem(per_bssid_metrics, j);
 
                 decode_param_allow_optional_string(bssid_metrics_arr_item, "BSSID", param);
-                str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].bssid);
+                if (param != NULL) {
+                    str_to_mac_bytes(param->valuestring,
+                        sta_link_metrics->per_sta_metrics[i]
+                            .assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j]
+                            .bssid);
+                }
 
                 decode_param_integer(bssid_metrics_arr_item, "Last Data Downlink Rate", param);
                 sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].last_data_downlink_rate = param->valuedouble;
@@ -6866,7 +6881,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
 {
     cJSON *vap_obj, *param_arr, *param_obj, *value_object, *assoc_sta_arr, *link_metrics_obj,
         *bssid_arr, *bssid_obj;
-    int j = 0, i = 0;
+    int j = 0;
     int sta_cnt = 0;
     assoc_sta_link_metrics_data_t *sta_link_metrics_data = NULL;
     assoc_sta_ext_link_metrics_data_t *sta_ext_link_metrics_data = NULL;
@@ -6911,8 +6926,10 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
         param_obj = cJSON_GetObjectItem(vap_obj, "AP Metrics");
         if (param_obj != NULL && cJSON_IsObject(param_obj)) {
             decode_param_allow_optional_string(param_obj, "BSSID", value_object);
-            str_to_mac_bytes(value_object->valuestring,
-                radio_report->vap_reports[j].vap_metrics.bssid);
+            if (value_object != NULL) {
+                str_to_mac_bytes(value_object->valuestring,
+                    radio_report->vap_reports[j].vap_metrics.bssid);
+            }
 
             decode_param_integer(param_obj, "Channel Util", value_object);
             radio_report->vap_reports[j].vap_metrics.channel_util = value_object->valueint;
@@ -7020,8 +7037,8 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
         // Decode AP Extended Metrics
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Link Metrics Report");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
-            radio_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)malloc(
-                radio_report->vap_reports[j].sta_cnt * sizeof(per_sta_metrics_t));
+            radio_report->vap_reports[j].sta_link_metrics = (per_sta_metrics_t *)calloc(
+                radio_report->vap_reports[j].sta_cnt, sizeof(per_sta_metrics_t));
             for (sta_cnt = 0; sta_cnt < cJSON_GetArraySize(assoc_sta_arr); sta_cnt++) {
                 link_metrics_obj = cJSON_GetArrayItem(assoc_sta_arr, sta_cnt);
                 if (link_metrics_obj == NULL) {
@@ -7036,13 +7053,15 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                                             .assoc_sta_link_metrics.assoc_sta_link_metrics_data;
 
                 decode_param_allow_optional_string(link_metrics_obj, "STA MAC", value_object);
-                str_to_mac_bytes(value_object->valuestring,
-                    radio_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
+                if (value_object != NULL) {
+                    str_to_mac_bytes(value_object->valuestring,
+                        radio_report->vap_reports[j].sta_link_metrics[sta_cnt].sta_mac);
+                }
 
                 decode_param_allow_optional_string(link_metrics_obj, "Client Type", value_object);
-                strncpy(radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
-                    value_object->valuestring, strlen(value_object->valuestring));
-                radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
+                snprintf((char *)radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
+                    sizeof(radio_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type),
+                    "%s", (value_object != NULL) ? value_object->valuestring : "");
 
                 param_obj = cJSON_GetObjectItem(link_metrics_obj, "Associated STA Link Metrics");
                 if (param_obj == NULL) {
@@ -7068,8 +7087,10 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                             return webconfig_error_decode;
                         }
                         decode_param_allow_optional_string(bssid_obj, "BSSID", value_object);
-                        str_to_mac_bytes(value_object->valuestring,
-                            sta_link_metrics_data[bssid_cnt].bssid);
+                        if (value_object != NULL) {
+                            str_to_mac_bytes(value_object->valuestring,
+                                sta_link_metrics_data[bssid_cnt].bssid);
+                        }
 
                         decode_param_integer(bssid_obj, "Time Delta", value_object);
                         sta_link_metrics_data[bssid_cnt].time_delta = value_object->valuedouble;
@@ -7118,8 +7139,10 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                             return webconfig_error_decode;
                         }
                         decode_param_allow_optional_string(bssid_obj, "BSSID", value_object);
-                        str_to_mac_bytes(value_object->valuestring,
-                            sta_ext_link_metrics_data[bssid_cnt].bssid);
+                        if (value_object != NULL) {
+                            str_to_mac_bytes(value_object->valuestring,
+                                sta_ext_link_metrics_data[bssid_cnt].bssid);
+                        }
 
                         decode_param_integer(bssid_obj, "Last Data Downlink Rate", value_object);
                         sta_ext_link_metrics_data[bssid_cnt].last_data_downlink_rate =
