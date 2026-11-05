@@ -814,11 +814,9 @@ static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
 
     memset(eht_ops_bss, 0, sizeof(*eht_ops_bss));
 
-    bool is_eht =
+    bool is_eht = false;
 #ifdef CONFIG_IEEE80211BE
-        ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
-#else /* !CONFIG_IEEE80211BE */
-        false;
+    is_eht = ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
 #endif /* CONFIG_IEEE80211BE */
     if (!is_eht) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,
