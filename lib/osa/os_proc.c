@@ -63,6 +63,7 @@ int32_t os_pid_to_name(pid_t pid, char *proc_name, int32_t len)
         buf[l-1] = 0;
     }
 
+    if (len < 0) goto func_exit;
     strscpy(proc_name, buf, len);
     rc = 0;
 
