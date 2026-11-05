@@ -3692,7 +3692,9 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
   WPA3-Personal, WPA3-Transition, WPA3-Compatability AES-GCMP256 is required */
 static void mlo_check_modify_security_encr(wifi_vap_info_t *vap, wifi_dbg_type_t log_type)
 {
-    if (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) {
+    if ((is_mlo_wpa3_personal(vap->u.bss_info.security.mode) ||
+            vap->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) &&
+        vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) {
         wifi_util_info_print(log_type,
             "%s:%d: vap_index=%d MLO config mismatch: encryption type %d,"
             " setting encr type to AES-GCMP256\n",
@@ -3977,7 +3979,14 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 #ifndef CONFIG_GENERIC_MLO
                 if (mld_conf->mld_link_id == 0) {
                     main_link_vap = target_vap;
+#ifdef  CONFIG_IEEE80211BE
+                    if (get_default_mld_address(main_link_vap->vap_index, mlo_mac) != RETURN_OK) {
+                        wifi_util_error_print(log_type, "%s:%d: platform mld address fetch failed for vap_index=%d\n",
+                            __func__, __LINE__, main_link_vap->vap_index);
+                    }
+#else
                     memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
+#endif // CONFIG_IEEE80211BE
                 }
 #endif // CONFIG_GENERIC_MLO
 
