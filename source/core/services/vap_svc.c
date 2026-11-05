@@ -124,7 +124,24 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
     for (i = 0; i < tgt_vap_map->num_vaps; i++) {
         vap_index = tgt_vap_map->vap_array[i].vap_index;
 #ifdef NL80211_ACL
+#ifdef EM_APP
+        /* Wipe and controller replay as one step against a concurrent controller ACL request */
+        em_reset_bh_acl(vap_index);
+#else
         wifi_hal_delApAclDevices(vap_index);
+#endif
+        /* The controller owns this list; a stored entry could undo its BLOCK. The HAL now holds
+         * exactly the controller's entries, so the VAP is initialized: later mac filter
+         * documents then only update the cache and DB (their HAL calls are skipped for such a
+         * VAP) instead of wiping and replaying the whole list and the DB again. */
+        if (is_bh_acl_owned_by_em(vap_index)) {
+            vap_info = get_wifidb_rdk_vap_info(vap_index);
+            /* Same condition as below: an initialized VAP needs a cache to update */
+            if ((vap_info != NULL) && (vap_info->acl_map != NULL)) {
+                vap_info->is_mac_filter_initialized = true;
+            }
+            continue;
+        }
 #else
         wifi_delApAclDevices(vap_index);
 #endif
@@ -150,6 +167,10 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
             }
             acl_entry = hash_map_get_next(vap_info->acl_map,acl_entry);
         }
+#ifdef NL80211_ACL
+        /* The stored list is back: disconnect the STAs a whitelist no longer admits */
+        (void)wifi_hal_kickApAclUnlistedDevices(vap_index);
+#endif
         vap_info->is_mac_filter_initialized = true;
     }
 

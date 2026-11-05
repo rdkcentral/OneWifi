@@ -323,6 +323,25 @@ bool is_sta_enabled(void)
               ctrl->rf_status_down == true  || ctrl->multiap_sta_enabled == true) &&  ctrl->eth_bh_status == false);
 }
 
+/* True when the EasyMesh controller owns the HAL ACL of vap_index: a backhaul VAP while OneWifi
+ * runs as an EasyMesh node. An EM_APP build in gateway mode (EasyMesh off) keeps the stored ACL
+ * and the temporary kick entries on its backhaul VAPs like any other build. */
+bool is_bh_acl_owned_by_em(unsigned int vap_index)
+{
+#ifdef EM_APP
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (ctrl == NULL || (ctrl->network_mode != rdk_dev_mode_type_em_node &&
+                            ctrl->network_mode != rdk_dev_mode_type_em_colocated_node)) {
+        return false;
+    }
+    return isVapMeshBackhaul(vap_index) ? true : false;
+#else
+    (void)vap_index;
+    return false;
+#endif
+}
+
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;

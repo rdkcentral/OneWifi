@@ -181,11 +181,23 @@ typedef struct {
 } vap_acl_state_t;
 
 typedef struct kick_details {
+    struct kick_details *next;
     char *kick_list;
     int vap_index;
     int timer_id;
-    bool cancelled_by_unblock;
+    unsigned long gen; /* identifies this tracking of the entry to its timer; never 0 */
+    unsigned short period;
+    bool is_whitelist;
+    unsigned int kick_exclusions; /* timed kicks holding this allow entry out of the HAL */
+    unsigned long entry_id; /* fixed for the entry's lifetime, unlike gen; never 0 once tracked */
 }kick_details_t;
+
+#ifdef EM_APP
+void em_reset_bh_acl(int vap_index);
+bool em_bh_kick_exclusion_start(int vap_index, const char *sta_mac, unsigned long *token);
+void em_bh_kick_exclusion_end(int vap_index, const char *sta_mac, unsigned long token);
+#endif
+bool is_bh_acl_owned_by_em(unsigned int vap_index);
 
 typedef struct {
     struct timespec start_time;

@@ -329,6 +329,10 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
                 acl_entry = hash_map_get_next(rdk_vap_info->acl_map,acl_entry);
                 acl_count++;
             }
+#ifdef NL80211_ACL
+            /* The stored list is back: disconnect the STAs a whitelist no longer admits */
+            (void)wifi_hal_kickApAclUnlistedDevices(vap_index);
+#endif
             rdk_vap_info->is_mac_filter_initialized = true;
         }
     }

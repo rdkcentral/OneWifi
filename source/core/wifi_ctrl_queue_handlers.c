@@ -1248,6 +1248,10 @@ bool is_mac_greylisted(int vap_index, char *mac_str)
 static int initiate_kick_config_change(int vap_index, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
+    /* The HAL forces a whitelist here and the controller owns it, whatever the stored config says */
+    if (is_bh_acl_owned_by_em((unsigned int)vap_index)) {
+        return RETURN_OK;
+    }
     if (vap_info->u.bss_info.mac_filter_enable == FALSE) {
 #ifdef NL80211_ACL
         if (wifi_hal_setApMacAddressControlMode(vap_index, 2) == RETURN_OK) {
@@ -1306,10 +1310,45 @@ static void finalize_kick_config_change(int vap_index, wifi_vap_info_t *vap_info
     }
 }
 
+/* kick_token: on add, set to the token of the exclusion taken (0 if none); on delete, the token
+ * that add returned. Only an EasyMesh backhaul kick uses it. */
 static int handle_acl_operation(int vap_index, char *mac_str, wifi_vap_info_t *vap_info,
-    rdk_wifi_vap_info_t *rdk_vap_info, bool is_add_operation)
+    rdk_wifi_vap_info_t *rdk_vap_info, bool is_add_operation, unsigned long *kick_token)
 {
     bool success = false;
+
+    if (is_add_operation && kick_token != NULL) {
+        *kick_token = 0;
+    }
+#ifdef EM_APP
+    /* The allow list belongs to the controller: a timed kick holds the child's allow entry out of
+     * the HAL for the kick period (taken before the disassociation, so it cannot reassociate in
+     * between) and the timeout puts it back if the controller still allows the child. The token
+     * ties the timeout to the entry the kick excluded, not just to the MAC. */
+    /* Undoing an exclusion goes by its token, not by the current mode: the device may have left
+     * EasyMesh since the kick, and the exclusion must still be released, or the entry stays out of
+     * the controller's whitelist replay after a return to EasyMesh. Only a backhaul exclusion
+     * carries a token. */
+    if (!is_add_operation && kick_token != NULL && *kick_token != 0) {
+        em_bh_kick_exclusion_end(vap_index, mac_str, *kick_token);
+        return RETURN_OK;
+    }
+    if (is_bh_acl_owned_by_em((unsigned int)vap_index)) {
+        mac_address_t kick_mac;
+
+        if (!is_add_operation) {
+            /* No exclusion was taken (the child had no allow entry): nothing to undo */
+            return RETURN_OK;
+        }
+        if (!em_bh_kick_exclusion_start(vap_index, mac_str, kick_token)) {
+            /* Not reported as a timed block it could not enforce: no timeout is scheduled */
+            return RETURN_ERR;
+        }
+        str_to_mac_bytes(mac_str, kick_mac);
+        wifi_hal_disassoc(vap_index, WIFI_REASON_UNSPECIFIED, kick_mac);
+        return RETURN_OK;
+    }
+#endif
 
     // For delete operations, check if MAC is greylisted
     if (!is_add_operation && is_greylist_enabled(vap_index) &&
@@ -1381,6 +1420,82 @@ static int handle_acl_operation(int vap_index, char *mac_str, wifi_vap_info_t *v
     return RETURN_OK;
 }
 
+#define KICK_MACLIST_SIZE 2048
+
+/* Adds a kicked MAC to the comma separated list its timeout undoes, as "mac" or, for a backhaul
+ * exclusion, "mac#token". False when it does not fit: the caller then undoes that kick at once. */
+static bool append_kicked_mac(char *list, const char *mac, unsigned long token)
+{
+    char item[64];
+    size_t used = strlen(list);
+    int n = (token != 0) ? snprintf(item, sizeof(item), "%s#%lu,", mac, token) :
+                           snprintf(item, sizeof(item), "%s,", mac);
+
+    if (n < 0 || (size_t)n >= sizeof(item) || used + (size_t)n >= KICK_MACLIST_SIZE) {
+        return false;
+    }
+    memcpy(list + used, item, (size_t)n + 1);
+    return true;
+}
+
+/* Splits a list item of append_kicked_mac() in place: item keeps the MAC, the token is returned */
+static unsigned long split_kicked_mac(char *item)
+{
+    char *sep = strchr(item, '#');
+
+    if (sep == NULL) {
+        return 0;
+    }
+    *sep = '\0';
+    return strtoul(sep + 1, NULL, 10);
+}
+
+/* Records a successful kick for its timeout; one that does not fit in the list is undone now,
+ * since no timeout would ever undo it */
+static bool record_kicked_mac(char *list, int vap_index, char *mac, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, unsigned long token)
+{
+    if (append_kicked_mac(list, mac, token)) {
+        return true;
+    }
+    wifi_util_error_print(WIFI_CTRL, "%s:%d Kick list full on vap %d, undoing kick of %s\n",
+        __func__, __LINE__, vap_index, mac);
+    (void)handle_acl_operation(vap_index, mac, vap_info, rdk_vap_info, false, &token);
+    return false;
+}
+
+/* Undoes the ACL change of every kicked MAC in maclist, tokenizing it in place (no allocation, so
+ * an out-of-memory cannot leave an exclusion behind): removes the temporary deny entry or restores
+ * the allow entry, and on a backhaul VAP the controller owns releases the exclusion (whose count
+ * would otherwise stay raised for good). Used by the kick timeout, and for a kick whose timeout
+ * could not be scheduled, as nothing else would undo it. Without the VAP info only the backhaul
+ * exclusions are released: they need just the VAP index, the MAC and the token. */
+static void release_kick_list(int vap_index, char *maclist, rdk_wifi_vap_info_t *rdk_vap_info)
+{
+    wifi_vap_info_t *vap_info = getVapInfo(vap_index);
+    char *mac, *saveptr = NULL;
+
+    if (maclist == NULL) {
+        return;
+    }
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d No vap info for vap %d, releasing only backhaul"
+            " kick exclusions\n", __func__, __LINE__, vap_index);
+    }
+    for (mac = strtok_r(maclist, ",", &saveptr); mac != NULL; mac = strtok_r(NULL, ",", &saveptr)) {
+        unsigned long token = split_kicked_mac(mac);
+
+        if (vap_info == NULL && token == 0) {
+            continue;
+        }
+        if (handle_acl_operation(vap_index, mac, vap_info, rdk_vap_info, false, &token) !=
+            RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to release kicked MAC %s on vap %d\n",
+                __func__, __LINE__, mac, vap_index);
+        }
+    }
+}
+
 int process_maclist_timeout(void *arg)
 {
     if (arg == NULL) {
@@ -1398,29 +1513,14 @@ int process_maclist_timeout(void *arg)
     if (vap_info == NULL || rdk_vap_info == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL vap info for vap %d\n", __func__, __LINE__,
             kick->vap_index);
+        /* The backhaul exclusions must still be released, or their counts stay raised for good */
+        release_kick_list(kick->vap_index, kick->kick_list, rdk_vap_info);
         goto cleanup;
     }
 
+    /* kick_list is owned by this task and freed below, so it is tokenized in place */
     if (kick->kick_list != NULL && strlen(kick->kick_list) > 0) {
-        char *str_dup = strdup(kick->kick_list);
-        if (str_dup == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d strdup failed for vap %d\n", __func__, __LINE__,
-                kick->vap_index);
-            goto cleanup;
-        }
-
-        char *str_str, *cptr;
-        str_str = strtok_r(str_dup, ",", &cptr);
-
-        while (str_str != NULL) {
-            if (handle_acl_operation(kick->vap_index, str_str, vap_info, rdk_vap_info, false) == RETURN_OK) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d Successfully processed MAC %s for vap %d\n",
-                    __func__, __LINE__, str_str, kick->vap_index);
-            }
-            str_str = strtok_r(NULL, ",", &cptr);
-        }
-
-        free(str_dup);
+        release_kick_list(kick->vap_index, kick->kick_list, rdk_vap_info);
     }
 
     if (rdk_vap_info->kick_device_task_counter > 0) {
@@ -1472,6 +1572,9 @@ static int schedule_maclist_timeout_task(wifi_ctrl_t *ctrl, rdk_wifi_vap_info_t 
             timeout * 1000, 1, FALSE) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to schedule timer task for vap %d\n", __func__,
             __LINE__, vap_index);
+        /* No timeout will undo these kicks, so undo them now; the caller frees the list */
+        release_kick_list(vap_index, assoc_maclist, rdk_vap_info);
+        kick_details->kick_list = NULL;
         return RETURN_ERR;
     }
     rdk_vap_info->kick_device_task_counter++;
@@ -1493,7 +1596,7 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
     kick_details_t *kick_details = NULL;
     bool has_successful_operations = false;
 
-    assoc_maclist = (char *)malloc(2048);
+    assoc_maclist = (char *)malloc(KICK_MACLIST_SIZE);
     kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
 
     if (assoc_maclist == NULL || kick_details == NULL) {
@@ -1502,7 +1605,7 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         goto cleanup;
     }
 
-    memset(assoc_maclist, 0, 2048);
+    memset(assoc_maclist, 0, KICK_MACLIST_SIZE);
     memset(kick_details, 0, sizeof(kick_details_t));
 
     if (rdk_vap_info->associated_devices_map == NULL) {
@@ -1516,9 +1619,11 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         memset(mac_str, 0, sizeof(mac_addr_str_t));
         to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
 
-        if (handle_acl_operation(vap_index, mac_str, vap_info, rdk_vap_info, true) == RETURN_OK) {
-            strcat(assoc_maclist, mac_str);
-            strcat(assoc_maclist, ",");
+        unsigned long token = 0;
+
+        if (handle_acl_operation(vap_index, mac_str, vap_info, rdk_vap_info, true, &token) ==
+                RETURN_OK &&
+            record_kicked_mac(assoc_maclist, vap_index, mac_str, vap_info, rdk_vap_info, token)) {
             has_successful_operations = true;
         }
 
@@ -1666,7 +1771,7 @@ void process_kick_assoc_devices_event(void *data)
         goto cleanup_all;
     }
 
-    assoc_maclist = (char *)malloc(2048);
+    assoc_maclist = (char *)malloc(KICK_MACLIST_SIZE);
     kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
 
     if (assoc_maclist == NULL || kick_details == NULL) {
@@ -1675,7 +1780,7 @@ void process_kick_assoc_devices_event(void *data)
         goto cleanup_all;
     }
 
-    memset(assoc_maclist, 0, 2048);
+    memset(assoc_maclist, 0, KICK_MACLIST_SIZE);
     memset(kick_details, 0, sizeof(kick_details_t));
 
     while (str_str != NULL) {
@@ -1688,12 +1793,13 @@ void process_kick_assoc_devices_event(void *data)
         }
 
         if (IsClientConnected(rdk_vap_info, str_str)) {
+            unsigned long token = 0;
             int mac_processed_successfully = handle_acl_operation(vap_index, str_str, vap_info,
-                rdk_vap_info, true);
+                rdk_vap_info, true, &token);
 
-            if (mac_processed_successfully == RETURN_OK) {
-                strcat(assoc_maclist, str_str);
-                strcat(assoc_maclist, ",");
+            if (mac_processed_successfully == RETURN_OK &&
+                record_kicked_mac(assoc_maclist, vap_index, str_str, vap_info, rdk_vap_info,
+                    token)) {
                 has_successful_operations = true;
             }
         }
