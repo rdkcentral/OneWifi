@@ -187,6 +187,29 @@ typedef struct kick_details {
     bool cancelled_by_unblock;
 }kick_details_t;
 
+/* Callbacks of an application that manages the HAL ACL of some VAPs itself, outside the stored
+ * mac filter configuration. Registered with register_vap_acl_ops(); any callback may be NULL. */
+typedef struct {
+    /* True when the application manages the HAL ACL of vap_index */
+    bool (*is_managed)(unsigned int vap_index);
+    /* Clears the HAL ACL of vap_index. On a managed VAP it also puts back the application's own
+     * entries and disconnects the STAs the list no longer admits. */
+    void (*reset)(int vap_index);
+    /* Timed kick of sta_mac on a managed VAP: keeps its allow entry out of the HAL until
+     * kick_release(). *token names the entry held (0: none). False when that failed. */
+    bool (*kick_hold)(int vap_index, const char *sta_mac, unsigned long *token);
+    /* Ends the kick hold that kick_hold() returned token for */
+    void (*kick_release)(int vap_index, const char *sta_mac, unsigned long token);
+} vap_acl_ops_t;
+
+/* ops must stay valid until unregistered with NULL */
+void register_vap_acl_ops(const vap_acl_ops_t *ops);
+bool is_vap_acl_managed(unsigned int vap_index);
+/* False when no application handles the reset: the caller then clears the HAL ACL itself */
+bool vap_acl_managed_reset(int vap_index);
+bool vap_acl_managed_kick_hold(int vap_index, const char *sta_mac, unsigned long *token);
+void vap_acl_managed_kick_release(int vap_index, const char *sta_mac, unsigned long token);
+
 typedef struct {
     struct timespec start_time;
     struct timespec target_detection_time;

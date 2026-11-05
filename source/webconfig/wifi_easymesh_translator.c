@@ -2065,7 +2065,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
     }
 
     
-    //Copy Passphrase
+    // Copy Passphrase
     snprintf(vap_row->mesh_sta_passphrase, sizeof(vap_row->mesh_sta_passphrase), "%s", vap->u.sta_info.security.u.key.key);
     
     // Find the radio interface map
@@ -2892,6 +2892,13 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
     snprintf(vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid), "%s", vap_row->ssid);
     memcpy(vap->u.sta_info.bssid, vap_row->bssid.mac, sizeof(mac_address_t));
 
+    // Copy Passphrase only when EasyMesh has new credentials (M8 or DPP). The row otherwise holds
+    // its last copy of OneWifi's key, which may be cut or out of date.
+    if (vap_row->mesh_sta_cred_update && (vap_row->mesh_sta_passphrase[0] != '\0')) {
+        snprintf(vap->u.sta_info.security.u.key.key, sizeof(vap->u.sta_info.security.u.key.key),
+            "%s", vap_row->mesh_sta_passphrase);
+    }
+
     /*
     if ((key_mgmt_conversion(&enum_sec, &len, STRING_TO_ENUM, vap_row->num_fronthaul_akms, (char(*)[])vap_row->fronthaul_akm)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
@@ -2901,8 +2908,6 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
 
     vap->u.sta_info.security.mode = enum_sec;
 
-    // Copy Passphrase
-    snprintf(vap->u.sta_info.security.u.key.key, sizeof(vap->u.sta_info.security.u.key.key), "%s", vap_row->mesh_sta_passphrase);
     */
     return webconfig_error_none;
 }

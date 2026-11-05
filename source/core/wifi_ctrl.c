@@ -323,6 +323,62 @@ bool is_sta_enabled(void)
               ctrl->rf_status_down == true  || ctrl->multiap_sta_enabled == true) &&  ctrl->eth_bh_status == false);
 }
 
+/* ACL callbacks of the application managing some VAPs' HAL ACL, NULL when none is registered.
+ * Set at application init, before the VAPs are created, and cleared at its deinit. */
+static const vap_acl_ops_t *g_vap_acl_ops = NULL;
+
+void register_vap_acl_ops(const vap_acl_ops_t *ops)
+{
+    __atomic_store_n(&g_vap_acl_ops, ops, __ATOMIC_RELEASE);
+}
+
+static const vap_acl_ops_t *get_vap_acl_ops(void)
+{
+    return __atomic_load_n(&g_vap_acl_ops, __ATOMIC_ACQUIRE);
+}
+
+/* True when a registered application manages the HAL ACL of vap_index: the stored mac filter
+ * list and the temporary kick entries then stay out of that VAP's HAL ACL */
+bool is_vap_acl_managed(unsigned int vap_index)
+{
+    const vap_acl_ops_t *ops = get_vap_acl_ops();
+
+    return (ops != NULL && ops->is_managed != NULL && ops->is_managed(vap_index));
+}
+
+bool vap_acl_managed_reset(int vap_index)
+{
+    const vap_acl_ops_t *ops = get_vap_acl_ops();
+
+    if (ops == NULL || ops->reset == NULL) {
+        return false;
+    }
+    ops->reset(vap_index);
+    return true;
+}
+
+bool vap_acl_managed_kick_hold(int vap_index, const char *sta_mac, unsigned long *token)
+{
+    const vap_acl_ops_t *ops = get_vap_acl_ops();
+
+    if (token != NULL) {
+        *token = 0;
+    }
+    if (ops == NULL || ops->kick_hold == NULL) {
+        return true;
+    }
+    return ops->kick_hold(vap_index, sta_mac, token);
+}
+
+void vap_acl_managed_kick_release(int vap_index, const char *sta_mac, unsigned long token)
+{
+    const vap_acl_ops_t *ops = get_vap_acl_ops();
+
+    if (ops != NULL && ops->kick_release != NULL) {
+        ops->kick_release(vap_index, sta_mac, token);
+    }
+}
+
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;

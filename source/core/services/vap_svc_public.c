@@ -290,6 +290,7 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
     mac_address_t acl_device_mac;
     acl_entry_t *acl_entry;
     uint8_t itr = 0,itrj = 0, vap_index = 0, acl_count= 0;
+    bool replay_ok;
 
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     wifi_vap_info_map_t *wifi_vap_map = NULL;
@@ -314,6 +315,7 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
 	   wifi_delApAclDevices(vap_index);
 #endif
 
+            replay_ok = true;
             acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
             while(acl_entry != NULL && acl_count < MAX_ACL_COUNT ) {
                 memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
@@ -325,10 +327,23 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
                 if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
 #endif
                     wifi_util_error_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
+                    replay_ok = false;
                 }
                 acl_entry = hash_map_get_next(rdk_vap_info->acl_map,acl_entry);
                 acl_count++;
             }
+            /* A failed add leaves an admitted STA out of the HAL list: do not evict, and keep the
+             * VAP uninitialized so the next mac filter document replays the full list again */
+            if (!replay_ok) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d vap %d ACL not fully restored, no eviction\n",
+                    __func__, __LINE__, vap_index);
+                rdk_vap_info->is_mac_filter_initialized = false;
+                continue;
+            }
+#ifdef NL80211_ACL
+            /* The stored list is back: disconnect the STAs a whitelist no longer admits */
+            (void)wifi_hal_kickApAclUnlistedDevices(vap_index);
+#endif
             rdk_vap_info->is_mac_filter_initialized = true;
         }
     }
