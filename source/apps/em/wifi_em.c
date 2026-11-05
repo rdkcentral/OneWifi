@@ -2198,13 +2198,11 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 
     /* The client-type cache is keyed by the client (MLD) address, not the per-link STA MAC. */
     to_mac_str((unsigned char *)pub_data.dev_stats.cli_MACAddress, client_mac);
-    if (is_mlo && strcasecmp(sta_mac_str, client_mac) != 0) {
-        pthread_mutex_lock(&em_client_stats_map_lock);
-        bool mlo_record_remains = em_mlo_client_records_exist(client_mac);
-        pthread_mutex_unlock(&em_client_stats_map_lock);
-        if (mlo_record_remains) {
-            return publish_rc;
-        }
+    pthread_mutex_lock(&em_client_stats_map_lock);
+    bool mlo_record_remains = em_mlo_client_records_exist(client_mac);
+    pthread_mutex_unlock(&em_client_stats_map_lock);
+    if (mlo_record_remains) {
+        return publish_rc;
     }
 
     em_remove_client_type_entry(client_mac);
