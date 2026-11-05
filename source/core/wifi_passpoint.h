@@ -73,7 +73,7 @@ void WiFi_UpdateANQPVenueInfo(uint8_t vapIndex);
 INT WiFi_SetGasConfig(char *JSON_STR);
 INT WiFi_InitGasConfig(void);
 INT WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM);
-void WiFi_GetGasConfig(char *pString);
+void WiFi_GetGasConfig(char *pString, unsigned int bufLen);
 INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR);
 INT WiFi_SaveANQPCfg(uint8_t vapIndex);
 INT WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_length);

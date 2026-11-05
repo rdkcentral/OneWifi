@@ -238,7 +238,7 @@ bool wifi_get_param_string_value(void *obj_ins_context, char *param_name,
         set_output_string(output_value, " ");
     } else if (STR_CMP(param_name, "X_RDKCENTRAL-COM_GASConfiguration")) {
         char buff[2048] = { 0 };
-        WiFi_GetGasConfig(buff);
+        WiFi_GetGasConfig(buff, sizeof(buff));
         set_output_string(output_value, buff);
     } else if (STR_CMP(param_name, "Log_Enable")) {
         char buff[512] = { 0 };
