@@ -84,6 +84,8 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <unistd.h>
 #include <strings.h>
 #include <time.h>
@@ -1603,15 +1605,46 @@ ValidateActiveMsmtPlanID(UCHAR *pPlanId)
 static int writeToJson(char *data, char *file)
 {
     FILE *fp;
-    fp = fopen(file, "w");
-    if (fp == NULL)
+    int fd;
+    struct stat st;
+
+    /* O_NOFOLLOW: refuse to write through a symlink planted at the target path (CWE-59). */
+    fd = open(file, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0644);
+    if (fd < 0)
     {
-        CcspTraceWarning(("%s : %d Failed to open file %s\n", __FUNCTION__,__LINE__,file));
+        CcspTraceWarning(("%s : %d Failed to open file %s, errno %d\n", __FUNCTION__,__LINE__,file,errno));
         return -1;
     }
 
-    fwrite(data, strlen(data), 1, fp);
-    fclose(fp);
+    /* Validate the descriptor refers to a regular file before writing through it. */
+    if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode))
+    {
+        CcspTraceWarning(("%s : %d File %s is not a regular file (mode 0x%x), errno %d\n",
+            __FUNCTION__, __LINE__, file, (unsigned)st.st_mode, errno));
+        close(fd);
+        return -1;
+    }
+
+    fp = fdopen(fd, "w");
+    if (fp == NULL)
+    {
+        CcspTraceWarning(("%s : %d Failed to fdopen file %s, errno %d\n", __FUNCTION__,__LINE__,file,errno));
+        close(fd);
+        return -1;
+    }
+
+    if (fwrite(data, strlen(data), 1, fp) != 1)
+    {
+        CcspTraceWarning(("%s : %d Failed to write file %s\n", __FUNCTION__,__LINE__,file));
+        fclose(fp);
+        return -1;
+    }
+
+    if (fclose(fp) != 0)
+    {
+        CcspTraceWarning(("%s : %d Failed to close file %s, errno %d\n", __FUNCTION__,__LINE__,file,errno));
+        return -1;
+    }
     return 0;
 }
 

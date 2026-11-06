@@ -4781,8 +4781,16 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         }
 
         json = cJSON_Parse(raw);
+        if (json == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to parse webconfig data for subtype %d\n",
+                __func__, __LINE__, subtype);
+            free(data);
+            data = NULL;
+            return;
+        }
         subdoc_type = find_subdoc_type(config, json);
         cJSON_Delete(json);
+        json = NULL;
         switch (subdoc_type) {
         case webconfig_subdoc_type_private:
             num_ssid += get_list_of_private_ssid(&mgr->hal_cap.wifi_prop, MAX_NUM_RADIOS,
