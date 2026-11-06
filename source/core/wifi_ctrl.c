@@ -32,8 +32,6 @@
 #include "ieee80211.h"
 #include "misc.h"
 #include <ifaddrs.h>
-#include <net/if.h>
-#include <arpa/inet.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <string.h>
