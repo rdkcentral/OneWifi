@@ -367,6 +367,7 @@ int app_register(wifi_apps_mgr_t *apps_mgr, wifi_app_descriptor_t *descriptor)
     }
     update_rfc_params(descriptor);
     app = (wifi_app_t *)malloc(sizeof(wifi_app_t));
+    if (app == NULL) return RETURN_ERR;
     memset(app, 0, sizeof(wifi_app_t));
     app->ctrl = apps_mgr->ctrl;
     memcpy(&app->desc, descriptor, sizeof(wifi_app_descriptor_t));
