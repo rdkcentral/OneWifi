@@ -71,21 +71,27 @@ int csnprintf(char **str, size_t *size, const char *fmt, ...)
     int ret;
     size_t len;
 
-    va_start(va, fmt);
+    if (str == NULL || *str == NULL || size == NULL || fmt == NULL)
+        return -1;
 
+    va_start(va, fmt);
     ret = vsnprintf(*str, *size, fmt, va);
+    va_end(va);
+
+    if (ret < 0) {
+        return ret;
+    }
+
     len = (size_t)ret;
-    if (ret < 0) len = 0;
-    if (len >= *size)
-    {
+    if (*size == 0) {
+        len = 0;
+    } else if (len >= *size) {
         len = *size - 1;
     }
 
     /* Update pointers */
     *str  += len;
     *size -= len;
-
-    va_end(va);
 
     return ret;
 }
