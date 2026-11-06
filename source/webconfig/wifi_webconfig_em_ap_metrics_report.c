@@ -72,7 +72,7 @@ webconfig_error_t translate_to_em_ap_metrics_report_subdoc(webconfig_t *config, 
 
 webconfig_error_t encode_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    cJSON *json, *emap_metrics_report_arr, *radio_arr, *radio_reports;
+    cJSON *json, *emap_metrics_report_arr, *radio_reports;
     char *str = NULL;
     webconfig_subdoc_decoded_data_t *params = NULL;
     rdk_wifi_radio_t *radio = NULL;
@@ -180,7 +180,7 @@ webconfig_error_t decode_em_ap_metrics_report_subdoc(webconfig_t *config, webcon
 
     doc = &config->subdocs[data->type];
 
-    for (i = 0; i < doc->num_objects; i++) {
+    for (unsigned i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                     __func__, __LINE__, doc->objects[i].name);
