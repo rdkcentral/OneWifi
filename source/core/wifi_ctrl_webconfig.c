@@ -81,7 +81,6 @@ static bool get_fronthaul_ssid_from_rbus(wifi_ctrl_t *ctrl, unsigned int instanc
     return read_uwm_string(ctrl, instance, "SSID", ssid, size);
 }
 
-
 static bool get_fronthaul_passphrase_from_rbus(wifi_ctrl_t *ctrl, unsigned int instance,
     char *passphrase, size_t size)
 {
