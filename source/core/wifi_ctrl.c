@@ -138,8 +138,6 @@ static int check_usb_tether_address(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-
-
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     if(ctrl->vif_apply_pending_queue != NULL) {
