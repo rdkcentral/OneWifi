@@ -50,7 +50,7 @@ static bool read_uwm_string(wifi_ctrl_t *ctrl, unsigned int instance, const char
     char *result, size_t size)
 {
     char path[128];
-    raw_data_t data = {0};
+    raw_data_t data = { 0 };
     bus_error_t rc;
     int length;
 
