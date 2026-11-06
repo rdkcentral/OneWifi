@@ -28,29 +28,29 @@
 extern "C" {
 #endif
 
-#define WIFI_EM_CHANNEL_SCAN_REQUEST          "Device.WiFi.EM.ChannelScanRequest"
-#define WIFI_EM_CHANNEL_SCAN_REPORT           "Device.WiFi.EM.ChannelScanReport"
+#define WIFI_EM_CHANNEL_SCAN_REQUEST "Device.WiFi.EM.ChannelScanRequest"
+#define WIFI_EM_CHANNEL_SCAN_REPORT "Device.WiFi.EM.ChannelScanReport"
 #define WIFI_EM_BEACON_QUERY "Device.WiFi.EM.BeaconQuery"
-#define WIFI_EM_BEACON_REPORT                 "Device.WiFi.EM.BeaconReport"
-#define WIFI_EM_STA_LINK_METRICS_REPORT       "Device.WiFi.EM.STALinkMetricsReport"
-#define WIFI_EM_ASSOCIATION_STATUS            "Device.WiFi.EM.AssociationStatus"
-#define WIFI_EM_REPORT_CONNECTION_STATUS      "Device.WiFi.EM.ReportConnectionStatus"
-#define WIFI_EM_AP_METRICS_REPORT             "Device.WiFi.EM.APMetricsReport"
-#define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
-#define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
-#define WIFI_EM_CLIENT_ASSOC_CTRL_REQ         "Device.WiFi.EM.ClientAssocCtrlRequest"
-#define WIFI_EM_FAILED_CONNECTION             "Device.WiFi.EM.FailedConnection"
+#define WIFI_EM_BEACON_REPORT "Device.WiFi.EM.BeaconReport"
+#define WIFI_EM_STA_LINK_METRICS_REPORT "Device.WiFi.EM.STALinkMetricsReport"
+#define WIFI_EM_ASSOCIATION_STATUS "Device.WiFi.EM.AssociationStatus"
+#define WIFI_EM_REPORT_CONNECTION_STATUS "Device.WiFi.EM.ReportConnectionStatus"
+#define WIFI_EM_AP_METRICS_REPORT "Device.WiFi.EM.APMetricsReport"
+#define WIFI_SET_DISCONN_STEADY_STATE "Device.WiFi.EM.SetDisconnSteadyState"
+#define WIFI_SET_DISCONN_SCAN_NONE_STATE "Device.WiFi.EM.SetDisconnScanNoneState"
+#define WIFI_EM_CLIENT_ASSOC_CTRL_REQ "Device.WiFi.EM.ClientAssocCtrlRequest"
+#define WIFI_EM_FAILED_CONNECTION "Device.WiFi.EM.FailedConnection"
 
-#define WNM_CATEGORY               10
-#define IEEE80211_HDRLEN           24
-#define IEEE80211_EID_NEIGHBOR     52
-#define IEEE80211_NEIGHBOR_REPORT_MIN_LEN  13
+#define WNM_CATEGORY 10
+#define IEEE80211_HDRLEN 24
+#define IEEE80211_EID_NEIGHBOR 52
+#define IEEE80211_NEIGHBOR_REPORT_MIN_LEN 13
 
-#define WNM_EM_WNM_BTM_QUERY    6
-#define WNM_EM_WNM_BTM_REQ      7
+#define WNM_EM_WNM_BTM_QUERY 6
+#define WNM_EM_WNM_BTM_REQ 7
 
 #define MAX_LOCAL_SSIDS 16
-#define MAX_SSID_LEN    33
+#define MAX_SSID_LEN 33
 
 typedef struct wifi_app wifi_app_t;
 
@@ -76,15 +76,15 @@ typedef enum {
 } em_policy_req_subtype_t;
 
 typedef struct {
-    em_config_t           em_config;
+    em_config_t em_config;
     int sched_handler_id;
     hash_map_t *beacon_map;
     ap_metrics_policy_t ap_metrics_policy;
 } em_data_t;
 
 typedef struct {
-    em_policy_req_type_t     pol_type;
-    em_policy_req_subtype_t  pol_subtype;
+    em_policy_req_type_t pol_type;
+    em_policy_req_subtype_t pol_subtype;
 } em_policy_config_t;
 
 typedef struct {
@@ -101,8 +101,6 @@ typedef enum {
 
     em_app_event_type_max
 } em_app_event_type_t;
-
-
 
 #ifdef __cplusplus
 }
