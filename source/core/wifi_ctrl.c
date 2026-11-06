@@ -64,6 +64,140 @@ static int sta_connectivity_selfheal(void* arg);
 static int run_greylist_event(void *arg);
 static int run_analytics_event(void* arg);
 
+typedef struct {
+    unsigned long long total_proc_time;
+    unsigned long long total_cpu;
+} motion_cpu_sample_t;
+
+static bool g_motion_cpu_monitor_started = false;
+static double g_motion_cpu_utilization = 0.0;
+static pthread_mutex_t g_motion_cpu_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static int read_motion_cpu_sample(motion_cpu_sample_t *sample, pid_t pid)
+{
+    FILE *fp = NULL;
+    char stat_path[64] = {0};
+    char line[512] = {0};
+    unsigned long long utime = 0, stime = 0;
+    unsigned long long user = 0, nice = 0, system = 0, idle = 0;
+    unsigned long long iowait = 0, irq = 0, softirq = 0, steal = 0;
+
+    if (sample == NULL || pid <= 0) {
+        return RETURN_ERR;
+    }
+
+    snprintf(stat_path, sizeof(stat_path), "/proc/%d/stat", (int)pid);
+    fp = fopen(stat_path, "r");
+    if (fp == NULL) {
+        return RETURN_ERR;
+    }
+
+    if (fgets(line, sizeof(line), fp) == NULL) {
+        fclose(fp);
+        return RETURN_ERR;
+    }
+    fclose(fp);
+
+    if (sscanf(line,
+        "%*d (%*[^)]) %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %llu %llu",
+        &utime, &stime) != 2) {
+        return RETURN_ERR;
+    }
+    sample->total_proc_time = utime + stime;
+
+    fp = fopen("/proc/stat", "r");
+    if (fp == NULL) {
+        return RETURN_ERR;
+    }
+
+    if (fgets(line, sizeof(line), fp) == NULL) {
+        fclose(fp);
+        return RETURN_ERR;
+    }
+    fclose(fp);
+
+    if (sscanf(line, "cpu %llu %llu %llu %llu %llu %llu %llu %llu",
+        &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal) < 4) {
+        return RETURN_ERR;
+    }
+
+    sample->total_cpu = user + nice + system + idle + iowait + irq + softirq + steal;
+    return RETURN_OK;
+}
+
+static void* motion_process_cpu_monitor(void *arg)
+{
+    motion_cpu_sample_t prev = {0};
+    motion_cpu_sample_t now = {0};
+    bool has_prev = false;
+    pid_t pid = getpid();
+    long num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+
+    if (num_cpus <= 0) {
+        num_cpus = 1;
+    }
+
+    wifi_util_dbg_print(WIFI_SENSING, "%s: thread started for pid=%d num_cpus:%u\n", __func__,
+        pid, num_cpus);
+
+    while (true) {
+        if (read_motion_cpu_sample(&now, pid) == RETURN_OK) {
+            if (!has_prev) {
+                prev = now;
+                has_prev = true;
+            } else {
+                unsigned long long proc_delta = now.total_proc_time - prev.total_proc_time;
+                unsigned long long total_delta = now.total_cpu - prev.total_cpu;
+                double cpu_util = 0.0;
+
+                if (total_delta != 0) {
+                    cpu_util = 100.0 * ((double)proc_delta / (double)total_delta) * (double)num_cpus;
+                }
+
+                pthread_mutex_lock(&g_motion_cpu_lock);
+                g_motion_cpu_utilization = cpu_util;
+                pthread_mutex_unlock(&g_motion_cpu_lock);
+
+                wifi_util_dbg_print(WIFI_SENSING, "%s: proc_delta:%llu total_delta:%llu "
+                    "process cpu utilization %.4f%%\n", __func__, proc_delta, total_delta, cpu_util);
+                prev = now;
+            }
+        }
+        sleep(2);
+    }
+
+    return NULL;
+}
+
+static int start_motion_cpu_monitor_thread(void)
+{
+    pthread_t cpu_monitor_tid;
+
+    if (g_motion_cpu_monitor_started) {
+        return RETURN_OK;
+    }
+
+    if (pthread_create(&cpu_monitor_tid, NULL, motion_process_cpu_monitor, NULL) != 0) {
+        wifi_util_error_print(WIFI_SENSING, "%s:%d cpu monitor thread create failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    pthread_detach(cpu_monitor_tid);
+    g_motion_cpu_monitor_started = true;
+    return RETURN_OK;
+}
+
+double wifi_ctrl_get_process_cpu_utilization(void)
+{
+    double cpu_util = 0.0;
+
+    pthread_mutex_lock(&g_motion_cpu_lock);
+    cpu_util = g_motion_cpu_utilization;
+    pthread_mutex_unlock(&g_motion_cpu_lock);
+
+    return cpu_util;
+}
+
 static int switch_dfs_channel(void *arg);
 void start_wifi_sched_timer(unsigned int, struct wifi_ctrl *ctrl, wifi_scheduler_type_t type);
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
@@ -2035,6 +2169,13 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     /* start wifi apps */
     wifi_hal_platform_post_init();
+
+#ifdef ONEWIFI_MOTION_APP_SUPPORT
+    if (start_motion_cpu_monitor_thread() != RETURN_OK) {
+        wifi_util_error_print(WIFI_SENSING, "%s:%d Failed to start motion cpu monitor thread\n", __func__, __LINE__);
+    }
+#endif
+
 #if defined(CONFIG_IEEE80211BE) && !defined(CONFIG_GENERIC_MLO)
     update_mlo_rfc_enable(true);
 #endif

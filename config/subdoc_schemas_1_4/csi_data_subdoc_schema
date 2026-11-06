@@ -5,6 +5,7 @@
 		{
 			"SessionID": 1,
 			"Enabled": true,
+			"Stream": 0,
 			"MACArray": [
 				{
 					"macaddress": "c0:e4:34:f9:c3:8b"
