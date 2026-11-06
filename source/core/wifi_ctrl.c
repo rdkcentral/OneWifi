@@ -2625,7 +2625,7 @@ static int pending_states_webconfig_analyzer(void *arg)
 
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
-    //USB_TETHER: polling-only monitor starting, interval=5000ms
+    // USB_TETHER: polling-only monitor starting, interval=5000ms
     schedule_usb_tether_check(ctrl, 5000, TRUE);
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
