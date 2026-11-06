@@ -32,6 +32,8 @@
 #include "ieee80211.h"
 #include "misc.h"
 #include <ifaddrs.h>
+#include <net/if.h>
+#include <arpa/inet.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <string.h>
@@ -89,12 +91,30 @@ static int schedule_usb_tether_check(wifi_ctrl_t *ctrl, unsigned int interval_ms
     return rc;
 }
 
+static bool interface_has_valid_ipv4(const struct ifaddrs *interfaces, const char *ifname)
+{
+    const struct ifaddrs *entry;
+
+    for (entry = interfaces; entry != NULL; entry = entry->ifa_next) {
+        if (entry->ifa_addr != NULL && strcmp(entry->ifa_name, ifname) == 0 &&
+            entry->ifa_addr->sa_family == AF_INET &&
+            (entry->ifa_flags & IFF_UP) != 0 &&
+            ((ntohl(((const struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr) & 0xff000000U)
+                != 0x7f000000U) &&
+            ((ntohl(((const struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr) & 0xffff0000U)
+                != 0xa9fe0000U) &&
+            ((const struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr != INADDR_ANY) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static int check_usb_tether_address(void *arg)
 {
     wifi_ctrl_t *ctrl = arg;
-    struct ifaddrs *interfaces, *entry;
-    bool has_address = false;
-    static bool reconciled = false;
+    struct ifaddrs *interfaces;
 
     if (getifaddrs(&interfaces) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: getifaddrs failed: %s\n", __func__, strerror(errno));
@@ -126,17 +146,44 @@ static int check_usb_tether_address(void *arg)
     } else {
         int rc;
 
+
+    if (interface_has_valid_ipv4(interfaces, "erouter0")) {
+        wifi_util_info_print(WIFI_CTRL,
+            "USB_TETHER: erouter0 has valid IPv4; stopping interface checks\n");
+        freeifaddrs(interfaces);
+        return TIMER_TASK_COMPLETE;
+    }
+
+    if (interface_has_valid_ipv4(interfaces, "usb0")) {
+        int rc;
+
+        wifi_util_info_print(WIFI_CTRL, "USB_TETHER: usb0 has valid IPv4 address\n");
+        freeifaddrs(interfaces);
         wifi_util_info_print(WIFI_CTRL,
             "USB_TETHER: starting RBUS reconciliation using VAP roles (no network-mode gate)\n");
         rc = webconfig_fix_usb_tether_ssids(ctrl);
         wifi_util_info_print(WIFI_CTRL, "USB_TETHER: reconciliation returned %d\n", rc);
         if (rc == RETURN_OK) {
-            reconciled = true;
         }
     }
+            wifi_util_info_print(WIFI_CTRL,
+                "USB_TETHER: reconciliation succeeded; stopping interface checks\n");
+            return TIMER_TASK_COMPLETE;
+        }
+
+        wifi_util_error_print(WIFI_CTRL,
+            "USB_TETHER: reconciliation failed; retrying in 5 seconds\n");
+        schedule_usb_tether_check(ctrl, 5000, FALSE);
+        return TIMER_TASK_COMPLETE;
+    }
+
+    freeifaddrs(interfaces);
+    wifi_util_info_print(WIFI_CTRL, "USB_TETHER: neither erouter0 nor usb0 has valid IPv4; waiting\n");
     schedule_usb_tether_check(ctrl, 5000, FALSE);
     return TIMER_TASK_COMPLETE;
 }
+
+
 
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
@@ -2625,7 +2672,11 @@ static int pending_states_webconfig_analyzer(void *arg)
 
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
+<<<<<<< HEAD
     // USB_TETHER: polling-only monitor starting, interval=5000ms
+=======
+    //USB_TETHER: polling-only monitor starting, interval=5000ms
+>>>>>>> 1772888 (DKBWIFI-510 SSID to BPI-RDKB-MLO-AP-xxx while connecting to wifi in RNDIS mode)
     schedule_usb_tether_check(ctrl, 5000, TRUE);
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
