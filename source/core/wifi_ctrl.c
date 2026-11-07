@@ -25,6 +25,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#include "wifi_monitor.h"
 #include "scheduler.h"
 #include <errno.h>
 #include <unistd.h>
@@ -1260,6 +1261,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_assoc_req_frame;
+        set_assoc_req_frame_data(&mgmt_frame);
     } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
@@ -1268,6 +1270,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_req_frame;
+        set_assoc_req_frame_data(&mgmt_frame);
     } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
