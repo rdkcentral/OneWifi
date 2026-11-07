@@ -20,7 +20,8 @@
 #ifndef WIFI_VALIDATOR_H
 #define WIFI_VALIDATOR_H
 
+#include "wifi_util.h"
 int validate_vaps(const char *buff, wifi_vap_info_map_t *vap_map);
-int early_validate_interworking(const cJSON *interworking, pErr execRetVal);
+int early_validate_interworking(const cJSON *interworking, wifi_validation_error_t *execRetVal);
 
 #endif

@@ -32,7 +32,6 @@ AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 endif
 
 AM_LDFLAGS =  -L$(top_builddir)/../hal/lib
-AM_LDFLAGS += -lwebconfig_framework
 AM_LDFLAGS += -lsecure_wrapper
 AM_LDFLAGS += -lev
 AM_LDFLAGS += -lpthread
@@ -55,41 +54,46 @@ AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
 hardware_platform = i686-linux-gnu
 
-lib_LTLIBRARIES=libwifi_webconfig.la
+lib_LTLIBRARIES=libwifi_transportprotocolanalyser.la
 
-libwifi_webconfig_la_CPPFLAGS = -I$(top_srcdir)/source/apps/em -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/custom -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/include -I$(top_srcdir)/../CcspCommonLibrary/source/debug_api/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include/linux -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/package/slap/include -I$(top_srcdir)/../hal/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/http/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/ansc/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/MessageBusHelper/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/PoamIrepFolder -I$(top_srcdir)/include/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/source/core -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/db -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sta_mgr -I$(top_srcdir)/source/apps/cac -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/memwraptool -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/platform/common -I$(top_srcdir)/source/dml/rdkb -I$(top_srcdir)/source/ccsp/ -I$(top_srcdir)/source/apps/linkquality  -I$(top_srcdir)/source/utils/math_utils/inc/  $(CPPFLAGS)
+libwifi_transportprotocolanalyser_la_CPPFLAGS = -I$(top_srcdir)/source/apps/em -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/custom -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/include -I$(top_srcdir)/../CcspCommonLibrary/source/debug_api/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include/linux -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/package/slap/include -I$(top_srcdir)/../hal/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/http/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/ansc/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/MessageBusHelper/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/PoamIrepFolder -I$(top_srcdir)/include/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/source/core -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/db -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sta_mgr -I$(top_srcdir)/source/apps/cac -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/memwraptool -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/platform/common -I$(top_srcdir)/source/dml/rdkb -I$(top_srcdir)/source/ccsp/ -I$(top_srcdir)/source/apps/linkquality  -I$(top_srcdir)/source/utils/math_utils/inc/  $(CPPFLAGS)
 
-libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
+libwifi_transportprotocolanalyser_la_CPPFLAGS += -I$(top_srcdir)/source/apps/wifi_sensing/inc
 
-libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
+libwifi_transportprotocolanalyser_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
 
 if ONEWIFI_DBUS_SUPPORT
-libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/platform/dbus -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir)/dbus-1.0 -I${PKG_CONFIG_SYSROOT_DIR}/usr/lib/dbus-1.0/include/
+libwifi_transportprotocolanalyser_la_CPPFLAGS += -I$(top_srcdir)/source/platform/dbus -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir)/dbus-1.0 -I${PKG_CONFIG_SYSROOT_DIR}/usr/lib/dbus-1.0/include/
 else
-libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/platform/rdkb
+libwifi_transportprotocolanalyser_la_CPPFLAGS += -I$(top_srcdir)/source/platform/rdkb
 endif
-libwifi_webconfig_la_CPPFLAGS += -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/source/dml/tr_181/ml -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/include/tr_181/ml
+libwifi_transportprotocolanalyser_la_CPPFLAGS += -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/source/dml/tr_181/ml -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/include/tr_181/ml
 
-libwifi_webconfig_la_CFLAGS =  $(SYSTEMD_CFLAGS)
+libwifi_transportprotocolanalyser_la_CFLAGS =  $(SYSTEMD_CFLAGS)
 
-libwifi_webconfig_la_SOURCES = wifi_webconfig.c wifi_encoder.c wifi_decoder.c wifi_webconfig_home.c wifi_webconfig_mesh.c wifi_webconfig_private.c wifi_webconfig_radio.c  wifi_webconfig_xfinity.c wifi_webconfig_associated_client.c wifi_webconfig_wifiapi_radio.c wifi_webconfig_wifiapi_vap.c wifi_webconfig_macfilter.c wifi_webconfig_blaster.c wifi_webconfig_harvester.c wifi_webconfig_wifi_config.c wifi_webconfig_csi.c wifi_webconfig_mesh_sta.c wifi_webconfig_mesh_backhaul.c wifi_webconfig_null.c wifi_webconfig_stats_config.c wifi_webconfig_steering_config.c wifi_webconfig_steering_clients.c wifi_webconfig_lnf.c wifi_webconfig_vif_neighbors.c wifi_webconfig_mesh_backhaul_sta.c wifi_webconfig_dml.c wifi_webconfig_levl.c wifi_webconfig_cac.c wifi_webconfig_radio_stats.c wifi_webconfig_neighbor_stats.c wifi_webconfig_assocdevice_stats.c wifi_webconfig_radiodiag_stats.c wifi_webconfig_radio_temperature.c wifi_webconfig_multivap.c wifi_webconfig_easymesh_config.c wifi_webconfig_beacon_report.c wifi_webconfig_memwraptool.c wifi_webconfig_link_report.c wifi_webconfig_ignite.c wifi_webconfig_nasta.c
+libwifi_transportprotocolanalyser_la_SOURCES = wifi_webconfig.c wifi_encoder.c wifi_decoder.c wifi_webconfig_home.c wifi_webconfig_mesh.c wifi_webconfig_private.c wifi_webconfig_radio.c  wifi_webconfig_xfinity.c wifi_webconfig_associated_client.c wifi_webconfig_wifiapi_radio.c wifi_webconfig_wifiapi_vap.c wifi_webconfig_macfilter.c wifi_webconfig_blaster.c wifi_webconfig_harvester.c wifi_webconfig_wifi_config.c wifi_webconfig_csi.c wifi_webconfig_mesh_sta.c wifi_webconfig_mesh_backhaul.c wifi_webconfig_null.c wifi_webconfig_stats_config.c wifi_webconfig_steering_config.c wifi_webconfig_steering_clients.c wifi_webconfig_lnf.c wifi_webconfig_vif_neighbors.c wifi_webconfig_mesh_backhaul_sta.c wifi_webconfig_dml.c wifi_webconfig_levl.c wifi_webconfig_cac.c wifi_webconfig_radio_stats.c wifi_webconfig_neighbor_stats.c wifi_webconfig_assocdevice_stats.c wifi_webconfig_radiodiag_stats.c wifi_webconfig_radio_temperature.c wifi_webconfig_multivap.c wifi_webconfig_easymesh_config.c wifi_webconfig_beacon_report.c wifi_webconfig_memwraptool.c wifi_webconfig_link_report.c wifi_webconfig_ignite.c wifi_webconfig_nasta.c
 if EM_APP_SUPPORT
-libwifi_webconfig_la_SOURCES += wifi_webconfig_em_channel_stats.c wifi_webconfig_em_sta_link_metrics.c wifi_webconfig_em_ap_metrics_report.c
-libwifi_webconfig_la_CFLAGS += $(EM_APP_FLAG)
+libwifi_transportprotocolanalyser_la_SOURCES += wifi_webconfig_em_channel_stats.c wifi_webconfig_em_sta_link_metrics.c wifi_webconfig_em_ap_metrics_report.c
+libwifi_transportprotocolanalyser_la_CFLAGS = $(EM_APP_FLAG)
 endif
 
-libwifi_webconfig_la_SOURCES += wifi_ovsdb_translator.c
 if WITH_EASYMESH
-libwifi_webconfig_la_SOURCES += wifi_easymesh_translator.c
+libwifi_transportprotocolanalyser_la_SOURCES += wifi_easymesh_translator.c
+else
+libwifi_transportprotocolanalyser_la_SOURCES += wifi_ovsdb_translator.c
 endif
 
-libwifi_webconfig_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
+libwifi_transportprotocolanalyser_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
 
-libwifi_webconfig_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -lssl -lcrypto -shared
+libwifi_transportprotocolanalyser_la_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -lssl -lcrypto -shared
+if WEBCONFIG_FRAMEWORK
+libwifi_transportprotocolanalyser_la_LDFLAGS += -lwebconfig_framework
+libwifi_transportprotocolanalyser_la_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG -DONEWIFI_RDKB_APP_SUPPORT
+endif
 
-libwifi_webconfig_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
+libwifi_transportprotocolanalyser_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 
-libwifi_webconfig_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
+libwifi_transportprotocolanalyser_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
 
 AM_CFLAGS += -DCONFIG_WPS -DCONFIG_IEEE80211R_AP -DCONFIG_IEEE80211R -DCONFIG_ETH_P_OUI -DCONFIG_IEEE80211W
 AM_CFLAGS += -DEAP_SERVER_FAST
