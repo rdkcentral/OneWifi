@@ -2120,6 +2120,11 @@ int decode_pcap(webconfig_consumer_t *consumer, unsigned int vap_index, char *fi
         mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_INVALID;
 
         radiotap_hdr = (struct ieee80211_radiotap_header *)buff;
+
+        if (radiotap_hdr->it_len < sizeof(struct ieee80211_radiotap_header) || radiotap_hdr->it_len + sizeof(struct ieee80211_frame) > pkt_hdr.caplen) {
+            continue;
+        }
+
         frame = (struct ieee80211_frame *)&buff[radiotap_hdr->it_len];
         if ((frame->i_fc[0] & 0x0c) == 0) {
             is_mgmt_frame = true;
