@@ -28,6 +28,7 @@ extern "C" {
 #include <stddef.h>
 
 #define HASH_MAP_MAX_KEY_SIZE   100
+#define HASH_MAP_PUT_NOT_CONSUMED (-2)
 
 typedef struct element_t {
     void     *data;
@@ -62,6 +63,7 @@ hash_map_t     *hash_map_create    (void);
 void         hash_map_destroy    (hash_map_t *map);
 void         hash_map_cleanup    (hash_map_t *map);
 int8_t         hash_map_put    (hash_map_t *map, char *key, void *data);
+int8_t         hash_map_put_preserve_on_failure(hash_map_t *map, char *key, void *data);
 void         *hash_map_get    (hash_map_t *map, const char *key);
 void        *hash_map_remove (hash_map_t *map, const char *key);
 uint32_t     hash_map_count    (hash_map_t *map);

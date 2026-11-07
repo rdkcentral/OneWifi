@@ -166,6 +166,8 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
     map->itr = NULL;
     e = (hash_element_t *)malloc(sizeof(hash_element_t));
     if (e == NULL) {
+        /* Preserve the historical hash_map_put() failure contract. Callers
+         * that retain ownership on this path use hash_map_put_preserve_on_failure(). */
         return -1;
     }
     memset(e, 0, sizeof(hash_element_t));
@@ -179,6 +181,30 @@ int8_t hash_map_put(hash_map_t *map, char *key, void *data)
             free(e->data);
             e->data = NULL;
         }
+        free(e);
+        return -1;
+    }
+    return 0;
+}
+
+int8_t hash_map_put_preserve_on_failure(hash_map_t *map, char *key, void *data)
+{
+    hash_element_t *e;
+
+    if (map == NULL || map->queue == NULL || key == NULL) {
+        return -1;
+    }
+
+    map->itr = NULL;
+    e = (hash_element_t *)malloc(sizeof(hash_element_t));
+    if (e == NULL) {
+        return HASH_MAP_PUT_NOT_CONSUMED;
+    }
+    memset(e, 0, sizeof(hash_element_t));
+    e->key = key;
+    e->data = data;
+
+    if (queue_push(map->queue, e) < 0) {
         free(e);
         return -1;
     }
@@ -435,7 +461,11 @@ hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
             memcpy(data, he->data, data_size);
         }
 
-        if (hash_map_put(dst_map, key, data) == -1) {
+        /* The preserve variant leaves key/data caller-owned on every failure. */
+        int8_t put_rc = hash_map_put_preserve_on_failure(dst_map, key, data);
+        if (put_rc != 0) {
+            free(key);
+            free(data);
             hash_map_destroy(dst_map);
             return NULL;
         }

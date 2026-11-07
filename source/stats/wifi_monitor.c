@@ -38,6 +38,8 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/un.h>
+
+void free_provider_list(wifi_mon_collector_element_t *coll_elem);
 #include <assert.h>
 #include <limits.h>
 #ifdef MQTTCM
@@ -5675,36 +5677,57 @@ int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_el
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     int id = collector_elem->collector_task_sched_id;
+    int rc;
 
-    scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &id, collector_execute_task,
+    rc = scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &id, collector_execute_task,
             (void *)collector_elem, collector_elem->collector_task_interval_ms, 0, collector_elem->start_immediately);
+    if (rc != RETURN_OK) {
+        return rc;
+    }
     collector_elem->collector_task_sched_id = id;
     return RETURN_OK;
 }
+
+#define PROVIDER_DELAY_MAX_ATTEMPTS 3
 
 int coordinator_create_provider_task_delay(void *arg)
 {
     wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)arg;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    int delay_task_id = provider_elem->provider_task_sched_id;
 
-    scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
-            (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
-
+    int rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority,
+        &provider_elem->provider_task_sched_id, provider_execute_task, (void *)provider_elem,
+        provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
+    if (rc == RETURN_OK) {
+        provider_elem->delay_task_pending = false;
+    } else {
+        /* The delay task has several repetitions, so it fires again after another delay period:
+         * a bounded retry with backoff instead of re-running immediately. */
+        wifi_util_error_print(WIFI_MON, "%s:%d: failed to schedule provider task for key : %s\n",
+            __func__, __LINE__, provider_elem->key);
+        return TIMER_TASK_COMPLETE;
+    }
+    /* The real task is scheduled; retire the remaining delay repetitions. */
+    scheduler_cancel_timer_task(mon_data->sched, delay_task_id);
     return TIMER_TASK_COMPLETE;
 }
-
 int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    int rc;
 
     if (provider_elem->delay_provider_sec == 0) {
-        scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
-                (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
+        rc = scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority,
+            &provider_elem->provider_task_sched_id, provider_execute_task, (void *)provider_elem,
+            provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
     } else {
-        scheduler_add_timer_task(mon_data->sched, 0, NULL, coordinator_create_provider_task_delay,
-            (void *)provider_elem, provider_elem->delay_provider_sec * 1000, 1, 0);
+        rc = scheduler_add_timer_task(mon_data->sched, 0, &provider_elem->provider_task_sched_id,
+            coordinator_create_provider_task_delay, (void *)provider_elem, provider_elem->delay_provider_sec * 1000,
+            PROVIDER_DELAY_MAX_ATTEMPTS, 0);
+        provider_elem->delay_task_pending = (rc == RETURN_OK);
     }
-    return RETURN_OK;
+    return rc;
 }
 
 
@@ -5817,6 +5840,53 @@ void coordinator_free_collector_elem(wifi_mon_collector_element_t **collector_el
     return;
 }
 
+static void coordinator_cleanup_failed_collector(
+    wifi_mon_collector_element_t **collector_elem)
+{
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+
+    if (collector_elem == NULL || *collector_elem == NULL) {
+        return;
+    }
+
+    if (mon_data != NULL && mon_data->sched != NULL) {
+        if ((*collector_elem)->collector_task_sched_id != 0) {
+            scheduler_cancel_timer_task(mon_data->sched,
+                (*collector_elem)->collector_task_sched_id);
+        }
+        if ((*collector_elem)->collector_postpone_task_sched_id != 0) {
+            scheduler_cancel_timer_task(mon_data->sched,
+                (*collector_elem)->collector_postpone_task_sched_id);
+        }
+    }
+
+    /* Provider timers (including a pending delay task, whose id is replaced by the real task id
+     * once it runs) must be quiesced before their elements are freed. */
+    if (mon_data != NULL && mon_data->sched != NULL && (*collector_elem)->provider_list != NULL) {
+        wifi_mon_provider_element_t *prov = hash_map_get_first((*collector_elem)->provider_list);
+
+        while (prov != NULL) {
+            for (int pass = 0; pass < 2; pass++) {
+                if (prov->provider_task_sched_id != 0) {
+                    scheduler_cancel_timer_task(mon_data->sched,
+                        prov->provider_task_sched_id);
+                }
+            }
+            prov = hash_map_get_next((*collector_elem)->provider_list, prov);
+        }
+    }
+
+    /* This only runs from coordinator_check_stats_config(), which the monitor thread calls from
+     * the same loop that calls scheduler_execute() for g_monitor_module.sched. No collector or
+     * postpone callback can therefore be mid-run here, and cancelled tasks are never dispatched
+     * again. The collector was never published to collector_list, so free it synchronously. */
+    if ((*collector_elem)->provider_list != NULL) {
+        free_provider_list(*collector_elem);
+        (*collector_elem)->provider_list = NULL;
+    }
+    coordinator_free_collector_elem(collector_elem);
+}
+
 int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_mon_stats_config_t *stats_config, wifi_mon_stats_descriptor_t *stat_desc)
 {
     if (collector_elem == NULL || stats_config == NULL || stat_desc == NULL) {
@@ -5840,32 +5910,41 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
     (*collector_elem)->provider_list = hash_map_create();
     if ((*collector_elem)->provider_list == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: hash map failed for provider list\n", __func__,__LINE__);
-        coordinator_free_collector_elem(collector_elem);
+        coordinator_cleanup_failed_collector(collector_elem);
         return RETURN_ERR;
     }
 
     provider_elem = coordinator_create_provider_elem(stats_config, stat_desc);
     if (provider_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_elem failed\n", __func__,__LINE__);
+        coordinator_cleanup_failed_collector(collector_elem);
         return RETURN_ERR;
     }
     char* key_copy = strdup(provider_elem->key);
     if (key_copy == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: strdup failed\n", __func__,__LINE__);
         coordinator_free_provider_elem(&provider_elem);
+        coordinator_cleanup_failed_collector(collector_elem);
         return RETURN_ERR;
     }
 
-    if (hash_map_put((*collector_elem)->provider_list, key_copy, provider_elem) != 0) {
+    int8_t put_rc = hash_map_put_preserve_on_failure(
+        (*collector_elem)->provider_list, key_copy, provider_elem);
+    if (put_rc != 0) {
         wifi_util_error_print(WIFI_MON, "%s:%d: hash_map_put failed\n", __func__,__LINE__);
+        free(key_copy);
         coordinator_free_provider_elem(&provider_elem);
+        coordinator_cleanup_failed_collector(collector_elem);
         return RETURN_ERR;
     }
 
     if (stat_desc->copy_stats_from_cache != NULL) {
         if (coordinator_create_provider_task(provider_elem) != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_task failed\n", __func__,__LINE__);
-            coordinator_free_provider_elem(&provider_elem);
+            wifi_mon_provider_element_t *removed_provider = (wifi_mon_provider_element_t *)hash_map_remove(
+                (*collector_elem)->provider_list, provider_elem->key);
+            coordinator_free_provider_elem(&removed_provider);
+            coordinator_cleanup_failed_collector(collector_elem);
             return RETURN_ERR;
         }
     } else {
@@ -5896,7 +5975,9 @@ int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned lo
     provider_elem->provider_task_interval_ms = *new_provider_interval;
 
     wifi_util_info_print(WIFI_MON, "%s:%d: New Provider interval : %d for key : %s\n", __func__,__LINE__, provider_elem->provider_task_interval_ms, provider_elem->key);
-    if (provider_elem->provider_task_sched_id != 0) {
+    /* While the startup delay task is pending its id must not be retimed with the provider
+     * interval; the delay callback schedules the real task with the updated interval. */
+    if (provider_elem->provider_task_sched_id != 0 && !provider_elem->delay_task_pending) {
         scheduler_update_timer_task_interval(mon_data->sched, provider_elem->provider_task_sched_id, provider_elem->provider_task_interval_ms);
     }
 
@@ -5933,8 +6014,11 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
             return RETURN_ERR;
         }
 
-        if (hash_map_put(collector_elem->provider_list, key_copy, provider_elem) != 0) {
+        int8_t put_rc = hash_map_put_preserve_on_failure(
+            collector_elem->provider_list, key_copy, provider_elem);
+        if (put_rc != 0) {
             wifi_util_error_print(WIFI_MON, "%s:%d: hash_map_put failed\n", __func__,__LINE__);
+            free(key_copy);
             coordinator_free_provider_elem(&dup_provider_elem);
             return RETURN_ERR;
         }
@@ -5942,6 +6026,7 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         if (collector_elem->stat_desc->copy_stats_from_cache != NULL) {
             if (coordinator_create_provider_task(provider_elem) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_task failed\n", __func__,__LINE__);
+                hash_map_remove(collector_elem->provider_list, provider_elem->key);
                 coordinator_free_provider_elem(&provider_elem);
                 return RETURN_ERR;
             }
@@ -5975,6 +6060,10 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
         wifi_util_dbg_print(WIFI_MON, "%s:%d: remove provider task key : %s\n", __func__,__LINE__, provider_elem->key);
         if (provider_elem->provider_task_sched_id != 0) {
             scheduler_cancel_timer_task(mon_data->sched, provider_elem->provider_task_sched_id);
+            /* A pending delay task swaps its id for the real task id when it runs. */
+            if (provider_elem->provider_task_sched_id != 0) {
+                scheduler_cancel_timer_task(mon_data->sched, provider_elem->provider_task_sched_id);
+            }
         }
         hash_map_remove((*collector_elem)->provider_list, key);
         coordinator_free_provider_elem(&provider_elem);
@@ -6063,6 +6152,7 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
             if (key_copy == NULL) {
                 wifi_util_error_print(WIFI_MON, "%s:%d: Failed to duplicate key\n", __func__,
                     __LINE__);
+                coordinator_cleanup_failed_collector(&collector_elem);
                 return RETURN_ERR;
             }
             clctr_subscription = hash_map_get(mon_data->clctr_subscriber_map, stats_key);
@@ -6077,7 +6167,13 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
                     __func__, __LINE__, stats_key, collector_elem->stats_clctr.is_event_subscribed,
                     mon_stats_config->data_type, collector_elem->stats_clctr.stats_type_subscribed);
             }
-            hash_map_put(collector_list, key_copy, collector_elem);
+            if (hash_map_put_preserve_on_failure(collector_list, key_copy, collector_elem) != 0) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: failed to register collector %s\n",
+                    __func__, __LINE__, stats_key);
+                free(key_copy);
+                coordinator_cleanup_failed_collector(&collector_elem);
+                return RETURN_ERR;
+            }
             wifi_util_info_print(WIFI_MON, "%s:%d: created task for key : %s for app  %d\n",
                 __func__, __LINE__, stats_key, mon_stats_config->inst);
         } else {
