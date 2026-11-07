@@ -597,9 +597,6 @@ typedef struct {
     unsigned int status_code;
     int dhcp_event;
     int dhcp_msg_type;
-    char dhcp_hostname[256];
-    char dhcp_vendor_class[256];
-    char dhcp_param_list[512];
     unsigned int eapol_m1_count;
     unsigned int eapol_m2_count;
     unsigned int eapol_m3_count;
