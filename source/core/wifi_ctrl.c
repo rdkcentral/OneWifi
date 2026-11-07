@@ -1865,6 +1865,7 @@ void init_wifi_mld_groups(void)
     wifi_vap_info_map_t *mgr_vap_map = NULL;
     bool original_mld_enable[MAX_VAP] = { false };
     unsigned int original_link_id[MAX_VAP] = { 0 };
+    wifi_encryption_method_t original_encr[MAX_VAP] = { 0 };
 
     for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
         mgr_vap_map = get_wifidb_vap_map(r_idx);
@@ -1888,6 +1889,7 @@ void init_wifi_mld_groups(void)
 
             original_mld_enable[vap->vap_index] = vap->u.bss_info.mld_info.common_info.mld_enable;
             original_link_id[vap->vap_index] = vap->u.bss_info.mld_info.common_info.mld_link_id;
+            original_encr[vap->vap_index] = vap->u.bss_info.security.encr;
         }
     }
 
@@ -1918,7 +1920,9 @@ void init_wifi_mld_groups(void)
             if (original_mld_enable[vap->vap_index] !=
                     vap->u.bss_info.mld_info.common_info.mld_enable ||
                 original_link_id[vap->vap_index] !=
-                    vap->u.bss_info.mld_info.common_info.mld_link_id) {
+                    vap->u.bss_info.mld_info.common_info.mld_link_id ||
+                original_encr[vap->vap_index] !=
+                    vap->u.bss_info.security.encr) {
                 wifi_util_dbg_print(WIFI_CTRL,
                     "%s:%d: MLO VAP %d settings changed for radio index %d\n", __func__, __LINE__, vap->vap_index, r_idx);
                 vap_setting_changed = true;
@@ -3679,18 +3683,21 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
         result = false;
     }
 
-    /* Compare Security Mode — WPA3 variants are MLO-compatible across bands */
-    if ((main_vap->u.bss_info.security.encr != vap->u.bss_info.security.encr) ||
-        ((main_vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) ||
-            (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256))) {
-        wifi_util_info_print(log_type,
-            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
-            "encryption type %d != %d\n",
-            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
-            vap->u.bss_info.security.encr, main_vap->u.bss_info.security.encr);
-    }
-
     return result;
+}
+
+/*Comment why enforcing AES-GCMP256: if mlo is enabled and security is set to
+  WPA3-Personal, WPA3-Transition, WPA3-Compatability AES-GCMP256 is required */
+static void mlo_check_modify_security_encr(wifi_vap_info_t *vap, wifi_dbg_type_t log_type)
+{
+    if (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch: encryption type %d,"
+            " setting encr type to AES-GCMP256\n",
+            __func__, __LINE__, vap->vap_index, vap->u.bss_info.security.encr);
+
+        vap->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+    }
 }
 
 static wifi_vap_info_t *webconfig_find_vap_by_name(webconfig_subdoc_decoded_data_t *data, char *vap_name)
@@ -4001,6 +4008,7 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                     continue;
                 }
 
+                mlo_check_modify_security_encr(entry->vap_info, log_type);
                 entry->mld_conf->mld_enable = true;
 #ifndef CONFIG_GENERIC_MLO
                 memcpy(entry->mld_conf->mld_addr, mlo_mac, sizeof(mac_address_t));

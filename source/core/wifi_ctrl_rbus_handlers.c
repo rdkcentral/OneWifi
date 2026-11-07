@@ -2553,9 +2553,9 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n", __func__, __LINE__);
 
-    if (p_data->value.data_type != bus_data_type_bytes) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s Unsupported data type:%x\n", __func__,
-            __LINE__, event_name, p_data->value.data_type);
+    if ((p_data == NULL) || (p_data->value.data_type != bus_data_type_bytes)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s NULL payload or Unsupported data type\n", __func__,
+            __LINE__, event_name);
         return;
     }
 
@@ -4591,10 +4591,22 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
         return bus_error_element_name_missing;
     }
 
-    pTmp = (char *)p_data->raw_data.bytes;
-    if ((p_data->data_type != bus_data_type_bytes) || (pTmp == NULL)) {
+    if (p_data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s NULL payload\n",
+            __func__, __LINE__, name);
+        return bus_error_invalid_input;
+    }
+
+    if ((p_data->data_type != bus_data_type_bytes)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
             p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    pTmp = (char *)p_data->raw_data.bytes;
+    if (pTmp == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s NULL payload\n",
+            __func__, __LINE__, name);
         return bus_error_invalid_input;
     }
 
@@ -4605,6 +4617,12 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
     }
 
     len = p_data->raw_data_len;
+    if (len <= sizeof(action_frame_params_t) ||
+         len - sizeof(action_frame_params_t) > MAX_FRAME_SZ) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame payload len:%u\r\n", __func__, __LINE__, len);
+        return bus_error_invalid_input;
+    }
+
     push_event_to_ctrl_queue((char *)pTmp, len, wifi_event_type_command,
         wifi_event_type_send_action_frame, NULL);
 
