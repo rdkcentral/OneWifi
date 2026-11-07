@@ -3835,8 +3835,13 @@ Radio_SetParamUlongValue
          */
         if (tmpGuardInterval != wifi_guard_interval_auto) {
             wifi_ieee80211Variant_t variant = wifiRadioOperParam->variant;
-            bool is_eht_he = (variant & WIFI_80211_VARIANT_BE) || (variant & WIFI_80211_VARIANT_AX);
-            bool is_vht_ht = (variant & WIFI_80211_VARIANT_AC) || (variant & WIFI_80211_VARIANT_N);
+            bool is_eht_he = (bool)(variant & WIFI_80211_VARIANT_AX);
+#ifdef CONFIG_IEEE80211BE
+            if (!is_eht_he) {
+                is_eht_he = (bool)(variant & WIFI_80211_VARIANT_BE);
+            }
+#endif /* CONFIG_IEEE80211BE */
+            bool is_vht_ht = (bool)(variant & (WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_N));
 
             if (is_eht_he && (tmpGuardInterval == wifi_guard_interval_400)) {
                 /* EHT/HE: 800ns, 1600ns, 3200ns only */
