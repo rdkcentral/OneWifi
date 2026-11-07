@@ -899,13 +899,14 @@ bool radio_get_param_string_value(void *obj_ins_context, char *param_name,
 
     if (STR_CMP(param_name, "Name")) {
         /* collect value */
-        wifi_interface_name_t str_ifname;
+        wifi_interface_name_t str_ifname = { 0 };
         wifi_platform_property_t *wifi_prop =
             &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop;
 
         if (convert_radio_index_to_ifname(wifi_prop, radio_index, str_ifname,
                 sizeof(str_ifname) - 1) != RETURN_OK) {
             set_output_string(output_value, "Invalid_Radio");
+            return true;
         }
         set_output_string(output_value, str_ifname);
     } else if (STR_CMP(param_name, "Status")) {
