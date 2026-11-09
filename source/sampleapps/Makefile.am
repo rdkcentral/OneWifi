@@ -64,8 +64,3 @@ onewifi_component_test_app_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/
 onewifi_component_test_app_CFLAGS = $(DML_ENABLE_FLAG)
 onewifi_component_test_app_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 
-bin_PROGRAMS += wifi_events_consumer
-wifi_events_consumer_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats
-wifi_events_consumer_SOURCES = wifievents_consumer_sample.c
-wifi_events_consumer_LDFLAGS = -lrbus
-
