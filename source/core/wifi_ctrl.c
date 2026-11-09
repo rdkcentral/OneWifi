@@ -1218,7 +1218,7 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     return RETURN_OK;
 }
 #else
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_CBR_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate, unsigned int recv_freq)
 #else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, unsigned int recv_freq)
@@ -1244,7 +1244,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
     mgmt_frame.frame.type = type;
     mgmt_frame.frame.dir = dir;
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_CBR_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
     mgmt_frame.frame.phy_rate = phy_rate;
 #endif
@@ -1295,7 +1295,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(data->u.msg.frame.sta_mac, sta_mac, sizeof(mac_address_t));
         data->u.msg.frame.type = type;
         data->u.msg.frame.dir = dir;
-#if defined (_XB7_PRODUCT_REQ_) || defined (_CBR_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_CBR_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
     mgmt_frame.frame.phy_rate = phy_rate;
 #endif
@@ -1556,7 +1556,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     wifi_wpsEvent_callback_register(wps_event_callback);
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
     register_with_webconfig_framework();
 #endif
 
@@ -1863,6 +1863,7 @@ void init_wifi_mld_groups(void)
     wifi_vap_info_map_t *mgr_vap_map = NULL;
     bool original_mld_enable[MAX_VAP] = { false };
     unsigned int original_link_id[MAX_VAP] = { 0 };
+    wifi_encryption_method_t original_encr[MAX_VAP] = { 0 };
 
     for (r_idx = 0; r_idx < getNumberRadios(); r_idx++) {
         mgr_vap_map = get_wifidb_vap_map(r_idx);
@@ -1886,6 +1887,7 @@ void init_wifi_mld_groups(void)
 
             original_mld_enable[vap->vap_index] = vap->u.bss_info.mld_info.common_info.mld_enable;
             original_link_id[vap->vap_index] = vap->u.bss_info.mld_info.common_info.mld_link_id;
+            original_encr[vap->vap_index] = vap->u.bss_info.security.encr;
         }
     }
 
@@ -1916,7 +1918,9 @@ void init_wifi_mld_groups(void)
             if (original_mld_enable[vap->vap_index] !=
                     vap->u.bss_info.mld_info.common_info.mld_enable ||
                 original_link_id[vap->vap_index] !=
-                    vap->u.bss_info.mld_info.common_info.mld_link_id) {
+                    vap->u.bss_info.mld_info.common_info.mld_link_id ||
+                original_encr[vap->vap_index] !=
+                    vap->u.bss_info.security.encr) {
                 wifi_util_dbg_print(WIFI_CTRL,
                     "%s:%d: MLO VAP %d settings changed for radio index %d\n", __func__, __LINE__, vap->vap_index, r_idx);
                 vap_setting_changed = true;
@@ -2398,7 +2402,7 @@ void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedul
     }
 }
 
-#if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
+#if defined(FEATURE_SUPPORT_ACL_SELFHEAL)
 int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
 {
     mac_addr_str_t mac_str;
@@ -2467,7 +2471,7 @@ static int bus_check_and_subscribe_events(void* arg)
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-#if defined (ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
+#if defined(ONEWIFI_FEATURE_SUBSCRIBE_FLAGS)
     ctrl->mesh_status_subscribed = true;
     ctrl->device_mode_subscribed = true;
     ctrl->mesh_keep_out_chans_subscribed = true;
@@ -2480,7 +2484,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
         (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false) ||
         (ctrl->hotspot_client_dhcp_failure_subscribed == false)
-#if defined (RDKB_EXTENDER_ENABLED)
+#if defined(RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif
         ) {
@@ -2566,7 +2570,7 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, bus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0, FALSE);
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0, FALSE);
 
-#if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
+#if defined(FEATURE_SUPPORT_ACL_SELFHEAL)
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sync_wifi_hal_hotspot_vap_mac_entry, NULL, (HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC * 1000), 0, FALSE);
 #endif
     wifi_util_dbg_print(WIFI_CTRL, "%s():%d Ctrl queue timeout tasks scheduled\n", __FUNCTION__, __LINE__);
@@ -3677,18 +3681,21 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
         result = false;
     }
 
-    /* Compare Security Mode — WPA3 variants are MLO-compatible across bands */
-    if ((main_vap->u.bss_info.security.encr != vap->u.bss_info.security.encr) ||
-        ((main_vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) ||
-            (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256))) {
-        wifi_util_info_print(log_type,
-            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
-            "encryption type %d != %d\n",
-            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
-            vap->u.bss_info.security.encr, main_vap->u.bss_info.security.encr);
-    }
-
     return result;
+}
+
+/*Comment why enforcing AES-GCMP256: if mlo is enabled and security is set to
+  WPA3-Personal, WPA3-Transition, WPA3-Compatability AES-GCMP256 is required */
+static void mlo_check_modify_security_encr(wifi_vap_info_t *vap, wifi_dbg_type_t log_type)
+{
+    if (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch: encryption type %d,"
+            " setting encr type to AES-GCMP256\n",
+            __func__, __LINE__, vap->vap_index, vap->u.bss_info.security.encr);
+
+        vap->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
+    }
 }
 
 static wifi_vap_info_t *webconfig_find_vap_by_name(webconfig_subdoc_decoded_data_t *data, char *vap_name)
@@ -4073,6 +4080,7 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                     continue;
                 }
 
+                mlo_check_modify_security_encr(entry->vap_info, log_type);
                 entry->mld_conf->mld_enable = true;
 #ifndef CONFIG_GENERIC_MLO
                 memcpy(entry->mld_conf->mld_addr, mlo_mac, sizeof(mac_address_t));

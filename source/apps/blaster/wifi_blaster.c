@@ -1172,7 +1172,7 @@ void ResetActiveMsmtStepInstances(void)
     }
 }
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
 static void convert_channel_width_to_str(wifi_channelBandwidth_t cw, char *str, size_t len)
 {
     static const char arr_str[][8] =
@@ -1975,7 +1975,7 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Received MLO link stats response from AP %d\n", __func__, __LINE__, index);
 
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
     wifi_radio_operationParam_t* radioOperation = NULL;
     radioOperation = getRadioOperationParam(radio_index);
 #endif //_PP203X_PRODUCT_REQ_ , _MERCURY_PRODUCT_REQ_
@@ -2025,7 +2025,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 g_active_msmt->active_msmt_data[*SampleCount].ReTransmission = dev_conn->cli_Retransmissions;
                 g_active_msmt->active_msmt_data[*SampleCount].MaxTxRate = dev_conn->cli_MaxDownlinkRate;
                 g_active_msmt->active_msmt_data[*SampleCount].MaxRxRate = dev_conn->cli_MaxUplinkRate;
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_MERCURY_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
                 if (radioOperation != NULL) {
                     convert_channel_width_to_str(radioOperation->channelWidth, g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN);
                     convert_variant_to_str(radioOperation->variant, g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, OPER_BUFFER_LEN);

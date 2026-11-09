@@ -62,6 +62,18 @@ jobs:
             > changed-lines.txt
           echo "PR changed-line ranges: $(wc -l < changed-lines.txt)"
 
+          # Where the PR deleted lines: "path:N" = GitHub shows deleted lines right after
+          # new-side line N. GitHub cannot apply a suggestion with deleted lines inside its
+          # range, so stage 2 drops those. Deleted files (+++ /dev/null) are skipped.
+          git diff -U0 "$BASE_SHA" HEAD -- . \
+            | awk '/^\+\+\+ / { file = ($2 == "/dev/null") ? "" : substr($0, 7) }
+                   /^@@ / && file != "" { old = $2; sub(/^-/, "", old); removed = 1
+                             if (old ~ /,/) { split(old, parts, ","); removed = parts[2] }
+                             new = $3; sub(/^\+/, "", new); added = 1
+                             if (new ~ /,/) { split(new, parts, ","); new = parts[1]; added = parts[2] }
+                             if (removed > 0) print file ":" (added > 0 ? new - 1 : new) }' \
+            > deleted-lines.txt
+
           # ================== EXCLUDED PATHS (edit me) ======================
           # Files/dirs here are never reformatted (e.g. vendor ports, imported
           # headers/utils). Uses git pathspec syntax: ':!<pattern>'.
@@ -117,6 +129,7 @@ jobs:
           path: |
             clang-format.diff
             changed-lines.txt
+            deleted-lines.txt
             pr-meta.env
           if-no-files-found: ignore
           retention-days: 1
