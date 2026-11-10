@@ -78,7 +78,6 @@ static int run_analytics_event(void* arg);
 static int switch_dfs_channel(void *arg);
 void start_wifi_sched_timer(unsigned int, struct wifi_ctrl *ctrl, wifi_scheduler_type_t type);
 
-
 static int schedule_usb_tether_check(wifi_ctrl_t *ctrl, unsigned int interval_ms,
     bool start_immediately)
 {
@@ -121,31 +120,6 @@ static int check_usb_tether_address(void *arg)
         schedule_usb_tether_check(ctrl, 5000, FALSE);
         return TIMER_TASK_COMPLETE;
     }
-    for (entry = interfaces; entry != NULL; entry = entry->ifa_next) {
-        if (entry->ifa_addr != NULL && strcmp(entry->ifa_name, "usb0") == 0 &&
-            entry->ifa_addr->sa_family == AF_INET &&
-            (entry->ifa_flags & IFF_UP) != 0 &&
-            ((ntohl(((struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr) & 0xff000000U)
-                != 0x7f000000U) &&
-            ((ntohl(((struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr) & 0xffff0000U)
-                != 0xa9fe0000U) &&
-            ((struct sockaddr_in *)entry->ifa_addr)->sin_addr.s_addr != INADDR_ANY) {
-            has_address = true;
-            wifi_util_info_print(WIFI_CTRL, "USB_TETHER: usb0 has valid IPv4 address\n");
-            break;
-        }
-    }
-    freeifaddrs(interfaces);
-
-    if (!has_address) {
-        wifi_util_info_print(WIFI_CTRL, "USB_TETHER: no valid usb0 IPv4; waiting\n");
-        reconciled = false;
-    } else if (reconciled) {
-        wifi_util_info_print(WIFI_CTRL,
-            "USB_TETHER: already reconciled; skipping RBUS until usb0 loses its address\n");
-    } else {
-        int rc;
-
 
     if (interface_has_valid_ipv4(interfaces, "erouter0")) {
         wifi_util_info_print(WIFI_CTRL,
@@ -164,8 +138,6 @@ static int check_usb_tether_address(void *arg)
         rc = webconfig_fix_usb_tether_ssids(ctrl);
         wifi_util_info_print(WIFI_CTRL, "USB_TETHER: reconciliation returned %d\n", rc);
         if (rc == RETURN_OK) {
-        }
-    }
             wifi_util_info_print(WIFI_CTRL,
                 "USB_TETHER: reconciliation succeeded; stopping interface checks\n");
             return TIMER_TASK_COMPLETE;
@@ -2676,11 +2648,7 @@ static int pending_states_webconfig_analyzer(void *arg)
 
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
-<<<<<<< HEAD
-    // USB_TETHER: polling-only monitor starting, interval=5000ms
-=======
     //USB_TETHER: polling-only monitor starting, interval=5000ms
->>>>>>> 1772888 (DKBWIFI-510 SSID to BPI-RDKB-MLO-AP-xxx while connecting to wifi in RNDIS mode)
     schedule_usb_tether_check(ctrl, 5000, TRUE);
 
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT

@@ -84,7 +84,7 @@ static bool get_fronthaul_ssid_from_rbus(wifi_ctrl_t *ctrl, unsigned int instanc
 static bool get_fronthaul_passphrase_from_rbus(wifi_ctrl_t *ctrl, unsigned int instance,
     char *passphrase, size_t size)
 {
-    return read_uwm_string(ctrl, instance, "Passphrase", passphrase, size);
+    return read_uwm_string(ctrl, instance, "PassPhrase", passphrase, size);
 }
 
 static void mark_uwm_haul_roles(const char *hauls, bool roles[3])
@@ -140,11 +140,24 @@ int webconfig_fix_usb_tether_ssids(wifi_ctrl_t *ctrl)
                 instance, ssid, got_passphrase);
             for (unsigned int role = 0; role < 3; role++) {
                 if (roles[role] && !ready[role]) {
-                    snprintf(names[role], sizeof(names[role]), "%s", ssid);
-                    if (got_passphrase) {
-                        snprintf(passphrases[role], sizeof(passphrases[role]), "%s", passphrase);
-                        has_passphrase[role] = true;
+                    const char *role_passphrase = got_passphrase ? passphrase : NULL;
+
+                    /* Temporary test credentials, restricted to the requested role and SSID. */
+                    if (role == 0 && strcmp(ssid, "private_ssid") == 0) {
+                        role_passphrase = "test-fronthaul";
+                    } else if ((role == 1 && strcmp(ssid, "iot_ssid") == 0) ||
+                        (role == 2 && strcmp(ssid, "mesh_backhaul") == 0)) {
+                        role_passphrase = "test-backhaul";
                     }
+                    if (role_passphrase == NULL) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s: missing required passphrase for role %u on instance %u, retrying\n",
+                            __func__, role, instance);
+                        continue;
+                    }
+                    snprintf(names[role], sizeof(names[role]), "%s", ssid);
+                    snprintf(passphrases[role], sizeof(passphrases[role]), "%s", role_passphrase);
+                    has_passphrase[role] = true;
                     ready[role] = true;
                 }
             }
@@ -173,7 +186,8 @@ int webconfig_fix_usb_tether_ssids(wifi_ctrl_t *ctrl)
                 isVapXhs(config->vap_index) ? 1 :
                 isVapMeshBackhaul(config->vap_index) ? 2 : -1;
 
-            if (role < 0 || !ready[role] || isVapSTAMesh(config->vap_index)) {
+            if (config->vap_mode != wifi_vap_mode_ap || role < 0 || !ready[role] ||
+                isVapSTAMesh(config->vap_index)) {
                 wifi_util_info_print(WIFI_CTRL,
                     "USB_TETHER: skipping VAP=%s index=%u role=%d\n",
                     config->vap_name, config->vap_index, role);
@@ -206,7 +220,12 @@ int webconfig_fix_usb_tether_ssids(wifi_ctrl_t *ctrl)
             count++;
         }
     }
-    if (count != 0) {
+    if (missing) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s: missing required UWM credentials; skipping apply and retrying\n",
+            __func__);
+        result = RETURN_ERR;
+    } else if (count != 0) {
         wifi_util_info_print(WIFI_CTRL, "USB_TETHER: applying %u changed VAPs\n", count);
         result = webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, count);
         wifi_util_info_print(WIFI_CTRL, "USB_TETHER: VAP apply returned %d\n", result);
