@@ -814,7 +814,10 @@ static void fill_eht_ops_from_radio(const wifi_radio_operationParam_t *oper,
 
     memset(eht_ops_bss, 0, sizeof(*eht_ops_bss));
 
-    bool is_eht = ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
+    bool is_eht = false;
+#ifdef CONFIG_IEEE80211BE
+    is_eht = ((oper->variant & WIFI_80211_VARIANT_BE) != 0);
+#endif /* CONFIG_IEEE80211BE */
     if (!is_eht) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,
             "%s:%d: Radio is not operating in EHT (Wi-Fi 7) mode: wifi7_supported=%d variant=0x%x is_eht=%d\n",
@@ -1515,12 +1518,35 @@ static webconfig_error_t fill_assoc_sta_mld_info_from_assoc_dev(
     return webconfig_error_none;
 }
 
+/* em_sta_info_t.frame_body is a fixed array in older unified-wifi-mesh and a pointer to a
+ * variable sized body in newer ones. Support both so the build does not depend on merge order. */
+static void easymesh_sta_set_frame_body(em_sta_info_t *info, unsigned char *body, unsigned int len)
+{
+    /* The array is far larger than a pointer, so its size tells the two layouts apart. */
+    if (sizeof(info->frame_body) == sizeof(unsigned char *)) {
+        /* The pointer only borrows the caller's frame, the receiver copies it. */
+        memcpy(&info->frame_body, &body, sizeof(body));
+        info->frame_body_len = (body != NULL) ? len : 0;
+    } else {
+        size_t copy_len = (body != NULL) ? len : 0;
+
+        if (copy_len > sizeof(info->frame_body)) {
+            copy_len = sizeof(info->frame_body);
+        }
+        memset(&info->frame_body, 0, sizeof(info->frame_body));
+        if (copy_len > 0) {
+            memcpy(&info->frame_body, body, copy_len);
+        }
+        info->frame_body_len = (unsigned int)copy_len;
+    }
+}
+
 //Converting data elements of assoc client stats to em_sta_info_t of easymesh
 webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_subdoc_data_t *data)
 {
     em_sta_info_t *em_sta_dev_info = NULL;
     unsigned int associated_client_count = 0;
-    unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0;
+    unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0, frame_len = 0;
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     rdk_wifi_radio_t *radio = NULL;
     wifi_vap_info_map_t *vap_map = NULL;
@@ -1611,15 +1637,32 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         return webconfig_error_translate_to_easymesh;
                     }
                     mgmt = (struct ieee80211_mgmt *) assoc_dev_data->sta_data.msg_data.data;
-                    tag_len = assoc_dev_data->sta_data.msg_data.frame.len - IEEE80211_HDRLEN - sizeof(mgmt->u.assoc_req);
                     /* Store the full 802.11 association request frame body:
                      * fixed fields (capab_info 2B + listen_interval 2B) followed by IEs. */
                     fixed_len = (unsigned int)sizeof(mgmt->u.assoc_req);
-                    if (fixed_len + tag_len > EM_MAX_FRAME_BODY_LEN) {
-                        tag_len = EM_MAX_FRAME_BODY_LEN - fixed_len;
+                    frame_len = (unsigned int)assoc_dev_data->sta_data.msg_data.frame.len;
+                    if (frame_len == 0) {
+                        /* Removal records, and some connect records, carry no FrameData. Still
+                         * forward the client state, with the empty frame body the receiver
+                         * expects (NULL body, zero length). */
+                        easymesh_sta_set_frame_body(em_sta_dev_info, NULL, 0);
+                    } else if ((frame_len < IEEE80211_HDRLEN + fixed_len) || (frame_len > MAX_FRAME_SZ)) {
+                        wifi_util_error_print(WIFI_WEBCONFIG,
+                            "%s:%d: Invalid association frame length %u, skipping client\n",
+                            __func__, __LINE__, frame_len);
+                        free(em_sta_dev_info);
+                        assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                        continue;
+                    } else {
+                        tag_len = frame_len - IEEE80211_HDRLEN - fixed_len;
+                        if (fixed_len + tag_len > EM_MAX_FRAME_BODY_LEN) {
+                            tag_len = EM_MAX_FRAME_BODY_LEN - fixed_len;
+                        }
+                        /* put_sta_info() copies the frame into the data model, so the stored
+                         * frame is only borrowed here and nothing needs to be freed. */
+                        easymesh_sta_set_frame_body(em_sta_dev_info,
+                            (unsigned char *)&mgmt->u.assoc_req, fixed_len + tag_len);
                     }
-                    memcpy(em_sta_dev_info->frame_body, &mgmt->u.assoc_req, fixed_len + tag_len);
-                    em_sta_dev_info->frame_body_len = fixed_len + tag_len;
 
                     if (assoc_dev_data->client_state == 0) {
                         em_sta_dev_info->associated = true;
