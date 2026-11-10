@@ -67,6 +67,7 @@ int bus_server_bind_listener(char const *socket_name, he_bus_listener *pListener
         sizeof(struct sockaddr_un));
     if (ret == HE_BUS_RETURN_ERR) {
         he_bus_conn_error_print("failed to bind socket:%d:%s\r\n", errno, strerror(errno));
+        close(listener.fd);
         return ret;
     }
 
