@@ -183,7 +183,11 @@ static int check_usb_tether_address(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-
+freeifaddrs(interfaces);
+wifi_util_info_print(WIFI_CTRL, "USB_TETHER: neither erouter0 nor usb0 has valid IPv4; waiting\n");
+schedule_usb_tether_check(ctrl, 5000, FALSE);
+return TIMER_TASK_COMPLETE;
+}
 
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
