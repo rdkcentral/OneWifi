@@ -30,6 +30,7 @@
 #include <cjson/cJSON.h>
 #include "scheduler.h"
 #include <trower-base64/base64.h>
+#include <strings.h>
 #include <unistd.h>
 #include <pthread.h>
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
@@ -39,6 +40,188 @@
 #define SSID_MAX_LEN (64)
 #define KEY_MAX_LEN (256)
 bool is_sta_set = false;
+#define UWM_NETWORK_SSID_FORMAT "Device.WiFi.DataElements.Network.SSID.%u.%s"
+#define UWM_NETWORK_SSID_LIMIT 5
+#define UWM_KEY_LEN sizeof(((wifi_vap_info_t *)0)->u.bss_info.security.u.key.key)
+int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data,
+    char **vap_names, unsigned int size);
+
+static bool read_uwm_string(wifi_ctrl_t *ctrl, unsigned int instance, const char *property,
+    char *result, size_t size)
+{
+    char path[128];
+    raw_data_t data = {0};
+    bus_error_t rc;
+    int length;
+
+    length = snprintf(path, sizeof(path), UWM_NETWORK_SSID_FORMAT, instance, property);
+    if (length < 0 || (size_t)length >= sizeof(path)) {
+        wifi_util_error_print(WIFI_CTRL, "%s: invalid UWM property path\n", __func__);
+        return false;
+    }
+    rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, path, &data);
+    if (rc != bus_error_success || data.data_type != bus_data_type_string ||
+        data.raw_data.bytes == NULL || ((char *)data.raw_data.bytes)[0] == '\0' ||
+        strnlen((char *)data.raw_data.bytes, size) >= size) {
+        wifi_util_error_print(WIFI_CTRL,
+            "USB_TETHER: failed to read %s (rc=%d type=%d; value missing, empty or too long)\n",
+            path, rc, data.data_type);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return false;
+    }
+    memcpy(result, data.raw_data.bytes, strlen((char *)data.raw_data.bytes) + 1);
+    wifi_util_info_print(WIFI_CTRL, "USB_TETHER: RBUS read succeeded: %s\n", path);
+    get_bus_descriptor()->bus_data_free_fn(&data);
+    return true;
+}
+
+static bool get_fronthaul_ssid_from_rbus(wifi_ctrl_t *ctrl, unsigned int instance, char *ssid,
+    size_t size)
+{
+    return read_uwm_string(ctrl, instance, "SSID", ssid, size);
+}
+
+static bool get_fronthaul_passphrase_from_rbus(wifi_ctrl_t *ctrl, unsigned int instance,
+    char *passphrase, size_t size)
+{
+    return read_uwm_string(ctrl, instance, "Passphrase", passphrase, size);
+}
+
+static void mark_uwm_haul_roles(const char *hauls, bool roles[3])
+{
+    char list[128], *item, *state;
+
+    snprintf(list, sizeof(list), "%s", hauls);
+    for (item = strtok_r(list, ",", &state); item != NULL; item = strtok_r(NULL, ",", &state)) {
+        while (*item == ' ') {
+            item++;
+        }
+        if (strcasecmp(item, "Fronthaul") == 0) roles[0] = true;
+        if (strcasecmp(item, "IoT") == 0) roles[1] = true;
+        if (strcasecmp(item, "Backhaul") == 0) roles[2] = true;
+    }
+}
+
+int webconfig_fix_usb_tether_ssids(wifi_ctrl_t *ctrl)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    webconfig_subdoc_decoded_data_t *data;
+    char names[3][WIFI_MAX_SSID_NAME_LEN] = {{0}};
+    char passphrases[3][UWM_KEY_LEN] = {{0}};
+    bool has_passphrase[3] = {false};
+    char vap_names_storage[MAX_VAP][sizeof(((wifi_vap_info_t *)0)->vap_name)];
+    char *vap_names[MAX_VAP];
+    unsigned int count = 0;
+    bool ready[3] = {false};
+    bool missing = false;
+    int result = RETURN_OK;
+
+    wifi_util_info_print(WIFI_CTRL, "USB_TETHER: reading UWM SSID table\n");
+    for (unsigned int instance = 1; instance <= UWM_NETWORK_SSID_LIMIT; instance++) {
+        char hauls[128] = {0};
+        bool roles[3] = {false};
+        char ssid[WIFI_MAX_SSID_NAME_LEN] = {0};
+        char passphrase[UWM_KEY_LEN] = {0};
+
+        if (!read_uwm_string(ctrl, instance, "HaulType", hauls, sizeof(hauls))) {
+            break;
+        }
+        mark_uwm_haul_roles(hauls, roles);
+        wifi_util_info_print(WIFI_CTRL,
+            "USB_TETHER: instance=%u HaulType=%s roles=%d/%d/%d\n",
+            instance, hauls, roles[0], roles[1], roles[2]);
+        if ((roles[0] || roles[1] || roles[2]) &&
+            get_fronthaul_ssid_from_rbus(ctrl, instance, ssid, sizeof(ssid))) {
+            bool got_passphrase = get_fronthaul_passphrase_from_rbus(ctrl, instance, passphrase,
+                sizeof(passphrase));
+
+            wifi_util_info_print(WIFI_CTRL,
+                "USB_TETHER: instance=%u SSID=%s passphrase_available=%d (value hidden)\n",
+                instance, ssid, got_passphrase);
+            for (unsigned int role = 0; role < 3; role++) {
+                if (roles[role] && !ready[role]) {
+                    snprintf(names[role], sizeof(names[role]), "%s", ssid);
+                    if (got_passphrase) {
+                        snprintf(passphrases[role], sizeof(passphrases[role]), "%s", passphrase);
+                        has_passphrase[role] = true;
+                    }
+                    ready[role] = true;
+                }
+            }
+        }
+        memset(passphrase, 0, sizeof(passphrase));
+    }
+    for (unsigned int role = 0; role < 3; role++) {
+        if (!ready[role]) {
+            wifi_util_error_print(WIFI_CTRL, "%s: UWM SSID for role %u is unavailable\n",
+                __func__, role);
+            missing = true;
+        }
+    }
+    data = calloc(1, sizeof(*data));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: could not allocate VAP configuration\n", __func__);
+        return RETURN_ERR;
+    }
+    data->num_radios = getNumberRadios();
+    for (unsigned int radio = 0; radio < data->num_radios; radio++) {
+        data->radios[radio] = mgr->radio_config[radio];
+        for (unsigned int vap = 0; vap < data->radios[radio].vaps.vap_map.num_vaps; vap++) {
+            wifi_vap_info_t *config = &data->radios[radio].vaps.vap_map.vap_array[vap];
+            wifi_vap_info_t *current = &mgr->radio_config[radio].vaps.vap_map.vap_array[vap];
+            int role = isVapPrivate(config->vap_index) ? 0 :
+                isVapXhs(config->vap_index) ? 1 :
+                isVapMeshBackhaul(config->vap_index) ? 2 : -1;
+
+            if (role < 0 || !ready[role] || isVapSTAMesh(config->vap_index)) {
+                wifi_util_info_print(WIFI_CTRL,
+                    "USB_TETHER: skipping VAP=%s index=%u role=%d\n",
+                    config->vap_name, config->vap_index, role);
+                continue;
+            }
+            bool ssid_changed = strcmp(current->u.bss_info.ssid, names[role]) != 0;
+            bool pass_changed = has_passphrase[role] &&
+                strcmp(current->u.bss_info.security.u.key.key, passphrases[role]) != 0;
+            wifi_util_info_print(WIFI_CTRL,
+                "USB_TETHER: VAP=%s role=%d current_SSID=%s target_SSID=%s "
+                "ssid_changed=%d passphrase_changed=%d\n",
+                config->vap_name, role, current->u.bss_info.ssid, names[role],
+                ssid_changed, pass_changed);
+            if (!ssid_changed && !pass_changed) {
+                continue;
+            }
+            if (count >= MAX_VAP) {
+                wifi_util_error_print(WIFI_CTRL, "%s: too many VAPs to reconcile\n", __func__);
+                result = RETURN_ERR;
+                goto done;
+            }
+            snprintf(config->u.bss_info.ssid, sizeof(config->u.bss_info.ssid), "%s", names[role]);
+            if (has_passphrase[role]) {
+                snprintf(config->u.bss_info.security.u.key.key,
+                    sizeof(config->u.bss_info.security.u.key.key), "%s", passphrases[role]);
+            }
+            snprintf(vap_names_storage[count], sizeof(vap_names_storage[count]), "%s",
+                config->vap_name);
+            vap_names[count] = vap_names_storage[count];
+            count++;
+        }
+    }
+    if (count != 0) {
+        wifi_util_info_print(WIFI_CTRL, "USB_TETHER: applying %u changed VAPs\n", count);
+        result = webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, count);
+        wifi_util_info_print(WIFI_CTRL, "USB_TETHER: VAP apply returned %d\n", result);
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "USB_TETHER: no changed VAPs selected\n");
+    }
+done:
+    memset(passphrases, 0, sizeof(passphrases));
+    free(data);
+    wifi_util_info_print(WIFI_CTRL,
+        "USB_TETHER: reconciliation complete missing_roles=%d result=%d\n",
+        missing, missing ? RETURN_ERR : result);
+    return missing ? RETURN_ERR : result;
+}
+
 struct ow_conf_vif_config_cb_arg
 {
     rdk_wifi_vap_info_t *rdk_vap_info;
@@ -874,7 +1057,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                         __func__, __LINE__, vap_names[i]);
             continue;
         }
-
         tgt_vap_index = convert_vap_name_to_index(&mgr->hal_cap.wifi_prop, vap_names[i]);
         if (tgt_vap_index == -1) {
             wifi_util_error_print(WIFI_MGR, "%s:%d: Could not find vap index for vap name:%s\n",
@@ -3605,4 +3787,3 @@ int register_with_webconfig_framework()
     wifi_util_info_print(WIFI_CTRL, "%s: Done Registering\n", __func__);
     return RETURN_OK;
 }
-
