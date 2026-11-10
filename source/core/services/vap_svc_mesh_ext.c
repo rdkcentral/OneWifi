@@ -170,7 +170,9 @@ void sort_bss_results_by_rssi(bss_candidate_t *bss, int start, int end)
 
 int get_variant_rank(wifi_ieee80211Variant_t variant)
 {
+#ifdef CONFIG_IEEE80211BE
     if (variant & WIFI_80211_VARIANT_BE) return WIFI_VARIANT_BE;
+#endif /* CONFIG_IEEE80211BE */
     if (variant & WIFI_80211_VARIANT_AX) return WIFI_VARIANT_AX;
     if (variant & WIFI_80211_VARIANT_AC) return WIFI_VARIANT_AC;
     if (variant & WIFI_80211_VARIANT_N)  return WIFI_VARIANT_N;

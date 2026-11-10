@@ -77,10 +77,9 @@ libwifi_transportprotocolanalyser_la_SOURCES += wifi_webconfig_em_channel_stats.
 libwifi_transportprotocolanalyser_la_CFLAGS = $(EM_APP_FLAG)
 endif
 
+libwifi_transportprotocolanalyser_la_SOURCES += wifi_ovsdb_translator.c
 if WITH_EASYMESH
 libwifi_transportprotocolanalyser_la_SOURCES += wifi_easymesh_translator.c
-else
-libwifi_transportprotocolanalyser_la_SOURCES += wifi_ovsdb_translator.c
 endif
 
 libwifi_transportprotocolanalyser_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
