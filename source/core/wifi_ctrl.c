@@ -78,7 +78,6 @@ static int run_analytics_event(void* arg);
 static int switch_dfs_channel(void *arg);
 void start_wifi_sched_timer(unsigned int, struct wifi_ctrl *ctrl, wifi_scheduler_type_t type);
 
-
 static int schedule_usb_tether_check(wifi_ctrl_t *ctrl, unsigned int interval_ms,
     bool start_immediately)
 {
