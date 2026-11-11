@@ -17,6 +17,19 @@ define Package/easymesh/description
   A simple EasyMesh utility package.
 endef
 
+UTOPIA_CFLAGS:=$(TARGET_CFLAGS)
+UTOPIA_LDFLAGS:=$(TARGET_LDFLAGS)
+CONFIGURE_PATH:=utopia
+CONFIGURE_PREFIX:=$(PKG_BUILD_DIR)/OneWifi/install
+CONFIGURE_ARGS+= --disable-shared --enable-static
+# libsyscfg/libulog do not use D-Bus; empty values only satisfy the project-wide
+# dbus-1 check in utopia configure.ac.
+CONFIGURE_VARS+= \
+	CFLAGS="$(UTOPIA_CFLAGS)" \
+	CPPFLAGS="$(TARGET_CPPFLAGS) -I$(PKG_BUILD_DIR)/OneWifi/build/linux/compat" \
+	LDFLAGS="$(UTOPIA_LDFLAGS)" \
+	DBUS_CFLAGS=" " DBUS_LIBS=" "
+
 TARGET_CFLAGS+= -ggdb3 -O0 -static -Wl,--stack,2097152 -fcommon -fno-lto
 TARGET_LDFLAGS+= -lgcc -lc -luClibc++
 
@@ -37,6 +50,7 @@ define Build/Prepare
 	$(CP) -r ./OneWifi/install $(PKG_BUILD_DIR)/
 	$(CP) -r ./OneWifi/install/bin $(PKG_BUILD_DIR)/
 	$(CP) -r ./trower-base64 $(PKG_BUILD_DIR)/
+	$(CP) -r ./utopia $(PKG_BUILD_DIR)/
 	@if [ "$(OTS_EXTERNAL_AGENT_ENABLE)" = "1" ]; then \
 		if [ ! -d OneWifiTestSuite ]; then \
 			git clone https://github.com/rdkcentral/OneWifiTestSuite.git \
@@ -58,7 +72,15 @@ define Build/Prepare
      fi
 endef
 
+define Build/Configure
+	cd $(PKG_BUILD_DIR)/utopia && NOCONFIGURE=1 ./autogen.sh
+	$(call Build/Configure/Default)
+endef
+
 define Build/Compile
+	echo "Compiling Utopia..."
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/utopia \
+		$(TARGET_CONFIGURE_OPTS) SUBDIRS="source/ulog source/syscfg/lib" install-exec
 	echo "Compiling OneWifi..."
 	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS)" \
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/OneWifi/build/openwrt/  \

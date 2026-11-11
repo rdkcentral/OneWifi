@@ -275,7 +275,7 @@ else
 LIBDIRS += -L$(INSTALLDIR)/lib/platform/darwin
 endif
 
-LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson
+LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson -lsyscfg -lulog
 
 #
 # The CXXSOURCES macro contains a list of source files.
@@ -462,6 +462,14 @@ $(BUILD_DIR):
 
 all:  $(BUILD_DIR) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY) $(PROGRAM) test
 
+ifneq ($(words $(wildcard $(UTOPIA_LIBRARIES))),2)
+.PHONY: utopia-libraries
+$(UTOPIA_LIBRARIES): utopia-libraries
+
+utopia-libraries:
+	$(BUILD_UTOPIA_LIBRARIES)
+endif
+
 $(CMN_LIBRARY): $(ALL_CMN_LIB_OBJECTS)
 	$(AR)  $@  $^
 
@@ -480,7 +488,7 @@ $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 
 # PROGRAM links -lwifihal, so libwifihal.a must exist first; naming it as a
 # prerequisite makes `make -j` safe (objects alone don't order the archive).
-$(PROGRAM): $(HAL_LIBRARY) $(ALLOBJECTS)
+$(PROGRAM): $(HAL_LIBRARY) $(ALLOBJECTS) $(UTOPIA_LIBRARIES)
 	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
 #
@@ -534,7 +542,7 @@ GTEST_ALLOBJECTS = $(patsubst %wifi_mgr.o,%wifi_mgr_nomain.o, $(ALLOBJECTS))
 PLATFORM_MOCK_OBJECTS = $(PLATFORM_MOCK_SOURCES:.c=.o)
 GTEST_BINARY = OneWifi_gtest.bin
 
-$(GTEST_BINARY): $(GTEST_ALLOBJECTS) $(PLATFORM_MOCK_OBJECTS) $(GTEST_OBJECTS) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY)
+$(GTEST_BINARY): $(GTEST_ALLOBJECTS) $(PLATFORM_MOCK_OBJECTS) $(GTEST_OBJECTS) $(CMN_LIBRARY) $(HAL_LIBRARY) $(WEBCONFIG_LIBRARY) $(HE_BUS_LIBRARY) $(UTOPIA_LIBRARIES)
 	$(CXX) -o $@ $(GTEST_ALLOBJECTS) $(GTEST_OBJECTS) $(PLATFORM_MOCK_OBJECTS) $(LDFLAGS) --coverage -lgtest -lgmock
 
 %wifi_mgr_nomain.o: %wifi_mgr.o

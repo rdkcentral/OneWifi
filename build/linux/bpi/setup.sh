@@ -28,10 +28,12 @@ cd ..
 [ ! -d rdk-wifi-hal ] && git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
 [ ! -d halinterface ] && git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
 [ ! -d trower-base64 ] && git clone https://github.com/xmidt-org/trower-base64.git trower-base64
+if [ ! -d utopia ]; then
+    git clone https://github.com/rdkcentral/utopia.git utopia || exit 1
+fi
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
-
 
 #Check if the HOSTAP_DIR already present before creating
 if [ -d "$HOSTAP_DIR" ]; then

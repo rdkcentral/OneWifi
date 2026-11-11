@@ -15,6 +15,9 @@ cd ..
 git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
 git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
 git clone https://github.com/xmidt-org/trower-base64.git trower-base64
+if [ ! -d utopia ]; then
+    git clone https://github.com/rdkcentral/utopia.git utopia || exit 1
+fi
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib

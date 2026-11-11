@@ -2013,7 +2013,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 	    if((data->em_config.traffic_separation_policy.ssids[0].vlan_id >= VLAN_MIN) 
 		&& (data->em_config.traffic_separation_policy.ssids[0].vlan_id <= VLAN_MAX)) {
 		wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[0].vlan_id;
-           	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+			get_stubs_descriptor()->v_secure_system_fn("/etc/utopia/service.d/service_vlan_ts.sh stop");
 		sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
                 if(syscfg_set_commit(NULL, "vlan_id_pvt", str) != 0) {
@@ -2031,7 +2031,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 	    if((data->em_config.traffic_separation_policy.ssids[3].vlan_id >= VLAN_MIN) 
 		&& (data->em_config.traffic_separation_policy.ssids[3].vlan_id <= VLAN_MAX)) {
 	        wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[3].vlan_id;
-            	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+			get_stubs_descriptor()->v_secure_system_fn("/etc/utopia/service.d/service_vlan_ts.sh stop");
 		sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
                 if(syscfg_set_commit(NULL, "vlan_id_mesh",str) != 0) {
@@ -2049,7 +2049,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 	    if((data->em_config.traffic_separation_policy.ssids[1].vlan_id >= VLAN_MIN) 
 		&& (data->em_config.traffic_separation_policy.ssids[1].vlan_id <= VLAN_MAX)) {
             	wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[1].vlan_id;
-    		v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+			get_stubs_descriptor()->v_secure_system_fn("/etc/utopia/service.d/service_vlan_ts.sh stop");
     		sprintf(str, "%d",wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
 	    	if(syscfg_set_commit(NULL, "vlan_id_iot",str) != 0) {
@@ -2078,7 +2078,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             continue;
         }
 
-	v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh start");
+        get_stubs_descriptor()->v_secure_system_fn("/etc/utopia/service.d/service_vlan_ts.sh start");
     }
     return RETURN_OK;
 }

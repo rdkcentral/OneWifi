@@ -35,8 +35,18 @@ WIFI_HOSTAP_SRC = $(WIFI_HOSTAP_BASE)/src
 WIFI_HOSTAP_SUPPLICANT = $(WIFI_HOSTAP_BASE)/wpa_supplicant
 ONE_WIFI_EM_HOME = $(BASE_DIR)/../unified-wifi-mesh
 WIFI_TROWER_BASE = $(BASE_DIR)/../trower-base64/include/
+WIFI_UTOPIA = $(BASE_DIR)/../utopia
 
 INSTALLDIR = $(BASE_DIR)/install
+UTOPIA_LIBRARIES = $(INSTALLDIR)/lib/libsyscfg.a $(INSTALLDIR)/lib/libulog.a
+define BUILD_UTOPIA_LIBRARIES
+	(cd "$(WIFI_UTOPIA)" && \
+		./autogen.sh --disable-shared --enable-static --prefix="$(INSTALLDIR)" \
+			CPPFLAGS="-I$(ONE_WIFI_HOME)/build/linux/compat" \
+			CFLAGS="-g -O2 -fPIC" DBUS_CFLAGS=" " DBUS_LIBS=" " && \
+		$(MAKE) -C source/ulog install-exec && \
+		$(MAKE) -C source/syscfg/lib install-exec)
+endef
 OBJDIR = obj
 CXX = g++
 CC = gcc

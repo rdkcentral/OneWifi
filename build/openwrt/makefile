@@ -356,7 +356,7 @@ else
 LIBDIRS += -L$(INSTALLDIR)/lib/platform/darwin
 endif
 
-LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson
+LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson -lsyscfg -lulog
 
 #
 # The CXXSOURCES macro contains a list of source files.
@@ -564,7 +564,7 @@ $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 # executing its link command.
 #
 
-$(PROGRAM): $(ALLOBJECTS)
+$(PROGRAM): $(ALLOBJECTS) $(UTOPIA_LIBRARIES)
 	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
 #

@@ -170,6 +170,23 @@ Build-time configuration options, DISTRO features, and compiler flags from Yocto
 - **Startup Order**: Network interfaces must be initialized, RBus services running, PSM services active, HAL components loaded before OneWifi initialization
 - **Resource Constraints**: Multi-threaded application requiring mutex synchronization, event queue processing, database caching, recommended minimum 256MB RAM allocation for WiFi subsystem
 
+The Linux Banana Pi, Raspberry Pi, and mock-platform setup targets clone
+`rdkcentral/utopia` into the sibling `utopia/` directory, alongside `trower-base64`.
+Setup uses Utopia's `autogen.sh`, configure script, and native makefiles to build
+and install the static syscfg and ulog libraries into OneWifi's `install/lib/`.
+OneWifi links these libraries; it does not compile Utopia sources directly.
+Local setup requires `autoconf`, `automake`, `libtool`, and `pkg-config`. The syscfg
+and ulog libraries do not use D-Bus; setup passes empty `DBUS_CFLAGS`/`DBUS_LIBS`
+only to satisfy Utopia's project-wide configure check. Running traffic separation
+also requires the platform's Utopia system defaults and
+`/etc/utopia/service.d/service_vlan_ts.sh`; setup does not install those services.
+
+The OpenWrt setup scripts also clone Utopia alongside `trower-base64`.
+The EasyMesh package copies it into the package build directory, configures it
+with the OpenWrt target toolchain, and uses Utopia's own makefiles to build and
+stage syscfg and ulog before linking OneWifi. D-Bus is a build-only dependency
+required by Utopia's configure checks.
+
 <br>
 
 **Threading Model:** 

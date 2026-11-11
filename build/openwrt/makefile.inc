@@ -11,8 +11,10 @@ WIFI_HOSTAP_SRC = $(WIFI_HOSTAP_BASE)/src
 WIFI_HOSTAP_SUPPLICANT = $(WIFI_HOSTAP_BASE)/wpa_supplicant
 ONE_WIFI_EM_HOME = $(BASE_DIR)/../../../unified-wifi-mesh
 WIFI_TROWER_BASE = $(BASE_DIR)/../../../trower-base64/include
+WIFI_UTOPIA = $(BASE_DIR)/../../../utopia
 
 INSTALLDIR = $(BASE_DIR)/../../install
+UTOPIA_LIBRARIES = $(INSTALLDIR)/lib/libsyscfg.a $(INSTALLDIR)/lib/libulog.a
 OBJDIR = obj
 CC =  $(TARGET_CC) 
 AR= $(AR) 

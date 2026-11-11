@@ -203,6 +203,14 @@
         ]
       },
       {
+        "name": "utopia",
+        "repo": "https://github.com/rdkcentral/utopia.git",
+        "branch": "develop",
+        "header_paths": [
+          { "source": "source/include/syscfg", "destination": "$HOME/usr/include/rdkb/syscfg" }
+        ]
+      },
+      {
         "name": "dbus",
         "repo": "https://gitlab.freedesktop.org/dbus/dbus.git",
         "branch": "dbus-1.14",
