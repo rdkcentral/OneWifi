@@ -162,6 +162,7 @@ endif
 
 if ONEWIFI_STA_MGR_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/sta_mgr/wifi_sta_mgr.c
+OneWifi_CPPFLAGS += -DONEWIFI_STA_MGR_APP_SUPPORT
 endif
 
 if SM_APP_SUPPORT
