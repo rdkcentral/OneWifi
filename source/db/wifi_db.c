@@ -25,7 +25,6 @@
 
 #ifdef ONEWIFI_DB_SUPPORT
 extern void init_wifidb(void);
-extern void init_wifidb_data(void);
 extern int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int start_wifidb();
 extern void wifidb_print(char *format, ...);
@@ -39,7 +38,6 @@ extern int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_
 extern int wifidb_init_global_config_default(wifi_global_param_t *config);
 extern int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
 extern int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config, rdk_wifi_vap_info_t *rdk_config);
-extern void  wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config);
 extern int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec);
 extern int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
@@ -402,6 +400,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.security.repurposed_radius.eap_type = WIFI_EAP_TYPE_TTLS;
         cfg.u.sta_info.security.repurposed_radius.phase2 = WIFI_EAP_PHASE2_MSCHAP;
         strncpy(cfg.repurposed_bridge_name, "brww0", sizeof(cfg.repurposed_bridge_name)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.identity, "username_empty", sizeof(cfg.u.sta_info.security.repurposed_radius.identity)-1);
+        strncpy(cfg.u.sta_info.security.repurposed_radius.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.repurposed_radius.key));
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg.u.sta_info.security.repurposed_mode = wifi_security_mode_wpa3_enterprise;
         } else {
@@ -449,6 +449,9 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.mac_filter_enable = true;
             cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+        } else if (isVapHotspot(vap_index)) {
+            cfg.u.bss_info.mac_filter_enable = true;
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         } else {
             cfg.u.bss_info.mac_filter_enable = false;
             cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;

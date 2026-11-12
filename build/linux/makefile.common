@@ -1,0 +1,78 @@
+# ===========================================================================
+# build/linux/makefile.common -- shared per-object warning scoping + gate.
+#
+# Included verbatim by build/linux/bpi/makefile and build/linux/rpi/makefile at
+# the point these target-specific CFLAGS rules used to live inline, so the two
+# legs cannot drift (a drifted gate is exactly how a warning ends up flagged on
+# one leg but not the other). The includer MUST already have defined the vars
+# referenced below -- they stay per-leg because their values differ:
+#   * WIFI_HOSTAP_{SRC,SUPPLICANT,BASE}  (hostap version: 2.11 on bpi, 2.10 on rpi)
+#   * WIFI_RDK_HAL                        (from makefile.inc)
+#   * the OneWifi object lists            COBJECTS, WEBCONFIG_OBJECTS,
+#     HEBUS_OBJECTS, MATH_UTIL_OBJECTS, QUALITY_MANAGER_OBJECTS
+# ===========================================================================
+
+#scope out HOSTAP. so its code does not generate ANY warnings
+$(WIFI_HOSTAP_SRC)/%.o: CFLAGS += -w -Wno-macro-redefined
+$(WIFI_HOSTAP_SUPPLICANT)/%.o: CFLAGS += -w -Wno-macro-redefined
+$(WIFI_HOSTAP_BASE)/hostapd/%.o: CFLAGS += -w -Wno-macro-redefined
+
+# ---------------------------------------------------------------------------
+# rdk-wifi-hal warning gate (scoped -Werror promotion).
+# This build does not flag any warnings, so a PR reintroducing an already-fixed defect would
+# pass here unnoticed. Mirror a curated slice of (-Wall -Werror -Wextra used in Yocto builds,
+# scoped to HAL objects only, using same way as the hostap -w lines above (path-prefix idiom).
+# OneWifi/hostap objects are unaffected. Warnings flagged by -Wall and -Wextra stay visible,
+# but non fatal. Only the listed classes are errors. List will grow as fixup's continue.
+RDK_HAL_WERROR = -Wall -Wextra \
+    -Wno-unused-parameter -Wno-pointer-sign -Wno-sign-compare -Wno-type-limits \
+    -Wno-format-truncation -Wno-discarded-qualifiers \
+    -Werror=implicit-function-declaration -Werror=int-conversion \
+    -Werror=incompatible-pointer-types -Werror=return-type \
+    -Werror=uninitialized -Werror=maybe-uninitialized \
+    -Werror=format -Werror=format-security -Werror=nonnull \
+    -Werror=array-bounds -Werror=stringop-overflow
+$(WIFI_RDK_HAL)/%.o: CFLAGS += $(RDK_HAL_WERROR)
+
+# ---------------------------------------------------------------------------
+# OneWifi own-source warning policy (scoped, SEPARATE from the HAL gate above).
+#
+# OneWifi's own .c/.cpp are NOT covered by RDK_HAL_WERROR (that block is scoped
+# to $(WIFI_RDK_HAL)/); hostap has its own -w block; the global CFLAGS carries
+# no -W flags. This block is the single home for OneWifi warning promotions and
+# suppressions, so HAL policy and OneWifi policy stay independently tunable and
+# never leak onto each other's objects. Warnings are split by language used.
+ONE_WIFI_WERROR = \
+    -Werror=nonnull -Werror=format \
+    -Werror=misleading-indentation -Werror=logical-not-parentheses
+
+# Known classes suppressed to keep the baseline silent. Valid for BOTH C and C++.
+# (-Werror=format promotes the whole -Wformat* family; -Wformat-truncation has
+# many sites so keep -Wno-, but -Wformat-overflow is left fatal - real overflows.)
+# -Wno-unused-function: platform feature apps are compiled but disabled per leg
+# (e.g. analytics/EM off on rpi), leaving their statics defined-but-unused -- a
+# config-gap, not a defect. Completes the unused-* family already suppressed here.
+ONE_WIFI_WARN = -Wall -Wextra $(ONE_WIFI_WERROR) \
+    -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable \
+    -Wno-unused-function \
+    -Wno-sign-compare -Wno-type-limits -Wno-return-type -Wno-enum-conversion \
+    -Wno-maybe-uninitialized -Wno-address \
+    -Wno-format-security -Wno-format-truncation \
+    -Wno-missing-field-initializers -Wno-deprecated-declarations \
+    -Wno-stringop-truncation -Wno-stringop-overread -Wno-sizeof-pointer-memaccess
+
+# C-only classes (C++ makes these hard errors, so they cannot fire in .cpp).
+ONE_WIFI_WARN_CONLY = -Wno-implicit-function-declaration \
+    -Wno-incompatible-pointer-types -Wno-discarded-qualifiers \
+    -Wno-pointer-sign -Wno-int-conversion
+
+# C++-only class.
+ONE_WIFI_WARN_CXXONLY = -Wno-deprecated-copy
+
+# OneWifi's own objects, split by language so each compiler sees only flags valid
+# for it. These lists (defined above) together are exactly ALLOBJECTS, i.e. every
+# OneWifi own object; HAL/hostap objects are in neither, so they stay untouched.
+ONE_WIFI_C_OBJS   = $(COBJECTS) $(WEBCONFIG_OBJECTS) $(HEBUS_OBJECTS)
+ONE_WIFI_CXX_OBJS = $(MATH_UTIL_OBJECTS) $(QUALITY_MANAGER_OBJECTS)
+$(ONE_WIFI_C_OBJS):   CFLAGS += $(ONE_WIFI_WARN) $(ONE_WIFI_WARN_CONLY)
+$(ONE_WIFI_CXX_OBJS): CFLAGS += $(ONE_WIFI_WARN) $(ONE_WIFI_WARN_CXXONLY)
