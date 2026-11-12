@@ -101,6 +101,7 @@
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100052
 #define ONEWIFI_DB_VERSION_TCM_PER_VAP_FLAG 100053
 #define ONEWIFI_DB_VERSION_2G11AXENABLE_RFC_FLAG 100054
+#define ONEWIFI_DB_VERSION_2GIEEE80211AX_FLAG 100056
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -5204,6 +5205,16 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
         }
     }
 #endif /* CONFIG_IEEE80211BE */
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_2GIEEE80211AX_FLAG) {
+        wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+        if ((config->band == WIFI_FREQUENCY_2_4_BAND) && (rfc_param && rfc_param->twoG80211axEnable_rfc)) {
+            config->variant |= WIFI_80211_VARIANT_AX;
+            if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+                wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
+                return;
+            }
+        }
+    }
 }
 
 int wifidb_get_default_mld_link_id(int band)
@@ -7622,9 +7633,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else
             cfg->variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #endif
-#if defined (NEWPLATFORM_PORT) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined (NEWPLATFORM_PORT) || defined (_GREXT02ACTS_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) \
+ || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_)
             cfg->variant |= WIFI_80211_VARIANT_AX;
-#endif /* NEWPLATFORM_PORT */
+#endif /* NEWPLATFORM_PORT || defined (_GREXT02ACTS_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) \
+ || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_) */
 
 #if defined(CONFIG_IEEE80211BE)
 #if defined(_PLATFORM_BANANAPI_R4_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
