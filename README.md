@@ -6,6 +6,13 @@ OneWifi manages radio configuration, VAP management, client association handling
 
 The component supports mesh WiFi (EasyMesh Multi-AP protocol), WiFi optimization (client steering), performance measurement (Blaster), motion detection (CSI analytics), channel availability checking (CAC), and statistics collection through a modular application framework. For mesh networking, the system supports both Gateway and Extender device roles with automatic backhaul selection using ranking algorithms based on SNR and Channel Utilization.
 
+With `EM_APP` enabled, `Device.WiFi.EM.TxPowerReady` is a read-only uint32 property.
+Its GET handler reads each radio's transmit power from HAL and updates the cache
+only when all readings are valid, returning `1` on success. A failed or zero HAL
+reading returns a bus error without a partial update or default value. EasyMesh
+retries this GET before retrieving the initial WebConfig DML; no readiness event
+subscription is required.
+
 ```mermaid
 graph LR
     subgraph "External Systems"

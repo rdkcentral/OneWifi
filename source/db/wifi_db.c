@@ -100,17 +100,23 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
-#if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
-            cfg.variant |= WIFI_80211_VARIANT_BE;
+#if defined(_SCER11BEL_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_)
+            cfg.variant |= WIFI_80211_VARIANT_AX;
+#endif /*defined(_SCER11BEL_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_)*/
+#if defined(CONFIG_IEEE80211AX) && (defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT))
+            cfg.variant |= WIFI_80211_VARIANT_AX;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
-#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+#ifdef CONFIG_IEEE80211BE
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* CONFIG_IEEE80211BE */
+#endif /* CONFIG_IEEE80211AX && (_PLATFORM_BANANAPI_R4_ || QCOM_ATH12K_PORT) */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg.operatingClass = 128;
             cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+#if defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
@@ -563,6 +569,9 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg.u.bss_info.mld_info.common_info.mld_id = 0;
+        } else {
+            cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
+            cfg.u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
         }
 #else
         cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
@@ -908,7 +917,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     wifi_rfc_dml_parameters_t rfc_config = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    rfc_config.wei_rfc_mask = 0;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -980,6 +988,21 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     return 0;
 }
 
+int wifidb_get_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_info)
+{
+    return 0;
+}
+
+int wifidb_update_wei_rfc_config(wei_rfc_dml_parameters_t *rfc_param)
+{
+    return 0;
+}
+
+void wifidb_init_wei_rfc_config_default(wei_rfc_dml_parameters_t *config)
+{
+    memset(config, 0, sizeof(wei_rfc_dml_parameters_t));
+}
+
 int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)
 {
    return 0;
@@ -1004,6 +1027,13 @@ int get_all_param_from_psm_and_set_into_db(void)
 {
    return 0;
 }
+
+int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
+    rdk_wifi_vap_info_t *rdk_config)
+{
+    return 0;
+}
+
 #endif
 
 void wifidb_init(wifi_db_t *db)

@@ -18,22 +18,28 @@
 # limitations under the License.
 #
 """Convert a git-clang-format unified diff (read from stdin) into GitHub PR review
-suggestions, scoped to lines the PR actually changed.
+suggestions, scoped to lines the PR actually changed. A suggestion that only moves line
+breaks, with no line over LINE_LIMIT, is not posted (see reflow_only).
 
-Writes two files consumed by the pr-comments.yml `format` job:
-  /tmp/comments.json  - the (capped) list of review comments
-  /tmp/review.json    - the full review payload for POST .../pulls/{n}/reviews
+Writes one candidate-JSON file (default /tmp/fmt-candidates.json) consumed by
+review_poster.py, which owns dedup, the cap and the posting:
+  {"source": "formatter", "status": "ok", "dropped": N, "comments": [ ... ]}
 
 Environment:
-  HEAD_SHA            required - commit the review is posted against.
-  MAX_COMMENTS        optional - cap on comments per review (default 25). Large
-                      reviews trigger GitHub rate limiting and fail as a misleading
-                      404 error.
   CHANGED_LINES_FILE  optional - path to a file listing the PR's changed lines
                       (format: "path:start-end" per line, new-side line numbers).
                       When present, suggestions that target only lines the PR did
                       NOT change are dropped. When absent or unparseable, all
                       suggestions are kept (fail-open, same as before this filter).
+  CANDIDATES_OUT      optional - output path for the candidate JSON
+                      (default /tmp/fmt-candidates.json).
+  DELETED_LINES_FILE  optional - "path:N" per line: the PR deleted lines that GitHub
+                      shows right after new-side line N. A suggestion with such lines
+                      inside its range is dropped: GitHub cannot apply it ("Applying
+                      suggestions on deleted lines is currently not supported").
+                      Absent or unparseable: no suggestion is dropped for this.
+  GITHUB_REPOSITORY,  set by Actions; link CODE_STYLE.md in the line above each
+  GITHUB_SERVER_URL   suggestion box (see intro).
 
 Line scoping rationale: git-clang-format can reformat lines adjacent to the
 actual change. The primary mechanism (verified in git_clang_format 18.1.8,
@@ -73,6 +79,7 @@ HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 # itself contain ':' (legal on POSIX). A greedy '.+' with the anchored numeric
 # tail backtracks to the right delimiter; '[^:]+' would drop colon-in-path files.
 CHANGED_LINE = re.compile(r"^(.+):(\d+)-(\d+)$")
+DELETED_AT = re.compile(r"^(.+):(\d+)$")
 
 # Upper bound on records loaded from CHANGED_LINES_FILE. That file is a stage-1
 # artifact built over untrusted fork PR code (clang-format.yml runs on
@@ -103,6 +110,75 @@ MAX_FILE_BYTES = 64 * 1024 * 1024
 # which the pr-comments.yml handler absorbs as an advisory. Set to 0 to recover strict
 # containment-in-changed-lines.
 DIFF_CONTEXT = 3
+
+# The line length in CODE_STYLE.md, also .clang-format's ColumnLimit: change all three together.
+LINE_LIMIT = 120
+
+
+def _split_gaps(text):
+    """(non-whitespace characters, whitespace runs): runs[0] leads, runs[i] follows the i-th character."""
+    parts = re.split(r"(\S)", text)
+    return parts[1::2], parts[0::2]
+
+
+# A wrapped statement may break after these; any other break at depth 0 is structural.
+WRAP_AFTER = set("=+-/%|&^?<>,")
+
+
+def _depth_after(chars):
+    """Parenthesis/bracket depth after each character, string and char literals skipped."""
+    depths, depth, quote, escaped = [], 0, None, False
+    for char in chars:
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char in "\"'":
+            quote = char
+        elif char in "([":
+            depth += 1
+        elif char in ")]":
+            depth -= 1
+        depths.append(depth)
+    return depths
+
+
+def _wrap_break(chars, depths, idx):
+    """A break after chars[idx] that only wraps a statement: inside parentheses or brackets, after
+    an operator, or before a member access (`.`, `->`). Never next to a brace, or where a
+    statement or control header ends: those are CODE_STYLE.md's brace and one-statement-per-line
+    rules."""
+    after = "".join(chars[idx + 1:idx + 3])
+    if chars[idx] in "{}" or after[:1] in "{}":
+        return False
+    member = after[:1] == "." or after == "->"
+    return depths[idx] > 0 or chars[idx] in WRAP_AFTER or member
+
+
+def reflow_only(removed, added):
+    """True when a suggestion only moves line breaks that wrap a statement, and no current line is
+    over LINE_LIMIT: clang-format joining lines to fill up to the limit, or wrapping a line that
+    already fits. Any other whitespace change (spacing, indentation, blank lines, a brace or a
+    statement moving to or from its own line) keeps the suggestion."""
+    if not removed or max(len(line.expandtabs(8)) for line in removed) > LINE_LIMIT:
+        return False
+    old_chars, old_gaps = _split_gaps("".join(line + "\n" for line in removed))
+    new_chars, new_gaps = _split_gaps("".join(line + "\n" for line in added))
+    if old_chars != new_chars or old_gaps[0] != new_gaps[0]:
+        return False
+    depths = _depth_after(old_chars)
+    moved = False
+    for idx, (old, new) in enumerate(zip(old_gaps[1:], new_gaps[1:])):
+        if {old.count("\n"), new.count("\n")} == {0, 1}:
+            if not _wrap_break(old_chars, depths, idx):
+                return False
+            moved = True
+        elif old != new:
+            return False
+    return moved
 
 
 def load_changed_lines(path):
@@ -147,6 +223,32 @@ def load_changed_lines(path):
     except (OSError, ValueError) as exc:
         print(f"::warning::Could not load changed-lines file {path}: {exc} "
               "(posting unfiltered)", file=sys.stderr)
+        return None
+
+
+def load_deleted_lines(path):
+    """Load {file: [N, ...]} from a deleted-lines file ("path:N", see DELETED_LINES_FILE).
+    Same bounds as load_changed_lines; returns None on any error (nothing is dropped)."""
+    try:
+        deleted, records = {}, 0
+        with open(path) as fh:
+            if os.fstat(fh.fileno()).st_size > MAX_FILE_BYTES:
+                raise ValueError(f"deleted-lines file exceeds {MAX_FILE_BYTES} bytes")
+            for raw in fh:
+                line = raw.strip()
+                if not line:
+                    continue
+                hit = DELETED_AT.match(line)
+                if not hit:
+                    raise ValueError(f"unparseable deleted-lines record: {line!r}")
+                records += 1
+                if records > MAX_CHANGED_RECORDS:
+                    raise ValueError(f"deleted-lines file exceeds {MAX_CHANGED_RECORDS} records")
+                deleted.setdefault(hit.group(1), []).append(int(hit.group(2)))
+        return deleted
+    except (OSError, ValueError) as exc:
+        print(f"::warning::Could not load deleted-lines file {path}: {exc} "
+              "(not dropping suggestions over deleted lines)", file=sys.stderr)
         return None
 
 
@@ -195,6 +297,8 @@ def parse(diff_text):
             "body": body,
             "line": start + len(removed) - 1,
         }
+        if reflow_only(removed, added):
+            c["reflow"] = True
         if len(removed) > 1:
             c["start_line"] = start
             c["start_side"] = "RIGHT"
@@ -231,6 +335,15 @@ def parse(diff_text):
     return comments
 
 
+def intro():
+    """The line above every suggestion box: a bare box did not say what it is or what to do."""
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    style = f"[CODE_STYLE.md]({server}/{repo}/blob/HEAD/CODE_STYLE.md)" if repo else "CODE_STYLE.md"
+    return (f"**Code style:** you are asked to fix formatting of lines you changed (see {style}). "
+            "As with Copilot review, clicking 'Apply suggestion' will commit it.")
+
+
 def main():
     comments = parse(sys.stdin.read())
     raw_total = len(comments)
@@ -238,6 +351,7 @@ def main():
     # Line-scope: drop suggestions that target only lines the PR didn't change.
     cl_path = os.environ.get("CHANGED_LINES_FILE", "")
     changed = load_changed_lines(cl_path) if cl_path else None
+    dropped = 0
     if changed is not None:
         # Precompute the commentable region (changed lines grown by DIFF_CONTEXT, merged)
         # once per file; the raw changed intervals stay for the relevance test below.
@@ -265,33 +379,46 @@ def main():
         if dropped:
             print(f"Line-scoping: dropped {dropped} suggestion(s) off the PR's changed/commentable lines")
 
-    total = len(comments)
-    cap = int(os.environ.get("MAX_COMMENTS", "25"))
-    if total > cap:
-        comments = comments[:cap]
-    with open("/tmp/comments.json", "w") as fh:
-        json.dump(comments, fh)
+    # GitHub cannot apply a suggestion whose range has PR-deleted lines shown inside it, so
+    # its button would only ever fail. Logged, not counted in `dropped` (not commentable).
+    dl_path = os.environ.get("DELETED_LINES_FILE", "")
+    deleted = load_deleted_lines(dl_path) if dl_path and os.path.exists(dl_path) else None
+    if deleted:
+        def spans_deletion(comment):
+            start = comment.get("start_line", comment["line"])
+            return any(start <= after < comment["line"] for after in deleted.get(comment["path"], ()))
+        over_deleted = sum(1 for comment in comments if spans_deletion(comment))
+        comments = [comment for comment in comments if not spans_deletion(comment)]
+        if over_deleted:
+            print(f"Deleted lines: dropped {over_deleted} suggestion(s) with a line the PR deleted "
+                  "inside their range (GitHub cannot apply those)")
 
-    body = ("`clang-format` suggests the formatting changes below. "
-            "Use **Commit suggestion** to apply them.")
-    if total > cap:
-        body += (f"\n\n> **Note:** showing the first {cap} of {total} suggestions. "
-                 "Apply these and push, and the rest post on the next run — "
-                 "or fix them all at once locally:\n"
-                 "> ```\n"
-                 "> pip install clang-format==18.1.8\n"
-                 "> git-clang-format --style=file --extensions c,h,cpp <merge-base>\n"
-                 "> ```")
-    review = {
-        "commit_id": os.environ["HEAD_SHA"],
-        "event": "COMMENT",
-        "body": body,
+    # Where a statement breaks within the limit is the author's call (CODE_STYLE.md), so a
+    # suggestion that only moves line breaks is not posted. Logged, not counted in `dropped`
+    # (which the summary reads as "not commentable").
+    reflows = sum(1 for comment in comments if comment.get("reflow"))
+    comments = [comment for comment in comments if not comment.pop("reflow", False)]
+    if reflows:
+        print(f"Reflow: dropped {reflows} suggestion(s) that only move line breaks "
+              f"(no line over {LINE_LIMIT})")
+
+    for comment in comments:
+        comment["body"] = intro() + "\n\n" + comment["body"]
+
+    # Emit the shared-poster candidate envelope. review_poster.py owns the cap,
+    # dedup and posting; this script only produces findings. A
+    # missing clang-format diff genuinely means "clean" -> status ok, 0 comments.
+    out = {
+        "source": "formatter",
+        "status": "ok",
+        "dropped": dropped,
         "comments": comments,
     }
-    with open("/tmp/review.json", "w") as fh:
-        json.dump(review, fh)
-    print(f"{raw_total} suggestion(s) parsed, {total} after line-scoping; "
-          f"prepared {len(comments)} to post")
+    out_path = os.environ.get("CANDIDATES_OUT", "/tmp/fmt-candidates.json")
+    with open(out_path, "w") as fh:
+        json.dump(out, fh)
+    print(f"{raw_total} suggestion(s) parsed, {len(comments)} candidate(s) "
+          f"({dropped} dropped) -> {out_path}")
 
 
 if __name__ == "__main__":

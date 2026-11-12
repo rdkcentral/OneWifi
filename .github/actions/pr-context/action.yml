@@ -3,7 +3,8 @@ description: >
   Stage-2 helper for the build-check workflow_run (adding comments part). Downloads a
   named artifact produced by the triggering stage-1 run, STRICTLY validates its
   pr-meta.env, binds the recorded PR number back to the triggering run's head
-  repo/branch (values a fork cannot forge), and re-checks head-sha freshness.
+  repo/branch and the recorded head sha to the commit that run built (values a
+  fork cannot forge), and re-checks head-sha freshness.
   No check-out or executing PR code. It only reads the artifact as passive
   data. Every stage-2 posting job (clang-format / build / clang-tidy) pipes its
   trust decision through this one action, so the security-critical logic lives in
@@ -27,6 +28,9 @@ inputs:
     required: true
   expected-branch:
     description: 'github.event.workflow_run.head_branch.'
+    required: true
+  expected-sha:
+    description: 'github.event.workflow_run.head_sha (the PR head commit the stage-1 run built).'
     required: true
 
 outputs:
@@ -68,17 +72,39 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         DL_OUTCOME: ${{ steps.dl.outcome }}
         ART_DIR: ${{ inputs.artifact-name }}
+        RUN_ID: ${{ inputs.run-id }}
         REPO: ${{ inputs.repository }}
         EXPECTED_REPO: ${{ inputs.expected-repo }}
         EXPECTED_BRANCH: ${{ inputs.expected-branch }}
+        EXPECTED_SHA: ${{ inputs.expected-sha }}
       run: |
-        # No `-e`: this script drives its own control flow and fails CLOSED with
-        # explicit exits. Pipefail so a failed producer in a pipe is not masked.
+        # The runner adds `-e` (bash -eo pipefail): every expected failure below is a
+        # tested command, and the script fails CLOSED with explicit exits.
         set -uo pipefail
         found=false; fresh=false; pr_number=; head_sha=
 
         if [ "$DL_OUTCOME" != "success" ]; then
-          echo "No '$ART_DIR' artifact on the triggering run — nothing to post for this job."
+          # Ask the run why: the artifact may have expired (retention-days: 1, e.g. a
+          # manual re-dispatch a day later), never been uploaded (that leg failed
+          # first), or the download itself failed. Only the first is fixed by a re-run.
+          wf='the stage-1 workflow'; age=0
+          if run_info="$(gh api "/repos/$REPO/actions/runs/$RUN_ID" --jq '[.name, .updated_at] | @tsv' 2>/dev/null)"; then
+            wf="${run_info%%$'\t'*}"
+            if updated="$(date -d "${run_info#*$'\t'}" +%s 2>/dev/null)"; then age=$(( $(date +%s) - updated )); fi
+          fi
+          if ! state="$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts?name=$ART_DIR" \
+                 --jq 'if (.artifacts | length) == 0 then "missing" elif all(.artifacts[]; .expired) then "expired" else "present" end' 2>/dev/null)"; then
+            state=unknown
+          fi
+          # GitHub stops listing expired artifacts after a while: an empty list on a run
+          # older than the retention period means expired, not "never uploaded".
+          if [ "$state" = missing ] && [ "$age" -gt 86400 ]; then state=expired; fi
+          case "$state" in
+            expired) echo "::notice::Stage-1 artifact '$ART_DIR' has expired (retention-days: 1). Re-run \"$wf\" on this PR to regenerate it, then re-post. Nothing posted this run." ;;
+            missing) echo "No '$ART_DIR' artifact on the triggering run (that job did not upload it) — nothing to post for this job." ;;
+            present) echo "::warning::Stage-1 artifact '$ART_DIR' exists but could not be downloaded; re-run this workflow. Nothing posted this run." ;;
+            *)       echo "::warning::Stage-1 artifact '$ART_DIR' could not be downloaded, and the run's artifact list could not be read. Nothing posted this run." ;;
+          esac
         else
           META="$ART_DIR/pr-meta.env"
           if [ ! -f "$META" ]; then
@@ -93,6 +119,13 @@ runs:
           head_sha="$(grep -oP '^head_sha=\K[0-9a-f]{40}$' "$META" | head -1 || true)"
           if [ -z "$pr_number" ] || [ -z "$head_sha" ]; then
             echo "::error::Malformed pr-meta.env in '$ART_DIR'; refusing to continue."
+            exit 1
+          fi
+          # The recorded sha must be the commit the triggering run built (GitHub records
+          # it). Otherwise a PR could name a later commit it has not pushed yet, and once
+          # pushed, this older run would pass the freshness check below.
+          if [ "$head_sha" != "$EXPECTED_SHA" ]; then
+            echo "::error::pr-meta.env in '$ART_DIR' names $head_sha, but the triggering run built '$EXPECTED_SHA'; refusing."
             exit 1
           fi
 

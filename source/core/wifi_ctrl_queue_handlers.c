@@ -34,6 +34,7 @@
 #include "run_qmgr.h"
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
 #define MAX_VAP_INDEX 24
+#define ANQP_HS2_MIN_LEN 6
 
 #define CHAN_UTIL_INTERVAL_MS 900000 // 15 mins
 #define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour
@@ -392,16 +393,30 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
     bool first = true;
     unsigned short *query_list_id;
     unsigned char *buff, *query_list_hs_id;
+    unsigned char *end = attrib + len;
 
     buff = attrib;
 
     while (buff < (attrib+len))
     {
+        if ((size_t)(end - buff) < sizeof(wifi_anqp_element_format_t)) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse ANQP element\n", __func__, __LINE__);
+            break;
+        }
         anqp_info = (wifi_anqp_element_format_t *)buff;
+
+        if (anqp_info->len > (size_t)(end - buff) - sizeof(wifi_anqp_element_format_t)) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse ANQP element\n", __func__, __LINE__);
+            break;
+        }
 
         if (anqp_info->info_id == wifi_anqp_element_name_vendor_specific)
         {
             anqp_hs_2_info = (wifi_hs_2_anqp_element_format_t *)buff;
+            if (anqp_hs_2_info->len < ANQP_HS2_MIN_LEN) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse HS2.0 element\n", __func__, __LINE__);
+                break;
+            }
 
             if (memcmp(anqp_hs_2_info->oi, wfa_oui, sizeof(wfa_oui)) != 0)
             {
@@ -412,8 +427,10 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
             anqp_hs_2_queries_len = anqp_hs_2_info->len - 6;//wifi_oui(3) + Type(1) + SubType(1) + Reserved (1)
             query_list_hs_id = anqp_hs_2_info->payload;
 
-            while (anqp_hs_2_queries_len)
-            {
+            while (anqp_hs_2_queries_len > 0) {
+                if (query_list_hs_id >= end) {
+                    break;
+                }
 
                 tmp = (wifi_anqp_node_t *)malloc(sizeof(wifi_anqp_node_t));
                 memset((unsigned char *)tmp, 0, sizeof(wifi_anqp_node_t));
@@ -446,12 +463,20 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
         }
         else if (anqp_info->info_id == wifi_anqp_element_name_query_list)
         {
+            if (anqp_info->len % sizeof(unsigned short) != 0) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to parse ANQP query list\n", __func__, __LINE__);
+                break;
+            }
             anqp_queries_len = anqp_info->len;
 
             query_list_id = (unsigned short *)anqp_info->info;
 
             while (anqp_queries_len > 0)
             {
+                if ((size_t)(end - (unsigned char *)query_list_id) < sizeof(unsigned short)) {
+                    break;
+                }
+
                 tmp = (wifi_anqp_node_t *)malloc(sizeof(wifi_anqp_node_t));
                 memset((unsigned char *)tmp, 0, sizeof(wifi_anqp_node_t));
 
@@ -480,7 +505,7 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
                 query_list_id++;
             }
 
-            buff = (unsigned char *)query_list_id;
+            buff += sizeof(wifi_anqp_element_format_t) + anqp_info->len;
         }
         else
         {
@@ -3097,27 +3122,6 @@ void process_multiap_rfc(bool type)
     return;
 }
 
-void process_link_quality_rfc(int type)
-{
-    wifi_util_info_print(WIFI_CTRL, "WIFI Enter RFC Func %s: %d : int %d\n", __func__, __LINE__,
-        type);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
-    if (rfc_param == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
-        return;
-    }
-    /* Write rfc_dml_parameters directly so get_ctrl_rfc_parameters() sees the new
-     * mask immediately — before the async OVSDB callback fires. */
-    wifi_rfc_dml_parameters_t *db_rfc = get_wifi_db_rfc_parameters();
-    if (db_rfc != NULL)
-        db_rfc->wei_rfc_mask = type;
-    rfc_param->wei_rfc_mask = type;
-    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
-    wifi_util_info_print(WIFI_CTRL, "%s:%d wei_rfc_mask updated to 0x%x\n", __func__, __LINE__,
-        rfc_param->wei_rfc_mask);
-    return;
-}
-
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -3350,7 +3354,7 @@ void process_device_mode_command_event(int device_mode)
         global_param->device_network_mode = device_mode;
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
-        if (device_mode == rdk_dev_mode_type_ext) {
+        if (device_mode == rdk_dev_mode_type_ext || device_mode == rdk_dev_mode_type_em_node) {
             if (rfc_param->multiap_rfc) {
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
             }
@@ -3360,7 +3364,8 @@ void process_device_mode_command_event(int device_mode)
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
-        } else if (device_mode == rdk_dev_mode_type_gw) {
+        } else if (device_mode == rdk_dev_mode_type_gw ||
+            device_mode == rdk_dev_mode_type_em_colocated_node) {
             if (rfc_param->multiap_rfc && is_device_type_xle()) {
                 apps_mgr_multiap_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
             }
@@ -4221,7 +4226,7 @@ static void process_monitor_init_command(void)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-#if defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_MERCURY_PRODUCT_REQ_)
             if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
                 push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
@@ -4552,10 +4557,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_csi_analytics_rfc:
         process_csi_analytics_rfc(*(bool *)data);
         break;
-    case wifi_event_type_wei_rfc_mask:
-        process_link_quality_rfc(*(int *)data);
+    case wifi_event_type_wei_rfc_config:
+        process_wei_rfc_config_update((wei_rfc_field_update_t *)data);
         break;
-    
     case wifi_event_type_xfi_tel_enable_rfc:
         process_xfi_tel_enable_rfc(*(bool *)data);
         break;
