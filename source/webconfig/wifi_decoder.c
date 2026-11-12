@@ -3636,10 +3636,10 @@ static client_state_t get_client_state_for_assoclist(assoclist_type_t assoclist_
 static hash_map_t *get_assoc_devices_map_for_decode(rdk_wifi_vap_info_t *rdk_vap_info,
     assoclist_type_t assoclist_type)
 {
-    if (rdk_vap_info->associated_devices_map == NULL) {
-        rdk_vap_info->associated_devices_map = hash_map_create();
-    }
     if (assoclist_type == assoclist_type_full) {
+        if (rdk_vap_info->associated_devices_map == NULL) {
+            rdk_vap_info->associated_devices_map = hash_map_create();
+        }
         return rdk_vap_info->associated_devices_map;
     }
 

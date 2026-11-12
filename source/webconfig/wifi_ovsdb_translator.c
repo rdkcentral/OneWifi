@@ -3309,12 +3309,20 @@ webconfig_error_t assoclist_update_assoc_map(rdk_wifi_vap_info_t *rdk_vap_info)
     assoc_dev_data_t *diff_assoc_dev_data = NULL, *temp_assoc_dev_data = NULL;
     mac_addr_str_t diff_mac_str;
 
-    current_assoc_map = rdk_vap_info->associated_devices_map;
     diff_assoc_map = rdk_vap_info->associated_devices_diff_map;
-
-    if ((current_assoc_map == NULL) || (diff_assoc_map == NULL)) {
+    if (diff_assoc_map == NULL) {
         return webconfig_error_none;
     }
+
+    if (rdk_vap_info->associated_devices_map == NULL) {
+        rdk_vap_info->associated_devices_map = hash_map_create();
+        if (rdk_vap_info->associated_devices_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: assoc map create failed for index : %d\n",
+                __func__, __LINE__, rdk_vap_info->vap_index);
+            return webconfig_error_translate_to_ovsdb;
+        }
+    }
+    current_assoc_map = rdk_vap_info->associated_devices_map;
 
     diff_assoc_dev_data = hash_map_get_first(diff_assoc_map);
     while (diff_assoc_dev_data != NULL) {
