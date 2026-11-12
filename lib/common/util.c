@@ -1149,6 +1149,9 @@ const int *unii_5g_chan2list(int chan, int width)
     const int *start;
     const int *p;
 
+    if (width <= 0)
+        return NULL;
+
     for (p = lists; *p != -1; p++)
         if (*p == width)
             for (start = ++p; *p; p++)
