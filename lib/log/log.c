@@ -464,7 +464,7 @@ void log_meminfo(char *str, int size, int pos, const char *str_prefix, const cha
     int vmsize = 0, vmdata = 0, vmrss = 0;
     int d_size = 0, d_data = 0, d_rss = 0;
 
-    if (pos >= size) return;
+    if (pos < 0 || pos >= size) return;
     str += pos;
     size -= pos;
 

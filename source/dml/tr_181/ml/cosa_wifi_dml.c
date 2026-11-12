@@ -3835,8 +3835,13 @@ Radio_SetParamUlongValue
          */
         if (tmpGuardInterval != wifi_guard_interval_auto) {
             wifi_ieee80211Variant_t variant = wifiRadioOperParam->variant;
-            bool is_eht_he = (variant & WIFI_80211_VARIANT_BE) || (variant & WIFI_80211_VARIANT_AX);
-            bool is_vht_ht = (variant & WIFI_80211_VARIANT_AC) || (variant & WIFI_80211_VARIANT_N);
+            bool is_eht_he = (bool)(variant & WIFI_80211_VARIANT_AX);
+#ifdef CONFIG_IEEE80211BE
+            if (!is_eht_he) {
+                is_eht_he = (bool)(variant & WIFI_80211_VARIANT_BE);
+            }
+#endif /* CONFIG_IEEE80211BE */
+            bool is_vht_ht = (bool)(variant & (WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_N));
 
             if (is_eht_he && (tmpGuardInterval == wifi_guard_interval_400)) {
                 /* EHT/HE: 800ns, 1600ns, 3200ns only */
@@ -9313,7 +9318,7 @@ Security_SetParamStringValue
                 break;
             case wifi_security_mode_wpa2_personal:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk;
-                l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 /* Preserve AES/AES+TKIP and normalize invalid carry-over values. */
                 apply_wpa2_personal_encr_policy(l_security_cfg);
                 break;
