@@ -2033,6 +2033,8 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
     mac_addr_str_t new_mac_str;
     int ret = RETURN_OK;
     char macfilterkey[128];
+    bool hal_owned_by_em = false;
+    bool acl_cleared = false;
 
     memset(macfilterkey, 0, sizeof(macfilterkey));
 
@@ -2061,6 +2063,12 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 continue;
             }
 
+            /* The EasyMesh controller owns this HAL ACL (see cacr_set_client_acl_rules) and its
+             * requests do not reach the stored map, so applying the map to the HAL could undo a
+             * BLOCK or drop an approved child: keep only the cache and DB bookkeeping */
+            hal_owned_by_em = is_bh_acl_owned_by_em(current_config->vap_index);
+            acl_cleared = false;
+
             if(current_config->is_mac_filter_initialized == true)  {
                 if (current_config->acl_map != NULL) {
                     current_acl_entry = hash_map_get_first(current_config->acl_map);
@@ -2068,11 +2076,13 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         to_mac_str(current_acl_entry->mac, current_mac_str);
                         str_tolower(current_mac_str);
                         if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
-                            wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
+                            if (!hal_owned_by_em) {
+                                wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
+                            }
 #ifdef NL80211_ACL
-                        if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                        if (!hal_owned_by_em && wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #else
-                            if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                            if (!hal_owned_by_em && wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
 #endif
                                 wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                                         __func__, __LINE__, vap_index, current_mac_str);
@@ -2095,7 +2105,14 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 }
             } else {
 #ifdef NL80211_ACL
-                wifi_hal_delApAclDevices(vap_index);
+#ifdef EM_APP
+                /* Wipe and controller replay as one step against a concurrent controller ACL
+                 * request */
+                em_reset_bh_acl(current_config->vap_index);
+#else
+                wifi_hal_delApAclDevices(current_config->vap_index);
+#endif
+                acl_cleared = true;
 #else
         wifi_delApAclDevices(vap_index);
 #endif
@@ -2112,11 +2129,13 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                     str_tolower(new_mac_str);
                     acl_entry_t *check_acl_entry = hash_map_get(current_config->acl_map, new_mac_str);
                     if (check_acl_entry == NULL) { //mac is in new_config but not in running config need to update HAL
-                        wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, new_mac_str, current_config->vap_index);
+                        if (!hal_owned_by_em) {
+                            wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, new_mac_str, current_config->vap_index);
+                        }
 #ifdef NL80211_ACL
-                        if (wifi_hal_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
+                        if (!hal_owned_by_em && wifi_hal_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
 #else
-                        if (wifi_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
+                        if (!hal_owned_by_em && wifi_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
 #endif
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                                     __func__, __LINE__, vap_index, new_mac_str);
@@ -2142,6 +2161,14 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                     new_acl_entry = hash_map_get_next(new_config->acl_map, new_acl_entry);
                 }
             }
+
+#ifdef NL80211_ACL
+            /* After a wipe the new list is complete only now: disconnect the STAs a whitelist no
+             * longer admits. em_reset_bh_acl() already did it for a VAP the controller owns. */
+            if (acl_cleared && !hal_owned_by_em) {
+                (void)wifi_hal_kickApAclUnlistedDevices(current_config->vap_index);
+            }
+#endif
         }
     }
 
