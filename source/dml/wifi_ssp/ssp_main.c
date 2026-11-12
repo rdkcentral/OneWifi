@@ -717,8 +717,6 @@ void *ssp_func(void *arg)
 
 int start_dml_main(wifi_ssp_t *ssp)
 {
-    wifi_ctrl_t *ctrl =  NULL;
-
     if (pthread_create(&ssp->tid, NULL, ssp_func, ssp) != 0) {
         wifi_util_error_print(WIFI_MGR,"%s:%d:ssp_main create failed\n", __func__, __LINE__);
         return -1;
@@ -726,10 +724,15 @@ int start_dml_main(wifi_ssp_t *ssp)
 
     wifi_util_info_print(WIFI_MGR,"%s:%d:ssp_main thread started\n", __func__, __LINE__);
 
+/* Skip WFA Data Elements schema parsing in Easy Mesh builds;
+   the Easy Mesh Controller handles this. */
+#ifndef EASY_MESH_NODE
+    wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_DMCLI, "%s:%d: Parsing WFA Data Elements schema: %s\n", 
                          __func__, __LINE__, BUS_WFA_DML_CONFIG_FILE);
     parse_and_register_wfa_schema(&ctrl->handle, BUS_WFA_DML_CONFIG_FILE);
+#endif
 
     return 0;
 }

@@ -119,9 +119,9 @@ void device_statistics_info(analytics_data_t *data)
     if ((data->minutes_alive % 60) == 0) {
         // print time of day every hour
         get_formatted_time(tm_str);
-        sprintf(temp_str, "utc:%s user:%f system:%f", tm_str, user, system);
+        snprintf(temp_str, sizeof(temp_str), "utc:%s user:%f system:%f", tm_str, user, system);
     } else {
-        sprintf(temp_str, "minutes:%d user:%f system:%f", data->minutes_alive, user, system);
+        snprintf(temp_str, sizeof(temp_str), "minutes:%u user:%f system:%f", data->minutes_alive, user, system);
     }
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, "keep-alive", temp_str);
 
@@ -134,7 +134,7 @@ void device_statistics_info(analytics_data_t *data)
         memset(&radio_stats, 0, sizeof(radio_stats));
         memset(temp_str, 0, sizeof(temp_str));
         if (get_dev_stats_for_radio(radio_index, (radio_data_t *)&radio_stats) == RETURN_OK) {
-            sprintf(temp_str, "Radio%d_Stats channel: %d bw:%s noise_floor:%d channel_util:%d channel_interference:%d", radio_index,
+            snprintf(temp_str, sizeof(temp_str), "Radio%u_Stats channel:%d bw:%s noise_floor:%d channel_util:%d channel_interference:%d", radio_index,
                        radio_stats.primary_radio_channel, radio_stats.channel_bandwidth, radio_stats.NoiseFloor, radio_stats.channelUtil, radio_stats.channelInterference);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "radio_stats", temp_str);
         }
@@ -150,10 +150,10 @@ void device_statistics_info(analytics_data_t *data)
         if (sta_data != NULL) {
             dev_stats = &sta_data->dev_stats;
             to_mac_str(sta_info->sta_mac, client_mac);
-            sprintf(sta_stats_str, "rssi:%ddbm good/bad rssi:%d/%d rapid reconnects:%d vap index:%d",
+            snprintf(sta_stats_str, sizeof(sta_stats_str), "rssi:%ddbm good/bad rssi:%d/%d rapid reconnects:%d vap index:%u",
                                dev_stats->cli_RSSI, sta_data->good_rssi_time, sta_data->bad_rssi_time,
                                sta_data->rapid_reconnects, sta_info->ap_index);
-            sprintf(temp_str, "\"%s\"", client_mac);
+            snprintf(temp_str, sizeof(temp_str), "\"%s\"", client_mac);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_generic, temp_str, "CORE", "stats", sta_stats_str);
         }
         sta_info = hash_map_get_next(sta_map, sta_info);
