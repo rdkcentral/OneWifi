@@ -700,8 +700,8 @@ bool parse_uri(char *uri, char *proto, size_t proto_size, char *host, size_t hos
     pstr  = strtok_r(NULL, ":", &sptr);
     if (pstr) tport = atoi(pstr);
 
-    if (   strcmp(tproto, "ssl")
-        && strcmp(tproto, "tcp"))
+    if (!tproto || (strcmp(tproto, "ssl") && strcmp(tproto, "tcp")))
+
     {
         LOGE("URI %s proto not supported (Only ssl and tcp)", uri);
         return false;
