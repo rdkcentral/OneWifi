@@ -997,6 +997,18 @@ ANSC_STATUS wifiApIsSecmodeOpenForPrivateAP(UINT vapIndex)
     wifi_vap_info_t *wifiVapInfo = NULL;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s for vapIndex: %d\n", __FUNCTION__, vapIndex);
 
+#ifdef UWM_CTRL_WPS_SUPPORT
+    // WPS is supported on private APs and dedicated onboarding APs.
+    if (isVapPrivate(vapIndex) != TRUE &&
+        !is_vap_onboarding(get_wifi_hal_cap_prop(), vapIndex))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s VapIndex %d is not WPS-capable VAP\n", __FUNCTION__, vapIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    wifiVapInfo = is_vap_onboarding(get_wifi_hal_cap_prop(), vapIndex) ?
+        get_dml_cache_vap_info(vapIndex) : getVapInfo(vapIndex);
+#else
     //Check is the Vap is private
     if(isVapPrivate(vapIndex) != TRUE)
     {
@@ -1005,6 +1017,7 @@ ANSC_STATUS wifiApIsSecmodeOpenForPrivateAP(UINT vapIndex)
     }
 
     wifiVapInfo = getVapInfo(vapIndex);
+#endif /* UWM_CTRL_WPS_SUPPORT */
     if (wifiVapInfo == NULL)
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Unable to get VAP info for vapIndex : %d\n", __FUNCTION__, vapIndex));

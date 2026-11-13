@@ -26,6 +26,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <time.h>
+#ifdef UWM_CTRL_WPS_SUPPORT
+#include <sys/random.h>
+#endif
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -2347,3 +2351,44 @@ int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_conf
     }
     return RETURN_OK;
 }
+
+#ifdef UWM_CTRL_WPS_SUPPORT
+/*
+ * Lives in libwifi_utils (linked by the OneWifi daemon). WPS still pushes
+ * the real mesh backhaul credentials to the enrollee; this key only
+ * satisfies WPA2-Personal on the temporary registrar BSS.
+ */
+void wifi_fill_onboarding_psk(char *key, size_t key_len)
+{
+    static char cached[33];
+    static int ready;
+    unsigned char rnd[16];
+    size_t i;
+
+    if (key == NULL || key_len == 0) {
+        return;
+    }
+
+    if (!ready) {
+        if (getrandom(rnd, sizeof(rnd), 0) != (ssize_t)sizeof(rnd)) {
+            int fd = open("/dev/urandom", O_RDONLY);
+            if (fd < 0 || read(fd, rnd, sizeof(rnd)) != (ssize_t)sizeof(rnd)) {
+                unsigned long mix = (unsigned long)time(NULL) ^ (unsigned long)getpid();
+                for (i = 0; i < sizeof(rnd); i++) {
+                    mix = mix * 1103515245UL + 12345UL;
+                    rnd[i] = (unsigned char)(mix >> 16);
+                }
+            }
+            if (fd >= 0) {
+                close(fd);
+            }
+        }
+        for (i = 0; i < sizeof(rnd); i++) {
+            snprintf(&cached[i * 2], 3, "%02x", rnd[i]);
+        }
+        ready = 1;
+    }
+
+    snprintf(key, key_len, "%s", cached);
+}
+#endif /* UWM_CTRL_WPS_SUPPORT */
