@@ -100,17 +100,23 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
-#if defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_)
-            cfg.variant |= WIFI_80211_VARIANT_BE;
+#if defined(_SCER11BEL_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_)
+            cfg.variant |= WIFI_80211_VARIANT_AX;
+#endif /*defined(_SCER11BEL_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_)*/
+#if defined(CONFIG_IEEE80211AX) && (defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT))
+            cfg.variant |= WIFI_80211_VARIANT_AX;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
-#endif /* defined(CONFIG_IEEE80211BE) && defined(_PLATFORM_BANANAPI_R4_) */
+#ifdef CONFIG_IEEE80211BE
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* CONFIG_IEEE80211BE */
+#endif /* CONFIG_IEEE80211AX && (_PLATFORM_BANANAPI_R4_ || QCOM_ATH12K_PORT) */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg.operatingClass = 128;
             cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_HUB4_PRODUCT_REQ_) && !defined (_SR213_PRODUCT_REQ_)
+#if defined(_HUB4_PRODUCT_REQ_) && !defined(_SR213_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
 #else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;

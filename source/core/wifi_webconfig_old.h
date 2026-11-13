@@ -21,7 +21,7 @@
 #ifndef _WIFI_WEBCONF_OLD_H_
 #define _WIFI_WEBCONF_OLD_H_
 
-#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#if defined(FEATURE_SUPPORT_WEBCONFIG)
 #include "webconfig_framework.h"
 #endif
 

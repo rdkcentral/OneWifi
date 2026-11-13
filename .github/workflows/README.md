@@ -67,9 +67,15 @@ for this to work.**
 **a) Formatter (clang-format)** — advisory, PR-changed-lines only. `clang-format.yml` runs
 `git-clang-format` over the PR's changed C/C++ lines and records a diff; `diff_to_suggestions.py` turns
 it into GitHub review `suggestion` blocks, dropping any suggestion outside the PR's actual changed
-lines (git-clang-format can reformat adjacent lines it didn't need to). It currently only posts
-suggestions — the `exit 1` that would fail the job is present but commented out, so this does
-**not** block merge today.
+lines (git-clang-format can reformat adjacent lines it didn't need to) and any that only re-wraps
+a statement while every line fits in 120 columns (clang-format refills a touched statement up to
+the limit; `CODE_STYLE.md` leaves line breaks within the limit to the author). Brace placement and
+one statement per line still post. A suggestion whose range has a line the PR deleted inside
+it is dropped too: GitHub refuses to apply those ("Applying suggestions on deleted lines is
+currently not supported"); stage 1 records where the PR deleted lines in `deleted-lines.txt`.
+Each suggestion box comes with one line of text above it (what to do, a link to
+`CODE_STYLE.md`, and that applying it commits it). It currently only posts suggestions — the `exit 1` that would fail the job is present
+but commented out, so this does **not** block merge today.
 
 **b) Tree-wide clean-baseline enforcement** — mixed gate/report, whole tree. The build runs with a
 Yocto-derived baseline (`-Wall -Wextra` plus explicit `-Wno-*` suppressions for known backlog
@@ -136,6 +142,20 @@ compiles, in a directory a leg already compiles from, is reported in the summary
 annotation: CI would never compile it. XB-only or feature-gated files are the legitimate exception,
 which a text check cannot tell apart, so it never fails the build.
 
+**h) Build failure attribution** — `build_attribution.py`, only when a leg's build step failed;
+never fails the build itself. It says whether this PR caused the failure. Tier 1 (both legs) guesses
+from each error path: a sibling tree the PR cannot edit points at the environment, a file the PR
+changed at the PR. Tier 2 (`bpi`, which has the compile DB) decides: it recompiles each failing
+object on the PR tree first (a failure that does not reproduce, say a compiler killed under the
+parallel build, is not judged), then reverts the PR in the working tree, recompiles on base sources
+and restores the tree; still failing means a dependency moved or develop was already broken,
+compiling means this PR, and a compiler killed or crashing gives no verdict. The recompile keeps
+the PR's flags and dependency trees, so tier 2 never clears a PR that changes build inputs
+(`build/`, the pins, the build workflow or its actions), nor a failure with an object it cannot
+judge (a renamed source, or a prerequisite make had no rule for). It runs after every other step that reads the PR tree. The summary shows bpi's verdict under
+its build (rpi's path guess only when bpi has no answer), and on a red build says whether develop's
+latest Build Check is red too.
+
 ## 4. Two-stage design (why, and how)
 
 Posting to a PR needs `pull-requests: write`. Building a PR's code means running a fork author's
@@ -146,7 +166,7 @@ makefiles/scripts. Doing both in one job is a classic "pwn-request." So the syst
         |
         v
  STAGE 1 (pull_request, untrusted PR code, NO write token)
-   clang-format.yml -> clang-format.diff, changed-lines.txt, pr-meta.env
+   clang-format.yml -> clang-format.diff, changed-lines.txt, deleted-lines.txt, pr-meta.env
    makefile.yml      -> build-summary.md, tidy-summary.md, gcc-gate-summary.md,
                          inline-gcc.json, inline-tidy.json, complexity.md,
                          inline-complexity.json, source-coverage.md, pr-meta.env
@@ -195,9 +215,11 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 ## 5. Artifacts
 
 **Stage 1 to stage 2:**
-- `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `pr-meta.env`.
+- `clang-format-suggestions`: `clang-format.diff`, `changed-lines.txt`, `deleted-lines.txt`,
+  `pr-meta.env`.
 - `ci-summary-<leg>` (per `bpi`/`rpi`; `mock` never uploads; a `bpi`/`rpi` leg that uploads none
-  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`.
+  is named as such in the summary comment): `build-summary.md`, `pr-meta.env`, and on a failed build
+  `build-errors.txt` and `build-attribution.md`.
   The `bpi` leg (it owns the compile DB) additionally uploads `tidy-summary.md`,
   `gcc-gate-summary.md`, `inline-tidy.json`, `inline-gcc.json`, `inline-complexity.json` and, when
   they found something, `complexity.md` and `source-coverage.md`.
@@ -206,9 +228,14 @@ validates every downloaded artifact, so the trust boundary is unchanged.
 - one sticky `ci-summary` comment (job `summary`), folding the build summary and the diff-scoped
   gcc/clang-tidy findings into a single comment keyed on one marker, so a re-push replaces that same
   comment instead of adding a new one. It replaces the two older stickies (`build-summary`,
-  `clang-tidy`), which the job retires on its first run.
-- inline review comments for the gcc diff-gate and clang-tidy findings, on the exact changed lines
-  they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks (job `format`).
+  `clang-tidy`), which the job retires on its first run. Each section stays short: a code box or
+  list under a ❌ heading shows its first 10 lines, any other its first 5, then "… N more not
+  shown" (`trim_boxes.py`); the headings keep the totals. When anything was shortened, one line at
+  the end links the run summary, which has the lists (up to 100 lines each). Byte caps behind that
+  keep the body under the comment limit.
+- inline review comments for the gcc diff-gate, clang-tidy and complexity findings, on the exact
+  changed lines they fired on (job `inline`), and clang-format suggestions as `suggestion` blocks
+  (job `format`).
   Both post through `.github/scripts/review_poster.py`, which reconciles against what is already on
   the PR instead of reposting everything on every run (§8).
 
@@ -222,7 +249,8 @@ patch-apply), so it is provided by one composite action, `.github/actions/hostap
   **key** combines a hash of the local setup files (`setup.sh`, plus the patch list on `bpi`) with
   the current tip of the relevant upstream patch source (`git ls-remote`, or a GitHub API tree-SHA
   on `bpi`), so a real upstream patch change invalidates the key. The clone and patch-apply itself
-  is still `setup.sh`'s job; a cache hit just lets its own guard skip that work.
+  is still `setup.sh`'s job; a cache hit just lets its own guard skip that work. `mock` uses
+  `patched-rpi`: its `make setup` runs `rpi/setup.sh`, so it shares the `rpi` cache entry.
 - `plain`: an unpatched tree keyed only on the pinned commit SHA (§7), used by `native-build.yml`
   (Coverity). On a miss it shallow-fetches just that one commit from `git.w1.fi` instead of a full
   clone. A step after the cache asserts the checked-out tree's `HEAD` equals the pin, then resets
@@ -276,8 +304,11 @@ on a commit that reintroduces it.
 
 `native-build.yml` also clones 24 further dependencies listed in
 `cov_docker_script/component_config.json`, mostly at branch tips (msgpack-c is pinned to a SHA
-inside that file). That is the Coverity setup's own surface: it is not covered by this manifest,
-and the verify step above only checks `native-build.yml` itself.
+inside that file). msgpack-c and dbus are built without their own tests (and examples), and dbus
+with parallel make: those took about 2 minutes and 15 s. That is the Coverity setup's own
+surface: it is not covered by this manifest, and the verify step above only checks
+`native-build.yml` itself. The build step gets no token: its scripts never read one and every
+clone is public.
 
 **Why pin:** an unpinned input can red CI overnight with zero code change (see the ucode FFI
 incident, 2026-08-27). Pin the rest as their next bump surfaces a natural SHA to lock.
@@ -287,9 +318,10 @@ incident, 2026-08-27). Pin the rest as their next bump surfaces a natural SHA to
 `ubuntu-latest`, so the image (and with it the default compiler) only moves when someone bumps it
 on purpose. The build uses the image's default gcc (gcc-13 on `ubuntu-24.04`), so the warning
 baseline (§3) is tied to that version: bumping the image is the one change that can shift it
-without any pin moving. `clang-tidy-18` and `bear` (the compile-DB wrapper) come from apt;
-`clang-format` is pinned to `18.1.8` via pip in `clang-format.yml`. None of these are
-source-dependency SHAs, so they are not in `ci-pins.env`.
+without any pin moving. `clang-tidy-18` and `bear` (the compile-DB wrapper) come from apt, with
+retries and a 10 s stall timeout, since the runner's Ubuntu mirror sometimes stalls. CMake is the
+image's own (`/usr/local/bin`), not apt's. `clang-format` is pinned to `18.1.8` via pip in
+`clang-format.yml`. None of these are source-dependency SHAs, so they are not in `ci-pins.env`.
 
 ## 8. Edge cases & failure modes
 Where things get weird. The pipeline leans advisory, so most of these resolve to "warn, don't
@@ -298,7 +330,11 @@ red" — a plumbing hiccup should not falsely block a PR.
 - **Re-runs don't duplicate comments.** The poster fingerprints every comment it owns (path, line
   range, body) and per run: skips findings already posted, deletes its own comments that GitHub
   marked outdated (`line: null`) or whose finding is gone, collapses duplicate copies to the oldest,
-  and never deletes a comment someone replied to. If any producer reports `status: skipped` (e.g. no
+  and never deletes a comment someone replied to or resolved. Resolved means seen: when a resolved
+  comment goes outdated because its line changed, the same finding (same file and text) is not
+  posted again on its new line. Each resolved comment holds back one such finding, so a second
+  identical one elsewhere in the file still posts. The resolved state comes from GraphQL (REST has
+  none); if that query fails, every thread counts as unresolved. If any producer reports `status: skipped` (e.g. no
   compile DB) or `partial` (a changed file failed to recompile, clang-tidy could not fully analyze
   it, or `.clang-tidy` did not load), that run deletes no "finding gone" comments, so an incomplete run never reads as fixed.
   Comments are posted individually, not as one review: a submitted review can't be deleted later,
@@ -312,15 +348,19 @@ red" — a plumbing hiccup should not falsely block a PR.
   A stage-1 step (`map_head_lines.py`) maps each finding to its PR-head line; one on a line the head
   does not have (the base changed it) is dropped and makes the set `partial`. The summary comment
   and the check annotations still show merge-ref line numbers.
-- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what
-  each `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run,
-  not per PR: the inline job (gcc-gate first, then clang-tidy) and the clang-format job each post up
-  to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to lower the cap.
-  Any other POST failure (403, 429, 5xx) stops that run's posting with a warning, without failing
-  the job; the next run posts what is missing.
+- **Too many findings.** Large posts can trip GitHub rate limits; `MAX_COMMENTS` (25) caps what each
+  `review_poster.py` run posts, and the overflow is left for the next run. The cap is per run, not
+  per PR: the inline job (gcc-gate first, then clang-tidy, then complexity) and the clang-format job
+  each post up to 25. A `404` on the POST is usually that rate limit, and stays fatal: the signal to
+  lower the cap. Any other POST failure (403, 429, 5xx) stops that run's posting with a warning,
+  without failing the job; the next run posts what is missing.
 - **Cache key unresolvable (outage).** If the hostap cache-key step can't reach GitHub it falls
   back to a literal `unresolved` segment; a hit on that bucket can serve a stale tree (logged as a
   `::warning::`). The one non-exact path in the otherwise exact-key cache (§6).
+- **"Unable to reserve cache" warning.** `rpi` and `mock` share the `patched-rpi` key (§6). When
+  the key changes (a new hostap-patches tip, an edited `rpi/setup.sh`), both legs miss in the same
+  run and both try to save; the second gets this actions/cache warning. Harmless: the first save
+  wins and both trees are identical.
 - **Sticky-comment duplicates, self-healing.** Concurrent stage-2 runs for the same PR could
   leave duplicate marker comments behind (delete-then-post is not atomic). `sticky-comment` looks up
   every comment it owns for a marker, not just the first, so each run reconciles: recreate mode
@@ -358,12 +398,15 @@ red" — a plumbing hiccup should not falsely block a PR.
   (`source/apps/em/wifi_em.c`, `source/platform/linux/misc.c`) and 2 implicit declarations in the
   patched hostap; the rest stays silenced by `makefile.common`'s `-Wno-` flags. Yocto 6.0 (wrynose)
   builds with gcc 15.2, whose default is C23: on the same files that adds 6 errors, all
-  `()`-declared functions called with an argument; `-std=gnu17` removes them.
+  `()`-declared functions called with an argument; `-std=gnu17` removes them. Details, clang-tidy 20
+  and how to re-measure: `ci-maintenance.md` (this directory).
 - Complexity nudge, deliberate limits: lizard skips `#else` branches (`-Ecpre`), so code only there
   is not measured (2026-10: 104 functions, 2 at CCN 20 or above, both in `wifi_db.c`; without the
   flag, `#ifdef`/`#else` pairs that each open a brace hid 344 functions in 8 core files). Functions
-  are keyed by name, so C++ overloads count as the most complex one: a smaller one crossing 30 can
-  be missed, a crossing that did not happen is never reported.
+  are keyed by name, so C++ overloads count as the most complex one: this can only miss a smaller
+  one crossing 30, never invent a crossing.
+- Complexity nudge: a function renamed in place (`foo` -> `foo_v2`) reads as new, so one at CCN 30
+  or above is reported as crossing although its complexity did not change.
 - Complexity inline comment on a renamed file: the changed lines are read from the new path
   alone, so the anchor can fall outside GitHub's rename diff; the poster then skips that one
   comment (HTTP 422) and the summary entry still shows.
