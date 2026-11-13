@@ -3933,7 +3933,9 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                  * Subsequent group iterations must not overwrite values
                  * already propagated by an earlier group.*/
                 if (i == 0) {
+#if !defined(CONFIG_MLO) || defined(CONFIG_GENERIC_MLO)
                     memcpy(mld_conf->mld_addr, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
+#endif /* !CONFIG_MLO || CONFIG_GENERIC_MLO */
                     mld_conf->mld_enable = false;
                 }
 
@@ -3973,7 +3975,14 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 #ifndef CONFIG_GENERIC_MLO
                 if (mld_conf->mld_link_id == 0) {
                     main_link_vap = target_vap;
+#ifdef CONFIG_MLO
+		    if (wifi_hal_get_default_mld_address(main_link_vap->vap_index, mlo_mac) != RETURN_OK) {
+			wifi_util_error_print(log_type, "%s:%d: platform mld address fetch failed for vap_index=%d\n",
+			    __func__, __LINE__, main_link_vap->vap_index);
+		    }
+#else
                     memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
+#endif // CONFIG_MLO
                 }
 #endif // CONFIG_GENERIC_MLO
 

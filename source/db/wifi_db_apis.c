@@ -5421,7 +5421,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
                 __func__, __LINE__, g_wifidb->db_version);
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
-#if defined(_PLATFORM_BANANAPI_R4_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined( _GREXT02ACTS_PRODUCT_REQ_)
                 if (isVapPrivate(config->vap_array[i].vap_index)) {
                     config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 1;
                     config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 0;
@@ -8106,7 +8106,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
-    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_)
+    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -8155,7 +8155,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg->u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg->u.bss_info.beaconRateCtl)-1);
         cfg->vap_mode = wifi_vap_mode_ap;
-#if defined(_PLATFORM_BANANAPI_R4_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined( _GREXT02ACTS_PRODUCT_REQ_)
         if (isVapPrivate(vap_index)) {
             cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg->u.bss_info.mld_info.common_info.mld_id = 0;
