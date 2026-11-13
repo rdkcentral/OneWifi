@@ -215,7 +215,7 @@ static void start_sta_channel_scan(void *data, unsigned int len)
 
         for (int i = 0; i < scan_req->num_operating_classes; i++) {
             if (scan_req->operating_classes[i].operating_class == global_op_class) {
-                for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
+                for (int j = 0; j < scan_req->operating_classes[i].num_channels && num_channels < 64; j++) {
                     channels[num_channels] = scan_req->operating_classes[i].channels[j];
                     wifi_util_dbg_print(WIFI_EC, "%s:%d channel number:%u\n", __func__, __LINE__,
                         scan_req->operating_classes[i].channels[j]);
