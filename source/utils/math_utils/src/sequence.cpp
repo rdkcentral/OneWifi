@@ -57,12 +57,13 @@ sequence_t sequence_t::operator+(number_t n)
         m_total_samples++;
     }
 
+    //Please revisit gaussian formula and check calculation
     if (m_variance.m_re != 0.0) {
-        m_gaussian.m_re = expf((-0.5) * (pow(n.m_re - m_mean.m_re, 2) / (pow(m_variance.m_re, 2)))) /
+        m_gaussian.m_re = expf((-0.5) * (pow(n.m_re - m_mean.m_re, 2) / m_variance.m_re)) /
             (sqrt(2 * PI * m_variance.m_re));
     }
     if (m_variance.m_im != 0.0) {
-        m_gaussian.m_im = expf((-0.5) * (pow(n.m_im - m_mean.m_im, 2) / (pow(m_variance.m_im, 2)))) /
+        m_gaussian.m_im = expf((-0.5) * (pow(n.m_im - m_mean.m_im, 2) / m_variance.m_im)) /
             (sqrt(2 * PI * m_variance.m_im));
     }
 
@@ -156,6 +157,8 @@ void sequence_t::reset()
 
     m_mean = { 0, 0 };
     m_variance = { 0, 0 };
+    m_variance_running = { 0, 0 };
+    m_gaussian = { 0, 0 };
     m_max = { 0, 0 };
     m_min = { 0, 0 };
 
@@ -175,6 +178,8 @@ sequence_t::sequence_t(int sampling_window)
 
     m_mean = { 0, 0 };
     m_variance = { 0, 0 };
+    m_variance_running = { 0, 0 };
+    m_gaussian = { 0, 0 };
     m_max = { 0, 0 };
     m_min = { 0, 0 };
 
@@ -202,6 +207,8 @@ sequence_t::sequence_t()
 
     m_mean = { 0, 0 };
     m_variance = { 0, 0 };
+    m_variance_running = { 0, 0 };
+    m_gaussian = { 0, 0 };
     m_max = { 0, 0 };
     m_min = { 0, 0 };
 

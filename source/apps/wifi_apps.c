@@ -482,7 +482,7 @@ wifi_app_descriptor_t app_desc[] = {
 #ifdef WIFI_SENSING_APP_SUPPORT
     {
         wifi_app_inst_wifi_sensing, 0,
-        wifi_event_type_hal_ind,
+        wifi_event_type_hal_ind | wifi_event_type_webconfig,
         true, true,
         "WiFiSensing",
         sensing_app_init, sensing_app_event, sensing_app_deinit,

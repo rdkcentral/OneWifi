@@ -39,6 +39,7 @@ extern "C" {
 #define CSI_CLIENT_MACLIST "Device.WiFi.X_RDK_CSI.%d.ClientMaclist"
 #define CSI_ENABLE_NAME "Device.WiFi.X_RDK_CSI.%d.Enable"
 #define CSI_SUB_DATA "Device.WiFi.X_RDK_CSI.%d.data"
+#define CSI_STREAM "Device.WiFi.X_RDK_CSI.%d.Stream"
 
 typedef struct csi_analytics_data {
     uint32_t num_sc;
@@ -52,6 +53,7 @@ typedef struct csi_analytics_info {
     bool is_read_oper_thread_enabled;
     uint32_t csi_session_index;
     bool is_csi_capture_enabled;
+    uint32_t stream;
     pthread_mutex_t maclist_lock;
     char sta_mac[MAX_MACLIST_SIZE];
     int sta_maclist_sched_id;
