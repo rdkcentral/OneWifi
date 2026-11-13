@@ -272,7 +272,7 @@ int strcmp_len(char *a, size_t alen, char *b, size_t blen)
     return strncmp(a, b, alen);
 }
 
-static char base64_table[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static char base64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /**
  * base64 encode @p input_sz bytes from @p input and store the result to out
@@ -700,8 +700,8 @@ bool parse_uri(char *uri, char *proto, size_t proto_size, char *host, size_t hos
     pstr  = strtok_r(NULL, ":", &sptr);
     if (pstr) tport = atoi(pstr);
 
-    if (   strcmp(tproto, "ssl")
-        && strcmp(tproto, "tcp"))
+    if (!tproto || (strcmp(tproto, "ssl") && strcmp(tproto, "tcp")))
+
     {
         LOGE("URI %s proto not supported (Only ssl and tcp)", uri);
         return false;
@@ -1148,6 +1148,9 @@ const int *unii_5g_chan2list(int chan, int width)
     };
     const int *start;
     const int *p;
+
+    if (width <= 0)
+        return NULL;
 
     for (p = lists; *p != -1; p++)
         if (*p == width)
