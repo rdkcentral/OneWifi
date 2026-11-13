@@ -496,7 +496,7 @@ bool onewifi_ovsdb_table_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
     int schema_count = count_nt_array(table->columns);
     char *cols[schema_count + 2]; // +2: _version, NULL
     char **columns;
-    if (!filter)
+    if (!filter || !*filter)
     {
         columns = NULL;
     }
