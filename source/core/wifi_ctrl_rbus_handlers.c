@@ -4499,6 +4499,7 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
     char vapname[32] = { 0 };
     bm_client_assoc_req mac_addr;
     wifi_platform_property_t *prop = NULL;
+    wifi_monitor_t *mon_data = get_wifi_monitor();
 
     unsigned char *pTmp;
 
@@ -4522,6 +4523,7 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d %s,%svap_index:%d\r\n", __func__, __LINE__,
         mac_addr.mac_addr, mac_addr.if_name, vap_index);
     if (sta_map != NULL) {
+        pthread_mutex_lock(&mon_data->data_lock);
         sta = (sta_data_t *)hash_map_get(sta_map, mac_addr.mac_addr);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d , sta_map is null  \n", __func__, __LINE__);
@@ -4533,15 +4535,18 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
                 "%s:%d bus_namespace_publish event:%s for vap_index:%d\r\n", __func__, __LINE__,
                 ACCESSPOINT_ASSOC_REQ_EVENT, vap_index);
             memcpy(&tmp_data, &sta->assoc_frame_data.msg_data, sizeof(frame_data_t));
+            pthread_mutex_unlock(&mon_data->data_lock);
             l_data = &tmp_data;
         } else {
             wifi_util_info_print(WIFI_CTRL,
                 "%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
                 __func__, __LINE__, vap_index, mac_addr.mac_addr,
                 sta->assoc_frame_data.frame_timestamp);
+            pthread_mutex_unlock(&mon_data->data_lock);
             return bus_error_invalid_input;
         }
     } else {
+        pthread_mutex_unlock(&mon_data->data_lock);
         wifi_util_info_print(WIFI_CTRL, "%s:%d , sta is null  \n", __func__, __LINE__);
         return bus_error_invalid_input;
     }

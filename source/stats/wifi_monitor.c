@@ -168,7 +168,8 @@ extern void* bus_handle;
 
 #define MAX_AKM_REPORT_REFRESH_PERIOD 3600
 
-#define ASSOC_REQ_MAC_HEADER_LEN 24 + 2 + 2 // 4 bytes after mac header reserved for fixed len fields
+#define ASSOC_REQ_MAC_HEADER_LEN (24 + 2 + 2) // 4 bytes after mac header reserved for fixed len fields
+#define REASSOC_REQ_MAC_HEADER_LEN (ASSOC_REQ_MAC_HEADER_LEN + 6) // plus Current AP Address
 
 /* IEEE 802.11 status codes (Table 9-50) */
 #define WIFI_STATUS_CODE_SUCCESS 0
@@ -1653,22 +1654,19 @@ void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
 }
 
-sta_data_t *create_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac)
+static sta_data_t *create_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac)
 {
-    pthread_mutex_lock(&g_monitor_module.data_lock);
     mac_addr_str_t mac_str = { 0 };
     sta_data_t *sta = NULL;
 
     sta = (sta_data_t *)malloc(sizeof(sta_data_t));
     if (sta == NULL) {
         wifi_util_error_print(WIFI_MON,"%s:%d malloc allocation failure\r\n", __func__, __LINE__);
-        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return NULL;
     }
     memset(sta, 0, sizeof(sta_data_t));
     memcpy(sta->sta_mac, l_sta_mac, sizeof(mac_addr_t));
     hash_map_put(sta_map, strdup(to_mac_str(l_sta_mac, mac_str)), sta);
-    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return sta;
 }
 
@@ -1691,6 +1689,20 @@ hash_map_t *get_sta_data_map(unsigned int vap_index)
 
 
 
+static void assoc_req_from_reassoc_req(const frame_data_t *reassoc, frame_data_t *assoc)
+{
+    memcpy(&assoc->frame, &reassoc->frame, sizeof(assoc->frame));
+    memcpy(assoc->data, reassoc->data, ASSOC_REQ_MAC_HEADER_LEN);
+    memcpy(assoc->data + ASSOC_REQ_MAC_HEADER_LEN, reassoc->data + REASSOC_REQ_MAC_HEADER_LEN,
+        reassoc->frame.len - REASSOC_REQ_MAC_HEADER_LEN);
+    assoc->frame.len = reassoc->frame.len - (REASSOC_REQ_MAC_HEADER_LEN - ASSOC_REQ_MAC_HEADER_LEN);
+    assoc->frame.type = WIFI_MGMT_FRAME_TYPE_ASSOC_REQ;
+    assoc->data[0] = (assoc->data[0] & 0x0f) | (WLAN_FC_STYPE_ASSOC_REQ << 4);
+
+    wifi_util_dbg_print(WIFI_MON, "%s:%d ap_index:%d reassoc req len:%u stored as assoc req len:%u\n",
+        __func__, __LINE__, reassoc->frame.ap_index, reassoc->frame.len, assoc->frame.len);
+}
+
 int set_assoc_req_frame_data(frame_data_t *msg)
 {
     hash_map_t   *sta_map;
@@ -1709,27 +1721,41 @@ int set_assoc_req_frame_data(frame_data_t *msg)
 
     wifi_util_dbg_print(WIFI_MON,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
+    if (msg->frame.type == WIFI_MGMT_FRAME_TYPE_REASSOC_REQ &&
+        msg->frame.len < REASSOC_REQ_MAC_HEADER_LEN) {
+        wifi_util_error_print(WIFI_MON, "%s:%d reassoc req too short, len:%u\n", __func__,
+            __LINE__, msg->frame.len);
+        return RETURN_ERR;
+    }
+
     sta_map = get_sta_data_map(msg->frame.ap_index);
     if (sta_map == NULL) {
         wifi_util_error_print(WIFI_MON,"%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, msg->frame.ap_index);
         return RETURN_ERR;
     }
 
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta = (sta_data_t *)hash_map_get(sta_map, mac_str);
     if (NULL == sta)
     {
         sta = create_sta_data_hash_map(sta_map, frame->sa);
         if(NULL == sta)
         {
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
             return RETURN_ERR;
         }
     }
-    wpa3_enhanced_assoc_frame_data(msg);
-	interop_assoc_frame_data(msg);
     (void)memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
-    (void)memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
+    /* Readers of assoc_frame_data (IE parsing, GetAssocRequest, EasyMesh) expect the
+     * Association Request layout, so store a Reassociation Request without Current AP. */
+    if (msg->frame.type == WIFI_MGMT_FRAME_TYPE_REASSOC_REQ) {
+        assoc_req_from_reassoc_req(msg, &sta->assoc_frame_data.msg_data);
+    } else {
+        (void)memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
+    }
     (void)time(&frame_timestamp);
     (void)memcpy(&sta->assoc_frame_data.frame_timestamp, &frame_timestamp, sizeof(frame_timestamp));
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
 
     return RETURN_OK;
 }
@@ -1754,6 +1780,7 @@ int update_assoc_frame_data_entry(unsigned int vap_index)
         return RETURN_ERR;
     }
 
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
         if ((sta->connection_authorized == false) && (sta->assoc_frame_data.frame_timestamp != 0)) {
@@ -1769,6 +1796,7 @@ int update_assoc_frame_data_entry(unsigned int vap_index)
         }
         sta = hash_map_get_next(sta_map, sta);
     }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
 
     return RETURN_OK;
 }
@@ -2501,7 +2529,8 @@ void *monitor_function  (void *data)
                          set_auth_req_frame_data(&event_data->u.msg);
                     break;
                     case wifi_event_monitor_assoc_req:
-                        set_assoc_req_frame_data(&event_data->u.msg);
+                        wpa3_enhanced_assoc_frame_data(&event_data->u.msg);
+                        interop_assoc_frame_data(&event_data->u.msg);
                     break;
 					case wifi_event_monitor_reassoc_req:
                         set_reassoc_req_frame_data(&event_data->u.msg);
@@ -4823,6 +4852,7 @@ static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associat
     hash_map_t     *sta_map = get_sta_data_map(ap_index);
     if(sta_map != NULL) {
         snprintf(mac_addr, MAC_STR_LEN, MAC_FMT, MAC_ARG(associated_dev->cli_MACAddress));
+        pthread_mutex_lock(&g_monitor_module.data_lock);
         sta = (sta_data_t *)hash_map_get(sta_map, mac_addr);
     } else {
         wifi_util_error_print(WIFI_MON,"%s:%d sta_map not found for ap_index:%d\n", __func__, __LINE__, ap_index);
@@ -4832,17 +4862,20 @@ static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associat
     if (sta != NULL) {
         if (sta->assoc_frame_data.msg_data.frame.len != 0) {
             memcpy(&assoc_data->sta_data, &sta->assoc_frame_data, sizeof(assoc_req_elem_t));
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
             wifi_util_dbg_print(WIFI_MON,"%s:%d assoc_frame_data of length:%d copied\n",
-                __func__, __LINE__, sta->assoc_frame_data.msg_data.frame.len);
+                __func__, __LINE__, assoc_data->sta_data.msg_data.frame.len);
             wifi_util_dbg_print(WIFI_MON,"%s:%d sta found for mac:%s \n", __func__, __LINE__, mac_addr);
 
             return;
         } else {
             wifi_util_error_print(WIFI_MON,"%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
                     __func__, __LINE__, ap_index, mac_addr, sta->assoc_frame_data.frame_timestamp);
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
             return;
         }
     } else {
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         wifi_util_error_print(WIFI_MON,"%s:%d sta not found for mac:%s\n", __func__, __LINE__, mac_addr);
         return;
     }
@@ -4926,7 +4959,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     }
 
     frame = &assoc_data.sta_data.msg_data;
-    if (frame->frame.len != 0) {
+    if (frame->frame.len > ASSOC_REQ_MAC_HEADER_LEN) {
         parse_assoc_ies((uint8_t *)(frame->data + ASSOC_REQ_MAC_HEADER_LEN),
             (size_t)(frame->frame.len - ASSOC_REQ_MAC_HEADER_LEN), &assoc_data);
     }
