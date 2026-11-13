@@ -105,6 +105,7 @@ static long readFileToBuffer(const char *fileName, char **buffer)
        fclose(infile);
        return 0;
     }
+    fclose(infile);
     return numbytes;
 }
 #endif //ENABLE_FEATURE_MESHWIFI
@@ -719,6 +720,7 @@ INT WiFi_SetGasConfig(char *JSON_STR)
         return RETURN_OK;
       }
       wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to update HAL with GAS Config. Adv-ID:%d\n",gasConfig_struct.AdvertisementID);
+      cJSON_Delete(passPointCfg);
       return RETURN_ERR;
 #else
     UNREFERENCED_PARAMETER(JSON_STR);
