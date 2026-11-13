@@ -1102,62 +1102,14 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int vap_index;
-    wifi_back_haul_sta_t *sta_info;
-    wifi_platform_property_t *wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
-    mac_address_t zero_mac;
-    char ifname[100] = {0};
-    int ret = 0;
-    mac_addr_str_t mac_str;
-
-    memset(zero_mac, 0, sizeof(mac_address_t));
-    /*
-      In case of Easymesh mode few checks should be done before the dml subdoc is sent.
-       1) Check al_mac address is non-zero and colocated_mode is either 0 or 1. If any of
-          them incorrect, return bus_error.
-       2) If colocated_mode is 0 then check whether configured al_mac has a valid interface
-          and if it is a interface in interface map should be a sta interface and should be
-          in connected state.
-    */
+    wifi_platform_property_t *wifi_prop = &mgr->hal_cap.wifi_prop;
     if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
         ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        /* check 1 */
-        if (memcmp(wifi_prop->al_1905_mac, zero_mac, sizeof(mac_address_t)) == 0 ||
-            wifi_prop->colocated_mode == -1) {
+        if (wifi_prop->colocated_mode == -1) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d FATAL Error al_mac:%s or colocated_mode:%d incorrect\n", __func__, __LINE__,
-                to_mac_str(wifi_prop->al_1905_mac, mac_str), wifi_prop->colocated_mode);
+                "%s:%d FATAL Error colocated_mode:%d incorrect\n", __func__, __LINE__,
+                wifi_prop->colocated_mode);
             return bus_error_access_not_allowed;
-        }
-        /* check 2 */
-        if (wifi_prop->colocated_mode == 0) {
-            /* colocated_mode 0 check ifname is sta and connected*/
-            ret = interfacename_from_mac((const mac_address_t *)wifi_prop->al_1905_mac, ifname);
-            if (ret != 0) {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d FATAL Error Interface not found for al_mac:%s\n", __func__, __LINE__,
-                    to_mac_str(wifi_prop->al_1905_mac, mac_str));
-                return bus_error_access_not_allowed;
-            }
-            vap_index = convert_ifname_to_vap_index(wifi_prop, ifname);
-            if (vap_index != -1) {
-                sta_info = get_wifi_object_sta_parameter(vap_index);
-                if (sta_info == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d Error backhaul interface:%s(Idx: %d, Ptr: %p) is not sta interface",
-                        __func__, __LINE__, ifname, vap_index, sta_info);
-                    return bus_error_access_not_allowed;
-                }
-            } else {
-                /* check the interface name before treating it as error */
-                if (strncmp(ifname, "eth", strlen("eth")) != 0 &&
-                    strncmp(ifname, "lo", strlen("lo")) != 0) {
-                    wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d Error ifname:%s is not ethernet or loopback interface.\n", __func__,
-                        __LINE__, ifname);
-                    return bus_error_access_not_allowed;
-                }
-            }
         }
     }
 

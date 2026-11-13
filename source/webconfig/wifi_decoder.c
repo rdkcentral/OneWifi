@@ -3434,9 +3434,6 @@ webconfig_error_t decode_device_info(const cJSON *device_cfg, wifi_platform_prop
     decode_param_string(device_cfg, "CMMAC", param);
     str_to_mac_bytes(param->valuestring,info->cm_mac);
 
-    decode_param_string(device_cfg, "AL1905-MAC", param);
-    str_to_mac_bytes(param->valuestring,info->al_1905_mac);
-
     return webconfig_error_none;
 }
 
