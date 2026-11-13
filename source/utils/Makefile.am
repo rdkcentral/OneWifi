@@ -77,7 +77,7 @@ libwifi_utils_la_SOURCES = wifi_validator.c
 libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
 
 
-libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -static
+libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -static
 
 if ONEWIFI_DML_SUPPORT
 libwifi_utils_la_LDFLAGS += -lccsp_common
