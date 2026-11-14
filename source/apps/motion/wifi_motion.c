@@ -651,6 +651,25 @@ queue_t *update_csi_local_queue_from_motion_queue()
     csi_data_t *tmp_csi_data;
     unsigned int itr;
     queue_t *local_csi_queue;
+    wifi_ctrl_t *g_wifi_ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (g_wifi_ctrl == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d: ctrl is NULL\n", __FUNCTION__, __LINE__);
+        return NULL;
+    }
+
+    wifi_apps_mgr_t *apps_mgr = &g_wifi_ctrl->apps_mgr;
+    if (apps_mgr == NULL){
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        return NULL;
+    }
+
+    wifi_app_t *wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_motion);
+    
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d: motion app is NULL\n", __FUNCTION__, __LINE__);
+        return NULL;
+    }
 
     queue_t *csi_queue = get_csi_data_queue();
 
@@ -667,11 +686,13 @@ queue_t *update_csi_local_queue_from_motion_queue()
 
 
     //update the local queue from app csi queue
+    pthread_mutex_lock(&wifi_app->data.u.motion.lock);
     for (itr=0; itr<queue_count(csi_queue); itr++) {
         tmp_csi_data = (csi_data_t *)queue_peek(csi_queue, itr);
         if (tmp_csi_data != NULL) {
             csi_data_t *to_queue = (csi_data_t *)malloc(sizeof(csi_data_t));
             if (to_queue == NULL) {
+                pthread_mutex_unlock(&wifi_app->data.u.motion.lock);
                 wifi_util_error_print(WIFI_APPS, "%s %d: malloc failed for itr : %d\n", __FUNCTION__, __LINE__, itr);
                 queue_destroy(local_csi_queue);
                 return NULL;
@@ -680,6 +701,7 @@ queue_t *update_csi_local_queue_from_motion_queue()
             queue_push(local_csi_queue, to_queue);
         }
     }
+    pthread_mutex_unlock(&wifi_app->data.u.motion.lock);
 
 
     return local_csi_queue;
