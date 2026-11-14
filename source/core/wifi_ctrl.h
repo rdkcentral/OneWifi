@@ -34,7 +34,7 @@ extern "C" {
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
 #include "wifi_apps_mgr.h"
-#include "wifi_ctrl_wei_rfc.h"
+#include "run_qmgr.h"
 
 #define WIFI_WEBCONFIG_PRIVATESSID         1
 #define WIFI_WEBCONFIG_HOMESSID            2
