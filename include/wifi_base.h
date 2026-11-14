@@ -91,12 +91,24 @@ extern "C" {
 #define WIFI_QUALITY_LINKREPORT      "Device.WiFi.LinkReport"
 #define WIFI_LINK_QUALITY_DATA      "Device.WiFi.LinkQualityData"
 #define WIFI_LINK_QUALITY_FLAGS     "Device.WiFi.LinkQualityFlags"
+
+#define WIFI_IGNITE_STATUS "Device.WiFi.EndPoint.1.LinkQualityStatus"
+#define WIFI_RADIO_START_ACS                "Device.WiFi.X_RDKCENTRAL-COM_StartACS"
+
 #define WIFI_NASTA_RESPONSE_EVENT                      "Device.WiFi.EM.NaStaResponse"
 #define WIFI_ACCESSPOINT_GET_NASTA                     "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_GetNaSta"
 #define WIFI_NETWORKDEVICESSTATUS_MLORFCENABLE \
     "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.NetworkDevicesStatus.MloRfcEnable"
 #define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
     "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
+
+#ifndef MAX_NUM_MLD_LINKS
+#define MAX_NUM_MLD_LINKS 15
+#endif /*MAX_NUM_MLD_LINKS*/
+
+#define UNDEFINED_MLD_ID 255
+#define MLD_UNIT_COUNT 8
+#define MIN_MLO_GROUP_SIZE 2
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
