@@ -1230,7 +1230,10 @@ static void mux_bus_cb_registration(bus_data_element_t *data_element, bool user_
 
     strncpy(event_name, data_element->full_name, strlen(data_element->full_name) + 1);
 
-    if (user_cb_set == true) {
+    /* Tables are always added to the mux tree, even without callbacks (rows managed with
+     * registerRow/unregisterRow), so that their row template and rows are correctly typed
+     * when resolving the instances of their children. */
+    if (user_cb_set == true || data_element->type == bus_element_type_table) {
         elem_node_map_t          *reg_cb_mux_map = get_bus_mux_reg_cb_map();
         bus_mux_reg_node_data_t  reg_node_data;
         bus_mux_data_elem_t      node_elem = { 0 };
@@ -2035,6 +2038,9 @@ static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name, uin
     VERIFY_NULL_WITH_RC(name);
     VERIFY_NULL_WITH_RC(handle);
 
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bus: Registering table row for name [%s] row_index [%d] alias [%s]\n",
+        __func__, __LINE__, name, row_index, alias ? alias : "NULL");
+
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
 
     rc = rbusTable_registerRow(p_rbus_handle, name, row_index, alias);
@@ -2061,6 +2067,9 @@ static bus_error_t bus_unreg_table_row(bus_handle_t *handle, char const *name)
     rbusError_t rc;
     VERIFY_NULL_WITH_RC(name);
     VERIFY_NULL_WITH_RC(handle);
+
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bus: Unregistering table row for name [%s]\n",
+        __func__, __LINE__, name);
 
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
 
