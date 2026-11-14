@@ -337,6 +337,8 @@ void qmgr_t::deinit()
     // Wait for thread to finish
     pthread_join(m_thread, nullptr);
     pthread_cond_destroy(&m_cond);
+    cJSON_Delete(out_obj);
+    out_obj = nullptr;
     hash_map_destroy(m_link_map);
     wifi_util_info_print(WIFI_APPS," %s:%d\n",__func__,__LINE__);
     return;
