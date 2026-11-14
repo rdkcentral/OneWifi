@@ -41,7 +41,6 @@ if !HAL_IPC
 AM_LDFLAGS += -lhal_wifi
 endif
 
-AM_LDFLAGS += -lwebconfig_framework
 AM_LDFLAGS += -lsecure_wrapper
 AM_LDFLAGS += -lev
 AM_LDFLAGS += -lpthread
@@ -77,7 +76,10 @@ libwifi_utils_la_SOURCES = wifi_validator.c
 libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
 
 
-libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -static
+libwifi_utils_la_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -static
+if WEBCONFIG_FRAMEWORK
+libwifi_utils_la_LDFLAGS += -lwebconfig_framework
+endif
 
 if ONEWIFI_DML_SUPPORT
 libwifi_utils_la_LDFLAGS += -lccsp_common

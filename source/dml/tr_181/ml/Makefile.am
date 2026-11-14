@@ -51,6 +51,10 @@ libCcspWifiAgent_ml_la_CPPFLAGS += -I$(top_srcdir)/source/apps/multi_ap/
 libCcspWifiAgent_ml_la_CPPFLAGS += $(EM_APP_FLAG)
 libCcspWifiAgent_ml_la_SOURCES = plugin_main.c cosa_apis_util.c plugin_main_apis.c cosa_wifi_dml.c cosa_apis_busutil.c cosa_wifi_internal.c cosa_logging_internal.c cosa_logging_dml.c cosa_harvester_dml.c 
 libCcspWifiAgent_ml_la_LDFLAGS = -lccsp_common -lsecure_wrapper 
+if WEBCONFIG_FRAMEWORK
+libCcspWifiAgent_ml_la_CPPFLAGS += -DFEATURE_SUPPORT_WEBCONFIG
+endif
+
 if !HAL_IPC
 libCcspWifiAgent_ml_la_LDFLAGS += -lhal_wifi
 endif

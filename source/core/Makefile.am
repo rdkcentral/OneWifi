@@ -34,7 +34,6 @@ AM_LDFLAGS =  -L$(top_builddir)/../hal/lib
 if !HAL_IPC
 AM_LDFLAGS += -lhal_wifi
 endif
-AM_LDFLAGS += -lwebconfig_framework
 AM_LDFLAGS += -lsecure_wrapper
 AM_LDFLAGS += -lev
 AM_LDFLAGS += -lpthread
@@ -53,7 +52,7 @@ if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
 AM_LDFLAGS += -L$(top_builddir)/source/platform/
 endif
-AM_LDFLAGS += -lwifi_webconfig
+AM_LDFLAGS += -lwifi_transportprotocolanalyser 
 AM_LDFLAGS += -lwifi_bus
 if ONEWIFI_DML_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
@@ -224,7 +223,14 @@ endif
 
 OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/util.c $(top_srcdir)/lib/common/monitor.c $(top_srcdir)/lib/common/os.c $(top_srcdir)/lib/common/os_util.c $(top_srcdir)/lib/common/os_exec.c $(top_srcdir)/lib/const/const.c $(top_srcdir)/lib/ds/ds_tree.c $(top_srcdir)/lib/json_util/string.c $(top_srcdir)/lib/json_util/memdbg.c $(top_srcdir)/lib/json_util/future.c $(top_srcdir)/lib/log/log.c $(top_srcdir)/lib/log/log_syslog.c $(top_srcdir)/lib/log/log_stdout.c $(top_srcdir)/lib/log/log_traceback.c $(top_srcdir)/lib/osa/os_backtrace.c $(top_srcdir)/lib/osa/os_socket.c $(top_srcdir)/lib/osa/os_nif_linux.c $(top_srcdir)/lib/osa/os_regex.c $(top_srcdir)/lib/osa/os_proc.c $(top_srcdir)/lib/osa/os_file_ops.c $(top_srcdir)/lib/osa/os_file.c $(top_srcdir)/lib/osa/os_random.c $(top_srcdir)/lib/ovsdb/ovsdb.c $(top_srcdir)/lib/ovsdb/ovsdb_method.c $(top_srcdir)/lib/ovsdb/ovsdb_update.c $(top_srcdir)/lib/ovsdb/ovsdb_sync.c $(top_srcdir)/lib/ovsdb/ovsdb_sync_api.c $(top_srcdir)/lib/ovsdb/ovsdb_table.c $(top_srcdir)/lib/ovsdb/ovsdb_cache.c $(top_srcdir)/lib/ovsdb/ovsdb_utils.c $(top_srcdir)/lib/pjs/pjs_array.c $(top_srcdir)/lib/pjs/pjs_ovs_basic.c $(top_srcdir)/lib/pjs/pjs_basic.c $(top_srcdir)/lib/pjs/pjs_types.c $(top_srcdir)/lib/pjs/pjs_ovs_set.c $(top_srcdir)/lib/pjs/pjs_ovs_map.c $(top_srcdir)/lib/qm/qm_conn.c $(top_srcdir)/lib/schema/schema.c $(top_srcdir)/lib/pktgen/pktgen.c $(top_srcdir)/lib/datapipeline/dppline.c $(top_srcdir)/lib/datapipeline/opensync_stats.pb-c.c $(top_srcdir)/lib/datapipeline/osp_unit_rdk.c $(top_srcdir)/lib/datapipeline/devinfo.c
 
-OneWifi_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_wrapper $(MSGPACK_LIBS) -lcjson  -lm -ljansson -lev -lprotobuf-c -ltrower-base64
+
+OneWifi_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_wrapper $(MSGPACK_LIBS) -lcjson  -lm -ljansson -lev -lprotobuf-c -ltrower-base64
+
+if WEBCONFIG_FRAMEWORK
+OneWifi_LDFLAGS += -lwebconfig_framework
+OneWifi_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG -DONEWIFI_RDKB_APP_SUPPORT
+endif
+
 
 if ONEWIFI_DML_SUPPORT
 OneWifi_LDFLAGS += -lccsp_common
@@ -258,7 +264,7 @@ if WITH_LIBWEBCONFIG
 OneWifi_LDFLAGS += -L$(top_builddir)/source/platform/
 OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
-OneWifi_LDFLAGS += -lwifi_webconfig 
+OneWifi_LDFLAGS += -lwifi_transportprotocolanalyser 
 OneWifi_LDFLAGS += -lwifi_bus
 if WIFI_SENSING_APP_SUPPORT
 OneWifi_LDFLAGS += -ltensorflowlite_c
