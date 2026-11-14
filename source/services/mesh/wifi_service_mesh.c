@@ -1057,8 +1057,14 @@ void process_ext_connected_scan_results(wifi_service_node_t *node, wifi_core_dat
     convert_radio_index_to_freq_band(&node->cap->wifi_prop, results->radio_index, (int *)&band);
     if ((ext->candidates_list.scan_list == NULL) && num) {
         ext->candidates_list.scan_list = (bss_candidate_t *) malloc(num * sizeof(bss_candidate_t));
+        if (ext->candidates_list.scan_list == NULL) {
+            ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
+            scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+                        process_ext_connect_algorithm, node,
+                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
+            return;
+        }
         scan_list = ext->candidates_list.scan_list;
-        ext->candidates_list.scan_count = num;
     } else  {
         wifi_util_dbg_print(WIFI_SERVICES, "%s:%d NULL scan list should not reach this condition\n", __func__, __LINE__);
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
@@ -1081,10 +1087,13 @@ void process_ext_connected_scan_results(wifi_service_node_t *node, wifi_core_dat
         }
         tmp_bss++;
     }
+    ext->candidates_list.scan_count = scan_list - ext->candidates_list.scan_list;
 
     if (found_candidate) {
         ext_set_conn_state(ext, connection_state_disconnection_in_progress, __func__, __LINE__);
     } else {
+        free(ext->candidates_list.scan_list);
+        ext->candidates_list.scan_list = NULL;
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
     }
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
