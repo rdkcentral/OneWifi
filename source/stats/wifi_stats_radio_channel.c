@@ -331,8 +331,8 @@ int stop_radio_channel_neighbor_scheduler_tasks(wifi_mon_collector_element_t *c_
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, c_elem);
         return RETURN_ERR;
     }
-
     scheduler_cancel_timer_task(mon_data->sched, c_elem->u.radio_channel_neighbor_data.scan_complete_task_id);
+    scheduler_cancel_timer_task(mon_data->sched, c_elem->u.radio_channel_neighbor_data.scan_trigger_task_id);
 
     return RETURN_OK;
 }
