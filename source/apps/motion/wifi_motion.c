@@ -1039,7 +1039,6 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
     unsigned int itr, i, current_config_count, new_config_count, itrj, num_unique_mac=0;
     csi_data_t *current_csi_data = NULL, *new_csi_data;
     bool found = false, data_change = false;
-    mac_addr_str_t mac_str;
     mac_address_t unique_mac_list[MAX_NUM_CSI_CLIENTS];
     current_config = get_csi_data_queue();
 
@@ -1138,15 +1137,27 @@ int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
                 }
             }
 
-            //Change client macarray to comma seperarted string.
+            size_t offset = 0;
+            int result = 0;
+            //Change client macarray to comma separated string.
             for (i=0; i<new_csi_data->csi_client_count; i++) {
-                to_mac_str(new_csi_data->csi_client_list[i], mac_str);
-                strcat(tmp_cli_list, mac_str);
-                strcat(tmp_cli_list, ",");
-            }
-            int len  = strlen(tmp_cli_list);
-            if (len > 0) {
-                tmp_cli_list[len-1] = '\0';
+                if (i > 0) {
+                    result = snprintf(tmp_cli_list + offset, tmp_cli_list_size - offset, ",");
+                    if (result < 0 || (size_t)result >= (tmp_cli_list_size - offset)) {
+                        free(tmp_cli_list);
+                        return RETURN_ERR;
+                    }
+                    offset += result;
+                }
+                unsigned char *mac = new_csi_data->csi_client_list[i];
+                result = snprintf(tmp_cli_list + offset, tmp_cli_list_size - offset,
+                                   "%02x:%02x:%02x:%02x:%02x:%02x",
+                                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+                if (result < 0 || (size_t)result >= (tmp_cli_list_size - offset)) {
+                    free(tmp_cli_list);
+                    return RETURN_ERR;
+                }
+                offset += result;
             }
 
             if (!found) {
