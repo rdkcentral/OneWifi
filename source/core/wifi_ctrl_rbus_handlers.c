@@ -4820,6 +4820,12 @@ static bus_error_t start_acs_method(char const *methodName, bus_data_prop_t *inP
 
     const char *payload = (const char *)inParams->value.raw_data.bytes;
     unsigned int payload_len = inParams->value.raw_data_len;
+    if (payload != NULL) {
+        while (payload_len > 1 && payload[payload_len - 1] == '\0' &&
+            payload[payload_len - 2] == '\0') {
+            payload_len--;
+        }
+    }
     if (payload == NULL || payload_len < 2 || payload[payload_len - 1] != '\0' ||
         strnlen(payload, payload_len) != payload_len - 1) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d payload is NULL or empty\n",
