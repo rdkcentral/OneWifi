@@ -1,6 +1,6 @@
 name: clang-format
 
-# Stage 1/2  (stage 2 = clang-format-suggestions.yml).
+# Stage 1/2  (stage 2 = the format job in pr-comments.yml).
 # Runs the formatter over the PR's changed C lines. It is deliberately
 # read-only with no secrets: it may run over untrusted fork code, but it holds
 # no write token and can change nothing in the repo. It only records what
@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   clang-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -62,6 +62,18 @@ jobs:
             > changed-lines.txt
           echo "PR changed-line ranges: $(wc -l < changed-lines.txt)"
 
+          # Where the PR deleted lines: "path:N" = GitHub shows deleted lines right after
+          # new-side line N. GitHub cannot apply a suggestion with deleted lines inside its
+          # range, so stage 2 drops those. Deleted files (+++ /dev/null) are skipped.
+          git diff -U0 "$BASE_SHA" HEAD -- . \
+            | awk '/^\+\+\+ / { file = ($2 == "/dev/null") ? "" : substr($0, 7) }
+                   /^@@ / && file != "" { old = $2; sub(/^-/, "", old); removed = 1
+                             if (old ~ /,/) { split(old, parts, ","); removed = parts[2] }
+                             new = $3; sub(/^\+/, "", new); added = 1
+                             if (new ~ /,/) { split(new, parts, ","); new = parts[1]; added = parts[2] }
+                             if (removed > 0) print file ":" (added > 0 ? new - 1 : new) }' \
+            > deleted-lines.txt
+
           # ================== EXCLUDED PATHS (edit me) ======================
           # Files/dirs here are never reformatted (e.g. vendor ports, imported
           # headers/utils). Uses git pathspec syntax: ':!<pattern>'.
@@ -99,7 +111,7 @@ jobs:
 
       # Record + upload metadata *always* (not only when changed==true). When the
       # changed lines become clang-format clean there is no diff, but stage 2
-      # still needs the PR identity so it can dismiss any now-obsolete review it
+      # still needs the PR identity so it can remove any now-obsolete suggestion it
       # posted on an earlier push. clang-format.diff is present only when
       # changed==true; if-no-files-found: ignore lets the clean case upload just
       # pr-meta.env.
@@ -117,6 +129,7 @@ jobs:
           path: |
             clang-format.diff
             changed-lines.txt
+            deleted-lines.txt
             pr-meta.env
           if-no-files-found: ignore
           retention-days: 1

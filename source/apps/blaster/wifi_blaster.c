@@ -86,7 +86,7 @@
     arg[4], \
     arg[5]
 
-void calculate_throughput(int mld_num);
+void calculate_throughput(int mld_link_num);
 
 #define WIFI_BLASTER_POST_STEP_TIMEOUT 100  // ms
 #define WIFI_BLASTER_CPU_THRESHOLD     90   // percentage
@@ -844,7 +844,8 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
 
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: client %s not found \n", __func__, __LINE__, DstMac);
 
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         char msg[256] = {};
 
         snprintf(msg, sizeof(msg), "Failed to find MAC in STA associated list");
@@ -1171,7 +1172,7 @@ void ResetActiveMsmtStepInstances(void)
     }
 }
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
 static void convert_channel_width_to_str(wifi_channelBandwidth_t cw, char *str, size_t len)
 {
     static const char arr_str[][8] =
@@ -1241,7 +1242,7 @@ static void convert_variant_to_str(wifi_ieee80211Variant_t variant, char *str, s
     str[strlen(str) - 1] = '\0';
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d 0x%X converted to %s\n",__func__,__LINE__, variant, str);
 }
-#endif // _PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
+#endif // _PP203X_PRODUCT_REQ_ , _MERCURY_PRODUCT_REQ_
 
 static bool DeviceMemory_DataGet(uint32_t *util_mem)
 {
@@ -1499,7 +1500,8 @@ void WiFiBlastClient(void)
             if (is_blaster_device_associated(apIndex, bmac, NULL) == false &&
                 is_blaster_device_associated_aap_link(bmac, &g_active_msmt->curStepData) == false) {
 
-                if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
+                if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext ||
+                    g_wifi_ctrl->network_mode == rdk_dev_mode_type_em_node) {
 
                     snprintf(msg, sizeof(msg), "The MAC is disconnected in traffic gen");
                     active_msmt_report_error(__func__, cfg->PlanId, &cfg->Step[StepCount], msg, ACTIVE_MSMT_STATUS_NO_CLIENT);
@@ -1540,7 +1542,8 @@ void WiFiBlastClient(void)
                 continue;
             }
             if (primary_radio_channel != radioOperation->channel) {
-                if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
+                if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext ||
+                    g_wifi_ctrl->network_mode == rdk_dev_mode_type_em_node) {
 
                     snprintf(msg, sizeof(msg), "Failed to fill in radio stats");
                     active_msmt_report_error(__func__, cfg->PlanId, &cfg->Step[StepCount], msg, ACTIVE_MSMT_STATUS_FAILED);
@@ -1601,7 +1604,8 @@ void WiFiBlastClient(void)
         wifi_app->data.u.blaster.frameCountSample = NULL;
     }
 
-    if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext ||
+        g_wifi_ctrl->network_mode == rdk_dev_mode_type_em_node) {
         g_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
         wifi_util_dbg_print(WIFI_BLASTER, "%s : %d  Extender Mode Activated. Updated the blaster state as complete\n", __func__, __LINE__);
     }
@@ -1654,7 +1658,8 @@ static void process_request(active_msmt_t *cfg)
     SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SUCCEED);
     ResetActiveMsmtStepInstances();
 
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
 
         if (ActiveMsmtConfValidation(cfg) != RETURN_OK) {
             wifi_util_error_print(WIFI_BLASTER, "%s:%d Active measurement conf is invalid!\n", __func__, __LINE__);
@@ -1712,7 +1717,8 @@ static void process_request(active_msmt_t *cfg)
 
     if (report == true) {
 
-        if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+            ctrl->network_mode == rdk_dev_mode_type_em_node) {
             active_msmt_report_all_steps(cfg, msg, status);
             mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
         }
@@ -1863,7 +1869,8 @@ static void pkt_gen_blast_client(char *dst_mac, wifi_interface_name_t *ifname)
         ONEWIFI_PKTGEN_STATUS_SUCCEED) {
         char *msg = "Failed to run Traffic generator";
 
-        if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+            ctrl->network_mode == rdk_dev_mode_type_em_node) {
             SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_FAILED);
             active_msmt_set_status_desc(__func__, g_active_msmt->active_msmt.PlanId, step->StepId,
                 step->DestMac, msg);
@@ -1954,24 +1961,24 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
     }
 
     int index = g_active_msmt->curStepData.ApIndex;
-    int mld_num = -1;
-    int mld_idx = 0;
-    while((mld_num < MAX_NUM_RADIOS - 2) && (g_active_msmt->curStepData.mldApIndex[mld_num+1] >= 0))
+    int mld_link_num = -1;
+    int mld_link_idx = 0;
+    while((mld_link_num < MAX_NUM_RADIOS - 2) && (g_active_msmt->curStepData.mldApIndex[mld_link_num+1] >= 0))
     {
-        if (provider_response->args.vap_index == (unsigned int)g_active_msmt->curStepData.mldApIndex[mld_num+1]) {
+        if (provider_response->args.vap_index == (unsigned int)g_active_msmt->curStepData.mldApIndex[mld_link_num+1]) {
             index = provider_response->args.vap_index;
-            mld_idx = mld_num+2;
+            mld_link_idx = mld_link_num+2;
         }
-        mld_num++;
+        mld_link_num++;
     }
     if (g_active_msmt->curStepData.isMLO)
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Received MLO link stats response from AP %d\n", __func__, __LINE__, index);
 
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
     wifi_radio_operationParam_t* radioOperation = NULL;
     radioOperation = getRadioOperationParam(radio_index);
-#endif //_PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
+#endif //_PP203X_PRODUCT_REQ_ , _MERCURY_PRODUCT_REQ_
 
     bmac[0] = g_active_msmt->curStepData.DestMac[0]; bmac[1] = g_active_msmt->curStepData.DestMac[1];
     bmac[2] = g_active_msmt->curStepData.DestMac[2]; bmac[3] = g_active_msmt->curStepData.DestMac[3];
@@ -2018,7 +2025,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 g_active_msmt->active_msmt_data[*SampleCount].ReTransmission = dev_conn->cli_Retransmissions;
                 g_active_msmt->active_msmt_data[*SampleCount].MaxTxRate = dev_conn->cli_MaxDownlinkRate;
                 g_active_msmt->active_msmt_data[*SampleCount].MaxRxRate = dev_conn->cli_MaxUplinkRate;
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
                 if (radioOperation != NULL) {
                     convert_channel_width_to_str(radioOperation->channelWidth, g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN);
                     convert_variant_to_str(radioOperation->variant, g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, OPER_BUFFER_LEN);
@@ -2030,11 +2037,11 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                     snprintf(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, OPER_BUFFER_LEN, dev_conn->cli_OperatingStandard);
                 }
                 snprintf(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN, dev_conn->cli_OperatingChannelBandwidth);
-#endif //_PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
+#endif //_PP203X_PRODUCT_REQ_ , _MERCURY_PRODUCT_REQ_
             }
 
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_idx] = dev_conn->cli_DataFramesSentAck;
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_idx] = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = dev_conn->cli_DataFramesSentAck;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
 
             wifi_util_dbg_print(WIFI_BLASTER,"samplecount[%d] : PacketsSentAck[%lu] PacketsSentTotal[%lu]"
                     " WaitAndLatencyInMs[%d ms] RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d]"
@@ -2043,7 +2050,8 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                     (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs, dev_conn->cli_RSSI, dev_conn->cli_LastDataDownlinkRate, dev_conn->cli_LastDataUplinkRate, dev_conn->cli_SNR,g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth ,g_active_msmt->active_msmt_data[*SampleCount].Operating_standard,g_active_msmt->active_msmt_data[*SampleCount].MaxTxRate, g_active_msmt->active_msmt_data[*SampleCount].MaxRxRate);
             } else {
 
-                if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+                    ctrl->network_mode == rdk_dev_mode_type_em_node) {
                     active_msmt_status_t status;
 
                     if (is_blaster_device_associated(index, bmac, NULL) == false &&
@@ -2061,16 +2069,16 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 }
 
                 active_msmt_log_message(BLASTER_DEBUG_LOG, "%s : %d Unable to get provider response for : %s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
-                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_idx] = 0;
-                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_idx] = 0;
+                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = 0;
+                (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = 0;
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
                 sample_done_notify();
                 return;
             }
         } else {
             active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d radio_index is invalid. So, client is treated as offline\n",__func__, __LINE__);
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_idx] = 0;
-            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_idx] = 0;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal[mld_link_idx] = 0;
+            (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck[mld_link_idx] = 0;
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, "NULL",OPER_BUFFER_LEN);
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, "NULL",OPER_BUFFER_LEN);
@@ -2082,7 +2090,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
             wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
             *SampleCount += 1;
         }
-        else if (mld_num < 0 || index == g_active_msmt->curStepData.mldApIndex[mld_num])
+        else if (mld_link_num < 0 || index == g_active_msmt->curStepData.mldApIndex[mld_link_num])
         {
             wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
             *SampleCount += 1;
@@ -2095,12 +2103,12 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Sample count value = %d\n", __func__, __LINE__, *SampleCount);
     if (*SampleCount == g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples + 1){
         *SampleCount = 0;
-        calculate_throughput(mld_num+1);
+        calculate_throughput(mld_link_num+1);
         sample_done_notify();
     }
 }
 
-void calculate_throughput(int mld_num)
+void calculate_throughput(int mld_link_num)
 {
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Entered in \n", __func__, __LINE__);
     unsigned long totalduration = 0;
@@ -2135,9 +2143,12 @@ void calculate_throughput(int mld_num)
         Diffsamples = 0;
         AckRate = 0;
         Rate = 0;
-        for (int i = 0; i <= mld_num; i++) {
-            DiffsamplesAckLink = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentAck[i] - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck[i];
-            DiffsamplesLink = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentTotal[i] - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentTotal[i];
+        for (int i = 0; i <= mld_link_num; i++) {
+            // Add underflow protection since counters of t1 might be less than t0 due to BCM packetstats recalculation in platform.c
+            const pktGenFrameCountSamples *s0 = &(wifi_app->data.u.blaster.frameCountSample)[SampleCount];
+            const pktGenFrameCountSamples *s1 = &(wifi_app->data.u.blaster.frameCountSample)[SampleCount + 1];
+            DiffsamplesAckLink = (s1->PacketsSentAck[i] >= s0->PacketsSentAck[i]) ? (s1->PacketsSentAck[i] - s0->PacketsSentAck[i]) : 0UL;
+            DiffsamplesLink = (s1->PacketsSentTotal[i] >= s0->PacketsSentTotal[i]) ? (s1->PacketsSentTotal[i] - s0->PacketsSentTotal[i]) : 0UL;
             DiffsamplesAck += DiffsamplesAckLink;
             Diffsamples += DiffsamplesLink;
 
@@ -2154,7 +2165,7 @@ void calculate_throughput(int mld_num)
                 wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
                 RateLink = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;
                 Rate += (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                   //calculate bitrate in the unit of Mbpms
-                if (mld_num > 0)
+                if (mld_link_num > 0)
                     wifi_util_dbg_print(WIFI_BLASTER,"Sample[%d] Link[%d] DiffsamplesAck[%lu]   Diffsamples[%lu]   BitrateAckPackets[%.5f Mbps]   BitrateTotalPackets[%.5f Mbps]\n", SampleCount, i, DiffsamplesAckLink, DiffsamplesLink, AckRateLink, RateLink);
             }
         }
@@ -2285,16 +2296,17 @@ int webconfig_blaster_app_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data
     mgr->blaster_config_global = data->blaster;
 
     /* If Device operating in POD mode, Send the blaster status as new to the cloud */
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         /* MQTT Topic is required to publish data to QM */
         if (strcmp((char *)mgr->blaster_config_global.blaster_mqtt_topic, "") == 0)
         {
             wifi_util_error_print(WIFI_BLASTER, "%s %d MQTT topic seems empty\n", __func__, __LINE__);
             return RETURN_ERR;
         }
-    }
-    else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_BLASTER, "GW doesnot dependant on MQTT topic\n");
+    } else if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
+        wifi_util_info_print(WIFI_BLASTER, "GW doesnot dependant on MQTT topic\n");
     }
 
     process_active_msmt_step(&data->blaster);

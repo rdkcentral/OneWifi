@@ -27,14 +27,13 @@ extern "C"
 {
 #endif
 
-void wifi_misc_init();
-
 typedef struct {
     wifi_misc_desc_t                desc;
 } wifi_misc_t;
 
 wifi_misc_desc_t *get_misc_descriptor();
 wifi_misc_t *get_misc_obj();
+void wifi_misc_init(wifi_misc_t *misc);
 
 #ifdef __cplusplus
 }

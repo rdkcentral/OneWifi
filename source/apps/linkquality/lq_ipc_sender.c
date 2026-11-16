@@ -221,9 +221,6 @@ int lq_ipc_send(uint32_t msg_type, const void *entries,
         ret = sendto(lq_ipc_fd, buf, (size_t)tlv_len, MSG_DONTWAIT,
                      (struct sockaddr *)&addr, sizeof(addr));
         if (ret >= 0) {
-            wifi_util_info_print(WIFI_APPS,
-                "%s:%d [IPC-SEND] %s sent %zd bytes OK (count=%u attempt=%d)\n",
-                __func__, __LINE__, lq_msg_type_str(msg_type), ret, count, attempt);
             break;
         }
 

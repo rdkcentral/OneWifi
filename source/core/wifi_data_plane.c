@@ -57,7 +57,7 @@ void process_event_timeout(wifi_data_plane_event_t *event, wifi_data_plane_t *mo
        switch (event->type) {
 
 #if !defined(_BWG_PRODUCT_REQ_)
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
+#if defined(DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
                 case wifi_data_plane_event_type_dpp:
                     //process_easy_connect_event_timeout(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
                     break;
@@ -99,7 +99,7 @@ void process_event(wifi_data_plane_event_t *event, wifi_data_plane_t *module)
 
        switch (event->type) {
 
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
+#if defined(DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
 #if !defined(_BWG_PRODUCT_REQ_)
                case wifi_data_plane_event_type_dpp:
                        //process_easy_connect_event(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
@@ -339,7 +339,7 @@ void deinit_wifi_data_plane()
 
 int init_wifi_data_plane()
 {
-#if defined (DUAL_CORE_XB3) || \
+#if defined(DUAL_CORE_XB3) || \
     (defined(_XB6_PRODUCT_REQ_) && !defined(_XB8_PRODUCT_REQ_)) || \
     (defined(_CBR_PRODUCT_REQ_) && !(defined(_CBR2_PRODUCT_REQ_)) )
 
@@ -402,7 +402,7 @@ bool data_plane_queue_check_event(wifi_data_plane_event_type_t type, void *ctx)
 {
     bool matched = false;
 
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
+#if defined(DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
     unsigned int i, count;
     wifi_data_plane_queue_data_t *queue_data = NULL;
     wifi_data_plane_event_t *event;
@@ -460,7 +460,7 @@ void *
 data_plane_queue_remove_event(wifi_data_plane_event_type_t type, void *ctx)
 {
        void *ptr = NULL;
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
+#if defined(DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
     unsigned int i, count;
     wifi_data_plane_event_t *event;
     wifi_data_plane_queue_data_t *queue_data = NULL;
