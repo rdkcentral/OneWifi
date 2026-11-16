@@ -4368,8 +4368,8 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     em_config_t *policy_config = &app->data.u.em_data.em_config;
 
     bus_data_element_t dataElements[] = {
-        { WIFI_EM_GET_TX_POWER,      bus_element_type_property, { get_tx_power, NULL, NULL, NULL, NULL, NULL },
-         slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+        { WIFI_EM_GET_TX_POWER,             bus_element_type_property, { get_tx_power, NULL, NULL, NULL, NULL, NULL },       slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_bytes, false, 0, 0, 0, NULL }  },
         { WIFI_EM_CHANNEL_SCAN_REQUEST,     bus_element_type_method,   { NULL, start_channel_scan, NULL, NULL, NULL, NULL },
          slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_bytes, true, 0, 0, 0, NULL }   },
         { WIFI_SET_DISCONN_STEADY_STATE,    bus_element_type_method,

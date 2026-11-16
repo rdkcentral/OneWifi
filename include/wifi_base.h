@@ -416,7 +416,7 @@ typedef struct {
 } em_btm_req_ctrl_msg_t;
 
 #define EM_MAC_ADDR_LEN 6
-#define EM_MAX_RADIO_PER_AGENT         4
+#define EM_MAX_RADIO_PER_AGENT 4
 
 typedef struct {
     uint8_t ruid[EM_MAC_ADDR_LEN];
