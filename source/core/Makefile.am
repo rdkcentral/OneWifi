@@ -161,6 +161,7 @@ endif
 
 if ONEWIFI_STA_MGR_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/sta_mgr/wifi_sta_mgr.c
+OneWifi_CPPFLAGS += -DONEWIFI_STA_MGR_APP_SUPPORT
 endif
 
 if SM_APP_SUPPORT
@@ -225,9 +226,11 @@ OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/u
 
 OneWifi_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_wrapper $(MSGPACK_LIBS) -lcjson  -lm -ljansson -lev -lprotobuf-c -ltrower-base64
 
+OneWifi_CFLAGS += -DONEWIFI_RDKB_APP_SUPPORT
+
 if WEBCONFIG_FRAMEWORK
 OneWifi_LDFLAGS += -lwebconfig_framework
-OneWifi_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG -DONEWIFI_RDKB_APP_SUPPORT
+OneWifi_CFLAGS += -DFEATURE_SUPPORT_WEBCONFIG
 endif
 
 
