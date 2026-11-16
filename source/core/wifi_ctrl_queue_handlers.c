@@ -4512,6 +4512,12 @@ static int validate_acs_list_entry(const cJSON *entry)
         goto err;
     }
 
+    if (opclass_obj->valuedouble != opclass_obj->valueint) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'opclass' must be an integer, got %.17g\n",
+            __func__, __LINE__, opclass_obj->valuedouble);
+        goto err;
+    }
+
     if (opclass_obj->valueint <= 0 || opclass_obj->valueint > 255) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d 'opclass' value %d out of valid range [1..255]\n",
             __func__, __LINE__, opclass_obj->valueint);
@@ -4521,6 +4527,12 @@ static int validate_acs_list_entry(const cJSON *entry)
     if (!cJSON_IsNumber(ch_len_obj)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d 'exclude_channels_length' is missing or not a number\n",
             __func__, __LINE__);
+        goto err;
+    }
+
+    if (ch_len_obj->valuedouble != ch_len_obj->valueint) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d 'exclude_channels_length' must be an integer, got %.17g\n",
+            __func__, __LINE__, ch_len_obj->valuedouble);
         goto err;
     }
 
@@ -4551,6 +4563,11 @@ static int validate_acs_list_entry(const cJSON *entry)
         if (!cJSON_IsNumber(ch)) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d Non-numeric channel value in opclass %d\n",
                 __func__, __LINE__, opclass_obj->valueint);
+            goto err;
+        }
+        if (ch->valuedouble != ch->valueint) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Channel value must be an integer, got %.17g in opclass %d\n",
+                __func__, __LINE__, ch->valuedouble, opclass_obj->valueint);
             goto err;
         }
         if (ch->valueint <= 0 || ch->valueint > 255) {
