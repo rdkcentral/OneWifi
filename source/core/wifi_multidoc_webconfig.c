@@ -17,7 +17,7 @@
   limitations under the License.
  **************************************************************************/
 
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
 #define  WBCFG_MULTI_COMP_SUPPORT 1
 #include "webconfig_framework.h"
 #include <msgpack.h>
@@ -67,7 +67,7 @@ static int webconf_rollback_handler(void)
 }
 
 
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
 /* local functions */
 static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid,bool managed_wifi, pErr execRetVal);
 static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr execRetVal);
@@ -2091,7 +2091,7 @@ pErr webconf_process_managed_subdoc(void* data)
 
 int register_multicomp_subdocs()
 {
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
     // PAM delivers xfinity blob  and connectedbuilding blobs as hotspot,connectedbuilding - so OneWifi will register for both blobs
     char *multi_sub_docs[MULTI_COMP_SUPPORTED_SUBDOC_COUNT+1]= {"hotspot","connectedbuilding",(char *) 0 };
     multiCompSubDocReg *multiCompData = NULL ;
@@ -2126,7 +2126,7 @@ int register_multicomp_subdocs()
 static char *sub_docs[] = { "privatessid", "homessid", "ignitewifi", (char *)0 };
 int register_single_subdocs()
 {
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
     int sd_sz = sizeof(sub_docs)/sizeof(char*) - 1; // not counting 0 in array
 
     blobRegInfo *blob_data = (blobRegInfo*) malloc(sd_sz * sizeof(blobRegInfo));
@@ -2155,7 +2155,7 @@ int register_single_subdocs()
 }
 void process_managed_wifi_disable ()
 {
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
     int ret = RETURN_ERR;
     pErr execRetVal = NULL;
 
@@ -2187,7 +2187,7 @@ void process_managed_wifi_disable ()
 
 void webconf_process_private_vap(const char* enb)
 {
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
     char *blob_buf = unpackDecode(enb);
     if(blob_buf == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s, Invalid Json\n", __func__ );
@@ -2221,7 +2221,7 @@ void webconf_process_private_vap(const char* enb)
 }
 void webconf_process_home_vap(const char* enb)
 {
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
     char *blob_buf = unpackDecode(enb);
     if(blob_buf == NULL) {
         wifi_util_dbg_print(WIFI_CTRL, "%s, Invalid Json\n", __func__ );
@@ -2256,7 +2256,7 @@ void webconf_process_home_vap(const char* enb)
 
 void webconf_process_ignitewifi(const char *enb)
 {
-#ifdef FEATURE_SUPPORT_WEBCONFIG
+#ifdef ONEWIFI_RDKB_APP_SUPPORT 
     char *blob_buf = unpackDecode(enb);
     if (blob_buf == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s, Invalid Json\n", __func__);
