@@ -4457,12 +4457,12 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
          { NULL, NULL, NULL, NULL, NULL, NULL },                                                             slow_speed, ZERO_TABLE,
          { bus_data_type_string, false, 0, 0, 0, NULL }                                                                                                                             },
         { WIFI_EM_CLIENT_ASSOC_CTRL_REQ,    bus_element_type_method,
-         { NULL, cacr_set_client_acl_rules, NULL, NULL, NULL, NULL },                                        slow_speed, ZERO_TABLE,
-         { bus_data_type_string, true, 0, 0, 0, NULL }                                                                                                                              },
-        { WIFI_EM_FAILED_CONNECTION,        bus_element_type_event,  { NULL, NULL, NULL, NULL, NULL, NULL },
-         slow_speed,                                                                                                     ZERO_TABLE, { bus_data_type_string, false, 0, 0, 0, NULL } },
-        { WIFI_EM_CLIENT_DISASSOC_STATS,    bus_element_type_event,  { NULL, NULL, NULL, NULL, NULL, NULL },
-         slow_speed,                                                                                                     ZERO_TABLE, { bus_data_type_string, false, 0, 0, 0, NULL } }
+         { NULL, cacr_set_client_acl_rules, NULL, NULL, NULL, NULL },                                                        slow_speed, ZERO_TABLE,
+         { bus_data_type_string, true, 0, 0, 0, NULL }                                                                                                                                              },
+        { WIFI_EM_FAILED_CONNECTION,        bus_element_type_event,    { NULL, NULL, NULL, NULL, NULL, NULL },               slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_EM_CLIENT_DISASSOC_STATS,    bus_element_type_event,    { NULL, NULL, NULL, NULL, NULL, NULL },               slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_string, false, 0, 0, 0, NULL } }
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;
