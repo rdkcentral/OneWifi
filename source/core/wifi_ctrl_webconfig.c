@@ -2095,9 +2095,9 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 }
             } else {
 #ifdef NL80211_ACL
-                wifi_hal_delApAclDevices(vap_index);
+                wifi_hal_delApAclDevices(current_config->vap_index);
 #else
-        wifi_delApAclDevices(vap_index);
+        wifi_delApAclDevices(current_config->vap_index);
 #endif
                 wifi_util_info_print(WIFI_MGR, "%s:%d: remove all mac acl entries"
                     " from cache and db vap_index:%d\n", __func__, __LINE__, vap_index);
