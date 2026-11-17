@@ -132,10 +132,13 @@ ip link set dev "mld1" address "$new_mac_mld1"
 mkdir -p /nvram
 cp InterfaceMap.json /nvram/.
 
-# Create the EasyMeshCfg.json which will have the al_mac_address
-# same as that of sta wifi_1_3_mac
-al_mac_addr=$wifi1_3_mac
+# Create the EasyMeshCfg.json with a zero AL MAC unless one is already stored. The real AL MAC
+# is written by the easymesh agent once the AL SAP registration succeeds.
+al_mac_addr="00:00:00:00:00:00"
+# Default Colocated_mode: 1 when a controller (em_ctrl) is installed on this device, else 0 (extender).
+# A valid mode (0 or 1) already saved in the file takes precedence, see below.
 colocated_mode=0
+[ -x /etc/init.d/em_ctrl ] && colocated_mode=1
 backhaul_ssid="mesh_backhaul"
 backhaul_keypassphrase="test-backhaul"
 sta_4addr_mode_enabled=true
@@ -149,6 +152,18 @@ if [ -f "$output_file" ]; then
     # Attempt to read the Colocated_mode value using jsonfilter
     # Redirect stderr to /dev/null to suppress errors if the file is not valid JSON or key is missing
     existing_colocated_mode=$(jsonfilter -i "$output_file" -e '@.Colocated_mode' 2>/dev/null)
+
+    # Keep the AL MAC the agent already stored, so a OneWifi restart does not reset it to zeros
+    existing_al_mac=$(jsonfilter -i "$output_file" -e '@.AL_MAC_ADDR' 2>/dev/null)
+    case "$existing_al_mac" in
+        ""|"00:00:00:00:00:00") ;;
+        *) al_mac_addr="$existing_al_mac" ;;
+    esac
+
+    # Keep a valid saved role (0 or 1); only infer one when none is stored
+    case "$existing_colocated_mode" in
+        0|1) colocated_mode="$existing_colocated_mode" ;;
+    esac
 
     if [ "$existing_colocated_mode" = "1" ]; then
         echo "Colocated_mode is already 1 in ${output_file}. Skipping file creation."
