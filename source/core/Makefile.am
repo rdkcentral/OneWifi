@@ -226,7 +226,6 @@ OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/u
 
 OneWifi_LDFLAGS = -rdynamic -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_wrapper $(MSGPACK_LIBS) -lcjson  -lm -ljansson -lev -lprotobuf-c -ltrower-base64
 
-OneWifi_CFLAGS += -DONEWIFI_RDKB_APP_SUPPORT
 
 if WEBCONFIG_FRAMEWORK
 OneWifi_LDFLAGS += -lwebconfig_framework
