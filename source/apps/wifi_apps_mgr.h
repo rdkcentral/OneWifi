@@ -45,7 +45,7 @@ extern "C" {
 #include "wifi_em.h"
 #endif
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
-#include "wifi_sta_mgr.h"
+#include "sta_mgr/wifi_sta_mgr.h"
 #endif
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
 #include "wifi_blaster.h"
