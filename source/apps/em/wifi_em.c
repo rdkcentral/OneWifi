@@ -1796,8 +1796,8 @@ static int em_publish_client_disassoc_stats(const wifi_vap_info_t *vap_info,
     int n;
     bus_error_t rc;
 
-    to_mac_str(vap_info->u.bss_info.bssid, bssid_str);
-    to_mac_str(dev3->cli_MACAddress, sta_str);
+    to_mac_str((unsigned char *)vap_info->u.bss_info.bssid, bssid_str);
+    to_mac_str((unsigned char *)dev3->cli_MACAddress, sta_str);
 
     n = snprintf(json_buf, sizeof(json_buf),
         "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
