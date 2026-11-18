@@ -1,7 +1,7 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.056",
-  "cksum": "2353365742 523",
+  "version": "1.00.057",
+  "cksum": "1800959940 61002",
   "tables": {
     "Wifi_Device_Config": {
       "columns": {
