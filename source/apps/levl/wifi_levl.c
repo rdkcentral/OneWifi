@@ -446,7 +446,7 @@ static void extract_probe_req(wifi_app_t *app, probe_req_elem_t *elem, const mac
     free(elem);
 }
 
-#ifndef _PLATFORM_BANANAPI_R4_
+#if !(defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT))
 /*
  * Parse the assoc frame to find the assoc link info from the vendor specific IE. 
  * [in] msg - assoc frame message
@@ -542,7 +542,7 @@ static void find_matching_probe_req(struct ieee80211_mgmt *frame, frame_data_t *
         extract_probe_req(app, elem, mac_str, probe_req_frames_to_send);
     }
 
-#ifndef _PLATFORM_BANANAPI_R4_
+#if !(defined(_PLATFORM_BANANAPI_R4_) || defined(QCOM_ATH12K_PORT))
     // Since this is Broadcom specific, first try to find the special
     // vendor IE with replaced link MAC
     assoc_link_info_t assoc_link_info = { 0 };
@@ -653,7 +653,7 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     }
 
     str_tolower(mac_str);
-#if defined(CONFIG_IEEE80211BE) && !defined(_PLATFORM_BANANAPI_R4_)
+#if defined(CONFIG_IEEE80211BE) && !defined(_PLATFORM_BANANAPI_R4_) && !defined(QCOM_ATH12K_PORT)
     check_and_correct_reporting_vap_index(msg, mac_str);
 #endif /* CONFIG_IEEE80211BE && !_PLATFORM_BANANAPI_R4_ */
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n",
@@ -2139,7 +2139,7 @@ bus_error_t levl_vap_addrowhandler(char const* tableName, char const* aliasName,
     wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int vap_index;
 
-    if (instanceCounter > getTotalNumberVAPs(NULL)) {
+    if (instanceCounter > getTotalNumberVAPs()) {
         instanceCounter = 1;
     }
     vap_index  = VAP_INDEX(mgr->hal_cap, (instanceCounter-1)) + 1;
@@ -2188,7 +2188,7 @@ bus_error_t levl_radio_addrowhandler(char const* tableName, char const* aliasNam
 
     static int unsigned instanceCounter = 1;
 
-    if (instanceCounter > getNumberRadios(NULL)) {
+    if (instanceCounter > getNumberRadios()) {
         instanceCounter = 1;
     }
 
@@ -2215,7 +2215,7 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
     char *component_name = "WifiAppsLevl";
 
     int num_of_radio = getNumberRadios();
-    int num_of_vaps = getTotalNumberVAPs(NULL);
+    int num_of_vaps = getTotalNumberVAPs();
     int num_elements;
 
     bus_data_element_t dataElements[] = {

@@ -899,6 +899,7 @@ CosaUtilGetStaticRouteTable
 
     sroute = (StaticRoute *) malloc(sizeof(StaticRoute) * (*count));
     if (NULL == sroute) {
+        fclose(fp);
         return ANSC_STATUS_FAILURE;
     }
     bzero(sroute, sizeof(StaticRoute) * (*count));
@@ -1145,9 +1146,12 @@ int CosaUtilGetIpv6AddrInfo (char * ifname, ipv6_addr_info_t ** pp_info, int * p
         if (parsingResult == 1)
         {
             (*p_num)++;
-            *pp_info = realloc(*pp_info,  *p_num * sizeof(ipv6_addr_info_t));
-            if (!*pp_info)
+            ipv6_addr_info_t *tmp = realloc(*pp_info, *p_num * sizeof(ipv6_addr_info_t));
+            if (!tmp) {
+                fclose(fp);
                 return -1;
+            }
+            *pp_info = tmp;
             p_ai = &(*pp_info)[*p_num-1];
             strncpy(p_ai->v6addr, v6Details.address6, sizeof(p_ai->v6addr));
 
@@ -1165,7 +1169,7 @@ int CosaUtilGetIpv6AddrInfo (char * ifname, ipv6_addr_info_t ** pp_info, int * p
 
         }
     }
-
+    fclose(fp);
     return 0;
 }
 

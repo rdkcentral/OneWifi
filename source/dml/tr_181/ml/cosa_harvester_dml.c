@@ -953,6 +953,46 @@ ActiveMeasurement_Step_SetParamUlongValue
     return FALSE;
 }
 
+/* Return non-zero if c is a hex digit (0-9, a-f, A-F). */
+static int is_hex(char c)
+{
+    return (c >= '0' && c <= '9') ||
+           (c >= 'a' && c <= 'f') ||
+           (c >= 'A' && c <= 'F');
+}
+
+/*
+ * Normalize a MAC string into the canonical 12 hex-digit, no-separator form.
+ * Accepts "AA:BB:CC:DD:EE:FF", "AA-BB-CC-DD-EE-FF" or "AABBCCDDEEFF".
+ * Writes the result (12 chars + NUL) into out; rejects anything that is not
+ * exactly 12 hex digits after removing ':' and '-' separators.
+ */
+static ANSC_STATUS normalize_mac_str(const char *in, char *out, size_t out_sz)
+{
+    size_t j = 0;
+
+    if (in == NULL || out == NULL || out_sz == 0) {
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (size_t i = 0; in[i] != '\0'; i++) {
+        char c = in[i];
+        if (c == ':' || c == '-') {          /* skip separators */
+            continue;
+        }
+        if (!is_hex(c)) {                     /* reject non-hex input */
+            return ANSC_STATUS_FAILURE;
+        }
+        if (j >= out_sz - 1) {               /* would overflow out buffer */
+            return ANSC_STATUS_FAILURE;
+        }
+        out[j++] = c;
+    }
+    out[j] = '\0';
+
+    return (j == 12) ? ANSC_STATUS_SUCCESS : ANSC_STATUS_FAILURE;
+}
+
 BOOL
 ActiveMeasurement_Step_SetParamStringValue
     (
@@ -988,7 +1028,12 @@ ActiveMeasurement_Step_SetParamStringValue
     }
 
     if (AnscEqualString(ParamName, "DestMac", TRUE)) {
-        snprintf((char*)pcfg->Step[StepIns].DestMac, sizeof(pcfg->Step[StepIns].DestMac), "%s", pValue);
+        char norm_mac[MAC_ADDRESS_LENGTH];
+        if (normalize_mac_str(pValue, norm_mac, sizeof(norm_mac)) != ANSC_STATUS_SUCCESS) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid DestMac '%s'\n", __func__, __LINE__, pValue);
+            return FALSE;
+        }
+        snprintf((char*)pcfg->Step[StepIns].DestMac, sizeof(pcfg->Step[StepIns].DestMac), "%s", norm_mac);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  \n",(char*)pcfg->Step[StepIns].DestMac ,StepIns);
         return TRUE;
     }
