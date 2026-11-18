@@ -89,6 +89,7 @@ typedef struct {
     bool                 temperature_event_subscribed[MAX_NUM_RADIOS];
     int                  radio_temperature_interval[MAX_NUM_RADIOS];
     pthread_mutex_t      lock;
+    bool                 lock_initialized;
     hash_map_t           *probe_req_map;
     hash_map_t           *curr_sounding_mac_map;
     hash_map_t           *pending_mac_map;

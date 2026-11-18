@@ -140,7 +140,8 @@ typedef enum bus_error
     bus_error_nosubscribers,                   /**< No subscribers present   */
     bus_error_subscription_already_exist,      /**< The subscription already exists*/
     bus_error_invalid_namespace,               /**< Invalid namespace as per standard */
-    bus_error_direct_con_not_exist             /**< Direct connection not exist */
+    bus_error_direct_con_not_exist,            /**< Direct connection not exist */
+    bus_error_not_writable                     /**< Element exists but cannot be modified */
 } bus_error_t;
 
 typedef enum child_node_ref {

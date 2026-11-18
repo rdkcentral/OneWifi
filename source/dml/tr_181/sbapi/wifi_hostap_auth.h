@@ -84,7 +84,7 @@ and
 #include <time.h>
 //#include "ieee80211_ioctl.h"
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
 #include "drivers/driver_nl80211.h"
 #include "hostapd/config_file.h"
 #endif
@@ -237,7 +237,7 @@ struct driver_data {
     u8  own_addr[ETH_ALEN];
 };
 
-#if defined (_XB7_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_)
 typedef struct {
     struct hostapd_data         *hapd;
     struct wpa_driver_ops       driver_ops[0];
