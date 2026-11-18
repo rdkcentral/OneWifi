@@ -4401,7 +4401,7 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
         return 0;
     }
 
-    if (rfc_param != NULL && ( (rfc_param->wei_rfc_mask & (WEI_RFC_SC | WEI_RFC_LQ))
+    if ( isVapPrivate(apIndex) &&  rfc_param != NULL && ( (rfc_param->wei_rfc_mask & (WEI_RFC_SC | WEI_RFC_LQ))
             || (ctrl != NULL && (ctrl->network_mode == rdk_dev_mode_type_em_node
             || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node)))) {
         link_quality_measurement = true;
