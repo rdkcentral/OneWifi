@@ -4428,7 +4428,9 @@ void process_set_ignore_disassoc_timer_command(wifi_ctrl_t *ctrl,
 
     cmd = (ignore_11v_disassoc_cmd_t *)data;
 
-    if ((cmd->ap_idx < 0) || (cmd->ap_idx >= (int)getTotalNumberVAPs())) {
+    if ((cmd->ap_idx < 0) ||
+        (convert_vap_index_to_vap_array_index(&get_wifimgr_obj()->hal_cap.wifi_prop,
+             (unsigned int)cmd->ap_idx) < 0)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: invalid ap_idx %d\n",
                               __func__, __LINE__, cmd->ap_idx);
         return;
