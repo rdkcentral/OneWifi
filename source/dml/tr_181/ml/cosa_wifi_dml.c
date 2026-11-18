@@ -12443,10 +12443,12 @@ WPS_SetParamBoolValue
     }
     if( AnscEqualString(ParamName, "X_CISCO_COM_CancelSession", TRUE))
     {
+#ifndef EASY_MESH_NODE
         if (vapInfo->u.bss_info.wps.enable == false) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: WPS not enabled for %s, cancel session not supported\n",__func__, __LINE__, vapInfo->vap_name);
             return FALSE;
         }
+#endif
         INT vap_index = (INT)(instance_number - 1);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WPS cancel for vap %d\n",__func__, __LINE__, vap_index);
         push_event_to_ctrl_queue(&vap_index, sizeof(vap_index), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);

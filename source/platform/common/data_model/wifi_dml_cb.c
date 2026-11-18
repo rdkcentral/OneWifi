@@ -4818,12 +4818,14 @@ bool wps_set_param_bool_value(void *obj_ins_context, char *param_name, bool outp
             }
         }
     } else if (STR_CMP(param_name, "X_CISCO_COM_CancelSession")) {
+#ifndef EASY_MESH_NODE
         if (p_dm_vap_info->u.bss_info.wps.enable == false) {
             wifi_util_error_print(WIFI_DMCLI,
                 "%s:%d: WPS not enabled for %s, cancel session not supported\n",
                 __func__, __LINE__, p_dm_vap_info->vap_name);
             return false;
         }
+#endif
         int32_t vap_index = instance_number - 1;
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: WPS cancel for vap %d\n", __func__, __LINE__,
             vap_index);
