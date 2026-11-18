@@ -129,7 +129,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211BN
-        cfg.variant |= WIFI_80211_VARIANT_BN;
+            cfg.variant |= WIFI_80211_VARIANT_BN;
 #endif /* CONFIG_IEEE80211BN */
             break;
         case WIFI_FREQUENCY_5H_BAND:
