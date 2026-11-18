@@ -28,6 +28,16 @@
 
 char help[] = "Usage: wifi_api2 <WiFi API name> <args>";
 
+/* 802.11V support */
+#ifndef BTM_REQMODE_PREF_LIST_INCL
+/* BSS Mgmt Transition Request Mode Field - 802.11v */
+#define BTM_REQMODE_PREF_LIST_INCL       0x01
+#define BTM_REQMODE_ABRIDGED             0x02
+#define BTM_REQMODE_DISASSOC_IMMINENT    0x04
+#define BTM_REQMODE_BSS_TERM_INCL        0x08
+#define BTM_REQMODE_ESS_DISASSOC_IMNT    0x10
+#endif
+
 struct hal_api_info {
     char* name;
     unsigned int num_args;
