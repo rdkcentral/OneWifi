@@ -920,7 +920,7 @@ int start_wifi_services(void)
         }
         captive_portal_check();
 #if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && \
-        (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_))
+        (defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_))
         /* Function to check for default SSID and Passphrase for Private VAPS
         if they are default and last-reboot reason is SW get the previous config from Webconfig */
         validate_and_sync_private_vap_credentials();
@@ -3626,6 +3626,7 @@ static bool is_mlo_security_mode_compatible(wifi_security_modes_t mode_a,
 bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
     wifi_dbg_type_t log_type)
 {
+    bool result = true;
     /* Compare SSID */
     if (strncmp(main_vap->u.bss_info.ssid, vap->u.bss_info.ssid, sizeof(ssid_t)) != 0) {
         wifi_util_info_print(log_type,
@@ -3633,18 +3634,7 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
             "SSID '%s' != '%s'\n",
             __func__, __LINE__, vap->vap_index, main_vap->vap_index,
             vap->u.bss_info.ssid, main_vap->u.bss_info.ssid);
-        return false;
-    }
-
-    /* Compare Password/Key */
-    if (strncmp(main_vap->u.bss_info.security.u.key.key,
-                vap->u.bss_info.security.u.key.key,
-                sizeof(main_vap->u.bss_info.security.u.key.key)) != 0) {
-        wifi_util_info_print(log_type,
-            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
-            "password/key does not match\n",
-            __func__, __LINE__, vap->vap_index, main_vap->vap_index);
-        return false;
+        result = false;
     }
 
     /* Compare Security Mode — WPA3 variants are MLO-compatible across bands */
@@ -3653,12 +3643,35 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
         wifi_util_info_print(log_type,
             "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
             "security mode %d != %d\n",
-            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
-            vap->u.bss_info.security.mode, main_vap->u.bss_info.security.mode);
-        return false;
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index, vap->u.bss_info.security.mode,
+            main_vap->u.bss_info.security.mode);
+        result = false;
     }
 
-    return true;
+    /* Compare Password/Key */
+    if (!security_mode_support_radius(main_vap->u.bss_info.security.mode) &&
+        !security_mode_support_radius(vap->u.bss_info.security.mode) &&
+        (strncmp(main_vap->u.bss_info.security.u.key.key, vap->u.bss_info.security.u.key.key,
+             sizeof(main_vap->u.bss_info.security.u.key.key)) != 0)) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
+            "password/key does not match\n",
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index);
+        result = false;
+    }
+
+    /* Compare Security Mode — WPA3 variants are MLO-compatible across bands */
+    if ((main_vap->u.bss_info.security.encr != vap->u.bss_info.security.encr) ||
+        ((main_vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) ||
+            (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256))) {
+        wifi_util_info_print(log_type,
+            "%s:%d: vap_index=%d MLO config mismatch with main link vap_index=%d: "
+            "encryption type %d != %d\n",
+            __func__, __LINE__, vap->vap_index, main_vap->vap_index,
+            vap->u.bss_info.security.encr, main_vap->u.bss_info.security.encr);
+    }
+
+    return result;
 }
 
 static wifi_vap_info_t *webconfig_find_vap_by_name(webconfig_subdoc_decoded_data_t *data, char *vap_name)
