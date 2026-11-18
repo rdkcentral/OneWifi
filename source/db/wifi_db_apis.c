@@ -5263,10 +5263,9 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BN_FLAG) {
         wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config for 11bn, old db version: %d total radios: %u\n",
             __func__, __LINE__, index, g_wifidb->db_version, total_radios);
-        if (config->band != WIFI_FREQUENCY_2_4_BAND)
-            config->variant |= WIFI_80211_VARIANT_BN;
-        if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
-            wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
+        config->variant |= WIFI_80211_VARIANT_BN;
+        if (wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB, "%s:%d error in updating radio config\n", __func__, __LINE__);
             return;
         }
     }

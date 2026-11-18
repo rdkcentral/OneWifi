@@ -2823,16 +2823,12 @@ Radio_GetParamStringValue
 #endif /* CONFIG_IEEE80211BE */
 
 #ifdef CONFIG_IEEE80211BN
-        if ( pcfg->variant & WIFI_80211_VARIANT_BN )
-        {
-                if (AnscSizeOfString(buf) != 0)
-                {
-                    strcat(buf, ",bn");
-                }
-                else
-                {
-                    strcat(buf, "bn");
-                }
+        if (pcfg->variant & WIFI_80211_VARIANT_BN) {
+            if (AnscSizeOfString(buf) != 0) {
+                strcat(buf, ",bn");
+            } else {
+                strcat(buf, "bn");
+            }
         }
 #endif /* CONFIG_IEEE80211BN */
 

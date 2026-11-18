@@ -136,7 +136,7 @@ void wifiapi_printradioconfig(char *buff, unsigned int buff_size, wifi_radio_ope
 #endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211BN
     else if (radio_config->variant & WIFI_80211_VARIANT_BN) {
-        idx += snprintf(&buff[idx], buff_size-idx, " bn");
+        idx += snprintf(&buff[idx], buff_size - idx, " bn");
     }
 #endif /* CONFIG_IEEE80211BN */
 

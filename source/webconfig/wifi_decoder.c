@@ -2764,9 +2764,9 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
 #endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211BN
-       MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BN);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BN);
 #endif /* CONFIG_IEEE80211BN */
-        if(wifi_hw_mode != 0) {
+        if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
         }
@@ -2783,7 +2783,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
 #endif /* CONFIG_IEEE80211BE */
 #ifdef CONFIG_IEEE80211BN
-         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BN);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BN);
 #endif /* CONFIG_IEEE80211BN */
         if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
