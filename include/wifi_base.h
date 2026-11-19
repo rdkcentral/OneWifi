@@ -1454,8 +1454,8 @@ typedef struct {
 #define EM_MAX_SSID_LEN 33
 #endif /* EM_MAX_SSID_LEN */
 typedef struct {
-    unsigned char  ssid_len;
-    char  ssid[EM_MAX_SSID_LEN];
+    unsigned char ssid_len;
+    char ssid[EM_MAX_SSID_LEN];
     unsigned short vlan_id;
 } traffic_sep_policy_ssid_t;
 
@@ -1463,8 +1463,8 @@ typedef struct {
 #define EM_MAX_TRAFFIC_SEP_POLICY 5
 #endif /* EM_MAX_TRAFFIC_SEP_POLICY */
 typedef struct {
-    unsigned char  ssids_num;
-    traffic_sep_policy_ssid_t  ssids[EM_MAX_TRAFFIC_SEP_POLICY];
+    unsigned char ssids_num;
+    traffic_sep_policy_ssid_t ssids[EM_MAX_TRAFFIC_SEP_POLICY];
 } traffic_sep_policy_t;
 
 typedef struct {

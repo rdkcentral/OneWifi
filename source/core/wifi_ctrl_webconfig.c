@@ -1993,88 +1993,111 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
     wifi_vap_info_t *vapInfo = NULL;
     char str[128];
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
-    for(index = 0; index < getTotalNumberVAPs(); index++) {
+    for (index = 0; index < getTotalNumberVAPs(); index++) {
         apIdx = VAP_INDEX(mgr->hal_cap, index);
-        vapInfo =  get_wifidb_vap_parameters(apIdx);
+        vapInfo = get_wifidb_vap_parameters(apIdx);
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
             continue;
         }
 
-        wifi_util_info_print(WIFI_CTRL,"%s:%d: ssids_num =%d  \n",__func__, __LINE__,data->em_config.traffic_separation_policy.ssids_num);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: ssids_num =%d  \n", __func__, __LINE__,
+            data->em_config.traffic_separation_policy.ssids_num);
 
-        if(isVapPrivate(apIdx)) {
-	    if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[0].ssid, 
-			sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid))==0) 
-			&& (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id == data->em_config.traffic_separation_policy.ssids[0].vlan_id)) {
+        if (isVapPrivate(apIdx)) {
+            if ((strncmp(vapInfo->u.bss_info.ssid,
+                     data->em_config.traffic_separation_policy.ssids[0].ssid,
+                     sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid)) == 0) &&
+                (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id ==
+                    data->em_config.traffic_separation_policy.ssids[0].vlan_id)) {
                 continue;
             }
-            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[0].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid));
+            strncpy(vapInfo->u.bss_info.ssid,
+                data->em_config.traffic_separation_policy.ssids[0].ssid,
+                sizeof(data->em_config.traffic_separation_policy.ssids[0].ssid));
 
-	    if((data->em_config.traffic_separation_policy.ssids[0].vlan_id >= VLAN_MIN) 
-		&& (data->em_config.traffic_separation_policy.ssids[0].vlan_id <= VLAN_MAX)) {
-		wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[0].vlan_id;
-			get_stubs_descriptor()->v_secure_system_fn("/etc/utopia/service.d/service_vlan_ts.sh stop");
-		sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
+            if ((data->em_config.traffic_separation_policy.ssids[0].vlan_id >= VLAN_MIN) &&
+                (data->em_config.traffic_separation_policy.ssids[0].vlan_id <= VLAN_MAX)) {
+                wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id =
+                    data->em_config.traffic_separation_policy.ssids[0].vlan_id;
+                v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+                sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
-                if(syscfg_set_commit(NULL, "vlan_id_pvt", str) != 0) {
-                    wifi_util_error_print(WIFI_CTRL,"%s:%d:  Private VAP : syscfg failed  \n",__func__, __LINE__);
-           	}
-	    }
-        }
-        else if(isVapMesh(apIdx)) {
-            if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[3].ssid,
-		sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid))==0) 
-		&& (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id == data->em_config.traffic_separation_policy.ssids[3].vlan_id)) {
-                continue;
-            }
-            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[3].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid));
-	    if((data->em_config.traffic_separation_policy.ssids[3].vlan_id >= VLAN_MIN) 
-		&& (data->em_config.traffic_separation_policy.ssids[3].vlan_id <= VLAN_MAX)) {
-	        wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[3].vlan_id;
-			get_stubs_descriptor()->v_secure_system_fn("/etc/utopia/service.d/service_vlan_ts.sh stop");
-		sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
-
-                if(syscfg_set_commit(NULL, "vlan_id_mesh",str) != 0) {
-                    wifi_util_error_print(WIFI_CTRL,"%s:%d:  Private VAP : syscfg failed  \n",__func__, __LINE__);
+                if (syscfg_set_commit(NULL, "vlan_id_pvt", str) != 0) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d:  Private VAP : syscfg failed  \n",
+                        __func__, __LINE__);
                 }
-	    }
-        }
-        else if(isVapXhs(apIdx)) {
-            if((strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[1].ssid,
-		 sizeof(data->em_config.traffic_separation_policy.ssids[1].ssid))==0)
-		 && (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id == data->em_config.traffic_separation_policy.ssids[1].vlan_id)) {
+            }
+        } else if (isVapMesh(apIdx)) {
+            if ((strncmp(vapInfo->u.bss_info.ssid,
+                     data->em_config.traffic_separation_policy.ssids[3].ssid,
+                     sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid)) == 0) &&
+                (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id ==
+                    data->em_config.traffic_separation_policy.ssids[3].vlan_id)) {
                 continue;
             }
-            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[1].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[1].ssid));
-	    if((data->em_config.traffic_separation_policy.ssids[1].vlan_id >= VLAN_MIN) 
-		&& (data->em_config.traffic_separation_policy.ssids[1].vlan_id <= VLAN_MAX)) {
-            	wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[1].vlan_id;
-			get_stubs_descriptor()->v_secure_system_fn("/etc/utopia/service.d/service_vlan_ts.sh stop");
-    		sprintf(str, "%d",wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
+            strncpy(vapInfo->u.bss_info.ssid,
+                data->em_config.traffic_separation_policy.ssids[3].ssid,
+                sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid));
+            if ((data->em_config.traffic_separation_policy.ssids[3].vlan_id >= VLAN_MIN) &&
+                (data->em_config.traffic_separation_policy.ssids[3].vlan_id <= VLAN_MAX)) {
+                wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id =
+                    data->em_config.traffic_separation_policy.ssids[3].vlan_id;
+                v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+                sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
 
-	    	if(syscfg_set_commit(NULL, "vlan_id_iot",str) != 0) {
-		    wifi_util_error_print(WIFI_CTRL,"%s:%d:  IOT VAP : syscfg failed  \n",__func__, __LINE__);
-	    	}
-	    }
-    	} 
-        else if(isVapLnf(apIdx)) {
-            if(strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[2].ssid,
-	       sizeof(data->em_config.traffic_separation_policy.ssids[2].ssid))==0) {
+                if (syscfg_set_commit(NULL, "vlan_id_mesh", str) != 0) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d:  Private VAP : syscfg failed  \n",
+                        __func__, __LINE__);
+                }
+            }
+        } else if (isVapXhs(apIdx)) {
+            if ((strncmp(vapInfo->u.bss_info.ssid,
+                     data->em_config.traffic_separation_policy.ssids[1].ssid,
+                     sizeof(data->em_config.traffic_separation_policy.ssids[1].ssid)) == 0) &&
+                (wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id ==
+                    data->em_config.traffic_separation_policy.ssids[1].vlan_id)) {
                 continue;
             }
-            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[2].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[2].ssid));
-            wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[2].vlan_id;
-        }
-        else if(isVapHotspot(apIdx)) {
-            if(strncmp(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[4].ssid,
-	       sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid))==0) {
+            strncpy(vapInfo->u.bss_info.ssid,
+                data->em_config.traffic_separation_policy.ssids[1].ssid,
+                sizeof(data->em_config.traffic_separation_policy.ssids[1].ssid));
+            if ((data->em_config.traffic_separation_policy.ssids[1].vlan_id >= VLAN_MIN) &&
+                (data->em_config.traffic_separation_policy.ssids[1].vlan_id <= VLAN_MAX)) {
+                wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id =
+                    data->em_config.traffic_separation_policy.ssids[1].vlan_id;
+                v_secure_system("/etc/utopia/service.d/service_vlan_ts.sh stop");
+                sprintf(str, "%d", wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id);
+
+                if (syscfg_set_commit(NULL, "vlan_id_iot", str) != 0) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d:  IOT VAP : syscfg failed  \n",
+                        __func__, __LINE__);
+                }
+            }
+        } else if (isVapLnf(apIdx)) {
+            if (strncmp(vapInfo->u.bss_info.ssid,
+                    data->em_config.traffic_separation_policy.ssids[2].ssid,
+                    sizeof(data->em_config.traffic_separation_policy.ssids[2].ssid)) == 0) {
                 continue;
             }
-            strncpy(vapInfo->u.bss_info.ssid,data->em_config.traffic_separation_policy.ssids[4].ssid,sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid));
-            wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id = data->em_config.traffic_separation_policy.ssids[4].vlan_id;
-        }
-       else {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d:  : No matching VAP type  \n",__func__, __LINE__);
+            strncpy(vapInfo->u.bss_info.ssid,
+                data->em_config.traffic_separation_policy.ssids[2].ssid,
+                sizeof(data->em_config.traffic_separation_policy.ssids[2].ssid));
+            wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id =
+                data->em_config.traffic_separation_policy.ssids[2].vlan_id;
+        } else if (isVapHotspot(apIdx)) {
+            if (strncmp(vapInfo->u.bss_info.ssid,
+                    data->em_config.traffic_separation_policy.ssids[4].ssid,
+                    sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid)) == 0) {
+                continue;
+            }
+            strncpy(vapInfo->u.bss_info.ssid,
+                data->em_config.traffic_separation_policy.ssids[4].ssid,
+                sizeof(data->em_config.traffic_separation_policy.ssids[4].ssid));
+            wifi_hal_cap_obj->wifi_prop.interface_map[index].vlan_id =
+                data->em_config.traffic_separation_policy.ssids[4].vlan_id;
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d:  : No matching VAP type  \n", __func__,
+                __LINE__);
             continue;
         }
 
@@ -3482,7 +3505,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             }
         break;
 #ifdef EM_APP
-       case webconfig_subdoc_type_em_config:
+        case webconfig_subdoc_type_em_config:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & radio_state_pending) {
                     ctrl->webconfig_state &= ~radio_state_pending;
@@ -3499,7 +3522,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_em_subdoc_config_apply(ctrl, &data->u.decoded);
                 }
             }
-           break;
+            break;
 #endif
         default:
             break;

@@ -3871,12 +3871,15 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
         }
         policy_cfg->num_qos_mgt++;
     }
-    
     // Traffic Separation policy
-    policy_cfg->traffic_separation_policy.ssids_num = em_policy_cfg->traffic_separation_policy.ssids_num;
-    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: [TRAFFIC_SEP] Traffic Separation policy ssids_num=%d\n", __func__, __LINE__,
-            em_policy_cfg->traffic_separation_policy.ssids_num);
-    for ( int i = 0; (i < policy_cfg->traffic_separation_policy.ssids_num) && (i < EM_MAX_TRAFFIC_SEP_POLICY); i++) {
+    policy_cfg->traffic_separation_policy.ssids_num =
+        em_policy_cfg->traffic_separation_policy.ssids_num;
+    wifi_util_error_print(WIFI_WEBCONFIG,
+        "%s:%d: [TRAFFIC_SEP] Traffic Separation policy ssids_num=%d\n", __func__, __LINE__,
+        em_policy_cfg->traffic_separation_policy.ssids_num);
+    for (int i = 0;
+         (i < policy_cfg->traffic_separation_policy.ssids_num) && (i < EM_MAX_TRAFFIC_SEP_POLICY);
+         i++) {
         int len = em_policy_cfg->traffic_separation_policy.ssids[i].ssid_len;
         memcpy(policy_cfg->traffic_separation_policy.ssids[i].ssid,
                 em_policy_cfg->traffic_separation_policy.ssids[i].ssid, len);
