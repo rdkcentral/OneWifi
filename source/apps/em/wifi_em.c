@@ -1783,6 +1783,55 @@ static int em_handle_failed_connection(wifi_app_t *app, void *arg)
     return em_publish_failed_connection(&fc);
 }
 
+/* Worst case is ~400 bytes: 2*17 (MACs) + 7 uint64 counters (20 digits each) + fixed JSON syntax. */
+#define EM_DISASSOC_STATS_JSON_MAX 512
+
+static int em_publish_client_disassoc_stats(const wifi_vap_info_t *vap_info,
+    const wifi_associated_dev3_t *dev3, int reason)
+{
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = { 0 };
+    mac_addr_str_t bssid_str, sta_str;
+    char json_buf[EM_DISASSOC_STATS_JSON_MAX];
+    int n;
+    bus_error_t rc;
+
+    to_mac_str((unsigned char *)vap_info->u.bss_info.bssid, bssid_str);
+    to_mac_str((unsigned char *)dev3->cli_MACAddress, sta_str);
+
+    n = snprintf(json_buf, sizeof(json_buf),
+        "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
+        "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u,"
+        "\"Traffic Stats\":{\"BytesSent\":%llu,\"BytesReceived\":%llu,"
+        "\"PacketsSent\":%llu,\"PacketsReceived\":%llu,\"TxPacketsErrors\":%llu,"
+        "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu},"
+        "\"Affiliated STA Metrics\":[]}",
+        bssid_str, sta_str, (unsigned int)reason,
+        (unsigned long long)dev3->cli_BytesSent, (unsigned long long)dev3->cli_BytesReceived,
+        (unsigned long long)dev3->cli_PacketsSent, (unsigned long long)dev3->cli_PacketsReceived,
+        (unsigned long long)dev3->cli_ErrorsSent, (unsigned long long)dev3->cli_RxErrors,
+        (unsigned long long)dev3->cli_RetransCount);
+    if (n < 0 || n >= (int)sizeof(json_buf)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: snprintf failed or truncated (n=%d)\n", __func__,
+            __LINE__, n);
+        return RETURN_ERR;
+    }
+
+    rdata.data_type = bus_data_type_string;
+    rdata.raw_data.bytes = (void *)json_buf;
+    rdata.raw_data_len = (size_t)n + 1;
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle,
+        WIFI_EM_CLIENT_DISASSOC_STATS, &rdata);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn failed rc=%d\n", __func__,
+            __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 {
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
@@ -1797,6 +1846,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     int arr_vap_index = -1;
     wifi_vap_info_t *vap_info = NULL;
     wifi_associated_dev3_timestamp_t *stats = NULL;
+    wifi_associated_dev3_t dev3;
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d : Sta disassoc event \n", __func__, __LINE__);
 
@@ -1847,6 +1897,14 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     }
     wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s disassociated\n", __func__, __LINE__,
         sta_mac_str);
+
+    /* Only a cached entry carries counters; removing it also reports each association once. */
+    memcpy(&dev3, &stats->associated_dev3, sizeof(dev3));
+    free(stats);
+    if (em_publish_client_disassoc_stats(vap_info, &dev3, assoc_data->reason) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: failed to publish %s\n", __func__, __LINE__,
+            WIFI_EM_CLIENT_DISASSOC_STATS);
+    }
 
     to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
     sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_remove(
@@ -4399,10 +4457,12 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
          { NULL, NULL, NULL, NULL, NULL, NULL },                                                             slow_speed, ZERO_TABLE,
          { bus_data_type_string, false, 0, 0, 0, NULL }                                                                                                                             },
         { WIFI_EM_CLIENT_ASSOC_CTRL_REQ,    bus_element_type_method,
-         { NULL, cacr_set_client_acl_rules, NULL, NULL, NULL, NULL },                                        slow_speed, ZERO_TABLE,
-         { bus_data_type_string, true, 0, 0, 0, NULL }                                                                                                                              },
-        { WIFI_EM_FAILED_CONNECTION,        bus_element_type_event,  { NULL, NULL, NULL, NULL, NULL, NULL },
-         slow_speed,                                                                                                     ZERO_TABLE, { bus_data_type_string, false, 0, 0, 0, NULL } }
+         { NULL, cacr_set_client_acl_rules, NULL, NULL, NULL, NULL },                                                        slow_speed, ZERO_TABLE,
+         { bus_data_type_string, true, 0, 0, 0, NULL }                                                                                                                                              },
+        { WIFI_EM_FAILED_CONNECTION,        bus_element_type_event,    { NULL, NULL, NULL, NULL, NULL, NULL },               slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_EM_CLIENT_DISASSOC_STATS,    bus_element_type_event,    { NULL, NULL, NULL, NULL, NULL, NULL },               slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_string, false, 0, 0, 0, NULL } }
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;
