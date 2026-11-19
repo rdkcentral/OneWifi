@@ -116,6 +116,44 @@ int init_wifi_hal()
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_getHalCapability returned with error %d\n", __FUNCTION__, ret);
         return RETURN_ERR;
+#ifdef UWM_CTRL_WPS_SUPPORT
+    }
+
+    /*
+     * The driver reports its legacy AP capacity, while InterfaceMap also
+     * contains mesh-STA slots. A dedicated onboarding AP added after those
+     * entries can therefore be present in interface_map but truncated from
+     * radio_config by webconfig decoders that use maxNumberVAPs. Treat the
+     * configured interface count as the logical capacity only on radios
+     * carrying a dedicated onboarding VAP.
+     */
+    for (unsigned int radio = 0;
+            radio < g_wifi_mgr.hal_cap.wifi_prop.numRadios; radio++) {
+        unsigned int interface_count = 0;
+        bool has_onboarding = false;
+
+        for (unsigned int i = 0;
+                i < (sizeof(g_wifi_mgr.hal_cap.wifi_prop.interface_map) /
+                    sizeof(wifi_interface_name_idex_map_t)); i++) {
+            wifi_interface_name_idex_map_t *entry =
+                &g_wifi_mgr.hal_cap.wifi_prop.interface_map[i];
+
+            if (entry->vap_name[0] == '\0' || entry->rdk_radio_index != radio) {
+                continue;
+            }
+            interface_count++;
+            if (strncmp(entry->vap_name, "onboarding_",
+                    strlen("onboarding_")) == 0) {
+                has_onboarding = true;
+            }
+        }
+        if (has_onboarding && interface_count <= MAX_NUM_VAP_PER_RADIO &&
+                interface_count >
+                    g_wifi_mgr.hal_cap.wifi_prop.radiocap[radio].maxNumberVAPs) {
+            g_wifi_mgr.hal_cap.wifi_prop.radiocap[radio].maxNumberVAPs =
+                interface_count;
+        }
+#endif /* UWM_CTRL_WPS_SUPPORT */
     }
     return RETURN_OK;
 }
