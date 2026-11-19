@@ -6753,7 +6753,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     for (int i = 0; (i < em_config->traffic_separation_policy.ssids_num) && (i < EM_MAX_TRAFFIC_SEP_POLICY); i++) {
         unsigned char ssid_len;
         traffic_sep_obj = cJSON_GetArrayItem(traffic_sep_array, i);
-        decode_param_allow_optional_string(traffic_sep_obj, "SSID Name", param);
+        decode_param_allow_empty_string(traffic_sep_obj, "SSID Name", param);
         ssid_len = strlen(param->valuestring);
         em_config->traffic_separation_policy.ssids[i].ssid_len = ssid_len;
         strncpy(em_config->traffic_separation_policy.ssids[i].ssid, param->valuestring, ssid_len);
