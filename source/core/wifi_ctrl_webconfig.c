@@ -2027,7 +2027,7 @@ int webconfig_em_subdoc_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
                         __func__, __LINE__);
                 }
             }
-        } else if (isVapMesh(apIdx)) {
+        } else if (isVapMeshBackhaul(apIdx)) {
             if ((strncmp(vapInfo->u.bss_info.ssid,
                      data->em_config.traffic_separation_policy.ssids[3].ssid,
                      sizeof(data->em_config.traffic_separation_policy.ssids[3].ssid)) == 0) &&
