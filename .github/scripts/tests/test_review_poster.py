@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-# Copyright 2026 RDK Management — Apache-2.0 (see review_poster.py header).
+#
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 """Unit tests for review_poster.py: the reconcile decision, fail-open loading,
 comment ownership, and the posting seam (422 skips one comment, 404 is fatal)."""
 import json
@@ -55,6 +72,29 @@ class Reconcile(unittest.TestCase):
         _dele, post, _o, overflow, _s = rp.reconcile([], [], cands, True, "inline", 2)
         self.assertEqual([item["source"] for item in post], ["gcc-gate", "clang-tidy"])
         self.assertEqual(overflow, 1)
+
+    def test_resolved(self):
+        intro = "**Code style:** text.\n\n"
+        cases = [   # (slot, live comment, resolved?, candidates, deleted ids, posted lines)
+            ("fmt", live(1, "a.c", 5, SUG), True, [cand("a.c", 5, SUG)], [], []),              # still shown
+            ("fmt", live(1, "a.c", 5, SUG), True, [], [], []),                                  # fixed: kept, not stale
+            ("fmt", live(1, "a.c", None, SUG), True, [cand("a.c", 9, SUG)], [], []),           # line moved: not again
+            ("fmt", live(1, "a.c", None, SUG), True,
+             [cand("a.c", 9, SUG), cand("a.c", 12, SUG)], [], [12]),                           # one held back, one posts
+            ("fmt", live(1, "a.c", None, SUG), False, [cand("a.c", 9, SUG)], [1], [9]),        # unresolved: as before
+            ("fmt", live(1, "a.c", None, SUG), True, [cand("a.c", 9, intro + SUG)], [], []),   # text line added since
+            ("fmt", live(1, "a.c", 5, SUG), True, [cand("a.c", 5, intro + SUG)], [], []),      # same, line unchanged
+            ("fmt", live(1, "a.c", None, SUG), True,
+             [cand("a.c", 9, SUG), cand("a.c", 9, SUG)], [], []),                              # listed twice: one finding
+            ("fmt", live(1, "a.c", None, SUG), True, [cand("b.c", 9, SUG)], [], [9]),          # other file
+            ("inline", live(1, "a.c", None, "W1", "inline"), True,
+             [cand("a.c", 9, "W1", source="gcc-gate")], [], []),                               # inline slot too
+        ]
+        for slot, comment, resolved, cands, deleted, posted in cases:
+            dele, post, *_ = rp.reconcile([comment], [comment], cands, True, slot, 25,
+                                          {1} if resolved else set())
+            self.assertEqual((sorted(dele), [item["line"] for item in post]), (deleted, posted),
+                             (slot, comment["line"], resolved, cands))
 
 
 class LoadCandidates(unittest.TestCase):
@@ -121,6 +161,12 @@ class GhSeam(unittest.TestCase):
         for result in ((1, "", "HTTP 500"), (0, jsonl + "not json\n", "")):
             self._gh(lambda args, input_text=None, result=result: result)
             self.assertEqual(rp.fetch_ours("o/r", "1", "bot", "fmt"), (None, None))
+
+    def test_fetch_resolved(self):
+        self._gh(lambda args, input_text=None: (0, "11\nnull\n12\n", ""))   # null: first comment deleted
+        self.assertEqual(rp.fetch_resolved("o/r", "1"), {11, 12})
+        self._gh(lambda args, input_text=None: (1, "", "HTTP 502"))            # unreadable: as before
+        self.assertEqual(rp.fetch_resolved("o/r", "1"), set())
 
     def test_post_comments(self):
         calls = []

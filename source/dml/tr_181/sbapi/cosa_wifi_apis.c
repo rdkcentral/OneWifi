@@ -109,7 +109,7 @@
 #include "ovsdb_table.h"
 #include "wifi_db.h"
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(QCOM_ATH12K_PORT) || defined(_PLATFORM_TURRIS_)
 #include "cJSON.h"
 #include <ctype.h>
 #endif
@@ -129,7 +129,7 @@
 #define WLAN_WAIT_LIMIT 3
 #endif
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(QCOM_ATH12K_PORT) || defined(_PLATFORM_TURRIS_)
 #define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
 #define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
 #define BOOTSTRAP_INFO_FILE_BACKUP      "/nvram/bootstrap.json"
@@ -230,8 +230,11 @@ struct  wifiStdCosaHalMap wifiStdDmlMap[] =
     {WIFI_80211_VARIANT_AD, COSA_DML_WIFI_STD_ad, "ad"},
     {WIFI_80211_VARIANT_AX, COSA_DML_WIFI_STD_ax, "ax"},
 #ifdef CONFIG_IEEE80211BE
-    {WIFI_80211_VARIANT_BE, COSA_DML_WIFI_STD_be, "be"}
+    { WIFI_80211_VARIANT_BE, COSA_DML_WIFI_STD_be, "be" },
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    { WIFI_80211_VARIANT_BN, COSA_DML_WIFI_STD_bn, "bn" },
+#endif /* CONFIG_IEEE80211BN */
 };
 
 /**************************************************************************

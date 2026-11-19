@@ -68,6 +68,3 @@ jobs:
           # Build component
           chmod +x build_tools_workflows/cov_docker_script/build_native.sh
           ./build_tools_workflows/cov_docker_script/build_native.sh ./cov_docker_script/component_config.json
-
-        env:
-          GITHUB_TOKEN: ${{ secrets.RDKCM_RDKE }}

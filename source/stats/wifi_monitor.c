@@ -3061,7 +3061,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         frame_len = frame_icmpv4_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-#if (defined(_XB7_PRODUCT_REQ_) && !defined(_COSA_BCM_ARM_))
+#if defined(_XB7_PRODUCT_REQ_) && !defined(_COSA_BCM_ARM_) && !defined(QCOM_ATH12K_PORT)
             wifi_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,
@@ -3069,7 +3069,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
                     TRUE,
                     WIFI_ETH_TYPE_IP,
                     wifi_data_priority_be);
-#else
+#else /* !_XB7_PRODUCT_REQ_ || _COSA_BCM_ARM_ || QCOM_ATH12K_PORT */
             wifi_hal_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,
@@ -3077,13 +3077,13 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
                     TRUE,
                     WIFI_ETH_TYPE_IP,
                     wifi_data_priority_be);
-#endif
+#endif /* _XB7_PRODUCT_REQ_ && !_COSA_BCM_ARM_ && !QCOM_ATH12K_PORT */
         }
     } else {
         frame_len = frame_icmpv6_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-#if (defined(_XB7_PRODUCT_REQ_) && !defined(_COSA_BCM_ARM_))
+#if defined(_XB7_PRODUCT_REQ_) && !defined(_COSA_BCM_ARM_) && !defined(QCOM_ATH12K_PORT)
             wifi_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,
@@ -3091,15 +3091,15 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
                     TRUE,
                     WIFI_ETH_TYPE_IP6,
                     wifi_data_priority_be);
-#else
+#else /* !_XB7_PRODUCT_REQ_ || _COSA_BCM_ARM_ || QCOM_ATH12K_PORT */
             wifi_hal_sendDataFrame(ap_idx,
                     (unsigned char*)mac,
                     (unsigned char*)buffer,
                     frame_len,
                     TRUE,
-                    WIFI_ETH_TYPE_IP,
+                    WIFI_ETH_TYPE_IP6,
                     wifi_data_priority_be);
-#endif
+#endif /* _XB7_PRODUCT_REQ_ && !_COSA_BCM_ARM_ && !QCOM_ATH12K_PORT */
         }
     }
 }
@@ -4926,12 +4926,12 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     }
 
     frame = &assoc_data.sta_data.msg_data;
-    if (frame->frame.len != 0) {
+    if ((frame->frame.len > ASSOC_REQ_MAC_HEADER_LEN) && (frame->frame.len <= MAX_FRAME_SZ)){
         parse_assoc_ies((uint8_t *)(frame->data + ASSOC_REQ_MAC_HEADER_LEN),
             (size_t)(frame->frame.len - ASSOC_REQ_MAC_HEADER_LEN), &assoc_data);
-    }
-    else {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len is 0\n", __func__, __LINE__);
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len [%d] smaller than required header len [%d]\n",
+            __func__, __LINE__, frame->frame.len, ASSOC_REQ_MAC_HEADER_LEN);
     }
 
     // Updating MLDAddr from STA MAC if MLD is enabled but MLDAddr is not populated.
