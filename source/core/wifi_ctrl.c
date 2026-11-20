@@ -25,6 +25,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#include "wifi_monitor.h"
 #include "scheduler.h"
 #include <errno.h>
 #include <unistd.h>
@@ -485,6 +486,7 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
     { 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d ACS KeepOut json_schema at boot up time = %s\n",__FUNCTION__,__LINE__,(char*)keep_out_json);
         process_acs_keep_out_channels_event((char*)keep_out_json);
+        free(keep_out_json);
     }
 
     for (index = 0; index < num_of_radios; index++) {
@@ -1261,6 +1263,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_assoc_req_frame;
+        set_assoc_req_frame_data(&mgmt_frame);
     } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
@@ -1269,6 +1272,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_req_frame;
+        set_assoc_req_frame_data(&mgmt_frame);
     } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
