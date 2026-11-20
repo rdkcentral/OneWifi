@@ -31,17 +31,17 @@
 extern "C" {
 #endif
 
-#define MSEC_IN_SEC  (1000ULL)
+#define MSEC_IN_SEC (1000ULL)
 #define NSEC_IN_MSEC (1000000ULL)
 #define USEC_IN_MSEC (1000ULL)
 
 /* conversion */
-char* survey_type_to_str(survey_type_t survey_type);
-char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
+// char* survey_type_to_str(survey_type_t survey_type);
+// char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
 
 /* time utils*/
-uint64_t get_real_ms();
-uint64_t timeval_to_ms(struct timeval *ts);
+// uint64_t get_real_ms();
+// uint64_t timeval_to_ms(struct timeval *ts);
 
 #ifdef __cplusplus
 }

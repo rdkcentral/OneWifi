@@ -5,25 +5,28 @@
 
 #define NOISE_FLOOR (-95)
 
-char* survey_type_to_str(survey_type_t survey_type)
+#if 0
+char *survey_type_to_str(survey_type_t survey_type)
 {
     /* for (size_t i = 0; i < ARRAY_SIZE(scan_type_mapping); i++) {
         if (survey_type == scan_type_mapping[i].survey_type) {
             return scan_type_mapping[i].description;
         }
     } */
-    wifi_util_error_print(WIFI_EM, "%s:%d failed to convert survey_type=%d\n",__func__, __LINE__, survey_type);
+    wifi_util_error_print(WIFI_EM, "%s:%d failed to convert survey_type=%d\n", __func__, __LINE__,
+        survey_type);
     return "unknown";
 }
 
-char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode)
+char *neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode)
 {
     /* for (size_t i = 0; i < ARRAY_SIZE(scan_type_mapping); i++) {
         if (scan_mode == scan_type_mapping[i].scan_mode) {
             return scan_type_mapping[i].description;
         }
     } */
-    wifi_util_error_print(WIFI_EM, "%s:%d failed to convert scan_mode=%d\n",__func__, __LINE__, scan_mode);
+    wifi_util_error_print(WIFI_EM, "%s:%d failed to convert scan_mode=%d\n", __func__, __LINE__,
+        scan_mode);
     return "unknown";
 }
 
@@ -41,3 +44,4 @@ uint64_t timeval_to_ms(struct timeval *ts)
     }
     return (uint64_t)ts->tv_sec * MSEC_IN_SEC + ts->tv_usec / USEC_IN_MSEC;
 }
+#endif
