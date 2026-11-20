@@ -5260,7 +5260,8 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     }
 
 #ifdef CONFIG_IEEE80211BN
-    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BN_FLAG) {
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BN_FLAG &&
+        (config->variant & WIFI_80211_VARIANT_BE)) {
         wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config for 11bn, old db version: %d total radios: %u\n",
             __func__, __LINE__, index, g_wifidb->db_version, total_radios);
         config->variant |= WIFI_80211_VARIANT_BN;
@@ -7697,7 +7698,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif  /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
 #if defined(CONFIG_IEEE80211BN)
-            cfg->variant |= WIFI_80211_VARIANT_BN;
+            if (cfg->variant & WIFI_80211_VARIANT_BE) {
+                cfg->variant |= WIFI_80211_VARIANT_BN;
+            }
 #endif /* defined(CONFIG_IEEE80211BN) */
 
 #if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
