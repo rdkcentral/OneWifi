@@ -451,6 +451,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     link_data[i].stats.total_connected_time.tv_sec--;
                     link_data[i].stats.total_connected_time.tv_nsec += 1000000000L;
                 }
+
+                /* If tv_sec < 0 after substracting with sleep_sec, use the original connected time value */
+                if (link_data[i].stats.total_connected_time.tv_sec < 0) {
+                    link_data[i].stats.total_connected_time.tv_sec  = sta->total_connected_time.tv_sec;
+                    link_data[i].stats.total_connected_time.tv_nsec = sta->total_connected_time.tv_nsec;
+                }
                 link_data[i].stats.total_disconnected_time = sta->total_disconnected_time;
 
                 /* Forward raw cumulative EAPOL M1-M4 counts only; WEI derives attempts

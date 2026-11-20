@@ -4401,7 +4401,9 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
         return 0;
     }
 
-    if ( isVapPrivate(apIndex) &&  rfc_param != NULL && ( (rfc_param->wei_rfc_mask & (WEI_RFC_SC | WEI_RFC_LQ))
+    /* mesh_sta (backhaul STA) only counts while RF is down (ignite); otherwise it's not a WEI-tracked VAP */
+    if ( rfc_param != NULL && (isVapPrivate(apIndex) || (ctrl != NULL && ctrl->rf_status_down && isVapSTAMesh(apIndex))) &&
+            ( (rfc_param->wei_rfc_mask & (WEI_RFC_SC | WEI_RFC_LQ | WEI_RFC_IGNITE))
             || (ctrl != NULL && (ctrl->network_mode == rdk_dev_mode_type_em_node
             || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node)))) {
         link_quality_measurement = true;
