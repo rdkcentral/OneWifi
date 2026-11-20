@@ -2155,7 +2155,7 @@ void process_connect_remove_duplicates(unsigned int ap_index, auth_deauth_dev_t 
         if (vap_index == ap_index)
             continue;
 
-        vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
+        vap_status = g_monitor_module.bssid_data[i].ap_params.ap_status;
         if (vap_status) {
             sta_map = g_monitor_module.bssid_data[i].sta_map;
             to_sta_key(dev->sta_mac, sta_key);
@@ -4417,11 +4417,13 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
     wifi_rfc_dml_parameters_t *rfc_param = get_ctrl_rfc_parameters();
     bool link_quality_measurement = false;
     int vap_down_sent = 0, sta_total = 0;
+    unsigned int vap_array_index = 0;
 
-    wifi_util_dbg_print(WIFI_MON,"%s called for %d and status %d \n",__func__, apIndex, status);
-    g_monitor_module.bssid_data[apIndex].ap_params.ap_status = status;
+    /* apIndex is a VAP index; bssid_data[] is indexed by interface-map slot. */
+    getVAPArrayIndexFromVAPIndex((unsigned int)apIndex, &vap_array_index);
+    g_monitor_module.bssid_data[vap_array_index].ap_params.ap_status = status;
 
-    wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d ENTER apIndex=%d status=%d ctrl=%s rfc_param=%s\n",
+    wifi_util_dbg_print(WIFI_MON, "VAP-DOWN-DBG %s:%d ENTER apIndex=%d status=%d ctrl=%s rfc_param=%s\n",
         __func__, __LINE__, apIndex, status, ctrl ? "ok" : "NULL", rfc_param ? "ok" : "NULL");
 
     if (status != wifi_vapstatus_down) {
@@ -4443,11 +4445,10 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
 
-    sta_map = g_monitor_module.bssid_data[apIndex].sta_map;
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     if (sta_map == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d sta_map is NULL for apIndex %d\n", __func__, __LINE__, apIndex);
-        wifi_util_info_print(WIFI_MON, "VAP-DOWN-DBG %s:%d EXIT apIndex=%d sta_map is NULL, no clients to purge\n",
-            __func__, __LINE__, apIndex);
+        wifi_util_error_print(WIFI_MON, "VAP-DOWN-DBG %s:%d EXIT apIndex=%d vap_array =%d sta_map is NULL, no clients in sta_map\n",
+            __func__, __LINE__, apIndex, vap_array_index);
         pthread_mutex_unlock(&g_monitor_module.data_lock);
         return 0;
     }
