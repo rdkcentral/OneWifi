@@ -138,6 +138,10 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
     rdk_wifi_vap_info_t *rdk_vap;
     webconfig_subdoc_decoded_data_t *params;
     int radio_index = -1;
+    int force_apply_radio_index = -1;
+    unsigned int scan_radio_index;
+    unsigned int scan_vap_index;
+    rdk_wifi_radio_t *scan_radio;
     char *str;
     char mac_string[18] = { 0 };
     int primary_macaddr_added = 0;
@@ -167,6 +171,30 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
         // Invalid type, set Radio index to -1
         radio_index = -1;
         break;
+    }
+
+    if (data->type == webconfig_subdoc_type_vap_5G) {
+        for (scan_radio_index = 0; scan_radio_index < params->num_radios;
+             scan_radio_index++) {
+            scan_radio = &params->radios[scan_radio_index];
+            for (scan_vap_index = 0; scan_vap_index < scan_radio->vaps.vap_map.num_vaps;
+                 scan_vap_index++) {
+                if (scan_radio->vaps.rdk_vap_array[scan_vap_index].force_apply == true) {
+                    if ((force_apply_radio_index != -1) &&
+                        (force_apply_radio_index != (int)scan_radio_index)) {
+                        wifi_util_error_print(WIFI_WEBCONFIG,
+                            "%s:%d ForceApply targets multiple 5 GHz radios\n", __func__,
+                            __LINE__);
+                        cJSON_Delete(json);
+                        return webconfig_error_encode;
+                    }
+                    force_apply_radio_index = (int)scan_radio_index;
+                }
+            }
+        }
+        if (force_apply_radio_index >= 0) {
+            radio_index = force_apply_radio_index;
+        }
     }
 
     if (radio_index < 0 || radio_index >= (int)params->num_radios) {

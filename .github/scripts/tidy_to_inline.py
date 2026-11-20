@@ -20,13 +20,14 @@
 """Turn a filtered clang-tidy log into review_poster.py inline candidates (Commit 5).
 
 Input is the already-changed-lines-scoped `tidy.log` the makefile.yml clang-tidy
-step builds (only `: warning:`/`: error:` lines, clang-diagnostic filtered out,
-kept only where the line number is one the PR changed). Each line looks like:
+step builds (only `: warning:`/`: error:` lines, clang-diagnostic filtered out except
+the unreachable-code group, kept only where the line number is one the PR changed). Each line looks like:
 
     /abs/.../OneWifi/source/foo.c:42:9: warning: message text [bugprone-xyz]
 
 `error:` lines are WarningsAsErrors-promoted checks (the gate); `warning:` lines
-are advisory. One comment per (path, line, check, msg): clang-tidy can print the
+are warnings. Checks in INLINE_EXCLUDE_PREFIX are summary-only: skipped here as a
+policy, not counted 'dropped'. One comment per (path, line, check, msg): clang-tidy can print the
 same finding at several columns, and deduping here keeps the counts honest (the
 poster also drops exact repeats).
 A line that does not parse is counted 'dropped' (surfaced in the poster summary),
@@ -52,6 +53,9 @@ LINE_RE = re.compile(
 # Strip to the LAST repo dir, same idiom as makefile.yml's summaries / gcc gate:
 # the runner checks out to .../OneWifi/OneWifi/easymesh_project/OneWifi/source/...
 PATH_STRIP_RE = re.compile(r"^[^ ]*/(?:OneWifi|rdk-wifi-hal)/+")
+# Summary-only checks, never inline: whether code is reachable can depend on the build
+# configuration (#ifdef), so a per-line comment would often be wrong for another platform.
+INLINE_EXCLUDE_PREFIX = ("clang-diagnostic-unreachable-code",)
 
 
 def parse(text):
@@ -69,6 +73,8 @@ def parse(text):
         lineno = int(hit["line"])
         # A WarningsAsErrors-promoted check prints as "[name,-warnings-as-errors]".
         check = re.sub(r",-warnings-as-errors$", "", hit["check"])
+        if check.startswith(INLINE_EXCLUDE_PREFIX):
+            continue
         msg = hit["msg"]
         key = (path, lineno, check, msg)
         if key in seen:
