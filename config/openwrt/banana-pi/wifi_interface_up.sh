@@ -135,10 +135,8 @@ cp InterfaceMap.json /nvram/.
 # Create the EasyMeshCfg.json with a zero AL MAC unless one is already stored. The real AL MAC
 # is written by the easymesh agent once the AL SAP registration succeeds.
 al_mac_addr="00:00:00:00:00:00"
-# Default Colocated_mode: 1 when a controller (em_ctrl) is installed on this device, else 0 (extender).
-# A valid mode (0 or 1) already saved in the file takes precedence, see below.
+# Default to extender mode unless a valid saved role overrides it below.
 colocated_mode=0
-[ -x /etc/init.d/em_ctrl ] && colocated_mode=1
 backhaul_ssid="mesh_backhaul"
 backhaul_keypassphrase="test-backhaul"
 sta_4addr_mode_enabled=true
