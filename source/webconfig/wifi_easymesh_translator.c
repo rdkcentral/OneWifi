@@ -318,12 +318,44 @@ void default_em_bss_info(em_bss_info_t  *vap_row)
     vap_row->num_backhaul_akms = 0;
 }
 
+// reads PRETTY_NAME of /etc/os-release into the execution environment
+static void get_exec_env(char *exec_env, size_t len)
+{
+    char line[256];
+    FILE *fp;
+
+    // Fallback if /etc/os-release doesn't exist or does not contain PRETTY_NAME
+    snprintf(exec_env, len, "testEnv");
+
+    fp = fopen("/etc/os-release", "r");
+    if (fp == NULL) {
+        return;
+    }
+
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        if (strncmp(line, "PRETTY_NAME=", strlen("PRETTY_NAME=")) == 0) {
+            char *val = line + strlen("PRETTY_NAME=");
+            size_t vlen;
+
+            val[strcspn(val, "\r\n")] = '\0';
+            vlen = strlen(val);
+            if (vlen >= 2 && (val[0] == '"' || val[0] == '\'') && val[vlen - 1] == val[0]) {
+                val[vlen - 1] = '\0';
+                val++;
+            }
+            snprintf(exec_env, len, "%s", val);
+            break;
+        }
+    }
+    fclose(fp);
+}
+
 // sets the default values in em_device_info_t Easymesh structure
 void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_security_info_t *security_info)
 {
     snprintf(device_info->id.net_id, sizeof(device_info->id.net_id),"OneWifiMesh");
     snprintf(device_info->multi_ap_cap, sizeof(device_info->multi_ap_cap), "4A==");
-    snprintf(device_info->exec_env, sizeof(device_info->exec_env), "testEnv");
+    get_exec_env(device_info->exec_env, sizeof(device_info->exec_env));
     memset(device_info->primary_device_type,'\0',sizeof(device_info->primary_device_type));
     memset(device_info->secondary_device_type,'\0',sizeof(device_info->secondary_device_type));
     device_info->traffic_sep_cap = false;
