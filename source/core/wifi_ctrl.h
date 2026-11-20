@@ -317,6 +317,7 @@ typedef struct{
 typedef struct {
     unsigned long csi_session_num;
     bool enabled;
+    uint32_t stream;
     unsigned int csi_client_count;
     mac_address_t csi_client_list[CSI_CLIENT_PER_SESSION];
 } csi_data_t;
@@ -367,6 +368,7 @@ typedef struct wei_rfc_update_completion {
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
 wifi_ctrl_t *get_wifictrl_obj();
+double wifi_ctrl_get_process_cpu_utilization(void);
 void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
 bool is_db_consolidated();
 bool is_db_backup_required();

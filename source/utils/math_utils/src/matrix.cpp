@@ -657,6 +657,9 @@ void matrix_t::push(vector_t v)
 
     if (m_cols == 0) {
         m_cols = ((v.m_num < m_col_capacity) ? v.m_num : m_col_capacity);
+        if (m_cols > MAX_MTRX_LEN) {
+            m_cols = MAX_MTRX_LEN;
+        }
     }
 
     if (v.m_num != m_cols) {

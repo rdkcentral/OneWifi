@@ -103,6 +103,9 @@ int sensing_app_event(wifi_app_t *app, wifi_event_t *event)
             hal_event_for_sensing_app(app, event->sub_type, event->u.core_data.msg);
             break;
 
+        case wifi_event_type_webconfig:
+            break;
+
         default:
             break;
     }

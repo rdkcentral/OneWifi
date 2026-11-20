@@ -67,6 +67,10 @@ extern "C" {
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
+#define WIFI_CSI_STREAM                     "Device.WiFi.X_RDK_CSI.{i}.Stream"
+#define WIFI_CSI_STREAM_MODE_OFF            0U
+#define WIFI_CSI_STREAM_MODE_FILE           1U
+#define WIFI_CSI_STREAM_MODE_LIVE           2U
 #define WIFI_IGNITE_NAMESPACE               "Device.WiFi.Ignite_Control.{i}."
 #define WIFI_IGNITE_MIN_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MinChutilThreshold"
 #define WIFI_IGNITE_MAX_CHUTIL_THRESHOLD    "Device.WiFi.Ignite_Control.{i}.MaxChutilThreshold"
@@ -116,7 +120,7 @@ extern "C" {
 #define MAX_FRAME_SZ                  2048
 
 #define MAX_CSI_INTERVAL    30000
-#define MIN_CSI_INTERVAL    100
+#define MIN_CSI_INTERVAL    33
 #define MIN_DIAG_INTERVAL   5000
 #define CSI_PING_INTERVAL   100
 
