@@ -47,16 +47,16 @@
     18 // MAC address string length (xx:xx:xx:xx:xx:xx = 17 chars + null terminator)
 
 static bool is_monitor_done = false;
+static pthread_mutex_t monitor_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool g_btm_pending_valid = false;
 static em_btm_req_ctrl_msg_t g_pending_btm;
 
 static bool wifi_em_refresh_tx_power(UINT tx_power[MAX_NUM_RADIOS], unsigned int *num_radios)
 {
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     unsigned int radio_count = getNumberRadios();
 
-    if (wifi_mgr == NULL || tx_power == NULL || num_radios == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: Wi-Fi manager unavailable\n", __func__, __LINE__);
+    if (tx_power == NULL || num_radios == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: invalid arguments\n", __func__, __LINE__);
         return false;
     }
     if (radio_count == 0 || radio_count > MAX_NUM_RADIOS) {
@@ -88,12 +88,6 @@ static bool wifi_em_refresh_tx_power(UINT tx_power[MAX_NUM_RADIOS], unsigned int
         wifi_util_info_print(WIFI_EM, "%s:%d: radio_index=%u curr_txpower=%lu\n", __func__,
             __LINE__, i, curr_txpower);
     }
-
-    pthread_mutex_lock(&wifi_mgr->data_cache_lock);
-    for (unsigned int i = 0; i < radio_count; i++) {
-        wifi_mgr->radio_config[i].oper.transmitPower = tx_power[i];
-    }
-    pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
 
     *num_radios = radio_count;
     return true;
@@ -3217,13 +3211,20 @@ static int em_toggle_disconn_steady_state(void *data, unsigned int len)
 
 void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
 {
+    bool monitor_done;
+
     switch (event->sub_type) {
     case wifi_event_type_notify_monitor_done:
-        is_monitor_done = TRUE;
+        pthread_mutex_lock(&monitor_done_lock);
+        is_monitor_done = true;
+        pthread_mutex_unlock(&monitor_done_lock);
         break;
 
     case wifi_event_type_start_channel_scan:
-        if (is_monitor_done) {
+        pthread_mutex_lock(&monitor_done_lock);
+        monitor_done = is_monitor_done;
+        pthread_mutex_unlock(&monitor_done_lock);
+        if (monitor_done) {
             em_config_channel_scan(event->u.core_data.msg, event->u.core_data.len);
         }
         break;
@@ -3503,6 +3504,25 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data, bus_user_data_t *
     push_event_to_ctrl_queue((char *)pTmp, len, wifi_event_type_command,
         wifi_event_type_start_channel_scan, NULL);
 
+    return bus_error_success;
+}
+
+bus_error_t get_monitor_done(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    bool monitor_done;
+
+    (void)event_name;
+    (void)user_data;
+
+    if (p_data == NULL) {
+        return bus_error_invalid_input;
+    }
+    p_data->data_type = bus_data_type_boolean;
+    pthread_mutex_lock(&monitor_done_lock);
+    monitor_done = is_monitor_done;
+    pthread_mutex_unlock(&monitor_done_lock);
+    p_data->raw_data.b = monitor_done;
+    p_data->raw_data_len = sizeof(p_data->raw_data.b);
     return bus_error_success;
 }
 
@@ -4427,7 +4447,9 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
 
     bus_data_element_t dataElements[] = {
         { WIFI_EM_GET_TX_POWER,             bus_element_type_property, { get_tx_power, NULL, NULL, NULL, NULL, NULL },       slow_speed,
-         ZERO_TABLE,                                                                                                                                 { bus_data_type_bytes, false, 0, 0, 0, NULL }  },
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_bytes, false, 0, 0, 0, NULL }   },
+        { WIFI_EM_MONITOR_DONE,             bus_element_type_property, { get_monitor_done, NULL, NULL, NULL, NULL, NULL },
+         slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_boolean, false, 0, 0, 0, NULL } },
         { WIFI_EM_CHANNEL_SCAN_REQUEST,     bus_element_type_method,   { NULL, start_channel_scan, NULL, NULL, NULL, NULL },
          slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_bytes, true, 0, 0, 0, NULL }   },
         { WIFI_SET_DISCONN_STEADY_STATE,    bus_element_type_method,
