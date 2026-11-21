@@ -34,7 +34,8 @@ AM_LDFLAGS += -lwifi_utils
 if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif 
-AM_LDFLAGS += -lwifi_webconfig
+AM_LDFLAGS += -lwifi_transportprotocolanalyser
+
 
 
 AM_CPPFLAGS = -Wall -Werror
@@ -58,7 +59,7 @@ onewifi_component_test_app_LDFLAGS += -lwifi_utils
 if WITH_LIBWEBCONFIG
 onewifi_component_test_app_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
-onewifi_component_test_app_LDFLAGS += -lwifi_webconfig
+onewifi_component_test_app_LDFLAGS += -lwifi_transportprotocolanalyser
 onewifi_component_test_app_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
 
 onewifi_component_test_app_CFLAGS = $(DML_ENABLE_FLAG)
