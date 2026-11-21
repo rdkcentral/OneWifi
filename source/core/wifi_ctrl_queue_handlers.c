@@ -3235,6 +3235,14 @@ static void process_wps_cancel_event(void *data)
 
     INT vap_index = *(INT*)data;
 
+#ifndef EASY_MESH_NODE
+    if (!isVapPrivate(vap_index)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d WPS not applicable for vap index %d, ignoring cancel\n",
+            __func__, __LINE__, vap_index);
+        return;
+    }
+#endif
+
     wifi_util_info_print(WIFI_CTRL,"%s:%d wps pbc cancel vap index = %d\n",
         __func__, __LINE__, vap_index);
     wifi_hal_setApWpsCancel(vap_index);
