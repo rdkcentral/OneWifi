@@ -111,7 +111,9 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #endif /* CONFIG_IEEE80211BE */
 #endif /* CONFIG_IEEE80211AX && (_PLATFORM_BANANAPI_R4_ || QCOM_ATH12K_PORT) */
 #if defined(CONFIG_IEEE80211BN)
-            cfg.variant |= WIFI_80211_VARIANT_BN;
+            if (cfg.variant & WIFI_80211_VARIANT_BE) {
+                cfg.variant |= WIFI_80211_VARIANT_BN;
+            }
 #endif /* defined(CONFIG_IEEE80211BN) */
             break;
         case WIFI_FREQUENCY_5_BAND:
