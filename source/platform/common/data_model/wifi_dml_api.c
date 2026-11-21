@@ -1999,6 +1999,7 @@ static int update_json_param_legacy(char *p_key, char *partner_id, char *p_value
     if (data != NULL) {
         memset(data, 0, (sizeof(char) * (len + 1)));
         if (1 != fread(data, len, 1, file_read)) {
+            free(data);
             fclose(file_read);
             return RETURN_ERR;
         }
@@ -2015,10 +2016,10 @@ static int update_json_param_legacy(char *p_key, char *partner_id, char *p_value
         return RETURN_ERR;
     } else if (strlen(data) != 0) {
         json = cJSON_Parse(data);
+        free(data);
         if (!json) {
             wifi_util_error_print(WIFI_DMCLI, "%s : json file parser error : [%d]\n", __func__,
                 __LINE__);
-            free(data);
             return RETURN_ERR;
         } else {
             partner_obj = cJSON_GetObjectItem(json, partner_id);
@@ -2094,6 +2095,7 @@ int update_json_param(char *p_key, char *partner_id, char *p_value, char *p_sour
     if (data != NULL) {
         memset(data, 0, (sizeof(char) * (len + 1)));
         if (1 != fread(data, len, 1, file_read)) {
+            free(data);
             fclose(file_read);
             return RETURN_ERR;
         }
@@ -2111,10 +2113,10 @@ int update_json_param(char *p_key, char *partner_id, char *p_value, char *p_sour
         return RETURN_ERR;
     } else if (strlen(data) != 0) {
         json = cJSON_Parse(data);
+        free(data);
         if (!json) {
             wifi_util_error_print(WIFI_DMCLI, "%s : json file parser error : [%d]\n", __func__,
                 __LINE__);
-            free(data);
             return RETURN_ERR;
         } else {
             partner_obj = cJSON_GetObjectItem(json, partner_id);
