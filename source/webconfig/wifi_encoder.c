@@ -2312,7 +2312,6 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
 webconfig_error_t encode_device_info(wifi_platform_property_t *wifi_prop, cJSON *device_obj)
 {
     mac_addr_str_t mac_str;
-    mac_addr_str_t lan_mac_str;
        //Manufacturer
     cJSON_AddSafeStringToObject(device_obj, "Manufacturer", wifi_prop->manufacturer, sizeof(wifi_prop->manufacturer));
 
@@ -2328,10 +2327,6 @@ webconfig_error_t encode_device_info(wifi_platform_property_t *wifi_prop, cJSON 
     //CMMAC
     to_mac_str(wifi_prop->cm_mac, mac_str);
     cJSON_AddStringToObject(device_obj, "CMMAC", mac_str);
-
-    //al_1905_mac
-    to_mac_str(wifi_prop->al_1905_mac, lan_mac_str);
-    cJSON_AddStringToObject(device_obj, "AL1905-MAC", lan_mac_str);
 
     return webconfig_error_none; 
 }
