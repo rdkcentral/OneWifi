@@ -42,6 +42,7 @@ extern "C" {
 #define WIFI_EM_FAILED_CONNECTION "Device.WiFi.EM.FailedConnection"
 #define WIFI_EM_CLIENT_DISASSOC_STATS "Device.WiFi.EM.ClientDisassocStats"
 #define WIFI_EM_GET_TX_POWER "Device.WiFi.EM.CurrentTransmitPower"
+#define WIFI_EM_MONITOR_DONE "Device.WiFi.EM.MonitorDone"
 
 #define WNM_CATEGORY 10
 #define IEEE80211_HDRLEN_EM 24

@@ -900,6 +900,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         default_vap_info->vap_mode = wifi_vap_mode_ap;
         default_vap_info->u.bss_info.enabled = false;
+#if defined(_MERCURY_PRODUCT_REQ_)
+        default_vap_info->u.bss_info.mld_info.common_info.mld_enable = false;
+        default_vap_info->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
+        default_vap_info->u.bss_info.mld_info.common_info.mld_link_id = UNDEFINED_MLD_LINK_ID;
+#endif
         default_vap_info->u.bss_info.bssMaxSta = 75;
         default_vap_info->u.bss_info.inum_sta = 0;
         snprintf(default_vap_info->u.bss_info.interworking.interworking.hessid,
