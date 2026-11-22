@@ -75,7 +75,7 @@ webconfig_error_t translate_to_em_sta_link_subdoc(webconfig_t *config, webconfig
 
 webconfig_error_t encode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    cJSON *json, *obj_emstalink, *device_list, *device_obj, *sta_link_obj;
+    cJSON *json, *obj_emstalink;
     char *str;
     webconfig_subdoc_decoded_data_t *params;
 
@@ -152,12 +152,14 @@ webconfig_error_t decode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
         sta_link_metrics->vap_index = vap_index_item->valueint;
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Vap Index is invalid\n", __func__, __LINE__);
+        cJSON_Delete(json);
         return webconfig_error_decode;
     }
 
     rsp_obj = cJSON_GetObjectItem(json, "Associated STA Link Metrics Report");
     if (rsp_obj == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+        cJSON_Delete(json);
         return webconfig_error_decode;
     }
 

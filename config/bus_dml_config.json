@@ -317,6 +317,10 @@
 													"$ref": "#/definitions/uint32_t",
 													"writable": false
 												},
+												"X_RDK_ActiveSpaStr": {
+													"$ref": "#/definitions/uint32_t",
+													"writable": false
+												},
 												"X_RDKCENTRAL-COM_SNR": {
 													"$ref": "#/definitions/int32_t",
 													"writable": false

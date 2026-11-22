@@ -80,7 +80,7 @@ INT WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_lengt
 void WiFi_GetHS2Stats(uint8_t vapIndex);
 INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR);
 INT WiFi_SaveHS2Cfg(uint8_t vapIndex);
-#if defined (DUAL_CORE_XB3)
+#if defined(DUAL_CORE_XB3)
 int wifi_restoreAPInterworkingElement(int apIndex);
 #endif
 INT WiFi_DefaultInterworkingConfig(uint8_t vapIndex);
