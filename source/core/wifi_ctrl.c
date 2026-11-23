@@ -3979,14 +3979,10 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 #ifndef CONFIG_GENERIC_MLO
                 if (mld_conf->mld_link_id == 0) {
                     main_link_vap = target_vap;
-#ifdef  CONFIG_IEEE80211BE
                     if (get_default_mld_address(main_link_vap->vap_index, mlo_mac) != RETURN_OK) {
                         wifi_util_error_print(log_type, "%s:%d: platform mld address fetch failed for vap_index=%d\n",
                             __func__, __LINE__, main_link_vap->vap_index);
                     }
-#else
-                    memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
-#endif // CONFIG_IEEE80211BE
                 }
 #endif // CONFIG_GENERIC_MLO
 
