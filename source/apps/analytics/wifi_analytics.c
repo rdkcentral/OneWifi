@@ -440,6 +440,8 @@ int analytics_event_hal_assoc_device(wifi_app_t *apps, void *arg)
 
     if ((sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, client_mac)) == NULL) {
         sta_info = malloc(sizeof(analytics_sta_info_t));
+        if (sta_info == NULL)
+            return RETURN_ERR;
         sta_info->ap_index = assoc_data->ap_index;
         memcpy(sta_info->sta_mac, assoc_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
         hash_map_put(sta_map, strdup(client_mac), sta_info);

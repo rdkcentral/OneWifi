@@ -2821,6 +2821,17 @@ Radio_GetParamStringValue
                 }
         }
 #endif /* CONFIG_IEEE80211BE */
+
+#ifdef CONFIG_IEEE80211BN
+        if (pcfg->variant & WIFI_80211_VARIANT_BN) {
+            if (AnscSizeOfString(buf) != 0) {
+                strcat(buf, ",bn");
+            } else {
+                strcat(buf, "bn");
+            }
+        }
+#endif /* CONFIG_IEEE80211BN */
+
         if ( AnscSizeOfString(buf) < *pUlSize)
         {
             AnscCopyString(pValue, buf);
@@ -4329,6 +4340,9 @@ Radio_SetParamStringValue
 #ifdef CONFIG_IEEE80211BE
             "WIFI_80211_VARIANT_BE",
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            "WIFI_80211_VARIANT_BN",
+#endif /* CONFIG_IEEE80211BN */
         };
 
         for (size_t i = 0; i < (sizeof(wifi_mode_strings) / sizeof(wifi_mode_strings[0])); i++) {
@@ -12429,9 +12443,15 @@ WPS_SetParamBoolValue
     }
     if( AnscEqualString(ParamName, "X_CISCO_COM_CancelSession", TRUE))
     {
-        instance_number -= 1;
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WPS cancel for vap %d\n",__func__, __LINE__, instance_number);
-        push_event_to_ctrl_queue(&instance_number, sizeof(instance_number), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);
+#ifndef EASY_MESH_NODE
+        if (vapInfo->u.bss_info.wps.enable == false) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: WPS not enabled for %s, cancel session not supported\n",__func__, __LINE__, vapInfo->vap_name);
+            return FALSE;
+        }
+#endif
+        INT vap_index = (INT)(instance_number - 1);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WPS cancel for vap %d\n",__func__, __LINE__, vap_index);
+        push_event_to_ctrl_queue(&vap_index, sizeof(vap_index), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);
         return TRUE;
     }
 #else
