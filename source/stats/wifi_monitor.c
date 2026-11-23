@@ -4437,8 +4437,8 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
             || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node)))) {
         link_quality_measurement = true;
         wifi_util_info_print(WIFI_MON, "%s:%d apIndex=%d lq_measurement=%d wei_rfc_mask=0x%x network_mode=%d\n",
-        __func__, __LINE__, apIndex, link_quality_measurement,rfc_param ? (unsigned int)rfc_param->wei_rfc_mask : 0u,
-        ctrl ? (int)ctrl->network_mode : -1);
+            __func__, __LINE__, apIndex, link_quality_measurement,
+            rfc_param ? (unsigned int)rfc_param->wei_rfc_mask : 0u, ctrl ? (int)ctrl->network_mode : -1);
     }
 
 
