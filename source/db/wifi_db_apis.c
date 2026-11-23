@@ -7683,10 +7683,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #endif /* _XER5_PRODUCT_REQ_ || QCOM_ATH12K_PORT */
 #if defined(NEWPLATFORM_PORT) || defined(_MERCURY_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) \
- || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_)
+ || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_) \
+ || defined(_SR213_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_)
             cfg->variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT || _MERCURY_PRODUCT_REQ_ || _SCER11BEL_PRODUCT_REQ_ || _XB10_PRODUCT_REQ_ \
- || _XB8_PRODUCT_REQ_ || _XB7_PRODUCT_REQ_ */
+ || _XB8_PRODUCT_REQ_ || _XB7_PRODUCT_REQ_ || _SR213_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_ || _WNXL11BWL_PRODUCT_REQ_*/
 
 #ifdef CONFIG_IEEE80211BE
 #if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_) || defined(QCOM_ATH12K_PORT)
