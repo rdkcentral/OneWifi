@@ -4480,10 +4480,10 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
                 to_sta_key(sta->sta_mac, vap_down_stats.mac_str);
                 vap_down_stats.vap_index = apIndex;
                 wifi_util_info_print(WIFI_MON, "%s:%d SEND vap_down_event [%d] mac=%s vap=%d lq_measurement=%d\n",
-                     __func__, __LINE__, sta_total, vap_down_stats.mac_str, apIndex, link_quality_measurement);
-                    lq_desc->vap_down_link_stats_fn(&vap_down_stats);
+                    __func__, __LINE__, sta_total, vap_down_stats.mac_str, apIndex, link_quality_measurement);
+                lq_desc->vap_down_link_stats_fn(&vap_down_stats);
             } else if (link_quality_measurement && !is_zero_mac(sta->sta_mac)) {
-                wifi_util_dbg_print(WIFI_MON,  "In case of non-RDKB %s:%d sending remove mac=%s vap=%d zero_mac=1\n",
+                wifi_util_dbg_print(WIFI_MON, "In case of non-RDKB %s:%d sending remove mac=%s vap=%d zero_mac=1\n",
                     __func__, __LINE__, sta_key, apIndex);
                 wifi_front_haul_bss_t *bss_param = NULL;
                 linkquality_data_t *remove_link_data = (linkquality_data_t *) malloc (sizeof(linkquality_data_t));
@@ -4500,8 +4500,9 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
                         continue;
                     }
                     to_mac_str(bss_param->bssid, remove_link_data->stats.ap_mac_str);
-                    wifi_util_dbg_print(WIFI_MON, "%s:%d: vap down, removing link quality stats for sta mac=%s on ap:%d:%s\n"
-		    , __func__, __LINE__, remove_link_data->stats.mac_str, apIndex,remove_link_data->stats.ap_mac_str);
+                    wifi_util_dbg_print(WIFI_MON,
+                        "%s:%d: vap down, removing link quality stats for sta mac=%s on ap:%d:%s\n", __func__, __LINE__,
+                        remove_link_data->stats.mac_str, apIndex, remove_link_data->stats.ap_mac_str);
                     apps_mgr_link_quality_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, wifi_event_exec_stop, remove_link_data, 0);
                 }
             }
