@@ -1239,6 +1239,7 @@ static void convert_variant_to_str(wifi_ieee80211Variant_t variant, char *str, s
 #endif /* CONFIG_IEEE80211BN */
     };
 
+    str[0] = '\0';
     for (size_t i = 0; i < ARRAY_SIZE(arr_enum); i++) {
         if ((arr_enum[i] & variant) == arr_enum[i]) {
             snprintf(str, len, "%s,", arr_str[i]);
