@@ -1643,6 +1643,9 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 #ifdef CONFIG_IEEE80211BE
         "11be",
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        "11bn",
+#endif /* CONFIG_IEEE80211BN */
     };
 
     static const wifi_ieee80211Variant_t arr_enum[] =
@@ -1656,6 +1659,9 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 #ifdef CONFIG_IEEE80211BE
         WIFI_80211_VARIANT_BE,
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        WIFI_80211_VARIANT_BN,
+#endif /* CONFIG_IEEE80211BN */
     };
     bool is_mode_valid = false;
 
@@ -2200,21 +2206,21 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
     if (str == NULL) {
         return RETURN_ERR;
     }
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined(_PP203X_PRODUCT_REQ_)
     snprintf(str, str_len, "qca4019");
-#elif defined (_XER5_PRODUCT_REQ_)
+#elif defined(_XER5_PRODUCT_REQ_)
     if (radio_index == 0) {
         snprintf(str, str_len, "QCN6124");
     }
     else {
         snprintf(str, str_len, "QCN6224");
     }
-#elif defined (_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
+#elif defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
     if (radio_index == 0) {
     }
     else {
     }
-#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+#elif defined(_MERCURY_PRODUCT_REQ_)
     if (radio_index == 0) {
         snprintf(str, str_len, "qca5332");
     }
@@ -3106,8 +3112,11 @@ struct  wifiStdHalMap wifiStdMap[] =
     {WIFI_80211_VARIANT_AD, "ad"},
     {WIFI_80211_VARIANT_AX, "ax"},
 #ifdef CONFIG_IEEE80211BE
-    {WIFI_80211_VARIANT_BE, "be"}
+    { WIFI_80211_VARIANT_BE, "be" },
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    { WIFI_80211_VARIANT_BN, "bn" }
+#endif /* CONFIG_IEEE80211BN */
 };
 
 bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number, bool twoG80211axEnable)
@@ -3834,8 +3843,10 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             is_valid = true;
         }
 
-        //If radar was detected on the selected DFS channel, return error
-        if( (oper->channel >= 52  &&  oper->channel <=144) ) {
+        //If radar was detected in the selected 5GHz operating block, return error
+        if (is_valid &&
+            (is_5g_20M_channel_in_dfs(oper->channel) ||
+             oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ)) {
             UINT inputChannelBlock = 0;
             UINT firstChannelInBand = 36;
             int blockStartChannel = 0;
@@ -4291,6 +4302,7 @@ static const wifi_operating_classes_t us_6G[] = {
     { 134, 23,  0, {} 	   },
     { 135, -30, 0, {}      },
     { 136, 23,  0, {}      },
+    { 137, 23,  0, {}      },
 };
 
 // Countrycode: EU, Band 2.4G
@@ -5077,6 +5089,5 @@ int get_mesh_sta_mac_address_for_radio(wifi_platform_property_t *wifi_prop, unsi
    dev->cli_MaxUplinkRate = assoc_dev->cli_MaxUplinkRate;  
    dev->cli_LastDataDownlinkRate = assoc_dev->cli_LastDataDownlinkRate;  
    dev->cli_LastDataUplinkRate = assoc_dev->cli_LastDataUplinkRate;  
-   dev->cli_PowerSaveMode = assoc_dev->cli_PowerSaveMode;
    dev->cli_sleepTime = assoc_dev->cli_sleepTime;
  } 

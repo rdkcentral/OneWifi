@@ -170,7 +170,8 @@ _COSA_DML_WIFI_STD
     COSA_DML_WIFI_STD_ax            = 32,
     COSA_DML_WIFI_STD_h             = 64,
     COSA_DML_WIFI_STD_ad            = 128,
-    COSA_DML_WIFI_STD_be            = 256
+    COSA_DML_WIFI_STD_be            = 256,
+    COSA_DML_WIFI_STD_bn           = 512
 }
 COSA_DML_WIFI_STD, *PCOSA_DML_WIFI_STD;
 

@@ -78,15 +78,14 @@ libwifi_webconfig_la_SOURCES += wifi_webconfig_em_channel_stats.c wifi_webconfig
 libwifi_webconfig_la_CFLAGS += $(EM_APP_FLAG)
 endif
 
+libwifi_webconfig_la_SOURCES += wifi_ovsdb_translator.c
 if WITH_EASYMESH
 libwifi_webconfig_la_SOURCES += wifi_easymesh_translator.c
-else
-libwifi_webconfig_la_SOURCES += wifi_ovsdb_translator.c
 endif
 
 libwifi_webconfig_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
 
-libwifi_webconfig_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -lssl -lcrypto -shared
+libwifi_webconfig_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper $(MSGPACK_LIBS) -lcjson -lm -ljansson -lssl -lcrypto -shared
 
 libwifi_webconfig_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 

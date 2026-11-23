@@ -1,0 +1,6 @@
+# Minimal ruff config for .github/scripts. Pyflakes ("F") only: real bugs —
+# undefined names, unused imports/variables, f-strings missing placeholders —
+# not the opinionated style set (E/W/I/UP…). E741 ("ambiguous name l") and
+# friends are deliberately excluded; this gate guards correctness, not taste.
+[lint]
+select = ["F"]
