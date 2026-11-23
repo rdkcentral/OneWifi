@@ -39,7 +39,7 @@
 #include "wifi_apps_mgr.h"
 #include <stdint.h>
 
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
 
 #define OCS_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC 5
 #define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800

@@ -22,6 +22,7 @@
 #include "wifi_dml.h"
 #include "misc.h"
 #include "ccsp.h"
+#include "wifi_mgr.h"
 
 int platform_init(bus_handle_t *handle)
 {
