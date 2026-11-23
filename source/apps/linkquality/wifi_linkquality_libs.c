@@ -229,7 +229,7 @@ wifi_lq_descriptor_t* get_lq_descriptor()
         desc.get_link_metrics_fn                = get_link_metrics;
         desc.set_quality_flags_fn               = set_quality_flags;
         desc.get_quality_flags_fn               = get_quality_flags;
-        desc.vap_down_link_stats_fn             = NULL;
+        desc.vap_down_link_stats_fn = NULL;
 #endif
         initialized = true;
     }
