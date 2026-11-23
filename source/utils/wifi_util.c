@@ -1643,6 +1643,9 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 #ifdef CONFIG_IEEE80211BE
         "11be",
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        "11bn",
+#endif /* CONFIG_IEEE80211BN */
     };
 
     static const wifi_ieee80211Variant_t arr_enum[] =
@@ -1656,6 +1659,9 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 #ifdef CONFIG_IEEE80211BE
         WIFI_80211_VARIANT_BE,
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        WIFI_80211_VARIANT_BN,
+#endif /* CONFIG_IEEE80211BN */
     };
     bool is_mode_valid = false;
 
@@ -3106,8 +3112,11 @@ struct  wifiStdHalMap wifiStdMap[] =
     {WIFI_80211_VARIANT_AD, "ad"},
     {WIFI_80211_VARIANT_AX, "ax"},
 #ifdef CONFIG_IEEE80211BE
-    {WIFI_80211_VARIANT_BE, "be"}
+    { WIFI_80211_VARIANT_BE, "be" },
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    { WIFI_80211_VARIANT_BN, "bn" }
+#endif /* CONFIG_IEEE80211BN */
 };
 
 bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number, bool twoG80211axEnable)
