@@ -3937,12 +3937,6 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
                 }
 #endif // CONFIG_GENERIC_MLO
 
-#ifndef CONFIG_GENERIC_MLO
-                if (mld_conf->mld_link_id >= MAX_NUM_MLD_LINKS) {
-                    continue;
-                }
-#endif // CONFIG_GENERIC_MLO
-
                 /* Only collect VAPs belonging to the current MLD unit */
                 if (mld_conf->mld_id != i) {
                     continue;
