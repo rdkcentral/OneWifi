@@ -66,6 +66,26 @@ static bus_error_t wfa_network_get(char *event_name, raw_data_t *p_data,struct b
     return status;
 }
 
+static bus_error_t wfa_device_get(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+{
+    uint32_t device_index = 0;
+    char     extension[64] = {0};
+
+    sscanf(event_name, DATAELEMS_NETWORK "Device.%u.%63s", &device_index, extension);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d get event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
+
+    if (!STR_CMP(extension, "APMLDNumberOfEntries") &&
+        !STR_CMP(extension, "RadioNumberOfEntries")) {
+        return default_get_param_value(event_name, p_data, user_data);
+    }
+
+    bus_error_t status = wfa_device_get_param_value(NULL, extension, p_data);
+    if (status != bus_error_success)
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d wifi param get failed for:[%s][%s]\r\n", __func__, __LINE__, event_name, extension);
+
+    return status;
+}
+
 static bus_error_t wfa_network_ssid_get(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
 {
     bus_error_t status = bus_error_invalid_input;
@@ -398,7 +418,7 @@ int wfa_set_bus_callbackfunc_pointers(const char *full_namespace, bus_callback_t
 
         /* Device.WiFi.DataElements.Network.Device.{i} */
         { DE_DEVICE_TABLE, {
-            default_get_param_value,         default_set_param_value,
+            wfa_device_get,                  default_set_param_value,
             de_device_table_add_row_handler, de_device_table_remove_row_handler,
             default_event_sub_handler,       NULL }
         },
