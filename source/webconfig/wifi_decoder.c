@@ -3336,6 +3336,14 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_bool(obj_radio, "ChanUtilSelfHealEnable", param);
     radio_info->chanUtilSelfHealEnable = (param->type & cJSON_True) ? true : false;
 
+#ifdef CONFIG_IEEE80211BN
+    if (decode_radio_npca_object(obj_radio, radio_info) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid NPCA radio configuration\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+#endif
+
     // EcoPowerDown
     decode_param_bool(obj_radio, "EcoPowerDown", param);
     radio_info->EcoPowerDown = (param->type & cJSON_True) ? true : false;

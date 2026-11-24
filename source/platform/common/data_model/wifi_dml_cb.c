@@ -776,6 +776,10 @@ bool radio_get_param_bool_value(void *obj_ins_context, char *param_name, bool *o
 #else
         *output_value = false;
 #endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
+#ifdef CONFIG_IEEE80211BN
+    } else if (STR_CMP(param_name, "X_IPQ_COM_NPCAEnable")) {
+        *output_value = pcfg->npca_enable;
+#endif
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -867,6 +871,12 @@ bool radio_get_param_uint_value(void *obj_ins_context, char *param_name, uint32_
         dml_radio_default *dm_radio_default = get_radio_default_obj(radio_index);
         DM_CHECK_NULL_WITH_RC(dm_radio_default, false);
         *output_value = dm_radio_default->ExtensionChannel;
+#ifdef CONFIG_IEEE80211BN
+    } else if (STR_CMP(param_name, "X_IPQ_COM_NPCAChannel")) {
+        *output_value = pcfg->npca_channel;
+    } else if (STR_CMP(param_name, "X_IPQ_COM_NPCABitmap")) {
+        *output_value = pcfg->npca_bitmap;
+#endif
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -1131,6 +1141,18 @@ bool radio_set_param_bool_value(void *obj_ins_context, char *param_name, bool ou
 #endif // FEATURE_SUPPORT_ECOPOWERDOWN
         is_radio_config_changed = true;
 #endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
+#ifdef CONFIG_IEEE80211BN
+    } else if (STR_CMP(param_name, "X_IPQ_COM_NPCAEnable")) {
+        if (dm_radio_param->npca_enable == output_value) {
+            return true;
+        }
+        dm_radio_param->npca_enable = output_value;
+        if (!output_value) {
+            dm_radio_param->npca_channel = 0;
+            dm_radio_param->npca_bitmap = 0;
+        }
+        is_radio_config_changed = true;
+#endif
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);
@@ -1299,6 +1321,30 @@ bool radio_set_param_uint_value(void *obj_ins_context, char *param_name, uint32_
         if (dm_radio_default->ExtensionChannel != output_value) {
             dm_radio_default->ExtensionChannel = output_value;
         }
+#ifdef CONFIG_IEEE80211BN
+    } else if (STR_CMP(param_name, "X_IPQ_COM_NPCAChannel")) {
+        if (!dm_radio_param->npca_enable || output_value > 255) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: Invalid NPCA channel for radio %d\n",
+                __func__, __LINE__, radio_index);
+            return false;
+        }
+        if (dm_radio_param->npca_channel == output_value) {
+            return true;
+        }
+        dm_radio_param->npca_channel = output_value;
+        is_radio_config_changed = true;
+    } else if (STR_CMP(param_name, "X_IPQ_COM_NPCABitmap")) {
+        if (!dm_radio_param->npca_enable || output_value > 65535) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: Invalid NPCA bitmap for radio %d\n",
+                __func__, __LINE__, radio_index);
+            return false;
+        }
+        if (dm_radio_param->npca_bitmap == output_value) {
+            return true;
+        }
+        dm_radio_param->npca_bitmap = output_value;
+        is_radio_config_changed = true;
+#endif
     } else {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d: unsupported param name:%s\n", __func__, __LINE__,
             param_name);

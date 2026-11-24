@@ -333,6 +333,12 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // ChanUtilSelfHealEnable
     cJSON_AddBoolToObject(radio_object, "ChanUtilSelfHealEnable", radio_info->chanUtilSelfHealEnable);
 
+#ifdef CONFIG_IEEE80211BN
+    cJSON_AddNumberToObject(radio_object, "X_IPQ_COM_NPCAEnable", radio_info->npca_enable);
+    cJSON_AddNumberToObject(radio_object, "X_IPQ_COM_NPCAChannel", radio_info->npca_channel);
+    cJSON_AddNumberToObject(radio_object, "X_IPQ_COM_NPCABitmap", radio_info->npca_bitmap);
+#endif
+
     // EcoPowerDown
     cJSON_AddBoolToObject(radio_object, "EcoPowerDown", radio_info->EcoPowerDown);
 

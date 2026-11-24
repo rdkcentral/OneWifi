@@ -37,6 +37,7 @@
 #include "wifi_util.h"
 #include "wifi_mgr.h"
 #include "wifi_passpoint.h"
+#include "wifi_webconfig.h"
 
 bool g_interworking_RFC;
 bool g_passpoint_RFC;
@@ -2161,6 +2162,16 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
         // ChanUtilSelfHealEnable
         validate_param_bool(wifi, "ChanUtilSelfHealEnable", param);
         wifi_radio_info->chanUtilSelfHealEnable = (param->type & cJSON_True) ? true:false;
+
+#ifdef CONFIG_IEEE80211BN
+        if (decode_radio_npca_object(wifi, wifi_radio_info) != webconfig_error_none) {
+            if (execRetVal) {
+                snprintf(execRetVal->ErrorMsg, sizeof(execRetVal->ErrorMsg),
+                    "Invalid NPCA radio configuration");
+            }
+            return RETURN_ERR;
+        }
+#endif
 
         // EcoPowerDown
         validate_param_bool(wifi, "EcoPowerDown", param);

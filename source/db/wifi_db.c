@@ -218,6 +218,11 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     cfg.adminControl = 0;
     cfg.chanUtilThreshold = 90;
     cfg.chanUtilSelfHealEnable = 0;
+#ifdef CONFIG_IEEE80211BN
+    cfg.npca_enable = FALSE;
+    cfg.npca_channel = 0;
+    cfg.npca_bitmap = 0;
+#endif
     cfg.EcoPowerDown = false;
     cfg.factoryResetSsid = 0;
     cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
