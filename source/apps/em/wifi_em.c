@@ -4229,56 +4229,27 @@ static int em_send_action_frame(void *data)
     UCHAR out_dialog = rand() % 256;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
-    unsigned int num_of_radios = getNumberRadios();
-    wifi_vap_info_map_t *vap_map;
 
     beacon_query_params_t *query = (beacon_query_params_t *)data;
     wifi_BeaconRequest_t *params = &query->data;
-    int ap_index = RETURN_ERR;
+    int ap_index;
 
-    for (unsigned int i = 0; i < num_of_radios; i++) {
-        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
-        if (vap_map == NULL) {
-            continue;
-        }
-
-        for (unsigned int j = 0; j < vap_map->num_vaps; j++) {
-            if (memcmp(params->bssid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) ==
-                0) {
-                ap_index = vap_map->vap_array[j].vap_index;
-                break;
-            }
-            /* The queried bssid may be the AP MLD address (used for the assoc
-             * exchange itself) rather than any single link's own bssid; resolve
-             * it to one of that MLD's links so the HAL can still be reached and
-             * map the request out to all of the STA's established links. */
-            if (memcmp(params->bssid,
-                    vap_map->vap_array[j].u.bss_info.mld_info.common_info.mld_addr,
-                    sizeof(mac_addr_t)) == 0) {
-                ap_index = vap_map->vap_array[j].vap_index;
-                break;
-            }
-        }
-
-        if (ap_index != RETURN_ERR) {
-            break;
-        }
-    }
+    /* The request goes out on the BSS the STA is associated to (its association
+     * link for an MLD); params->bssid is the BSS the STA is asked to measure and
+     * is passed to the HAL as-is. */
+    ap_index = get_ap_index_from_clientmac(query->sta_mac);
 
     to_mac_str((unsigned char *)query->sta_mac, client_mac);
     to_mac_str((unsigned char *)params->bssid, bssid_str);
     wifi_util_dbg_print(WIFI_EM,
         "%s:%d: Sending beacon query action frame for mac %s with ap_index %d bssid:%s\n", __func__,
         __LINE__, client_mac, ap_index, bssid_str);
-    if (ap_index == RETURN_ERR) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Failed to resolve ap_index for bssid:%s\n", __func__,
-            __LINE__, bssid_str);
+    if (ap_index < 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d STA %s is not associated to any BSS\n", __func__,
+            __LINE__, client_mac);
         return RETURN_ERR;
     }
 
-    /* The queried bssid (whether the AP MLD address or one of its per-link
-     * addresses) is passed to the HAL as-is; the HAL decides whether it
-     * identifies the STA's whole MLD and fans the request out accordingly. */
     unsigned int radio_index = get_radio_index_for_vap_index(wifi_prop, ap_index);
     wifi_radio_operationParam_t *radio_oper_param =
         (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
@@ -4332,8 +4303,6 @@ static int em_send_action_frame(void *data)
         params->opClass = global_op_class;
         params->channel = radio_oper_param->channel;
     }
-
-    params->duration = 200;
 
     /* channel=255 requires a Channel Report subelement listing primary channels.
      * If one is present (now containing correct 20 MHz primary channels), use it
