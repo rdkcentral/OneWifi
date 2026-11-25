@@ -30,6 +30,10 @@ extern "C" {
 #include <stdint.h>
 #include "wifi_hal.h"
 
+#if defined(CONFIG_IEEE80211BN) && !defined(CONFIG_IEEE80211BE)
+#error "CONFIG_IEEE80211BN requires CONFIG_IEEE80211BE"
+#endif /* CONFIG_IEEE80211BN && !CONFIG_IEEE80211BE */
+
 #define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
 #define WIFI_STA_5G_VAP_CONNECT_STATUS      "Device.WiFi.STA.2.Connection.Status"
 #define WIFI_STA_2G_INTERFACE_NAME          "Device.WiFi.STA.1.InterfaceName"

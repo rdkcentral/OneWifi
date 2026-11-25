@@ -40,21 +40,27 @@ void regex_check_for_elements(const char *str, char *modified)
     wifi_util_dbg_print(WIFI_BUS, "%s:%d string value =%s\n", __func__, __LINE__, str);
     const char replacement[] = "{i}";
     int i, j = 0;
-    char temp[strlen(str) + 1];
+    char temp[strlen(str) * 3 + 1];
 
     for (i = 0; str[i] != '\0'; i++) {
-        if (!isdigit(str[i])) {
-            temp[j++] = str[i];
-        } else {
-            // Insert the replacement string
-            for (int k = 0; replacement[k] != '\0'; k++) {
-                temp[j++] = replacement[k];
+        bool at_start = (i == 0) || (str[i - 1] == '.');
+
+        if (at_start && isdigit((unsigned char)str[i])) {
+            int end = i;
+
+            while (isdigit((unsigned char)str[end])) {
+                end++;
             }
-            // Skip consecutive digits
-            while (isdigit(str[i + 1])) {
-                i++;
+            // Replace only when the digits make up a whole path component
+            if (str[end] == '.' || str[end] == '\0') {
+                for (int k = 0; replacement[k] != '\0'; k++) {
+                    temp[j++] = replacement[k];
+                }
+                i = end - 1;
+                continue;
             }
         }
+        temp[j++] = str[i];
     }
     temp[j] = '\0';
     strcpy(modified, temp);
