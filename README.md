@@ -160,6 +160,7 @@ Build-time configuration options, DISTRO features, and compiler flags from Yocto
 | N/A | `wps_support` | `-DFEATURE_SUPPORT_WPS` | Enable WiFi Protected Setup (WPS) functionality | Disabled |
 | `--enable-easyconnect` | `EasyConnect` | N/A | Enable WiFi Easy Connect (DPP) protocol support | Disabled |
 | N/A | `CONFIG_IEEE80211BE` | `-DCONFIG_IEEE80211BE` | Enable WiFi 7 (802.11be) and MLO/MLD support | Disabled |
+| N/A | `CONFIG_IEEE80211BN` | `-DCONFIG_IEEE80211BN` | Enable 802.11bn (UHR) variant reporting/configuration; requires `CONFIG_IEEE80211BE` | Disabled |
 | `--enable-sm-app` | `sm_app` | N/A | Enable Statistics Manager application | Disabled |
 | N/A | `halVersion3` | `-DWIFI_HAL_VERSION_3` | Enable WiFi HAL Version 3 API support | Enabled |
 | N/A | `always_enable_ax_2g` | `-DALWAYS_ENABLE_AX_2G` | Force enable WiFi 6 (802.11ax) on 2.4GHz band | Disabled |
