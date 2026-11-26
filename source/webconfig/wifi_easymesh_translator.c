@@ -343,7 +343,6 @@ void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_securit
     device_info->sec_1905.encr_flags = 0;
     device_info->sec_1905.conn_flags = 0;
     device_info->sec_1905.cfg_methods = 0;
-    memcpy(security_info->id, device_info->intf.mac,sizeof(mac_address_t));
     security_info->sec_cap.onboarding_proto = 0;
     security_info->sec_cap.integrity_algo = 0;
     security_info->sec_cap.encryption_algo = 0;
@@ -446,9 +445,6 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     snprintf(device_info->manufacturer_model, sizeof(device_info->manufacturer_model), "%s", wifi_prop->manufacturerModel);
     snprintf(device_info->manufacturer, sizeof(device_info->manufacturer), "%s", wifi_prop->manufacturer);
     snprintf(device_info->serial_number, sizeof(device_info->serial_number), "%s", wifi_prop->serialNo);
-    memcpy(device_info->intf.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
-    memcpy(device_info->backhaul_alid.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
-    interfacename_from_mac((const mac_address_t *)device_info->backhaul_alid.mac,device_info->backhaul_alid.name);
     //proto->set_num_radio(proto->data_model, wifi_prop->numRadios);
     /* Report the device's regulatory country as Network.Device.{i}.CountryCode.
        Default to US, override only for an in range enum (conversion does not bounds check). */
@@ -471,11 +467,8 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     populate_device_mlo_capabilities(device_info, decoded_params, wifi_prop);
 
     // Fill the network_info structure
-    memcpy(network_info->colocated_agent_id.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
-    interfacename_from_mac((const mac_address_t *)network_info->colocated_agent_id.mac,network_info->colocated_agent_id.name);
     memcpy(network_info->ctrl_id.mac, wifi_prop->cm_mac, sizeof(mac_address_t));
     interfacename_from_mac((const mac_address_t *)network_info->ctrl_id.mac,network_info->ctrl_id.name);
-    uint8_mac_to_string_mac(network_info->colocated_agent_id.mac,network_info->id);
 
     return webconfig_error_none;
 }
@@ -537,6 +530,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         }
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
         em_radio_info->enabled = oper_param->enable;
+        em_radio_info->transmit_power_limit = (int)oper_param->transmitPower;
 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
             em_radio_info->band = em_freq_band_24;
@@ -1321,6 +1315,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             continue;
         }
         em_radio_info->enabled = oper_param->enable;
+        em_radio_info->transmit_power_limit = (int)oper_param->transmitPower;
         //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
         if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
             em_radio_info->band = em_freq_band_24;
@@ -1547,6 +1542,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
     em_sta_info_t *em_sta_dev_info = NULL;
     unsigned int associated_client_count = 0;
     unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0, frame_len = 0;
+    hash_map_t *sta_map = NULL;
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     rdk_wifi_radio_t *radio = NULL;
     wifi_vap_info_map_t *vap_map = NULL;
@@ -1591,8 +1587,12 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                 return webconfig_error_translate_to_easymesh;
             }
 
-            if (rdk_vap_info->associated_devices_diff_map != NULL) {
-                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_diff_map);
+            /* A full document carries its clients in associated_devices_map */
+            sta_map = (decoded_params->assoclist_notifier_type == assoclist_notifier_full) ?
+                rdk_vap_info->associated_devices_map :
+                rdk_vap_info->associated_devices_diff_map;
+            if (sta_map != NULL) {
+                assoc_dev_data = hash_map_get_first(sta_map);
                 while (assoc_dev_data != NULL) {
                     if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
@@ -1651,7 +1651,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                             "%s:%d: Invalid association frame length %u, skipping client\n",
                             __func__, __LINE__, frame_len);
                         free(em_sta_dev_info);
-                        assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                        assoc_dev_data = hash_map_get_next(sta_map, assoc_dev_data);
                         continue;
                     } else {
                         tag_len = frame_len - IEEE80211_HDRLEN - fixed_len;
@@ -1689,7 +1689,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         }
                     }
                     associated_client_count++;
-                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                    assoc_dev_data = hash_map_get_next(sta_map, assoc_dev_data);
                 }
             }
         }
@@ -3593,7 +3593,6 @@ webconfig_error_t   translate_device_object_from_easymesh_to_dml(webconfig_subdo
     snprintf(wifi_prop->manufacturerModel, sizeof(wifi_prop->manufacturerModel), "%s", device_info->manufacturer_model);
     snprintf(wifi_prop->manufacturer, sizeof(wifi_prop->manufacturer), "%s", device_info->manufacturer);
     snprintf(wifi_prop->serialNo, sizeof(wifi_prop->serialNo), "%s", device_info->serial_number);
-    memcpy( wifi_prop->al_1905_mac, device_info->intf.mac, sizeof(mac_address_t));
     for (unsigned int i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         radio->oper.DfsEnabled =  device_info->dfs_enable;

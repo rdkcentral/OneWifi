@@ -98,7 +98,8 @@
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_NEW_FLAG 100051
 #define ONEWIFI_DB_VERSION_MLD_LINK_ID_FLAG 100053
 #define ONEWIFI_DB_VERSION_2G11AXENABLE_RFC_FLAG 100054
-
+#define ONEWIFI_DB_VERSION_2GIEEE80211AX_FLAG 100056
+#define ONEWIFI_DB_VERSION_IEEE80211BN_FLAG 100057
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -2847,7 +2848,7 @@ extern const char* get_passpoint_json_by_vap_name(const char* vap_name);
 extern const char* get_anqp_json_by_vap_name(const char* vap_name);
 extern void reset_passpoint_json(const char* vap_name);
 extern void reset_anqp_json(const char* vap_name);
-extern int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason);
+extern int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason, size_t len);
 
 void wifidb_reset_macfilter_hashmap()
 {
@@ -3707,6 +3708,7 @@ int wifidb_get_wifi_ignite_config(ignite_config_t *ignite_cfg)
     ignite_cfg->min_chanutil_threshold = (float)pcfg->min_chanutil_threshold;
     ignite_cfg->max_chanutil_threshold = (float)pcfg->max_chanutil_threshold;
     ignite_cfg->SNR_difference         = (float)pcfg->snr_difference;
+    free(pcfg);
     return 0;
 }
 
@@ -5246,6 +5248,29 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
         }
     }
 #endif /* CONFIG_IEEE80211BE */
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_2GIEEE80211AX_FLAG) {
+        wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+        if ((config->band == WIFI_FREQUENCY_2_4_BAND) && (rfc_param && rfc_param->twoG80211axEnable_rfc)) {
+            config->variant |= WIFI_80211_VARIANT_AX;
+            if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+                wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
+                return;
+            }
+        }
+    }
+
+#ifdef CONFIG_IEEE80211BN
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BN_FLAG &&
+        (config->variant & WIFI_80211_VARIANT_BE)) {
+        wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config for 11bn, old db version: %d total radios: %u\n",
+            __func__, __LINE__, index, g_wifidb->db_version, total_radios);
+        config->variant |= WIFI_80211_VARIANT_BN;
+        if (wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB, "%s:%d error in updating radio config\n", __func__, __LINE__);
+            return;
+        }
+    }
+#endif /* CONFIG_IEEE80211BN */
 }
 
 int wifidb_get_default_mld_link_id(int band)
@@ -5257,10 +5282,16 @@ int wifidb_get_default_mld_link_id(int band)
     case WIFI_FREQUENCY_6_BAND:   return 0;
     default:                      return UNDEFINED_MLD_LINK_ID;
     }
+#elif defined(CONFIG_IEEE80211BE) && defined(_GREXT02ACTS_PRODUCT_REQ_)
+    switch (band) {
+    case WIFI_FREQUENCY_2_4_BAND: return 0;
+    case WIFI_FREQUENCY_5_BAND:   return 1;
+    default:                    return UNDEFINED_MLD_LINK_ID;
+    }
 #else
     (void)band;
     return UNDEFINED_MLD_LINK_ID;
-#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
+#endif /* CONFIG_IEEE80211BE && supported product */
 }
 
 
@@ -5410,7 +5441,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
                 __func__, __LINE__, g_wifidb->db_version);
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
-#if defined(_PLATFORM_BANANAPI_R4_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined( _GREXT02ACTS_PRODUCT_REQ_)
                 if (isVapPrivate(config->vap_array[i].vap_index)) {
                     config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 1;
                     config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 0;
@@ -5791,7 +5822,7 @@ void *start_wifidb_func(void *arg)
             strncpy(last_reboot_reason, (char *)data.raw_data.bytes, data.raw_data_len);
             get_bus_descriptor()->bus_data_free_fn(&data);
         } else {
-            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason, sizeof(last_reboot_reason));
         }
         wifi_util_info_print(WIFI_DB, "%s:%d last_reboot_reason:%s \n", __func__, __LINE__,
             last_reboot_reason);
@@ -7658,19 +7689,27 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else /* !_XER5_PRODUCT_REQ_ && !QCOM_ATH12K_PORT */
             cfg->variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #endif /* _XER5_PRODUCT_REQ_ || QCOM_ATH12K_PORT */
-#if defined(NEWPLATFORM_PORT) || defined(_MERCURY_PRODUCT_REQ_)
+#if defined(NEWPLATFORM_PORT) || defined(_MERCURY_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) \
+ || defined(_XB10_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_) \
+ || defined(_SR213_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_)
             cfg->variant |= WIFI_80211_VARIANT_AX;
-#endif /* NEWPLATFORM_PORT || _MERCURY_PRODUCT_REQ_ */
+#endif /* NEWPLATFORM_PORT || _MERCURY_PRODUCT_REQ_ || _SCER11BEL_PRODUCT_REQ_ || _XB10_PRODUCT_REQ_ \
+ || _XB8_PRODUCT_REQ_ || _XB7_PRODUCT_REQ_ || _SR213_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_ || _WNXL11BWL_PRODUCT_REQ_*/
 
 #ifdef CONFIG_IEEE80211BE
-#if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_) || defined(QCOM_ATH12K_PORT)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_) || defined(QCOM_ATH12K_PORT) || \
+    defined(_GREXT02ACTS_PRODUCT_REQ_)
             cfg->variant |= WIFI_80211_VARIANT_BE;
-#endif /* _PLATFORM_BANANAPI_R4_ || _MERCURY_PRODUCT_REQ_ || QCOM_ATH12K_PORT */
+#endif /* _PLATFORM_BANANAPI_R4_ || _MERCURY_PRODUCT_REQ_ || QCOM_ATH12K_PORT || _GREXT02ACTS_PRODUCT_REQ_ */
 #ifdef _PLATFORM_BANANAPI_R4_
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
 #endif  /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
-
+#if defined(CONFIG_IEEE80211BN)
+            if (cfg->variant & WIFI_80211_VARIANT_BE) {
+                cfg->variant |= WIFI_80211_VARIANT_BN;
+            }
+#endif /* defined(CONFIG_IEEE80211BN) */
 
 #if defined(_PP203X_PRODUCT_REQ_) || defined(_MERCURY_PRODUCT_REQ_)
             cfg->beaconInterval = 100;
@@ -7701,6 +7740,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef CONFIG_IEEE80211BE
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            cfg->variant |= WIFI_80211_VARIANT_BN;
+#endif /* CONFIG_IEEE80211BN */
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg->operatingClass = 128;
@@ -7717,6 +7759,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef CONFIG_IEEE80211BE
             cfg->variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            cfg->variant |= WIFI_80211_VARIANT_BN;
+#endif /* CONFIG_IEEE80211BN */
             break;
         case WIFI_FREQUENCY_6_BAND:
             cfg->operatingClass = 134;
@@ -7735,6 +7780,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
 #endif /* _PLATFORM_BANANAPI_R4_ */
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            cfg->variant |= WIFI_80211_VARIANT_BN;
+#endif /* CONFIG_IEEE80211BN */
             break;
         default:
             wifi_util_error_print(WIFI_DB,"%s:%d radio index %d, invalid band %d\n", __func__,
@@ -8093,7 +8141,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
-    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_)
+    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -8142,7 +8190,8 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg->u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg->u.bss_info.beaconRateCtl)-1);
         cfg->vap_mode = wifi_vap_mode_ap;
-#if defined(_PLATFORM_BANANAPI_R4_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_) || \
+    defined(_GREXT02ACTS_PRODUCT_REQ_)
         if (isVapPrivate(vap_index)) {
             cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg->u.bss_info.mld_info.common_info.mld_id = 0;
@@ -8150,10 +8199,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
             cfg->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
         }
-#else /* _PLATFORM_BANANAPI_R4_ */
+        if (isVapMeshBackhaul(vap_index)) {
+            cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
+            cfg->u.bss_info.mld_info.common_info.mld_id = 1;
+        }
+#else /* !_PLATFORM_BANANAPI_R4_ && !_MERCURY_PRODUCT_REQ_ && !_GREXT02ACTS_PRODUCT_REQ_ */
         cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
-#endif /* _PLATFORM_BANANAPI_R4_ */
+#endif /* _PLATFORM_BANANAPI_R4_ || _MERCURY_PRODUCT_REQ_ || _GREXT02ACTS_PRODUCT_REQ_ */
         cfg->u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
         memset(&cfg->u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg->u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
@@ -10078,16 +10131,21 @@ int get_wifi_db_psm_enable_status(bool *wifi_psm_db_enabled)
     return RETURN_OK;
 }
 
-int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason)
+int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason, size_t len)
 {
     char *str = NULL;
     char strValue[256] = {0};
     wifi_ccsp_desc_t *p_ccsp_desc = &get_wificcsp_obj()->desc;
 
+    if (last_reboot_reason == NULL || len == 0) {
+        wifi_util_error_print(WIFI_MGR,"%s:%d Invalid input parameters\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     memset(strValue, 0, sizeof(strValue));
     str = p_ccsp_desc->psm_get_value_fn(LAST_REBOOT_REASON_NAMESPACE, strValue, sizeof(strValue));
     if (str != NULL) {
-        strcpy(last_reboot_reason, str);
+        snprintf(last_reboot_reason, len, "%s", str);
         wifi_util_dbg_print(WIFI_MGR,"str is %s and last_reboot_reason is %s\n", str, last_reboot_reason);
     } else {
         wifi_util_error_print(WIFI_MGR,"%s:%d last_reboot_reason:%s \r\n", __func__, __LINE__, last_reboot_reason);
@@ -10148,7 +10206,7 @@ int get_all_param_from_psm_and_set_into_db(void)
             }
         } else {
             get_wifi_db_psm_enable_status(&wifi_psm_db_enabled);
-            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason, sizeof(last_reboot_reason));
         }
 
         wifi_util_info_print(WIFI_MGR, "%s psm:%d last_reboot_reason:%s \n", __func__,

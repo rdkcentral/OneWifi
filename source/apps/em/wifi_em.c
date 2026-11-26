@@ -47,25 +47,28 @@
     18 // MAC address string length (xx:xx:xx:xx:xx:xx = 17 chars + null terminator)
 
 static bool is_monitor_done = false;
+static pthread_mutex_t monitor_done_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool g_btm_pending_valid = false;
 static em_btm_req_ctrl_msg_t g_pending_btm;
 
-static bool wifi_em_refresh_tx_power(void)
+static bool wifi_em_refresh_tx_power(UINT tx_power[MAX_NUM_RADIOS], unsigned int *num_radios)
 {
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-    unsigned int num_radios = getNumberRadios();
-    UINT tx_power[MAX_NUM_RADIOS];
+    unsigned int radio_count = getNumberRadios();
 
-    if (num_radios == 0 || num_radios > MAX_NUM_RADIOS) {
+    if (tx_power == NULL || num_radios == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: invalid arguments\n", __func__, __LINE__);
+        return false;
+    }
+    if (radio_count == 0 || radio_count > MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_EM, "%s:%d: invalid radio count %u\n", __func__, __LINE__,
-            num_radios);
+            radio_count);
         return false;
     }
 
     wifi_util_info_print(WIFI_EM, "%s:%d: refreshing transmit power from HAL for %u radios\n",
-        __func__, __LINE__, num_radios);
+        __func__, __LINE__, radio_count);
 
-    for (unsigned int i = 0; i < num_radios; i++) {
+    for (unsigned int i = 0; i < radio_count; i++) {
         ULONG curr_txpower = 0;
         int rc = wifi_hal_getRadioTransmitPower((INT)i, &curr_txpower);
         if (rc != RETURN_OK) {
@@ -86,14 +89,8 @@ static bool wifi_em_refresh_tx_power(void)
             __LINE__, i, curr_txpower);
     }
 
-    pthread_mutex_lock(&wifi_mgr->data_cache_lock);
-    for (unsigned int i = 0; i < num_radios; i++) {
-        wifi_mgr->radio_config[i].oper.transmitPower = tx_power[i];
-    }
-    pthread_mutex_unlock(&wifi_mgr->data_cache_lock);
-
+    *num_radios = radio_count;
     return true;
-    ;
 }
 
 // Structure to track pending block timers
@@ -1780,6 +1777,55 @@ static int em_handle_failed_connection(wifi_app_t *app, void *arg)
     return em_publish_failed_connection(&fc);
 }
 
+/* Worst case is ~400 bytes: 2*17 (MACs) + 7 uint64 counters (20 digits each) + fixed JSON syntax. */
+#define EM_DISASSOC_STATS_JSON_MAX 512
+
+static int em_publish_client_disassoc_stats(const wifi_vap_info_t *vap_info,
+    const wifi_associated_dev3_t *dev3, int reason)
+{
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = { 0 };
+    mac_addr_str_t bssid_str, sta_str;
+    char json_buf[EM_DISASSOC_STATS_JSON_MAX];
+    int n;
+    bus_error_t rc;
+
+    to_mac_str((unsigned char *)vap_info->u.bss_info.bssid, bssid_str);
+    to_mac_str((unsigned char *)dev3->cli_MACAddress, sta_str);
+
+    n = snprintf(json_buf, sizeof(json_buf),
+        "{\"Version\":\"1.0\",\"SubDocName\":\"ClientDisassocStats\","
+        "\"BSSID\":\"%s\",\"STA MacAddress\":\"%s\",\"Reason Code\":%u,"
+        "\"Traffic Stats\":{\"BytesSent\":%llu,\"BytesReceived\":%llu,"
+        "\"PacketsSent\":%llu,\"PacketsReceived\":%llu,\"TxPacketsErrors\":%llu,"
+        "\"RxPacketsErrors\":%llu,\"RetransmissionCount\":%llu},"
+        "\"Affiliated STA Metrics\":[]}",
+        bssid_str, sta_str, (unsigned int)reason,
+        (unsigned long long)dev3->cli_BytesSent, (unsigned long long)dev3->cli_BytesReceived,
+        (unsigned long long)dev3->cli_PacketsSent, (unsigned long long)dev3->cli_PacketsReceived,
+        (unsigned long long)dev3->cli_ErrorsSent, (unsigned long long)dev3->cli_RxErrors,
+        (unsigned long long)dev3->cli_RetransCount);
+    if (n < 0 || n >= (int)sizeof(json_buf)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: snprintf failed or truncated (n=%d)\n", __func__,
+            __LINE__, n);
+        return RETURN_ERR;
+    }
+
+    rdata.data_type = bus_data_type_string;
+    rdata.raw_data.bytes = (void *)json_buf;
+    rdata.raw_data_len = (size_t)n + 1;
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle,
+        WIFI_EM_CLIENT_DISASSOC_STATS, &rdata);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: bus_event_publish_fn failed rc=%d\n", __func__,
+            __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
 static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
 {
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
@@ -1794,6 +1840,7 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     int arr_vap_index = -1;
     wifi_vap_info_t *vap_info = NULL;
     wifi_associated_dev3_timestamp_t *stats = NULL;
+    wifi_associated_dev3_t dev3;
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d : Sta disassoc event \n", __func__, __LINE__);
 
@@ -1844,6 +1891,14 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     }
     wifi_util_dbg_print(WIFI_EM, "%s:%d: Sta Mac %s disassociated\n", __func__, __LINE__,
         sta_mac_str);
+
+    /* Only a cached entry carries counters; removing it also reports each association once. */
+    memcpy(&dev3, &stats->associated_dev3, sizeof(dev3));
+    free(stats);
+    if (em_publish_client_disassoc_stats(vap_info, &dev3, assoc_data->reason) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: failed to publish %s\n", __func__, __LINE__,
+            WIFI_EM_CLIENT_DISASSOC_STATS);
+    }
 
     to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
     sta_client_info_t *t_sta_data = (sta_client_info_t *)hash_map_remove(
@@ -3156,13 +3211,20 @@ static int em_toggle_disconn_steady_state(void *data, unsigned int len)
 
 void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
 {
+    bool monitor_done;
+
     switch (event->sub_type) {
     case wifi_event_type_notify_monitor_done:
-        is_monitor_done = TRUE;
+        pthread_mutex_lock(&monitor_done_lock);
+        is_monitor_done = true;
+        pthread_mutex_unlock(&monitor_done_lock);
         break;
 
     case wifi_event_type_start_channel_scan:
-        if (is_monitor_done) {
+        pthread_mutex_lock(&monitor_done_lock);
+        monitor_done = is_monitor_done;
+        pthread_mutex_unlock(&monitor_done_lock);
+        if (monitor_done) {
             em_config_channel_scan(event->u.core_data.msg, event->u.core_data.len);
         }
         break;
@@ -3445,6 +3507,25 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data, bus_user_data_t *
     return bus_error_success;
 }
 
+bus_error_t get_monitor_done(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    bool monitor_done;
+
+    (void)event_name;
+    (void)user_data;
+
+    if (p_data == NULL) {
+        return bus_error_invalid_input;
+    }
+    p_data->data_type = bus_data_type_boolean;
+    pthread_mutex_lock(&monitor_done_lock);
+    monitor_done = is_monitor_done;
+    pthread_mutex_unlock(&monitor_done_lock);
+    p_data->raw_data.b = monitor_done;
+    p_data->raw_data_len = sizeof(p_data->raw_data.b);
+    return bus_error_success;
+}
+
 bus_error_t get_tx_power(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
     (void)user_data;
@@ -3457,20 +3538,70 @@ bus_error_t get_tx_power(char *event_name, raw_data_t *p_data, bus_user_data_t *
             __LINE__);
         return bus_error_invalid_input;
     }
-    if (strcmp(event_name, WIFI_EM_INIT_TX_POWER_READY) != 0) {
+    if (strcmp(event_name, WIFI_EM_GET_TX_POWER) != 0) {
         wifi_util_error_print(WIFI_EM, "%s:%d: unsupported TX power property %s\n", __func__,
             __LINE__, event_name);
         return bus_error_invalid_namespace;
     }
-    if (!wifi_em_refresh_tx_power()) {
+
+    UINT tx_power[MAX_NUM_RADIOS];
+    unsigned int num_radios;
+    if (!wifi_em_refresh_tx_power(tx_power, &num_radios)) {
         wifi_util_error_print(WIFI_EM, "%s:%d: transmit power unavailable; retry GET\n",
             __func__, __LINE__);
         return bus_error_general;
     }
 
-    p_data->data_type = bus_data_type_uint32;
-    p_data->raw_data.u32 = 1;
-    p_data->raw_data_len = sizeof(p_data->raw_data.u32);
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    if (wifi_mgr == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: Wi-Fi manager unavailable\n", __func__, __LINE__);
+        return bus_error_general;
+    }
+    wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
+    const unsigned int num_radio_interfaces =
+        sizeof(wifi_prop->radio_interface_map) / sizeof(wifi_prop->radio_interface_map[0]);
+    if (num_radios > EM_MAX_RADIO_PER_AGENT) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: radio count %u exceeds response capacity\n",
+            __func__, __LINE__, num_radios);
+        return bus_error_general;
+    }
+
+    em_tx_power_response_t response = { 0 };
+    response.radio_count = num_radios;
+    const size_t response_len = offsetof(em_tx_power_response_t, radios) +
+        num_radios * sizeof(response.radios[0]);
+    for (unsigned int i = 0; i < num_radios; i++) {
+        bool ruid_found = false;
+        for (unsigned int j = 0; j < num_radio_interfaces; j++) {
+            radio_interface_mapping_t *radio_interface = &wifi_prop->radio_interface_map[j];
+            if (radio_interface->radio_index == i &&
+                mac_address_from_name(radio_interface->interface_name, response.radios[i].ruid) ==
+                    RETURN_OK) {
+                ruid_found = true;
+                break;
+            }
+        }
+        if (!ruid_found) {
+            wifi_util_error_print(WIFI_EM, "%s:%d: unable to find RUID for radio_index=%u\n",
+                __func__, __LINE__, i);
+            return bus_error_general;
+        }
+
+        uint32_t tx_power_bits = (uint32_t)tx_power[i];
+        memcpy(&response.radios[i].tx_power, &tx_power_bits, sizeof(tx_power_bits));
+    }
+
+    unsigned char *response_bytes = malloc(response_len);
+    if (response_bytes == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: failed to allocate TX power response\n", __func__,
+            __LINE__);
+        return bus_error_general;
+    }
+    memcpy(response_bytes, &response, response_len);
+
+    p_data->data_type = bus_data_type_bytes;
+    p_data->raw_data.bytes = response_bytes;
+    p_data->raw_data_len = (uint32_t)response_len;
     return bus_error_success;
 }
 
@@ -4098,56 +4229,27 @@ static int em_send_action_frame(void *data)
     UCHAR out_dialog = rand() % 256;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
-    unsigned int num_of_radios = getNumberRadios();
-    wifi_vap_info_map_t *vap_map;
 
     beacon_query_params_t *query = (beacon_query_params_t *)data;
     wifi_BeaconRequest_t *params = &query->data;
-    int ap_index = RETURN_ERR;
+    int ap_index;
 
-    for (unsigned int i = 0; i < num_of_radios; i++) {
-        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
-        if (vap_map == NULL) {
-            continue;
-        }
-
-        for (unsigned int j = 0; j < vap_map->num_vaps; j++) {
-            if (memcmp(params->bssid, vap_map->vap_array[j].u.bss_info.bssid, sizeof(mac_addr_t)) ==
-                0) {
-                ap_index = vap_map->vap_array[j].vap_index;
-                break;
-            }
-            /* The queried bssid may be the AP MLD address (used for the assoc
-             * exchange itself) rather than any single link's own bssid; resolve
-             * it to one of that MLD's links so the HAL can still be reached and
-             * map the request out to all of the STA's established links. */
-            if (memcmp(params->bssid,
-                    vap_map->vap_array[j].u.bss_info.mld_info.common_info.mld_addr,
-                    sizeof(mac_addr_t)) == 0) {
-                ap_index = vap_map->vap_array[j].vap_index;
-                break;
-            }
-        }
-
-        if (ap_index != RETURN_ERR) {
-            break;
-        }
-    }
+    /* The request goes out on the BSS the STA is associated to (its association
+     * link for an MLD); params->bssid is the BSS the STA is asked to measure and
+     * is passed to the HAL as-is. */
+    ap_index = get_ap_index_from_clientmac(query->sta_mac);
 
     to_mac_str((unsigned char *)query->sta_mac, client_mac);
     to_mac_str((unsigned char *)params->bssid, bssid_str);
     wifi_util_dbg_print(WIFI_EM,
         "%s:%d: Sending beacon query action frame for mac %s with ap_index %d bssid:%s\n", __func__,
         __LINE__, client_mac, ap_index, bssid_str);
-    if (ap_index == RETURN_ERR) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Failed to resolve ap_index for bssid:%s\n", __func__,
-            __LINE__, bssid_str);
+    if (ap_index < 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d STA %s is not associated to any BSS\n", __func__,
+            __LINE__, client_mac);
         return RETURN_ERR;
     }
 
-    /* The queried bssid (whether the AP MLD address or one of its per-link
-     * addresses) is passed to the HAL as-is; the HAL decides whether it
-     * identifies the STA's whole MLD and fans the request out accordingly. */
     unsigned int radio_index = get_radio_index_for_vap_index(wifi_prop, ap_index);
     wifi_radio_operationParam_t *radio_oper_param =
         (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
@@ -4201,8 +4303,6 @@ static int em_send_action_frame(void *data)
         params->opClass = global_op_class;
         params->channel = radio_oper_param->channel;
     }
-
-    params->duration = 200;
 
     /* channel=255 requires a Channel Report subelement listing primary channels.
      * If one is present (now containing correct 20 MHz primary channels), use it
@@ -4315,8 +4415,10 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
     em_config_t *policy_config = &app->data.u.em_data.em_config;
 
     bus_data_element_t dataElements[] = {
-        { WIFI_EM_INIT_TX_POWER_READY,      bus_element_type_property, { get_tx_power, NULL, NULL, NULL, NULL, NULL },
-         slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_uint32, false, 0, 0, 0, NULL } },
+        { WIFI_EM_GET_TX_POWER,             bus_element_type_property, { get_tx_power, NULL, NULL, NULL, NULL, NULL },       slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_bytes, false, 0, 0, 0, NULL }   },
+        { WIFI_EM_MONITOR_DONE,             bus_element_type_property, { get_monitor_done, NULL, NULL, NULL, NULL, NULL },
+         slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_boolean, false, 0, 0, 0, NULL } },
         { WIFI_EM_CHANNEL_SCAN_REQUEST,     bus_element_type_method,   { NULL, start_channel_scan, NULL, NULL, NULL, NULL },
          slow_speed,                                                                                                                     ZERO_TABLE, { bus_data_type_bytes, true, 0, 0, 0, NULL }   },
         { WIFI_SET_DISCONN_STEADY_STATE,    bus_element_type_method,
@@ -4346,10 +4448,12 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
          { NULL, NULL, NULL, NULL, NULL, NULL },                                                             slow_speed, ZERO_TABLE,
          { bus_data_type_string, false, 0, 0, 0, NULL }                                                                                                                             },
         { WIFI_EM_CLIENT_ASSOC_CTRL_REQ,    bus_element_type_method,
-         { NULL, cacr_set_client_acl_rules, NULL, NULL, NULL, NULL },                                        slow_speed, ZERO_TABLE,
-         { bus_data_type_string, true, 0, 0, 0, NULL }                                                                                                                              },
-        { WIFI_EM_FAILED_CONNECTION,        bus_element_type_event,  { NULL, NULL, NULL, NULL, NULL, NULL },
-         slow_speed,                                                                                                     ZERO_TABLE, { bus_data_type_string, false, 0, 0, 0, NULL } }
+         { NULL, cacr_set_client_acl_rules, NULL, NULL, NULL, NULL },                                                        slow_speed, ZERO_TABLE,
+         { bus_data_type_string, true, 0, 0, 0, NULL }                                                                                                                                              },
+        { WIFI_EM_FAILED_CONNECTION,        bus_element_type_event,    { NULL, NULL, NULL, NULL, NULL, NULL },               slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_EM_CLIENT_DISASSOC_STATS,    bus_element_type_event,    { NULL, NULL, NULL, NULL, NULL, NULL },               slow_speed,
+         ZERO_TABLE,                                                                                                                                 { bus_data_type_string, false, 0, 0, 0, NULL } }
     };
 
     policy_config->btm_steering_dslw_policy.sta_count = 0;

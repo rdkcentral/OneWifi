@@ -1492,8 +1492,10 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
     mac_addr_str_t mac_str;
     kick_details_t *kick_details = NULL;
     bool has_successful_operations = false;
+    size_t maclist_size = 2048;
+    size_t offset = 0;
 
-    assoc_maclist = (char *)malloc(2048);
+    assoc_maclist = (char *)malloc(maclist_size);
     kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
 
     if (assoc_maclist == NULL || kick_details == NULL) {
@@ -1502,7 +1504,7 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         goto cleanup;
     }
 
-    memset(assoc_maclist, 0, 2048);
+    memset(assoc_maclist, 0, maclist_size);
     memset(kick_details, 0, sizeof(kick_details_t));
 
     if (rdk_vap_info->associated_devices_map == NULL) {
@@ -1517,9 +1519,15 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
 
         if (handle_acl_operation(vap_index, mac_str, vap_info, rdk_vap_info, true) == RETURN_OK) {
-            strcat(assoc_maclist, mac_str);
-            strcat(assoc_maclist, ",");
-            has_successful_operations = true;
+            int written = snprintf(assoc_maclist + offset, maclist_size - offset, "%s,", mac_str);
+            if (written > 0 && (size_t)written < (maclist_size - offset)) {
+                offset += written;
+                has_successful_operations = true;
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d maclist buffer truncated for vap %d\n",
+                    __func__, __LINE__, vap_index);
+                break;
+            }
         }
 
         assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
@@ -3235,6 +3243,14 @@ static void process_wps_cancel_event(void *data)
 
     INT vap_index = *(INT*)data;
 
+#ifndef EASY_MESH_NODE
+    if (!isVapPrivate(vap_index)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d WPS not applicable for vap index %d, ignoring cancel\n",
+            __func__, __LINE__, vap_index);
+        return;
+    }
+#endif
+
     wifi_util_info_print(WIFI_CTRL,"%s:%d wps pbc cancel vap index = %d\n",
         __func__, __LINE__, vap_index);
     wifi_hal_setApWpsCancel(vap_index);
@@ -4243,6 +4259,7 @@ static void process_monitor_init_command(void)
 void process_send_action_frame_command(void *data, unsigned int len)
 {
     action_frame_params_t *params;
+    size_t frame_data_len;
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NUll data Pointer\n", __func__, __LINE__);
@@ -4255,6 +4272,19 @@ void process_send_action_frame_command(void *data, unsigned int len)
     }
 
     params = (action_frame_params_t *)data;
+    frame_data_len = (size_t)len - sizeof(action_frame_params_t);
+    if (params->frame_len > frame_data_len) {
+        wifi_util_info_print(WIFI_CTRL,
+            "%s:%d Invalid frame length %u for payload size %u (total=%u, header=%u)\r\n",
+            __func__, __LINE__, params->frame_len, frame_data_len, len, sizeof(action_frame_params_t));
+        return;
+    }
+
+    unsigned int max_vaps = getNumberRadios() * MAX_NUM_VAP_PER_RADIO;
+    if (params->ap_index >= max_vaps) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid ap_index %u (max %u)\n", __func__, __LINE__, params->ap_index, max_vaps);
+            return;
+    }
 
     if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
             params->wait_time_ms, params->frame_data, params->frame_len)) {
