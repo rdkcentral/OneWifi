@@ -252,7 +252,7 @@ static int handle_memwraptool_command_event(wifi_app_t *apps, wifi_event_subtype
         }
         break;
     default:
-        wifi_util_error_print(WIFI_MEMWRAPTOOL, "%s:%d Invalid event type %d\n", __func__, __LINE__,
+        wifi_util_dbg_print(WIFI_MEMWRAPTOOL, "%s:%d Invalid event type %d\n", __func__, __LINE__,
             sub_type);
         break;
     }
@@ -270,7 +270,7 @@ int memwraptool_event(wifi_app_t *app, wifi_event_t *event)
         handle_memwraptool_command_event(app, event->sub_type);
         break;
     default:
-        wifi_util_error_print(WIFI_MEMWRAPTOOL, "%s:%d Invalid event type %d\n", __func__, __LINE__,
+        wifi_util_dbg_print(WIFI_MEMWRAPTOOL, "%s:%d Invalid event type %d\n", __func__, __LINE__,
             event->event_type);
         break;
     }
