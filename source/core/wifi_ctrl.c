@@ -33,11 +33,6 @@
 #include "ieee80211.h"
 #include "misc.h"
 #include "util.h"
-#ifdef CMWIFI_RDKB
-#define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
-#else
-#define FILE_SYSTEM_UPTIME         "/tmp/systemUptime.txt"
-#endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 #include "run_qmgr.h"
 #define EASYMESH_OFF_FLAG "/nvram/rdkb_user_easymesh_off"
@@ -433,18 +428,16 @@ int init_wifi_global_config(void)
 
 unsigned int get_Uptime(void)
 {
-    char cmd[BUF_SIZE] = {0};
     FILE *fp = NULL;
     unsigned int upSecs = 0;
-    snprintf(cmd, sizeof(cmd), "/bin/cat /proc/uptime > %s", FILE_SYSTEM_UPTIME);
-    system(cmd);
-    fp = fopen(FILE_SYSTEM_UPTIME, "r");
+
+    fp = popen("/bin/cat /proc/uptime", "r");
     if (fp != NULL) {
         if (fscanf(fp, "%u", &upSecs) != 1) {
             wifi_util_error_print(WIFI_CTRL,"%s : failed to read uptime\n", __FUNCTION__);
         }
         wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
-        fclose(fp);
+        pclose(fp);
     }
     return upSecs;
 }
@@ -3692,7 +3685,9 @@ bool is_mlo_config_matching(wifi_vap_info_t *main_vap, wifi_vap_info_t *vap,
   WPA3-Personal, WPA3-Transition, WPA3-Compatability AES-GCMP256 is required */
 static void mlo_check_modify_security_encr(wifi_vap_info_t *vap, wifi_dbg_type_t log_type)
 {
-    if (vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) {
+    if ((is_mlo_wpa3_personal(vap->u.bss_info.security.mode) ||
+            vap->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) &&
+        vap->u.bss_info.security.encr < wifi_encryption_aes_gcmp256) {
         wifi_util_info_print(log_type,
             "%s:%d: vap_index=%d MLO config mismatch: encryption type %d,"
             " setting encr type to AES-GCMP256\n",
@@ -3977,7 +3972,10 @@ void update_mld_groups(webconfig_subdoc_decoded_data_t *data, char **vap_names,
 #ifndef CONFIG_GENERIC_MLO
                 if (mld_conf->mld_link_id == 0) {
                     main_link_vap = target_vap;
-                    memcpy(mlo_mac, mgr_vap->u.bss_info.bssid, sizeof(mac_address_t));
+                    if (get_default_mld_address(main_link_vap->vap_index, mlo_mac) != RETURN_OK) {
+                        wifi_util_error_print(log_type, "%s:%d: platform mld address fetch failed for vap_index=%d\n",
+                            __func__, __LINE__, main_link_vap->vap_index);
+                    }
                 }
 #endif // CONFIG_GENERIC_MLO
 
