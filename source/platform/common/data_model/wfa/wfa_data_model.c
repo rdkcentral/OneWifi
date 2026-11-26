@@ -66,13 +66,13 @@ static bus_error_t wfa_network_get(char *event_name, raw_data_t *p_data,struct b
     return status;
 }
 
-static bus_error_t wfa_device_get(char *event_name, raw_data_t *p_data, struct bus_user_data * user_data)
+static bus_error_t wfa_device_get(char *event_name, raw_data_t *p_data, struct bus_user_data *user_data)
 {
     uint32_t device_index = 0;
     char     extension[64] = {0};
 
     sscanf(event_name, DATAELEMS_NETWORK "Device.%u.%63s", &device_index, extension);
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d get event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d get event:[%s][%s]\n", __func__, __LINE__, event_name, extension);
 
     if (!STR_CMP(extension, "APMLDNumberOfEntries") &&
         !STR_CMP(extension, "RadioNumberOfEntries")) {
