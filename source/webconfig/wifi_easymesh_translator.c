@@ -1542,6 +1542,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
     em_sta_info_t *em_sta_dev_info = NULL;
     unsigned int associated_client_count = 0;
     unsigned int i = 0, j = 0, tag_len = 0, fixed_len = 0, frame_len = 0;
+    hash_map_t *sta_map = NULL;
     webconfig_subdoc_decoded_data_t *decoded_params = NULL;
     rdk_wifi_radio_t *radio = NULL;
     wifi_vap_info_map_t *vap_map = NULL;
@@ -1586,8 +1587,12 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                 return webconfig_error_translate_to_easymesh;
             }
 
-            if (rdk_vap_info->associated_devices_diff_map != NULL) {
-                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_diff_map);
+            /* A full document carries its clients in associated_devices_map */
+            sta_map = (decoded_params->assoclist_notifier_type == assoclist_notifier_full) ?
+                rdk_vap_info->associated_devices_map :
+                rdk_vap_info->associated_devices_diff_map;
+            if (sta_map != NULL) {
+                assoc_dev_data = hash_map_get_first(sta_map);
                 while (assoc_dev_data != NULL) {
                     if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
@@ -1646,7 +1651,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                             "%s:%d: Invalid association frame length %u, skipping client\n",
                             __func__, __LINE__, frame_len);
                         free(em_sta_dev_info);
-                        assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                        assoc_dev_data = hash_map_get_next(sta_map, assoc_dev_data);
                         continue;
                     } else {
                         tag_len = frame_len - IEEE80211_HDRLEN - fixed_len;
@@ -1684,7 +1689,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         }
                     }
                     associated_client_count++;
-                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                    assoc_dev_data = hash_map_get_next(sta_map, assoc_dev_data);
                 }
             }
         }

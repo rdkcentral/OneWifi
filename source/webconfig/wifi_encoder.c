@@ -1911,7 +1911,7 @@ bool should_print_assoc_client(assoclist_type_t type, client_state_t state)
 
 bool should_include_frame_data(assoclist_type_t type, client_state_t state)
 {
-    return (type == assoclist_type_add && state == client_state_connected);
+    return ((type == assoclist_type_add || type == assoclist_type_full) && state == client_state_connected);
 }
 
 cJSON *create_assoc_clients_vap_object(cJSON *assoc_array, const char *vap_name)
