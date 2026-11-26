@@ -354,6 +354,7 @@ BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, unsigned int ap_index)
 
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len,
     unsigned int conv_type);
+BOOL is_etsi_regulatory_country(wifi_countrycode_type_t country_code);
 int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_id,
     int country_id_len, unsigned int conv_type);
 int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int hw_mode_len,
