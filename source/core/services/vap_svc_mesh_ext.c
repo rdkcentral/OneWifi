@@ -2206,6 +2206,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 send_event = true;
             }
             temp_vap_info = &vap_map->vap_array[i];
+            temp_vap_info->u.sta_info.mld_info = sta_data->stats.mld_info;
             if (temp_vap_info->u.sta_info.conn_status == sta_data->stats.connect_status &&
                 memcmp(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(bssid_t)) == 0) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: received duplicated wifi_event_hal_sta_conn_status event\n", __func__, __LINE__);

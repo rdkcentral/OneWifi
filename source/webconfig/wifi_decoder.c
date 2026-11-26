@@ -2344,10 +2344,76 @@ webconfig_error_t decode_scan_params_object(const cJSON *scan_obj, wifi_scan_par
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_mesh_sta_mld_link_object(const cJSON *link_obj,
+    wifi_mld_link_info_t *link_info)
+{
+    const cJSON *param;
+
+    decode_param_integer(link_obj, "RadioIndex", param);
+    link_info->radio_index = param->valuedouble;
+
+    decode_param_integer(link_obj, "LinkID", param);
+    link_info->link_id = param->valuedouble;
+
+    decode_param_string(link_obj, "LinkMacAddress", param);
+    if (strlen(param->valuestring) != 17 || !WiFi_IsValidMacAddr(param->valuestring) ||
+        sscanf(param->valuestring, "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx",
+            &link_info->link_addr[0], &link_info->link_addr[1], &link_info->link_addr[2],
+            &link_info->link_addr[3], &link_info->link_addr[4], &link_info->link_addr[5]) != 6) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid LinkMacAddress:%s\n", __func__,
+            __LINE__, param->valuestring);
+        return webconfig_error_decode;
+    }
+    link_info->valid = true;
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_mesh_sta_mld_object(const cJSON *mld_obj,
+    wifi_mld_info_sta_t *mld_info)
+{
+    const cJSON *param, *link_array, *link;
+
+    decode_param_bool(mld_obj, "MLD_Enable", param);
+    mld_info->common_info.mld_enable = cJSON_IsTrue(param);
+
+    decode_param_integer(mld_obj, "MLD_ID", param);
+    mld_info->common_info.mld_id = param->valuedouble;
+
+    decode_param_integer(mld_obj, "MLD_Link_ID", param);
+    mld_info->common_info.mld_link_id = param->valuedouble;
+
+    decode_param_string(mld_obj, "MLD_Addr", param);
+    string_mac_to_uint8_mac(mld_info->common_info.mld_addr, param->valuestring);
+
+    decode_param_string(mld_obj, "MLD_Local_Addr", param);
+    string_mac_to_uint8_mac(mld_info->local_addr, param->valuestring);
+
+    decode_param_string(mld_obj, "AP_MLD_Addr", param);
+    string_mac_to_uint8_mac(mld_info->peer_addr, param->valuestring);
+
+    decode_param_array(mld_obj, "LinkInfo", link_array);
+
+    mld_info->num_links = 0;
+    cJSON_ArrayForEach(link, link_array) {
+        if (mld_info->num_links >= MAX_NUM_RADIOS) {
+            break;
+        }
+        memset(&mld_info->links[mld_info->num_links], 0, sizeof(mld_info->links[0]));
+        if (decode_mesh_sta_mld_link_object(link, &mld_info->links[mld_info->num_links]) !=
+            webconfig_error_none) {
+            return webconfig_error_decode;
+        }
+        mld_info->num_links++;
+    }
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
-    const cJSON  *param, *security, *scan, *ignite;
+    const cJSON  *param, *security, *scan, *ignite, *multi_link;
     int radio_index = -1;
     int band = -1;
     //VAP Name
@@ -2410,6 +2476,17 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
     if (radio_index < 0) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    multi_link = cJSON_GetObjectItem(vap, "MultiLinkInfo");
+    if (multi_link == NULL) {
+        memset(&vap_info->u.sta_info.mld_info, 0, sizeof(vap_info->u.sta_info.mld_info));
+    } else if (!cJSON_IsObject(multi_link) ||
+        decode_mesh_sta_mld_object(multi_link, &vap_info->u.sta_info.mld_info) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: MLD info objects validation failed for %s\n",
+            __func__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 

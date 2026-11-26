@@ -2220,6 +2220,103 @@ webconfig_error_t translate_mesh_sta_info_to_em_bss_config(wifi_vap_info_t *vap,
     return webconfig_error_none;
 }
 
+webconfig_error_t fill_bsta_mld_info_from_vap(em_bsta_mld_info_t *bsta_info,
+    const wifi_vap_info_t *vap, const radio_interface_mapping_t *radio_iface_map,
+    wifi_platform_property_t *wifi_prop)
+{
+    static const mac_address_t zero_mac = { 0 };
+    const wifi_mld_info_sta_t *sta_mld;
+    wifi_multi_link_modes_t mld_modes = 0;
+    wifi_radio_capabilities_t *radio_cap;
+    mac_addr_str_t mac_str, ruid_mac_str, ap_mld_mac_str;
+    em_affiliated_bsta_info_t *affiliated_bsta;
+    const radio_interface_mapping_t *link_radio_map;
+    unsigned int i, j;
+
+    if (bsta_info == NULL || vap == NULL || radio_iface_map == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: input argument is NULL\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    memset(bsta_info, 0, sizeof(*bsta_info));
+    sta_mld = &vap->u.sta_info.mld_info;
+
+    if (memcmp(sta_mld->local_addr, zero_mac, sizeof(mac_address_t)) != 0) {
+        memcpy(bsta_info->mac_addr, sta_mld->local_addr, sizeof(mac_address_t));
+    } else {
+        memcpy(bsta_info->mac_addr, sta_mld->common_info.mld_addr, sizeof(mac_address_t));
+    }
+    to_mac_str(bsta_info->mac_addr, mac_str);
+    bsta_info->mac_addr_valid = WiFi_IsValidMacAddr(mac_str) &&
+        memcmp(bsta_info->mac_addr, zero_mac, sizeof(mac_address_t)) != 0;
+
+    memcpy(bsta_info->ap_mld_mac_addr, sta_mld->peer_addr, sizeof(mac_address_t));
+    to_mac_str(bsta_info->ap_mld_mac_addr, mac_str);
+    bsta_info->ap_mld_mac_addr_valid = WiFi_IsValidMacAddr(mac_str) &&
+        memcmp(bsta_info->ap_mld_mac_addr, zero_mac, sizeof(mac_address_t)) != 0;
+
+    if (wifi_prop != NULL) {
+        radio_cap = get_radio_cap_from_radio_index(wifi_prop, vap->radio_index);
+        if (radio_cap != NULL) {
+            mld_modes = radio_cap->mldOperationalCap;
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: No radio capabilities found for radio_index=%u\n", __func__, __LINE__,
+                vap->radio_index);
+        }
+    }
+    bsta_info->str = (mld_modes & STR) != 0;
+    bsta_info->nstr = (mld_modes & NSTR) != 0;
+    bsta_info->emlsr = (mld_modes & eMLSR) != 0;
+    bsta_info->emlmr = (mld_modes & eMLMR) != 0;
+
+    for (i = 0; i < sta_mld->num_links; i++) {
+        const wifi_mld_link_info_t *link_info = &sta_mld->links[i];
+        if (!link_info->valid) {
+            continue;
+        }
+        link_radio_map = NULL;
+        for (j = 0; wifi_prop != NULL &&
+             j < sizeof(wifi_prop->radio_interface_map) / sizeof(wifi_prop->radio_interface_map[0]);
+             j++) {
+            if (wifi_prop->radio_interface_map[j].radio_index == link_info->radio_index) {
+                link_radio_map = &wifi_prop->radio_interface_map[j];
+                break;
+            }
+        }
+        if (link_radio_map == NULL) {
+            continue;
+        }
+        affiliated_bsta = &bsta_info->affiliated_bsta[bsta_info->num_affiliated_bsta];
+        mac_address_from_name(link_radio_map->interface_name, affiliated_bsta->ruid.mac);
+        snprintf(affiliated_bsta->ruid.name, sizeof(affiliated_bsta->ruid.name), "%s",
+            link_radio_map->radio_name);
+        memcpy(affiliated_bsta->mac_addr, link_info->link_addr, sizeof(mac_address_t));
+        to_mac_str(affiliated_bsta->mac_addr, mac_str);
+        affiliated_bsta->mac_addr_valid = WiFi_IsValidMacAddr(mac_str) &&
+            memcmp(affiliated_bsta->mac_addr, zero_mac, sizeof(mac_address_t)) != 0;
+        wifi_util_dbg_print(WIFI_WEBCONFIG,
+            "%s:%d: BSTA vap:%s affiliated:%u radio_index:%u interface:%s "
+            "RUID:%s link_mac:%s valid:%d\n",
+            __func__, __LINE__, vap->vap_name, bsta_info->num_affiliated_bsta,
+            link_info->radio_index, link_radio_map->interface_name,
+            to_mac_str(affiliated_bsta->ruid.mac, ruid_mac_str), mac_str,
+            affiliated_bsta->mac_addr_valid);
+        bsta_info->num_affiliated_bsta++;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s:%d: BSTA translated vap:%s MLD_MAC:%s valid:%d AP_MLD_MAC:%s valid:%d "
+        "STR:%d NSTR:%d EMLSR:%d EMLMR:%d affiliated:%u\n",
+        __func__, __LINE__, vap->vap_name, to_mac_str(bsta_info->mac_addr, mac_str),
+        bsta_info->mac_addr_valid, to_mac_str(bsta_info->ap_mld_mac_addr, ap_mld_mac_str),
+        bsta_info->ap_mld_mac_addr_valid, bsta_info->str, bsta_info->nstr, bsta_info->emlsr,
+        bsta_info->emlmr, bsta_info->num_affiliated_bsta);
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t fill_ap_mld_info_from_vap(em_ap_mld_info_t *ap_info, wifi_vap_info_t *vap,
     radio_interface_mapping_t *radio_iface_map, wifi_platform_property_t *wifi_prop)
 {
@@ -2385,6 +2482,7 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
     unsigned int i = 0,j = 0, k = 0, num_bss = 0, radio_index = 0;
     rdk_wifi_radio_t *radio;
     mac_address_t rmac;
+    webconfig_error_t ret = webconfig_error_none;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -2495,6 +2593,23 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                 fill_eht_ops_from_radio(&radio->oper,
                     (radio_index < MAX_NUM_RADIOS) ? &wifi_prop->radiocap[radio_index] : NULL,
                     &em_bss_info->eht_ops);
+            }
+
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+                if (vap->u.sta_info.mld_info.common_info.mld_enable == true) {
+                    em_bsta_mld_info_t bsta_info;
+                    ret = fill_bsta_mld_info_from_vap(&bsta_info, vap, radio_iface_map,
+                        wifi_prop);
+                    if (ret == webconfig_error_none) {
+                        proto->update_bsta_mld_info(proto->data_model, &bsta_info);
+                        wifi_util_dbg_print(WIFI_WEBCONFIG,
+                            "%s:%d: BSTA MLD info updated successfully for vap %s\n", __func__,
+                            __LINE__, vap->vap_name);
+                    }
+                } else {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: BSTA MLD is not enabled on vap %s\n",
+                        __func__, __LINE__, vap->vap_name);
+                }
             }
         }
     }
@@ -2760,11 +2875,20 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
             }
 
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                // To Do - Implementation similar to AP MLD once vap structure is updated with wifi7
-                // details for STA
-                // em_bsta_info_t *bsta_info;
-                // fill_bsta_info_from_vap(&bsta_info, vap, radio_iface_map);
-                // proto->update_bsta_info(proto->data_model, bsta_info);
+                if (vap->u.sta_info.mld_info.common_info.mld_enable == true) {
+                    em_bsta_mld_info_t bsta_info;
+                    ret = fill_bsta_mld_info_from_vap(&bsta_info, vap, radio_iface_map,
+                        wifi_prop);
+                    if (ret == webconfig_error_none) {
+                        proto->update_bsta_mld_info(proto->data_model, &bsta_info);
+                        wifi_util_dbg_print(WIFI_WEBCONFIG,
+                            "%s:%d: BSTA MLD info updated successfully for vap %s\n", __func__,
+                            __LINE__, vap->vap_name);
+                    }
+                } else {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: BSTA MLD is not enabled on vap %s\n",
+                        __func__, __LINE__, vap->vap_name);
+                }
             } else {
                 if (vap->u.bss_info.mld_info.common_info.mld_enable == true) {
                     em_ap_mld_info_t ap_info;
