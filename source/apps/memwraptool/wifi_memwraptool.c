@@ -204,7 +204,7 @@ static int handle_memwraptool_webconfig_event(wifi_app_t *apps, wifi_event_subty
         memwraptool_event_webconfig_set_data(apps, data, sub_type);
         break;
     default:
-        wifi_util_error_print(WIFI_MEMWRAPTOOL, "%s:%d Invalid event type %d\n", __func__, __LINE__,
+        wifi_util_dbg_print(WIFI_MEMWRAPTOOL, "%s:%d Invalid event type %d\n", __func__, __LINE__,
             sub_type);
         break;
     }
