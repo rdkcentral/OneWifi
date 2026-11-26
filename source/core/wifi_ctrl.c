@@ -33,11 +33,6 @@
 #include "ieee80211.h"
 #include "misc.h"
 #include "util.h"
-#ifdef CMWIFI_RDKB
-#define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
-#else
-#define FILE_SYSTEM_UPTIME         "/tmp/systemUptime.txt"
-#endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 #include "run_qmgr.h"
 #define EASYMESH_OFF_FLAG "/nvram/rdkb_user_easymesh_off"
@@ -433,18 +428,16 @@ int init_wifi_global_config(void)
 
 unsigned int get_Uptime(void)
 {
-    char cmd[BUF_SIZE] = {0};
     FILE *fp = NULL;
     unsigned int upSecs = 0;
-    snprintf(cmd, sizeof(cmd), "/bin/cat /proc/uptime > %s", FILE_SYSTEM_UPTIME);
-    system(cmd);
-    fp = fopen(FILE_SYSTEM_UPTIME, "r");
+
+    fp = popen("/bin/cat /proc/uptime", "r");
     if (fp != NULL) {
         if (fscanf(fp, "%u", &upSecs) != 1) {
             wifi_util_error_print(WIFI_CTRL,"%s : failed to read uptime\n", __FUNCTION__);
         }
         wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
-        fclose(fp);
+        pclose(fp);
     }
     return upSecs;
 }
@@ -2708,7 +2701,7 @@ wifi_GASConfiguration_t * Get_wifi_gas_conf_object(void)
     return get_wifidb_gas_config();
 }
 
-wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex)
+wifi_InterworkingElement_t * Get_wifi_object_interworking_element(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
     if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index)) {
@@ -2722,6 +2715,22 @@ wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex)
         return NULL;
     }
     return &l_vap_maps->vap_array[vap_index].u.bss_info.interworking;
+}
+
+/* Per-radio ANQP/Passpoint/RoamingConsortium payload shared by all VAPs on the radio. */
+wifi_radio_interworking_t * Get_wifi_radio_interworking_payload(uint8_t vapIndex)
+{
+    uint8_t radio_index = 0, vap_index = 0;
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index)) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
+    rdk_wifi_radio_t *l_radio = find_radio_config_by_index(radio_index);
+    if (l_radio == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
+        return NULL;
+    }
+    return &l_radio->interworking_payload;
 }
 
 wifi_preassoc_control_t * Get_wifi_object_preassoc_ctrl_parameter(uint8_t vapIndex)

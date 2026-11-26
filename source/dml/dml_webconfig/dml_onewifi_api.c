@@ -31,6 +31,7 @@
 #include "dml_onewifi_api.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#include "wifi_ctrl.h"
 #include "wifi_stubs.h"
 
 webconfig_dml_t webconfig_dml;
@@ -281,6 +282,13 @@ void update_dml_subdoc_vap_data(webconfig_subdoc_data_t *data)
                 case webconfig_subdoc_type_xfinity:
                     if (is_vap_hotspot(&params->hal_cap.wifi_prop, vap->vap_index)) {
                         memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                    }
+                    if (is_vap_hotspot_secure(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                        memcpy(&webconfig_dml.radios[i].interworking_payload,
+                            &params->radios[i].interworking_payload,
+                            sizeof(wifi_radio_interworking_t));
+                        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: radio:%u passpoint.enable:%d cached from xfinity subdoc\n", __func__, __LINE__, i,
+                            webconfig_dml.radios[i].interworking_payload.passpoint.enable);
                     }
                     break;
                 case webconfig_subdoc_type_lnf:
@@ -539,6 +547,7 @@ void set_webconfig_dml_data(char *eventName, bus_data_prop_t *p_data, void *user
         return;
     }
 
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: dml subdoc type:%d decoded, updating cache\n", __func__, __LINE__, data->type);
     dml_cache_update(data);
 
     webconfig_data_free(data);
@@ -1125,6 +1134,15 @@ rdk_wifi_radio_t* get_dml_cache_radio_map_param(uint8_t radio_index)
         return NULL;
     }
 }
+rdk_wifi_radio_t *get_dml_cache_interworking_radio_config(const wifi_vap_info_t *vap_info)
+{
+    if (vap_info == NULL) {
+        return NULL;
+    }
+    uint8_t radio_index = isVapHotspotSecure(vap_info->vap_index) ?
+        vap_info->radio_index : 0;
+    return get_dml_cache_radio_map_param(radio_index);
+}
 
 wifi_radio_operationParam_t* get_dml_cache_radio_map(uint8_t radio_index)
 {
@@ -1339,6 +1357,7 @@ int push_radio_dml_cache_to_one_wifidb()
 {
     webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
+    int ret = RETURN_ERR;
 
     if(is_radio_config_changed == FALSE)
     {
@@ -1360,20 +1379,26 @@ int push_radio_dml_cache_to_one_wifidb()
     if (webconfig_encode(&webconfig_dml.webconfig, data, webconfig_subdoc_type_radio) == webconfig_error_none) {
         str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Radio DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
+        ret = push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig,
+            wifi_event_webconfig_set_data_dml, NULL);
     } else {
-        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
-        request_for_dml_data_resync();
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Radio encode failed, retaining dirty state\n",
+            __func__, __LINE__);
     }
 
-    wifi_util_error_print(WIFI_DMCLI, "%s:  Radio DML cache pushed to queue \n", __FUNCTION__);
-    is_radio_config_changed = FALSE;
+    if (ret == RETURN_OK) {
+        is_radio_config_changed = FALSE;
+        wifi_util_info_print(WIFI_DMCLI, "%s: Radio DML cache pushed to queue\n", __FUNCTION__);
+    } else {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Radio push failed, retaining dirty state\n",
+            __func__, __LINE__);
+    }
 
     webconfig_data_free(data);
     free(data);
     data = NULL;
 
-    return RETURN_OK;
+    return ret;
 }
 
 int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)

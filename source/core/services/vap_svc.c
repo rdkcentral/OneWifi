@@ -295,6 +295,15 @@ int vap_svc_start_stop(vap_svc_t *svc, unsigned int radio_index, bool enable)
 #endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
 
             tgt_vap_map->num_vaps++;
+            if (isVapHotspotSecure(vap_map->vap_array[j].vap_index)) {
+                wifi_radio_interworking_t *payload =
+                    Get_wifi_radio_interworking_payload(vap_map->vap_array[j].vap_index);
+                if ((payload != NULL) &&
+                    (wifi_hal_setRadioInterworkingPayload(i, payload) != RETURN_OK)) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to set interworking payload: radio_index:%d\n",
+                        __func__, __LINE__, i);
+                }
+            }
         }
         if (wifi_hal_createVAP(i, tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d\n",__FUNCTION__, i);

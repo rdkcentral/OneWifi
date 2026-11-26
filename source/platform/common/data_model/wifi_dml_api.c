@@ -308,7 +308,14 @@ int get_sec_modes_supported(int vap_index, int *mode)
             __LINE__, vap_index);
         return RETURN_ERR;
     }
-    passpoint_enabled = vap_info->u.bss_info.interworking.passpoint.enable;
+    rdk_wifi_radio_t *p_radio = get_dml_cache_interworking_radio_config(vap_info);
+    if (p_radio == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d failed to get radio cfg for vap index %d\n",
+            __func__, __LINE__, vap_index);
+        return RETURN_ERR;
+    }
+    passpoint_enabled = isVapHotspotSecure(vap_index) &&
+        p_radio->interworking_payload.passpoint.enable;
 
     if (band == WIFI_FREQUENCY_6_BAND) {
         *mode = passpoint_enabled ? wifi_security_mode_wpa3_enterprise :

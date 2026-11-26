@@ -233,7 +233,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
             } else if (strncmp("hotspot_secure", vap_name, strlen("hotspot_secure")) == 0) {
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
-                if (encode_hotspot_secure_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
+                if (encode_hotspot_secure_vap_object(vap, rdk_vap, &radio->interworking_payload, obj) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot secure vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
@@ -604,7 +604,8 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "hotspot_secure", strlen("hotspot_secure")) == 0) {
-            if (decode_hotspot_secure_vap_object(obj_vap, vap_info, rdk_vap_info, wifi_prop) != webconfig_error_none) {
+            if (decode_hotspot_secure_vap_object(obj_vap, vap_info, rdk_vap_info, wifi_prop,
+                    &params->radios[radio_index].interworking_payload) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);

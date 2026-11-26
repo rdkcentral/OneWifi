@@ -175,6 +175,7 @@ wifi_vap_info_map_t* get_dml_vap_map(uint8_t radio_index);
 wifi_global_param_t* get_dml_wifi_global_param(void);
 wifi_GASConfiguration_t* get_dml_wifi_gas_config(void);
 void set_dml_cache_vap_config_changed(uint8_t vap_index);
+extern bool is_radio_interworking_config_changed;
 int push_prefer_private_ctrl_queue(bool flag);
 int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin);
 int push_vap_dml_cache_to_one_wifidb();
@@ -190,6 +191,7 @@ dml_stats_default *get_stats_default_obj(int r_index);
 wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_channelBandwidth_t current_bw);
 UINT get_max_num_vaps_per_radio_dml(uint32_t radio_index);
 rdk_wifi_radio_t* get_dml_cache_radio_map_param(uint8_t radio_index);
+rdk_wifi_radio_t *get_dml_cache_interworking_radio_config(const wifi_vap_info_t *vap_info);
 
 #ifdef __cplusplus
 }

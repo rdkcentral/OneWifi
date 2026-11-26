@@ -966,7 +966,7 @@ void callback_Wifi_Interworking_Config(ovsdb_update_monitor_t *mon,
     int vap_index = 0;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    wifi_interworking_t *l_interworking_cfg = NULL;
+    wifi_InterworkingElement_t *l_interworking_cfg = NULL;
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
 
@@ -996,13 +996,13 @@ void callback_Wifi_Interworking_Config(ovsdb_update_monitor_t *mon,
             return;
         }
 
-        l_interworking_cfg = Get_wifi_object_interworking_parameter(vap_index);
+        l_interworking_cfg = Get_wifi_object_interworking_element(vap_index);
         if(l_interworking_cfg == NULL)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_interworking_parameter \n",__func__, __LINE__,new_rec->vap_name);
             return;
         }
-        wifidb_init_interworking_config_default(vap_index,l_interworking_cfg->interworking);
+        wifidb_init_interworking_config_default(vap_index,l_interworking_cfg);
     }
     else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY))
     {
@@ -1020,25 +1020,25 @@ void callback_Wifi_Interworking_Config(ovsdb_update_monitor_t *mon,
             return;
         }
 
-        l_interworking_cfg = Get_wifi_object_interworking_parameter(i);
+        l_interworking_cfg = Get_wifi_object_interworking_element(i);
         if(l_interworking_cfg == NULL)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_interworking_parameter \n",__func__, __LINE__,new_rec->vap_name);
             return;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        l_interworking_cfg->interworking.interworkingEnabled = new_rec->enable;
-        l_interworking_cfg->interworking.accessNetworkType = new_rec->access_network_type;
-        l_interworking_cfg->interworking.internetAvailable = new_rec->internet;
-        l_interworking_cfg->interworking.asra = new_rec->asra;
-        l_interworking_cfg->interworking.esr = new_rec->esr;
-        l_interworking_cfg->interworking.uesa = new_rec->uesa;
-        l_interworking_cfg->interworking.hessOptionPresent = new_rec->hess_option_present;
+        l_interworking_cfg->interworkingEnabled = new_rec->enable;
+        l_interworking_cfg->accessNetworkType = new_rec->access_network_type;
+        l_interworking_cfg->internetAvailable = new_rec->internet;
+        l_interworking_cfg->asra = new_rec->asra;
+        l_interworking_cfg->esr = new_rec->esr;
+        l_interworking_cfg->uesa = new_rec->uesa;
+        l_interworking_cfg->hessOptionPresent = new_rec->hess_option_present;
         if (strlen(new_rec->hessid) != 0) {
-            strncpy(l_interworking_cfg->interworking.hessid, new_rec->hessid, sizeof(l_interworking_cfg->interworking.hessid)-1);
+            strncpy(l_interworking_cfg->hessid, new_rec->hessid, sizeof(l_interworking_cfg->hessid)-1);
         }
-        l_interworking_cfg->interworking.venueGroup = new_rec->venue_group;
-        l_interworking_cfg->interworking.venueType = new_rec->venue_type;
+        l_interworking_cfg->venueGroup = new_rec->venue_group;
+        l_interworking_cfg->venueType = new_rec->venue_type;
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Interworking_Config table vap_name=%s Enable=%d access_network_type=%d internet=%d asra=%d esr=%d uesa=%d hess_present=%d hessid=%s venue_group=%d venue_type=%d",__func__, __LINE__,new_rec->vap_name,new_rec->enable,new_rec->access_network_type,new_rec->internet,new_rec->asra,new_rec->esr,new_rec->uesa,new_rec->hess_option_present,new_rec->hessid,new_rec->venue_group,new_rec->venue_type); 
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
@@ -1248,11 +1248,16 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->mld_info.common_info.mld_enable = new_rec->mld_enable;
             l_bss_param_cfg->mld_info.common_info.mld_id = new_rec->mld_id;
             l_bss_param_cfg->mld_info.common_info.mld_link_id = new_rec->mld_link_id;
-            if (strlen(new_rec->anqp_parameters) != 0) {
-                strncpy((char *)l_bss_param_cfg->interworking.anqp.anqpParameters,new_rec->anqp_parameters,(sizeof(l_bss_param_cfg->interworking.anqp.anqpParameters)-1));
-            }
-            if (strlen(new_rec->hs2_parameters) != 0) {
-                strncpy((char *)l_bss_param_cfg->interworking.passpoint.hs2Parameters,new_rec->hs2_parameters,(sizeof(l_bss_param_cfg->interworking.passpoint.hs2Parameters)-1));
+            if (isVapHotspotSecure(vap_index)) {
+                wifi_radio_interworking_t *l_payload = Get_wifi_radio_interworking_payload(vap_index);
+                if (l_payload != NULL) {
+                    if (strlen(new_rec->anqp_parameters) != 0) {
+                        strncpy((char *)l_payload->anqp.anqpParameters,new_rec->anqp_parameters,(sizeof(l_payload->anqp.anqpParameters)-1));
+                    }
+                    if (strlen(new_rec->hs2_parameters) != 0) {
+                        strncpy((char *)l_payload->passpoint.hs2Parameters,new_rec->hs2_parameters,(sizeof(l_payload->passpoint.hs2Parameters)-1));
+                    }
+                }
             }
             l_bss_param_cfg->UAPSDEnabled = new_rec->uapsd_enabled;
             l_bss_param_cfg->beaconRate = new_rec->beacon_rate;
@@ -1598,8 +1603,12 @@ void callback_Wifi_Passpoint_Config(ovsdb_update_monitor_t *mon,
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
             return;
         }
-        wifi_interworking_t *l_interworking_cfg = Get_wifi_object_interworking_parameter(i);
-        if(l_interworking_cfg == NULL) {
+        if (!isVapHotspotSecure(i)) {
+            return;
+        }
+        wifi_InterworkingElement_t *l_elem = Get_wifi_object_interworking_element(i);
+        wifi_radio_interworking_t *l_payload = Get_wifi_radio_interworking_payload(i);
+        if(l_elem == NULL || l_payload == NULL) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_interworking_parameter \n",__func__, __LINE__,new_rec->vap_name);
             return;
         }
@@ -1622,8 +1631,8 @@ void callback_Wifi_Passpoint_Config(ovsdb_update_monitor_t *mon,
         cJSON_AddItemToObject(cpass_o, "OperatorFriendlyNameANQPElement", op_f_o);
         cJSON_AddItemToObject(cpass_o, "ConnectionCapabilityListANQPElement", cc_o);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        l_interworking_cfg->passpoint.capabilityInfoLength = 0;
-        webconfig_error_t ret = decode_passpoint_object(cpass_o, l_interworking_cfg);
+        l_payload->passpoint.capabilityInfoLength = 0;
+        webconfig_error_t ret = decode_passpoint_object(cpass_o, l_elem, l_payload);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         if(ret == webconfig_error_none) {
             wifi_util_dbg_print(WIFI_DB, "%s:%d  updated cache\n", __func__, __LINE__);
@@ -1664,8 +1673,12 @@ void callback_Wifi_Anqp_Config(ovsdb_update_monitor_t *mon,
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
             return;
         }
-        wifi_interworking_t *l_interworking_cfg = Get_wifi_object_interworking_parameter(i);
-        if(l_interworking_cfg == NULL) {
+        if (!isVapHotspotSecure(i)) {
+            return;
+        }
+        wifi_InterworkingElement_t *l_elem = Get_wifi_object_interworking_element(i);
+        wifi_radio_interworking_t *l_payload = Get_wifi_radio_interworking_payload(i);
+        if(l_elem == NULL || l_payload == NULL) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_interworking_parameter \n",__func__, __LINE__,new_rec->vap_name);
             return;
         }
@@ -1697,9 +1710,9 @@ void callback_Wifi_Anqp_Config(ovsdb_update_monitor_t *mon,
         cJSON_AddItemToObject(canqp_o, "VenueNameANQPElement", ven_o);
         cJSON_AddItemToObject(canqp_o, "3GPPCellularANQPElement", gpp_o);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-        l_interworking_cfg->anqp.capabilityInfoLength = 0;
+        l_payload->anqp.capabilityInfoLength = 0;
         webconfig_error_t ret = webconfig_error_none;
-        ret = decode_anqp_object(canqp_o, l_interworking_cfg);
+        ret = decode_anqp_object(canqp_o, l_elem, l_payload);
 
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         if(ret == webconfig_error_none) {
@@ -2562,14 +2575,14 @@ int wifidb_get_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
             wifidb_get_wifi_vap_info(vap_name,&config->vap_array[vap_index],&rdk_config[vap_index]);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %svap name vap_index=%d radio_ondex=%d\n",__func__, __LINE__,vap_name,vap_index,radio_index);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_VAP_Config verify count=%d\n",__func__, __LINE__,vap_count);
-            wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config Row=%d radio_name=%s radioindex=%d vap_name=%s vap_index=%d ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  wmm_enabled=%d anqpParameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d wps_config_methods=%d wps_enabled = %d beacon_rate_ctl =%s network_initiated_greylist=%d repurposed_vap_name=%s exists=%d connected_building_enabled=%d mdu_enabled=%d speed_tier=%d\n",__func__, __LINE__,i,name,config->vap_array[vap_index].radio_index,config->vap_array[vap_index].vap_name,config->vap_array[vap_index].vap_index,config->vap_array[vap_index].u.bss_info.ssid,config->vap_array[vap_index].u.bss_info.enabled,config->vap_array[vap_index].u.bss_info.showSsid ,config->vap_array[vap_index].u.bss_info.isolation,config->vap_array[vap_index].u.bss_info.mgmtPowerControl,config->vap_array[vap_index].u.bss_info.bssMaxSta,config->vap_array[vap_index].u.bss_info.bssTransitionActivated,config->vap_array[vap_index].u.bss_info.nbrReportActivated,config->vap_array[vap_index].u.bss_info.rapidReconnectEnable,config->vap_array[vap_index].u.bss_info.rapidReconnThreshold,config->vap_array[vap_index].u.bss_info.vapStatsEnable,config->vap_array[vap_index].u.bss_info.mac_filter_enable,config->vap_array[vap_index].u.bss_info.mac_filter_mode,config->vap_array[vap_index].u.bss_info.wmm_enabled,config->vap_array[vap_index].u.bss_info.interworking.anqp.anqpParameters,config->vap_array[vap_index].u.bss_info.interworking.passpoint.hs2Parameters,config->vap_array[vap_index].u.bss_info.UAPSDEnabled,config->vap_array[vap_index].u.bss_info.beaconRate,config->vap_array[vap_index].bridge_name,config->vap_array[vap_index].u.bss_info.wmmNoAck,config->vap_array[vap_index].u.bss_info.wepKeyLength,config->vap_array[vap_index].u.bss_info.bssHotspot,config->vap_array[vap_index].u.bss_info.wpsPushButton, config->vap_array[vap_index].u.bss_info.wps.methods, config->vap_array[vap_index].u.bss_info.wps.enable, config->vap_array[vap_index].u.bss_info.beaconRateCtl, config->vap_array[vap_index].u.bss_info.network_initiated_greylist, config->vap_array[vap_index].repurposed_vap_name, rdk_config[vap_index].exists,config->vap_array[vap_index].u.bss_info.connected_building_enabled, config->vap_array[vap_index].u.bss_info.mdu_enabled, config->vap_array[vap_index].u.bss_info.am_config.npc.speed_tier);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config Row=%d radio_name=%s radioindex=%d vap_name=%s vap_index=%d ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  wmm_enabled=%d uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d wps_config_methods=%d wps_enabled = %d beacon_rate_ctl =%s network_initiated_greylist=%d repurposed_vap_name=%s exists=%d connected_building_enabled=%d mdu_enabled=%d speed_tier=%d\n",__func__, __LINE__,i,name,config->vap_array[vap_index].radio_index,config->vap_array[vap_index].vap_name,config->vap_array[vap_index].vap_index,config->vap_array[vap_index].u.bss_info.ssid,config->vap_array[vap_index].u.bss_info.enabled,config->vap_array[vap_index].u.bss_info.showSsid ,config->vap_array[vap_index].u.bss_info.isolation,config->vap_array[vap_index].u.bss_info.mgmtPowerControl,config->vap_array[vap_index].u.bss_info.bssMaxSta,config->vap_array[vap_index].u.bss_info.bssTransitionActivated,config->vap_array[vap_index].u.bss_info.nbrReportActivated,config->vap_array[vap_index].u.bss_info.rapidReconnectEnable,config->vap_array[vap_index].u.bss_info.rapidReconnThreshold,config->vap_array[vap_index].u.bss_info.vapStatsEnable,config->vap_array[vap_index].u.bss_info.mac_filter_enable,config->vap_array[vap_index].u.bss_info.mac_filter_mode,config->vap_array[vap_index].u.bss_info.wmm_enabled,config->vap_array[vap_index].u.bss_info.UAPSDEnabled,config->vap_array[vap_index].u.bss_info.beaconRate,config->vap_array[vap_index].bridge_name,config->vap_array[vap_index].u.bss_info.wmmNoAck,config->vap_array[vap_index].u.bss_info.wepKeyLength,config->vap_array[vap_index].u.bss_info.bssHotspot,config->vap_array[vap_index].u.bss_info.wpsPushButton, config->vap_array[vap_index].u.bss_info.wps.methods, config->vap_array[vap_index].u.bss_info.wps.enable, config->vap_array[vap_index].u.bss_info.beaconRateCtl, config->vap_array[vap_index].u.bss_info.network_initiated_greylist, config->vap_array[vap_index].repurposed_vap_name, rdk_config[vap_index].exists,config->vap_array[vap_index].u.bss_info.connected_building_enabled, config->vap_array[vap_index].u.bss_info.mdu_enabled, config->vap_array[vap_index].u.bss_info.am_config.npc.speed_tier);
 
-            (void)memcpy(&interworking, &config->vap_array[vap_index].u.bss_info.interworking.interworking, sizeof(interworking));
+            (void)memcpy(&interworking, &config->vap_array[vap_index].u.bss_info.interworking, sizeof(interworking));
             if(!wifidb_get_interworking_config(vap_name,&interworking))
             {   //if no error
-                (void)memcpy(&config->vap_array[vap_index].u.bss_info.interworking.interworking, &interworking, sizeof(interworking));
+                (void)memcpy(&config->vap_array[vap_index].u.bss_info.interworking, &interworking, sizeof(interworking));
             }
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Interworking_Config table vap_name=%s Enable=%d accessNetworkType=%d internetAvailable=%d asra=%d esr=%d uesa=%d hess_present=%d hessid=%s venueGroup=%d venueType=%d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.bss_info.interworking.interworking.interworkingEnabled,config->vap_array[vap_index].u.bss_info.interworking.interworking.accessNetworkType,config->vap_array[vap_index].u.bss_info.interworking.interworking.internetAvailable,config->vap_array[vap_index].u.bss_info.interworking.interworking.asra,config->vap_array[vap_index].u.bss_info.interworking.interworking.esr,config->vap_array[vap_index].u.bss_info.interworking.interworking.uesa,config->vap_array[vap_index].u.bss_info.interworking.interworking.hessOptionPresent,config->vap_array[vap_index].u.bss_info.interworking.interworking.hessid,config->vap_array[vap_index].u.bss_info.interworking.interworking.venueGroup,config->vap_array[vap_index].u.bss_info.interworking.interworking.venueType);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Interworking_Config table vap_name=%s Enable=%d accessNetworkType=%d internetAvailable=%d asra=%d esr=%d uesa=%d hess_present=%d hessid=%s venueGroup=%d venueType=%d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.bss_info.interworking.interworkingEnabled,config->vap_array[vap_index].u.bss_info.interworking.accessNetworkType,config->vap_array[vap_index].u.bss_info.interworking.internetAvailable,config->vap_array[vap_index].u.bss_info.interworking.asra,config->vap_array[vap_index].u.bss_info.interworking.esr,config->vap_array[vap_index].u.bss_info.interworking.uesa,config->vap_array[vap_index].u.bss_info.interworking.hessOptionPresent,config->vap_array[vap_index].u.bss_info.interworking.hessid,config->vap_array[vap_index].u.bss_info.interworking.venueGroup,config->vap_array[vap_index].u.bss_info.interworking.venueType);
 
 
             if (isVapSTAMesh(l_vap_index)) {
@@ -2637,7 +2650,7 @@ int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
             wifidb_update_wifi_security_config(config->vap_array[i].vap_name,&config->vap_array[i].u.sta_info.security);
         } else {
             wifidb_update_wifi_security_config(config->vap_array[i].vap_name,&config->vap_array[i].u.bss_info.security);
-            wifidb_update_wifi_interworking_config(config->vap_array[i].vap_name,&config->vap_array[i].u.bss_info.interworking.interworking);
+            wifidb_update_wifi_interworking_config(config->vap_array[i].vap_name,&config->vap_array[i].u.bss_info.interworking);
         }
     }
     return 0;
@@ -2843,11 +2856,6 @@ int wifidb_update_wifi_interworking_config(char *vap_name, wifi_InterworkingElem
     return 0;
 }
 
-
-extern const char* get_passpoint_json_by_vap_name(const char* vap_name);
-extern const char* get_anqp_json_by_vap_name(const char* vap_name);
-extern void reset_passpoint_json(const char* vap_name);
-extern void reset_anqp_json(const char* vap_name);
 extern int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason, size_t len);
 
 void wifidb_reset_macfilter_hashmap()
@@ -3067,8 +3075,17 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.mac_filter_enabled = config->u.bss_info.mac_filter_enable;
         cfg.mac_filter_mode = config->u.bss_info.mac_filter_mode;
         cfg.wmm_enabled = config->u.bss_info.wmm_enabled;
-        strncpy((char *)cfg.anqp_parameters, (char *)config->u.bss_info.interworking.anqp.anqpParameters, (sizeof(cfg.anqp_parameters)-1));
-        strncpy((char *)cfg.hs2_parameters, (char *)config->u.bss_info.interworking.passpoint.hs2Parameters, (sizeof(cfg.hs2_parameters)-1));
+        // Columns are kept for upgrade/downgrade compatibility; non secure hotspot vaps always get the defaults
+        if (isVapHotspotSecure(config->vap_index)) {
+            wifi_radio_interworking_t *l_payload = Get_wifi_radio_interworking_payload(config->vap_index);
+            if (l_payload != NULL) {
+                strncpy((char *)cfg.anqp_parameters, (char *)l_payload->anqp.anqpParameters, (sizeof(cfg.anqp_parameters)-1));
+                strncpy((char *)cfg.hs2_parameters, (char *)l_payload->passpoint.hs2Parameters, (sizeof(cfg.hs2_parameters)-1));
+            }
+        } else {
+            snprintf((char *)cfg.anqp_parameters, sizeof(cfg.anqp_parameters), "%s", DEFAULT_ANQP_STR_DATA);
+            snprintf((char *)cfg.hs2_parameters, sizeof(cfg.hs2_parameters), "%s", DEFAULT_PASSPOINT_STR_DATA);
+        }
         cfg.uapsd_enabled = config->u.bss_info.UAPSDEnabled;
         cfg.beacon_rate = config->u.bss_info.beaconRate;
         cfg.wmm_noack = config->u.bss_info.wmmNoAck;
@@ -4417,7 +4434,7 @@ int get_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *con
 {
     int i = 0;
     wifi_mgr_t *g_wifidb;
-    wifi_interworking_t *l_interworking_cfg = NULL;
+    wifi_InterworkingElement_t *l_interworking_cfg = NULL;
 
     if(config == NULL)
     {
@@ -4433,14 +4450,14 @@ int get_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *con
         return -1;
     }
 
-    l_interworking_cfg = Get_wifi_object_interworking_parameter(i);
+    l_interworking_cfg = Get_wifi_object_interworking_element(i);
     if(l_interworking_cfg == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_interworking_parameter \n",__func__, __LINE__,vap_name);
         return -1;
     }
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
-    memcpy(config, &l_interworking_cfg->interworking, sizeof(wifi_InterworkingElement_t));
+    memcpy(config, l_interworking_cfg, sizeof(wifi_InterworkingElement_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     return 0;
 
@@ -6994,11 +7011,16 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             config->u.bss_info.mac_filter_enable = pcfg->mac_filter_enabled;
             config->u.bss_info.mac_filter_mode = pcfg->mac_filter_mode;
             config->u.bss_info.wmm_enabled = pcfg->wmm_enabled;
-            if (strlen(pcfg->anqp_parameters) != 0) {
-                strncpy((char *)config->u.bss_info.interworking.anqp.anqpParameters, (char *)pcfg->anqp_parameters,(sizeof(config->u.bss_info.interworking.anqp.anqpParameters)-1));
-            }
-            if (strlen(pcfg->hs2_parameters) != 0) {
-                strncpy((char *)config->u.bss_info.interworking.passpoint.hs2Parameters,(char *)pcfg->hs2_parameters,(sizeof(config->u.bss_info.interworking.passpoint.hs2Parameters)-1));
+            if (isVapHotspotSecure(vap_index)) {
+                wifi_radio_interworking_t *l_payload = Get_wifi_radio_interworking_payload(vap_index);
+                if (l_payload != NULL) {
+                    if (strlen(pcfg->anqp_parameters) != 0) {
+                        strncpy((char *)l_payload->anqp.anqpParameters, (char *)pcfg->anqp_parameters,(sizeof(l_payload->anqp.anqpParameters)-1));
+                    }
+                    if (strlen(pcfg->hs2_parameters) != 0) {
+                        strncpy((char *)l_payload->passpoint.hs2Parameters,(char *)pcfg->hs2_parameters,(sizeof(l_payload->passpoint.hs2Parameters)-1));
+                    }
+                }
             }
             config->u.bss_info.UAPSDEnabled = pcfg->uapsd_enabled;
             config->u.bss_info.beaconRate = pcfg->beacon_rate;
@@ -7298,7 +7320,28 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
   Description : Update passpoint config to wifidb
  *************************************************************************************
 **************************************************************************************/
-int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *config)
+static cJSON *wifidb_parse_payload_json(const char *str, size_t size, const char *wrapper,
+    cJSON **inner)
+{
+    cJSON *top;
+
+    *inner = NULL;
+    if (str == NULL || str[0] == '\0' || strnlen(str, size) >= size) {
+        return NULL;
+    }
+    top = cJSON_Parse(str);
+    if (top == NULL) {
+        return NULL;
+    }
+    // The stored string is wrapped ({"Passpoint":{..}}); a flat object is accepted as well
+    *inner = cJSON_GetObjectItem(top, wrapper);
+    if (*inner == NULL) {
+        *inner = top;
+    }
+    return top;
+}
+
+int wifidb_update_wifi_passpoint_config(char *vap_name, const wifi_radio_interworking_t *config)
 {
     struct schema_Wifi_Passpoint_Config cfg_passpoint;
 //     char *filter_passpoint[] = {"-",NULL};
@@ -7311,17 +7354,14 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Null config - Passpoint update failed \n",__func__, __LINE__);
         return -1;
     }
-    wifi_passpoint_settings_t *cpass = &(config->passpoint);
-    const char *p_json = get_passpoint_json_by_vap_name(vap_name);
-    if(p_json == NULL)
+    const wifi_passpoint_settings_t *cpass = &(config->passpoint);
+    cJSON *p_top = NULL;
+    cJSON *p_root = NULL;
+    p_top = wifidb_parse_payload_json((const char *)cpass->hs2Parameters,
+        sizeof(cpass->hs2Parameters), "Passpoint", &p_root);
+    if(p_top == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null p_json - passpoint update failed \n",__func__, __LINE__);
-        return -1;
-    }
-    cJSON *p_root = cJSON_Parse(p_json);
-    if(p_root == NULL)
-    {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Unable to parse json  - passpoint update failed \n",__func__, __LINE__);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Empty or invalid hs2 parameters - passpoint update failed \n",__func__, __LINE__);
         return -1;
     }
     cfg_passpoint.enable = cpass->enable;
@@ -7356,7 +7396,7 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
         wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,cc_j->valuestring);
         cJSON_free(tstr);
     }
-    cJSON_Delete(p_root);
+    cJSON_Delete(p_top);
     strncpy(cfg_passpoint.vap_name, vap_name,(sizeof(cfg_passpoint.vap_name)-1));
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Passpoint_Config table vap_name=%s Enable=%d gafDisable=%d p2pDisable=%d capability_length=%d nai_home_realm_length=%d operator_friendly_name_length=%d connection_capability_length=%d \n",__func__, __LINE__,cfg_passpoint.vap_name,cfg_passpoint.enable,cfg_passpoint.group_addressed_forwarding_disable,cfg_passpoint.p2p_cross_connect_disable,cfg_passpoint.capability_length,cfg_passpoint.nai_home_realm_length,cfg_passpoint.operator_friendly_name_length,cfg_passpoint.connection_capability_length);
     if(onewifi_ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Passpoint_Config, SCHEMA_COLUMN(Wifi_Passpoint_Config, vap_name), vap_name, &cfg_passpoint, NULL) == false)
@@ -7365,7 +7405,6 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
     }
     else
     {
-        reset_passpoint_json(vap_name);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: update table Wifi_Passpoint_Config table successful\n",__func__, __LINE__);
      }
     return 0;
@@ -7379,7 +7418,7 @@ int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *con
   Description : Update anqp config to wifidb
  *************************************************************************************
 **************************************************************************************/
-int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
+int wifidb_update_wifi_anqp_config(char *vap_name, const wifi_radio_interworking_t *config)
 {
     struct schema_Wifi_Anqp_Config cfg_anqp;
 //    char *filter_anqp[] = {"-",NULL};
@@ -7392,17 +7431,14 @@ int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Null config - Anqp update failed \n",__func__, __LINE__);
         return -1;
     }
-    wifi_anqp_settings_t *canqp = &(config->anqp);
-    const char *p_json = get_anqp_json_by_vap_name(vap_name);
-    if(p_json == NULL)
+    const wifi_anqp_settings_t *canqp = &(config->anqp);
+    cJSON *p_top = NULL;
+    cJSON *p_root = NULL;
+    p_top = wifidb_parse_payload_json((const char *)canqp->anqpParameters,
+        sizeof(canqp->anqpParameters), "ANQP", &p_root);
+    if(p_top == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null p_json - Anqp update failed \n",__func__, __LINE__);
-        return -1;
-    }
-    cJSON *p_root = cJSON_Parse(p_json);
-    if(p_root == NULL)
-    {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Unable to parse json  - Anqp update failed \n",__func__, __LINE__);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Empty or invalid anqp parameters - Anqp update failed \n",__func__, __LINE__);
         return -1;
     }
     if( ((unsigned int)canqp->capabilityInfoLength < (sizeof(cfg_anqp.capability_element)-1)) &&
@@ -7461,12 +7497,11 @@ int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
         cJSON *addr_j_ip6 = cJSON_GetObjectItem(addr_j, "IPv6AddressType");
         if(addr_j_ip6 != NULL) { cfg_anqp.ipv6_address_type = cJSON_GetNumberValue(addr_j_ip6); }
     }
-    cJSON_Delete(p_root);
+    cJSON_Delete(p_top);
     strncpy(cfg_anqp.vap_name, vap_name,(sizeof(cfg_anqp.vap_name)-1));
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Anqp_Config table vap_name=%s capability_length=%d nai_realm_length=%d venue_name_length=%d domain_name_length=%d roaming_consortium_length=%d gpp_cellular_length=%d\n",__func__, __LINE__,cfg_anqp.vap_name,cfg_anqp.capability_length,cfg_anqp.nai_realm_length,cfg_anqp.venue_name_length,cfg_anqp.domain_name_length,cfg_anqp.roaming_consortium_length,cfg_anqp.gpp_cellular_length);
     if(onewifi_ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Anqp_Config, SCHEMA_COLUMN(Wifi_Anqp_Config, vap_name), vap_name, &cfg_anqp, NULL) == false)
     {
-        reset_anqp_json(vap_name);
         wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update Wifi_Anqp_Config table\n",__func__, __LINE__);
     }
     else
@@ -7537,10 +7572,9 @@ int update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config,rdk_wifi_vap_inf
   Description : Wrapper API for wifidb_update_wifi_interworking_config
  *************************************************************************************
 **************************************************************************************/
-int update_wifi_interworking_config(char *vap_name, wifi_interworking_t *config)
+int update_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *config)
 {
     int ret = 0;
-    wifi_InterworkingElement_t configure;
 
     if(config == NULL)
     {
@@ -7548,8 +7582,7 @@ int update_wifi_interworking_config(char *vap_name, wifi_interworking_t *config)
         return -1;
     }
 
-    configure = config->interworking;
-    ret = wifidb_update_wifi_interworking_config(vap_name, &configure);
+    ret = wifidb_update_wifi_interworking_config(vap_name, config);
     if(ret == 0)
     {
         wifidb_print("%s:%d Updated WIFI DB. interworking Config updated successful. \n",__func__, __LINE__);
@@ -8317,12 +8350,17 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             wifi_util_info_print(WIFI_DB,"Primary Ip and Secondry Ip: %s , %s\n", (char *)cfg->u.bss_info.security.u.radius.ip, (char *)cfg->u.bss_info.security.u.radius.s_ip);
         }
 
-        char str[600] = {0};
-        snprintf(str,sizeof(str),"%s"," { \"ANQP\":{ \"IPAddressTypeAvailabilityANQPElement\":{ \"IPv6AddressType\":0, \"IPv4AddressType\":0}, \"DomainANQPElement\":{\"DomainName\":[]}, \"NAIRealmANQPElement\":{\"Realm\":[]}, \"3GPPCellularANQPElement\":{ \"GUD\":0, \"PLMN\":[]}, \"RoamingConsortiumANQPElement\": { \"OI\": []}, \"VenueNameANQPElement\": { \"VenueInfo\": []}}}");
-        snprintf((char *)cfg->u.bss_info.interworking.anqp.anqpParameters,sizeof(cfg->u.bss_info.interworking.anqp.anqpParameters),"%s",str);
-        memset(str,0,sizeof(str));
-        snprintf(str,sizeof(str),"%s","{ \"Passpoint\":{ \"PasspointEnable\":false, \"NAIHomeRealmANQPElement\":{\"Realms\":[]}, \"OperatorFriendlyNameANQPElement\":{\"Name\":[]}, \"ConnectionCapabilityListANQPElement\":{\"ProtoPort\":[]}, \"GroupAddressedForwardingDisable\":true, \"P2pCrossConnectionDisable\":false}}");
-        snprintf((char *)cfg->u.bss_info.interworking.passpoint.hs2Parameters,sizeof(cfg->u.bss_info.interworking.passpoint.hs2Parameters),"%s",str);
+        // ANQP/Passpoint defaults are radio level and exist only for hotspot secure vaps
+        if (isVapHotspotSecure(vap_index)) {
+            wifi_radio_interworking_t *def_payload = Get_wifi_radio_interworking_payload(vap_index);
+            if (def_payload != NULL) {
+                pthread_mutex_lock(&g_wifidb->data_cache_lock);
+                memset(def_payload, 0, sizeof(wifi_radio_interworking_t));
+                snprintf((char *)def_payload->anqp.anqpParameters, sizeof(def_payload->anqp.anqpParameters), "%s", DEFAULT_ANQP_STR_DATA);
+                snprintf((char *)def_payload->passpoint.hs2Parameters, sizeof(def_payload->passpoint.hs2Parameters), "%s", DEFAULT_PASSPOINT_STR_DATA);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+            }
+        }
 
         if ((!security_mode_support_radius(cfg->u.bss_info.security.mode)) &&
                 cfg->u.bss_info.security.mode != wifi_security_mode_none && 
@@ -8580,7 +8618,7 @@ void wifidb_init_default_value()
             continue;
         }
         wifidb_init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
-        wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
+        wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking);
         if (isVapHotspot(vap_index)) {
             wifi_util_dbg_print(WIFI_DB,
                 "%s:%d: Updating preassoc and postassoc only for hotspot vaps\n", __func__,

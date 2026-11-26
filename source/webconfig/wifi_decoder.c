@@ -202,7 +202,7 @@ webconfig_error_t decode_ipv6_address(char *ip) {
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *interworking_info)
+webconfig_error_t decode_anqp_object(const cJSON *anqp, const wifi_InterworkingElement_t *elem, wifi_radio_interworking_t *payload)
 {
     cJSON *anqpElement = NULL;
     cJSON *anqpList = NULL;
@@ -216,16 +216,19 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     cJSON *passPointStats = cJSON_CreateObject(); 
     cJSON *statsMainEntry = cJSON_AddObjectToObject(passPointStats, "PassPointStats");
     cJSON *statsList = cJSON_AddArrayToObject(statsMainEntry, "ANQPResponse");
-    if(!anqp || !interworking_info){
+    if(!anqp || !elem || !payload){
         wifi_util_dbg_print(WIFI_WEBCONFIG,"Anqp entry is NULL\n");
 	cJSON_Delete(passPointStats);
         return webconfig_error_decode;
     }
 
+    //capability list is rebuilt below; it accumulates across decodes otherwise
+    payload->anqp.capabilityInfoLength = 0;
+
     //VenueNameANQPElement
     decode_param_object(anqp, "VenueNameANQPElement", anqpElement);
 
-    next_pos = (UCHAR *)&interworking_info->anqp.venueInfo;
+    next_pos = (UCHAR *)&payload->anqp.venueInfo;
     decode_param_array(anqpElement, "VenueInfo", anqpList);
     if(cJSON_GetArraySize(anqpList) > 16){
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Venue entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
@@ -233,13 +236,13 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         return webconfig_error_venue_entries;
     } else if (cJSON_GetArraySize(anqpList)) {
         //Venue List is non-empty. Update capability List
-        interworking_info->anqp.capabilityInfo.capabilityList[interworking_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_venue_name;
+        payload->anqp.capabilityInfo.capabilityList[payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_venue_name;
 
         //Fill in Venue Group and Type from Interworking Config
         wifi_venueNameElement_t *venueElem = (wifi_venueNameElement_t *)next_pos;
-        venueElem->venueGroup = interworking_info->interworking.venueGroup;
+        venueElem->venueGroup = elem->venueGroup;
         next_pos += sizeof(venueElem->venueGroup);
-        venueElem->venueType = interworking_info->interworking.venueType;
+        venueElem->venueType = elem->venueType;
         next_pos += sizeof(venueElem->venueType);
     }
 
@@ -271,11 +274,11 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         next_pos += strlen(anqpParam->valuestring);
         venueBuf->length = next_pos - &venueBuf->language[0];
     }
-    interworking_info->anqp.venueInfoLength = next_pos - (UCHAR *)&interworking_info->anqp.venueInfo;
+    payload->anqp.venueInfoLength = next_pos - (UCHAR *)&payload->anqp.venueInfo;
 
     //RoamingConsortiumANQPElement
     decode_param_object(anqp,"RoamingConsortiumANQPElement", anqpElement);
-    next_pos = (UCHAR *)&interworking_info->anqp.roamInfo;
+    next_pos = (UCHAR *)&payload->anqp.roamInfo;
 
     decode_param_array(anqpElement,"OI",anqpList);
     if(cJSON_GetArraySize(anqpList) > 32){
@@ -320,22 +323,22 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         next_pos += sizeof(ouiBuf->length);
         next_pos += ouiBuf->length;
         if(ouiCount < 3){
-            memcpy(&interworking_info->roamingConsortium.wifiRoamingConsortiumOui[ouiCount][0],&ouiBuf->oui[0],ouiBuf->length);
-            interworking_info->roamingConsortium.wifiRoamingConsortiumLen[ouiCount] = ouiBuf->length;
+            memcpy(&payload->roamingConsortium.wifiRoamingConsortiumOui[ouiCount][0],&ouiBuf->oui[0],ouiBuf->length);
+            payload->roamingConsortium.wifiRoamingConsortiumLen[ouiCount] = ouiBuf->length;
         }
         ouiCount++;
     }
-    interworking_info->roamingConsortium.wifiRoamingConsortiumCount = ouiCount;
+    payload->roamingConsortium.wifiRoamingConsortiumCount = ouiCount;
 
     if(ouiCount) {
-        interworking_info->anqp.capabilityInfo.capabilityList[interworking_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_roaming_consortium;
+        payload->anqp.capabilityInfo.capabilityList[payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_roaming_consortium;
     }
 
-    interworking_info->anqp.roamInfoLength = next_pos - (UCHAR *)&interworking_info->anqp.roamInfo;
+    payload->anqp.roamInfoLength = next_pos - (UCHAR *)&payload->anqp.roamInfo;
 
     //IPAddressTypeAvailabilityANQPElement
     decode_param_object(anqp,"IPAddressTypeAvailabilityANQPElement",anqpElement);
-    interworking_info->anqp.ipAddressInfo.field_format = 0;
+    payload->anqp.ipAddressInfo.field_format = 0;
 
     decode_param_integer(anqpElement,"IPv6AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (2 < anqpParam->valuedouble)){
@@ -343,7 +346,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
 	cJSON_Delete(passPointStats);
         return webconfig_error_ipaddress;
     }
-    interworking_info->anqp.ipAddressInfo.field_format = (UCHAR)anqpParam->valuedouble;
+    payload->anqp.ipAddressInfo.field_format = (UCHAR)anqpParam->valuedouble;
 
     decode_param_integer(anqpElement,"IPv4AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (7 < anqpParam->valuedouble)){
@@ -351,15 +354,15 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
 	cJSON_Delete(passPointStats);
         return webconfig_error_ipaddress;
     }
-    interworking_info->anqp.ipAddressInfo.field_format |= ((UCHAR)anqpParam->valuedouble << 2);
-    interworking_info->anqp.capabilityInfo.capabilityList[interworking_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_ip_address_availabality;
+    payload->anqp.ipAddressInfo.field_format |= ((UCHAR)anqpParam->valuedouble << 2);
+    payload->anqp.capabilityInfo.capabilityList[payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_ip_address_availabality;
 
     //NAIRealmANQPElement
     decode_param_object(anqp, "NAIRealmANQPElement", anqpElement);
 
     decode_param_array(anqpElement, "Realm", anqpList);
 
-    wifi_naiRealmElement_t *naiElem = &interworking_info->anqp.realmInfo;
+    wifi_naiRealmElement_t *naiElem = &payload->anqp.realmInfo;
     naiElem->nai_realm_count = cJSON_GetArraySize(anqpList);
     if(naiElem->nai_realm_count > 20) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Only 20 Realm Entries are supported. Discarding Configuration\n", __func__, __LINE__);
@@ -370,7 +373,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     next_pos += sizeof(naiElem->nai_realm_count);
 
     if(naiElem->nai_realm_count) {
-        interworking_info->anqp.capabilityInfo.capabilityList[interworking_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_nai_realm;
+        payload->anqp.capabilityInfo.capabilityList[payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_nai_realm;
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
@@ -488,11 +491,11 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         }
         realmInfoBuf->data_field_length = next_pos - &realmInfoBuf->encoding;
     }
-    interworking_info->anqp.realmInfoLength = next_pos - (UCHAR *)&interworking_info->anqp.realmInfo;
+    payload->anqp.realmInfoLength = next_pos - (UCHAR *)&payload->anqp.realmInfo;
 
     //3GPPCellularANQPElement
     decode_param_object(anqp, "3GPPCellularANQPElement", anqpElement);
-    wifi_3gppCellularNetwork_t *gppBuf = &interworking_info->anqp.gppInfo;
+    wifi_3gppCellularNetwork_t *gppBuf = &payload->anqp.gppInfo;
     next_pos = (UCHAR *)gppBuf;
 
     decode_param_integer(anqpElement,"GUD",anqpParam);
@@ -567,8 +570,8 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     }
     gppBuf->uhdLength = next_pos - uhd_pos;
     plmnInfoBuf->plmn_length = next_pos - plmn_pos;
-    interworking_info->anqp.gppInfoLength = next_pos - (UCHAR *)&interworking_info->anqp.gppInfo;
-    interworking_info->anqp.capabilityInfo.capabilityList[interworking_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_3gpp_cellular_network;
+    payload->anqp.gppInfoLength = next_pos - (UCHAR *)&payload->anqp.gppInfo;
+    payload->anqp.capabilityInfo.capabilityList[payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_3gpp_cellular_network;
 
     //DomainANQPElement
     decode_param_object(anqp, "DomainANQPElement", anqpElement);
@@ -580,7 +583,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
 	cJSON_Delete(passPointStats);
         return webconfig_error_decode;
     }
-    next_pos = (UCHAR *)&interworking_info->anqp.domainNameInfo;
+    next_pos = (UCHAR *)&payload->anqp.domainNameInfo;
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_domainNameTuple_t *nameBuf = (wifi_domainNameTuple_t *)next_pos;
@@ -606,17 +609,17 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         cJSON_AddItemToArray(statsList, realmStats);
     }
 
-    interworking_info->anqp.domainInfoLength = next_pos - (UCHAR *)&interworking_info->anqp.domainNameInfo;
-    if (interworking_info->anqp.domainInfoLength) {
-        interworking_info->anqp.capabilityInfo.capabilityList[interworking_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_domain_name;
+    payload->anqp.domainInfoLength = next_pos - (UCHAR *)&payload->anqp.domainNameInfo;
+    if (payload->anqp.domainInfoLength) {
+        payload->anqp.capabilityInfo.capabilityList[payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_domain_name;
     }
 
-    cJSON_PrintPreallocated(passPointStats, (char *)&interworking_info->anqp.passpointStats,sizeof(interworking_info->anqp.passpointStats), false);
+    cJSON_PrintPreallocated(passPointStats, (char *)&payload->anqp.passpointStats,sizeof(payload->anqp.passpointStats), false);
     cJSON_Delete(passPointStats);
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interworking_t *interworking_info)
+webconfig_error_t decode_passpoint_object(const cJSON *passpoint, const wifi_InterworkingElement_t *elem, wifi_radio_interworking_t *payload)
 {
     cJSON *mainEntry = NULL;
     cJSON *anqpElement = NULL;
@@ -625,41 +628,47 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
     cJSON *anqpParam = NULL;
     UCHAR *next_pos = NULL;
 
-    if(!passpoint || !interworking_info){
+    if(!passpoint || !elem || !payload){
         wifi_util_error_print(WIFI_WEBCONFIG,"Passpoint entry is NULL\n");
         return webconfig_error_decode;
     }
     mainEntry = (cJSON *)passpoint;
 
     decode_param_bool(mainEntry, "PasspointEnable", anqpParam);
-    interworking_info->passpoint.enable = (anqpParam->type & cJSON_True) ? true:false;
+    payload->passpoint.enable = (anqpParam->type & cJSON_True) ? true:false;
 
-    if((interworking_info->passpoint.enable == true) && (interworking_info->interworking.interworkingEnabled == false)) {
+    if((payload->passpoint.enable == true) && (elem->interworkingEnabled == false)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Passpoint cannot be enable when Interworking is disabled\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Cannot Enable Passpoint. Interworking Disabled",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
 
     decode_param_bool(mainEntry, "GroupAddressedForwardingDisable", anqpParam);
-    interworking_info->passpoint.gafDisable = (anqpParam->type & cJSON_True) ? true:false;
+    payload->passpoint.gafDisable = (anqpParam->type & cJSON_True) ? true:false;
 
     decode_param_bool(mainEntry, "P2pCrossConnectionDisable", anqpParam);
-    interworking_info->passpoint.p2pDisable = (anqpParam->type & cJSON_True) ? true:false;
+    payload->passpoint.p2pDisable = (anqpParam->type & cJSON_True) ? true:false;
 
-    if((interworking_info->interworking.accessNetworkType == 2) || (interworking_info->interworking.accessNetworkType == 3)) {
-        interworking_info->passpoint.l2tif = true;
+    //derived flags are recomputed so they cannot stay set from a previous config
+    payload->passpoint.l2tif = false;
+    payload->passpoint.bssLoad = false;
+    payload->passpoint.countryIE = false;
+    payload->passpoint.proxyArp = false;
+
+    if((elem->accessNetworkType == 2) || (elem->accessNetworkType == 3)) {
+        payload->passpoint.l2tif = true;
     }
 
-    if(interworking_info->passpoint.enable) {
-        interworking_info->passpoint.bssLoad = true;
-        interworking_info->passpoint.countryIE = true;
-        interworking_info->passpoint.proxyArp = true;
+    if(payload->passpoint.enable) {
+        payload->passpoint.bssLoad = true;
+        payload->passpoint.countryIE = true;
+        payload->passpoint.proxyArp = true;
     }
 
     //HS2CapabilityListANQPElement
-    interworking_info->passpoint.capabilityInfoLength = 0;
-    interworking_info->passpoint.capabilityInfo.capabilityList[interworking_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_query_list;
-    interworking_info->passpoint.capabilityInfo.capabilityList[interworking_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_capability_list;
+    payload->passpoint.capabilityInfoLength = 0;
+    payload->passpoint.capabilityInfo.capabilityList[payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_query_list;
+    payload->passpoint.capabilityInfo.capabilityList[payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_capability_list;
 
     //OperatorFriendlyNameANQPElement
     decode_param_object(mainEntry,"OperatorFriendlyNameANQPElement",anqpElement);
@@ -671,7 +680,7 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
         return webconfig_error_decode;
     }
 
-    next_pos = (UCHAR *)&interworking_info->passpoint.opFriendlyNameInfo;
+    next_pos = (UCHAR *)&payload->passpoint.opFriendlyNameInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_HS2_OperatorNameDuple_t *opNameBuf = (wifi_HS2_OperatorNameDuple_t *)next_pos;
         next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
@@ -695,9 +704,9 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
         next_pos += strlen(anqpParam->valuestring);
         opNameBuf->length = strlen(anqpParam->valuestring) +  sizeof(opNameBuf->languageCode);
     }
-    interworking_info->passpoint.opFriendlyNameInfoLength = next_pos - (UCHAR *)&interworking_info->passpoint.opFriendlyNameInfo;
-    if(interworking_info->passpoint.opFriendlyNameInfoLength) {
-        interworking_info->passpoint.capabilityInfo.capabilityList[interworking_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_operator_friendly_name;
+    payload->passpoint.opFriendlyNameInfoLength = next_pos - (UCHAR *)&payload->passpoint.opFriendlyNameInfo;
+    if(payload->passpoint.opFriendlyNameInfoLength) {
+        payload->passpoint.capabilityInfo.capabilityList[payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_operator_friendly_name;
     }
 
     //ConnectionCapabilityListANQPElement
@@ -708,7 +717,7 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
         //strncpy(execRetVal->ErrorMsg, "Exceeded max count of Connection Capability", sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
-    next_pos = (UCHAR *)&interworking_info->passpoint.connCapabilityInfo;
+    next_pos = (UCHAR *)&payload->passpoint.connCapabilityInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_HS2_Proto_Port_Tuple_t *connCapBuf = (wifi_HS2_Proto_Port_Tuple_t *)next_pos;
         decode_param_integer(anqpEntry,"IPProtocol",anqpParam);
@@ -721,9 +730,9 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
         connCapBuf->status = anqpParam->valuedouble;
         next_pos += sizeof(connCapBuf->status);
     }
-    interworking_info->passpoint.connCapabilityLength = next_pos - (UCHAR *)&interworking_info->passpoint.connCapabilityInfo;
-    if(interworking_info->passpoint.connCapabilityLength) {
-        interworking_info->passpoint.capabilityInfo.capabilityList[interworking_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_conn_capability;
+    payload->passpoint.connCapabilityLength = next_pos - (UCHAR *)&payload->passpoint.connCapabilityInfo;
+    if(payload->passpoint.connCapabilityLength) {
+        payload->passpoint.capabilityInfo.capabilityList[payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_conn_capability;
     }
 
     //NAIHomeRealmANQPElement
@@ -734,7 +743,7 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
         //strncpy(execRetVal->ErrorMsg, "Exceeded max count of NAI Realm",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
-    next_pos = (UCHAR *)&interworking_info->passpoint.realmInfo;
+    next_pos = (UCHAR *)&payload->passpoint.realmInfo;
     wifi_HS2_NAI_Home_Realm_Query_t *naiElem = (wifi_HS2_NAI_Home_Realm_Query_t *)next_pos;
     naiElem->realmCount = cJSON_GetArraySize(anqpList);
     next_pos += sizeof(naiElem->realmCount);
@@ -754,34 +763,34 @@ webconfig_error_t decode_passpoint_object(const cJSON *passpoint, wifi_interwork
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += realmInfoBuf->length;
     }
-    interworking_info->passpoint.realmInfoLength = next_pos - (UCHAR *)&interworking_info->passpoint.realmInfo;
-    if(interworking_info->passpoint.realmInfoLength) {
-        interworking_info->passpoint.capabilityInfo.capabilityList[interworking_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_nai_home_realm_query;
+    payload->passpoint.realmInfoLength = next_pos - (UCHAR *)&payload->passpoint.realmInfo;
+    if(payload->passpoint.realmInfoLength) {
+        payload->passpoint.capabilityInfo.capabilityList[payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_nai_home_realm_query;
     }
 
     //WANMetricsANQPElement
     //wifi_getHS2WanMetrics(&g_hs2_data[apIns].wanMetricsInfo);
-    interworking_info->passpoint.wanMetricsInfo.wanInfo = 0b00000001;
-    interworking_info->passpoint.wanMetricsInfo.downLinkSpeed = 25000;
-    interworking_info->passpoint.wanMetricsInfo.upLinkSpeed = 5000;
-    interworking_info->passpoint.wanMetricsInfo.downLinkLoad = 0;
-    interworking_info->passpoint.wanMetricsInfo.upLinkLoad = 0;
-    interworking_info->passpoint.wanMetricsInfo.lmd = 0;
-    interworking_info->passpoint.capabilityInfo.capabilityList[interworking_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_wan_metrics;
+    payload->passpoint.wanMetricsInfo.wanInfo = 0b00000001;
+    payload->passpoint.wanMetricsInfo.downLinkSpeed = 25000;
+    payload->passpoint.wanMetricsInfo.upLinkSpeed = 5000;
+    payload->passpoint.wanMetricsInfo.downLinkLoad = 0;
+    payload->passpoint.wanMetricsInfo.upLinkLoad = 0;
+    payload->passpoint.wanMetricsInfo.lmd = 0;
+    payload->passpoint.capabilityInfo.capabilityList[payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_wan_metrics;
 
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_interworking_common_object(const cJSON *interworking, wifi_interworking_t *interworking_info)
+webconfig_error_t decode_interworking_common_object(const cJSON *interworking, wifi_InterworkingElement_t *elem)
 {
     const cJSON *param, *venue;
     bool invalid_venue_group_type = false;
     bool venue_option_present = false;
 
     decode_param_bool(interworking, "InterworkingEnable", param);
-    interworking_info->interworking.interworkingEnabled = (param->type & cJSON_True) ? true:false;
+    elem->interworkingEnabled = (param->type & cJSON_True) ? true:false;
 /*
-    if((interworking_info->interworking.interworkingEnabled)) {
+    if((elem->interworkingEnabled)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Interworking cannot be enable when RFC is disabled\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "InterworkingEnable: Cannot Enable Interworking. RFC Disabled",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
@@ -789,31 +798,31 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
 */
 
     decode_param_integer(interworking, "AccessNetworkType", param);
-    interworking_info->interworking.accessNetworkType = param->valuedouble;
-    if (interworking_info->interworking.accessNetworkType > 5) {
+    elem->accessNetworkType = param->valuedouble;
+    if (elem->accessNetworkType > 5) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for AccessNetworkType\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
 
     decode_param_bool(interworking, "Internet", param);
-    interworking_info->interworking.internetAvailable = (param->type & cJSON_True) ? true:false;
+    elem->internetAvailable = (param->type & cJSON_True) ? true:false;
 
     decode_param_bool(interworking, "ASRA", param);
-    interworking_info->interworking.asra = (param->type & cJSON_True) ? true:false;
+    elem->asra = (param->type & cJSON_True) ? true:false;
 
     decode_param_bool(interworking, "ESR", param);
-    interworking_info->interworking.esr = (param->type & cJSON_True) ? true:false;
+    elem->esr = (param->type & cJSON_True) ? true:false;
 
     decode_param_bool(interworking, "UESA", param);
-    interworking_info->interworking.uesa = (param->type & cJSON_True) ? true:false;
+    elem->uesa = (param->type & cJSON_True) ? true:false;
 
     decode_param_bool(interworking, "HESSOptionPresent", param);
-    interworking_info->interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
+    elem->hessOptionPresent = (param->type & cJSON_True) ? true:false;
 
     decode_param_string(interworking, "HESSID", param);
-    snprintf(interworking_info->interworking.hessid, sizeof(interworking_info->interworking.hessid), "%s", param->valuestring);
-    if (WiFi_IsValidMacAddr(interworking_info->interworking.hessid) != TRUE) {
+    snprintf(elem->hessid, sizeof(elem->hessid), "%s", param->valuestring);
+    if (WiFi_IsValidMacAddr(elem->hessid) != TRUE) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for HESSID\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
@@ -825,98 +834,98 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
     if (!venue_option_present) {
         wifi_util_info_print(WIFI_WEBCONFIG,
             "%s:%d: VenueOptionPresent not present, setting to false\n", __func__, __LINE__);
-        interworking_info->interworking.venueOptionPresent = false;
+        elem->venueOptionPresent = false;
     } else {
         decode_param_bool(venue, "VenueOptionPresent", param);
-        interworking_info->interworking.venueOptionPresent = (param->type & cJSON_True) ? true :
+        elem->venueOptionPresent = (param->type & cJSON_True) ? true :
                                                                                           false;
     }
 
     decode_param_integer(venue, "VenueType", param);
-    interworking_info->interworking.venueType = param->valuedouble;
-    if (interworking_info->interworking.venueType > 15) {
+    elem->venueType = param->valuedouble;
+    if (elem->venueType > 15) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for VenueGroup\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
 
     decode_param_integer(venue, "VenueGroup", param);
-    interworking_info->interworking.venueGroup = param->valuedouble;
-    if (interworking_info->interworking.venueGroup > 11) {
+    elem->venueGroup = param->valuedouble;
+    if (elem->venueGroup > 11) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for VenueGroup\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
 
-    switch (interworking_info->interworking.venueGroup) {
+    switch (elem->venueGroup) {
         case 0:
-            if (interworking_info->interworking.venueType > 0) {
+            if (elem->venueType > 0) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 1:
-            if (interworking_info->interworking.venueType > 15) {
+            if (elem->venueType > 15) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 2:
-            if (interworking_info->interworking.venueType > 9) {
+            if (elem->venueType > 9) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 3:
-            if (interworking_info->interworking.venueType > 3) {
+            if (elem->venueType > 3) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 4:
-            if (interworking_info->interworking.venueType > 1) {
+            if (elem->venueType > 1) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 5:
-            if (interworking_info->interworking.venueType > 5) {
+            if (elem->venueType > 5) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 6:
-            if (interworking_info->interworking.venueType > 5) {
+            if (elem->venueType > 5) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 7:
-            if (interworking_info->interworking.venueType > 4) {
+            if (elem->venueType > 4) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 8:
-            if (interworking_info->interworking.venueType > 0) {
+            if (elem->venueType > 0) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 9:
-            if (interworking_info->interworking.venueType > 0) {
+            if (elem->venueType > 0) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 10:
-            if (interworking_info->interworking.venueType > 7) {
+            if (elem->venueType > 7) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 11:
-            if (interworking_info->interworking.venueType > 6) {
+            if (elem->venueType > 6) {
                 invalid_venue_group_type = true;
             }
             break;
@@ -930,63 +939,43 @@ webconfig_error_t decode_interworking_common_object(const cJSON *interworking, w
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_interworking_t *interworking_info)
+webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_InterworkingElement_t *elem, wifi_radio_interworking_t *payload)
 {
     const cJSON *passpoint, *anqp;
 
-    if (decode_interworking_common_object(interworking, interworking_info) != webconfig_error_none) {
+    if (decode_interworking_common_object(interworking, elem) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
+    // ANQP/Passpoint are radio level; a NULL payload decodes only the per-vap element
+    if (payload == NULL) {
+        return webconfig_error_none;
+    }
 
     if(cJSON_HasObjectItem(interworking, "ANQP") == true) {
         decode_param_object(interworking, "ANQP", anqp);
 
-/*
-        if (decode_anqp_object(anqp, interworking_info) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        } else {
-
-            cJSON *anqpString = cJSON_CreateObject();
-            cJSON_AddItemReferenceToObject(anqpString, "ANQP", (cJSON *)anqp);
-            cJSON_PrintPreallocated(anqpString, (char *)&interworking_info->anqp.anqpParameters, sizeof(interworking_info->anqp.anqpParameters),false);
-            cJSON_Delete(anqpString);
-        }
-*/
-        if (decode_anqp_object(anqp, interworking_info) != webconfig_error_none) {
+        if (decode_anqp_object(anqp, elem, payload) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
             //Not returning error since anqp is optional configuration
         }
         cJSON *anqpString = cJSON_CreateObject();
         cJSON_AddItemReferenceToObject(anqpString, "ANQP", (cJSON *)anqp);
-        cJSON_PrintPreallocated(anqpString, (char *)&interworking_info->anqp.anqpParameters, sizeof(interworking_info->anqp.anqpParameters),false);
+        cJSON_PrintPreallocated(anqpString, (char *)&payload->anqp.anqpParameters, sizeof(payload->anqp.anqpParameters),false);
         cJSON_Delete(anqpString);
     }
 
     if(cJSON_HasObjectItem(interworking, "Passpoint") == true) {
         decode_param_object(interworking, "Passpoint", passpoint);
 
-/*
-        if (decode_passpoint_object(passpoint, interworking_info) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        } else {
- 
-            cJSON *hs2String = cJSON_CreateObject();
-            cJSON_AddItemReferenceToObject(hs2String, "Passpoint", (cJSON *)passpoint);
-            cJSON_PrintPreallocated(hs2String, (char *)&interworking_info->passpoint.hs2Parameters, sizeof(interworking_info->passpoint.hs2Parameters),false);
-            cJSON_Delete(hs2String);
-        }
-*/
-        if (decode_passpoint_object(passpoint, interworking_info) != webconfig_error_none) {
+        if (decode_passpoint_object(passpoint, elem, payload) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
             // Not returning error since Passpoint is optional configuration
         }
         cJSON *hs2String = cJSON_CreateObject();
         cJSON_AddItemReferenceToObject(hs2String, "Passpoint", (cJSON *)passpoint);
-        cJSON_PrintPreallocated(hs2String, (char *)&interworking_info->passpoint.hs2Parameters, sizeof(interworking_info->passpoint.hs2Parameters),false);
+        cJSON_PrintPreallocated(hs2String, (char *)&payload->passpoint.hs2Parameters, sizeof(payload->passpoint.hs2Parameters),false);
         cJSON_Delete(hs2String);
     }
 
@@ -1990,7 +1979,7 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
     }
     decode_param_object(vap, "Interworking", interworking);
 
-    if (decode_interworking_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
+    if (decode_interworking_common_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1999,7 +1988,8 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
 }
 
 webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
-    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop,
+    wifi_radio_interworking_t *payload)
 {
     int radio_index, band;
     const cJSON *security, *interworking;
@@ -2036,7 +2026,7 @@ webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_in
 
     decode_param_object(vap, "Interworking", interworking);
 
-    if (decode_interworking_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
+    if (decode_interworking_object(interworking, &vap_info->u.bss_info.interworking, payload) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2083,11 +2073,6 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
         return webconfig_error_decode;
     }
 
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
     return webconfig_error_none;
 }
 
@@ -2125,11 +2110,6 @@ webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t
 
     if (decode_interworking_common_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 
@@ -2174,11 +2154,6 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
         return webconfig_error_decode;
     }
 
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
     return webconfig_error_none;
 }
 
@@ -2220,11 +2195,6 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
         return webconfig_error_decode;
     }
 
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
     return webconfig_error_none;
 }
 
@@ -2263,11 +2233,6 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
 
     if (decode_interworking_common_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 
@@ -2317,11 +2282,6 @@ webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *v
 
     if (decode_interworking_common_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 

@@ -861,6 +861,8 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     public_vaps_data_t pub;
     rdk_wifi_vap_info_t *mgr_rdk_vap_info, *rdk_vap_info;
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
+    wifi_radio_interworking_t *new_payload = NULL, *payload_backup = NULL;
+    bool payload_changed = false;
     int ret = 0;
 
     for (i = 0; i < size; i++) {
@@ -923,6 +925,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 if (strcmp(data->radios[j].vaps.vap_map.vap_array[k].vap_name, vap_names[i]) == 0) {
                     vap_info = &data->radios[j].vaps.vap_map.vap_array[k];
                     rdk_vap_info = &data->radios[j].vaps.rdk_vap_array[k];
+                    new_payload = &data->radios[j].interworking_payload;
                     found_target = true;
                     break;
                 }
@@ -954,8 +957,18 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
 
+        // ANQP/Passpoint/roaming payload is radio level and applies only to hotspot secure vaps
+        payload_changed = false;
+        if (is_vap_hotspot_secure(&mgr->hal_cap.wifi_prop, tgt_vap_index) == TRUE) {
+            payload_changed = is_radio_interworking_payload_changed(&radio->interworking_payload,
+                new_payload);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: vap:%s payload_changed:%d mgr_passpoint:%d new_passpoint:%d\n", __func__, __LINE__,
+                vap_info->vap_name, payload_changed, radio->interworking_payload.passpoint.enable,
+                new_payload ? new_payload->passpoint.enable : -1);
+        }
+
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
-                isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info)) {
+                isVapSTAMesh(tgt_vap_index)) || payload_changed || is_force_apply_true(rdk_vap_info)) {
             // radio data changed apply
             wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);
@@ -1012,8 +1025,34 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             start_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
 
+            if (payload_changed) {
+                // vap_svc_public_update reads the radio payload from mgr, so publish it before apply
+                payload_backup = (wifi_radio_interworking_t *)malloc(sizeof(wifi_radio_interworking_t));
+                if (payload_backup == NULL) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to allocate memory.\n",
+                        __func__, __LINE__);
+                    free(p_tgt_vap_map);
+                    p_tgt_vap_map = NULL;
+                    return RETURN_ERR;
+                }
+                pthread_mutex_lock(&mgr->data_cache_lock);
+                memcpy(payload_backup, &radio->interworking_payload,
+                    sizeof(wifi_radio_interworking_t));
+                memcpy(&radio->interworking_payload, new_payload,
+                    sizeof(wifi_radio_interworking_t));
+                pthread_mutex_unlock(&mgr->data_cache_lock);
+            }
+
             if (svc->update_fn(svc, tgt_radio_idx, p_tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
+                if (payload_backup != NULL) {
+                    pthread_mutex_lock(&mgr->data_cache_lock);
+                    memcpy(&radio->interworking_payload, payload_backup,
+                        sizeof(wifi_radio_interworking_t));
+                    pthread_mutex_unlock(&mgr->data_cache_lock);
+                    free(payload_backup);
+                    payload_backup = NULL;
+                }
                 memset(update_status, 0, sizeof(update_status));
                 snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], "fail");
                 apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
@@ -1021,6 +1060,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 p_tgt_vap_map = NULL;
                 return RETURN_ERR;
             }
+
+            free(payload_backup);
+            payload_backup = NULL;
 
             memset(update_status, 0, sizeof(update_status));
             snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");

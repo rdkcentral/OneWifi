@@ -907,25 +907,16 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
 #endif
         default_vap_info->u.bss_info.bssMaxSta = 75;
         default_vap_info->u.bss_info.inum_sta = 0;
-        snprintf(default_vap_info->u.bss_info.interworking.interworking.hessid,
-            sizeof(default_vap_info->u.bss_info.interworking.interworking.hessid),
+        snprintf(default_vap_info->u.bss_info.interworking.hessid,
+            sizeof(default_vap_info->u.bss_info.interworking.hessid),
             "11:22:33:44:55:66");
         convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
         default_vap_info->u.bss_info.mbo_enabled = true;
         default_vap_info->u.bss_info.interop_ctrl = false;
 
-        char str[600] = {0};
-        snprintf(str,sizeof(str),"%s", DEFAULT_ANQP_STR_DATA);
-        snprintf((char *)default_vap_info->u.bss_info.interworking.anqp.anqpParameters,
-            sizeof(default_vap_info->u.bss_info.interworking.anqp.anqpParameters), "%s" , str);
-        memset(str,0,sizeof(str));
-        snprintf(str,sizeof(str),"%s", DEFAULT_PASSPOINT_STR_DATA);
-        snprintf((char *)default_vap_info->u.bss_info.interworking.passpoint.hs2Parameters,
-            sizeof(default_vap_info->u.bss_info.interworking.passpoint.hs2Parameters), "%s" , str);
-
-        default_vap_info->u.bss_info.interworking.interworking.venueOptionPresent = 1;
-        default_vap_info->u.bss_info.interworking.interworking.venueGroup = 0;
-        default_vap_info->u.bss_info.interworking.interworking.venueType = 0;
+        default_vap_info->u.bss_info.interworking.venueOptionPresent = 1;
+        default_vap_info->u.bss_info.interworking.venueGroup = 0;
+        default_vap_info->u.bss_info.interworking.venueType = 0;
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||                         \
     defined(_SR213_PRODUCT_REQ_) || defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || \
@@ -1042,6 +1033,14 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             sizeof(default_decoded_params->radios[radioIndx].name));
         default_decoded_params->radios[radioIndx].vaps.vap_map.num_vaps =
             decoded_params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
+        wifi_radio_interworking_t *radio_payload =
+            &default_decoded_params->radios[radioIndx].interworking_payload;
+        memset(radio_payload, 0, sizeof(*radio_payload));
+        snprintf((char *)radio_payload->anqp.anqpParameters,
+            sizeof(radio_payload->anqp.anqpParameters), "%s", DEFAULT_ANQP_STR_DATA);
+        snprintf((char *)radio_payload->passpoint.hs2Parameters,
+            sizeof(radio_payload->passpoint.hs2Parameters), "%s",
+            DEFAULT_PASSPOINT_STR_DATA);
     }
 
     default_decoded_params->num_radios = decoded_params->num_radios;

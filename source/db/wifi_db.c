@@ -42,10 +42,10 @@ extern int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_
 extern int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config,rdk_wifi_vap_info_t *rdk_config);
-extern int update_wifi_interworking_config(char *vap_name, wifi_interworking_t *config);
+extern int update_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *config);
 extern int update_wifi_global_config(wifi_global_param_t *config);
-extern int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *config);
-extern int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config);
+extern int wifidb_update_wifi_passpoint_config(char *vap_name, const wifi_radio_interworking_t *config);
+extern int wifidb_update_wifi_anqp_config(char *vap_name, const wifi_radio_interworking_t *config);
 extern int update_wifi_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_info);
 extern int wifidb_update_wifi_cac_config(wifi_vap_info_map_t *config);
 extern int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config);
@@ -672,12 +672,15 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             wifi_util_info_print(WIFI_DB,"Primary Ip and Secondry Ip: %s , %s\n", (char *)cfg.u.bss_info.security.u.radius.ip, (char *)cfg.u.bss_info.security.u.radius.s_ip);
         }
 
-        char str[600] = {0};
-        snprintf(str,sizeof(str),"%s"," { \"ANQP\":{ \"IPAddressTypeAvailabilityANQPElement\":{ \"IPv6AddressType\":0, \"IPv4AddressType\":0}, \"DomainANQPElement\":{\"DomainName\":[]}, \"NAIRealmANQPElement\":{\"Realm\":[]}, \"3GPPCellularANQPElement\":{ \"GUD\":0, \"PLMN\":[]}, \"RoamingConsortiumANQPElement\": { \"OI\": []}, \"VenueNameANQPElement\": { \"VenueInfo\": []}}}");
-        snprintf((char *)cfg.u.bss_info.interworking.anqp.anqpParameters,sizeof(cfg.u.bss_info.interworking.anqp.anqpParameters),"%s",str);
-        memset(str,0,sizeof(str));
-        snprintf(str,sizeof(str),"%s","{ \"Passpoint\":{ \"PasspointEnable\":false, \"NAIHomeRealmANQPElement\":{\"Realms\":[]}, \"OperatorFriendlyNameANQPElement\":{\"Name\":[]}, \"ConnectionCapabilityListANQPElement\":{\"ProtoPort\":[]}, \"GroupAddressedForwardingDisable\":true, \"P2pCrossConnectionDisable\":false}}");
-        snprintf((char *)cfg.u.bss_info.interworking.passpoint.hs2Parameters,sizeof(cfg.u.bss_info.interworking.passpoint.hs2Parameters),"%s",str);
+        // ANQP/Passpoint defaults are radio level and exist only for hotspot secure vaps
+        if (isVapHotspotSecure(vap_index)) {
+            wifi_radio_interworking_t *def_payload = Get_wifi_radio_interworking_payload(vap_index);
+            if (def_payload != NULL) {
+                memset(def_payload, 0, sizeof(wifi_radio_interworking_t));
+                snprintf((char *)def_payload->anqp.anqpParameters, sizeof(def_payload->anqp.anqpParameters), "%s", DEFAULT_ANQP_STR_DATA);
+                snprintf((char *)def_payload->passpoint.hs2Parameters, sizeof(def_payload->passpoint.hs2Parameters), "%s", DEFAULT_PASSPOINT_STR_DATA);
+            }
+        }
 
         if ((!security_mode_support_radius(cfg.u.bss_info.security.mode)) &&
                 cfg.u.bss_info.security.mode != wifi_security_mode_none && 
@@ -745,7 +748,7 @@ void init_wifidb_data(void)
         }
 
         init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
-        init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
+        init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking);
 	init_gas_config_default(&g_wifidb->global_config.gas_config);
 
     }
@@ -963,7 +966,7 @@ int update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config,rdk_wifi_vap_inf
     return 0;
 }
 
-int update_wifi_interworking_config(char *vap_name, wifi_interworking_t *config)
+int update_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *config)
 {
     return 0;
 }
@@ -973,12 +976,12 @@ int update_wifi_global_config(wifi_global_param_t *config)
     return 0;
 }
 
-int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *config)
+int wifidb_update_wifi_passpoint_config(char *vap_name, const wifi_radio_interworking_t *config)
 {
     return 0;
 }
 
-int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
+int wifidb_update_wifi_anqp_config(char *vap_name, const wifi_radio_interworking_t *config)
 {
     return 0;
 }

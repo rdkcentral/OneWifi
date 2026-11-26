@@ -529,8 +529,9 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
 
-    wifi_interworking_t *l_inter = Get_wifi_object_interworking_parameter(msg->frame.ap_index);
-    if (l_inter == NULL ||!(l_inter->interworking.interworkingEnabled) || !(l_inter->passpoint.enable)) {
+    wifi_InterworkingElement_t *l_elem = Get_wifi_object_interworking_element(msg->frame.ap_index);
+    wifi_radio_interworking_t *l_payload = Get_wifi_radio_interworking_payload(msg->frame.ap_index);
+    if (l_elem == NULL || l_payload == NULL ||!(l_elem->interworkingEnabled) || !(l_payload->passpoint.enable)) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d interworking data or passpoint is not enabled for vap_indx: %d\n", __func__,__LINE__, msg->frame.ap_index);
         return;
     }
@@ -571,7 +572,7 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
             switch (anqpList->value->u.anqp_elem_id){
                 //CapabilityListANQPElement
                 case wifi_anqp_element_name_capability_list:
-                    capLen = (l_inter->anqp.capabilityInfoLength * sizeof(USHORT)) + sizeof(wifi_vendor_specific_anqp_capabilities_t) + l_inter->passpoint.capabilityInfoLength;
+                    capLen = (l_payload->anqp.capabilityInfoLength * sizeof(USHORT)) + sizeof(wifi_vendor_specific_anqp_capabilities_t) + l_payload->passpoint.capabilityInfoLength;
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received CapabilityListANQPElement Request\n", __func__, __LINE__);
                     anqpList->value->data = malloc(capLen);//To be freed in wifi_anqpSendResponse()
                     if(NULL == anqpList->value->data){
@@ -586,15 +587,15 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                     data_pos = anqpList->value->data;
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,capLen);
                     memset(data_pos,0,capLen);
-                    memcpy(data_pos,&l_inter->anqp.capabilityInfo,(l_inter->anqp.capabilityInfoLength * sizeof(USHORT)));
-                    data_pos += (l_inter->anqp.capabilityInfoLength * sizeof(USHORT));
+                    memcpy(data_pos,&l_payload->anqp.capabilityInfo,(l_payload->anqp.capabilityInfoLength * sizeof(USHORT)));
+                    data_pos += (l_payload->anqp.capabilityInfoLength * sizeof(USHORT));
                     wifi_vendor_specific_anqp_capabilities_t *vendorInfo = (wifi_vendor_specific_anqp_capabilities_t *)data_pos;
                     vendorInfo->info_id = wifi_anqp_element_name_vendor_specific;
-                    vendorInfo->len = l_inter->passpoint.capabilityInfoLength + sizeof(vendorInfo->oi) + sizeof(vendorInfo->wfa_type);
+                    vendorInfo->len = l_payload->passpoint.capabilityInfoLength + sizeof(vendorInfo->oi) + sizeof(vendorInfo->wfa_type);
                     memcpy(vendorInfo->oi, wfa_oui, sizeof(wfa_oui));
                     vendorInfo->wfa_type = 0x11;
                     data_pos += sizeof(wifi_vendor_specific_anqp_capabilities_t);
-                    memcpy(data_pos, &l_inter->passpoint.capabilityInfo, l_inter->passpoint.capabilityInfoLength);
+                    memcpy(data_pos, &l_payload->passpoint.capabilityInfo, l_payload->passpoint.capabilityInfoLength);
                     anqpList->value->len = capLen;
                     respLength += anqpList->value->len;
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied CapabilityListANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
@@ -615,7 +616,7 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                     mallocRetryCount = 0;
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,sizeof(wifi_ipAddressAvailabality_t));
                     memset(anqpList->value->data,0,sizeof(wifi_ipAddressAvailabality_t));
-                    memcpy(anqpList->value->data,&l_inter->anqp.ipAddressInfo,sizeof(wifi_ipAddressAvailabality_t));
+                    memcpy(anqpList->value->data,&l_payload->anqp.ipAddressInfo,sizeof(wifi_ipAddressAvailabality_t));
                     anqpList->value->len = sizeof(wifi_ipAddressAvailabality_t);
                     respLength += anqpList->value->len;
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied IPAddressTypeAvailabilityANQPElement Data. Length: %d. Data: %02X\n", __func__, __LINE__,anqpList->value->len, ((wifi_ipAddressAvailabality_t *)anqpList->value->data)->field_format);
@@ -623,8 +624,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                 //NAIRealmANQPElement
                 case wifi_anqp_element_name_nai_realm:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received NAIRealmANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->anqp.realmInfoLength){
-                        anqpList->value->data = malloc(l_inter->anqp.realmInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->anqp.realmInfoLength){
+                        anqpList->value->data = malloc(l_payload->anqp.realmInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -634,20 +635,20 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->anqp.realmInfoLength);
-                        memset(anqpList->value->data,0,l_inter->anqp.realmInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->anqp.realmInfo,l_inter->anqp.realmInfoLength);
-                        anqpList->value->len = l_inter->anqp.realmInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->anqp.realmInfoLength);
+                        memset(anqpList->value->data,0,l_payload->anqp.realmInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->anqp.realmInfo,l_payload->anqp.realmInfoLength);
+                        anqpList->value->len = l_payload->anqp.realmInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied NAIRealmANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
-                        l_inter->anqp.realmRespCount++;
+                        l_payload->anqp.realmRespCount++;
                     }
                     break;
                 //VenueNameANQPElement
                 case wifi_anqp_element_name_venue_name:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received VenueNameANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->anqp.venueInfoLength){
-                        anqpList->value->data = malloc(l_inter->anqp.venueInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->anqp.venueInfoLength){
+                        anqpList->value->data = malloc(l_payload->anqp.venueInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -657,10 +658,10 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->anqp.venueInfoLength);
-                        memset(anqpList->value->data,0,l_inter->anqp.venueInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->anqp.venueInfo,l_inter->anqp.venueInfoLength);
-                        anqpList->value->len = l_inter->anqp.venueInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->anqp.venueInfoLength);
+                        memset(anqpList->value->data,0,l_payload->anqp.venueInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->anqp.venueInfo,l_payload->anqp.venueInfoLength);
+                        anqpList->value->len = l_payload->anqp.venueInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied VenueNameANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
                     }
@@ -668,8 +669,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                 //3GPPCellularANQPElement
                 case wifi_anqp_element_name_3gpp_cellular_network:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received 3GPPCellularANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->anqp.gppInfoLength){
-                        anqpList->value->data = malloc(l_inter->anqp.gppInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->anqp.gppInfoLength){
+                        anqpList->value->data = malloc(l_payload->anqp.gppInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -679,20 +680,20 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->anqp.gppInfoLength);
-                        memset(anqpList->value->data,0,l_inter->anqp.gppInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->anqp.gppInfo,l_inter->anqp.gppInfoLength);
-                        anqpList->value->len = l_inter->anqp.gppInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->anqp.gppInfoLength);
+                        memset(anqpList->value->data,0,l_payload->anqp.gppInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->anqp.gppInfo,l_payload->anqp.gppInfoLength);
+                        anqpList->value->len = l_payload->anqp.gppInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied 3GPPCellularANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
-                        l_inter->anqp.gppRespCount++;
+                        l_payload->anqp.gppRespCount++;
                     }
                     break;
                 //RoamingConsortiumANQPElement
                 case wifi_anqp_element_name_roaming_consortium:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received RoamingConsortiumANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->anqp.roamInfoLength){
-                        anqpList->value->data = malloc(l_inter->anqp.roamInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->anqp.roamInfoLength){
+                        anqpList->value->data = malloc(l_payload->anqp.roamInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -702,10 +703,10 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->anqp.roamInfoLength);
-                        memset(anqpList->value->data,0,l_inter->anqp.roamInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->anqp.roamInfo,l_inter->anqp.roamInfoLength);
-                        anqpList->value->len = l_inter->anqp.roamInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->anqp.roamInfoLength);
+                        memset(anqpList->value->data,0,l_payload->anqp.roamInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->anqp.roamInfo,l_payload->anqp.roamInfoLength);
+                        anqpList->value->len = l_payload->anqp.roamInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied RoamingConsortiumANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
                     }
@@ -713,8 +714,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                 //DomainANQPElement
                 case wifi_anqp_element_name_domain_name:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received DomainANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->anqp.domainInfoLength){
-                        anqpList->value->data = malloc(l_inter->anqp.domainInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->anqp.domainInfoLength){
+                        anqpList->value->data = malloc(l_payload->anqp.domainInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -724,13 +725,13 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->anqp.domainInfoLength);
-                        memset(anqpList->value->data,0,l_inter->anqp.domainInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->anqp.domainNameInfo,l_inter->anqp.domainInfoLength);
-                        anqpList->value->len = l_inter->anqp.domainInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->anqp.domainInfoLength);
+                        memset(anqpList->value->data,0,l_payload->anqp.domainInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->anqp.domainNameInfo,l_payload->anqp.domainInfoLength);
+                        anqpList->value->len = l_payload->anqp.domainInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied DomainANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
-                        l_inter->anqp.domainRespCount++;
+                        l_payload->anqp.domainRespCount++;
                     }
                     break;
                default:
@@ -743,8 +744,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                 //CapabilityListANQPElement
                 case wifi_anqp_element_hs_subtype_hs_capability_list:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received CapabilityListANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->passpoint.capabilityInfoLength){
-                        anqpList->value->data = malloc(l_inter->passpoint.capabilityInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->passpoint.capabilityInfoLength){
+                        anqpList->value->data = malloc(l_payload->passpoint.capabilityInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -754,10 +755,10 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->passpoint.capabilityInfoLength);
-                        memset(anqpList->value->data,0,l_inter->passpoint.capabilityInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->passpoint.capabilityInfo,l_inter->passpoint.capabilityInfoLength);
-                        anqpList->value->len = l_inter->passpoint.capabilityInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->passpoint.capabilityInfoLength);
+                        memset(anqpList->value->data,0,l_payload->passpoint.capabilityInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->passpoint.capabilityInfo,l_payload->passpoint.capabilityInfoLength);
+                        anqpList->value->len = l_payload->passpoint.capabilityInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied CapabilityListANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
                     }
@@ -765,8 +766,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                 //OperatorFriendlyNameANQPElement
                 case wifi_anqp_element_hs_subtype_operator_friendly_name:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received OperatorFriendlyNameANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->passpoint.opFriendlyNameInfoLength){
-                        anqpList->value->data = malloc(l_inter->passpoint.opFriendlyNameInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->passpoint.opFriendlyNameInfoLength){
+                        anqpList->value->data = malloc(l_payload->passpoint.opFriendlyNameInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -776,10 +777,10 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->passpoint.opFriendlyNameInfoLength);
-                        memset(anqpList->value->data,0,l_inter->passpoint.opFriendlyNameInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->passpoint.opFriendlyNameInfo,l_inter->passpoint.opFriendlyNameInfoLength);
-                        anqpList->value->len = l_inter->passpoint.opFriendlyNameInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->passpoint.opFriendlyNameInfoLength);
+                        memset(anqpList->value->data,0,l_payload->passpoint.opFriendlyNameInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->passpoint.opFriendlyNameInfo,l_payload->passpoint.opFriendlyNameInfoLength);
+                        anqpList->value->len = l_payload->passpoint.opFriendlyNameInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied OperatorFriendlyNameANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
                     }
@@ -787,8 +788,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                 //ConnectionCapabilityListANQPElement
                 case wifi_anqp_element_hs_subtype_conn_capability:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received ConnectionCapabilityListANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->passpoint.connCapabilityLength){
-                        anqpList->value->data = malloc(l_inter->passpoint.connCapabilityLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->passpoint.connCapabilityLength){
+                        anqpList->value->data = malloc(l_payload->passpoint.connCapabilityLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -798,10 +799,10 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->passpoint.connCapabilityLength);
-                        memset(anqpList->value->data,0,l_inter->passpoint.connCapabilityLength);
-                        memcpy(anqpList->value->data,&l_inter->passpoint.connCapabilityInfo,l_inter->passpoint.connCapabilityLength);
-                        anqpList->value->len = l_inter->passpoint.connCapabilityLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->passpoint.connCapabilityLength);
+                        memset(anqpList->value->data,0,l_payload->passpoint.connCapabilityLength);
+                        memcpy(anqpList->value->data,&l_payload->passpoint.connCapabilityInfo,l_payload->passpoint.connCapabilityLength);
+                        anqpList->value->len = l_payload->passpoint.connCapabilityLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied ConnectionCapabilityListANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
                     }
@@ -809,8 +810,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                 //NAIHomeRealmANQPElement
                 case wifi_anqp_element_hs_subtype_nai_home_realm_query:
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received NAIHomeRealmANQPElement Request\n", __func__, __LINE__);
-                    if(l_inter->passpoint.realmInfoLength){
-                        anqpList->value->data = malloc(l_inter->passpoint.realmInfoLength);//To be freed in wifi_anqpSendResponse()
+                    if(l_payload->passpoint.realmInfoLength){
+                        anqpList->value->data = malloc(l_payload->passpoint.realmInfoLength);//To be freed in wifi_anqpSendResponse()
                         if(NULL == anqpList->value->data){
                             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to allocate memory\n", __func__, __LINE__);
                             if(mallocRetryCount > 5){
@@ -820,10 +821,10 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                             anqpList = anqpList->next;
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_inter->passpoint.realmInfoLength);
-                        memset(anqpList->value->data,0,l_inter->passpoint.realmInfoLength);
-                        memcpy(anqpList->value->data,&l_inter->passpoint.realmInfo,l_inter->passpoint.realmInfoLength);
-                        anqpList->value->len = l_inter->passpoint.realmInfoLength;
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,l_payload->passpoint.realmInfoLength);
+                        memset(anqpList->value->data,0,l_payload->passpoint.realmInfoLength);
+                        memcpy(anqpList->value->data,&l_payload->passpoint.realmInfo,l_payload->passpoint.realmInfoLength);
+                        anqpList->value->len = l_payload->passpoint.realmInfoLength;
                         respLength += anqpList->value->len;
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied NAIHomeRealmANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
                     }
@@ -843,7 +844,7 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
                     }
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Preparing to Copy Data. Length: %d\n", __func__, __LINE__,sizeof(wifi_HS2_WANMetrics_t));
                     memset(anqpList->value->data,0,sizeof(wifi_HS2_WANMetrics_t));
-                    memcpy(anqpList->value->data,&l_inter->passpoint.wanMetricsInfo,sizeof(wifi_HS2_WANMetrics_t));
+                    memcpy(anqpList->value->data,&l_payload->passpoint.wanMetricsInfo,sizeof(wifi_HS2_WANMetrics_t));
                     anqpList->value->len = sizeof(wifi_HS2_WANMetrics_t);
                     respLength += anqpList->value->len;
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied WANMetricsANQPElement Data. Length: %d\n", __func__, __LINE__,anqpList->value->len);
@@ -1492,8 +1493,10 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
     mac_addr_str_t mac_str;
     kick_details_t *kick_details = NULL;
     bool has_successful_operations = false;
+    size_t maclist_size = 2048;
+    size_t offset = 0;
 
-    assoc_maclist = (char *)malloc(2048);
+    assoc_maclist = (char *)malloc(maclist_size);
     kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
 
     if (assoc_maclist == NULL || kick_details == NULL) {
@@ -1502,7 +1505,7 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         goto cleanup;
     }
 
-    memset(assoc_maclist, 0, 2048);
+    memset(assoc_maclist, 0, maclist_size);
     memset(kick_details, 0, sizeof(kick_details_t));
 
     if (rdk_vap_info->associated_devices_map == NULL) {
@@ -1517,9 +1520,15 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t *rdk_vap_info
         to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
 
         if (handle_acl_operation(vap_index, mac_str, vap_info, rdk_vap_info, true) == RETURN_OK) {
-            strcat(assoc_maclist, mac_str);
-            strcat(assoc_maclist, ",");
-            has_successful_operations = true;
+            int written = snprintf(assoc_maclist + offset, maclist_size - offset, "%s,", mac_str);
+            if (written > 0 && (size_t)written < (maclist_size - offset)) {
+                offset += written;
+                has_successful_operations = true;
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d maclist buffer truncated for vap %d\n",
+                    __func__, __LINE__, vap_index);
+                break;
+            }
         }
 
         assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
@@ -4731,6 +4740,13 @@ void update_subdoc_data(webconfig_subdoc_data_t *data, unsigned int num_ssid,
         memcpy(&data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index],
             &mgr->radio_config[radio_index].vaps.rdk_vap_array[vap_array_index],
             sizeof(rdk_wifi_vap_info_t));
+
+        // radio level payload is the baseline for a partial ANQP/Passpoint blob
+        if (strncmp(vap_names[i], "hotspot_secure", strlen("hotspot_secure")) == 0) {
+            memcpy(&data->u.decoded.radios[radio_index].interworking_payload,
+                &mgr->radio_config[radio_index].interworking_payload,
+                sizeof(wifi_radio_interworking_t));
+        }
     }
 }
 
