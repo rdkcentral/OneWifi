@@ -4180,34 +4180,44 @@ static void process_eth_bh_status_command(bool eth_bh_status)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if (ctrl->eth_bh_status == eth_bh_status) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d: eth bh status not changed, ignore\n", __func__,
-            __LINE__);
+        vap_svc_t *ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+        bool should_run = is_sta_enabled();
+
+        if (ext_svc != NULL && ext_svc->u.ext.is_started != should_run) {
+            wifi_util_info_print(WIFI_CTRL, "EM_BH: reconciling duplicate eth=%d desired_sta=%d running=%d\n",
+                eth_bh_status, should_run, ext_svc->u.ext.is_started);
+
+            if (should_run)
+                start_extender_vaps(WIFI_ALL_RADIO_INDICES);
+            else
+                stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
+        } else
+            wifi_util_info_print(WIFI_CTRL, "EM_BH: duplicate eth=%d, no service change\n", eth_bh_status);
+
         return;
     }
 
-    wifi_util_info_print(WIFI_CTRL, "%s:%d: eth bh status changed: %d\n", __func__, __LINE__,
-        eth_bh_status);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: EM_BH: eth bh status changed: %d\n", __func__, __LINE__, eth_bh_status);
 
     was_enabled = is_sta_enabled();
     ctrl->eth_bh_status = eth_bh_status;
     is_enabled = is_sta_enabled();
 
     if (was_enabled == is_enabled) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d: no sta state change, ignore\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: EM_BH: no sta state change, ignore\n", __func__, __LINE__);
         return;
     }
 
     if (is_enabled == true) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: EM_BH: start mesh sta\n", __func__, __LINE__);
         start_extender_vaps(WIFI_ALL_RADIO_INDICES);
     } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: EM_BH: stop mesh sta\n", __func__, __LINE__);
         stop_extender_vaps(WIFI_ALL_RADIO_INDICES);
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
 }
-
 
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 // 5 seconds
 
@@ -4811,6 +4821,37 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         }
 
         json = cJSON_Parse(raw);
+        if (json == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "EM_BH: invalid WebConfig JSON subtype=%d\n", subtype);
+            free(data);
+            return;
+        }
+
+        // this runs on the controller event thread, alongside existing ETH backhaul policy events
+        cJSON *subdoc_name = cJSON_GetObjectItemCaseSensitive(json, "SubDocName");
+        if (cJSON_IsString(subdoc_name) && strcmp(subdoc_name->valuestring, "mesh backhaul status") == 0) {
+
+            cJSON *version = cJSON_GetObjectItemCaseSensitive(json, "Version");
+            cJSON *bh_type = cJSON_GetObjectItemCaseSensitive(json, "BackhaulType");
+            bool ethernet_active;
+
+            if (!cJSON_IsString(version) || strcmp(version->valuestring, "1.0") != 0 || !cJSON_IsString(bh_type) ||
+                (strcmp(bh_type->valuestring, "Ethernet") != 0 && strcmp(bh_type->valuestring, "Wireless") != 0)) {
+                wifi_util_error_print(WIFI_CTRL, "EM_BH: rejected backhaul status subdoc: invalid version/type\n");
+                cJSON_Delete(json);
+                free(data);
+                return;
+            }
+
+            ethernet_active = strcmp(bh_type->valuestring, "Ethernet") == 0;
+            wifi_util_info_print(WIFI_CTRL, "EM_BH: status received type=%s previous_eth=%d subtype=%d\n",
+                bh_type->valuestring, ctrl->eth_bh_status, subtype);
+
+            cJSON_Delete(json);
+            process_eth_bh_status_command(ethernet_active);
+            free(data);
+            return;
+        }
         subdoc_type = find_subdoc_type(config, json);
         cJSON_Delete(json);
         switch (subdoc_type) {
