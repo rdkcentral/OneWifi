@@ -30,6 +30,10 @@ extern "C" {
 #include <stdint.h>
 #include "wifi_hal.h"
 
+#if defined(CONFIG_IEEE80211BN) && !defined(CONFIG_IEEE80211BE)
+#error "CONFIG_IEEE80211BN requires CONFIG_IEEE80211BE"
+#endif /* CONFIG_IEEE80211BN && !CONFIG_IEEE80211BE */
+
 #define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
 #define WIFI_STA_5G_VAP_CONNECT_STATUS      "Device.WiFi.STA.2.Connection.Status"
 #define WIFI_STA_2G_INTERFACE_NAME          "Device.WiFi.STA.1.InterfaceName"
@@ -414,6 +418,20 @@ typedef struct {
     uint8_t  request_mode;
     bool neighbor_list_present;
 } em_btm_req_ctrl_msg_t;
+
+#define EM_MAC_ADDR_LEN 6
+#define EM_MAX_RADIO_PER_AGENT 4
+
+typedef struct {
+    uint8_t ruid[EM_MAC_ADDR_LEN];
+    uint8_t reserved[2];
+    int32_t tx_power;
+} em_tx_power_radio_t;
+
+typedef struct {
+    uint32_t radio_count;
+    em_tx_power_radio_t radios[EM_MAX_RADIO_PER_AGENT];
+} em_tx_power_response_t;
 
 typedef struct {
     wifi_mon_stats_type_t  data_type;
@@ -1541,7 +1559,7 @@ typedef struct {
 
 typedef struct {
     mac_addr_t sta_mac;
-    unsigned char client_type[32];
+    char client_type[32];
     assoc_sta_link_metrics_t assoc_sta_link_metrics;
     error_code_t error_code;
     assoc_sta_ext_link_metrics_t assoc_sta_ext_link_metrics;
@@ -1571,7 +1589,7 @@ typedef struct {
 
 typedef struct {
     mac_address_t mac_addr;
-    unsigned char client_type[32];
+    char client_type[32];
 } sta_client_info_t;
 
 typedef struct {

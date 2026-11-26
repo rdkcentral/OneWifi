@@ -134,6 +134,11 @@ void wifiapi_printradioconfig(char *buff, unsigned int buff_size, wifi_radio_ope
         idx += snprintf(&buff[idx], buff_size-idx, " be");
     }
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+    else if (radio_config->variant & WIFI_80211_VARIANT_BN) {
+        idx += snprintf(&buff[idx], buff_size - idx, " bn");
+    }
+#endif /* CONFIG_IEEE80211BN */
 
     if (idx >= buff_size) return;
     idx += snprintf(&buff[idx], buff_size-idx, "\ncsa_beacon_count: %d\n", radio_config->csa_beacon_count);
@@ -336,6 +341,11 @@ static void wifiapi_handle_start_neighbor_scan(char **args, unsigned int num_arg
     scan_mode = atoi(args[2]);
     dwell_time = atoi(args[3]);
 
+    if (vap_index < 0 || vap_index >= MAX_VAP) {
+        snprintf(result_buf, result_buf_size, "Invalid vap index %d\n", vap_index);
+        return;
+    }
+
     for (i = 4; i < num_args; i++) {
         channels[chan_num] = atoi(args[i]);
         chan_num++;
@@ -495,6 +505,11 @@ static void wifiapi_handle_hal_get_radio_temperature(char **args, unsigned int n
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     wifi_radioTemperature_t *radioTemperatureStats = NULL;
     wifi_radio_operationParam_t* radioOperation = NULL;
+
+    if ((radio_index < 0) || (radio_index >= (INT)getNumberRadios())) {
+        snprintf(result_buf, result_buf_size, "%s:%d Invalid radio index : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
 
     if (mon_data->radio_presence[radio_index] == false) {
         snprintf(result_buf, result_buf_size, "%s:%d radio_presence is false for radio : %d\n", __func__,__LINE__, radio_index);

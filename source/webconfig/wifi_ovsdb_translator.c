@@ -605,8 +605,7 @@ void get_translator_config_wpa_mfp(
 {
     if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_personal || vap->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_required;
-    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition ||
-        vap->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
+    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
     } else {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
@@ -901,6 +900,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         default_vap_info->vap_mode = wifi_vap_mode_ap;
         default_vap_info->u.bss_info.enabled = false;
+#if defined(_MERCURY_PRODUCT_REQ_)
+        default_vap_info->u.bss_info.mld_info.common_info.mld_enable = false;
+        default_vap_info->u.bss_info.mld_info.common_info.mld_id = UNDEFINED_MLD_ID;
+        default_vap_info->u.bss_info.mld_info.common_info.mld_link_id = UNDEFINED_MLD_LINK_ID;
+#endif
         default_vap_info->u.bss_info.bssMaxSta = 75;
         default_vap_info->u.bss_info.inum_sta = 0;
         snprintf(default_vap_info->u.bss_info.interworking.interworking.hessid,
@@ -3310,12 +3314,20 @@ webconfig_error_t assoclist_update_assoc_map(rdk_wifi_vap_info_t *rdk_vap_info)
     assoc_dev_data_t *diff_assoc_dev_data = NULL, *temp_assoc_dev_data = NULL;
     mac_addr_str_t diff_mac_str;
 
-    current_assoc_map = rdk_vap_info->associated_devices_map;
     diff_assoc_map = rdk_vap_info->associated_devices_diff_map;
-
-    if ((current_assoc_map == NULL) || (diff_assoc_map == NULL)) {
+    if (diff_assoc_map == NULL) {
         return webconfig_error_none;
     }
+
+    if (rdk_vap_info->associated_devices_map == NULL) {
+        rdk_vap_info->associated_devices_map = hash_map_create();
+        if (rdk_vap_info->associated_devices_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: assoc map create failed for index : %d\n",
+                __func__, __LINE__, rdk_vap_info->vap_index);
+            return webconfig_error_translate_to_ovsdb;
+        }
+    }
+    current_assoc_map = rdk_vap_info->associated_devices_map;
 
     diff_assoc_dev_data = hash_map_get_first(diff_assoc_map);
     while (diff_assoc_dev_data != NULL) {
