@@ -92,6 +92,11 @@ typedef enum {
     connection_state_connected_wait_for_csa,
     connection_state_connected_scan_list,
     connection_state_disconnection_in_progress,
+#ifdef UWM_EXT_WPS_SUPPORT
+    connection_state_set_wps_sta_mode_started,
+    connection_state_set_wps_sta_mode,
+    connection_state_set_wps_sta_mode_completed,
+#endif
 } connection_state_t;
 
 typedef struct scan_result {
@@ -140,6 +145,12 @@ typedef struct {
     bool                   is_started;
     int                    ranked_count;
     bool                   is_vap_started[MAX_NUM_RADIOS];
+#ifdef UWM_EXT_WPS_SUPPORT
+    /* VAP that is running WPS onboarding; its supplicant is the one to reinitialize
+     * once credentials arrive. */
+    unsigned int           wps_onboarding_vap_index;
+    bool                   wps_reonboard_active;
+#endif
 }__attribute__((packed)) vap_svc_ext_t;
 
 typedef struct vap_svc {
@@ -190,6 +201,11 @@ extern int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index,
     wifi_vap_info_map_t *map, rdk_wifi_vap_info_t *rdk_vap_info);
 extern int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
 extern bool vap_svc_is_mesh_ext(unsigned int vap_index);
+#ifdef UWM_EXT_WPS_SUPPORT
+extern int vap_svc_mesh_ext_wps_credentials_received(vap_svc_t *svc, unsigned int vap_index);
+extern int vap_svc_mesh_ext_wps_reonboard_started(vap_svc_t *svc, unsigned int vap_index);
+extern int vap_svc_mesh_ext_wps_reonboard_aborted(vap_svc_t *svc, unsigned int vap_index);
+#endif
 
 vap_svc_t *get_svc_by_type(wifi_ctrl_t *ctrl, vap_svc_type_t type);
 vap_svc_t *get_svc_by_vap_index(wifi_ctrl_t *ctrl, unsigned int vap_index);

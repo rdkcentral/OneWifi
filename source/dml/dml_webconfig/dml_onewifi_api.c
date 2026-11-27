@@ -448,7 +448,32 @@ void update_dml_assoc_list(webconfig_subdoc_data_t *data)
 void dml_cache_update(webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
+#ifdef UWM_CTRL_WPS_SUPPORT
+    wifi_vap_info_t onboarding_vaps[MAX_NUM_RADIOS];
+    rdk_wifi_vap_info_t onboarding_rdk_vaps[MAX_NUM_RADIOS];
+    int onboarding_slots[MAX_NUM_RADIOS];
     unsigned int i;
+
+    memset(onboarding_slots, -1, sizeof(onboarding_slots));
+    for (unsigned int radio = 0; radio < get_num_radio_dml(); radio++) {
+        for (unsigned int slot = 0; slot < MAX_NUM_VAP_PER_RADIO; slot++) {
+            wifi_vap_info_t *vap =
+                &webconfig_dml.radios[radio].vaps.vap_map.vap_array[slot];
+
+            if (strncmp(vap->vap_name, "onboarding_",
+                    strlen("onboarding_")) == 0) {
+                memcpy(&onboarding_vaps[radio], vap, sizeof(*vap));
+                memcpy(&onboarding_rdk_vaps[radio],
+                    &webconfig_dml.radios[radio].vaps.rdk_vap_array[slot],
+                    sizeof(rdk_wifi_vap_info_t));
+                onboarding_slots[radio] = slot;
+                break;
+            }
+        }
+    }
+#else
+    unsigned int i;
+#endif /* UWM_CTRL_WPS_SUPPORT */
 
     switch(data->type) {
         case webconfig_subdoc_type_radio:
@@ -465,6 +490,24 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
             memcpy((unsigned char *)&webconfig_dml.config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
             memcpy((unsigned char *)&webconfig_dml.hal_cap,(unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
             webconfig_dml.hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
+#ifdef UWM_CTRL_WPS_SUPPORT
+            for (unsigned int radio = 0; radio < get_num_radio_dml(); radio++) {
+                int slot = onboarding_slots[radio];
+
+                if (slot < 0) {
+                    continue;
+                }
+                memcpy(&webconfig_dml.radios[radio].vaps.vap_map.vap_array[slot],
+                    &onboarding_vaps[radio], sizeof(wifi_vap_info_t));
+                memcpy(&webconfig_dml.radios[radio].vaps.rdk_vap_array[slot],
+                    &onboarding_rdk_vaps[radio], sizeof(rdk_wifi_vap_info_t));
+                if (webconfig_dml.radios[radio].vaps.vap_map.num_vaps <=
+                        (unsigned int)slot) {
+                    webconfig_dml.radios[radio].vaps.vap_map.num_vaps = slot + 1;
+                    webconfig_dml.radios[radio].vaps.num_vaps = slot + 1;
+                }
+            }
+#endif /* UWM_CTRL_WPS_SUPPORT */
 #ifndef ONEWIFI_DML_SUPPORT
             sync_dml_macfilter_table_entries();
 #endif
@@ -1070,6 +1113,65 @@ int init(webconfig_dml_t *consumer)
     memcpy((unsigned char *)&consumer->config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
     memcpy((unsigned char *)&consumer->hal_cap, (unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
     consumer->hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
+#ifdef UWM_CTRL_WPS_SUPPORT
+    /*
+     * Existing persistent/default data may predate InterfaceMap onboarding
+     * entries. Materialise those capability entries in the northbound DML
+     * cache so AP.5/AP.6 setters can stage the first createVAP transaction.
+     */
+    for (unsigned int i = 0;
+            i < (sizeof(consumer->hal_cap.wifi_prop.interface_map) /
+                sizeof(wifi_interface_name_idex_map_t)); i++) {
+        wifi_interface_name_idex_map_t *entry =
+            &consumer->hal_cap.wifi_prop.interface_map[i];
+        unsigned int radio;
+        int array_index;
+        wifi_vap_info_t *vap;
+        rdk_wifi_vap_info_t *rdk_vap;
+
+        if (strncmp(entry->vap_name, "onboarding_",
+                strlen("onboarding_")) != 0) {
+            continue;
+        }
+        radio = entry->rdk_radio_index;
+        array_index = convert_vap_name_to_array_index(
+            &consumer->hal_cap.wifi_prop, entry->vap_name);
+        if (radio >= consumer->hal_cap.wifi_prop.numRadios ||
+                array_index < 0 || array_index >= MAX_NUM_VAP_PER_RADIO) {
+            continue;
+        }
+        vap = &consumer->radios[radio].vaps.vap_map.vap_array[array_index];
+        rdk_vap = &consumer->radios[radio].vaps.rdk_vap_array[array_index];
+        vap->vap_index = entry->index;
+        vap->radio_index = radio;
+        vap->vap_mode = wifi_vap_mode_ap;
+        snprintf(vap->vap_name, sizeof(vap->vap_name), "%s", entry->vap_name);
+        snprintf(vap->bridge_name, sizeof(vap->bridge_name), "%s",
+            entry->bridge_name);
+        snprintf(vap->u.bss_info.ssid, sizeof(vap->u.bss_info.ssid), "%s",
+            "onboarding");
+        snprintf((char *)vap->u.bss_info.security.u.key.key,
+            sizeof(vap->u.bss_info.security.u.key.key), "%s", "onboarding");
+        vap->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+        vap->u.bss_info.security.encr = wifi_encryption_aes;
+        vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+        vap->u.bss_info.security.u.key.type = wifi_security_key_type_psk;
+        vap->u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
+        vap->u.bss_info.enabled = false;
+        vap->u.bss_info.showSsid = true;
+        snprintf(rdk_vap->vap_name, sizeof(rdk_vap->vap_name), "%s",
+            entry->vap_name);
+        rdk_vap->vap_index = entry->index;
+        rdk_vap->exists = true;
+        if (consumer->radios[radio].vaps.vap_map.num_vaps <=
+                (unsigned int)array_index) {
+            consumer->radios[radio].vaps.vap_map.num_vaps =
+                (unsigned int)array_index + 1;
+        }
+        consumer->radios[radio].vaps.num_vaps =
+            consumer->radios[radio].vaps.vap_map.num_vaps;
+    }
+#endif /* UWM_CTRL_WPS_SUPPORT */
     consumer->harvester.b_inst_client_enabled=consumer->config.global_parameters.inst_wifi_client_enabled;
     consumer->harvester.u_inst_client_reporting_period=consumer->config.global_parameters.inst_wifi_client_reporting_period;
     consumer->harvester.u_inst_client_def_reporting_period=consumer->config.global_parameters.inst_wifi_client_def_reporting_period;
@@ -1468,7 +1570,47 @@ void set_dml_cache_vap_config_changed(uint8_t vap_index)
     }
 }
 
+#ifdef UWM_CTRL_WPS_SUPPORT
+/*
+ * EasyMesh South applies private credentials directly to the live manager,
+ * while the TR-181 DML cache may still contain factory BPI credentials.
+ * For an onboarding-only transaction, preserve those live private entries
+ * in the encoded PRIVATE subdoc so AP.5/AP.6 can change without bouncing or
+ * reconfiguring wifi0/mld0/wifi2.
+ */
+static void preserve_runtime_private_vaps(webconfig_subdoc_data_t *data)
+{
+    unsigned int radio_index, dst_index, src_index;
+
+    for (radio_index = 0; radio_index < data->u.decoded.num_radios; radio_index++) {
+        wifi_vap_info_map_t *dst = &data->u.decoded.radios[radio_index].vaps.vap_map;
+        wifi_vap_info_map_t *live = get_wifidb_vap_map(radio_index);
+
+        if (live == NULL) {
+            continue;
+        }
+        for (dst_index = 0; dst_index < dst->num_vaps; dst_index++) {
+            if (!is_vap_private(&data->u.decoded.hal_cap.wifi_prop,
+                    dst->vap_array[dst_index].vap_index)) {
+                continue;
+            }
+            for (src_index = 0; src_index < live->num_vaps; src_index++) {
+                if (live->vap_array[src_index].vap_index ==
+                        dst->vap_array[dst_index].vap_index) {
+                    memcpy(&dst->vap_array[dst_index], &live->vap_array[src_index],
+                        sizeof(wifi_vap_info_t));
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static int push_subdoc_to_one_wifidb_internal(uint8_t subdoc,
+    bool preserve_private)
+#else
 int push_subdoc_to_one_wifidb(uint8_t subdoc)
+#endif /* UWM_CTRL_WPS_SUPPORT */
 {
     webconfig_subdoc_data_t *data = NULL;
     char *str = NULL;
@@ -1484,6 +1626,11 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
     memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
     data->u.decoded.num_radios = get_num_radio_dml();
+#ifdef UWM_CTRL_WPS_SUPPORT
+    if (preserve_private) {
+        preserve_runtime_private_vaps(data);
+    }
+#endif /* UWM_CTRL_WPS_SUPPORT */
 
     if (webconfig_encode(&webconfig_dml.webconfig, data, subdoc) == webconfig_error_none) {
         str = data->u.encoded.raw;
@@ -1509,6 +1656,13 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
 
     return ret;
 }
+#ifdef UWM_CTRL_WPS_SUPPORT
+
+int push_subdoc_to_one_wifidb(uint8_t subdoc)
+{
+    return push_subdoc_to_one_wifidb_internal(subdoc, false);
+}
+#endif /* UWM_CTRL_WPS_SUPPORT */
 int push_factory_reset_to_ctrl_queue()
 {
     wifi_util_info_print(WIFI_DMCLI, "Inside :%s  \n", __FUNCTION__);
@@ -1562,6 +1716,15 @@ int push_vap_dml_cache_to_one_wifidb()
         if (push_subdoc_to_one_wifidb(webconfig_subdoc_type_private) != RETURN_OK) {
             ret = RETURN_ERR;
         }
+#ifdef UWM_CTRL_WPS_SUPPORT
+    } else if (is_vap_config_changed & ONBOARDING) {
+        wifi_util_info_print(WIFI_DMCLI,
+            "%s: Dedicated onboarding DML modified; preserving runtime private VAPs\n",
+            __FUNCTION__);
+        if (push_subdoc_to_one_wifidb_internal(webconfig_subdoc_type_private, true) != RETURN_OK) {
+            ret = RETURN_ERR;
+        }
+#endif /* UWM_CTRL_WPS_SUPPORT */
     }
     if (is_vap_config_changed & HOTSPOT) {
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_xfinity DML Modified  \n", __FUNCTION__);

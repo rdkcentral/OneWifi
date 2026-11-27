@@ -195,6 +195,7 @@ AC_ARG_ENABLE([libwebconfig],
                   *) AC_MSG_ERROR([bad value ${enableval} for --enable-libwebconfig]) ;;
             esac],[libwebconfig=true])
 AM_CONDITIONAL([LIBWEBCONFIG], [test x$libwebconfig = xtrue])
+AM_CONDITIONAL([BUILD_WIFI_MATH_UTILS], [test "x$libwebconfig" = "xtrue" || test "x$PLATFORM_BANANAPI" = "xtrue"])
 
 AC_ARG_ENABLE([rdk-wifi-libhostap],
     [AS_HELP_STRING([--enable-rdk-wifi-libhostap],[enable])],
