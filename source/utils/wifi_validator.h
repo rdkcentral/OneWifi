@@ -21,6 +21,10 @@
 #define WIFI_VALIDATOR_H
 
 int validate_vaps(const char *buff, wifi_vap_info_map_t *vap_map);
+int validate_anqp(const cJSON *anqp, const wifi_InterworkingElement_t *vap_interworking,
+    wifi_radio_interworking_t *radio_payload, pErr execRetVal);
+int validate_passpoint(const cJSON *passpoint, const wifi_InterworkingElement_t *vap_interworking,
+    wifi_radio_interworking_t *radio_payload, pErr execRetVal);
 int early_validate_interworking(const cJSON *interworking, pErr execRetVal);
 
 #endif

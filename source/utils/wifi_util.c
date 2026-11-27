@@ -4032,23 +4032,20 @@ int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *sca
     return RETURN_ERR;
 }
 
-static bool is_interworking_config_changed(char *vap_name, wifi_interworking_t *old_cfg,
-    wifi_interworking_t *new_cfg)
+static bool is_interworking_config_changed(const wifi_InterworkingElement_t *old_cfg,
+    const wifi_InterworkingElement_t *new_cfg)
 {
-    bool is_hotspot_vap = FALSE;
-    if (strncmp((char *)vap_name, "hotspot", strlen("hotspot")) == 0) {
-        is_hotspot_vap = TRUE;
-    }
+    return IS_BIN_CHANGED(old_cfg, new_cfg, sizeof(wifi_InterworkingElement_t));
+}
 
-    return (IS_BIN_CHANGED(&old_cfg->interworking, &new_cfg->interworking,
-            sizeof(wifi_InterworkingElement_t))
-            || (is_hotspot_vap
-                && (IS_BIN_CHANGED(&old_cfg->passpoint, &new_cfg->passpoint,
-                    sizeof(wifi_passpoint_settings_t))
-                   || IS_BIN_CHANGED(&old_cfg->anqp, &new_cfg->anqp,
-                    sizeof(wifi_anqp_settings_t))
-                   || IS_BIN_CHANGED(&old_cfg->roamingConsortium, &new_cfg->roamingConsortium,
-                    sizeof(wifi_roamingConsortiumElement_t)))));
+bool is_radio_interworking_payload_changed(const wifi_radio_interworking_t *old_cfg,
+    const wifi_radio_interworking_t *new_cfg)
+{
+    return IS_BIN_CHANGED(&old_cfg->passpoint, &new_cfg->passpoint,
+               sizeof(wifi_passpoint_settings_t)) ||
+        IS_BIN_CHANGED(&old_cfg->anqp, &new_cfg->anqp, sizeof(wifi_anqp_settings_t)) ||
+        IS_BIN_CHANGED(&old_cfg->roamingConsortium, &new_cfg->roamingConsortium,
+            sizeof(wifi_roamingConsortiumElement_t));
 }
 
 static bool is_vap_preassoc_cac_config_changed(char *vap_name,
@@ -4198,8 +4195,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.vapStatsEnable) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.security, &vap_info_new->u.bss_info.security,
                 sizeof(wifi_vap_security_t)) ||
-            is_interworking_config_changed(vap_info_new->vap_name,
-                &vap_info_old->u.bss_info.interworking,
+            is_interworking_config_changed(&vap_info_old->u.bss_info.interworking,
                 &vap_info_new->u.bss_info.interworking) ||
             IS_CHANGED(vap_info_old->u.bss_info.mac_filter_enable,
                 vap_info_new->u.bss_info.mac_filter_enable) ||

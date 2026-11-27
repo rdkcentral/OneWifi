@@ -1052,6 +1052,7 @@ typedef struct {
     rdk_wifi_vap_map_t          vaps;
     wifi_radio_feature_param_t  feature;
     radarInfo_t                  radarInfo;
+    wifi_radio_interworking_t   interworking_payload; /* Per-radio ANQP/Passpoint/RoamingConsortium (shared by all VAPs on this radio). */
 //  schema_wifi_radio_state_t   radio_state;
 } rdk_wifi_radio_t;
 

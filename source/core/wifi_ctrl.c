@@ -2701,7 +2701,7 @@ wifi_GASConfiguration_t * Get_wifi_gas_conf_object(void)
     return get_wifidb_gas_config();
 }
 
-wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex)
+wifi_InterworkingElement_t * Get_wifi_object_interworking_element(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
     if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index)) {
@@ -2715,6 +2715,22 @@ wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex)
         return NULL;
     }
     return &l_vap_maps->vap_array[vap_index].u.bss_info.interworking;
+}
+
+/* Per-radio ANQP/Passpoint/RoamingConsortium payload shared by all VAPs on the radio. */
+wifi_radio_interworking_t * Get_wifi_radio_interworking_payload(uint8_t vapIndex)
+{
+    uint8_t radio_index = 0, vap_index = 0;
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index)) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
+    rdk_wifi_radio_t *l_radio = find_radio_config_by_index(radio_index);
+    if (l_radio == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
+        return NULL;
+    }
+    return &l_radio->interworking_payload;
 }
 
 wifi_preassoc_control_t * Get_wifi_object_preassoc_ctrl_parameter(uint8_t vapIndex)

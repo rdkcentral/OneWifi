@@ -37,6 +37,7 @@
 #include "wifi_util.h"
 #include "wifi_mgr.h"
 #include "wifi_passpoint.h"
+#include "wifi_validator.h"
 
 bool g_interworking_RFC;
 bool g_passpoint_RFC;
@@ -128,7 +129,8 @@ int validate_ipv6_address(char *ip) {
 
 }
 
-int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRetVal)
+int validate_anqp(const cJSON *anqp, const wifi_InterworkingElement_t *vap_interworking,
+    wifi_radio_interworking_t *radio_payload, pErr execRetVal)
 {
     cJSON *mainEntry = NULL;
     cJSON *anqpElement = NULL;
@@ -145,7 +147,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     cJSON *statsMainEntry = cJSON_AddObjectToObject(passPointStats,"PassPointStats");
     cJSON *statsList = cJSON_AddArrayToObject(statsMainEntry, "ANQPResponse");
     
-    if(!anqp || !vap_info || !execRetVal){
+    if(!anqp || !vap_interworking || !radio_payload || !execRetVal){
         wifi_util_dbg_print(WIFI_PASSPOINT,"ANQP entry is NULL\n");
         if(execRetVal) {
             strncpy(execRetVal->ErrorMsg, "Empty ANQP Entry",sizeof(execRetVal->ErrorMsg)-1);
@@ -155,14 +157,14 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     }
     mainEntry = (cJSON *) anqp;
     //CapabilityListANQPElement
-    vap_info->anqp.capabilityInfoLength = 0;
-    vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_query_list;
-    vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_capability_list;
+    radio_payload->anqp.capabilityInfoLength = 0;
+    radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_query_list;
+    radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_capability_list;
     
     //VenueNameANQPElement
     validate_param_object(mainEntry,"VenueNameANQPElement",anqpElement);
  
-    next_pos = (UCHAR *)&vap_info->anqp.venueInfo;
+    next_pos = (UCHAR *)&radio_payload->anqp.venueInfo;
 
     validate_param_array(anqpElement,"VenueInfo",anqpList);
     if(cJSON_GetArraySize(anqpList) > 16){
@@ -172,13 +174,13 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         return RETURN_ERR;
     } else if (cJSON_GetArraySize(anqpList)) {
         //Venue List is non-empty. Update capability List
-        vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_venue_name;
+        radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_venue_name;
 
         //Fill in Venue Group and Type from Interworking Config
         wifi_venueNameElement_t *venueElem = (wifi_venueNameElement_t *)next_pos;
-        venueElem->venueGroup = vap_info->interworking.venueGroup;
+        venueElem->venueGroup = vap_interworking->venueGroup;
         next_pos += sizeof(venueElem->venueGroup);
-        venueElem->venueType = vap_info->interworking.venueType;
+        venueElem->venueType = vap_interworking->venueType;
         next_pos += sizeof(venueElem->venueType);
     }
 
@@ -199,11 +201,11 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         next_pos += strlen(anqpParam->valuestring);
         venueBuf->length = next_pos - &venueBuf->language[0];
     }
-    vap_info->anqp.venueInfoLength = next_pos - (UCHAR *)&vap_info->anqp.venueInfo;
+    radio_payload->anqp.venueInfoLength = next_pos - (UCHAR *)&radio_payload->anqp.venueInfo;
 
     //RoamingConsortiumANQPElement
     validate_param_object(mainEntry,"RoamingConsortiumANQPElement", anqpElement);
-    next_pos = (UCHAR *)&vap_info->anqp.roamInfo;
+    next_pos = (UCHAR *)&radio_payload->anqp.roamInfo;
 
     validate_param_array(anqpElement,"OI",anqpList);
     if(cJSON_GetArraySize(anqpList) > 32){
@@ -251,22 +253,22 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         next_pos += sizeof(ouiBuf->length);
         next_pos += ouiBuf->length;
         if(ouiCount < 3){
-            memcpy(&vap_info->roamingConsortium.wifiRoamingConsortiumOui[ouiCount][0],&ouiBuf->oui[0],ouiBuf->length);
-            vap_info->roamingConsortium.wifiRoamingConsortiumLen[ouiCount] = ouiBuf->length;
+            memcpy(&radio_payload->roamingConsortium.wifiRoamingConsortiumOui[ouiCount][0],&ouiBuf->oui[0],ouiBuf->length);
+            radio_payload->roamingConsortium.wifiRoamingConsortiumLen[ouiCount] = ouiBuf->length;
         }
         ouiCount++;
     }
-    vap_info->roamingConsortium.wifiRoamingConsortiumCount = ouiCount;
+    radio_payload->roamingConsortium.wifiRoamingConsortiumCount = ouiCount;
 
     if(ouiCount) {
-        vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_roaming_consortium;
+        radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_roaming_consortium;
     }
 
-    vap_info->anqp.roamInfoLength = next_pos - (UCHAR *)&vap_info->anqp.roamInfo;
+    radio_payload->anqp.roamInfoLength = next_pos - (UCHAR *)&radio_payload->anqp.roamInfo;
 
     //IPAddressTypeAvailabilityANQPElement
     validate_param_object(mainEntry,"IPAddressTypeAvailabilityANQPElement",anqpElement);
-    vap_info->anqp.ipAddressInfo.field_format = 0;
+    radio_payload->anqp.ipAddressInfo.field_format = 0;
 
     validate_param_integer(anqpElement,"IPv6AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (2 < anqpParam->valuedouble)){
@@ -275,7 +277,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
-    vap_info->anqp.ipAddressInfo.field_format = (UCHAR)anqpParam->valuedouble;
+    radio_payload->anqp.ipAddressInfo.field_format = (UCHAR)anqpParam->valuedouble;
 
     validate_param_integer(anqpElement,"IPv4AddressType",anqpParam);
     if((0 > anqpParam->valuedouble) || (7 < anqpParam->valuedouble)){
@@ -284,15 +286,15 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
-    vap_info->anqp.ipAddressInfo.field_format |= ((UCHAR)anqpParam->valuedouble << 2);
-    vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_ip_address_availabality;
+    radio_payload->anqp.ipAddressInfo.field_format |= ((UCHAR)anqpParam->valuedouble << 2);
+    radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_ip_address_availabality;
 
     //NAIRealmANQPElement
     validate_param_object(mainEntry, "NAIRealmANQPElement", anqpElement);
 
     validate_param_array(anqpElement, "Realm", anqpList);
 
-    wifi_naiRealmElement_t *naiElem = &vap_info->anqp.realmInfo;
+    wifi_naiRealmElement_t *naiElem = &radio_payload->anqp.realmInfo;
     naiElem->nai_realm_count = cJSON_GetArraySize(anqpList);
     if(naiElem->nai_realm_count > 20) {
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Only 20 Realm Entries are supported. Discarding Configuration\n", __func__, __LINE__);
@@ -304,7 +306,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     next_pos += sizeof(naiElem->nai_realm_count);
 
     if(naiElem->nai_realm_count) {
-        vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_nai_realm;
+        radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_nai_realm;
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
@@ -422,11 +424,11 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         }
         realmInfoBuf->data_field_length = next_pos - &realmInfoBuf->encoding;
     }
-    vap_info->anqp.realmInfoLength = next_pos - (UCHAR *)&vap_info->anqp.realmInfo;
+    radio_payload->anqp.realmInfoLength = next_pos - (UCHAR *)&radio_payload->anqp.realmInfo;
 
     //3GPPCellularANQPElement
     validate_param_object(mainEntry, "3GPPCellularANQPElement", anqpElement);
-    wifi_3gppCellularNetwork_t *gppBuf = &vap_info->anqp.gppInfo;
+    wifi_3gppCellularNetwork_t *gppBuf = &radio_payload->anqp.gppInfo;
     next_pos = (UCHAR *)gppBuf;
 
     validate_param_integer(anqpElement,"GUD",anqpParam);
@@ -501,8 +503,8 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     }
     gppBuf->uhdLength = next_pos - uhd_pos;
     plmnInfoBuf->plmn_length = next_pos - plmn_pos;
-    vap_info->anqp.gppInfoLength = next_pos - (UCHAR *)&vap_info->anqp.gppInfo;
-    vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_3gpp_cellular_network;            
+    radio_payload->anqp.gppInfoLength = next_pos - (UCHAR *)&radio_payload->anqp.gppInfo;
+    radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_3gpp_cellular_network;
     
     //DomainANQPElement
     validate_param_object(mainEntry, "DomainANQPElement", anqpElement);
@@ -514,7 +516,7 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         cJSON_Delete(passPointStats);
         return RETURN_ERR;
     }
-    next_pos = (UCHAR *)&vap_info->anqp.domainNameInfo;
+    next_pos = (UCHAR *)&radio_payload->anqp.domainNameInfo;
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_domainNameTuple_t *nameBuf = (wifi_domainNameTuple_t *)next_pos;
@@ -539,19 +541,20 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         cJSON_AddItemToArray(statsList, realmStats);
     }
     
-    vap_info->anqp.domainInfoLength = next_pos - (UCHAR *)&vap_info->anqp.domainNameInfo;
-    if (vap_info->anqp.domainInfoLength) {
-        vap_info->anqp.capabilityInfo.capabilityList[vap_info->anqp.capabilityInfoLength++] = wifi_anqp_element_name_domain_name;
+    radio_payload->anqp.domainInfoLength = next_pos - (UCHAR *)&radio_payload->anqp.domainNameInfo;
+    if (radio_payload->anqp.domainInfoLength) {
+        radio_payload->anqp.capabilityInfo.capabilityList[radio_payload->anqp.capabilityInfoLength++] = wifi_anqp_element_name_domain_name;
     }
 
     //Update the stats JSON
-    cJSON_PrintPreallocated(passPointStats,(char *)&vap_info->anqp.passpointStats, sizeof(vap_info->anqp.passpointStats), false);
+    cJSON_PrintPreallocated(passPointStats,(char *)&radio_payload->anqp.passpointStats, sizeof(radio_payload->anqp.passpointStats), false);
     cJSON_Delete(passPointStats);
 
     return RETURN_OK;
 }
 
-int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pErr execRetVal) 
+int validate_passpoint(const cJSON *passpoint, const wifi_InterworkingElement_t *vap_interworking,
+    wifi_radio_interworking_t *radio_payload, pErr execRetVal)
 {
     cJSON *mainEntry = NULL;
     cJSON *anqpElement = NULL;
@@ -560,46 +563,46 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
     cJSON *anqpParam = NULL;
     UCHAR *next_pos = NULL;
 
-    if(!passpoint || !vap_info || !execRetVal){
+    if(!passpoint || !vap_interworking || !radio_payload || !execRetVal){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Passpoint entry is NULL\n");
         return RETURN_ERR;
     }
     mainEntry = (cJSON *)passpoint;
 
     validate_param_bool(mainEntry, "PasspointEnable", anqpParam);
-    vap_info->passpoint.enable = (anqpParam->type & cJSON_True) ? true:false;
+    radio_payload->passpoint.enable = (anqpParam->type & cJSON_True) ? true:false;
 
-    if(vap_info->passpoint.enable) {
+    if(radio_payload->passpoint.enable) {
         if(!g_passpoint_RFC) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Passpoint cannot be enable when RFC is disabled\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "PasspointEnable: Cannot Enable Passpoint. RFC Disabled",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
-        } else if(vap_info->interworking.interworkingEnabled == FALSE) {
+        } else if(vap_interworking->interworkingEnabled == FALSE) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Passpoint cannot be enable when Interworking is disabled\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Cannot Enable Passpoint. Interworking Disabled",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
     }	
     validate_param_bool(mainEntry, "GroupAddressedForwardingDisable", anqpParam);
-    vap_info->passpoint.gafDisable = (anqpParam->type & cJSON_True) ? true:false;
+    radio_payload->passpoint.gafDisable = (anqpParam->type & cJSON_True) ? true:false;
 
     validate_param_bool(mainEntry, "P2pCrossConnectionDisable", anqpParam);
-    vap_info->passpoint.p2pDisable = (anqpParam->type & cJSON_True) ? true:false;
+    radio_payload->passpoint.p2pDisable = (anqpParam->type & cJSON_True) ? true:false;
 
-    if((vap_info->interworking.accessNetworkType == 2) || (vap_info->interworking.accessNetworkType == 3)) {
-        vap_info->passpoint.l2tif = true;
+    if((vap_interworking->accessNetworkType == 2) || (vap_interworking->accessNetworkType == 3)) {
+        radio_payload->passpoint.l2tif = true;
     }
 
-    if(vap_info->passpoint.enable) {
-        vap_info->passpoint.bssLoad = true;
-        vap_info->passpoint.countryIE = true;
-        vap_info->passpoint.proxyArp = true;
+    if(radio_payload->passpoint.enable) {
+        radio_payload->passpoint.bssLoad = true;
+        radio_payload->passpoint.countryIE = true;
+        radio_payload->passpoint.proxyArp = true;
     }
 
     //HS2CapabilityListANQPElement
-    vap_info->passpoint.capabilityInfoLength = 0;
-    vap_info->passpoint.capabilityInfo.capabilityList[vap_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_query_list;
-    vap_info->passpoint.capabilityInfo.capabilityList[vap_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_capability_list;
+    radio_payload->passpoint.capabilityInfoLength = 0;
+    radio_payload->passpoint.capabilityInfo.capabilityList[radio_payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_query_list;
+    radio_payload->passpoint.capabilityInfo.capabilityList[radio_payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_hs_capability_list;
     
     //OperatorFriendlyNameANQPElement
     validate_param_object(mainEntry,"OperatorFriendlyNameANQPElement",anqpElement);
@@ -611,7 +614,7 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         return RETURN_ERR;
     }
 
-    next_pos = (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
+    next_pos = (UCHAR *)&radio_payload->passpoint.opFriendlyNameInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_HS2_OperatorNameDuple_t *opNameBuf = (wifi_HS2_OperatorNameDuple_t *)next_pos;
         next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
@@ -635,9 +638,9 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         next_pos += strlen(anqpParam->valuestring);
         opNameBuf->length = strlen(anqpParam->valuestring) +  sizeof(opNameBuf->languageCode);
     }
-    vap_info->passpoint.opFriendlyNameInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
-    if(vap_info->passpoint.opFriendlyNameInfoLength) {
-        vap_info->passpoint.capabilityInfo.capabilityList[vap_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_operator_friendly_name;
+    radio_payload->passpoint.opFriendlyNameInfoLength = next_pos - (UCHAR *)&radio_payload->passpoint.opFriendlyNameInfo;
+    if(radio_payload->passpoint.opFriendlyNameInfoLength) {
+        radio_payload->passpoint.capabilityInfo.capabilityList[radio_payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_operator_friendly_name;
     }
 
     //ConnectionCapabilityListANQPElement
@@ -648,7 +651,7 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         strncpy(execRetVal->ErrorMsg, "Exceeded max count of Connection Capability", sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
     }
-    next_pos = (UCHAR *)&vap_info->passpoint.connCapabilityInfo;
+    next_pos = (UCHAR *)&radio_payload->passpoint.connCapabilityInfo;
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_HS2_Proto_Port_Tuple_t *connCapBuf = (wifi_HS2_Proto_Port_Tuple_t *)next_pos;
         validate_param_integer(anqpEntry,"IPProtocol",anqpParam);
@@ -661,9 +664,9 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         connCapBuf->status = anqpParam->valuedouble;
         next_pos += sizeof(connCapBuf->status);
     }
-    vap_info->passpoint.connCapabilityLength = next_pos - (UCHAR *)&vap_info->passpoint.connCapabilityInfo;
-    if(vap_info->passpoint.connCapabilityLength) {
-        vap_info->passpoint.capabilityInfo.capabilityList[vap_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_conn_capability;
+    radio_payload->passpoint.connCapabilityLength = next_pos - (UCHAR *)&radio_payload->passpoint.connCapabilityInfo;
+    if(radio_payload->passpoint.connCapabilityLength) {
+        radio_payload->passpoint.capabilityInfo.capabilityList[radio_payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_conn_capability;
     }
 
     //NAIHomeRealmANQPElement
@@ -674,7 +677,7 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         strncpy(execRetVal->ErrorMsg, "Exceeded max count of NAI Realm",sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
     }
-    next_pos = (UCHAR *)&vap_info->passpoint.realmInfo;
+    next_pos = (UCHAR *)&radio_payload->passpoint.realmInfo;
     wifi_HS2_NAI_Home_Realm_Query_t *naiElem = (wifi_HS2_NAI_Home_Realm_Query_t *)next_pos;
     naiElem->realmCount = cJSON_GetArraySize(anqpList);
     next_pos += sizeof(naiElem->realmCount);
@@ -694,20 +697,20 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         copy_string((char*)next_pos, anqpParam->valuestring);
         next_pos += realmInfoBuf->length;
     }
-    vap_info->passpoint.realmInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.realmInfo;
-    if(vap_info->passpoint.realmInfoLength) {
-        vap_info->passpoint.capabilityInfo.capabilityList[vap_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_nai_home_realm_query;
+    radio_payload->passpoint.realmInfoLength = next_pos - (UCHAR *)&radio_payload->passpoint.realmInfo;
+    if(radio_payload->passpoint.realmInfoLength) {
+        radio_payload->passpoint.capabilityInfo.capabilityList[radio_payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_nai_home_realm_query;
     }
    
     //WANMetricsANQPElement
     //wifi_getHS2WanMetrics(&g_hs2_data[apIns].wanMetricsInfo);
-    vap_info->passpoint.wanMetricsInfo.wanInfo = 0b00000001;
-    vap_info->passpoint.wanMetricsInfo.downLinkSpeed = 25000;
-    vap_info->passpoint.wanMetricsInfo.upLinkSpeed = 5000;
-    vap_info->passpoint.wanMetricsInfo.downLinkLoad = 0;
-    vap_info->passpoint.wanMetricsInfo.upLinkLoad = 0;
-    vap_info->passpoint.wanMetricsInfo.lmd = 0;
-    vap_info->passpoint.capabilityInfo.capabilityList[vap_info->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_wan_metrics;
+    radio_payload->passpoint.wanMetricsInfo.wanInfo = 0b00000001;
+    radio_payload->passpoint.wanMetricsInfo.downLinkSpeed = 25000;
+    radio_payload->passpoint.wanMetricsInfo.upLinkSpeed = 5000;
+    radio_payload->passpoint.wanMetricsInfo.downLinkLoad = 0;
+    radio_payload->passpoint.wanMetricsInfo.upLinkLoad = 0;
+    radio_payload->passpoint.wanMetricsInfo.lmd = 0;
+    radio_payload->passpoint.capabilityInfo.capabilityList[radio_payload->passpoint.capabilityInfoLength++] = wifi_anqp_element_hs_subtype_wan_metrics;
  
     return RETURN_OK;
 }
@@ -802,50 +805,51 @@ static int checkVenueParams(const uint8_t venueGroup, const uint8_t venueType, p
     return RETURN_OK;
 }
 
-int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, bool *passpoint_enabled, pErr execRetVal)
 {
     const cJSON *param, *venue;
     const cJSON *passpoint, *anqp;
+    wifi_radio_interworking_t radio_payload;
 
     if(!interworking || !vap_info || !execRetVal){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Interworking entry is NULL\n");
         return RETURN_ERR;
     }
     validate_param_bool(interworking, "InterworkingEnable", param);
-    vap_info->u.bss_info.interworking.interworking.interworkingEnabled = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.interworking.interworkingEnabled = (param->type & cJSON_True) ? true:false;
 
-    if((!g_interworking_RFC) && (vap_info->u.bss_info.interworking.interworking.interworkingEnabled)) {
+    if((!g_interworking_RFC) && (vap_info->u.bss_info.interworking.interworkingEnabled)) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Interworking cannot be enable when RFC is disabled\n", __func__, __LINE__);	
         strncpy(execRetVal->ErrorMsg, "InterworkingEnable: Cannot Enable Interworking. RFC Disabled",sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
     }
 	
     validate_param_integer(interworking, "AccessNetworkType", param);
-    vap_info->u.bss_info.interworking.interworking.accessNetworkType = param->valuedouble;
-    if (vap_info->u.bss_info.interworking.interworking.accessNetworkType > 5) {
+    vap_info->u.bss_info.interworking.accessNetworkType = param->valuedouble;
+    if (vap_info->u.bss_info.interworking.accessNetworkType > 5) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for AccessNetworkType\n", __func__, __LINE__);	
         strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
     }
 	
     validate_param_bool(interworking, "Internet", param);
-    vap_info->u.bss_info.interworking.interworking.internetAvailable = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.interworking.internetAvailable = (param->type & cJSON_True) ? true:false;
 
     validate_param_bool(interworking, "ASRA", param);
-    vap_info->u.bss_info.interworking.interworking.asra = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.interworking.asra = (param->type & cJSON_True) ? true:false;
 
     validate_param_bool(interworking, "ESR", param);
-    vap_info->u.bss_info.interworking.interworking.esr = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.interworking.esr = (param->type & cJSON_True) ? true:false;
 
     validate_param_bool(interworking, "UESA", param);
-    vap_info->u.bss_info.interworking.interworking.uesa = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.interworking.uesa = (param->type & cJSON_True) ? true:false;
 
     validate_param_bool(interworking, "HESSOptionPresent", param);
-    vap_info->u.bss_info.interworking.interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
 
     validate_param_string(interworking, "HESSID", param);
-    copy_string(vap_info->u.bss_info.interworking.interworking.hessid,param->valuestring);
-    if (WiFi_IsValidMacAddr(vap_info->u.bss_info.interworking.interworking.hessid) != TRUE) {
+    copy_string(vap_info->u.bss_info.interworking.hessid,param->valuestring);
+    if (WiFi_IsValidMacAddr(vap_info->u.bss_info.interworking.hessid) != TRUE) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for HESSID\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
         return RETURN_ERR;
@@ -862,31 +866,27 @@ int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, 
         return RETURN_ERR;
     }
 
-    vap_info->u.bss_info.interworking.interworking.venueGroup = VenueGroup;
-    vap_info->u.bss_info.interworking.interworking.venueType = VenueType;
+    vap_info->u.bss_info.interworking.venueGroup = VenueGroup;
+    vap_info->u.bss_info.interworking.venueType = VenueType;
+
+    memset(&radio_payload, 0, sizeof(radio_payload));
 
     validate_param_object(interworking, "ANQP",anqp);
 
-    if (validate_anqp(anqp, &vap_info->u.bss_info.interworking, execRetVal) != 0) {
+    if (validate_anqp(anqp, &vap_info->u.bss_info.interworking, &radio_payload, execRetVal) != 0) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed\n", __func__, __LINE__);
         return RETURN_ERR;
-    } else {
-        cJSON *anqpString = cJSON_CreateObject();
-        cJSON_AddItemReferenceToObject(anqpString, "ANQP", (cJSON *)anqp);
-        cJSON_PrintPreallocated(anqpString, (char *)&vap_info->u.bss_info.interworking.anqp.anqpParameters, sizeof(vap_info->u.bss_info.interworking.anqp.anqpParameters),false);
-        cJSON_Delete(anqpString);
     }
 
     validate_param_object(interworking, "Passpoint",passpoint);
 
-    if (validate_passpoint(passpoint, &vap_info->u.bss_info.interworking, execRetVal) != 0) {
+    if (validate_passpoint(passpoint, &vap_info->u.bss_info.interworking, &radio_payload, execRetVal) != 0) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed\n", __func__, __LINE__);
         return RETURN_ERR;
-    } else {
-        cJSON *hs2String = cJSON_CreateObject();
-        cJSON_AddItemReferenceToObject(hs2String, "Passpoint", (cJSON *)passpoint);
-        cJSON_PrintPreallocated(hs2String, (char *)&vap_info->u.bss_info.interworking.passpoint.hs2Parameters, sizeof(vap_info->u.bss_info.interworking.passpoint.hs2Parameters),false);
-        cJSON_Delete(hs2String);
+    }
+
+    if (passpoint_enabled != NULL) {
+        *passpoint_enabled = radio_payload.passpoint.enable;
     }
 
     return RETURN_OK;
@@ -1230,7 +1230,7 @@ int validate_xfinity_secure_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pEr
             wifi_util_dbg_print(WIFI_PASSPOINT,"VAP entry is NULL\n");
             return RETURN_ERR;
         }
-        
+
 	const cJSON *security, *interworking;
 
 	validate_param_object(vap, "Security",security);
@@ -1242,7 +1242,9 @@ int validate_xfinity_secure_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pEr
 
 	validate_param_object(vap, "Interworking",interworking);
 
-	if (validate_interworking(interworking, vap_info, execRetVal) != RETURN_OK) {
+
+
+	if (validate_interworking(interworking, vap_info, NULL, execRetVal) != RETURN_OK) {
             return RETURN_ERR;
 	}
 
@@ -1307,11 +1309,13 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
 
         validate_param_object(vap, "Interworking",interworking);
 
-        if (validate_interworking(interworking, vap_info, execRetVal) != RETURN_OK) {
+        bool passpoint_enabled = false;
+
+        if (validate_interworking(interworking, vap_info, &passpoint_enabled, execRetVal) != RETURN_OK) {
             return RETURN_ERR;
         }
 
-        if (vap_info->u.bss_info.interworking.passpoint.enable) {
+        if (passpoint_enabled) {
             get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, [%s] Passpoint cannot be enabled on hotspot open vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Passpoint cannot be enabled on hotspot open vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
@@ -1383,11 +1387,13 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
 
         validate_param_object(vap, "Interworking",interworking);
 
-        if (validate_interworking(interworking, vap_info, execRetVal) != RETURN_OK) {
+        bool passpoint_enabled = false;
+
+        if (validate_interworking(interworking, vap_info, &passpoint_enabled, execRetVal) != RETURN_OK) {
             return RETURN_ERR;
         }
 
-        if (vap_info->u.bss_info.interworking.passpoint.enable) {
+        if (passpoint_enabled) {
             get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, [%s] Passpoint cannot be enabled on private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Passpoint cannot be enabled on private vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
@@ -1459,11 +1465,13 @@ int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRet
 
         validate_param_object(vap, "Interworking",interworking);
 
-        if (validate_interworking(interworking, vap_info, execRetVal) != RETURN_OK) {
+        bool passpoint_enabled = false;
+
+        if (validate_interworking(interworking, vap_info, &passpoint_enabled, execRetVal) != RETURN_OK) {
             return RETURN_ERR;
         }
 
-        if (vap_info->u.bss_info.interworking.passpoint.enable) {
+        if (passpoint_enabled) {
             get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, [%s] Passpoint cannot be enabled on private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Passpoint cannot be enabled on private vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;

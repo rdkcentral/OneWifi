@@ -33,7 +33,8 @@ extern webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_in
 extern webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj);
 extern webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_info,
-    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj);
+    const rdk_wifi_vap_info_t *rdk_vap_info, const wifi_radio_interworking_t *payload,
+    cJSON *vap_obj);
 extern webconfig_error_t encode_lnf_psk_vap_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj);
 extern webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info,
@@ -51,7 +52,7 @@ extern webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_v
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop);
 extern webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap,
     wifi_vap_info_t *vap_info, rdk_wifi_vap_info_t *rdk_vap_info,
-    wifi_platform_property_t *wifi_prop);
+    wifi_platform_property_t *wifi_prop, wifi_radio_interworking_t *payload);
 extern webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop);
 extern webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
@@ -258,7 +259,7 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
             (strlen(vap->vap_name) != 0)) {
             obj = cJSON_CreateObject();
             cJSON_AddItemToArray(obj_array, obj);
-            if (encode_hotspot_secure_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
+            if (encode_hotspot_secure_vap_object(vap, rdk_vap, &radio->interworking_payload, obj) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
                     "%s:%d: Failed to encode hotspot secure vap object for Radio index:%d\n",
                     __func__, __LINE__, radio_index);
@@ -459,7 +460,8 @@ webconfig_error_t decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
             }
         } else if (strncmp(name, "hotspot_secure", strlen("hotspot_secure")) == 0) {
             if (decode_hotspot_secure_vap_object(obj_vap, vap_info, rdk_vap_info,
-                    &params->hal_cap.wifi_prop) != webconfig_error_none) {
+                    &params->hal_cap.wifi_prop,
+                    &params->radios[radio_index].interworking_payload) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                     __func__, __LINE__);
                 cJSON_Delete(json);

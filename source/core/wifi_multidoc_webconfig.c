@@ -846,6 +846,43 @@ done:
     return status;
 }
 
+static const char *get_interworking_error_msg(webconfig_error_t err)
+{
+    switch (err) {
+        case webconfig_error_empty_anqp:
+            return "Interworking: Empty ANQP Entry";
+        case webconfig_error_venue_entries:
+            return "Interworking: Exceeded Max number of Venue entries";
+        case webconfig_error_venue_name_size:
+            return "Interworking: Invalid size for Venue name";
+        case webconfig_error_oui_entries:
+            return "Interworking: Invalid number of OUIs";
+        case webconfig_error_oui_length:
+            return "Interworking: Invalid OUI length";
+        case webconfig_error_oui_char:
+            return "Interworking: Invalid OUI character";
+        case webconfig_error_ipaddress:
+            return "Interworking: Invalid IPAddressTypeAvailabilityANQPElement";
+        case webconfig_error_realm_entries:
+            return "Interworking: Exceeded max number of Realm entries";
+        case webconfig_error_realm_length:
+            return "Interworking: Invalid Realm Length";
+        case webconfig_error_eap_entries:
+            return "Interworking: Invalid number of EAP entries in realm";
+        case webconfig_error_eap_length:
+            return "Interworking: Invalid EAP Length in NAIRealmANQPElement Data";
+        case webconfig_error_eap_value:
+            return "Interworking: Invalid EAP value in NAIRealmANQPElement Data";
+        case webconfig_error_auth_entries:
+            return "Interworking: Invalid number of Auth entries in EAP Method";
+        case webconfig_error_auth_param:
+            return "Interworking: Auth param missing in RealmANQP EAP Data";
+        case webconfig_error_decode:
+        default:
+            return "Interworking objects validation failed";
+    }
+}
+
 static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, pErr execRetVal)
 {
     unsigned int radio_index = 0;
@@ -1181,19 +1218,31 @@ static int update_xfinity_vap_info(cJSON *blob, webconfig_subdoc_data_t *data, p
             }
             return RETURN_ERR;
         }
-        /* decode interworking object */
-        if (decode_interworking_object(interworking_obj, &vap_info->u.bss_info.interworking) !=
-            webconfig_error_none) {
+        /* decode interworking object; ANQP/Passpoint are applied only for hotspot secure */
+        webconfig_error_t interworking_ret = decode_interworking_object(interworking_obj,
+            &vap_info->u.bss_info.interworking,
+            (strncmp(vap_info->vap_name, "hotspot_secure", strlen("hotspot_secure")) == 0) ?
+                &params->radios[radio_index].interworking_payload : NULL);
+        if (interworking_ret != webconfig_error_none) {
+            const char *interworking_err_msg = get_interworking_error_msg(interworking_ret);
+
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d: Interworking objects validation failed for %s\n", __FUNCTION__, __LINE__,
-                vap_info->vap_name);
+                "%s:%d: Interworking objects validation failed for %s, err:%d (%s)\n",
+                __FUNCTION__, __LINE__, vap_info->vap_name, interworking_ret,
+                interworking_err_msg);
             if (execRetVal) {
-                strncpy(execRetVal->ErrorMsg, "Interworking objects validation failed",
-                    sizeof(execRetVal->ErrorMsg) - 1);
+                snprintf(execRetVal->ErrorMsg, sizeof(execRetVal->ErrorMsg), "%s for %s",
+                    interworking_err_msg, vap_info->vap_name);
             }
             return RETURN_ERR;
         }
 
+        if (strncmp(vap_info->vap_name, "hotspot_secure", strlen("hotspot_secure")) == 0) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: vap:%s radio:%d interworkingEnabled:%d passpoint.enable:%d\n", __func__, __LINE__,
+                vap_info->vap_name, (int)radio_index,
+                vap_info->u.bss_info.interworking.interworkingEnabled,
+                params->radios[radio_index].interworking_payload.passpoint.enable);
+        }
         cac_obj = cJSON_GetObjectItem(vb_entry, "VapConnectionControl");
         /*decode cac object */
         if (!cac_obj) {

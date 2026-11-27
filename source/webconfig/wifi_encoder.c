@@ -895,9 +895,6 @@ webconfig_error_t encode_config_object(const wifi_global_config_t *config_info, 
 }
 
 
-extern const char* get_anqp_json_by_vap_name(const char* vap_name);
-extern const char* get_passpoint_json_by_vap_name(const char* vap_name);
-
 webconfig_error_t encode_anqp_object(const char *vap_name, cJSON *inter,const unsigned char* anqp)
 {
     cJSON *anqpElement = NULL;
@@ -949,115 +946,116 @@ webconfig_error_t encode_passpoint_object(const char *vap_name, cJSON *inter,con
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Passpoint element already exsisting in json\n", __func__, __LINE__);
         pass = cJSON_GetObjectItem(p_root,  (const char * const) "Passpoint");
         cJSON_DetachItemViaPointer(p_root, pass);
-        cJSON_AddItemToObject(inter, "Passpoint", pass);
         cJSON_Delete(p_root);
     } else {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Add Passpoint element to json\n", __func__, __LINE__);
-        cJSON_AddItemToObject(inter, "Passpoint", p_root);
+        pass = p_root;
     }
+
+    cJSON_AddItemToObject(inter, "Passpoint", pass);
 
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *interworking_info, cJSON *interworking)
+webconfig_error_t encode_interworking_common_object(const wifi_InterworkingElement_t *elem, cJSON *interworking)
 {
     cJSON *obj;
     bool invalid_venue_group_type = false;
 
-    cJSON_AddBoolToObject(interworking, "InterworkingEnable", interworking_info->interworking.interworkingEnabled);
+    cJSON_AddBoolToObject(interworking, "InterworkingEnable", elem->interworkingEnabled);
 
-    if (interworking_info->interworking.accessNetworkType > 5) {
+    if (elem->accessNetworkType > 5) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Encode failed for AccessNetworkType\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
-    cJSON_AddNumberToObject(interworking, "AccessNetworkType", interworking_info->interworking.accessNetworkType);
-    cJSON_AddBoolToObject(interworking, "Internet", interworking_info->interworking.internetAvailable);
-    cJSON_AddBoolToObject(interworking, "ASRA", interworking_info->interworking.asra);
-    cJSON_AddBoolToObject(interworking, "ESR", interworking_info->interworking.esr);
-    cJSON_AddBoolToObject(interworking, "UESA", interworking_info->interworking.uesa);
-    cJSON_AddBoolToObject(interworking, "HESSOptionPresent", interworking_info->interworking.hessOptionPresent);
-    cJSON_AddStringToObject(interworking, "HESSID", interworking_info->interworking.hessid);
+    cJSON_AddNumberToObject(interworking, "AccessNetworkType", elem->accessNetworkType);
+    cJSON_AddBoolToObject(interworking, "Internet", elem->internetAvailable);
+    cJSON_AddBoolToObject(interworking, "ASRA", elem->asra);
+    cJSON_AddBoolToObject(interworking, "ESR", elem->esr);
+    cJSON_AddBoolToObject(interworking, "UESA", elem->uesa);
+    cJSON_AddBoolToObject(interworking, "HESSOptionPresent", elem->hessOptionPresent);
+    cJSON_AddStringToObject(interworking, "HESSID", elem->hessid);
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(interworking, "Venue", obj);
-    if (interworking_info->interworking.venueType > 15) {
+    if (elem->venueType > 15) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Encode failed for VenueGroup\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
-    cJSON_AddBoolToObject(obj, "VenueOptionPresent", interworking_info->interworking.venueOptionPresent);
-    cJSON_AddNumberToObject(obj, "VenueType", interworking_info->interworking.venueType);
+    cJSON_AddBoolToObject(obj, "VenueOptionPresent", elem->venueOptionPresent);
+    cJSON_AddNumberToObject(obj, "VenueType", elem->venueType);
 
-    switch (interworking_info->interworking.venueGroup) {
+    switch (elem->venueGroup) {
         case 0:
-            if (interworking_info->interworking.venueType > 0) {
+            if (elem->venueType > 0) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 1:
-            if (interworking_info->interworking.venueType > 15) {
+            if (elem->venueType > 15) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 2:
-            if (interworking_info->interworking.venueType > 9) {
+            if (elem->venueType > 9) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 3:
-            if (interworking_info->interworking.venueType > 3) {
+            if (elem->venueType > 3) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 4:
-            if (interworking_info->interworking.venueType > 1) {
+            if (elem->venueType > 1) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 5:
-            if (interworking_info->interworking.venueType > 5) {
+            if (elem->venueType > 5) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 6:
-            if (interworking_info->interworking.venueType > 5) {
+            if (elem->venueType > 5) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 7:
-            if (interworking_info->interworking.venueType > 4) {
+            if (elem->venueType > 4) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 8:
-            if (interworking_info->interworking.venueType > 0) {
+            if (elem->venueType > 0) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 9:
-            if (interworking_info->interworking.venueType > 0) {
+            if (elem->venueType > 0) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 10:
-            if (interworking_info->interworking.venueType > 7) {
+            if (elem->venueType > 7) {
                 invalid_venue_group_type = true;
             }
             break;
 
         case 11:
-            if (interworking_info->interworking.venueType > 6) {
+            if (elem->venueType > 6) {
                 invalid_venue_group_type = true;
             }
             break;
@@ -1068,7 +1066,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
         return webconfig_error_encode;
     }
 
-    cJSON_AddNumberToObject(obj, "VenueGroup", interworking_info->interworking.venueGroup);
+    cJSON_AddNumberToObject(obj, "VenueGroup", elem->venueGroup);
 
     return webconfig_error_none;
 }
@@ -1397,23 +1395,11 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
         return webconfig_error_encode;
 
     }
-    webconfig_error_t ret = encode_anqp_object(vap_info->vap_name, obj, vap_info->u.bss_info.interworking.anqp.anqpParameters);
-    if(ret != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d anqp encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_encode;
-    }
-
-    ret = encode_passpoint_object(vap_info->vap_name, obj, vap_info->u.bss_info.interworking.passpoint.hs2Parameters);
-    if(ret != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d passpoint encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_encode;
-    }
-
     return webconfig_error_none;
 }
 
 webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_info,
-    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
+    const rdk_wifi_vap_info_t *rdk_vap_info, const wifi_radio_interworking_t *payload, cJSON *vap_obj)
 {
     cJSON *obj;
     bool is_6g;
@@ -1447,13 +1433,17 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
 
     }
 
-    webconfig_error_t ret = encode_anqp_object(vap_info->vap_name, obj, vap_info->u.bss_info.interworking.anqp.anqpParameters);
+    if (payload == NULL) {
+        return webconfig_error_none;
+    }
+
+    webconfig_error_t ret = encode_anqp_object(vap_info->vap_name, obj, payload->anqp.anqpParameters);
     if(ret != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d anqp encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
-    ret = encode_passpoint_object(vap_info->vap_name, obj, vap_info->u.bss_info.interworking.passpoint.hs2Parameters);
+    ret = encode_passpoint_object(vap_info->vap_name, obj, payload->passpoint.hs2Parameters);
     if(ret != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d passpoint encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;

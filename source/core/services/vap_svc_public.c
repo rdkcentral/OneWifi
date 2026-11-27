@@ -162,6 +162,9 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     wifi_vap_info_map_t *p_tgt_vap_map, *p_tgt_created_vap_map;
     bool greylist_rfc = false;
     bool rfc_passpoint_enable = false;
+    wifi_radio_interworking_t *payload = NULL;
+    wifi_radio_interworking_t *hal_payload = NULL;
+    wifi_radio_interworking_t *hal_iw_payload = NULL;
     wifi_ctrl_t *ctrl;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
@@ -177,6 +180,14 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     if (p_tgt_created_vap_map == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
         free(p_tgt_vap_map);
+        return -1;
+    }
+
+    hal_iw_payload = (wifi_radio_interworking_t *)malloc(sizeof(wifi_radio_interworking_t));
+    if (hal_iw_payload == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
+        free(p_tgt_vap_map);
+        free(p_tgt_created_vap_map);
         return -1;
     }
     memset((unsigned char *)p_tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
@@ -199,12 +210,20 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                     sizeof(wifi_vap_info_t));
         p_tgt_vap_map->vap_array[0].u.bss_info.network_initiated_greylist = greylist_rfc;
         p_tgt_vap_map->num_vaps = 1;
+        payload = NULL;
+        hal_payload = NULL;
         if (isVapHotspotSecure(map->vap_array[i].vap_index)) {
-               if ((rfc_passpoint_enable == false) && (p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable == true)) {
-                    wifi_util_error_print(WIFI_CTRL,"%s:: radio_index:%d vap_index:%d Passpoint cannot be enabled when RFC is disabled RFC=%d\n",__FUNCTION__,
-                                                radio_index, map->vap_array[i].vap_index,rfc_passpoint_enable);
-                    p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = false;
-                }
+            payload = Get_wifi_radio_interworking_payload(map->vap_array[i].vap_index);
+            hal_payload = payload;
+            if ((rfc_passpoint_enable == false) && (payload != NULL) &&
+                (payload->passpoint.enable == true)) {
+                wifi_util_error_print(WIFI_CTRL,"%s:: radio_index:%d vap_index:%d Passpoint cannot be enabled when RFC is disabled RFC=%d\n",__FUNCTION__,
+                                            radio_index, map->vap_array[i].vap_index,rfc_passpoint_enable);
+                // Disable passpoint only for the HAL; DB and cache keep the configured value.
+                memcpy(hal_iw_payload, payload, sizeof(wifi_radio_interworking_t));
+                hal_iw_payload->passpoint.enable = false;
+                hal_payload = hal_iw_payload;
+            }
         }
         // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP entries are
         // saved to VAP_Config with exist flag set to 0 and default values.
@@ -223,6 +242,15 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
 #endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
+        if ((hal_payload != NULL) &&
+            (wifi_hal_setRadioInterworkingPayload(radio_index, hal_payload) != RETURN_OK)) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to set interworking payload: radio_index:%d vap_index:%d\n",
+                __func__, __LINE__, radio_index, map->vap_array[i].vap_index);
+        }
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: HAL create vap:%s radio:%d interworkingEnabled:%d passpoint.enable:%d\n", __func__, __LINE__,
+            map->vap_array[i].vap_name, (int)radio_index,
+            p_tgt_vap_map->vap_array[0].u.bss_info.interworking.interworkingEnabled,
+            hal_payload ? hal_payload->passpoint.enable : -1);
         if (wifi_hal_createVAP(radio_index, p_tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
@@ -247,15 +275,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         get_wifidb_obj()->desc.print_fn("%s: wifi vap create success: radio_index:%d vap_index:%d \n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         get_wifidb_obj()->desc.print_fn("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
-        wifi_util_error_print(WIFI_CTRL,"%s: passpoint.enable %d\n", __FUNCTION__,map->vap_array[i].u.bss_info.interworking.passpoint.enable);
-        //Storing the config of passpoint in DB as received from blob though RFC is disabled
-        if (isVapHotspotSecure(map->vap_array[i].vap_index)) {
-               if ((rfc_passpoint_enable == false) && (map->vap_array[i].u.bss_info.interworking.passpoint.enable == true)) {
-                   p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = true;
-                }
-        }
-        wifi_util_error_print(WIFI_CTRL, "%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,
-            p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
+        // Storing the config of passpoint in DB as received from blob though RFC is disabled
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
             sizeof(wifi_vap_info_t));
         memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i],
@@ -266,10 +286,11 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             &map->vap_array[i].u.bss_info.interworking);
         get_wifidb_obj()->desc.update_wifi_security_config_fn(map->vap_array[i].vap_name,
             &map->vap_array[i].u.bss_info.security);
-        get_wifidb_obj()->desc.update_wifi_passpoint_cfg_fn(map->vap_array[i].vap_name,
-            &map->vap_array[i].u.bss_info.interworking);
-        get_wifidb_obj()->desc.update_wifi_anqp_cfg_fn(map->vap_array[i].vap_name,
-             &map->vap_array[i].u.bss_info.interworking);
+        if (payload != NULL) {
+            get_wifidb_obj()->desc.update_wifi_passpoint_cfg_fn(map->vap_array[i].vap_name,
+                payload);
+            get_wifidb_obj()->desc.update_wifi_anqp_cfg_fn(map->vap_array[i].vap_name, payload);
+        }
         if (isVapHotspot(map->vap_array[i].vap_index)) {
             get_wifidb_obj()->desc.update_wifi_cac_cfg_fn(p_tgt_vap_map);
         }
@@ -282,6 +303,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     update_xfinity_acl_entries(p_tgt_vap_map->vap_array[0].vap_name);
     free(p_tgt_vap_map);
     free(p_tgt_created_vap_map);
+    free(hal_iw_payload);
     return 0;
 }
 int update_xfinity_acl_entries(char* tgt_vap_name)
