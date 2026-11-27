@@ -42,7 +42,8 @@ void cac_print(char *format, ...)
     strncat(buff, " ", strlen(buff));
 
     va_start(list, format);
-    vsprintf(&buff[strlen(buff)], format, list);
+    size_t _off = strlen(buff);
+    vsnprintf(&buff[_off], sizeof(buff) - _off, format, list);
     va_end(list);
 
     fpg = fopen("/rdklogs/logs/wifiConnAdmissionCtrl.txt", "a+");
