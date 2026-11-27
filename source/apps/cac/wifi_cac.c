@@ -1050,6 +1050,7 @@ int cac_event_hal_assoc_device(wifi_app_t *apps, void *arg)
 
     if ((sta_info = (cac_associated_devices_t *)hash_map_get(sta_map, client_mac)) == NULL) {
         sta_info = malloc(sizeof(cac_associated_devices_t));
+	if (sta_info == NULL) return RETURN_OK;
         sta_info->ap_index = assoc_data->ap_index;
         sta_info->sampling_count = sampling_count_conf;
         sta_info->sampling_interval = sampling_interval_conf;
