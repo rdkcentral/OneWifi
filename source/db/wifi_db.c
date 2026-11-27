@@ -520,6 +520,11 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else if (isVapLnfSecure (vap_index)) {
             cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
+        } else if (isVapXhs(vap_index) && band != WIFI_FREQUENCY_6_BAND) {
+            cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+            cfg.u.bss_info.security.encr = wifi_encryption_aes;
+            cfg.u.bss_info.bssHotspot = false;
+            cfg.u.bss_info.mbo_enabled = false;
         } else if (isVapPrivate(vap_index))  {
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
