@@ -3670,6 +3670,7 @@ int wifidb_get_wifi_ignite_config(ignite_config_t *ignite_cfg)
     ignite_cfg->max_chanutil_threshold = (float)pcfg->max_chanutil_threshold;
     ignite_cfg->SNR_threshold          = (float)pcfg->snr_threshold;
     ignite_cfg->SNR_difference         = (float)pcfg->snr_difference;
+    free(pcfg);
     return 0;
 }
 
