@@ -2149,6 +2149,13 @@ Radio_GetParamBoolValue
     }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+#ifdef CONFIG_IEEE80211BN
+    if (AnscEqualString(ParamName, "X_IPQ_COM_NPCAEnable", TRUE)) {
+        *pBool = pcfg->npca_enable;
+        return TRUE;
+    }
+#endif
+
     return FALSE;
 }
 
@@ -2601,6 +2608,17 @@ Radio_GetParamUlongValue
     }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+#ifdef CONFIG_IEEE80211BN
+    if (AnscEqualString(ParamName, "X_IPQ_COM_NPCAChannel", TRUE)) {
+        *puLong = pcfg->npca_channel;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "X_IPQ_COM_NPCABitmap", TRUE)) {
+        *puLong = pcfg->npca_bitmap;
+        return TRUE;
+    }
+#endif
+
     return FALSE;
 }
 
@@ -3381,6 +3399,21 @@ Radio_SetParamBoolValue
 #endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         return TRUE;
     }
+#ifdef CONFIG_IEEE80211BN
+    if (AnscEqualString(ParamName, "X_IPQ_COM_NPCAEnable", TRUE)) {
+        if (wifiRadioOperParam->npca_enable == bValue) {
+            return TRUE;
+        }
+        wifiRadioOperParam->npca_enable = bValue;
+        if (!bValue) {
+            wifiRadioOperParam->npca_channel = 0;
+            wifiRadioOperParam->npca_bitmap = 0;
+        }
+        is_radio_config_changed = TRUE;
+        return TRUE;
+    }
+#endif
+
     return FALSE;
 }
 
@@ -4090,6 +4123,35 @@ Radio_SetParamUlongValue
         return FALSE;
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
     }
+
+#ifdef CONFIG_IEEE80211BN
+    if (AnscEqualString(ParamName, "X_IPQ_COM_NPCAChannel", TRUE)) {
+        if (!wifiRadioOperParam->npca_enable || uValue > 255) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: Invalid NPCA channel for radio %d\n",
+                __func__, __LINE__, instance_number);
+            return FALSE;
+        }
+        if (wifiRadioOperParam->npca_channel == uValue) {
+            return TRUE;
+        }
+        wifiRadioOperParam->npca_channel = (UINT)uValue;
+        is_radio_config_changed = TRUE;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "X_IPQ_COM_NPCABitmap", TRUE)) {
+        if (!wifiRadioOperParam->npca_enable || uValue > 65535) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: Invalid NPCA bitmap for radio %d\n",
+                __func__, __LINE__, instance_number);
+            return FALSE;
+        }
+        if (wifiRadioOperParam->npca_bitmap == uValue) {
+            return TRUE;
+        }
+        wifiRadioOperParam->npca_bitmap = (UINT)uValue;
+        is_radio_config_changed = TRUE;
+        return TRUE;
+    }
+#endif
 
     return FALSE;
 }

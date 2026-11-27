@@ -1545,6 +1545,24 @@ INSTMSMT_PH2 -->
                             <writable>false</writable>
                         </parameter>
                         <parameter>
+                            <name>X_IPQ_COM_NPCAEnable</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>X_IPQ_COM_NPCAChannel</name>
+                            <type>unsignedInt</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>X_IPQ_COM_NPCABitmap</name>
+                            <type>unsignedInt</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
                             <name>X_RDK_EcoPowerDown</name>
                             <type>boolean</type>
                             <syntax>bool</syntax>

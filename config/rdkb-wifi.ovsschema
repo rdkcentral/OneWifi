@@ -1,7 +1,7 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.057",
-  "cksum": "1800959940 61002",
+  "version": "1.00.058",
+  "cksum": "1772315631 61732",
   "tables": {
     "Wifi_Device_Config": {
       "columns": {
@@ -1541,6 +1541,39 @@
           "type": {
             "key": {
               "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "npca_enable": {
+          "type": {
+            "key": {
+              "type": "integer",
+              "minInteger": 0,
+              "maxInteger": 1
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "npca_channel": {
+          "type": {
+            "key": {
+              "type": "integer",
+              "minInteger": 0,
+              "maxInteger": 255
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "npca_bitmap": {
+          "type": {
+            "key": {
+              "type": "integer",
+              "minInteger": 0,
+              "maxInteger": 65535
             },
             "min": 0,
             "max": 1

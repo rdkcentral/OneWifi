@@ -1248,6 +1248,18 @@
 										"type": "boolean",
 										"writable": false
 									},
+									"X_IPQ_COM_NPCAEnable": {
+										"type": "boolean",
+										"writable": true
+									},
+									"X_IPQ_COM_NPCAChannel": {
+										"$ref": "#/definitions/uint32_t",
+										"writable": true
+									},
+									"X_IPQ_COM_NPCABitmap": {
+										"$ref": "#/definitions/uint32_t",
+										"writable": true
+									},
 									"X_RDK_EcoPowerDown": {
 										"type": "boolean",
 										"writable": true

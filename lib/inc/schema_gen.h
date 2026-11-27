@@ -1589,6 +1589,9 @@
         PJS_OVS_INT(admin_control) \
         PJS_OVS_INT(chan_util_threshold) \
         PJS_OVS_BOOL(chan_util_selfheal_enable) \
+        PJS_OVS_INT(npca_enable) \
+        PJS_OVS_INT(npca_channel) \
+        PJS_OVS_INT(npca_bitmap) \
         PJS_OVS_BOOL(eco_power_down) \
         PJS_OVS_INT(Tscan) \
         PJS_OVS_INT(Nscan) \
@@ -3334,6 +3337,9 @@
     COLUMN(admin_control) \
     COLUMN(chan_util_threshold) \
     COLUMN(chan_util_selfheal_enable) \
+    COLUMN(npca_enable) \
+    COLUMN(npca_channel) \
+    COLUMN(npca_bitmap) \
     COLUMN(eco_power_down) \
     COLUMN(Tscan) \
     COLUMN(Nscan) \
@@ -4659,6 +4665,9 @@
 #define SCHEMA__Wifi_Radio_Config__admin_control "admin_control"
 #define SCHEMA__Wifi_Radio_Config__chan_util_threshold "chan_util_threshold"
 #define SCHEMA__Wifi_Radio_Config__chan_util_selfheal_enable "chan_util_selfheal_enable"
+#define SCHEMA__Wifi_Radio_Config__npca_enable "npca_enable"
+#define SCHEMA__Wifi_Radio_Config__npca_channel "npca_channel"
+#define SCHEMA__Wifi_Radio_Config__npca_bitmap "npca_bitmap"
 #define SCHEMA__Wifi_Radio_Config__eco_power_down "eco_power_down"
 #define SCHEMA__Wifi_Radio_Config__Tscan "Tscan"
 #define SCHEMA__Wifi_Radio_Config__Nscan "Nscan"

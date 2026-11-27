@@ -2208,6 +2208,11 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     if (IS_CHANGED(old->chanUtilThreshold,new->chanUtilThreshold)) return true;
     if (IS_CHANGED(old->chanUtilSelfHealEnable,new->chanUtilSelfHealEnable)) return true;
     if (IS_CHANGED(old->variant,new->variant)) return true;
+#ifdef CONFIG_IEEE80211BN
+    if (IS_CHANGED(old->npca_enable, new->npca_enable)) return true;
+    if (IS_CHANGED(old->npca_channel, new->npca_channel)) return true;
+    if (IS_CHANGED(old->npca_bitmap, new->npca_bitmap)) return true;
+#endif
     if (IS_CHANGED(old->EcoPowerDown,new->EcoPowerDown)) return true;
     if (IS_CHANGED(old->DFSTimer, new->DFSTimer)) return true;
     for (int i = 0; i < MAX_AMSDU_TID; ++i)

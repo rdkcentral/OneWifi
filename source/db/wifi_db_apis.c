@@ -100,6 +100,7 @@
 #define ONEWIFI_DB_VERSION_2G11AXENABLE_RFC_FLAG 100054
 #define ONEWIFI_DB_VERSION_2GIEEE80211AX_FLAG 100056
 #define ONEWIFI_DB_VERSION_IEEE80211BN_FLAG 100057
+#define ONEWIFI_DB_VERSION_NPCA_FLAG 100058
 
 #define IGNITE_MIN_CHUTIL_THRESHOLD  50
 #define IGNITE_MAX_CHUTIL_THRESHOLD 100
@@ -635,6 +636,11 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         l_radio_cfg->adminControl = new_rec->admin_control;
         l_radio_cfg->chanUtilThreshold = new_rec->chan_util_threshold;
         l_radio_cfg->chanUtilSelfHealEnable = new_rec->chan_util_selfheal_enable;
+#ifdef CONFIG_IEEE80211BN
+        l_radio_cfg->npca_enable = new_rec->npca_enable;
+        l_radio_cfg->npca_channel = new_rec->npca_channel;
+        l_radio_cfg->npca_bitmap = new_rec->npca_bitmap;
+#endif
         l_radio_cfg->EcoPowerDown = new_rec->eco_power_down;
         l_radio_cfg->DFSTimer = new_rec->dfs_timer;
         if(strlen(new_rec->radar_detected) != 0) {
@@ -2233,6 +2239,11 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     cfg.admin_control = config->adminControl;
     cfg.chan_util_threshold = config->chanUtilThreshold;
     cfg.chan_util_selfheal_enable = config->chanUtilSelfHealEnable;
+#ifdef CONFIG_IEEE80211BN
+    cfg.npca_enable = config->npca_enable;
+    cfg.npca_channel = config->npca_channel;
+    cfg.npca_bitmap = config->npca_bitmap;
+#endif
     cfg.eco_power_down = config->EcoPowerDown;
     cfg.dfs_timer = config->DFSTimer;
     if(strlen(config->radarDetected) != 0) {
@@ -2453,6 +2464,11 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     config->adminControl = cfg->admin_control;
     config->chanUtilThreshold = cfg->chan_util_threshold;
     config->chanUtilSelfHealEnable = cfg->chan_util_selfheal_enable;
+#ifdef CONFIG_IEEE80211BN
+    config->npca_enable = cfg->npca_enable;
+    config->npca_channel = cfg->npca_channel;
+    config->npca_bitmap = cfg->npca_bitmap;
+#endif
     config->EcoPowerDown = cfg->eco_power_down;
     config->DFSTimer = cfg->dfs_timer;
     if(strlen(cfg->radar_detected) != 0) {
@@ -5271,6 +5287,19 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
         }
     }
 #endif /* CONFIG_IEEE80211BN */
+
+#ifdef CONFIG_IEEE80211BN
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_NPCA_FLAG) {
+        config->npca_enable = FALSE;
+        config->npca_channel = 0;
+        config->npca_bitmap = 0;
+        if (wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB, "%s:%d: Error updating NPCA defaults for radio %u\n",
+                __func__, __LINE__, index);
+            return;
+        }
+    }
+#endif
 }
 
 int wifidb_get_default_mld_link_id(int band)
@@ -7833,6 +7862,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg->adminControl = 0;
     cfg->chanUtilThreshold = 90;
     cfg->chanUtilSelfHealEnable = 0;
+#ifdef CONFIG_IEEE80211BN
+    cfg->npca_enable = FALSE;
+    cfg->npca_channel = 0;
+    cfg->npca_bitmap = 0;
+#endif
     cfg->EcoPowerDown = false;
     cfg->factoryResetSsid = 0;
     if ((is_device_type_sr213() == true) && (WIFI_FREQUENCY_2_4_BAND == cfg->band)) {

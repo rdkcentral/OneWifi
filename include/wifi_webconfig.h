@@ -704,6 +704,40 @@ webconfig_error_t       encode_em_sta_link_subdoc(webconfig_t *config, webconfig
 webconfig_error_t       translate_to_em_sta_link_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_em_sta_link_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+#ifdef CONFIG_IEEE80211BN
+/* NPCA keys are optional so configurations saved before NPCA remain readable. */
+static inline webconfig_error_t decode_radio_npca_object(const cJSON *obj_radio,
+    wifi_radio_operationParam_t *radio_info)
+{
+    const char *keys[] = { "X_IPQ_COM_NPCAEnable", "X_IPQ_COM_NPCAChannel",
+        "X_IPQ_COM_NPCABitmap" };
+    const unsigned int limits[] = { 1, 255, 65535 };
+    unsigned int values[] = { 0, 0, 0 };
+    unsigned int i;
+
+    if (obj_radio == NULL || radio_info == NULL) {
+        return webconfig_error_decode;
+    }
+    for (i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
+        const cJSON *param = cJSON_GetObjectItemCaseSensitive(obj_radio, keys[i]);
+        if (param == NULL) {
+            continue;
+        }
+        /* Check the range before conversion, including NaN and fractional numbers. */
+        if (!cJSON_IsNumber(param) || !(param->valuedouble >= 0) ||
+            !(param->valuedouble <= limits[i]) ||
+            param->valuedouble != (unsigned int)param->valuedouble) {
+            return webconfig_error_decode;
+        }
+        values[i] = (unsigned int)param->valuedouble;
+    }
+    radio_info->npca_enable = values[0];
+    radio_info->npca_channel = values[0] ? values[1] : 0;
+    radio_info->npca_bitmap = values[0] ? values[2] : 0;
+    return webconfig_error_none;
+}
+#endif
+
 // EM AP Metrics report
 webconfig_error_t       init_em_ap_metrics_report_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_em_ap_metrics_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
