@@ -101,6 +101,7 @@ extern "C" {
     "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.NetworkDevicesStatus.MloRfcEnable"
 #define WIFI_INTERFACEDEVICESWIFI_MLORFCENABLE \
     "Device.DeviceInfo.X_RDKCENTRAL-COM_Report.InterfaceDevicesWifi.MloRfcEnable"
+#define WIFI_IGNORE_11V_DISASSOC  "Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_Ignore11vDisassoc"
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */

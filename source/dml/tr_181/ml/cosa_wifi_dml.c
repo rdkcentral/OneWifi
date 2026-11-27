@@ -6859,6 +6859,9 @@ AccessPoint_GetEntry
     return:     TRUE if succeeded.
 
 **********************************************************************/
+/* Last value applied via the DML; the setting is runtime-only and not persisted. */
+static BOOL g_ignore_11v_disassoc[MAX_VAP];
+
 BOOL
 AccessPoint_GetParamBoolValue
     (
@@ -6892,6 +6895,11 @@ AccessPoint_GetParamBoolValue
             return TRUE;
         }
         *pBool = pcfg->u.bss_info.enabled;
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_Ignore11vDisassoc", TRUE)) {
+        *pBool = (vap_index < MAX_VAP) ? g_ignore_11v_disassoc[vap_index] : FALSE;
         return TRUE;
     }
 
@@ -7562,6 +7570,22 @@ AccessPoint_SetParamBoolValue
 
     if (isVapSTAMesh(pcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_Ignore11vDisassoc", TRUE)) {
+        ignore_11v_disassoc_cmd_t cmd = { .ap_idx = (int)pcfg->vap_index, .ignore = bValue };
+
+        if (vap_index >= MAX_VAP) {
+            return FALSE;
+        }
+        if (push_event_to_ctrl_queue(&cmd, sizeof(cmd), wifi_event_type_command,
+                wifi_event_type_command_set_ignore_disassoc_timer, NULL) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: failed to enqueue command for vap %d\n",
+                __func__, __LINE__, cmd.ap_idx);
+            return FALSE;
+        }
+        g_ignore_11v_disassoc[vap_index] = bValue;
         return TRUE;
     }
 
