@@ -17011,7 +17011,7 @@ AssociatedDevice1_GetParamStringValue
 
 BOOL RSSMemory_GetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG *pULong)
 {
-    wifi_util_error_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
     UNREFERENCED_PARAMETER(hInsContext);
     wifi_global_param_t *pcfg = (wifi_global_param_t *)get_dml_wifi_global_param();
 
@@ -17070,7 +17070,7 @@ BOOL RSSMemory_GetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULON
 
 BOOL RSSMemory_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG iValue)
 {
-    wifi_util_error_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
     UNREFERENCED_PARAMETER(hInsContext);
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t *)get_dml_cache_global_wifi_config();
