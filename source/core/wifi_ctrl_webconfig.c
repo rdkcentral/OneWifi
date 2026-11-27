@@ -2422,6 +2422,125 @@ static void trigger_mlo_vap_reconfiguration(wifi_ctrl_t *ctrl, unsigned int radi
 }
 #endif /* CONFIG_IEEE80211BE */
 
+static int apply_radio_with_mlo_transition(rdk_wifi_radio_t *current,
+    wifi_radio_operationParam_t *requested)
+{
+#if defined(CONFIG_IEEE80211BE) && defined(CONFIG_GENERIC_MLO)
+    bool old_be = (current->oper.variant & WIFI_80211_VARIANT_BE) != 0;
+    bool new_be = (requested->variant & WIFI_80211_VARIANT_BE) != 0;
+    struct {
+        wifi_vap_info_map_t saved;
+        wifi_vap_info_map_t target;
+        wifi_vap_info_map_t work;
+        wifi_radio_operationParam_t old_radio;
+    } *transition;
+    unsigned int radio_index = current->vaps.radio_index;
+    bool vap_changed = false;
+    int ret;
+
+    if (old_be == new_be) {
+        return wifi_hal_setRadioOperatingParameters(radio_index, requested);
+    }
+
+    transition = calloc(1, sizeof(*transition));
+    if (transition == NULL) {
+        wifi_util_error_print(WIFI_MGR, "MLO_RADIO: could not allocate transition state\n");
+        return RETURN_ERR;
+    }
+    transition->old_radio = current->oper;
+    ret = wifi_hal_getRadioVapInfoMap(radio_index, &transition->work);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_MGR,
+            "MLO_RADIO: radio=%u failed to snapshot HAL VAPs rc=%d\n", radio_index, ret);
+        free(transition);
+        return ret;
+    }
+    for (unsigned int i = 0; i < transition->work.num_vaps; i++) {
+        wifi_vap_info_t *vap = &transition->work.vap_array[i];
+        bool enable_mld = false;
+
+        if (vap->vap_mode != wifi_vap_mode_ap) {
+            continue;
+        }
+        for (unsigned int j = 0; j < current->vaps.vap_map.num_vaps; j++) {
+            wifi_vap_info_t *desired = &current->vaps.vap_map.vap_array[j];
+
+            if (desired->vap_index == vap->vap_index && desired->vap_mode == wifi_vap_mode_ap) {
+                enable_mld = new_be && desired->u.bss_info.mld_info.common_info.mld_enable;
+                break;
+            }
+        }
+        if (vap->u.bss_info.mld_info.common_info.mld_enable != enable_mld) {
+            unsigned int slot = transition->saved.num_vaps++;
+
+            transition->saved.vap_array[slot] = *vap;
+            transition->target.vap_array[slot] = *vap;
+            transition->target.vap_array[slot].u.bss_info.mld_info.common_info.mld_enable =
+                enable_mld;
+            transition->target.num_vaps++;
+            vap_changed = true;
+        }
+    }
+    wifi_util_info_print(WIFI_MGR,
+        "MLO_RADIO: radio=%u BE transition %d->%d VAP transition=%d\n",
+        radio_index, old_be, new_be, vap_changed);
+
+    /* Detach MLO links before hostapd validates a non-EHT radio. */
+    if (!new_be && vap_changed) {
+        transition->work = transition->target;
+        ret = wifi_hal_createVAP(radio_index, &transition->work);
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_MGR,
+                "MLO_RADIO: radio=%u failed to detach links rc=%d\n", radio_index, ret);
+            goto restore_vaps;
+        }
+    }
+    ret = wifi_hal_setRadioOperatingParameters(radio_index, requested);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_MGR,
+            "MLO_RADIO: radio=%u radio apply failed rc=%d\n", radio_index, ret);
+        goto restore_radio;
+    }
+
+    /* Rejoin configured links only after EHT is enabled on the radio. */
+    if (new_be && vap_changed) {
+        transition->work = transition->target;
+        ret = wifi_hal_createVAP(radio_index, &transition->work);
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_MGR,
+                "MLO_RADIO: radio=%u failed to rejoin links rc=%d\n", radio_index, ret);
+            transition->work = transition->saved;
+            if (wifi_hal_createVAP(radio_index, &transition->work) != RETURN_OK) {
+                wifi_util_error_print(WIFI_MGR,
+                    "MLO_RADIO: radio=%u failed to detach links during rollback\n", radio_index);
+            }
+            goto restore_radio;
+        }
+    }
+    wifi_util_info_print(WIFI_MGR, "MLO_RADIO: radio=%u transition complete\n", radio_index);
+    free(transition);
+    return RETURN_OK;
+
+restore_radio:
+    if (wifi_hal_setRadioOperatingParameters(radio_index, &transition->old_radio) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MGR,
+            "MLO_RADIO: radio=%u failed to restore previous radio configuration\n", radio_index);
+    }
+restore_vaps:
+    if (vap_changed) {
+        transition->work = transition->saved;
+        if (wifi_hal_createVAP(radio_index, &transition->work) != RETURN_OK) {
+            wifi_util_error_print(WIFI_MGR,
+                "MLO_RADIO: radio=%u failed to restore previous VAP configuration\n", radio_index);
+        }
+    }
+    free(transition);
+    return ret;
+#else
+    return wifi_hal_setRadioOperatingParameters(current->vaps.radio_index, requested);
+#endif
+}
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -2532,7 +2651,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 return RETURN_ERR;
             }
 
-            ret = wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper);
+            ret = apply_radio_with_mlo_transition(mgr_radio_data, &radio_data->oper);
 
             if (ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
@@ -2723,8 +2842,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             return RETURN_ERR;
         }
 
-        ret = wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index,
-            &radio_data->oper);
+        ret = apply_radio_with_mlo_transition(mgr_radio_data, &radio_data->oper);
 
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
@@ -3605,4 +3723,3 @@ int register_with_webconfig_framework()
     wifi_util_info_print(WIFI_CTRL, "%s: Done Registering\n", __func__);
     return RETURN_OK;
 }
-
