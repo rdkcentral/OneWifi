@@ -4533,6 +4533,7 @@ wifi_region_t get_region_from_countrycode(wifi_countrycode_type_t countryCode)
     case wifi_countrycode_TR: /**< TURKEY */
     case wifi_countrycode_UA: /**< UKRAINE */
     case wifi_countrycode_GB: /**< UNITED KINGDOM */
+    case wifi_countrycode_GR: /**< GREECE */
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Countrycode %d part of EU region.\n", __func__,
             __LINE__, countryCode);
         return WIFI_REGION_EU;
@@ -4613,7 +4614,6 @@ wifi_region_t get_region_from_countrycode(wifi_countrycode_type_t countryCode)
     case wifi_countrycode_GN: /**< GUINEA */
     case wifi_countrycode_GP: /**< GUADELOUPE */
     case wifi_countrycode_GQ: /**< EQUATORIAL GUINEA */
-    case wifi_countrycode_GR: /**< GREECE */
     case wifi_countrycode_GS: /**< SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS */
     case wifi_countrycode_GT: /**< GUATEMALA */
     case wifi_countrycode_GU: /**< GUAM */
@@ -4753,6 +4753,11 @@ wifi_region_t get_region_from_countrycode(wifi_countrycode_type_t countryCode)
     default:
         return WIFI_REGION_UNKNOWN;
     }
+}
+
+BOOL is_etsi_regulatory_country(wifi_countrycode_type_t country_code)
+{
+    return get_region_from_countrycode(country_code) == WIFI_REGION_EU;
 }
 
 /* Function to update the operating classes in the oper structure */
