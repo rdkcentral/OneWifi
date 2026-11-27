@@ -2228,7 +2228,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
     get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: EcoPowerDown telemetry: %s %s uploaded for Radio %d\n", __FUNCTION__, eventName, active ? "Active" : "Inactive", index + 1);
-#if defined(DISABLE_ECO_REBOOT) && !defined(CONFIG_IEEE80211BE)
+#if defined(DISABLE_ECO_REBOOT)
     wifi_util_dbg_print(WIFI_WEBCONFIG,
         "%s: EcoPowerDown telemetry: Restarting OneWiFi to apply EcoMode. \n", __FUNCTION__);
     /**
@@ -2438,6 +2438,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 #if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
     bool old_ecomode = false;
     bool new_ecomode = false;
+    webconfig_subdoc_type_t doc_type;
 #endif
     // apply the radio and vap data
     for (i = 0; i < getNumberRadios(); i++) {
@@ -2562,7 +2563,19 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             //only if there is a change in the DM Device.WiFi.Radio.{i}.X_RDK_EcoPowerDown
             wifi_util_info_print(WIFI_MGR, "%s:%d: oldEco = %d  newEco = %d\n", __func__, __LINE__, old_ecomode, new_ecomode);
             if (old_ecomode != new_ecomode) {
-                webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
+                pthread_mutex_lock(&mgr->data_cache_lock);
+                memcpy(&mgr_radio_data->oper, &radio_data->oper, sizeof(wifi_radio_operationParam_t));
+                pthread_mutex_unlock(&mgr->data_cache_lock);
+                if (mgr_radio_data->oper.band == WIFI_FREQUENCY_2_4_BAND) {
+                    doc_type = webconfig_subdoc_type_radio_24G;
+                } else if (mgr_radio_data->oper.band == WIFI_FREQUENCY_5_BAND) {
+                    doc_type = webconfig_subdoc_type_radio_5G;
+                } else if (mgr_radio_data->oper.band == WIFI_FREQUENCY_6_BAND) {
+                    doc_type = webconfig_subdoc_type_radio_6G;
+                } else {
+                    doc_type = webconfig_subdoc_type_radio;
+                }
+                webconfig_send_radio_subdoc_status(ctrl, doc_type);
                 // write the value to database and reboot
                 ecomode_telemetry_update_and_reboot(i, new_ecomode);
             }
@@ -2756,7 +2769,12 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             old_ecomode, new_ecomode);
         if (old_ecomode != new_ecomode) {
             // write the value to database and reboot
-            webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
+            /* mgr cache is normally refreshed async by the OVSDB monitor callback;
+             * update it now so the pre-reboot ack reflects the applied config */
+            pthread_mutex_lock(&mgr->data_cache_lock);
+            memcpy(&mgr_radio_data->oper, &radio_data->oper, sizeof(wifi_radio_operationParam_t));
+            pthread_mutex_unlock(&mgr->data_cache_lock);
+            webconfig_send_radio_subdoc_status(ctrl, doc_type);
             ecomode_telemetry_update_and_reboot(radio_index, new_ecomode);
         }
 #endif // defined(FEATURE_SUPPORT_ECOPOWERDOWN)
