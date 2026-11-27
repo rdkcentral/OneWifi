@@ -263,7 +263,7 @@
        },
        {
          "description": "Temporary plugin dummy libraries",
-         "command": "touch $HOME/usr/dummies/libhal_wifi.so && touch $HOME/usr/dummies/libwifi_webconfig.so && touch $HOME/usr/dummies/libtrower-base64.so"
+         "command": "touch $HOME/usr/dummies/libhal_wifi.so && touch $HOME/usr/dummies/libwifi_transportprotocolanalyser.so && touch $HOME/usr/dummies/libtrower-base64.so"
        },
        {
          "description": "Temporary plugin dummy libraries",
