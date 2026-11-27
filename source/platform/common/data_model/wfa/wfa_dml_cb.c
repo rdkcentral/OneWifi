@@ -273,6 +273,27 @@ bool wfa_network_get_param_value(void *obj_ins_context, char *param_name, raw_da
     return true;
 }
 
+bus_error_t wfa_device_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data)
+{
+    (void)obj_ins_context;
+    uint32_t num_radios;
+    uint32_t num_apmld = 0;
+
+    if (STR_CMP(param_name, "APMLDNumberOfEntries")) {
+        apmld_map_t apmld_map = {0};
+        update_apmld_map(&apmld_map);
+        num_apmld = apmld_map.mld_group_count;
+
+        return set_output_value(param_name, p_data, &num_apmld);
+    } else if (STR_CMP(param_name, "RadioNumberOfEntries")) {
+        num_radios = getNumberRadios();
+
+        return set_output_value(param_name, p_data, &num_radios);
+    }
+
+    return bus_error_invalid_input;
+}
+
 bus_error_t wfa_network_ssid_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data)
 {
     wifi_vap_info_t *vap = obj_ins_context;

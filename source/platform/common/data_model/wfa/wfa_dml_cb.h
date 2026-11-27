@@ -44,6 +44,8 @@ bool wfa_network_get_param_value(void *obj_ins_context, char *param_name, raw_da
  */
 bus_error_t wfa_network_ssid_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data);
 
+bus_error_t wfa_device_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data);
+
 bus_error_t wfa_apmld_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data);
 
 bus_error_t wfa_stamld_get_param_value(void *obj_ins_context, char *param_name, raw_data_t *p_data);
