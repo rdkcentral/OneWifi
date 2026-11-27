@@ -5282,16 +5282,10 @@ int wifidb_get_default_mld_link_id(int band)
     case WIFI_FREQUENCY_6_BAND:   return 0;
     default:                      return UNDEFINED_MLD_LINK_ID;
     }
-#elif defined(CONFIG_IEEE80211BE) && defined(_GREXT02ACTS_PRODUCT_REQ_)
-    switch (band) {
-    case WIFI_FREQUENCY_2_4_BAND: return 0;
-    case WIFI_FREQUENCY_5_BAND:   return 1;
-    default:                    return UNDEFINED_MLD_LINK_ID;
-    }
 #else
     (void)band;
     return UNDEFINED_MLD_LINK_ID;
-#endif /* CONFIG_IEEE80211BE && supported product */
+#endif /* CONFIG_IEEE80211BE && _XB10_PRODUCT_REQ_ */
 }
 
 
@@ -5441,7 +5435,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap's MLO configuration, db version %d\n",
                 __func__, __LINE__, g_wifidb->db_version);
             if (!isVapSTAMesh(config->vap_array[i].vap_index)) {
-#if defined(_PLATFORM_BANANAPI_R4_) || defined( _GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PLATFORM_BANANAPI_R4_)
                 if (isVapPrivate(config->vap_array[i].vap_index)) {
                     config->vap_array[i].u.bss_info.mld_info.common_info.mld_enable = 1;
                     config->vap_array[i].u.bss_info.mld_info.common_info.mld_id = 0;
@@ -7697,10 +7691,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
  || _XB8_PRODUCT_REQ_ || _XB7_PRODUCT_REQ_ || _SR213_PRODUCT_REQ_ || _SCXF11BFL_PRODUCT_REQ_ || _WNXL11BWL_PRODUCT_REQ_*/
 
 #ifdef CONFIG_IEEE80211BE
-#if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_) || defined(QCOM_ATH12K_PORT) || \
-    defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_) || defined(QCOM_ATH12K_PORT)
             cfg->variant |= WIFI_80211_VARIANT_BE;
-#endif /* _PLATFORM_BANANAPI_R4_ || _MERCURY_PRODUCT_REQ_ || QCOM_ATH12K_PORT || _GREXT02ACTS_PRODUCT_REQ_ */
+#endif /* _PLATFORM_BANANAPI_R4_ || _MERCURY_PRODUCT_REQ_ || QCOM_ATH12K_PORT */
 #ifdef _PLATFORM_BANANAPI_R4_
             cfg->channelWidth = WIFI_CHANNELBANDWIDTH_40MHZ;
 #endif  /* _PLATFORM_BANANAPI_R4_ */
@@ -8141,7 +8134,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             } else {
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) ||                      \
-    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_) || defined(_GREXT02ACTS_PRODUCT_REQ_)
+    defined(_PLATFORM_BANANAPI_R4_) || defined(_XER2_PRODUCT_REQ_)
                 cfg->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg->u.bss_info.security.wpa3_transition_disable = false;
                 cfg->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -8190,8 +8183,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg->u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg->u.bss_info.beaconRateCtl)-1);
         cfg->vap_mode = wifi_vap_mode_ap;
-#if defined(_PLATFORM_BANANAPI_R4_) || defined(_MERCURY_PRODUCT_REQ_) || \
-    defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_PLATFORM_BANANAPI_R4_)
         if (isVapPrivate(vap_index)) {
             cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg->u.bss_info.mld_info.common_info.mld_id = 0;
@@ -8203,10 +8195,10 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg->u.bss_info.mld_info.common_info.mld_enable = 1;
             cfg->u.bss_info.mld_info.common_info.mld_id = 1;
         }
-#else /* !_PLATFORM_BANANAPI_R4_ && !_MERCURY_PRODUCT_REQ_ && !_GREXT02ACTS_PRODUCT_REQ_ */
+#else /* _PLATFORM_BANANAPI_R4_ */
         cfg->u.bss_info.mld_info.common_info.mld_enable = 0;
         cfg->u.bss_info.mld_info.common_info.mld_id = 255;
-#endif /* _PLATFORM_BANANAPI_R4_ || _MERCURY_PRODUCT_REQ_ || _GREXT02ACTS_PRODUCT_REQ_ */
+#endif /* _PLATFORM_BANANAPI_R4_ */
         cfg->u.bss_info.mld_info.common_info.mld_link_id = wifidb_get_default_mld_link_id(band);
         memset(&cfg->u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg->u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
