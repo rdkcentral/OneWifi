@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
 #include "ieee80211.h"
 #include "misc.h"
 #include "util.h"
@@ -428,16 +429,14 @@ int init_wifi_global_config(void)
 
 unsigned int get_Uptime(void)
 {
-    FILE *fp = NULL;
+    struct timespec ts;
     unsigned int upSecs = 0;
 
-    fp = popen("/bin/cat /proc/uptime", "r");
-    if (fp != NULL) {
-        if (fscanf(fp, "%u", &upSecs) != 1) {
-            wifi_util_error_print(WIFI_CTRL,"%s : failed to read uptime\n", __FUNCTION__);
-        }
-        wifi_util_dbg_print(WIFI_CTRL,"%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
-        pclose(fp);
+    if (clock_gettime(CLOCK_BOOTTIME, &ts) == 0) {
+        upSecs = (unsigned int)ts.tv_sec;
+        wifi_util_dbg_print(WIFI_CTRL, "%s : upSecs=%u ......\n", __FUNCTION__, upSecs);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s : failed to read uptime, errno=%d\n", __FUNCTION__, errno);
     }
     return upSecs;
 }
