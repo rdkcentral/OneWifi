@@ -50,6 +50,9 @@ extern "C" {
 //WEI endpoint for ignite
 #define WEI_IGNITE_ENABLE_DMPATH   "Device.X_RDKCENTRAL-COM_WEI.Ignite.Enable"
 
+/* Watched by wei.path; its presence is what activates wei.service. */
+#define WEI_START_TRIGGER_FILE     "/run/wei_enabled"
+
 #define WEI_DIAGNOSTIC_ENABLE_DMPATH "Device.X_RDKCENTRAL-COM_WEI.Diagnostic.Enable"
 
 /* ---- Staying-Connected (SC) TR-181 parameter paths (WiFi-DB owned) ---- */
