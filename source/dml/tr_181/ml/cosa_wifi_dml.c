@@ -606,7 +606,17 @@ WiFi_GetParamUlongValue
     if( AnscEqualString(ParamName, "Status", TRUE))
     {
         UINT numOfRadios = get_num_radio_dml();
-        *puLong = numOfRadios;
+        wifi_radio_operationParam_t *radioParam;
+        BOOL allRadiosUp = (numOfRadios > 0) ? TRUE : FALSE;
+
+        for (UINT i = 0; i < numOfRadios; i++) {
+            radioParam = getRadioOperationParam(i);
+            if (radioParam == NULL || !radioParam->enable) {
+                allRadiosUp = FALSE; /* Down */
+                break;
+            }
+        }
+        *puLong = allRadiosUp ? 2 : 1; /* 2 = Up, 1 = Down */
         return TRUE;
     }
 
