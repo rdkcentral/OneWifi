@@ -46,7 +46,7 @@ public:
 
     void set_row_capacity(unsigned int cap)
     {
-        m_row_capacity = cap;
+        m_row_capacity = ((cap < MAX_MTRX_LEN) ? cap : MAX_MTRX_LEN);
     }
     unsigned int get_row_capacity()
     {
@@ -55,7 +55,7 @@ public:
 
     void set_col_capacity(unsigned int cap)
     {
-        m_col_capacity = cap;
+        m_col_capacity = ((cap < MAX_MTRX_LEN) ? cap : MAX_MTRX_LEN);
     }
     unsigned int get_col_capacity()
     {
