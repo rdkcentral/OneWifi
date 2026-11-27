@@ -1889,7 +1889,7 @@ static pErr wifi_ignitewifi_exec_handler(void *blob)
         goto done;
     }
 
-    webconfig_init_subdoc_data(data);
+    webconfig_init_subdoc_data_min(data);
     data->u.decoded.config.global_parameters.ignite_link_quality_threshold = link_quality_threshold;
 
     if (push_blob_data(data, webconfig_subdoc_type_wifi_config) != RETURN_OK) {
