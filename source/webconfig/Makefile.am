@@ -78,10 +78,9 @@ libwifi_webconfig_la_SOURCES += wifi_webconfig_em_channel_stats.c wifi_webconfig
 libwifi_webconfig_la_CFLAGS += $(EM_APP_FLAG)
 endif
 
+libwifi_webconfig_la_SOURCES += wifi_ovsdb_translator.c
 if WITH_EASYMESH
 libwifi_webconfig_la_SOURCES += wifi_easymesh_translator.c
-else
-libwifi_webconfig_la_SOURCES += wifi_ovsdb_translator.c
 endif
 
 libwifi_webconfig_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c

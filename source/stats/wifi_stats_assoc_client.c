@@ -59,7 +59,7 @@ int validate_assoc_client_args(wifi_mon_stats_args_t *args)
         wifi_util_error_print(WIFI_MON,"RDK_LOG_ERROR, %s Input apIndex = %d not found, Out of range\n", __FUNCTION__, args->vap_index);
         return RETURN_ERR;
     }
-#if defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if defined(_MERCURY_PRODUCT_REQ_)
     if (isVapSTAMesh(args->vap_index)) {
         wifi_util_error_print(WIFI_MON, "%s:%d input vap_index %d is STA mesh interface\n",__func__,__LINE__, args->vap_index);
         return RETURN_ERR;
@@ -443,7 +443,20 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 
             // Update link_data with the sta times for periodic caffinity stats update
             if (link_data && i < num_devs && ((link_quality_measurement) || (rf_down_mesh_sta))) {
-                link_data[i].stats.total_connected_time = sta->total_connected_time;
+                unsigned long sleep_sec = link_data[i].stats.dev.cli_sleepTime / 1000UL;
+                unsigned long sleep_nsec = (link_data[i].stats.dev.cli_sleepTime % 1000UL) * 1000000UL;
+                link_data[i].stats.total_connected_time.tv_sec = sta->total_connected_time.tv_sec - sleep_sec;
+                link_data[i].stats.total_connected_time.tv_nsec = sta->total_connected_time.tv_nsec - sleep_nsec;
+                if (link_data[i].stats.total_connected_time.tv_nsec < 0) {
+                    link_data[i].stats.total_connected_time.tv_sec--;
+                    link_data[i].stats.total_connected_time.tv_nsec += 1000000000L;
+                }
+
+                /* If tv_sec < 0 after substracting with sleep_sec, use the original connected time value */
+                if (link_data[i].stats.total_connected_time.tv_sec < 0) {
+                    link_data[i].stats.total_connected_time.tv_sec = sta->total_connected_time.tv_sec;
+                    link_data[i].stats.total_connected_time.tv_nsec = sta->total_connected_time.tv_nsec;
+                }
                 link_data[i].stats.total_disconnected_time = sta->total_disconnected_time;
 
                 /* Forward raw cumulative EAPOL M1-M4 counts only; WEI derives attempts
@@ -455,10 +468,10 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 /* Reflects STA_CONN completion: false for 4WAY-fail clients even if conn_time > 0. */
                 link_data[i].stats.connection_authorized = sta->connection_authorized;
                 wifi_util_dbg_print(WIFI_MON,
-                    "%s:%d PERIODIC_STATS MAC=%s conn_time=%llds authorized=%d\n",
-                    __func__, __LINE__,
-                    link_data[i].stats.mac_str,
-                    (long long)sta->total_connected_time.tv_sec,
+                    "%s:%d PERIODIC_STATS MAC=%s dev conn_time=%llds lqconn=%llds lqsleep=%llds authorized=%d\n",
+                    __func__, __LINE__, link_data[i].stats.mac_str, (long long)sta->total_connected_time.tv_sec,
+                    (long long)link_data[i].stats.total_connected_time.tv_sec,
+                    (long long)(link_data[i].stats.dev.cli_sleepTime / 1000UL),
                     sta->connection_authorized);
             }
 

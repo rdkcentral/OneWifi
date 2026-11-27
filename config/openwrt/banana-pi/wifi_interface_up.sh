@@ -10,9 +10,10 @@ iw phy phy0 interface add wifi1.1 type __ap
 iw phy phy0 interface add wifi1.2 type __ap
 iw phy phy0 interface add wifi1.3 type __ap
 iw phy phy0 interface add wifi2 type __ap
-#iw phy phy0 interface add wifi2.1 type __ap
-#iw phy phy0 interface add wifi2.2 type __ap
+iw phy phy0 interface add wifi2.1 type __ap
+iw phy phy0 interface add wifi2.2 type __ap
 iw phy phy0 interface add mld0 type __ap radios all
+iw phy phy0 interface add mld1 type __ap radios all
 
 #Derive the initial wifi mac address from eth0 or erouter0 address
 #as they are unique for each Banana PI
@@ -58,11 +59,11 @@ wifi1_3_mac=$(printf "%012x" $mac_incr | sed 's/../&:/g;s/:$//')
 mac_incr=$(($primary_wifi_mac + 32))
 wifi2_mac=$(printf "%012x" $mac_incr | sed 's/../&:/g;s/:$//')
 #Increment again by 1 to get wifi2.1 address
-#mac_incr=$(($mac_incr + 1))
-#wifi2_1_mac=$(printf "%012x" $mac_incr | sed 's/../&:/g;s/:$//')
+mac_incr=$(($mac_incr + 1))
+wifi2_1_mac=$(printf "%012x" $mac_incr | sed 's/../&:/g;s/:$//')
 #Increment again by 1 to get wifi2.2 address
-#mac_incr=$(($mac_incr + 1))
-#wifi2_2_mac=$(printf "%012x" $mac_incr | sed 's/../&:/g;s/:$//')
+mac_incr=$(($mac_incr + 1))
+wifi2_2_mac=$(printf "%012x" $mac_incr | sed 's/../&:/g;s/:$//')
 #print the mac address
 echo $wifi0_mac
 echo $wifi0_1_mac
@@ -72,8 +73,8 @@ echo $wifi1_1_mac
 echo $wifi1_2_mac
 echo $wifi1_3_mac
 echo $wifi2_mac
-#echo $wifi2_1_mac
-#echo $wifi2_2_mac
+echo $wifi2_1_mac
+echo $wifi2_2_mac
 
 #Update the mac address using ip link command
 ifconfig wifi0 down
@@ -84,8 +85,8 @@ ifconfig wifi1.1 down
 ifconfig wifi1.2 down
 ifconfig wifi1.3 down
 ifconfig wifi2 down
-#ifconfig wifi2.1 down
-#ifconfig wifi2.2 down
+ifconfig wifi2.1 down
+ifconfig wifi2.2 down
 ip link set dev wifi0 address $wifi0_mac
 ip link set dev wifi0.1 address $wifi0_1_mac
 ip link set dev wifi0.2 address $wifi0_2_mac
@@ -94,8 +95,8 @@ ip link set dev wifi1.1 address $wifi1_1_mac
 ip link set dev wifi1.2 address $wifi1_2_mac
 ip link set dev wifi1.3 address $wifi1_3_mac
 ip link set dev wifi2 address $wifi2_mac
-#ip link set dev wifi2.1 address $wifi2_1_mac
-#ip link set dev wifi2.2 address $wifi2_2_mac
+ip link set dev wifi2.1 address $wifi2_1_mac
+ip link set dev wifi2.2 address $wifi2_2_mac
 ifconfig wifi0 up
 ifconfig wifi0.1 up
 ifconfig wifi0.2 up
@@ -104,26 +105,37 @@ ifconfig wifi1.1 up
 ifconfig wifi1.2 up
 ifconfig wifi1.3 up
 ifconfig wifi2 up
-#ifconfig wifi2.1 up
-#ifconfig wifi2.2 up
+ifconfig wifi2.1 up
+ifconfig wifi2.2 up
 
-# Set MLD interface address as wifi2 MAC address + 1
-prefix="${wifi2_mac%:*}"
-last_byte="${wifi2_mac##*:}"
+# Set MLD interface address as wifi2.2 MAC address + 1
+prefix_mld0="${wifi2_2_mac%:*}"
+last_byte_mld0="${wifi2_2_mac##*:}"
 
-new_byte=$(printf "%02X" $(( (0x$last_byte + 1) & 0xFF )))
-new_mac="$prefix:$new_byte"
+new_byte_mld0=$(printf "%02X" $(( (0x$last_byte_mld0 + 1) & 0xFF )))
+new_mac_mld0="$prefix_mld0:$new_byte_mld0"
 
 ip link set dev "mld0" down
-ip link set dev "mld0" address "$new_mac"
+ip link set dev "mld0" address "$new_mac_mld0"
+
+# Set MLD interface address as mld0 MAC address + 1
+prefix_mld1="${new_mac_mld0%:*}"
+last_byte_mld1="${new_mac_mld0##*:}"
+
+new_byte_mld1=$(printf "%02X" $(( (0x$last_byte_mld1 + 1) & 0xFF )))
+new_mac_mld1="$prefix_mld1:$new_byte_mld1"
+
+ip link set dev "mld1" down
+ip link set dev "mld1" address "$new_mac_mld1"
 
 #Copy configuration file to nvram
 mkdir -p /nvram
 cp InterfaceMap.json /nvram/.
 
-# Create the EasyMeshCfg.json which will have the al_mac_address
-# same as that of sta wifi_1_3_mac
-al_mac_addr=$wifi1_3_mac
+# Create the EasyMeshCfg.json with a zero AL MAC unless one is already stored. The real AL MAC
+# is written by the easymesh agent once the AL SAP registration succeeds.
+al_mac_addr="00:00:00:00:00:00"
+# Default to extender mode unless a valid saved role overrides it below.
 colocated_mode=0
 backhaul_ssid="mesh_backhaul"
 backhaul_keypassphrase="test-backhaul"
@@ -138,6 +150,18 @@ if [ -f "$output_file" ]; then
     # Attempt to read the Colocated_mode value using jsonfilter
     # Redirect stderr to /dev/null to suppress errors if the file is not valid JSON or key is missing
     existing_colocated_mode=$(jsonfilter -i "$output_file" -e '@.Colocated_mode' 2>/dev/null)
+
+    # Keep the AL MAC the agent already stored, so a OneWifi restart does not reset it to zeros
+    existing_al_mac=$(jsonfilter -i "$output_file" -e '@.AL_MAC_ADDR' 2>/dev/null)
+    case "$existing_al_mac" in
+        ""|"00:00:00:00:00:00") ;;
+        *) al_mac_addr="$existing_al_mac" ;;
+    esac
+
+    # Keep a valid saved role (0 or 1); only infer one when none is stored
+    case "$existing_colocated_mode" in
+        0|1) colocated_mode="$existing_colocated_mode" ;;
+    esac
 
     if [ "$existing_colocated_mode" = "1" ]; then
         echo "Colocated_mode is already 1 in ${output_file}. Skipping file creation."

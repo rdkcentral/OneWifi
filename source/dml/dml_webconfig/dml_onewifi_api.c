@@ -1816,6 +1816,10 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 1147;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            strncat(radio_cfg[i].SupportedStandards, ",bn",
+                sizeof(radio_cfg[i].SupportedStandards) - strlen(radio_cfg[i].SupportedStandards) - 1);
+#endif /* CONFIG_IEEE80211BN */
 
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
@@ -1831,6 +1835,10 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            strncat(radio_cfg[i].SupportedStandards, ",bn",
+                sizeof(radio_cfg[i].SupportedStandards) - strlen(radio_cfg[i].SupportedStandards) - 1);
+#endif /* CONFIG_IEEE80211BN */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
@@ -1845,6 +1853,10 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            strncat(radio_cfg[i].SupportedStandards, ",bn",
+                sizeof(radio_cfg[i].SupportedStandards) - strlen(radio_cfg[i].SupportedStandards) - 1);
+#endif /* CONFIG_IEEE80211BN */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
@@ -1859,6 +1871,10 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 4804;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            strncat(radio_cfg[i].SupportedStandards, ",bn",
+                sizeof(radio_cfg[i].SupportedStandards) - strlen(radio_cfg[i].SupportedStandards) - 1);
+#endif /* CONFIG_IEEE80211BN */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_) || defined(_XER2_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, 1, sizeof(BOOL) * 4);
 #elif defined(_XB8_PRODUCT_REQ_)
@@ -1873,6 +1889,10 @@ void update_dml_radio_default() {
             strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
             radio_cfg[i].MaxBitRate = 9608;
 #endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+            strncat(radio_cfg[i].SupportedStandards, ",bn",
+                sizeof(radio_cfg[i].SupportedStandards) - strlen(radio_cfg[i].SupportedStandards) - 1);
+#endif /* CONFIG_IEEE80211BN */
 #if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
             memset(radio_cfg[i].AmsduTid, (BOOL)1, sizeof(BOOL) * 5);
 #elif defined(_XB8_PRODUCT_REQ_)
@@ -2125,7 +2145,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             wifidb_init_vap_config_default(vap_index,default_vap,&rdk_default_vap);
             wifidb_init_interworking_config_default(vap_index,&default_vap->u.bss_info.interworking);
             memcpy((unsigned char *)p_vapInfo,(unsigned char *)default_vap,sizeof(wifi_vap_info_t));
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)
             if(rdk_default_vap.exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap_index != 2 && vap_index != 3) {
@@ -2137,7 +2157,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                 rdk_default_vap.exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_MERCURY_PRODUCT_REQ_)*/
             rdk_vap_info->exists = rdk_default_vap.exists;
             set_dml_cache_vap_config_changed(vap_index);
         }

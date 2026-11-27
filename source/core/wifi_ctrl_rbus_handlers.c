@@ -977,7 +977,8 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         return bus_error_out_of_resources;
     }
     
-    if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+    if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT)) {
             if ((is_acs_channel_updated(num_of_radios) == false) ||
                 (check_wifi_radio_sched_timeout_active_status(ctrl) == true)) {
@@ -1038,7 +1039,8 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         p_data->raw_data_len = str_size;
 
         webconfig_data_free(data);
-    } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    } else if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {
             wifi_util_dbg_print(WIFI_CTRL, "%s wifidb and cache are not synced!\n", __FUNCTION__);
             free(data);
@@ -1100,62 +1102,14 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
     webconfig_subdoc_data_t *data = NULL;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int vap_index;
-    wifi_back_haul_sta_t *sta_info;
-    wifi_platform_property_t *wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
-    mac_address_t zero_mac;
-    char ifname[100] = {0};
-    int ret = 0;
-    mac_addr_str_t mac_str;
-
-    memset(zero_mac, 0, sizeof(mac_address_t));
-    /*
-      In case of Easymesh mode few checks should be done before the dml subdoc is sent.
-       1) Check al_mac address is non-zero and colocated_mode is either 0 or 1. If any of
-          them incorrect, return bus_error.
-       2) If colocated_mode is 0 then check whether configured al_mac has a valid interface
-          and if it is a interface in interface map should be a sta interface and should be
-          in connected state.
-    */
+    wifi_platform_property_t *wifi_prop = &mgr->hal_cap.wifi_prop;
     if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
         ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        /* check 1 */
-        if (memcmp(wifi_prop->al_1905_mac, zero_mac, sizeof(mac_address_t)) == 0 ||
-            wifi_prop->colocated_mode == -1) {
+        if (wifi_prop->colocated_mode == -1) {
             wifi_util_error_print(WIFI_CTRL,
-                "%s:%d FATAL Error al_mac:%s or colocated_mode:%d incorrect\n", __func__, __LINE__,
-                to_mac_str(wifi_prop->al_1905_mac, mac_str), wifi_prop->colocated_mode);
+                "%s:%d FATAL Error colocated_mode:%d incorrect\n", __func__, __LINE__,
+                wifi_prop->colocated_mode);
             return bus_error_access_not_allowed;
-        }
-        /* check 2 */
-        if (wifi_prop->colocated_mode == 0) {
-            /* colocated_mode 0 check ifname is sta and connected*/
-            ret = interfacename_from_mac((const mac_address_t *)wifi_prop->al_1905_mac, ifname);
-            if (ret != 0) {
-                wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d FATAL Error Interface not found for al_mac:%s\n", __func__, __LINE__,
-                    to_mac_str(wifi_prop->al_1905_mac, mac_str));
-                return bus_error_access_not_allowed;
-            }
-            vap_index = convert_ifname_to_vap_index(wifi_prop, ifname);
-            if (vap_index != -1) {
-                sta_info = get_wifi_object_sta_parameter(vap_index);
-                if (sta_info == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d Error backhaul interface:%s(Idx: %d, Ptr: %p) is not sta interface",
-                        __func__, __LINE__, ifname, vap_index, sta_info);
-                    return bus_error_access_not_allowed;
-                }
-            } else {
-                /* check the interface name before treating it as error */
-                if (strncmp(ifname, "eth", strlen("eth")) != 0 &&
-                    strncmp(ifname, "lo", strlen("lo")) != 0) {
-                    wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d Error ifname:%s is not ethernet or loopback interface.\n", __func__,
-                        __LINE__, ifname);
-                    return bus_error_access_not_allowed;
-                }
-            }
         }
     }
 
@@ -2551,9 +2505,9 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n", __func__, __LINE__);
 
-    if (p_data->value.data_type != bus_data_type_bytes) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s Unsupported data type:%x\n", __func__,
-            __LINE__, event_name, p_data->value.data_type);
+    if ((p_data == NULL) || (p_data->value.data_type != bus_data_type_bytes)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s NULL payload or Unsupported data type\n", __func__,
+            __LINE__, event_name);
         return;
     }
 
@@ -2561,6 +2515,28 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
     data_ptr = (frame_data_t *)p_data->value.raw_data.bytes;
 
     if (data_ptr != NULL && len != 0) {
+        size_t frame_hdr_len = sizeof(frame_data_t) - MAX_FRAME_SZ;
+        size_t payload_len;
+
+        if (len < frame_hdr_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame blob len:%u\n", 
+                __func__, __LINE__, len);
+            return;
+        }
+
+        if (data_ptr->frame.len > MAX_FRAME_SZ) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len too large:%u\n", 
+                __func__, __LINE__, data_ptr->frame.len);
+            return;
+        }
+
+        payload_len = len - frame_hdr_len;
+        if ((size_t)data_ptr->frame.len > payload_len) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d frame.len:%u exceeds payload:%zu\n", 
+                __func__, __LINE__, data_ptr->frame.len, payload_len);
+            return;
+        }
+
         memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&data_ptr->frame.sta_mac,
             sizeof(mac_address_t));
         frame_data.frame.ap_index = data_ptr->frame.ap_index;
@@ -2582,7 +2558,7 @@ static void frame_802_11_injector_Handler(char *event_name, bus_data_prop_t *p_d
 #ifdef WIFI_HAL_VERSION_3_PHASE2
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
 #else
-#if defined(_XB7_PRODUCT_REQ_) || defined (_SCXF11BFL_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_SCXF11BFL_PRODUCT_REQ_)
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, frame_data.frame.sta_mac, frame_data.data,
             frame_data.frame.len, frame_data.frame.type, frame_data.frame.dir,
             frame_data.frame.sig_dbm, frame_data.frame.phy_rate, frame_data.frame.recv_freq);
@@ -4475,6 +4451,7 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
     char vapname[32] = { 0 };
     bm_client_assoc_req mac_addr;
     wifi_platform_property_t *prop = NULL;
+    wifi_monitor_t *mon_data = get_wifi_monitor();
 
     unsigned char *pTmp;
 
@@ -4485,6 +4462,13 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
         wifi_util_error_print(WIFI_CTRL,"%s:%d object not found:0x%x for vap_index:\r\n",
             __func__, __LINE__, inParams->value.data_type);
         return bus_error_destination_not_found;
+    }
+
+    if (len > sizeof(mac_addr)) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d invalid input length %u for client assoc request, expected %u\r\n",
+            __func__, __LINE__, len, sizeof(mac_addr));
+        return bus_error_invalid_input;
     }
 
     memcpy(&mac_addr, pTmp, len);
@@ -4498,6 +4482,7 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d %s,%svap_index:%d\r\n", __func__, __LINE__,
         mac_addr.mac_addr, mac_addr.if_name, vap_index);
     if (sta_map != NULL) {
+        pthread_mutex_lock(&mon_data->data_lock);
         sta = (sta_data_t *)hash_map_get(sta_map, mac_addr.mac_addr);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d , sta_map is null  \n", __func__, __LINE__);
@@ -4509,15 +4494,18 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, bus_data_prop
                 "%s:%d bus_namespace_publish event:%s for vap_index:%d\r\n", __func__, __LINE__,
                 ACCESSPOINT_ASSOC_REQ_EVENT, vap_index);
             memcpy(&tmp_data, &sta->assoc_frame_data.msg_data, sizeof(frame_data_t));
+            pthread_mutex_unlock(&mon_data->data_lock);
             l_data = &tmp_data;
         } else {
             wifi_util_info_print(WIFI_CTRL,
                 "%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
                 __func__, __LINE__, vap_index, mac_addr.mac_addr,
                 sta->assoc_frame_data.frame_timestamp);
+            pthread_mutex_unlock(&mon_data->data_lock);
             return bus_error_invalid_input;
         }
     } else {
+        pthread_mutex_unlock(&mon_data->data_lock);
         wifi_util_info_print(WIFI_CTRL, "%s:%d , sta is null  \n", __func__, __LINE__);
         return bus_error_invalid_input;
     }
@@ -4562,10 +4550,22 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
         return bus_error_element_name_missing;
     }
 
-    pTmp = (char *)p_data->raw_data.bytes;
-    if ((p_data->data_type != bus_data_type_bytes) || (pTmp == NULL)) {
+    if (p_data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s NULL payload\n",
+            __func__, __LINE__, name);
+        return bus_error_invalid_input;
+    }
+
+    if ((p_data->data_type != bus_data_type_bytes)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
             p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    pTmp = (char *)p_data->raw_data.bytes;
+    if (pTmp == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event:%s NULL payload\n",
+            __func__, __LINE__, name);
         return bus_error_invalid_input;
     }
 
@@ -4576,6 +4576,12 @@ bus_error_t send_action_frame(char *name, raw_data_t *p_data, bus_user_data_t *u
     }
 
     len = p_data->raw_data_len;
+    if (len <= sizeof(action_frame_params_t) ||
+         len - sizeof(action_frame_params_t) > MAX_FRAME_SZ) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d invalid frame payload len:%u\r\n", __func__, __LINE__, len);
+        return bus_error_invalid_input;
+    }
+
     push_event_to_ctrl_queue((char *)pTmp, len, wifi_event_type_command,
         wifi_event_type_send_action_frame, NULL);
 

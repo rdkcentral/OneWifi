@@ -6,6 +6,16 @@ OneWifi manages radio configuration, VAP management, client association handling
 
 The component supports mesh WiFi (EasyMesh Multi-AP protocol), WiFi optimization (client steering), performance measurement (Blaster), motion detection (CSI analytics), channel availability checking (CAC), and statistics collection through a modular application framework. For mesh networking, the system supports both Gateway and Extender device roles with automatic backhaul selection using ranking algorithms based on SNR and Channel Utilization.
 
+With `EM_APP` enabled, `Device.WiFi.EM.CurrentTransmitPower` is a read-only bytes property.
+Each GET refreshes transmit power from HAL for every radio and updates the cache
+only when all readings are valid. The response contains a native-endian uint32 radio count,
+followed by 12-byte records: a six-byte RUID, two zeroed reserved bytes, and a
+native-endian uint32 transmit power.
+Failed or zero HAL readings return a bus error without a partial cache update or
+default value. The initialization GET refreshes all radios. Runtime callers can repeat
+this GET before sending an Operating Channel Report to retrieve updated transmit
+power values for all radios.
+
 ```mermaid
 graph LR
     subgraph "External Systems"
@@ -150,6 +160,7 @@ Build-time configuration options, DISTRO features, and compiler flags from Yocto
 | N/A | `wps_support` | `-DFEATURE_SUPPORT_WPS` | Enable WiFi Protected Setup (WPS) functionality | Disabled |
 | `--enable-easyconnect` | `EasyConnect` | N/A | Enable WiFi Easy Connect (DPP) protocol support | Disabled |
 | N/A | `CONFIG_IEEE80211BE` | `-DCONFIG_IEEE80211BE` | Enable WiFi 7 (802.11be) and MLO/MLD support | Disabled |
+| N/A | `CONFIG_IEEE80211BN` | `-DCONFIG_IEEE80211BN` | Enable 802.11bn (UHR) variant reporting/configuration; requires `CONFIG_IEEE80211BE` | Disabled |
 | `--enable-sm-app` | `sm_app` | N/A | Enable Statistics Manager application | Disabled |
 | N/A | `halVersion3` | `-DWIFI_HAL_VERSION_3` | Enable WiFi HAL Version 3 API support | Enabled |
 | N/A | `always_enable_ax_2g` | `-DALWAYS_ENABLE_AX_2G` | Force enable WiFi 6 (802.11ax) on 2.4GHz band | Disabled |

@@ -40,9 +40,12 @@ extern "C" {
 #define WIFI_SET_DISCONN_SCAN_NONE_STATE "Device.WiFi.EM.SetDisconnScanNoneState"
 #define WIFI_EM_CLIENT_ASSOC_CTRL_REQ "Device.WiFi.EM.ClientAssocCtrlRequest"
 #define WIFI_EM_FAILED_CONNECTION "Device.WiFi.EM.FailedConnection"
+#define WIFI_EM_CLIENT_DISASSOC_STATS "Device.WiFi.EM.ClientDisassocStats"
+#define WIFI_EM_GET_TX_POWER "Device.WiFi.EM.CurrentTransmitPower"
+#define WIFI_EM_MONITOR_DONE "Device.WiFi.EM.MonitorDone"
 
 #define WNM_CATEGORY 10
-#define IEEE80211_HDRLEN 24
+#define IEEE80211_HDRLEN_EM 24
 #define IEEE80211_EID_NEIGHBOR 52
 #define IEEE80211_NEIGHBOR_REPORT_MIN_LEN 13
 
