@@ -1357,6 +1357,24 @@ bool radio_set_param_string_value(void *obj_ins_context, char *param_name,
             return false;
         }
 
+#ifdef CONFIG_IEEE80211BE
+        if ((radio_variant & WIFI_80211_VARIANT_BE) && !(radio_variant & WIFI_80211_VARIANT_AX)) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: be requires ax to be set, str_variant=%s\n",
+                __func__, __LINE__, output_value->buff);
+            return false;
+        }
+#endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        if ((radio_variant & WIFI_80211_VARIANT_BN) &&
+            (!(radio_variant & WIFI_80211_VARIANT_AX) ||
+                !(radio_variant & WIFI_80211_VARIANT_BE))) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: bn requires ax and be to be set, str_variant=%s\n", __func__, __LINE__,
+                output_value->buff);
+            return false;
+        }
+#endif /* CONFIG_IEEE80211BN */
+
         wifi_util_dbg_print(WIFI_DMCLI, "WIFI MODE SET[%d]\n", radio_variant);
 
         if (validate_wifi_hw_variant(pcfg->band, radio_variant) != RETURN_OK) {

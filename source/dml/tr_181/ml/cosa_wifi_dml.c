@@ -4326,6 +4326,22 @@ Radio_SetParamStringValue
             return FALSE;
         }
 
+#ifdef CONFIG_IEEE80211BE
+        if ((wifi_variant & WIFI_80211_VARIANT_BE) && !(wifi_variant & WIFI_80211_VARIANT_AX)) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: be requires ax to be set, pString=%s\n",
+                    __func__, __LINE__, pString);
+            return FALSE;
+        }
+#endif /* CONFIG_IEEE80211BE */
+#ifdef CONFIG_IEEE80211BN
+        if ((wifi_variant & WIFI_80211_VARIANT_BN) &&
+                (!(wifi_variant & WIFI_80211_VARIANT_AX) || !(wifi_variant & WIFI_80211_VARIANT_BE))) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: bn requires ax and be to be set, pString=%s\n",
+                    __func__, __LINE__, pString);
+            return FALSE;
+        }
+#endif /* CONFIG_IEEE80211BN */
+
         // TODO: for debug purpouses only
         static const char * const wifi_mode_strings[] =
         {
