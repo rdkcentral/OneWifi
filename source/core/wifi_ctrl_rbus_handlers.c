@@ -879,6 +879,7 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     memset(&rdata, 0, sizeof(raw_data_t));
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)data->raw;
+    rdata.raw_data_len = strlen(data->raw) + 1;
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d:bus_event_publish_fn WIFI_WEBCONFIG_DOC_DATA_NORTH initiated\n", __func__,
             __LINE__);
@@ -972,7 +973,8 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         return bus_error_out_of_resources;
     }
     
-    if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+    if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT)) {
             if ((is_acs_channel_updated(num_of_radios) == false) ||
                 (check_wifi_radio_sched_timeout_active_status(ctrl) == true)) {
@@ -1029,7 +1031,8 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data,
         p_data->raw_data_len = str_size;
 
         webconfig_data_free(data);
-    } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    } else if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {
             wifi_util_dbg_print(WIFI_CTRL, "%s wifidb and cache are not synced!\n", __FUNCTION__);
             free(data);
@@ -4790,7 +4793,7 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
     int rc = bus_error_success;
     char *component_name = "WifiCtrl";
     int num_of_radio = getNumberRadios();
-    int num_of_vaps = getTotalNumberVAPs(NULL);
+    int num_of_vaps = getTotalNumberVAPs();
     int num_elements;
     bus_data_element_t dataElements[] = {
                                 { WIFI_WEBCONFIG_DOC_DATA_SOUTH, bus_element_type_method,

@@ -2585,6 +2585,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "heapwalk_interval", param);
     global_info->memwraptool.heapwalk_interval = param->valuedouble;
 
+#ifndef EASY_MESH_NODE
     //WifiRegionCode
     decode_param_string(global_cfg, "WifiRegionCode", param);
     snprintf(global_info->wifi_region_code,
@@ -2618,6 +2619,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     //TxRxRateList
     decode_param_string(global_cfg, "TxRxRateList", param);
     snprintf(global_info->txrx_rate_list, sizeof(global_info->txrx_rate_list), "%s", param->valuestring);
+#endif
 
     param = cJSON_GetObjectItem(global_cfg, "IgniteLinkQualityThreshold");
     if (param != NULL && cJSON_IsNumber(param)) {
@@ -3329,10 +3331,12 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_integer(obj_radio, "DfsTimer", param);
     radio_info->DFSTimer = param->valuedouble;
 
+#ifndef EASY_MESH_NODE
     // RadarDetected
     decode_param_string(obj_radio, "RadarDetected", param);
     strncpy(radio_info->radarDetected, param->valuestring, sizeof(radio_info->radarDetected) - 1);
     radio_info->radarDetected[sizeof(radio_info->radarDetected) - 1] = '\0';
+#endif
 
     // AmsduTid
     unsigned int amsdu_tid_idx = 0;

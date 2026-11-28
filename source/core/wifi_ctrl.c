@@ -327,24 +327,17 @@ bool is_sta_enabled(void)
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;
-    struct timespec tv_now;
-    time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
 
     pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
-        clock_gettime(CLOCK_MONOTONIC, &tv_now);
+        /* Anchor the deadline on the previous scheduler run, not on the current
+         * time: if event handling ran past the second boundary the deadline is
+         * already due and the wait returns at once instead of skipping a run. */
+        time_to_wait.tv_sec = ctrl->last_polled_time.tv_sec + ctrl->poll_period;
         time_to_wait.tv_nsec = 0;
-        time_to_wait.tv_sec = tv_now.tv_sec + ctrl->poll_period;
-
-        if (ctrl->last_signalled_time.tv_sec > ctrl->last_polled_time.tv_sec) {
-            time_diff = ctrl->last_signalled_time.tv_sec - ctrl->last_polled_time.tv_sec;
-            if ((UINT)time_diff < ctrl->poll_period) {
-                time_to_wait.tv_sec = tv_now.tv_sec + (ctrl->poll_period - time_diff);
-            }
-        }
 
         rc = 0;
         if (queue_count(ctrl->queue) == 0) {
@@ -393,7 +386,6 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
                 destroy_wifi_event(event);
 
-                clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
                 pthread_mutex_lock(&ctrl->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
@@ -537,7 +529,7 @@ int start_radios(rdk_dev_mode_type_t mode, unsigned int radio_index)
             (wifi_radio_oper_param->band == WIFI_FREQUENCY_5L_BAND) ||
             (wifi_radio_oper_param->band == WIFI_FREQUENCY_5H_BAND)) {
             if (wifi_radio_oper_param->channel >= 52 && wifi_radio_oper_param->channel <= 144) {
-                if (mode == rdk_dev_mode_type_gw) {
+                if (mode == rdk_dev_mode_type_gw || mode == rdk_dev_mode_type_em_colocated_node) {
                     dfs_channel_data_t *dfs_channel_data = (dfs_channel_data_t *)malloc(
                         sizeof(dfs_channel_data_t));
                     memset(dfs_channel_data, 0, sizeof(dfs_channel_data_t));
@@ -707,7 +699,6 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #endif
         } else {
 #if defined EASY_MESH_NODE
-        wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
         int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
         /* Initially assign this to em_node mode to start with */
         *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
@@ -753,8 +744,7 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     }
 
 #if defined EASY_MESH_NODE
-   if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
-       ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ) {
+   if (ctrl->network_mode == rdk_dev_mode_type_em_node ) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Don't need to proceed for DML fetch for RemoteAgent case, NetworkMode: %d\n",
                 __func__, __LINE__, ctrl->network_mode);
             return;
@@ -955,11 +945,10 @@ int start_wifi_services(void)
             start_extender_vaps(radio_index);
         }
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode, VAPs will be created by EasyMesh\n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
         for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
             start_radios(rdk_dev_mode_type_gw, radio_index);
-            /* Skip VAP creation - EasyMesh controller will configure and create VAPs */
-            /* start_gateway_vaps(radio_index); */
+            start_gateway_vaps(radio_index);
         }
     }
 
@@ -1482,7 +1471,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         return RETURN_ERR;
     }
     
-    clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
     clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
     pthread_condattr_init(&cond_attr);
     pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
