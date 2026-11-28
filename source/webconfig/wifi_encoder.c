@@ -1733,10 +1733,55 @@ webconfig_error_t encode_ignite_mesh_sta_object(const wifi_vap_info_t *vap_info,
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_mesh_sta_mld_link_object(const wifi_mld_link_info_t *link_info,
+    cJSON *link_obj)
+{
+    char mac_str[32];
+
+    cJSON_AddNumberToObject(link_obj, "RadioIndex", link_info->radio_index);
+    cJSON_AddNumberToObject(link_obj, "LinkID", link_info->link_id);
+    uint8_mac_to_string_mac((uint8_t *)link_info->link_addr, mac_str);
+    cJSON_AddStringToObject(link_obj, "LinkMacAddress", mac_str);
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_mesh_sta_mld_object(const wifi_mld_info_sta_t *mld_info, cJSON *mld_obj)
+{
+    cJSON *link_array, *link_obj;
+    char mac_str[32];
+
+    cJSON_AddBoolToObject(mld_obj, "MLD_Enable", mld_info->common_info.mld_enable);
+    cJSON_AddNumberToObject(mld_obj, "MLD_ID", mld_info->common_info.mld_id);
+    cJSON_AddNumberToObject(mld_obj, "MLD_Link_ID", mld_info->common_info.mld_link_id);
+    uint8_mac_to_string_mac((uint8_t *)mld_info->common_info.mld_addr, mac_str);
+    cJSON_AddStringToObject(mld_obj, "MLD_Addr", mac_str);
+    uint8_mac_to_string_mac((uint8_t *)mld_info->local_addr, mac_str);
+    cJSON_AddStringToObject(mld_obj, "MLD_Local_Addr", mac_str);
+    uint8_mac_to_string_mac((uint8_t *)mld_info->peer_addr, mac_str);
+    cJSON_AddStringToObject(mld_obj, "AP_MLD_Addr", mac_str);
+
+    link_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(mld_obj, "LinkInfo", link_array);
+    for (unsigned int i = 0; i < mld_info->num_links && i < MAX_NUM_RADIOS; i++) {
+        if (!mld_info->links[i].valid) {
+            continue;
+        }
+        link_obj = cJSON_CreateObject();
+        cJSON_AddItemToArray(link_array, link_obj);
+        if (encode_mesh_sta_mld_link_object(&mld_info->links[i], link_obj) !=
+            webconfig_error_none) {
+            return webconfig_error_encode;
+        }
+    }
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
-    cJSON *obj, *ignite_obj;
+    cJSON *obj, *ignite_obj, *multi_link_obj;
     char mac_str[32];
 
     //VAP Name
@@ -1778,6 +1823,15 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     } else {
         cJSON_AddBoolToObject(vap_obj, "ConnectStatus", false);
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d conn_status:%d false\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
+    }
+
+    multi_link_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "MultiLinkInfo", multi_link_obj);
+    if (encode_mesh_sta_mld_object(&vap_info->u.sta_info.mld_info, multi_link_obj) !=
+        webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode MLD info for %s\n",
+            __func__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
     }
 
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
